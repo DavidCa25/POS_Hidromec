@@ -1,0 +1,21 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo">
+      <img src="assets/LogoHidromec.jpg" alt="Logo" style="width: 100%;" />
+    </div>
+    <h2>Iniciar Sesión</h2>
+    <form (submit)="onLogin($event)">
+      <div class="input-group">
+        <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" required />
+      </div>
+      <div class="input-group">
+        <input type="password" placeholder="Contraseña" id="password" [(ngModel)]="contrasena" name="contrasena" required />
+      </div>
+      <button type="submit" id="btnLogin">Entrar</button>
+    </form>
+    <p>{{ mensaje }}</p>
+    <div class="footer">
+      © 2025 Hidromec Bajio. Todos los derechos reservados.
+    </div>
+  </div>
+</div>

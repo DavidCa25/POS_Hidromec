@@ -1,0 +1,124 @@
+<div class="castrol-table-container mt-4">
+  <div class="row">
+    <button class="castrol-btn-color" (click)="abrirColorModal()">🎨 Cambiar color</button>
+  </div>
+  <h2 class="castrol-table-title">Inventario</h2>
+  <div class="mb-3">
+    <button class="castrol-btn-add" (click)="abrirProductoModal()">Agregar Producto</button>
+  </div>
+  <div class="table-responsive">
+    <table class="castrol-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Producto</th>
+          <th>Piezas x Caja</th>
+          <th>Precio Venta</th>
+          <th>Stock Mínimo (Cajas)</th>
+          <th>Stock Máximo (Cajas)</th>
+          <th>Cajas Disponibles</th>
+          <th>Piezas Disponibles</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of inventario; let i = index">
+          <td>{{ i + 1 }}</td>
+          <td>{{ item.ProductName }}</td>
+          <td>{{ item.PiecePerBox ?? '-' }}</td>
+          <td>{{ item.SalePrice ?? '-' }}</td>
+          <td>{{ item.MinimumBoxStock ?? '-' }}</td>
+          <td>{{ item.MaximumBoxStock ?? '-' }}</td>
+          <td>{{ item.AvailableBoxes ?? '-' }}</td>
+          <td>{{ item.AvailablePieces ?? '-' }}</td>
+          <td>
+            <!-- Acciones -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="inventario.length === 0" class="text-muted text-center">
+      No hay datos de inventario disponibles.
+    </p>
+  </div>
+  <div class="color-modal-backdrop" *ngIf="colorModalAbierto" (click)="cerrarColorModal()"></div>
+  <div class="color-modal" *ngIf="colorModalAbierto">
+    <h4>Selecciona un color</h4>
+    <div class="color-options">
+      <div *ngFor="let color of colores" style="display: flex; flex-direction: column; align-items: center;">
+        <button 
+          [ngStyle]="{'background': color.value, 'color': '#fff'}"
+          (click)="cambiarColor(color.value)">
+        </button>
+        <span style="margin-top: 3px; font-size: 0.80em;">{{color.nombre}}</span>
+      </div>
+    </div>
+  <button class="castrol-btn-add" style="margin-top:1em;" (click)="cerrarColorModal()">Cerrar</button>
+</div>
+
+<div class="producto-modal" *ngIf="productoModalAbierto">
+  <h2 class="producto-modal-title">Agregar producto</h2>
+  <form autocomplete="off">
+    <div class="producto-form-grid">
+      <!-- Renglón 1 -->
+      <div class="grid-col-span-2">
+        <label>Nombre</label>
+        <input type="text" name="ProductName" required>
+      </div>
+      <div>
+        <label>Marca</label>
+        <select name="Brand" required>
+          <option disabled selected>Selecciona marca</option>
+          <option *ngFor="let marca of brand" [value]="marca.BrandID">{{marca.BrandName}}</option>
+        </select>
+      </div>
+      <div>
+        <label>Categoría</label>
+        <select name="Category" required (change)="onCategoryChange($event)">
+          <option disabled selected>Selecciona categoría</option>
+          <option *ngFor="let cat of categorys" [value]="cat.CategoryID">{{cat.CategoryName}}</option>
+        </select>
+      </div>
+      <div>
+        <label>Subcategoría</label>
+        <select name="SubCategory" required>
+          <option disabled selected>Selecciona subcategoría</option>
+          <option *ngFor="let sub of subcategorys" [value]="sub.SubCategoryID">{{sub.SubCategoryName}}</option>
+        </select>
+      </div>
+      <div>
+        <label>Caja o Pieza</label>
+        <select name="ControlType" required>
+          <option disabled selected>Caja o Pieza</option>
+          <option *ngFor="let control of controlType" [value]="control.value">{{control.label}}</option>
+        </select>
+      </div>
+      <div class="producto-short-row grid-col-span-2">
+        <div>
+          <label>Piezas por caja</label>
+          <select name="Piezas por Caja" required>
+            <option disabled selected>Selecciona piezas por caja</option>
+            <option *ngFor="let piezas of piezasCaja" [value]="piezas.value">{{piezas.label}}</option>
+          </select>
+        </div>
+        <div>
+          <label>Precio</label>
+          <input type="number" step="0.01" name="SalePrice" required>
+        </div>
+        <div>
+          <label>Stock mín.</label>
+          <input type="number" name="MinimumBoxStock" min="0">
+        </div>
+        <div>
+          <label>Stock máx.</label>
+          <input type="number" name="MaximumBoxStock" min="0">
+        </div>
+      </div>
+    </div>
+    <div class="producto-modal-actions">
+      <button type="button" class="producto-cancel-btn" (click)="cerrarProductoModal()">Cancelar</button>
+      <button type="submit" class="producto-save-btn" (click)="addProducto()">Guardar</button>
+    </div>
+  </form>
+  </div>
+</div>

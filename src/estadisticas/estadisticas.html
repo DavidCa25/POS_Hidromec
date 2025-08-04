@@ -1,0 +1,77 @@
+<div class="stats-header">
+  <div class="stat-card">
+    <div class="stat-title">Producto más vendido</div>
+    <div class="stat-value">{{ totalPageViews | number }}</div>
+    <div class="stat-extra">
+      <span class="stat-up">▲ 59.3%</span>
+      <div class="stat-info">You made an extra <b>35,000</b> this year</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-title">Total Ventas este mes</div>
+    <div class="stat-value">{{ totalUsers | number }}</div>
+    <div class="stat-extra">
+      <span class="stat-up">▲ 70.5%</span>
+      <div class="stat-info">You made an extra <b>8,900</b> this year</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-title">Total Orders</div>
+    <div class="stat-value">{{ totalOrders | number }}</div>
+    <div class="stat-extra">
+      <span class="stat-down">▼ 27.4%</span>
+      <div class="stat-info">You made an extra <b>1,943</b> this year</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-title">Total Sales</div>
+    <div class="stat-value">${{ totalSales | number }}</div>
+    <div class="stat-extra">
+      <span class="stat-down">▼ 27.4%</span>
+      <div class="stat-info">You made an extra <b>$20,395</b> this year</div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-charts">
+  <div class="area-chart">
+    <div class="chart-title-row">
+      <span>Unique Visitor</span>
+      <div class="chart-toggle">
+        <button class="tab inactive">Month</button>
+        <button class="tab active">Week</button>
+      </div>
+    </div>
+    <apx-chart
+      [series]="areaChartSeries"
+      [chart]="areaChartOptions['chart']"
+      [xaxis]="areaChartOptions['xaxis']"
+      [yaxis]="areaChartOptions['yaxis']"
+      [stroke]="areaChartOptions['stroke']"
+      [dataLabels]="areaChartOptions['dataLabels']"
+      [fill]="areaChartOptions['fill']"
+      [grid]="areaChartOptions['grid']"
+      height="270"
+    ></apx-chart>
+  </div>
+  <div class="bar-chart">
+    <div class="chart-title-row">
+      <span>Income Overview</span>
+    </div>
+    <div class="income-stat">
+      <div>This Week Statistics</div>
+      <div class="income-value">$7,650</div>
+    </div>
+    <apx-chart
+      [series]="barChartSeries"
+      [chart]="barChartOptions['chart']"
+      [xaxis]="barChartOptions['xaxis']"
+      [yaxis]="barChartOptions['yaxis']"
+      [plotOptions]="barChartOptions['plotOptions']"
+      [dataLabels]="barChartOptions['dataLabels']"
+      [colors]="barChartOptions['colors']"
+      [grid]="barChartOptions['grid']"
+      height="270"
+    ></apx-chart>
+  </div>
+</div>

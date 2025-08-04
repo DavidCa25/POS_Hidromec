@@ -1,0 +1,101 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  height: 100vh;
+  font-family: 'Inter', sans-serif;
+  /* Fondo con imagen y capa blanca translúcida encima */
+  background: 
+    linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.93)),
+    url('../assets/cater.jpg') center center / cover no-repeat;
+}
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+}
+
+.login-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 18px;
+  padding: 2.2rem 2rem 2rem 2rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 1.5px 16px rgba(0,0,0,0.06);
+}
+
+.logo {
+  display: block;
+  margin: 0 auto 1.5rem auto;
+  width: 170px;
+  height: 170px;
+}
+
+h2 {
+  text-align: center;
+  color: #006F3D; /* Castrol Green */
+  margin-bottom: 1rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+input {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 1.2rem; /* espacio para ícono */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f8fafb;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: #006F3D;
+  box-shadow: 0 0 0 2px rgba(0, 111, 61, 0.09);
+}
+
+button {
+  width: 100%;
+  padding: 0.75rem;
+  background: #006F3D;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px 0 #006F3D22;
+}
+
+button:hover {
+  background: #005331;
+}
+
+.footer {
+  margin-top: 1.6rem;
+  text-align: center;
+  font-size: 0.90rem;
+  color: #888;
+}
+
+/* Responsive para que nunca quede pegado */
+@media (max-width: 600px) {
+  .login-card {
+    padding: 1.3rem 0.7rem;
+    max-width: 98vw;
+  }
+}

@@ -1,0 +1,102 @@
+body {
+  background: #f4f6fa;
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+.card {
+  border-radius: 2.5rem !important;
+  max-width: 920px;
+  margin: 48px auto;
+  box-shadow: 0 12px 48px 0 rgba(60,72,88,.08), 0 1.5px 8px 0 rgba(80,80,120,.04);
+}
+
+.card-body {
+  padding: 3.5rem 3rem;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #272a2e;
+  font-size: 1.12rem;
+}
+
+h2 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin-bottom: 2.2rem;
+  letter-spacing: -1px;
+  color: #272a2e;
+}
+
+.table {
+  font-size: 1.13rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.table th {
+  font-weight: 700;
+  background: #f6f8fa;
+}
+
+.table td, .table th {
+  vertical-align: middle !important;
+  border: none !important;
+}
+
+input, select {
+  height: 3.1rem !important;
+  font-size: 1.12rem !important;
+  border-radius: 0.75rem !important;
+}
+
+.btn {
+  font-size: 1.15rem;
+  font-weight: 600;
+  border-radius: 1.6rem !important;
+  padding: 0.95rem 2.5rem !important;
+}
+
+.btn-success {
+  background: #10b981;
+  border: none;
+  transition: background 0.25s;
+}
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-outline-primary {
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+  background: transparent !important;
+}
+.btn-outline-primary:hover {
+  background: #e0edff !important;
+  border-color: #2563eb !important;
+}
+
+.btn-danger {
+  background: #f43f5e !important;
+  border: none;
+}
+.btn-danger:hover {
+  background: #e11d48 !important;
+}
+
+#total-venta {
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+@media (max-width: 1000px) {
+  .card {
+    max-width: 99vw;
+    margin: 16px;
+  }
+  .card-body {
+    padding: 1.7rem 0.5rem;
+  }
+}
