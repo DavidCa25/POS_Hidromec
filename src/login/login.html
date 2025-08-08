@@ -3,17 +3,33 @@
     <div class="logo">
       <img src="assets/LogoHidromec.jpg" alt="Logo" style="width: 100%;" />
     </div>
-    <h2>Iniciar Sesión</h2>
+    <h2><b>Iniciar Sesión</b></h2>
     <form (submit)="onLogin($event)">
       <div class="input-group">
-        <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" required />
+        <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" (input)="onInputChange()" required />
       </div>
       <div class="input-group">
-        <input type="password" placeholder="Contraseña" id="password" [(ngModel)]="contrasena" name="contrasena" required />
+        <input 
+          [type]="mostrarContrasena ? 'text' : 'password'"
+          placeholder="Contraseña"
+          id="password"
+          [(ngModel)]="contrasena"
+          name="contrasena"
+          required
+          (input)="onInputChange()" 
+        />
+        <button type="button" class="toggle-btn" (click)="mostrarContrasena = !mostrarContrasena">
+          <i [class]="mostrarContrasena ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+        </button>
+      </div>
+      <div class="warning-message" *ngIf="advertencia">
+        {{ advertencia }}
       </div>
       <button type="submit" id="btnLogin">Entrar</button>
     </form>
-    <p>{{ mensaje }}</p>
+    <div class="error-message" *ngIf="mensaje" margin-top="15px">
+      🚨 {{ mensaje }}
+    </div>
     <div class="footer">
       © 2025 Hidromec Bajio. Todos los derechos reservados.
     </div>

@@ -35,8 +35,9 @@
 }
 
 h2 {
+  font-family: 'Raleway', sans-serif;
   text-align: center;
-  color: #006F3D; /* Castrol Green */
+  color: #000080; /* NavyBlue */
   margin-bottom: 1rem;
 }
 
@@ -53,6 +54,7 @@ form {
 }
 
 input {
+  font-family: 'Poppins', sans-serif;
   width: 100%;
   padding: 0.75rem 0.75rem 0.75rem 1.2rem; /* espacio para ícono */
   border: 1px solid #ccc;
@@ -64,14 +66,15 @@ input {
 
 input:focus {
   outline: none;
-  border-color: #006F3D;
+  border-color: #191970; /* MidnightBlue */
   box-shadow: 0 0 0 2px rgba(0, 111, 61, 0.09);
 }
 
-button {
+button:not(.toggle-btn) {
+  font-family: 'Poppins', sans-serif;
   width: 100%;
   padding: 0.75rem;
-  background: #006F3D;
+  background: #191970; /* MidnightBlue */
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -81,15 +84,56 @@ button {
   box-shadow: 0 2px 12px 0 #006F3D22;
 }
 
-button:hover {
-  background: #005331;
+button:hover:not(.toggle-btn) {
+  background: #191970;
 }
 
 .footer {
+  font-family: 'Poppins', sans-serif;
   margin-top: 1.6rem;
   text-align: center;
   font-size: 0.90rem;
   color: #888;
+}
+
+.error-message {
+  font-family: 'Poppins', sans-serif;
+  background-color: #ffe0e0;
+  color: #b00020;
+  padding: 12px;
+  margin-top: 15px;
+  border: 1px solid #f5c2c2;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.warning-message {
+  background-color: #fff8e1;
+  color: #8a6d3b;
+  padding: 12px;
+  margin-bottom: 18px;
+  border: 1px solid #ffecb3;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.toggle-btn {
+  position: absolute;
+  right: 0.8rem;
+  background: transparent;
+  border:none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #555;
+  padding: 0;
 }
 
 /* Responsive para que nunca quede pegado */

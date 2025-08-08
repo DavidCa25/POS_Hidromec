@@ -27,15 +27,15 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
-            .input('Usuario', sql.VarChar, usuario)
-            .input('Passwrd', sql.VarChar, contrasena)
-            .execute('sp_IniciarSesion');
+            .input('username', sql.VarChar, usuario)
+            .input('password', sql.VarChar, contrasena)
+            .execute('sp_login_user');
         
 
         if (result.recordset.length > 0) {
             return {
                 success: true,
-                data: result.recordset
+                data: result.recordset[0] // Retorna el primer registro
             };
         } else {
             return {
@@ -45,7 +45,7 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
         }
 
     } catch (err) {
-        console.error('❌ Error al ejecutar sp_IniciarSesion:', err);
+        console.error('❌ Error al ejecutar sp_login_user:', err);
         return {
             success: false,
             error: err.message

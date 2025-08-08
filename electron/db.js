@@ -2,10 +2,10 @@ const sql = require('mssql');
 
 // Configura tu conexión:
 const config = {
-    user: 'Casillas3',
-    password: 'Casillas00!',
+    user: 'Luna1211',
+    password: 'Baner_Luna24!',
     server: 'localhost', 
-    database: 'FiYLubRiosII',
+    database: 'PointOfSales',
     port: 1433,
     options: {
         encrypt: false, 
