@@ -53,16 +53,16 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
     }
 });
 
-ipcMain.handle('sp-consultar-inventario', async () => {
+ipcMain.handle('sp-get-products', async () => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
-            .execute('sp_Consultar_Inventario');
+            .execute('sp_get_active_products');
 
         return result.recordset; 
 
     } catch (err) {
-        console.error('❌ Error al ejecutar sp_ConsultarInventario:', err);
+        console.error('❌ Error al ejecutar sp_get_active_products:', err);
         throw err; 
     }
 });
@@ -86,31 +86,70 @@ ipcMain.handle('sp-Consultar-Detalle-Productos', async (event, CategoryID) => {
     }
 });
 
-ipcMain.handle('sp-agregar-productos', async (event, productName, brandID, categoryID, subCategoryID, controlType, piecePerBox, salePrice, minimumBoxStock, maximumBoxStock) => {
+ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
-            .input('ProductName', sql.VarChar, productName)
-            .input('BrandID', sql.Int, brandID)
-            .input('CategoryID', sql.Int, categoryID)
-            .input('SubCategoryID', sql.Int, subCategoryID)
-            .input('ControlType', sql.VarChar, controlType)
-            .input('PiecePerBox', sql.Int, piecePerBox)
-            .input('SalePrice', sql.Decimal(18, 2), salePrice)
-            .input('MinimumBoxStock', sql.Int, minimumBoxStock)
-            .input('MaximumBoxStock', sql.Int, maximumBoxStock)
-            .execute('sp_Agregar_Productos');
+            .input('brand', sql.Int, brand)
+            .input('category', sql.Int, category)
+            .input('part_number', sql.NVarChar(100), partNumber)
+            .input('name', sql.NVarChar(100), name)
+            .input('price', sql.Decimal(10, 2), price)
+            .input('stock', sql.Int, stock)
+            .execute('sp_add_product');
 
         return {
             success: true,
             data: result.recordset
         };
     } catch (err) {
-        console.error('❌ Error al ejecutar sp_Agregar_Productos:', err);
+        console.error('❌ Error al ejecutar sp_add_product:', err);
         return {
             success: false,
             error: err.message
         };
     }
-})
+   
+});
 
+ipcMain.handle('sp-get-categories', async (event, data) => {
+    try {   
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_categories');
+
+        return result.recordset; 
+
+    } catch (err) {
+        console.error('❌ Error al ejecutar sp_get_categories:', err);
+        throw err; 
+    }
+});
+
+ipcMain.handle('sp-get-brands', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_brands');
+
+        return result.recordset; 
+
+    } catch (err) {
+        console.error('❌ Error al ejecutar sp_get_brands:', err);
+        throw err; 
+    }
+});
+
+ipcMain.handle('sp-get-active-products', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_active_products');
+
+        return result.recordset; 
+
+    } catch (err) {
+        console.error('❌ Error al ejecutar sp_get_active_products:', err);
+        throw err; 
+    }
+});

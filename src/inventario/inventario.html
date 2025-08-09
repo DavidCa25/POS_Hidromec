@@ -7,30 +7,30 @@
     <button class="castrol-btn-add" (click)="abrirProductoModal()">Agregar Producto</button>
   </div>
   <div class="table-responsive">
-    <table class="castrol-table">
+     <table class="castrol-table">
       <thead>
         <tr>
           <th>#</th>
+          <th>Número de parte</th>
           <th>Producto</th>
-          <th>Piezas x Caja</th>
-          <th>Precio Venta</th>
-          <th>Stock Mínimo (Cajas)</th>
-          <th>Stock Máximo (Cajas)</th>
-          <th>Cajas Disponibles</th>
-          <th>Piezas Disponibles</th>
+          <th>Precio</th>
+          <th>Stock</th>
+          <th>Categoría</th>
+          <th>Marca</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let item of inventario; let i = index">
           <td>{{ i + 1 }}</td>
-          <td>{{ item.ProductName }}</td>
-          <td>{{ item.PiecePerBox ?? '-' }}</td>
-          <td>{{ item.SalePrice ?? '-' }}</td>
-          <td>{{ item.MinimumBoxStock ?? '-' }}</td>
-          <td>{{ item.MaximumBoxStock ?? '-' }}</td>
-          <td>{{ item.AvailableBoxes ?? '-' }}</td>
-          <td>{{ item.AvailablePieces ?? '-' }}</td>
+          <td>{{ item.part_number ?? '-' }}</td>
+          <td>{{ item.product_name ?? '-' }}</td>
+          <!-- Si quieres formateo MXN, descomenta la línea con currency y comenta la otra -->
+          <!-- <td>{{ item.price | currency:'MXN':'symbol':'1.2-2' }}</td> -->
+          <td>{{ item.price ?? '-' }}</td>
+          <td>{{ item.stock ?? '-' }}</td>
+          <td>{{ item.category_name ?? '-' }}</td>
+          <td>{{ item.brand_name ?? '-' }}</td>
           <td>
             <!-- Acciones -->
           </td>
@@ -58,67 +58,70 @@
 
 <div class="producto-modal" *ngIf="productoModalAbierto">
   <h2 class="producto-modal-title">Agregar producto</h2>
-  <form autocomplete="off">
+  <form autocomplete="off" (ngSubmit)="addProduct()" #formRef="ngForm">
     <div class="producto-form-grid">
-      <!-- Renglón 1 -->
       <div class="grid-col-span-2">
-        <label>Nombre</label>
-        <input type="text" name="ProductName" required>
-      </div>
-      <div>
         <label>Marca</label>
-        <select name="Brand" required>
-          <option disabled selected>Selecciona marca</option>
-          <option *ngFor="let marca of brand" [value]="marca.BrandID">{{marca.BrandName}}</option>
+        <select name="brand"
+          [(ngModel)]="form.brand"
+          required>
+          <option [ngValue]="null" disabled>Selecciona marca</option>
+          <option *ngFor="let brand of brands" [ngValue]="brand.id">
+            {{brand.namee}}
+          </option>
         </select>
       </div>
       <div>
         <label>Categoría</label>
-        <select name="Category" required (change)="onCategoryChange($event)">
-          <option disabled selected>Selecciona categoría</option>
-          <option *ngFor="let cat of categorys" [value]="cat.CategoryID">{{cat.CategoryName}}</option>
+          <select name="category"
+            [(ngModel)]="form.category"
+            required>
+          <option [ngValue]="null" disabled>Selecciona categoría</option>
+          <option *ngFor="let cat of categorys" [ngValue]="cat.id">
+            {{cat.namee}}
+          </option>
         </select>
       </div>
+      <div class="grid-col-span-2">
+        <label>Número de parte</label>
+        <input type="text"
+               name="partNumber"
+               [(ngModel)]="form.partNumber"
+               required>
+      </div>
+
+      <div class="grid-col-span-2">
+        <label>Nombre</label>
+        <input type="text"
+               name="name"
+               [(ngModel)]="form.name"
+               required>
+      </div>
+
       <div>
-        <label>Subcategoría</label>
-        <select name="SubCategory" required>
-          <option disabled selected>Selecciona subcategoría</option>
-          <option *ngFor="let sub of subcategorys" [value]="sub.SubCategoryID">{{sub.SubCategoryName}}</option>
-        </select>
+        <label>Precio</label>
+        <input type="number"
+               step="0.01"
+               name="price"
+               [(ngModel)]="form.price"
+               required>
       </div>
+
       <div>
-        <label>Caja o Pieza</label>
-        <select name="ControlType" required>
-          <option disabled selected>Caja o Pieza</option>
-          <option *ngFor="let control of controlType" [value]="control.value">{{control.label}}</option>
-        </select>
-      </div>
-      <div class="producto-short-row grid-col-span-2">
-        <div>
-          <label>Piezas por caja</label>
-          <select name="Piezas por Caja" required>
-            <option disabled selected>Selecciona piezas por caja</option>
-            <option *ngFor="let piezas of piezasCaja" [value]="piezas.value">{{piezas.label}}</option>
-          </select>
-        </div>
-        <div>
-          <label>Precio</label>
-          <input type="number" step="0.01" name="SalePrice" required>
-        </div>
-        <div>
-          <label>Stock mín.</label>
-          <input type="number" name="MinimumBoxStock" min="0">
-        </div>
-        <div>
-          <label>Stock máx.</label>
-          <input type="number" name="MaximumBoxStock" min="0">
-        </div>
+        <label>Stock</label>
+        <input type="number"
+               name="stock"
+               [(ngModel)]="form.stock"
+               min="0"
+               required>
       </div>
     </div>
+
     <div class="producto-modal-actions">
       <button type="button" class="producto-cancel-btn" (click)="cerrarProductoModal()">Cancelar</button>
-      <button type="submit" class="producto-save-btn" (click)="addProducto()">Guardar</button>
+      <button type="submit" class="producto-save-btn" [disabled]="formRef.invalid">Guardar</button>
     </div>
   </form>
+  
   </div>
 </div>

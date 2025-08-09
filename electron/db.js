@@ -1,11 +1,10 @@
 const sql = require('mssql');
 
-// Configura tu conexión:
 const config = {
-    user: 'Luna1211',
-    password: 'Baner_Luna24!',
+    user: 'Casillas3',
+    password: 'Casillas00!',
     server: 'localhost', 
-    database: 'PointOfSales',
+    database: 'Hidromec_DataBase',
     port: 1433,
     options: {
         encrypt: false, 
@@ -13,7 +12,6 @@ const config = {
     }
 };
 
-// Conectar
 const poolPromise = new sql.ConnectionPool(config)
     .connect()
     .then(pool => {
