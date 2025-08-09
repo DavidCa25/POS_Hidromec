@@ -1,8 +1,20 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { JsonPipe } from '@angular/common';
-import { NgFor, NgStyle, NgIf } from '@angular/common';
+import { JsonPipe, NgFor, NgIf, NgStyle } from '@angular/common';
+import Swal from 'sweetalert2';
+
+interface ProductForm {
+  brand: number | null;
+  category: number | null;
+  partNumber: string;
+  name: string;
+  price: number;
+  stock: number;
+}
+
+interface CategoryRow { id: number; namee: string; }
+interface BrandRow { id: number; namee: string; }
 
 @Component({
   selector: 'app-inventario',
@@ -12,93 +24,119 @@ import { NgFor, NgStyle, NgIf } from '@angular/common';
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
+  form: ProductForm = {brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0};
+
   menuOpen = true;
   inventario: any[] = [];
   colorModalAbierto = false;
   productoModalAbierto = false;
-  brand: { BrandID: number; BrandName: string }[] = [];
-  categorys: { CategoryID: number; CategoryName: string }[] = [];
-  subcategorys: { SubCategoryID: number; SubCategoryName: string }[] = [];
+
+  brands: { id: number; namee: string }[] = [];
+  categorys: { id: number; namee: string }[] = [];
 
   colores = [
-  { nombre: 'Castrol', value: '#00662f' },
-  { nombre: 'Azul fuerte', value: '#0070cc' },
-  { nombre: 'Azul claro', value: '#047ef8' },
-  { nombre: 'Mostaza', value: '#c99c1c' },
+    { nombre: 'Castrol', value: '#00662f' },
+    { nombre: 'Azul fuerte', value: '#0070cc' },
+    { nombre: 'Azul claro', value: '#047ef8' },
+    { nombre: 'Mostaza', value: '#c99c1c' },
   ];
 
-  piezasCaja = [
-    { value: 3, label: '3 piezas' },
-    { value: 4, label: '4 piezas' },
-    { value: 12, label: '12 piezas'}
-  ]
+  constructor() {}
 
-  controlType = [
-    { value: 'CAJA', label: 'CAJA'},
-    { value: 'PIEZA', label: 'PIEZA'}
-  ]
-
-  constructor() {
+  async ngOnInit() {
+    await this.consultarInventario();
+    await this.cargarCategorias();
+    await this.cargarMarcas();
   }
 
-  ngOnInit(): void { 
-    this.consultarInventario();
-    this.onCategoryChange({ target: { value: 1 } });
-  }
-
-  toggleMenu() {
-    this.menuOpen = !this.menuOpen;
-  }
-
-  
+  toggleMenu() { this.menuOpen = !this.menuOpen; }
 
   async consultarInventario() {
     try {
-      const resultado = await (window as any).electronAPI.consultarInventario();
-      this.inventario = resultado;
-
+      const resultado = await (window as any).electronAPI.getActiveProducts();
+      this.inventario = resultado ?? [];
     } catch (error) {
       console.error('❌ Error al consultar el inventario:', error);
       this.inventario = [];
     }
   }
 
-  async agregarProducto() {
+  async cargarCategorias() {
     try {
-      // const producto = await (window as any).electronAPI.agregarProducto();
-      // console.log('👉 Producto agregado:', producto);
-      this.consultarInventario(); // Actualizar el inventario después de agregar
+      const rs = await (window as any).electronAPI.getCategories();
+
+      if (Array.isArray(rs) && rs.length && 'id' in rs[0]) {
+        this.categorys = rs as CategoryRow[];
+        return;
+      }
+      this.categorys = [];
     } catch (error) {
-      console.error('❌ Error al agregar el producto:', error);
+      console.error('❌ Error al cargar categorías:', error);
+      this.categorys = [];
     }
   }
 
-  async onCategoryChange(event: any) {
-  const categoryID = event.target.value;
+  async cargarMarcas() {
+    try {
+      const rs = await (window as any).electronAPI.getBrands();
 
-  this.brand = [];
-  this.categorys = [];
-  this.subcategorys = [];
-
-  try {
-    const detalles = await (window as any).electronAPI.consultarDetallesProducto(categoryID);
-    this.brand = detalles.brand;     
-    this.categorys = detalles.categorys;          
-    this.subcategorys = detalles.subcategorys; 
-
+      if (Array.isArray(rs) && rs.length && 'id' in rs[0]) {
+        this.brands = rs as BrandRow[];
+        return;
+      }
+      this.brands = [];
     } catch (error) {
-      console.error('❌ Error al consultar los detalles del producto:', error);
-      
+      console.error('❌ Error al cargar marcas:', error);
+      this.brands = [];
     }
   }
 
+  toast = { show: false, message: '', type: 'success' as 'success'|'error' };
+  private toastTimer?: any;
 
-  abrirColorModal() {
-  this.colorModalAbierto = true;
+  private showToast(message: string, type: 'success'|'error' = 'success', ms = 2200) {
+    this.toast = { show: true, message, type };
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => (this.toast.show = false), ms);
   }
-  cerrarColorModal() {
-    this.colorModalAbierto = false;
+
+
+  async addProduct() {
+    try {
+      const {brand, category, partNumber, name, price, stock } = this.form;
+      if (brand == null || category == null || !partNumber || !name || !price || !stock  == null) {
+        await Swal.fire({ icon: 'error', title: 'Campos incompletos', text: 'Completa los campos obligatorios.' });
+        console.log('Formulario:', this.form);
+
+        return;
+      }
+      const result = await (window as any).electronAPI.agregarProducto(
+        brand, category, partNumber, name, price, stock
+      );
+
+      if (result?.success) {
+        await this.consultarInventario();
+        this.cerrarProductoModal();
+        this.form = {brand: null,  category: null, partNumber: '', name: '', price: 0, stock: 0 };
+        await Swal.fire({
+          icon: 'success',
+          title: '¡Producto agregado!',
+          text: 'Se guardó correctamente.',
+          timer: 1800,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
+      } else {
+         await Swal.fire({ icon: 'error', title: 'Error', text: result?.error ?? 'No se pudo agregar.' });
+      }
+    } catch (e) {
+      console.error('❌ Error al agregar el producto:', e);
+      await Swal.fire({ icon: 'error', title: 'Ups...', text: 'Error inesperado al agregar el producto.' });
+    }
   }
+
+  abrirColorModal() { this.colorModalAbierto = true; }
+  cerrarColorModal() { this.colorModalAbierto = false; }
   cambiarColor(color: string) {
     document.documentElement.style.setProperty('--castrol-main', color);
     this.colorModalAbierto = false;
@@ -106,12 +144,8 @@ export class Inventario {
 
   abrirProductoModal() {
     this.productoModalAbierto = true;
+    this.cargarCategorias();
+    this.cargarMarcas();
   }
-  cerrarProductoModal() {
-    this.productoModalAbierto = false;
-  }
-
-  addProducto() {
-    
-  }
+  cerrarProductoModal() { this.productoModalAbierto = false; }
 }

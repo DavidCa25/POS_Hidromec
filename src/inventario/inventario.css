@@ -243,4 +243,51 @@
   background: #e0e0e0;
 }
 
+/* Toast wrapper (posición) */
+.toast-wrap{
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  pointer-events: none;
+  animation: toast-in .25s ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
+/* Tarjeta */
+.toast-card{
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 10px;
+  min-width: 280px; max-width: 420px;
+  background: #0f172a; /* slate-900 */
+  color: #e2e8f0;      /* slate-200 */
+  border: 1px solid rgba(226,232,240,.12);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  padding: 14px 16px;
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+}
+.toast-card.error{
+  background: #3f1f23; /* rojo oscuro elegante */
+  border-color: rgba(248,113,113,.35);
+}
+
+/* Accent dot */
+.toast-dot{
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #22c55e; /* success */
+  box-shadow: 0 0 0 4px rgba(34,197,94,.15);
+  flex-shrink: 0;
+}
+.toast-card.error .toast-dot{
+  background: #ef4444; /* error */
+  box-shadow: 0 0 0 4px rgba(239,68,68,.15);
+}
+
+.toast-msg{
+  font-size: 14px;
+  letter-spacing: .2px;
+}
