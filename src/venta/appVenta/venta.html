@@ -1,13 +1,12 @@
 <div class="container">
-  <div class="card shadow-lg border-0 mt-4">
+  <div class="card shadow-lg border-0 mt-4 venta-densa">
     <div class="card-body">
       <h2 class="text-center mb-5">Punto de Venta</h2>
       <form>
-        <!-- Folio y fecha -->
         <div class="row g-4 mb-4">
           <div class="col-md-6">
             <label class="form-label">Folio</label>
-            <input type="text" class="form-control" placeholder="Folio de la venta" />
+            <input type="text" class="form-control" [value]="folio" readonly />
           </div>
           <div class="col-md-6">
             <label class="form-label">Fecha</label>
@@ -17,11 +16,10 @@
           </div>
         </div>
 
-        <!-- Productos -->
         <div class="mb-4">
           <label class="form-label mb-2">Productos</label>
           <div class="table-responsive">
-            <table class="table align-middle shadow-sm mb-2">
+            <table class="table align-middle shadow-sm mb-2 venta-table">
               <thead>
                 <tr>
                   <th style="min-width:280px;">Producto</th>
@@ -57,7 +55,7 @@
                   </td>
                   <td>
                     <button type="button"
-                            class="btn btn-sm btn-danger rounded-circle"
+                            class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
                             (click)="quitarItem(i)">
                       <i class="bi bi-trash"></i>
                     </button>
@@ -75,7 +73,7 @@
           </div>
 
           <button type="button"
-                  class="btn btn-outline-primary btn-sm mt-2"
+                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"  
                   (click)="abrirModalProductos()">
             <i class="bi bi-plus-lg"></i> Agregar producto
           </button>
@@ -131,8 +129,6 @@
   </div>
 </div>
 
-<!-- MODAL SELECCIONAR PRODUCTO -->
-<!-- MODAL SELECCIONAR PRODUCTO -->
 <div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered">

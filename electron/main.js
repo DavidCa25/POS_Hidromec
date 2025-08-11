@@ -2,19 +2,24 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { poolPromise, sql } = require('./db');
 const { pool } = require('mssql');
+const isDev = process.env.NODE_ENV === 'development';
 
 function createWindow() {
-    const win = new BrowserWindow({
-        width: 1920,
-        height: 1080,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true,
-            enableRemoteModule: false
-        }
-    });
+  const win = new BrowserWindow({
+    width: 1920,
+    height: 1080,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      enableRemoteModule: false
+    }
+  });
 
+  if (isDev) {
+    win.loadURL('http://localhost:4200');
+  } else {
     win.loadFile(path.join(__dirname, '../dist/filtros_lubs_rios/browser/index.html'));
+  }
 }
 
 app.whenReady().then(createWindow);

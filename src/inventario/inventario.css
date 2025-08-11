@@ -291,3 +291,62 @@
   font-size: 14px;
   letter-spacing: .2px;
 }
+
+
+.acciones-cell { padding: 8px 12px; }
+.action-group { display: inline-flex; gap: 8px; align-items: center; }
+
+/* Botón base (soft/ghost) */
+.action-btn {
+  border: 0;
+  background: #f3f4f6;         /* gris claro fijo */
+  border-radius: 12px;
+  padding: 8px;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, filter .15s ease;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+
+.action-btn:hover {
+  background: #e5e7eb;         /* hover gris */
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,.08);
+}
+
+.action-btn:active { transform: translateY(0); filter: brightness(.98); }
+.action-btn:focus-visible { box-shadow: 0 0 0 4px rgba(37, 99, 235, .18); }
+
+/* Iconos */
+.action-btn svg { width: 18px; height: 18px; fill: #1f2937; transition: fill .15s ease, transform .15s ease; }
+
+/* Colores duros por acción */
+.btn-edit:hover svg   { fill: #2563eb; } /* azul editar */
+.btn-view:hover svg   { fill: #64748b; } /* gris ver */
+.btn-delete:hover svg { fill: #ef4444; } /* rojo eliminar */
+
+/* Tooltip puro CSS */
+.action-btn { position: relative; }
+.action-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(17,17,17,.92);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15);
+}
+.action-btn:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Foco rojo para destruir */
+.btn-delete:focus-visible { box-shadow: 0 0 0 4px rgba(239, 68, 68, .22); }

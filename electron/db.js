@@ -3,9 +3,9 @@ const sql = require('mssql');
 const config = {
     user: 'Casillas3',
     password: 'Casillas00!',
-    server: 'localhost', 
+    server: '8.tcp.ngrok.io', 
     database: 'Hidromec_DataBase',
-    port: 1433,
+    port: 13779,
     options: {
         encrypt: false, 
         trustServerCertificate: true 

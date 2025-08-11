@@ -31,16 +31,16 @@ interface SaleItem {
 export class Venta {
   today = new Date();
 
-  // Modal de cobro
+  folio: number = 1; 
+  private FOLIO_KEY = 'folioCounter'; 
+
   showModal = false;
   dineroRecibido: number | null = null;
 
-  // Modal de productos
   showModalProductos = false;
   productos: ProductRow[] = [];
   filtro = '';
 
-  // Detalle de la venta
   items: SaleItem[] = [];
   totalVenta = 0;
 
@@ -48,7 +48,23 @@ export class Venta {
     this.totalVenta = 0;
   }
 
-  // ====== Calculos ======
+  private readFolioCounter(): number {
+    const v = Number(localStorage.getItem(this.FOLIO_KEY) || '0');
+    return Number.isFinite(v) ? v : 0; 
+  }
+  private writeFolioCounter(v: number) {
+    localStorage.setItem(this.FOLIO_KEY, String(v));
+  }
+  private peekNextFolio(): number {
+    return this.readFolioCounter() + 1;
+  }
+  private advanceFolioAfterConfirm() {
+    const current = this.readFolioCounter();
+    const confirmed = current + 1;    
+    this.writeFolioCounter(confirmed); 
+    this.folio = confirmed + 1;     
+  }
+
   get cambio(): number {
     if (this.dineroRecibido == null) return 0;
     const c = this.dineroRecibido - this.totalVenta;
