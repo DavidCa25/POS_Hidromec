@@ -109,6 +109,16 @@
           </div>
         </div>
         <div class="mb-3">
+          <label class="form-label">Método de pago</label>
+          <select class="form-select"
+                  [(ngModel)]="paymentMethod"
+                  name="paymentMethod">
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="TARJETA">Tarjeta</option>
+            <option value="TRANSFERENCIA">Transferencia</option>
+          </select>
+        </div>
+        <div class="mb-3">
           <label class="form-label">Dinero recibido</label>
           <input type="number" min="0" step="0.01" class="form-control form-control-lg"
             [(ngModel)]="dineroRecibido"
@@ -122,7 +132,7 @@
           </div>
         </div>
         <div class="d-flex justify-content-end mt-4">
-          <button type="button" class="btn btn-primary px-4" (click)="cerrarModalCobrar()">Aceptar</button>
+          <button type="button" class="btn btn-primary px-4" (click)="confirmarCobro()">Confirmar</button>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { Component, HostListener } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
+import Swal from 'sweetalert2';
 
 
 interface ProductRow {
@@ -36,6 +37,8 @@ export class Venta {
 
   showModal = false;
   dineroRecibido: number | null = null;
+  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO'; 
+  userId = 1; 
 
   showModalProductos = false;
   productos: ProductRow[] = [];
@@ -99,6 +102,75 @@ export class Venta {
     this.showModal = true;
   }
   cerrarModalCobrar() { this.showModal = false; }
+
+  async confirmarCobro(){
+    if (this.items.length === 0) {
+      this.showModal = false;
+       Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Agrega productos a la venta"
+        });
+        return;
+      }
+    if (this.totalVenta <= 0) { 
+      this.showModal = false;
+      Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "El total de la venta debe ser mayor a cero"
+        });
+    return; 
+  }
+    if (this.dineroRecibido == null || this.dineroRecibido < this.totalVenta) { 
+      this.showModal = false;
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "El dinero recibido debe ser mayor o igual al total de la venta"
+      }); 
+    return; 
+  }
+
+    const detalles = this.items.map(it => ({ productId: it.productId, qty: it.qty, unitPrice: it.unitPrice }));
+
+    try {
+      const resp = await (window as any).electronAPI.registerSale(this.userId, this.paymentMethod, detalles);
+
+      if (resp?.success) {
+        this.advanceFolioAfterConfirm();  
+        this.items = [];
+        this.totalVenta = 0;
+        this.dineroRecibido = null;
+        this.showModal = false;
+
+        await Swal.fire({
+          icon: 'success',
+          title: '¡Producto agregado!',
+          text: 'Se guardó correctamente.',
+          timer: 1800,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
+      } else {
+        this.showModal = false;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar la venta',
+          text: resp?.message || 'Ocurrió un error inesperado.'
+        });
+      }
+    } catch (e:any) {
+      console.error('❌ registerSale:', e);
+      this.showModal = false;
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al registrar la venta',
+        text: e.message || 'Ocurrió un error inesperado.'
+      });
+    }
+  }
+
 
   async abrirModalProductos() {
     this.filtro = '';

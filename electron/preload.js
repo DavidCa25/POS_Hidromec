@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock),
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
-    getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products')
+    getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    registerSale: (userId, paymentMethod, items) =>
+        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items),
 });
