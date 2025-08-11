@@ -100,3 +100,62 @@ input, select {
     padding: 1.7rem 0.5rem;
   }
 }
+
+/* Modal más ANCHO */
+.modal-productos .modal-dialog{
+  max-width: 1180px;                /* ancho mayor */
+}
+
+/* Buscador compacto */
+.modal-productos .buscador{
+  height: 42px;
+  font-size: .9rem;
+}
+
+/* Alto útil grande y scroll suave */
+.modal-productos .listado{
+  max-height: 62vh;                 /* más alto en pantalla */
+  overflow: auto;
+}
+
+/* Tabla compacta y tipografía pequeña */
+.compact-table{
+  font-size: .86rem;                /* más chico */
+}
+.compact-table th, .compact-table td{
+  padding: .45rem .6rem;            /* menos padding */
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+/* Columnas con recorte elegante */
+.prod-name{
+  font-weight: 600;
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.part{
+  font-size: .82rem;
+}
+.nowrap{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-add{
+  font-size: .85rem;
+  padding: .35rem .8rem;
+  border-radius: 12px;
+}
+
+.modal-productos .modal-header{
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.modal-productos .modal-body{
+  padding: .75rem 1rem 1rem 1rem;
+}
+
