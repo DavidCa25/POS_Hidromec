@@ -1,13 +1,12 @@
 <div class="container">
-  <div class="card shadow-lg border-0 mt-4">
+  <div class="card shadow-lg border-0 mt-4 venta-densa">
     <div class="card-body">
       <h2 class="text-center mb-5">Punto de Venta</h2>
       <form>
-        <!-- Folio y fecha -->
         <div class="row g-4 mb-4">
           <div class="col-md-6">
             <label class="form-label">Folio</label>
-            <input type="text" class="form-control" placeholder="Folio de la venta" />
+            <input type="text" class="form-control" [value]="folio" readonly />
           </div>
           <div class="col-md-6">
             <label class="form-label">Fecha</label>
@@ -16,14 +15,14 @@
             </div>
           </div>
         </div>
-        <!-- Productos -->
+
         <div class="mb-4">
           <label class="form-label mb-2">Productos</label>
           <div class="table-responsive">
-            <table class="table align-middle shadow-sm mb-2">
+            <table class="table align-middle shadow-sm mb-2 venta-table">
               <thead>
                 <tr>
-                  <th>Producto</th>
+                  <th style="min-width:280px;">Producto</th>
                   <th style="width:120px;">Cantidad</th>
                   <th style="width:180px;">Precio Unitario</th>
                   <th style="width:130px;">Subtotal</th>
@@ -31,30 +30,55 @@
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>
-                    <select class="form-select">
-                      <option>Producto 1</option>
-                      <option>Producto 2</option>
-                    </select>
+                <tr *ngFor="let it of items; let i = index">
+                  <td class="fw-semibold">
+                    {{ it.productName }}
                   </td>
-                  <td><input type="number" class="form-control" value="1" min="1" /></td>
-                  <td><input type="number" class="form-control" value="0.00" min="0" step="0.01" /></td>
-                  <td class="fw-semibold">$0.00</td>
                   <td>
-                    <button type="button" class="btn btn-sm btn-danger rounded-circle">
+                    <input type="number"
+                           class="form-control"
+                           min="1"
+                           [(ngModel)]="it.qty"
+                           name="qty-{{i}}"
+                           (ngModelChange)="onQtyChange(i)"/>
+                  </td>
+                  <td>
+                    <input type="number"
+                           class="form-control"
+                           min="0" step="0.01"
+                           [(ngModel)]="it.unitPrice"
+                           name="price-{{i}}"
+                           (ngModelChange)="onPriceChange(i)"/>
+                  </td>
+                  <td class="fw-semibold">
+                    {{ it.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                  </td>
+                  <td>
+                    <button type="button"
+                            class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
+                            (click)="quitarItem(i)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
                 </tr>
-                <!-- Aquí tus filas dinámicas -->
+
+                <!-- Si no hay items -->
+                <tr *ngIf="items.length === 0">
+                  <td colspan="5" class="text-center text-muted py-4">
+                    No hay productos agregados. Usa “Agregar producto”.
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <button type="button" class="btn btn-outline-primary btn-sm mt-2">
+
+          <button type="button"
+                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"  
+                  (click)="abrirModalProductos()">
             <i class="bi bi-plus-lg"></i> Agregar producto
           </button>
         </div>
+
         <!-- Total y acciones -->
         <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
           <div id="total-venta" class="mb-0 me-4">
@@ -69,7 +93,7 @@
   </div>
 </div>
 
-<!-- MODAL COBRAR -->
+<!-- MODAL COBRAR (igual que antes) -->
 <div class="modal fade show d-block" *ngIf="showModal" style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered" style="max-width:410px">
     <div class="modal-content rounded-4">
@@ -104,3 +128,72 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
+     style="background:rgba(0,0,0,0.13);z-index:10000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 py-2">
+        <h5 class="modal-title fw-bold m-0">Seleccionar producto</h5>
+        <button type="button" class="btn-close" (click)="cerrarModalProductos()"></button>
+      </div>
+
+      <div class="modal-body pt-0">
+        <input class="form-control mb-2 buscador"
+               placeholder="Buscar por nombre, número de parte, marca o categoría..."
+               [(ngModel)]="filtro" name="filtro">
+
+        <div class="table-responsive listado" >
+          <table class="table table-hover align-middle compact-table">
+            <thead class="table-light">
+              <tr>
+                <th style="width:48px;">#</th>
+                <th style="width:140px;">No. Parte</th>
+                <th>Producto</th>
+                <th style="width:160px;">Marca</th>
+                <th style="width:180px;">Categoría</th>
+                <th style="width:120px;" class="text-end">Precio</th>
+                <th style="width:110px;" class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of productos; let i = index"
+                  [hidden]="filtro && !(
+                    (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
+                  )">
+                <td class="text-muted">{{ i + 1 }}</td>
+                <td class="part text-monospace">{{ p.part_number }}</td>
+                <td class="prod-name">{{ p.product_name }}</td>
+                <td class="nowrap">{{ p.brand_name }}</td>
+                <td class="nowrap">{{ p.category_name }}</td>
+                <td class="text-end">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-primary btn-add"
+                          (click)="seleccionarProducto(p)">
+                    Agregar
+                  </button>
+                </td>
+              </tr>
+
+              <tr *ngIf="productos.length === 0">
+                <td colspan="7" class="text-center text-muted py-4">
+                  No hay productos activos.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalProductos()">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
