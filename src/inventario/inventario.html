@@ -1,10 +1,10 @@
 <div class="castrol-table-container mt-4">
   <div class="row">
-    <button class="castrol-btn-color" (click)="abrirColorModal()">🎨 Cambiar color</button>
+    <button class="castrol-btn-color" style="background-image: linear-gradient(to right, navy, #CD950C); color: white;" (click)="abrirColorModal()"><i class="bi bi-brush me-2"></i>Cambiar color</button>
   </div>
-  <h2 class="castrol-table-title">Inventario</h2>
-  <div class="mb-3">
-    <button class="castrol-btn-add" (click)="abrirProductoModal()">Agregar Producto</button>
+  <h1 class="castrol-table-title"><b>Inventario</b></h1>
+  <div class="mb-3" style="display: flex;">
+    <button class="castrol-btn-add" (click)="abrirProductoModal()"><i class="bi bi-plus-circle-dotted me-2" style="font-size: 15px;"></i>Agregar Producto</button>
   </div>
   <div class="table-responsive">
      <table class="castrol-table">
@@ -43,7 +43,7 @@
   </div>
   <div class="color-modal-backdrop" *ngIf="colorModalAbierto" (click)="cerrarColorModal()"></div>
   <div class="color-modal" *ngIf="colorModalAbierto">
-    <h4>Selecciona un color</h4>
+    <h4><b>Selecciona un color</b></h4>
     <div class="color-options">
       <div *ngFor="let color of colores" style="display: flex; flex-direction: column; align-items: center;">
         <button 
@@ -57,15 +57,15 @@
 </div>
 
 <div class="producto-modal" *ngIf="productoModalAbierto">
-  <h2 class="producto-modal-title">Agregar producto</h2>
+  <h1 class="producto-modal-title"><b>Agregar producto</b></h1>
   <form autocomplete="off" (ngSubmit)="addProduct()" #formRef="ngForm">
     <div class="producto-form-grid">
-      <div class="grid-col-span-2">
+      <div class="grid-col-span">
         <label>Marca</label>
         <select name="brand"
           [(ngModel)]="form.brand"
-          required>
-          <option [ngValue]="null" disabled>Selecciona marca</option>
+          required class="my-1 mr-sm-2">
+          <option [ngValue]="null" disabled>Selecciona una</option>
           <option *ngFor="let brand of brands" [ngValue]="brand.id">
             {{brand.namee}}
           </option>
@@ -75,36 +75,36 @@
         <label>Categoría</label>
           <select name="category"
             [(ngModel)]="form.category"
-            required>
-          <option [ngValue]="null" disabled>Selecciona categoría</option>
+            required class="my-1 mr-sm-2">
+          <option [ngValue]="null" disabled>Selecciona una</option>
           <option *ngFor="let cat of categorys" [ngValue]="cat.id">
             {{cat.namee}}
           </option>
         </select>
       </div>
-      <div class="grid-col-span-2">
+      <div class="grid-col-span">
         <label>Número de parte</label>
         <input type="text"
                name="partNumber"
                [(ngModel)]="form.partNumber"
-               required>
+               required class="my-1 mr-sm-2">
       </div>
-
-      <div class="grid-col-span-2">
+      <div class="grid-col-span-3">
         <label>Nombre</label>
         <input type="text"
                name="name"
                [(ngModel)]="form.name"
-               required>
+               required class="my-1 mr-sm-2">
       </div>
-
       <div>
         <label>Precio</label>
         <input type="number"
                step="0.01"
                name="price"
                [(ngModel)]="form.price"
-               required>
+               required 
+               class="my-1 mr-sm-2"
+               placeholder="0.00">
       </div>
 
       <div>
@@ -113,7 +113,9 @@
                name="stock"
                [(ngModel)]="form.stock"
                min="0"
-               required>
+               required 
+               class="my-1 mr-sm-2"
+               placeholder="1">
       </div>
     </div>
 
