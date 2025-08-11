@@ -6,11 +6,14 @@
 }
 
 .castrol-table-title {
-   color: var(--castrol-main);
+   color: #262626;
+   margin-top: 15px;
+   text-align: center;
+   font-family: 'Raleway', sans-serif;
 }
 
 .castrol-btn-add {
-  background: var(--castrol-main, #00662f);
+  background: var(--castrol-main, #000080);
   border: none;
   color: #fff;
   font-weight: bold;
@@ -18,18 +21,21 @@
   padding: 0.6em 1.5em;
   box-shadow: 0 3px 10px 0 rgba(0,102,47,0.10);
   transition: background 0.2s;
+  font-family: 'Poppins', sans-serif;
+  margin-left: auto;
 }
 .castrol-btn-add:hover {
-   background: #008c3c;
+   background: var(--castrol-main, #000080);
 }
 
 .castrol-table {
-  background: var(--castrol-main, #00662f);
+  background: var(--castrol-main, #000080);
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
   margin-top: 1rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Bordes solo en esquinas externas */
@@ -62,7 +68,7 @@
   font-size: 1.08rem;
   font-weight: bold;
   letter-spacing: 0.5px;
-  border-bottom: 3px solid #4caf50;
+  border-bottom: 3px solid #104E8B;
 }
 
 .castrol-table tr {
@@ -83,7 +89,7 @@
 }
 
 :root {
-  --castrol-main: #00662f;
+  --castrol-main: #000080;
 }
 
 .castrol-btn-color {
@@ -92,10 +98,12 @@
   color: var(--castrol-main);
   font-weight: bold;
   border-radius: 10px;
-  margin-left: 16px;
+  margin-left: 1px;
   padding: 0.45em 1em;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 10px;
 }
 .castrol-btn-color:hover {
   background: var(--castrol-main);
@@ -115,12 +123,17 @@
   z-index: 999;
   min-width: 250px;
   text-align: center;
+  font-family: 'Raleway', sans-serif;
+}
+
+.color-modal h4 {
+  margin-bottom: 1.2em;
 }
 
 .color-options {
   display: grid;
-  grid-template-columns: repeat(2, 48px); /* O 3, 4 columnas según colores */
-  gap: 14px 16px;
+  grid-template-columns: repeat(2, 90px); /* O 3, 4 columnas según colores */
+  gap: 14px 20px;
   justify-content: center;
   margin: 12px 0;
 }
@@ -128,12 +141,13 @@
 .color-options button {
   border: 2px solid #e0e0e0;
   outline: none;
-  width: 44px; height: 44px;
+  width: 90px; height: 44px;
   border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 2px 8px 0 rgba(0,0,0,0.09);
   transition: border 0.15s, transform 0.12s;
   margin: 0; /* Importante para grid */
+  font-family: 'Poppins', sans-serif;
 }
 .color-options button:hover {
   border: 2px solid var(--castrol-main);
@@ -157,10 +171,10 @@
 
 .producto-modal-title {
   margin-bottom: 1.5em;
-  color: var(--castrol-main, #00662f);
+  color: var(--castrol-main, #000080);
   font-size: 1.7em;
-  font-weight: bold;
   text-align: left;
+  font-family: 'Raleway', sans-serif;
 }
 
 .producto-form-grid {
@@ -177,8 +191,9 @@
 .producto-form-grid label {
   display: block;
   font-weight: 600;
-  color: #444;
+  color: #6C7B8B;
   margin-bottom: 3px;
+  font-family: 'Poppins', sans-serif;
 }
 
 .producto-form-grid input,
@@ -190,13 +205,14 @@
   border-radius: 8px;
   border: 1.5px solid #e3e9e4;
   background: #f9fbf9;
-  font-size: 1em;
+  /* font-size: 1em; */
   margin-bottom: 2px;
   transition: border-color 0.17s;
+  font-family: 'Poppins', sans-serif;
 }
 .producto-form-grid input:focus,
 .producto-form-grid select:focus {
-  border-color: var(--castrol-main, #00662f);
+  border-color: var(--castrol-main, #000080);
   outline: none;
 }
 
@@ -218,7 +234,7 @@
 }
 
 .producto-save-btn {
-  background: var(--castrol-main, #00662f);
+  background: var(--castrol-main, #000080);
   color: #fff;
   font-weight: bold;
   border: none;
@@ -228,7 +244,7 @@
   transition: background 0.17s;
 }
 .producto-save-btn:hover {
-  background: #0070cc;
+  background: var(--castrol-main, #000080);
 }
 .producto-cancel-btn {
   background: #efefef;
@@ -269,6 +285,7 @@
   padding: 14px 16px;
   border-radius: 14px;
   backdrop-filter: blur(6px);
+  font-family: 'Poppins', sans-serif;
 }
 .toast-card.error{
   background: #3f1f23; /* rojo oscuro elegante */

@@ -6,7 +6,7 @@
     <h2><b>Iniciar Sesión</b></h2>
     <form (submit)="onLogin($event)">
       <div class="input-group">
-        <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" (input)="onInputChange()" required />
+        <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" (ngModelChange)="onInputChange()" required />
       </div>
       <div class="input-group">
         <input 
@@ -16,7 +16,7 @@
           [(ngModel)]="contrasena"
           name="contrasena"
           required
-          (input)="onInputChange()" 
+          (ngModelChange)="onInputChange()" 
         />
         <button type="button" class="toggle-btn" (click)="mostrarContrasena = !mostrarContrasena">
           <i [class]="mostrarContrasena ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>

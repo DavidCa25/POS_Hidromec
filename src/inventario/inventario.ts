@@ -9,7 +9,7 @@ interface ProductForm {
   category: number | null;
   partNumber: string;
   name: string;
-  price: number;
+  price: number | null;
   stock: number;
 }
 
@@ -24,7 +24,7 @@ interface BrandRow { id: number; namee: string; }
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
-  form: ProductForm = {brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0};
+  form: ProductForm = {brand: null, category: null, partNumber: '', name: '', price: null, stock: 0};
 
   menuOpen = true;
   inventario: any[] = [];
@@ -35,10 +35,8 @@ export class Inventario {
   categorys: { id: number; namee: string }[] = [];
 
   colores = [
-    { nombre: 'Castrol', value: '#00662f' },
-    { nombre: 'Azul fuerte', value: '#0070cc' },
-    { nombre: 'Azul claro', value: '#047ef8' },
-    { nombre: 'Mostaza', value: '#c99c1c' },
+    { nombre: 'Navy Blue', value: '#000080' },
+    { nombre: 'Dorado', value: '#B8860B' },
   ];
 
   constructor() {}
@@ -113,6 +111,8 @@ export class Inventario {
       const result = await (window as any).electronAPI.agregarProducto(
         brand, category, partNumber, name, price, stock
       );
+
+      console.log('Formulario:', this.form);
 
       if (result?.success) {
         await this.consultarInventario();
