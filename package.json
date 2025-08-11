@@ -2,13 +2,12 @@
   "name": "filtros-lubs-rios",
   "version": "0.0.0",
   "scripts": {
-      "build": "ng build",
-      "electron": "electron ./electron/main.js",
-      "start": "npm run build && npm run electron",
-
-      "start:ng": "ng serve",
-      "start:electron": "cross-env NODE_ENV=development electronmon ./electron/main.js",
-      "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\""
+    "build": "ng build",
+    "electron": "electron ./electron/main.js",
+    "start": "npm run build && npm run electron",
+    "start:ng": "ng serve",
+    "start:electron": "cross-env NODE_ENV=development electronmon ./electron/main.js",
+    "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\""
   },
   "prettier": {
     "overrides": [
@@ -30,6 +29,7 @@
     "@angular/router": "^20.0.0",
     "apexcharts": "^4.7.0",
     "chart.js": "^4.5.0",
+    "dotenv": "^17.2.1",
     "mssql": "^11.0.1",
     "ng-apexcharts": "^1.16.0",
     "ng2-charts": "^8.0.0",

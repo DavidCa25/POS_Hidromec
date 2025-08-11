@@ -1,15 +1,17 @@
 const sql = require('mssql');
+require('dotenv').config();
 
 const config = {
-    user: 'Casillas3',
-    password: 'Casillas00!',
-    server: '8.tcp.ngrok.io', 
-    database: 'Hidromec_DataBase',
-    port: 13779,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT || 1433),
+    database: process.env.DB_NAME,
     options: {
-        encrypt: false, 
-        trustServerCertificate: true 
-    }
+        encrypt: process.env.DB_ENCRYPT === 'true',
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERT === 'true'
+    },
+    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 }
 };
 
 const poolPromise = new sql.ConnectionPool(config)
