@@ -12,4 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
     registerSale: (userId, paymentMethod, items) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items),
+    getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
+    getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
+    registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload)
 });
