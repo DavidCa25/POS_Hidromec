@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -17,7 +18,7 @@ export class Login {
   advertencia = '';
   mostrarContrasena = false;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private authService: AuthService) {}
 
   async onLogin(event: Event) {
     event.preventDefault();
@@ -35,6 +36,7 @@ export class Login {
       localStorage.setItem('usuario', JSON.stringify(resultado.data));
       const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
       console.log(usuario.rol);
+      this.authService.login(usuario.id, usuario.nombre);
       this.router.navigate(['/dashboard/estadisticas']);
     } else {
       this.mensaje = resultado.message || 'Usuario o contraseña inválidos';

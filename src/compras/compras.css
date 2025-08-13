@@ -243,4 +243,275 @@
   background: #e0e0e0;
 }
 
+body {
+  background: #f4f6fa;
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', 'Poppins', sans-serif;
+}
+
+.card {
+  border-radius: 2.5rem !important;
+  max-width: 920px;
+  margin: 48px auto;
+  box-shadow: 0 12px 48px 0 rgba(60,72,88,.08), 0 1.5px 8px 0 rgba(80,80,120,.04);
+}
+
+.card-body {
+  padding: 3.5rem 3rem;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #272a2e;
+  font-size: 1.12rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+h2 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin-bottom: 2.2rem;
+  letter-spacing: -1px;
+  color: #272a2e;
+}
+
+.table {
+  font-size: 1.13rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  align-items: center;
+}
+
+.table th {
+  font-weight: 700;
+  background: #000080;
+  color: #fff;
+}
+
+.table td, .table th {
+  vertical-align: middle !important;
+  border: none !important;
+}
+
+input, select {
+  height: rem !important;
+  font-size: 1.12rem !important;
+  border-radius: 0.75rem !important;
+  font-family: 'Poppins', sans-serif;
+
+}
+
+input, select:focus {
+  border-color: #000080 !important;
+  box-shadow: 0 0 0 2px rgba(0,0,128,0.1) !important;
+  outline: none !important;
+}
+
+.btn {
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 1.6rem !important;
+  padding: 0.95rem 2.5rem !important;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-success {
+  background: #10b981;
+  border: none;
+  transition: background 0.25s;
+}
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-outline-primary {
+  border-color: #B8860B !important;
+  color: #B8860B !important;
+  background: transparent !important;
+}
+.btn-outline-primary:hover {
+  background: #e0edff !important;
+  border-color: #B8860B !important;
+}
+
+.btn-danger {
+  background: #f43f5e !important;
+  border: none;
+}
+.btn-danger:hover {
+  background: #e11d48 !important;
+}
+
+#total-venta {
+  color: #10b981;
+  font-family: 'Poppins', sans-serif;
+}
+
+#subtotal {
+  color: #8B1A1A;
+  font-family: 'Poppins', sans-serif;
+}
+
+#subtotal-iva {
+  color: #FFC125;
+  font-family: 'Poppins', sans-serif;
+}
+
+@media (max-width: 1000px) {
+  .card {
+    max-width: 99vw;
+    margin: 16px;
+  }
+  .card-body {
+    padding: 1.7rem 0.5rem;
+  }
+}
+
+/* Modal más ANCHO */
+.modal-productos .modal-dialog{
+  max-width: 1180px;                /* ancho mayor */
+}
+
+/* Buscador compacto */
+.modal-productos .buscador{
+  height: 42px;
+  font-size: .9rem;
+}
+
+/* Alto útil grande y scroll suave */
+.modal-productos .listado{
+  max-height: 62vh;                 /* más alto en pantalla */
+  overflow: auto;
+}
+
+/* Tabla compacta y tipografía pequeña */
+.compact-table{
+  font-size: .86rem;
+  font-family: 'Poppins', sans-serif;                /* más chico */
+}
+.compact-table th, .compact-table td{
+  padding: .45rem .6rem;            /* menos padding */
+  vertical-align: middle;
+  line-height: 1.2;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Columnas con recorte elegante */
+.prod-name{
+  font-weight: 600;
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.part{
+  font-size: .82rem;
+}
+.nowrap{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-add{
+  font-size: .85rem;
+  padding: .35rem .8rem;
+  border-radius: 12px;
+}
+
+.modal-productos .modal-header{
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.modal-productos .modal-body{
+  padding: .75rem 1rem 1rem 1rem;
+}
+
+.venta-densa {
+  max-width: 1180px;        
+}
+.venta-densa .card-body {
+  padding: 2.2rem 2rem;       
+}
+
+.venta-densa h2 {
+  font-size: 2rem;
+  margin-bottom: 1.4rem;
+}
+.venta-densa .form-label {
+  font-size: .95rem;
+}
+
+.venta-densa input,
+.venta-densa select {
+  height: 2.35rem !important; 
+  font-size: .95rem !important;
+  border-radius: .65rem !important;
+  padding: .35rem .6rem;
+}
+
+.venta-table {
+  font-size: .92rem;             /* antes 1.13rem */
+  border-radius: 1rem;
+}
+.venta-table th {
+  font-weight: 700;
+  background: #000080;
+  font-size: .9rem;
+  font-family: 'Raleway', sans-serif;
+  color: #fff;
+}
+.venta-table td,
+.venta-table th {
+  padding: .45rem .6rem;         /* menos padding  */
+  line-height: 1.25;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Columna producto: corta y con elipsis si es muy largo */
+.venta-table td:first-child {
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Subtotal un poco más marcado pero pequeño */
+.venta-table td.fw-semibold,
+.venta-table .subtotal-cell {
+  font-weight: 600;
+}
+
+/* Botón eliminar ultra compacto (pastilla) */
+.btn-icon-xs {
+  --size: 32px;
+  width: var(--size);
+  height: var(--size);
+  padding: 0 !important;
+  border-radius: 999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px; /* tamaño del ícono */
+}
+
+/* Botón "Agregar producto" compactito */
+.btn-compact {
+  padding: .4rem .8rem !important;
+  font-size: .9rem !important;
+  border-radius: .8rem !important;
+  font-family: 'Poppins', sans-serif;
+}
+
+#button-close {
+  padding-left: 50px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .venta-densa { max-width: 96vw; }
+  .venta-table td:first-child { max-width: 300px; }
+}
+
+
 
