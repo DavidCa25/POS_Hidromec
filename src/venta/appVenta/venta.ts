@@ -37,8 +37,8 @@ export class Venta {
 
   showModal = false;
   dineroRecibido: number | null = null;
-  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO'; 
-  userId = 1; 
+  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO';
+  userId = 2;
 
   showModalProductos = false;
   productos: ProductRow[] = [];
@@ -138,7 +138,7 @@ export class Venta {
       const resp = await (window as any).electronAPI.registerSale(this.userId, this.paymentMethod, detalles);
 
       if (resp?.success) {
-        this.advanceFolioAfterConfirm();  
+        this.advanceFolioAfterConfirm();
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
@@ -146,7 +146,7 @@ export class Venta {
 
         await Swal.fire({
           icon: 'success',
-          title: '¡Producto agregado!',
+          title: 'Compra realizada con éxito!',
           text: 'Se guardó correctamente.',
           timer: 1800,
           showConfirmButton: false,

@@ -172,7 +172,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     // CREATE TYPE dbo.SaleDetailType AS TABLE (
     //   product_id INT, quantity INT, unit_price DECIMAL(10,2)
     // )
-    const tvp = new sql.Table();          
+    const tvp = new sql.Table();     
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Int, { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
@@ -184,7 +184,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     const request = pool.request()
       .input('user_id', sql.Int, userId)
       .input('payment_method', sql.NVarChar(50), paymentMethod)
-      .input('SaleDetails', tvp);         // TVP
+      .input('SaleDetails', tvp); 
 
     const result = await request.execute('sp_register_sale');
 
