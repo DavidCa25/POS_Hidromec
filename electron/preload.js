@@ -9,8 +9,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock),
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
+    getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    registerSale: (userId, paymentMethod, items) =>
+        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items),
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
-    registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload),
+    registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload)
 });

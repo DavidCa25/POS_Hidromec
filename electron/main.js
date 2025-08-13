@@ -159,6 +159,42 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
     }
 });
 
+ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) => {
+  try {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('La venta no tiene partidas.');
+    }
+
+    const pool = await poolPromise;
+
+    // --- Construir TVP para @SaleDetails ---
+    // Importante: Las columnas y su orden deben coincidir con el tipo SQL:
+    // CREATE TYPE dbo.SaleDetailType AS TABLE (
+    //   product_id INT, quantity INT, unit_price DECIMAL(10,2)
+    // )
+    const tvp = new sql.Table();     
+    tvp.columns.add('product_id', sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+
+    for (const it of items) {
+      tvp.rows.add(it.productId, it.qty, it.unitPrice);
+    }
+
+    const request = pool.request()
+      .input('user_id', sql.Int, userId)
+      .input('payment_method', sql.NVarChar(50), paymentMethod)
+      .input('SaleDetails', tvp); 
+
+    const result = await request.execute('sp_register_sale');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ Error en sp_register_sale:', err);
+    return { success: false, error: err.message };
+  }
+});
+    
 ipcMain.handle('sp-get-suppliers', async (event, data) => {
     try {   
         const pool = await poolPromise;
@@ -220,6 +256,4 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
     return { success: false, error: err.message };
   }
 });
-
-
 
