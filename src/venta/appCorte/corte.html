@@ -1,0 +1,93 @@
+<div class="corte-container">
+  <div class="corte-card">
+    <div class="corte-header">
+      <h2>Corte del día</h2>
+      <div class="header-right">
+        <div class="hoy">
+          {{ hoy | date:'fullDate':undefined:'es-MX' }}
+        </div>
+        <div class="acciones">
+          <button class="btn btn-ghost" type="button" (click)="exportarCSV()">
+            <i class="bi bi-download"></i> Exportar
+          </button>
+          <button class="btn btn-primary" type="button" (click)="imprimir()">
+            <i class="bi bi-printer"></i> Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="resumen-grid">
+      <div class="kpi-card total">
+        <div class="kpi-title">Total vendido</div>
+        <div class="kpi-value">{{ totalVendido | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Tickets</div>
+        <div class="kpi-value">{{ tickets }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Efectivo</div>
+        <div class="kpi-value">{{ totalEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Tarjeta</div>
+        <div class="kpi-value">{{ totalTarjeta | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Transferencia</div>
+        <div class="kpi-value">{{ totalTransfer | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tabla-wrap">
+      <table class="tabla-corte">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Método</th>
+            <th class="num">Subtotal</th>
+            <th class="num">IVA</th>
+            <th class="num">Total</th>
+            <th>Cajero</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let v of ventas; let i = index">
+            <td class="mono">{{ v.folio }}</td>
+            <td>{{ v.fecha | date:'shortDate':'':'es-MX' }}</td>
+            <td class="mono">{{ v.fecha | date:'HH:mm' }}</td>
+            <td>
+              <span class="badge" [class.efectivo]="v.metodo==='EFECTIVO'"
+                                 [class.tarjeta]="v.metodo==='TARJETA'"
+                                 [class.transfer]="v.metodo==='TRANSFERENCIA'">
+                {{ v.metodo }}
+              </span>
+            </td>
+            <td class="num">{{ v.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td class="num">{{ v.iva      | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td class="num strong">{{ v.total   | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td>{{ v.cajero }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" class="right strong">Totales</td>
+            <td class="num strong">{{ subtotalAcum | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td class="num strong">{{ ivaAcum      | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td class="num strong">{{ totalVendido | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="nota">
+      * Datos de demostración (hardcodeados) siguiendo el estilo de tu POS.
+    </div>
+  </div>
+</div>

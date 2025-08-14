@@ -16,44 +16,42 @@
           <i class="bi bi-bar-chart-line"></i> <span>Estadisticas</span>
         </a>
       </li>
-      <li class="nav-item" id="operaciones-dropdown" style="position: relative;">
-        <a 
-          class="sidebar-link d-flex align-items-center px-4 py-3"
-          (click)="toggleOperaciones()" 
-          [class.active]="isOperacionesOpen"
-          style="cursor: pointer;"
-        >
-          <i class="bi bi-box me-2"></i>
-          <span>Venta</span>
-          <i class="bi bi-chevron-down ms-auto" [ngClass]="{'rotate-180': isOperacionesOpen}"></i>
-        </a>
-        <ul 
-          class="dropdown-menu w-100 shadow-sm border-0 show"
-          *ngIf="isOperacionesOpen"
-          style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;"
-        >
-          <li>
-            <a routerLink="/dashboard/venta" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-cash-stack me-2"></i> Hacer venta
-            </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
-            </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/corte-dia" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-calendar2-check me-2"></i> Corte del día
-            </a>
-          </li>
-        </ul>
-      </li>
+      <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
+      [class.is-open]="isOperacionesOpen">
+      <a 
+        class="sidebar-link d-flex align-items-center px-4 py-3"
+        (click)="toggleOperaciones()" 
+        [class.active]="isOperacionesOpen"
+        style="cursor: pointer;"
+        [attr.aria-expanded]="isOperacionesOpen">
+        <i class="bi bi-box me-2"></i>
+        <span>Venta</span>
+        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
+      </a>
 
-
+      <ul 
+        class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
+        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
+        <li>
+          <a routerLink="/dashboard/venta" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-cash-stack me-2"></i> Hacer venta
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/corte-dia" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-calendar2-check me-2"></i> Corte del día
+          </a>
+        </li>
+      </ul>
+    </li>
       <li>
         <a routerLink="/dashboard/inventario"
            routerLinkActive="active"
