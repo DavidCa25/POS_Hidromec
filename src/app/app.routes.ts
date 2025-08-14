@@ -18,8 +18,8 @@ export const routes: Routes = [
       { path: 'compras', component: Compras },
       { path: 'estadisticas', component: Estadisticas },
       { path: 'venta', component: Venta},
-      { path: 'corte', component: Corte},
-      { path: 'cajon', component: Cajon}
+      { path: 'corte-dia', component: Corte},
+      { path: 'abrir-cajon', component: Cajon}
     ]
   },
   { path: '', redirectTo: '/login', pathMatch: 'full' },

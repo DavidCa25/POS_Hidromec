@@ -156,8 +156,8 @@ export class Venta {
         this.showModal = false;
         Swal.fire({
           icon: 'error',
-          title: 'Error al registrar la venta',
-          text: resp?.message || 'Ocurrió un error inesperado.'
+          title: 'Stock insuficiente',
+          text: resp?.message || 'No se pudo registrar la venta.'
         });
       }
     } catch (e:any) {
