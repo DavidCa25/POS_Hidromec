@@ -256,7 +256,6 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
     return { success: false, error: err.message };
   }
 });
-
 ipcMain.handle("get-purchases", async () => {
   try {
     const pool = await poolPromise;
@@ -266,4 +265,21 @@ ipcMain.handle("get-purchases", async () => {
     console.error("❌ Error ejecutando SP:", err);
     return { error: err.message };
   }
+});
+ipcMain.handle('sp-get-user-by-id', async (event, userId) => { 
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+        .input('userID', sql.Int, userId)
+        .execute('sp_get_user_by_id');
+    
+        if (result.recordset.length > 0) {
+        return { success: true, user: result.recordset[0] };
+        } else {
+        return { success: false, message: 'Usuario no encontrado' };
+        }
+    } catch (err) {
+        console.error('❌ Error en get-user-by-id:', err);
+        return { success: false, error: err.message };
+    }
 });
