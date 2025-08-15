@@ -61,14 +61,36 @@
           <i class="bi bi-box me-2"></i> <span>Inventario</span>
         </a>
       </li>
-      <li>
-        <a routerLink="/dashboard/compras"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-cart me-2"></i> <span>Compras</span>
+      <li class="nav-item" id="compra-dropdown" style="position: relative;">
+        <a 
+          class="sidebar-link d-flex align-items-center px-4 py-3"
+          (click)="toggleOperacionesCompra()" 
+          [class.active]="isOperacionesOpenCompra"
+          style="cursor: pointer;"
+        >
+          <i class="bi bi-box me-2"></i>
+          <span>Compra</span>
+          <i class="bi bi-chevron-down ms-auto" [ngClass]="{'rotate-180': isOperacionesOpenCompra}"></i>
         </a>
+        <ul 
+          class="dropdown-menu w-100 shadow-sm border-0 show"
+          *ngIf="isOperacionesOpenCompra"
+          style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;"
+        >
+          <li>
+            <a routerLink="/dashboard/compras" routerLinkActive="active"
+              class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-cash-stack me-2"></i> Registrar compra
+            </a>
+          </li>
+          <li>
+            <a routerLink="/dashboard/registroCompras" routerLinkActive="active"
+              class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-receipt me-2"></i> Registro de compras
+            </a>
+          </li>
+        </ul>
       </li>
-
     </ul>
   </nav>
 

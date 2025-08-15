@@ -1,0 +1,118 @@
+/* Evita que tus cards de accordion se vean como las demás */
+.accordion-card {
+  border: 1px solid #ddd;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+.accordion-header {
+  background-color: #f7f7f7;
+  padding: 8px 12px;
+}
+
+.accordion-body {
+  background-color: #fff;
+  padding: 10px 15px;
+}
+
+.accordion-button {
+  background-color: #ffffff;  /* color normal del botón */
+  color: #000;
+  border: none !important;            /* color del texto */
+  font-family: 'Poppins', sans-serif;
+}
+
+.accordion-item {
+  border: none !important;   /* elimina el borde del item */
+}
+
+.accordion-button:hover {
+  background-color: #f8f9fa; /* o el color que quieras al hover */
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: transparent !important; /* evita que se ponga azul al abrir */
+}
+
+.card-transparent {
+  background-color: transparent; /* Fondo transparente */
+  border: none;                  /* Quita el borde */
+  box-shadow: none;              /* Quita sombra si no quieres */
+}
+
+.icono-color {
+  display: inline-block;        /* necesario para padding y borde */
+  padding: 8px;                /* espacio dentro del marco */
+  border-radius: 8px;           /* esquinas redondeadas opcional */
+  background-color: #EEE8AA;    /* color de fondo */
+  color: #000080;               /* color del icono en sí */
+  font-size: 15px;              /* tamaño del icono */
+  margin-right: 10px;
+}
+
+.boton-fecha {
+  font-weight: bold;
+  color: #000080;
+  font-family: 'Poppins', sans-serif;
+}
+
+.venta-table {
+  font-size: .92rem;             /* antes 1.13rem */
+  border-radius: 1rem;
+}
+.venta-table th {
+  font-weight: 700;
+  background: #000080;
+  font-size: .9rem;
+  font-family: 'Raleway', sans-serif;
+  color: #fff;
+}
+.venta-table td,
+.venta-table th {
+  padding: .45rem .6rem;         /* menos padding  */
+  line-height: 1.25;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Columna producto: corta y con elipsis si es muy largo */
+.venta-table td:first-child {
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Subtotal un poco más marcado pero pequeño */
+.venta-table td.fw-semibold,
+.venta-table .subtotal-cell {
+  font-weight: 600;
+}
+
+.iva-color {
+  color: #1976d2;  /* azul, por ejemplo */
+  font-weight: bold; /* opcional */
+  font-family: 'Poppins', sans-serif;
+}
+
+.total-color {
+  color: #0f7c0f;  /* rojo, por ejemplo */
+  font-weight: bold; /* opcional */
+  font-family: 'Poppins', sans-serif;
+}
+
+.h2-titulo {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 2.2rem;
+  letter-spacing: -1px;
+  color: #272a2e;
+}
+
+label, input, p {
+  font-family: 'Poppins', sans-serif;
+}

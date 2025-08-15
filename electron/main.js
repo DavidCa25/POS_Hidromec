@@ -257,3 +257,13 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
   }
 });
 
+ipcMain.handle("get-purchases", async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute("sp_get_purchases");
+    return result.recordset;
+  } catch (err) {
+    console.error("❌ Error ejecutando SP:", err);
+    return { error: err.message };
+  }
+});

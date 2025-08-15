@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { Dashboard } from './dashboard';
 import { Inventario } from '../inventario/inventario';
-import { Compras } from '../compras/compras';
+import { Compras } from '../compras/registrarCompra/compras';
 
 export const DashboardRoutes: Routes = [
   {

@@ -14,6 +14,7 @@ export class Dashboard {
   isMobile = false;
   showOverlay = false;
   isOperacionesOpen = false;
+  isOperacionesOpenCompra = false;
 
   @HostListener('window:resize')
   onResize() {
@@ -32,12 +33,20 @@ export class Dashboard {
     this.isOperacionesOpen = !this.isOperacionesOpen;
   }
 
+  toggleOperacionesCompra() {
+    this.isOperacionesOpenCompra = !this.isOperacionesOpenCompra;
+  }
+
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
     const dropdown = document.getElementById('operaciones-dropdown');
     if (!dropdown) return;
     if (!dropdown.contains(event.target as Node)) {
       this.isOperacionesOpen = false;
+    }
+    const Compradropdown = document.getElementById('compra-dropdown');
+    if (Compradropdown && !Compradropdown.contains(event.target as Node)) {
+      this.isOperacionesOpenCompra = false;
     }
   }
 

@@ -1,0 +1,106 @@
+<div class="container mt-4">
+ <div class="card shadow-lg border-0 mt-4 venta-densa card-transparent">
+    <div class="card-body">
+      <h2 class="text-center mb-5 h2-titulo">Registro de Compras</h2>
+
+      <form>
+        <div class="row g-4 mb-4">
+          <div class="col-md-5">
+            <label class="form-label">Buscador</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-search" style="color: navy"></i>
+              </span>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Buscar por día, mes o año..."
+                [(ngModel)]="filtroTexto"
+                (input)="aplicarFiltro()"
+              />
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <!-- Accordion principal (Fechas) -->
+      <div class="accordion" id="accordionFechas">
+
+        <!-- Fecha 1 -->
+        <div *ngFor="let grupo of comprasFiltradas; let i = index" class="accordion-item">
+          <h2 class="accordion-header" [id]="'headingFecha' + i">
+            <button class="accordion-button collapsed boton-fecha"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    [attr.data-bs-target]="'#collapseFecha' + i"
+                    [attr.aria-controls]="'collapseFecha' + i"
+                    aria-expanded="false">
+              <i class="bi bi-calendar-range icono-color"></i> {{ grupo.datee }}
+            </button>
+          </h2>
+          <div [id]="'collapseFecha' + i"
+              class="accordion-collapse collapse"
+              [attr.aria-labelledby]="'headingFecha' + i"
+              data-bs-parent="#accordionFechas">
+            <div class="accordion-body">
+
+              <!-- Accordion secundario (Folios de la fecha) -->
+              <div class="accordion " [id]="'accordionFolios' + i">
+                <div *ngFor="let folio of grupo.folios; let j = index" class="accordion-item">
+                  <h2 class="accordion-header" [id]="'headingFolio' + i + j">
+                    <button class="accordion-button collapsed acordion-folio"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            [attr.data-bs-target]="'#collapseFolio' + i + j"
+                            [attr.aria-controls]="'collapseFolio' + i + j"
+                            aria-expanded="false">
+                      <i class="bi bi-file-earmark-post icono-color"></i> 
+                      <span class="flex-grow-1 ms-2">
+                        <b> Folio: {{ folio.folioId }}</b> 
+                      </span>
+                      <span class="total-right" style="margin-right: 15px;">
+                       Usuario que hizo la compra: {{ folio.items[0].user_name }}
+                      </span>
+                    </button>
+                  </h2>
+                  <div [id]="'collapseFolio' + i + j"
+                      class="accordion-collapse collapse"
+                      [attr.aria-labelledby]="'headingFolio' + i + j">
+                    <div class="accordion-body">
+                      <table class="table align-middle shadow-sm mb-2 venta-table">
+                        <thead>
+                          <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio unitario</th>
+                            <th>Subtotal</th>
+                            <th>Proveedor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let item of folio.items">
+                            <td><b>{{ item.nombre[0] }}</b></td>
+                            <td>{{ item.quantity }}</td>
+                            <td>${{ item.unitary_price }}</td>
+                            <td>${{ item.subtotal }}</td>
+                            <td>{{ item.nombre[1] }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p class="mt-4" style="margin-left: 10px; font: 'Poppins';">
+                        <b>IVA:</b> <span class="iva-color"> ${{ folio.items[0].tax_amount }}</span>&nbsp;&nbsp; 
+                        <b>Total de la compra:</b> <span class="total-color"> ${{ folio.items[0].total }}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div> <!-- fin accordionFolios -->
+
+            </div>
+          </div>
+        </div> <!-- fin accordion-item fecha -->
+      </div> <!-- fin accordion principal -->
+
+    </div>
+  </div>
+</div>

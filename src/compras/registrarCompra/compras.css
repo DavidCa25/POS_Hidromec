@@ -244,19 +244,18 @@
 }
 
 body {
-  background: #f4f6fa;
+  background: #1145ac;
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', 'Poppins', sans-serif;
 }
-
-.card {
+#card {
   border-radius: 2.5rem !important;
   max-width: 920px;
   margin: 48px auto;
   box-shadow: 0 12px 48px 0 rgba(60,72,88,.08), 0 1.5px 8px 0 rgba(80,80,120,.04);
 }
 
-.card-body {
+#card-body {
   padding: 3.5rem 3rem;
 }
 
@@ -293,7 +292,7 @@ h2 {
   border: none !important;
 }
 
-input, select {
+input:not(#input-registro) , select {
   height: rem !important;
   font-size: 1.12rem !important;
   border-radius: 0.75rem !important;
@@ -301,7 +300,7 @@ input, select {
 
 }
 
-input, select:focus {
+input:not(#input-registro) , select:focus {
   border-color: #000080 !important;
   box-shadow: 0 0 0 2px rgba(0,0,128,0.1) !important;
   outline: none !important;
@@ -506,6 +505,9 @@ input, select:focus {
 #button-close {
   padding-left: 50px;
 }
+
+
+
 
 /* Responsive */
 @media (max-width: 1100px) {

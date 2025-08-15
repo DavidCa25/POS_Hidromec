@@ -2,7 +2,8 @@ import { Routes } from '@angular/router';
 import { Login } from '../login/login';
 import { Dashboard } from '../dashboard/dashboard';
 import { Inventario } from '../inventario/inventario';
-import { Compras } from '../compras/compras';
+import { Compras } from '../compras/registrarCompra/compras';
+import { registroCompras } from '../compras/registroCompras/registroCompras';
 import { Estadisticas } from '../estadisticas/estadisticas';
 import { Venta } from '../venta/appVenta/venta';
 import { Corte } from '../venta/appCorte/corte';
@@ -16,6 +17,7 @@ export const routes: Routes = [
     children: [
       { path: 'inventario', component: Inventario },
       { path: 'compras', component: Compras },
+      { path: 'registroCompras', component: registroCompras },
       { path: 'estadisticas', component: Estadisticas },
       { path: 'venta', component: Venta},
       { path: 'corte', component: Corte},

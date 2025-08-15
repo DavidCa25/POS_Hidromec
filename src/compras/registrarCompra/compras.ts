@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
 import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '../../services/auth.service';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -145,6 +145,10 @@ export class Compras implements OnInit {
 
 
   seleccionarProducto(p: ProductRow & { purchasePrice?: number }) {
+    if (!p.purchasePrice || p.purchasePrice <= 0) {
+    alert('Por favor, ingresa un precio de compra válido antes de agregar el producto.');
+    return; // Salir de la función sin agregar nada
+  }
     const existing = this.items.find(it => it.productId === p.id);
     if (existing) {
       existing.qty += 1;
