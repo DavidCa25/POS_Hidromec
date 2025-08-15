@@ -16,44 +16,42 @@
           <i class="bi bi-bar-chart-line"></i> <span>Estadisticas</span>
         </a>
       </li>
-      <li class="nav-item" id="operaciones-dropdown" style="position: relative;">
-        <a 
-          class="sidebar-link d-flex align-items-center px-4 py-3"
-          (click)="toggleOperaciones()" 
-          [class.active]="isOperacionesOpen"
-          style="cursor: pointer;"
-        >
-          <i class="bi bi-box me-2"></i>
-          <span>Venta</span>
-          <i class="bi bi-chevron-down ms-auto" [ngClass]="{'rotate-180': isOperacionesOpen}"></i>
-        </a>
-        <ul 
-          class="dropdown-menu w-100 shadow-sm border-0 show"
-          *ngIf="isOperacionesOpen"
-          style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;"
-        >
-          <li>
-            <a routerLink="/dashboard/venta" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-cash-stack me-2"></i> Hacer venta
-            </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
-            </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/corte-dia" routerLinkActive="active"
-              class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-calendar2-check me-2"></i> Corte del día
-            </a>
-          </li>
-        </ul>
-      </li>
+      <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
+      [class.is-open]="isOperacionesOpen">
+      <a 
+        class="sidebar-link d-flex align-items-center px-4 py-3"
+        (click)="toggleOperaciones()" 
+        [class.active]="isOperacionesOpen"
+        style="cursor: pointer;"
+        [attr.aria-expanded]="isOperacionesOpen">
+        <i class="bi bi-box me-2"></i>
+        <span>Venta</span>
+        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
+      </a>
 
-
+      <ul 
+        class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
+        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
+        <li>
+          <a routerLink="/dashboard/venta" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-cash-stack me-2"></i> Hacer venta
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/corte-dia" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-calendar2-check me-2"></i> Corte del día
+          </a>
+        </li>
+      </ul>
+    </li>
       <li>
         <a routerLink="/dashboard/inventario"
            routerLinkActive="active"
@@ -68,7 +66,6 @@
           <i class="bi bi-cart me-2"></i> <span>Compras</span>
         </a>
       </li>
-
     </ul>
   </nav>
 
@@ -99,10 +96,23 @@
       <button class="btn btn-light p-2 me-2" title="Descargar">
         <i class="bi bi-download fs-5"></i>
       </button>
-      <!-- Usuario -->
-      <div class="dashboard-user d-flex align-items-center">
-        <img src="assets/user.png" alt="User" class="rounded-circle me-2" style="width:36px;height:36px;">
-        <span class="fw-semibold text-secondary">Usuario</span>
+      <div class="dashboard-user-wrapper" [class.is-open]="isUserDropdownOpen">
+        <div 
+          class="dashboard-user d-flex align-items-center user-trigger"
+          (click)="toggleUserDropdown()"
+        >
+          <img src="assets/user.png" alt="User" class="rounded-circle me-2">
+          <span class="fw-semibold text-secondary">{{ userName }}</span>
+          <i class="bi bi-chevron-down ms-2 chevron" [class.rotate-180]="isUserDropdownOpen"></i>
+        </div>
+
+        <ul class="user-dropdown shadow-sm border-0">
+          <li>
+            <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
   </header>

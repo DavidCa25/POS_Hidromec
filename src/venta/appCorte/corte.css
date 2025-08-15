@@ -1,0 +1,128 @@
+/* Contenedor principal */
+.corte-container{
+  max-width: 1180px;
+  margin: 32px auto;
+  padding: 0 16px;
+}
+
+/* Card principal */
+.corte-card{
+  background: #fff;
+  border: 1px solid rgba(2,6,23,.06);
+  box-shadow: 0 18px 30px rgba(15,23,42,.08), 0 4px 10px rgba(15,23,42,.06);
+  border-radius: 24px;
+  padding: 1.6rem 1.4rem 1.8rem 1.4rem;
+}
+
+/* Header */
+.corte-header{
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 1rem;
+}
+.corte-header h2{
+  font-size: 2rem; font-weight: 800; letter-spacing: -0.5px;
+  color: #1f2937; margin: 0;
+}
+.header-right{
+  margin-left: auto; display: flex; align-items: center; gap: 12px;
+}
+.hoy{
+  padding: .35rem .7rem; border-radius: 10px; font-weight: 600; font-size: .95rem;
+  background: #f3f6ff; color: #1d4ed8; border: 1px solid rgba(37,99,235,.25);
+}
+
+/* Botones */
+.btn{
+  display: inline-flex; align-items: center; gap: .5rem;
+  border-radius: 12px; border: 1px solid transparent;
+  padding: .55rem .9rem; font-weight: 600; cursor: pointer;
+  transition: background .2s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
+}
+.btn i{ font-size: 1rem; }
+.btn-primary{
+  background: #2563eb; color: #fff; box-shadow: 0 6px 16px rgba(37,99,235,.25);
+}
+.btn-primary:hover{ background: #1d4ed8; box-shadow: 0 8px 18px rgba(37,99,235,.35); }
+.btn-ghost{
+  background: #fff; color: #1d4ed8; border-color: rgba(37,99,235,.3);
+}
+.btn-ghost:hover{ background: #eef4ff; }
+
+/* KPIs */
+.resumen-grid{
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+  margin: 10px 0 18px;
+}
+.kpi-card{
+  background: #f8fafc; border: 1px solid rgba(2,6,23,.06);
+  border-radius: 16px; padding: .9rem .95rem;
+  box-shadow: inset 0 0 0 1px rgba(2,6,23,.03);
+}
+.kpi-card.total{
+  background: linear-gradient(180deg, #eef4ff, #ffffff);
+  border-color: rgba(37,99,235,.25);
+}
+.kpi-title{
+  font-size: .85rem; color: #64748b; font-weight: 700; letter-spacing: .3px; margin-bottom: 6px;
+}
+.kpi-value{
+  font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: -.2px;
+}
+
+/* Tabla */
+.tabla-wrap{
+  border-radius: 16px; overflow: hidden; background: #fff;
+  border: 1px solid rgba(2,6,23,.06);
+}
+.tabla-corte{
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: .98rem;
+}
+.tabla-corte thead th{
+  text-align: left; background: #f6f8fa; padding: .75rem .9rem; font-weight: 800;
+  border-bottom: 1px solid rgba(2,6,23,.06);
+}
+.tabla-corte tbody td{
+  padding: .7rem .9rem; border-bottom: 1px solid rgba(2,6,23,.06);
+  vertical-align: middle;
+}
+.tabla-corte tfoot td{
+  padding: .85rem .9rem; background: #fbfcff; border-top: 1px solid rgba(2,6,23,.06);
+}
+.tabla-corte .num{ text-align: right; font-variant-numeric: tabular-nums; }
+.tabla-corte .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.tabla-corte .strong{ font-weight: 800; color: #0f172a; }
+.tabla-corte .right{ text-align: right; }
+
+/* Badges */
+.badge{
+  display: inline-block; padding: .25rem .55rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 700; letter-spacing: .2px;
+  border: 1px solid transparent;
+}
+.badge.efectivo{ background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+.badge.tarjeta{ background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
+.badge.transfer{ background:#f0f9ff; color:#075985; border-color:#bae6fd; }
+
+/* Nota */
+.nota{
+  margin-top: 10px; color:#64748b; font-size:.85rem;
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  .resumen-grid{ grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 720px){
+  .resumen-grid{ grid-template-columns: repeat(2, 1fr); }
+  .corte-header{ flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header-right{ width: 100%; justify-content: space-between; }
+  .tabla-corte{ font-size: .92rem; }
+}
+
+/* Impresión (solo tabla y totals) */
+@media print {
+  .corte-card { box-shadow: none; border: none; }
+  .acciones, .nota { display: none !important; }
+  .resumen-grid { grid-template-columns: repeat(3, 1fr); }
+}

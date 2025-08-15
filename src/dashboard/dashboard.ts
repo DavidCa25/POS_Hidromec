@@ -2,6 +2,8 @@ import { Component, HostListener  } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf } from '@angular/common';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,14 +16,31 @@ export class Dashboard {
   isMobile = false;
   showOverlay = false;
   isOperacionesOpen = false;
+  isUserDropdownOpen = false;
+
+  userName: string = 'Usuario';
+
+  constructor(private router: Router, private auth: AuthService) {}
 
   @HostListener('window:resize')
   onResize() {
     this.isMobile = window.innerWidth < 900;
-    this.menuOpen = !this.isMobile; // abierto en desktop, cerrado en mobile por default
+    this.menuOpen = !this.isMobile; 
     this.showOverlay = this.isMobile && this.menuOpen;
   }
-  ngOnInit() { this.onResize(); }
+  ngOnInit() { this.onResize();if (this.auth.usuarioActual?.nombre) {
+      this.userName = this.auth.usuarioActual.nombre;
+    }
+
+    const uid = this.auth.usuarioActualId;
+    if (uid != null) {
+      (window as any).electronAPI.getUserById(uid)
+        .then((res: any) => {
+          if (res?.usuario) this.userName = res.usuario;
+        })
+        .catch(() => {/* silencioso */});
+    }
+  }
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
     this.showOverlay = this.isMobile && this.menuOpen;
@@ -32,12 +51,24 @@ export class Dashboard {
     this.isOperacionesOpen = !this.isOperacionesOpen;
   }
 
+  toggleUserDropdown() {
+    this.isUserDropdownOpen = !this.isUserDropdownOpen;
+  }
+
+  cerrarSesion() {
+    this.router.navigate(['/login']);
+  }
+
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
     const dropdown = document.getElementById('operaciones-dropdown');
+    const userWrapper = document.querySelector('.dashboard-user-wrapper');
     if (!dropdown) return;
     if (!dropdown.contains(event.target as Node)) {
       this.isOperacionesOpen = false;
+    }
+    if (userWrapper && !userWrapper.contains(event.target as Node)) {
+      this.isUserDropdownOpen = false;
     }
   }
 

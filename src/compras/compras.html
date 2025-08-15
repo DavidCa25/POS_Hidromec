@@ -42,9 +42,14 @@
                 <tr *ngFor="let it of items; let i = index">
                   <td class="fw-semibold">{{ it.productName }}</td>
                   <td>
-                    <select class="form-select" [(ngModel)]="it.proveedorId" (ngModelChange)="onProveedorChange(i)">
+                    <select class="form-select form-select-sm"
+                            name="prov-{{ i }}"                       
+                            [(ngModel)]="items[i].proveedorId"      
+                            (ngModelChange)="onProveedorChange(i, $event)"> 
                       <option [ngValue]="null" disabled>Seleccione proveedor</option>
-                      <option *ngFor="let prov of proveedores" [ngValue]="prov.id">{{ prov.nombre }}</option>
+                      <option *ngFor="let prov of proveedores" [ngValue]="prov.id">
+                        {{ prov.nombre }}
+                      </option>
                     </select>
                   </td>
                   <td>

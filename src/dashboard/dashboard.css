@@ -96,10 +96,9 @@
   flex-direction: column;
   background: #f8fafc;
   transition: margin-left 0.3s;
-  margin-left: 0; /* POR DEFECTO, SIN MARGEN */
+  margin-left: 0; /* por defecto, sin margen */
   position: relative;
 }
-
 
 .dashboard-header {
   background: #fff;
@@ -177,3 +176,144 @@
     margin-top: 0.7rem;
   }
 }
+
+/* =========================
+   Dropdown Venta - Animación
+   ========================= */
+
+/* Chevron con rotación suave */
+.chevron{
+  transition: transform .25s ease, opacity .25s ease;
+  opacity: .8;
+}
+.rotate-180{ transform: rotate(180deg); opacity: 1; }
+
+/* Cabecera con realce sutil */
+#operaciones-dropdown > .sidebar-link{
+  border-radius: 14px;
+  transition: background .2s ease, box-shadow .25s ease, transform .06s ease;
+}
+#operaciones-dropdown > .sidebar-link:hover{
+  background: #f6f9ff;
+  box-shadow: 0 2px 10px rgba(29,78,216,.06);
+}
+#operaciones-dropdown > .sidebar-link.active{
+  background: #edf3ff;
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.25);
+}
+
+/* Override Bootstrap: que no se oculte con display:none */
+.dropdown-venta{
+  display: block !important;
+
+  /* look */
+  background: #fff;
+  border-radius: 16px !important;
+  border: 1px solid rgba(2,6,23,.06) !important;
+  box-shadow: 0 18px 30px rgba(15,23,42,.08), 0 4px 10px rgba(15,23,42,.06);
+
+  /* estado CERRADO */
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  overflow: hidden;
+  padding: 0;                /* no deje hueco cerrada */
+  pointer-events: none;      /* sin clics cerrada */
+
+  transition:
+    max-height .35s cubic-bezier(.22,.61,.36,1),
+    opacity .25s ease,
+    transform .35s cubic-bezier(.22,.61,.36,1),
+    padding .20s ease;
+}
+
+/* estado ABIERTO cuando el <li> tiene .is-open */
+#operaciones-dropdown.is-open > .dropdown-venta{
+  max-height: 420px;         /* ajusta según cantidad de items */
+  opacity: 1;
+  transform: translateY(0);
+  padding: 6px;
+  pointer-events: auto;      /* habilita clics abierta */
+}
+
+/* Items con hover bonito */
+.dropdown-venta .dropdown-item{
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 8px;
+  transition: background .18s ease, transform .12s ease, color .18s ease;
+}
+.dropdown-venta .dropdown-item:hover{
+  background: #f3f6ff;
+  transform: translateX(2px);
+}
+.dropdown-venta .dropdown-item.active{
+  background: #e9efff;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.25);
+}
+
+/* Compacto en pantallas chicas */
+@media (max-width: 900px){
+  #operaciones-dropdown > .sidebar-link{ padding: .8rem 1rem; }
+  .dropdown-venta .dropdown-item{ padding: .65rem .8rem; }
+}
+
+.dashboard-user-wrapper{
+  position: relative;
+}
+.dashboard-user img{
+  width: 36px; height: 36px; object-fit: cover; border-radius: 50%;
+  background: #f6f6f6;
+}
+.user-trigger{
+  padding: .4rem .8rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .2s ease, box-shadow .25s ease;
+}
+.user-trigger:hover{
+  background: #f6f9ff;
+  box-shadow: 0 2px 10px rgba(29,78,216,.06);
+}
+.user-dropdown{
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(2,6,23,.06);
+  box-shadow: 0 8px 20px rgba(15,23,42,.08);
+  list-style: none;
+  padding: 6px;
+  margin: 0;
+  min-width: 160px;
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition:
+    max-height .3s cubic-bezier(.22,.61,.36,1),
+    opacity .25s ease,
+    transform .3s cubic-bezier(.22,.61,.36,1);
+}
+.dashboard-user-wrapper.is-open > .user-dropdown{
+  max-height: 200px;
+  opacity: 1;
+  transform: translateY(0);
+}
+.user-dropdown .dropdown-item{
+  border-radius: 10px;
+  padding: .55rem .75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background .18s ease, transform .12s ease;
+  cursor: pointer;
+}
+.user-dropdown .dropdown-item:hover{
+  background: #f3f6ff;
+  transform: translateX(2px);
+}
+

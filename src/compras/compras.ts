@@ -5,6 +5,7 @@ import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common'
 import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
 import { AuthService } from '../services/auth.service';
+import Swal from 'sweetalert2';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -180,12 +181,14 @@ export class Compras implements OnInit {
 
     console.log(`Item ${i}: qty=${it.qty}, purchasePrice=${it.purchasePrice}, subtotal=${it.subtotal}`);
   }
+  trackByItem = (_: number, it: PurchaseItem) => it.productId;
 
-  onProveedorChange(i: number) {
-  const item = this.items[i];
-  if (!item) return;
-  console.log(`Proveedor cambiado para item ${i}: proveedorId=${item.proveedorId}`);
-}
+  onProveedorChange(i: number, value?: number | null) {
+    const item = this.items[i];
+    if (!item) return;
+    if (value !== undefined) item.proveedorId = value === null ? null : Number(value);
+    console.log(`Proveedor cambiado en item ${i}:`, item.proveedorId);
+  }
 
 
   quitarItem(i: number) {
@@ -196,13 +199,21 @@ export class Compras implements OnInit {
   registrarCompra() {
 
     if (this.items.length === 0) {
-      alert('Agregue productos a la compra.');
-      return;
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "No hay productos en la compra"
+      });
+      return;      
     }
 
     const sinProveedor = this.items.some(it => !it.proveedorId);
     if (sinProveedor) {
-      alert('Todos los productos deben tener un proveedor asignado.');
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Todos los productos deben tener un proveedor seleccionado"
+      });
       return;
     }
 
@@ -225,7 +236,12 @@ export class Compras implements OnInit {
     (window as any).electronAPI.registerPurchase(payload)
       .then((res: any) => {
         if (res.success) {
-          alert('Compra registrada correctamente.');
+          Swal.fire({
+            icon: 'success',
+            title: 'Compra registrada',
+            text: `Folio: ${res.folio}`,
+            confirmButtonText: 'Aceptar'
+          });
           this.items = [];
 
           (window as any).electronAPI.getNextPurchaseFolio()
@@ -236,12 +252,20 @@ export class Compras implements OnInit {
           });
         } else {
           console.error(res.error);
-          alert('Error al registrar la compra.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error al registrar compra',
+            text: res.message || 'Ocurrió un error inesperado.'
+          });
         }
       })
       .catch((err: any) => {
         console.error('❌ Error en registrarCompra:', err);
-        alert('Error de conexión al registrar la compra.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar compra',
+          text: 'Ocurrió un error inesperado.'
+        });
       });
   }
 

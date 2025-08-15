@@ -1,8 +1,9 @@
 import { Component, HostListener } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
 import Swal from 'sweetalert2';
+import { AuthService } from '../../services/auth.service';
 
 
 interface ProductRow {
@@ -38,8 +39,6 @@ export class Venta {
   showModal = false;
   dineroRecibido: number | null = null;
   paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO';
-  userId = 2;
-
   showModalProductos = false;
   productos: ProductRow[] = [];
   filtro = '';
@@ -47,8 +46,25 @@ export class Venta {
   items: SaleItem[] = [];
   totalVenta = 0;
 
-  constructor() {
+  constructor(private auth: AuthService, private router: Router) {
     this.totalVenta = 0;
+  }
+
+  ngOnInit() {
+    if (!this.auth.usuarioActualId) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Sesión requerida',
+        text: 'Inicia sesión para continuar.',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => this.router.navigate(['/login']));
+      return;
+    }
+  }
+
+  private get currentUserId(): number {
+    return this.auth.usuarioActualId as number;
   }
 
   private readFolioCounter(): number {
@@ -131,11 +147,12 @@ export class Venta {
       }); 
     return; 
   }
+    const userId = this.currentUserId;
 
     const detalles = this.items.map(it => ({ productId: it.productId, qty: it.qty, unitPrice: it.unitPrice }));
 
     try {
-      const resp = await (window as any).electronAPI.registerSale(this.userId, this.paymentMethod, detalles);
+      const resp = await (window as any).electronAPI.registerSale(userId, this.paymentMethod, detalles);
 
       if (resp?.success) {
         this.advanceFolioAfterConfirm();
@@ -156,8 +173,8 @@ export class Venta {
         this.showModal = false;
         Swal.fire({
           icon: 'error',
-          title: 'Error al registrar la venta',
-          text: resp?.message || 'Ocurrió un error inesperado.'
+          title: 'Stock insuficiente',
+          text: resp?.message || 'No se pudo registrar la venta.'
         });
       }
     } catch (e:any) {
