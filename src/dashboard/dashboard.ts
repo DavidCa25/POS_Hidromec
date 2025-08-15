@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf } from '@angular/common';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,7 +18,9 @@ export class Dashboard {
   isOperacionesOpen = false;
   isUserDropdownOpen = false;
 
-  constructor(private router: Router) {}
+  userName: string = 'Usuario';
+
+  constructor(private router: Router, private auth: AuthService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -25,7 +28,19 @@ export class Dashboard {
     this.menuOpen = !this.isMobile; 
     this.showOverlay = this.isMobile && this.menuOpen;
   }
-  ngOnInit() { this.onResize(); }
+  ngOnInit() { this.onResize();if (this.auth.usuarioActual?.nombre) {
+      this.userName = this.auth.usuarioActual.nombre;
+    }
+
+    const uid = this.auth.usuarioActualId;
+    if (uid != null) {
+      (window as any).electronAPI.getUserById(uid)
+        .then((res: any) => {
+          if (res?.usuario) this.userName = res.usuario;
+        })
+        .catch(() => {/* silencioso */});
+    }
+  }
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
     this.showOverlay = this.isMobile && this.menuOpen;
