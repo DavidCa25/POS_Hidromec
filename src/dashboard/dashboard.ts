@@ -2,6 +2,7 @@ import { Component, HostListener  } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -15,11 +16,14 @@ export class Dashboard {
   showOverlay = false;
   isOperacionesOpen = false;
   isOperacionesOpenCompra = false;
+  isUserDropdownOpen = false;
+
+  constructor(private router: Router) {}
 
   @HostListener('window:resize')
   onResize() {
     this.isMobile = window.innerWidth < 900;
-    this.menuOpen = !this.isMobile; // abierto en desktop, cerrado en mobile por default
+    this.menuOpen = !this.isMobile; 
     this.showOverlay = this.isMobile && this.menuOpen;
   }
   ngOnInit() { this.onResize(); }
@@ -36,10 +40,19 @@ export class Dashboard {
   toggleOperacionesCompra() {
     this.isOperacionesOpenCompra = !this.isOperacionesOpenCompra;
   }
+  
+  toggleUserDropdown() {
+    this.isUserDropdownOpen = !this.isUserDropdownOpen;
+  }
+
+  cerrarSesion() {
+    this.router.navigate(['/login']);
+  }
 
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
     const dropdown = document.getElementById('operaciones-dropdown');
+    const userWrapper = document.querySelector('.dashboard-user-wrapper');
     if (!dropdown) return;
     if (!dropdown.contains(event.target as Node)) {
       this.isOperacionesOpen = false;
@@ -48,6 +61,8 @@ export class Dashboard {
     if (Compradropdown && !Compradropdown.contains(event.target as Node)) {
       this.isOperacionesOpenCompra = false;
     }
+    if (userWrapper && !userWrapper.contains(event.target as Node)) {
+      this.isUserDropdownOpen = false;
+    }
   }
-
 }
