@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
 import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '../../services/auth.service';
 import Swal from 'sweetalert2';
 
 registerLocaleData(localeEsMX, 'es-MX');
