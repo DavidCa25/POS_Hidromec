@@ -4,6 +4,18 @@ const { poolPromise, sql } = require('./db');
 const { pool } = require('mssql');
 const isDev = process.env.NODE_ENV === 'development';
 
+function toDateOrNull(value, endOfDay = false) {
+  if (!value) return null;
+  const d = (value instanceof Date) ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  if (endOfDay) {
+    d.setHours(23, 59, 59, 0);
+  } else {
+    d.setHours(0, 0, 0, 0);
+  }
+  return d;
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1920,
@@ -273,5 +285,93 @@ ipcMain.handle('sp-get-user-by-id', async (event, userId) => {
         console.error('❌ Error en get-user-by-id:', err);
         return { success: false, error: err.message };
     }
+});
+
+ipcMain.handle('sp-get-top-selling-products', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_top_selling_product');
+
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en sp_get_top_selling_product:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sp-get-total-sales-month', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_total_sales_month');
+
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en sp_get_total_sales_month:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sp-get-total-sales-today', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_total_sales_today');
+
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en sp_get_total_sales_today:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sp-get-total-orders', async (event, data) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_total_orders');
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en sp_get_total_orders:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// main.js
+ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
+  // usa snake_case en ambos lados
+  const {
+    start_date = null,   // 'YYYY-MM-DD' o null
+    end_date   = null,   // 'YYYY-MM-DD' o null
+    user_id    = null,   // number o null
+    typee      = null,   // string o null
+    only_open  = 0,      // 0/1
+    closure_id = null    // number o null
+  } = payload;
+
+  try {
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('start_date', sql.Date, start_date)          // mssql acepta string 'YYYY-MM-DD' para Date
+      .input('end_date',   sql.Date, end_date)
+      .input('user_id',    sql.Int, user_id)
+      .input('typee',      sql.NVarChar(20), typee)
+      .input('only_open',  sql.Bit, only_open ? 1 : 0)
+      .input('closure_id', sql.Int, closure_id);
+
+    const result = await req.execute('sp_get_cash_movements');
+
+    const rows = Array.isArray(result.recordsets?.[0]) ? result.recordsets[0] : [];
+    const summary = (Array.isArray(result.recordsets?.[1]) && result.recordsets[1][0])
+      ? result.recordsets[1][0]
+      : { total_entradas: 0, total_salidas: 0, neto: 0 };
+
+    return { success: true, data: { rows, summary } };
+  } catch (err) {
+    console.error('❌ sp-get-cash-movements:', err);
+    return { success: false, error: err.message };
+  }
 });
 

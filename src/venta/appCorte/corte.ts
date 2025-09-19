@@ -1,66 +1,163 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NgIf, NgFor, CurrencyPipe, DatePipe } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass} from '@angular/common';
 
-type MetodoPago = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA';
+type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
-interface VentaRow {
-  folio: number;
-  fecha: Date;
-  metodo: MetodoPago;
-  subtotal: number;
-  iva: number;
-  total: number;
-  cajero: string;
+interface CashMovementRow {
+  id: number;
+  datee: string | Date;
+  user_id: number;
+  user_name: string;
+  typee: TipoMov;
+  amount: number;
+  reference_id: number | null;
+  reference: string | null;
+  note: string | null;
+  closure_id: number | null;
+}
+interface Summary {
+  total_entradas: number;
+  total_salidas: number;
+  neto: number;
 }
 
 @Component({
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass],
   styleUrls: ['./corte.css']
 })
 export class Corte {
   hoy = new Date();
 
-  // Hardcodeado (ejemplo de ventas de hoy)
-  ventas: VentaRow[] = [
-    { folio: 101, fecha: new Date(), metodo: 'EFECTIVO',      subtotal: 1200, iva: 192,  total: 1392,  cajero: 'Daniela' },
-    { folio: 102, fecha: new Date(), metodo: 'TARJETA',       subtotal: 2550, iva: 408,  total: 2958,  cajero: 'Daniela' },
-    { folio: 103, fecha: new Date(), metodo: 'TRANSFERENCIA', subtotal: 980.5,iva: 156.88,total: 1137.38, cajero: 'Daniela' },
-    { folio: 104, fecha: new Date(), metodo: 'EFECTIVO',      subtotal: 600,  iva: 96,   total: 696,   cajero: 'Daniela' },
-  ];
+  showCloseModal = false;
+  cashDelivered: number | null = null;
+  closeNotes = '';
 
-  // KPIs
-  get tickets(): number { return this.ventas.length; }
-  get totalEfectivo(): number { return this.ventas.filter(v => v.metodo==='EFECTIVO').reduce((a,v)=>a+v.total,0); }
-  get totalTarjeta(): number { return this.ventas.filter(v => v.metodo==='TARJETA').reduce((a,v)=>a+v.total,0); }
-  get totalTransfer(): number { return this.ventas.filter(v => v.metodo==='TRANSFERENCIA').reduce((a,v)=>a+v.total,0); }
-  get totalVendido(): number { return this.ventas.reduce((a,v)=>a+v.total,0); }
-  get subtotalAcum(): number { return this.ventas.reduce((a,v)=>a+v.subtotal,0); }
-  get ivaAcum(): number { return this.ventas.reduce((a,v)=>a+v.iva,0); }
+  // UI: mostrar/ocultar filtros
+  showFilters = true;
+  loading = false;
 
-  imprimir() { window.print(); }
+  // Filtros
+  preset: 'HOY'|'AYER'|'SEMANA'|null = 'HOY';
+  desdeStr = '';   // YYYY-MM-DD
+  hastaStr = '';   // YYYY-MM-DD
+  onlyOpen = true;
 
-  exportarCSV() {
-    const encabezados = ['Folio','Fecha','Hora','Método','Subtotal','IVA','Total','Cajero'];
-    const filas = this.ventas.map(v => ([
-      v.folio,
-      new Intl.DateTimeFormat('es-MX').format(v.fecha),
-      new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'}).format(v.fecha),
-      v.metodo,
-      v.subtotal.toFixed(2),
-      v.iva.toFixed(2),
-      v.total.toFixed(2),
-      v.cajero
-    ]));
-    const csv = [encabezados, ...filas].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `corte_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+  // Datos respuesta
+  movimientos: CashMovementRow[] = [];
+  summary: Summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+
+  constructor() {
+    this.setPreset('HOY');
+  }
+
+  private toStr(d: Date){ return d.toISOString().slice(0,10); }
+  private startOfWeek(d: Date){
+    const x = new Date(d);
+    const dow = x.getDay();                 // 0=Dom
+    const diff = (dow === 0 ? -6 : 1) - dow;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0,0,0,0);
+    return x;
+  }
+
+  setPreset(p: 'HOY'|'AYER'|'SEMANA'){
+    this.preset = p;
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (p === 'HOY'){
+      this.desdeStr = this.toStr(today);
+      this.hastaStr = this.toStr(today);
+    } else if (p === 'AYER'){
+      const y = new Date(today); y.setDate(y.getDate()-1);
+      this.desdeStr = this.toStr(y);
+      this.hastaStr = this.toStr(y);
+    } else {
+      const ini = this.startOfWeek(today);
+      this.desdeStr = this.toStr(ini);
+      this.hastaStr = this.toStr(today);
+    }
+  }
+
+  editarFiltros(){ this.showFilters = true; }
+
+  limpiar(){
+    this.preset = null;
+    this.desdeStr = '';
+    this.hastaStr = '';
+    this.movimientos = [];
+    this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+    this.showFilters = true;
+  }
+
+  async consultar(){
+    this.loading = true;
+    try {
+      const payload = {
+        start_date: this.desdeStr || null,
+        end_date:   this.hastaStr || null,
+        user_id:    null,
+        typee:      null,
+        only_open:  this.onlyOpen ? 1 : 0,
+        closure_id: null
+      };
+
+      const res = await (window as any).electronAPI.getCashMovements(payload);
+
+      if (res?.success) {
+        const rows: CashMovementRow[] = (res.data?.rows ?? []).map((r: any) => ({
+          ...r,
+          datee: new Date(r.datee) // para DatePipe
+        }));
+        this.movimientos = rows;
+        this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
+
+        // ocultar filtros tras consultar
+        this.showFilters = false;
+      } else {
+        console.error(res?.error || 'Respuesta inválida');
+        this.movimientos = [];
+        this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+      }
+    } catch (e) {
+      console.error('❌ getCashMovements:', e);
+      this.movimientos = [];
+      this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  get cashExpected(): number {
+    return Number(((this.summary?.neto ?? 0)).toFixed(2));
+  }
+  get cashDiff(): number {
+    const d = (this.cashDelivered ?? 0) - this.cashExpected;
+    return Number(d.toFixed(2));
+  }
+
+  // Abrir/cerrar modal
+  abrirModalCierre() {
+    this.cashDelivered = null;
+    this.closeNotes = '';
+    this.showCloseModal = true;
+  }
+  cerrarModalCierre() {
+    this.showCloseModal = false;
+  }
+  confirmarCierrePreview() {
+    console.log('🧾 Preview cierre:', {
+      start_date: this.desdeStr || this.hoy.toISOString().slice(0,10),
+      end_date:   this.hastaStr || this.hoy.toISOString().slice(0,10),
+      only_open:  this.onlyOpen ? 1 : 0,
+      expected:   this.cashExpected,
+      delivered:  this.cashDelivered,
+      diff:       this.cashDiff,
+      notes:      this.closeNotes
+    });
+    this.showCloseModal = false;
   }
 }
