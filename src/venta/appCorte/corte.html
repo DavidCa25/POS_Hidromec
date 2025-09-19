@@ -1,93 +1,190 @@
 <div class="corte-container">
   <div class="corte-card">
-    <div class="corte-header">
-      <h2>Corte del día</h2>
-      <div class="header-right">
-        <div class="hoy">
-          {{ hoy | date:'fullDate':undefined:'es-MX' }}
+
+    <!-- FILTROS -->
+    <div class="filter-card" *ngIf="showFilters">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Rango rápido</label>
+          <div class="preset-group">
+            <button type="button" class="preset" [class.active]="preset==='HOY'" (click)="setPreset('HOY')">Hoy</button>
+            <button type="button" class="preset" [class.active]="preset==='AYER'" (click)="setPreset('AYER')">Ayer</button>
+            <button type="button" class="preset" [class.active]="preset==='SEMANA'" (click)="setPreset('SEMANA')">Esta semana</button>
+          </div>
         </div>
-        <div class="acciones">
-          <button class="btn btn-ghost" type="button" (click)="exportarCSV()">
-            <i class="bi bi-download"></i> Exportar
+
+        <div class="filter-group">
+          <label>Desde</label>
+          <input type="date" class="form-control" [(ngModel)]="desdeStr">
+        </div>
+
+        <div class="filter-group">
+          <label>Hasta</label>
+          <input type="date" class="form-control" [(ngModel)]="hastaStr">
+        </div>
+
+        <div class="filter-actions">
+          <button class="btn btn-ghost" type="button" (click)="limpiar()">
+            <i class="bi bi-x-circle"></i> Limpiar
           </button>
-          <button class="btn btn-primary" type="button" (click)="imprimir()">
-            <i class="bi bi-printer"></i> Imprimir
+          <button class="btn btn-primary" type="button" (click)="consultar()">
+            <i class="bi bi-search"></i> Consultar
           </button>
         </div>
       </div>
     </div>
+
+    <!-- HEADER (cuando filtros están ocultos) -->
+    <div class="corte-header" *ngIf="!showFilters">
+      <h2>Movimientos de caja</h2>
+      <div class="header-right">
+        <div class="hoy">{{ hoy | date:'fullDate':undefined:'es-MX' }}</div>
+        <button class="btn btn-success d-flex align-items-center gap-2"
+            type="button"
+            [disabled]="loading || movimientos.length === 0"
+            (click)="abrirModalCierre()">
+          <i class="bi bi-check2-circle"></i> Cerrar turno
+        </button>
+        <button class="btn btn-ghost" type="button" (click)="editarFiltros()">
+          <i class="bi bi-sliders"></i> Cambiar rango
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL CERRAR TURNO (solo UI) -->
+    <div class="modal fade show d-block cierre-modal"
+        *ngIf="showCloseModal"
+        style="background: rgba(0,0,0,.12); z-index:10000;">
+      <div class="modal-dialog modal-dialog-centered cierre-dialog">
+        <div class="modal-content rounded-4">
+          <div class="modal-header border-0 pb-1">
+            <h5 class="modal-title fw-bold">Registrar cierre</h5>
+            <button type="button" class="btn-close" (click)="cerrarModalCierre()"></button>
+          </div>
+
+          <div class="modal-body px-4 pt-1 pb-4">
+            <div class="mb-2 text-muted small">
+              Rango:
+              <span class="mono">
+                {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
+              </span>
+              <span *ngIf="onlyOpen" class="badge badge-open">abiertos</span>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Efectivo esperado</label>
+              <div class="form-control-plaintext fs-5 fw-bold text-success">
+                {{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </div>
+              <div class="hint text-muted">Netos del rango (entradas − salidas).</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Efectivo entregado</label>
+              <input type="number"
+                    min="0" step="0.01"
+                    class="form-control"
+                    [(ngModel)]="cashDelivered"
+                    name="cashDelivered"
+                    placeholder="0.00">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Diferencia</label>
+              <div class="form-control-plaintext fs-5 fw-bold"
+                  [ngClass]="{'text-success': cashDiff >= 0, 'text-danger': cashDiff < 0}">
+                {{ cashDiff | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Notas (opcional)</label>
+              <textarea class="form-control" rows="2"
+                        [(ngModel)]="closeNotes" name="closeNotes"
+                        placeholder="Observaciones…"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+              <button type="button" class="btn btn-ghost" (click)="cerrarModalCierre()">Cancelar</button>
+              <button type="button"
+                      class="btn btn-primary"
+                      [disabled]="cashDelivered === null"
+                      (click)="confirmarCierrePreview()">
+                Guardar (preview)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- KPIs -->
-    <div class="resumen-grid">
+    <div class="resumen-grid" *ngIf="!showFilters">
+      <div class="kpi-card">
+        <div class="kpi-title">Entradas</div>
+        <div class="kpi-value">{{ summary.total_entradas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Salidas</div>
+        <div class="kpi-value">{{ summary.total_salidas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+      </div>
       <div class="kpi-card total">
-        <div class="kpi-title">Total vendido</div>
-        <div class="kpi-value">{{ totalVendido | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Tickets</div>
-        <div class="kpi-value">{{ tickets }}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Efectivo</div>
-        <div class="kpi-value">{{ totalEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Tarjeta</div>
-        <div class="kpi-value">{{ totalTarjeta | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Transferencia</div>
-        <div class="kpi-value">{{ totalTransfer | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+        <div class="kpi-title">Neto</div>
+        <div class="kpi-value">{{ summary.neto | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="tabla-wrap">
-      <table class="tabla-corte">
+    <!-- TABLA -->
+    <div class="tabla-wrap" *ngIf="!loading; else loadingTpl">
+      <table class="tabla-corte" *ngIf="!showFilters">
         <thead>
           <tr>
-            <th>Folio</th>
+            <th>#</th>
             <th>Fecha</th>
             <th>Hora</th>
-            <th>Método</th>
-            <th class="num">Subtotal</th>
-            <th class="num">IVA</th>
-            <th class="num">Total</th>
-            <th>Cajero</th>
+            <th>Tipo</th>
+            <th>Referencia</th>
+            <th>Usuario</th>
+            <th class="num">Monto</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let v of ventas; let i = index">
-            <td class="mono">{{ v.folio }}</td>
-            <td>{{ v.fecha | date:'shortDate':'':'es-MX' }}</td>
-            <td class="mono">{{ v.fecha | date:'HH:mm' }}</td>
+          <tr *ngFor="let m of movimientos; let i = index">
+            <td>{{ i + 1 }}</td>
+            <td>{{ m.datee | date:'shortDate':'':'es-MX' }}</td>
+            <td class="mono">{{ m.datee | date:'HH:mm' }}</td>
             <td>
-              <span class="badge" [class.efectivo]="v.metodo==='EFECTIVO'"
-                                 [class.tarjeta]="v.metodo==='TARJETA'"
-                                 [class.transfer]="v.metodo==='TRANSFERENCIA'">
-                {{ v.metodo }}
+              <span class="badge"
+                    [class.efectivo]="m.typee==='SALE'"
+                    [class.tarjeta]="m.typee==='DEPOSIT'"
+                    [class.transfer]="m.typee==='TRANSFER'">
+                {{ m.typee }}
               </span>
             </td>
-            <td class="num">{{ v.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td class="num">{{ v.iva      | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td class="num strong">{{ v.total   | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td>{{ v.cajero }}</td>
+            <td>{{ m.reference || ('#' + (m.reference_id ?? '')) }}</td>
+            <td>{{ m.user_name }}</td>
+            <td class="num strong">{{ m.amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+          </tr>
+          <tr *ngIf="movimientos.length === 0">
+            <td colspan="7" class="text-center text-muted py-3">Sin movimientos en el rango.</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="4" class="right strong">Totales</td>
-            <td class="num strong">{{ subtotalAcum | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td class="num strong">{{ ivaAcum      | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td class="num strong">{{ totalVendido | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td></td>
+            <td colspan="6" class="right strong">Neto</td>
+            <td class="num strong">{{ summary.neto | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
           </tr>
         </tfoot>
       </table>
     </div>
 
-    <div class="nota">
-      * Datos de demostración (hardcodeados) siguiendo el estilo de tu POS.
+    <ng-template #loadingTpl>
+      <div class="text-center text-muted py-4">Cargando…</div>
+    </ng-template>
+
+    <div class="nota" *ngIf="!showFilters">
+      * Mostrando movimientos consultados para el rango seleccionado.
     </div>
   </div>
 </div>

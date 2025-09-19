@@ -1,34 +1,36 @@
 <div class="stats-header">
   <div class="stat-card">
-    <div class="stat-title">Producto más vendido</div>
-    <div class="stat-value">{{ totalPageViews | number }}</div>
-    <div class="stat-extra">
-      <span class="stat-up">▲ 59.3%</span>
-      <div class="stat-info">You made an extra <b>35,000</b> this year</div>
+      <div class="stat-title">Producto más vendido (histórico)</div>
+      <div class="stat-value">{{ topProductName }}</div>
+      <div class="stat-extra">
+        <span class="stat-up">▲</span>
+      <div class="stat-info">
+        Vendidas: <b>{{ topProductQty | number }}</b> piezas
+      </div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-title">Total Ventas este mes</div>
-    <div class="stat-value">{{ totalUsers | number }}</div>
+    <div class="stat-value">{{ totalSalesMonth | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
     <div class="stat-extra">
-      <span class="stat-up">▲ 70.5%</span>
-      <div class="stat-info">You made an extra <b>8,900</b> this year</div>
+      <span class="stat-up">▲</span>
+      <div class="stat-info">Acumulado del mes</div>
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-title">Total Orders</div>
+    <div class="stat-title">Total Orders (mes)</div>
     <div class="stat-value">{{ totalOrders | number }}</div>
     <div class="stat-extra">
-      <span class="stat-down">▼ 27.4%</span>
-      <div class="stat-info">You made an extra <b>1,943</b> this year</div>
+      <span class="stat-down">▼</span>
+      <div class="stat-info">Tickets generados en el mes</div>
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-title">Total Sales</div>
-    <div class="stat-value">${{ totalSales | number }}</div>
+    <div class="stat-title">Total Sales (hoy)</div>
+    <div class="stat-value">{{ totalSalesToday | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
     <div class="stat-extra">
-      <span class="stat-down">▼ 27.4%</span>
-      <div class="stat-info">You made an extra <b>$20,395</b> this year</div>
+      <span class="stat-down">▼</span>
+      <div class="stat-info">Ventas del día</div>
     </div>
   </div>
 </div>

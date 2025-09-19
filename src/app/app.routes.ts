@@ -7,6 +7,7 @@ import { Estadisticas } from '../estadisticas/estadisticas';
 import { Venta } from '../venta/appVenta/venta';
 import { Corte } from '../venta/appCorte/corte';
 import { Cajon } from '../venta/appCajon/abrirCajon';
+import { Clientes } from '../clientes/clientes';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -19,7 +20,8 @@ export const routes: Routes = [
       { path: 'estadisticas', component: Estadisticas },
       { path: 'venta', component: Venta},
       { path: 'corte-dia', component: Corte},
-      { path: 'abrir-cajon', component: Cajon}
+      { path: 'abrir-cajon', component: Cajon},
+      { path: 'clientes', component: Clientes }
     ]
   },
   { path: '', redirectTo: '/login', pathMatch: 'full' },

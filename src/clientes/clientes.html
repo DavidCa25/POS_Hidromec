@@ -1,0 +1,167 @@
+<div class="corte-container">
+  <div class="corte-card">
+    <!-- Header -->
+    <div class="corte-header">
+      <h2>Clientes</h2>
+      <div class="header-right">
+        <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
+        <button class="btn btn-primary" (click)="nuevo()">+ Nuevo cliente</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-card">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Buscar</label>
+          <input class="form-control" [(ngModel)]="search" placeholder="Nombre, teléfono o correo">
+        </div>
+
+        <div class="filter-group">
+          <label>Estado</label>
+          <select class="form-control" [(ngModel)]="estado">
+            <option value="todos">Todos</option>
+            <option value="activos">Activos</option>
+            <option value="inactivos">Inactivos</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Presets</label>
+          <div class="preset-group">
+            <button class="preset" [class.active]="preset==='todos'" (click)="setPreset('todos')">Todos</button>
+            <button class="preset" [class.active]="preset==='con_saldo'" (click)="setPreset('con_saldo')">Con saldo</button>
+            <button class="preset" [class.active]="preset==='vencidos'" (click)="setPreset('vencidos')">Vencidos</button>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button class="btn btn-ghost" (click)="search=''; estado='todos'; setPreset('todos')">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="resumen-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Clientes</div>
+        <div class="kpi-value">{{ kpiTotal }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Con saldo</div>
+        <div class="kpi-value">{{ kpiConSaldo }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Vencidos</div>
+        <div class="kpi-value">{{ kpiVencidos }}</div>
+      </div>
+      <div class="kpi-card total">
+        <div class="kpi-title">Saldo total</div>
+        <div class="kpi-value">$ {{ kpiSaldoTotal | number:'1.2-2' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Activos</div>
+        <div class="kpi-value">{{ activosCount }}</div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tabla-wrap">
+      <table class="tabla-corte">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Contacto</th>
+            <th class="right">Límite</th>
+            <th class="right">Saldo</th>
+            <th>Estado</th>
+            <th class="right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of clientesView">
+            <td class="strong">
+              {{ c.name }}
+              <span *ngIf="!c.active" class="badge badge.tarjeta" style="margin-left:6px;">Inactivo</span>
+            </td>
+            <td>
+              <div class="mono">{{ c.phone || '-' }}</div>
+              <div class="nota" *ngIf="c.email">{{ c.email }}</div>
+            </td>
+            <td class="num mono">$ {{ c.creditLimit | number:'1.2-2' }}</td>
+            <td class="num mono">$ {{ c.balance | number:'1.2-2' }}</td>
+            <td>
+              <span [ngClass]="badgeEstado(c).cls">{{ badgeEstado(c).text }}</span>
+              <span *ngIf="c.overdueCount>0" class="badge badge.tarjeta" style="margin-left:6px;">
+                {{ c.overdueCount }} venc.
+              </span>
+            </td>
+            <td class="right">
+              <button class="btn btn-ghost" (click)="abonar(c)">Abonar</button>
+              <button class="btn btn-ghost" (click)="editar(c)">Editar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="nota" *ngIf="clientesView.length===0">Sin resultados</p>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo/Editar -->
+  <div class="cierre-modal" *ngIf="showModal" style="position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;">
+    <div class="cierre-dialog modal-content" style="background:#fff; padding:1.2rem 1.2rem 1.4rem; border-radius:20px; width: 96%; max-width: 560px;">
+      <h3 style="margin:0 0 .6rem; font-size:1.4rem; font-weight:800;">
+        {{ editing ? 'Editar cliente' : 'Nuevo cliente' }}
+      </h3>
+
+      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="filter-group">
+          <label>Nombre</label>
+          <input class="form-control" [(ngModel)]="form.name">
+        </div>
+        <div class="filter-group">
+          <label>Teléfono</label>
+          <input class="form-control" [(ngModel)]="form.phone">
+        </div>
+        <div class="filter-group">
+          <label>Correo</label>
+          <input class="form-control" [(ngModel)]="form.email">
+        </div>
+        <div class="filter-group">
+          <label>Límite de crédito</label>
+          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.creditLimit">
+        </div>
+        <div class="filter-group">
+          <label>Días de plazo</label>
+          <input class="form-control" type="number" [(ngModel)]="form.termsDays">
+        </div>
+        <div class="filter-group">
+          <label>Activo</label>
+          <select class="form-control" [(ngModel)]="form.active">
+            <option [ngValue]="true">Sí</option>
+            <option [ngValue]="false">No</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="nota" style="text-align:left;">
+      </div>
+      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="filter-group">
+          <label>Saldo (demo)</label>
+          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.balance">
+        </div>
+        <div class="filter-group">
+          <label># vencidos (demo)</label>
+          <input class="form-control" type="number" [(ngModel)]="form.overdueCount">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
+        <button class="btn btn-ghost" (click)="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -13,8 +13,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerSale: (userId, paymentMethod, items) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items),
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
-    getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
     registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload),
-    getUserById: (userId) => ipcRenderer.invoke('sp-get-user-by-id', userId)
+    getUserById: (userId) => ipcRenderer.invoke('sp-get-user-by-id', userId),
+
+
+
+    getTopSellingProducts: () => ipcRenderer.invoke('sp-get-top-selling-products'),
+    getSalesMonthly: () => ipcRenderer.invoke('sp-get-total-sales-month'),
+    getSalesDayly: () => ipcRenderer.invoke('sp-get-total-sales-today'),
+    getTotalOrders: () => ipcRenderer.invoke('sp-get-total-orders'),
+    getCashMovements: (opts) => ipcRenderer.invoke('sp-get-cash-movements', opts),
+
 });

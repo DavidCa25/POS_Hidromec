@@ -41,6 +41,7 @@
   border: 1px solid #e5e7eb;
   padding: .4rem .8rem;
   font-size: .95rem;
+  background: #fff;
 }
 .preset-group{ display: flex; gap: .5rem; flex-wrap: wrap; }
 .preset{
@@ -53,6 +54,7 @@
   font-weight: 600;
   font-size: .86rem;
   transition: .15s ease;
+  cursor: pointer;
 }
 .preset:hover{ background:#e6f0ff; }
 .preset.active{
@@ -66,6 +68,7 @@
   padding: .6rem 1rem;
   font-weight: 600;
   border: none;
+  cursor: pointer;
 }
 .btn-ghost{
   background: #f3f6ff;
@@ -133,6 +136,7 @@
   color:#64748b; font-size:.86rem; margin-top:.9rem; text-align:center;
 }
 
+/* Responsivo */
 @media (max-width: 1100px){
   .resumen-grid{ grid-template-columns: repeat(2,1fr); }
   .filter-row{ grid-template-columns: 1fr 1fr; }
@@ -142,18 +146,29 @@
   .filter-row{ grid-template-columns: 1fr; }
 }
 
-/* ===== Modal cierre turno ===== */
-.cierre-dialog {
-  max-width: 540px;
-  animation: pop-in .18s ease-out;
-}
+/* ===== Modal clientes (reusa estilos de cierre) ===== */
+.cierre-dialog { max-width: 540px; animation: pop-in .18s ease-out; }
 @keyframes pop-in {
   from { transform: translateY(6px) scale(.98); opacity: 0; }
   to   { transform: translateY(0)   scale(1);    opacity: 1; }
 }
+
+/* Contenedor del modal */
+.cierre-modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+/* Caja del modal */
 .cierre-modal .modal-content{
   border-radius: 20px;
   box-shadow: 0 18px 30px rgba(15,23,42,.12), 0 4px 10px rgba(15,23,42,.08);
+  background:#fff;
 }
 .cierre-modal .form-label{
   font-weight: 600;
@@ -163,6 +178,8 @@
   font-size: .85rem;
   margin-top: .25rem;
 }
+
+/* Badge extra para "open" si lo ocupas */
 .badge-open{
   background: #f1f5ff;
   color: #1d4ed8;
@@ -171,4 +188,3 @@
   border-radius: 8px;
   margin-left: .35rem;
 }
-
