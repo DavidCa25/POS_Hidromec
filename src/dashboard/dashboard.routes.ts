@@ -9,7 +9,6 @@ export const DashboardRoutes: Routes = [
     component: Dashboard,
     children: [
       { path: 'inventario', component: Inventario },
-      { path: 'compras', component: Compras },
       { path: '', redirectTo: 'inventario', pathMatch: 'full' }
       ]
   },

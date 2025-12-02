@@ -15,9 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
     registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload),
+    getPurchases: () => ipcRenderer.invoke('sp-get-purchases'),
     getUserById: (userId) => ipcRenderer.invoke('sp-get-user-by-id', userId),
-
-
 
     getTopSellingProducts: () => ipcRenderer.invoke('sp-get-top-selling-products'),
     getSalesMonthly: () => ipcRenderer.invoke('sp-get-total-sales-month'),

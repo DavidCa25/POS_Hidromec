@@ -1,0 +1,194 @@
+/* ---------- PALETA SUAVE ---------- */
+:root{
+  --castrol-main: #0b2a7a;         /* navy más agradable */
+  --castrol-accent: #104E8B;
+  --row-bg: #ffffff;
+  --row-hover: #f7f9ff;
+  --detail-bg: #f8fbff;
+  --detail-border: #e6eefb;
+  --text: #1b1f23;
+}
+
+/* ---------- ARREGLO CRÍTICO: SIN FONDO AZUL EN LA TABLA ---------- */
+.castrol-table{
+  background: transparent !important;      /* <— evita el bloque azul */
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 12px;                  /* separación tipo tarjetas */
+  font-family: 'Poppins', sans-serif;
+  margin-top: .6rem;
+}
+
+.castrol-table thead {
+  background: var(--castrol-main);
+  color: #fff;
+}
+
+.castrol-table thead th{
+  background: transparent !important; 
+  color: #fff !important;
+  font-weight: 700;
+  font-size: .94rem;
+  padding: .75rem .7rem;
+  border-bottom: 3px solid var(--castrol-accent);
+}
+
+.castrol-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.castrol-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.castrol-table thead th:not(:first-child):not(:last-child) {
+  border-radius: 0 !important;
+}
+.castrol-table thead tr{ transform: translateY(2px); }
+
+/* FILAS como “cards” blancas */
+.castrol-table tbody .parent-row td{
+  background: var(--row-bg) !important;
+  color: var(--text);
+  border: 0 !important;
+  padding: .7rem .7rem !important;
+  vertical-align: middle;
+  font-size: .93rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.06);
+}
+.castrol-table tbody .parent-row:hover td{ background: var(--row-hover) !important; }
+.castrol-table tbody .parent-row td:first-child{
+  border-top-left-radius: 12px; border-bottom-left-radius: 12px;
+}
+.castrol-table tbody .parent-row td:last-child{
+  border-top-right-radius: 12px; border-bottom-right-radius: 12px;
+}
+
+.nowrap{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mono{ font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; }
+.fw-semibold{ font-weight: 700; }
+.empty{ text-align:center; color:#7a7a7a; padding: 18px 0; }
+
+.acciones-cell{ padding: .5rem .6rem !important; }
+.action-group{ display:inline-flex; gap:8px; align-items:center; }
+.action-btn{
+  border:0; background:#f3f4f6; border-radius:12px; padding:7px;
+  display:inline-grid; place-items:center; cursor:pointer;
+  transition: transform .15s, box-shadow .15s, background-color .15s;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+.action-btn:hover{ background:#e7eaf3; transform: translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.10); }
+.action-btn svg{ width:17px; height:17px; fill:#1f2937; }
+
+.caret-cell{ width:44px; text-align:center; }
+.caret-btn{
+  background:transparent; border:0; cursor:pointer; padding:6px; border-radius:10px;
+  transition: background .15s ease, transform .15s ease;
+}
+.caret-btn:hover{ background:#eef2ff; }
+.caret-btn .chev{
+  width:18px; height:18px; display:block; transform: rotate(0deg);
+  transition: transform .2s ease;
+}
+.caret-btn .chev path{
+  fill:none; stroke:#111827; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;
+}
+.caret-btn.open .chev{ transform: rotate(90deg); }
+
+.detail-row td{ background: transparent !important; border:0 !important; padding:.2rem 0 0 !important; }
+.detail-wrap{
+  background: var(--detail-bg);
+  border: 1px solid var(--detail-border);
+  border-radius: 14px;
+  padding: .4rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05);
+}
+.detail-anim{
+  max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-2px);
+  transition: max-height .28s ease, opacity .22s ease, transform .22s ease;
+}
+.detail-row .detail-wrap .detail-anim{ max-height: 1000px; opacity: 1; transform: translateY(0); }
+
+.detail-header{
+  display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+  color:#333; font-size:.9rem; margin:.45rem .35rem .2rem;
+}
+
+/* TABLA INTERIOR limpia */
+.inner .castrol-table{ border-spacing: 0; margin-top:.35rem; box-shadow:none; }
+.inner .castrol-table thead th{
+  background: var(--castrol-main) !important;
+  border-bottom: 2px solid var(--castrol-accent);
+  font-size: .88rem; padding: .55rem .55rem !important;
+  border-top-left-radius:10px; border-top-right-radius:10px;
+}
+.inner .castrol-table tbody td{
+  background:#fff !important; border-bottom:1px solid #eef1f5 !important;
+  padding:.5rem .55rem !important; font-size:.88rem;
+}
+.inner .castrol-table tbody tr:last-child td{ border-bottom:0 !important; }
+.inner .castrol-table tbody tr:hover td{ background:#f7faff !important; }
+
+/* TOOLBAR compacta */
+.toolbar{ gap:10px; margin:.4rem 0 .2rem; }
+.search{
+  height: 38px; border:1.25px solid #e3e9e4; border-radius:12px;
+  font-size:.95rem; padding:0 .8rem;
+}
+.castrol-btn-add{
+  background: var(--castrol-main); color:#fff; border:0; border-radius:12px;
+  padding:.5rem 1.1rem; font-weight:700; font-size:.9rem;
+  box-shadow:0 3px 10px rgba(0,0,0,.10); transition: transform .15s, box-shadow .15s;
+}
+.castrol-btn-add:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12); }
+
+/* Responsive */
+@media (max-width: 900px){
+  .castrol-table{ border-spacing: 0 10px; }
+  .castrol-table thead th{ font-size:.88rem; }
+  .castrol-table tbody .parent-row td{ font-size:.9rem; padding:.6rem .55rem !important; }
+  .detail-header{ font-size:.86rem; }
+}
+
+/* Card que envuelve la tabla interna: redondeo y clipping */
+.inner-card{
+  border: 1px solid #e6eefb;
+  border-radius: 12px;
+  overflow: hidden;                /* <- recorta el header como una sola pieza */
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+}
+
+/* La tabla interna no necesita separación entre celdas */
+.inner-card .castrol-table{
+  border-spacing: 0 !important;
+  border-collapse: separate;       /* seguimos usando separate para mantener estilos */
+  margin: 0 !important;
+  box-shadow: none;
+}
+
+/* Header continuo azul (sin radios por th) */
+.inner-card .castrol-table thead{
+  background: var(--castrol-main);
+  color: #fff;
+}
+.inner-card .castrol-table thead th{
+  background: transparent !important;
+  color: #fff !important;
+  font-weight: 700;
+  font-size: .9rem;
+  padding: .6rem .6rem !important;
+  border-bottom: 2px solid #0a3c86;
+  border-radius: 0 !important;     /* <- elimina “piquitos” entre columnas */
+}
+
+/* Filas del body */
+.inner-card .castrol-table tbody td{
+  background: #fff !important;
+  border-bottom: 1px solid #eef1f5 !important;
+  padding: .55rem .6rem !important;
+  font-size: .9rem;
+}
+.inner-card .castrol-table tbody tr:last-child td{ border-bottom: 0 !important; }
+.inner-card .castrol-table tbody tr:hover td{ background: #f7faff !important; }
+

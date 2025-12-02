@@ -17,6 +17,7 @@ export class Dashboard {
   showOverlay = false;
   isOperacionesOpen = false;
   isUserDropdownOpen = false;
+  isOperacionesCompraOpen = false;
 
   userName: string = 'Usuario';
 
@@ -51,6 +52,10 @@ export class Dashboard {
     this.isOperacionesOpen = !this.isOperacionesOpen;
   }
 
+  toggleOperacionesCompra() {
+    this.isOperacionesCompraOpen = !this.isOperacionesCompraOpen;
+  }
+
   toggleUserDropdown() {
     this.isUserDropdownOpen = !this.isUserDropdownOpen;
   }
@@ -62,10 +67,14 @@ export class Dashboard {
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
     const dropdown = document.getElementById('operaciones-dropdown');
+    const comprasDropdown = document.getElementById('operaciones-compra-dropdown');
     const userWrapper = document.querySelector('.dashboard-user-wrapper');
     if (!dropdown) return;
     if (!dropdown.contains(event.target as Node)) {
       this.isOperacionesOpen = false;
+    }
+    if (comprasDropdown && !comprasDropdown.contains(event.target as Node)) {
+      this.isOperacionesCompraOpen = false;
     }
     if (userWrapper && !userWrapper.contains(event.target as Node)) {
       this.isUserDropdownOpen = false;
