@@ -10,8 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
-    registerSale: (userId, paymentMethod, items) =>
-        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items),
+    registerSale: (userId, paymentMethod, items, customerId, dueDate) =>
+        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate),
+
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
     registerPurchase: (payload) => ipcRenderer.invoke('sp-register-purchase', payload),
@@ -25,6 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCashMovements: (opts) => ipcRenderer.invoke('sp-get-cash-movements', opts),
 
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
+    getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
     createCustomer: (code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke('sp-create-customer', code, customerName, email, phone, creditLimit, termsDays, active),
     updateCustomer: (id, code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke(
       'sp-update-customer', id, code, customerName, email, phone, creditLimit, termsDays, active),

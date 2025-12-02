@@ -24,6 +24,16 @@ interface SaleItem {
   get subtotal(): number;
 }
 
+interface CreditCustomer {
+  id: number;
+  customerName: string;
+  phone?: string;
+  email?: string;
+  total_balance: number;
+  next_due_date: string | null;
+  open_credit_count: number;
+}
+
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
@@ -38,7 +48,14 @@ export class Venta {
 
   showModal = false;
   dineroRecibido: number | null = null;
-  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO';
+  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
+
+  customerId: number | null = null; 
+  dueDate: string | null = null;
+
+  creditCustomers: CreditCustomer[] = [];
+  loadingCreditCustomers = false;
+
   showModalProductos = false;
   productos: ProductRow[] = [];
   filtro = '';
@@ -119,51 +136,134 @@ export class Venta {
   }
   cerrarModalCobrar() { this.showModal = false; }
 
-  async confirmarCobro(){
-    if (this.items.length === 0) {
-      this.showModal = false;
-       Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "Agrega productos a la venta"
+  async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
+    this.paymentMethod = method;
+
+    if (method === 'CREDITO') {
+      this.dineroRecibido = null; 
+      await this.loadCreditCustomers();
+    } else {
+      this.customerId = null;
+      this.dueDate = null;
+    }
+  }
+
+  private async loadCreditCustomers() {
+    const api = (window as any).electronAPI;
+    if (!api || !api.getCreditCustomers) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'No se pudo cargar la lista de clientes con crédito.',
+      });
+      return;
+    }
+
+    try {
+      this.loadingCreditCustomers = true;
+      this.creditCustomers = [];
+
+      const resp = await api.getCreditCustomers();
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar clientes',
+          text: resp?.error || 'No se pudieron obtener los clientes con crédito.',
         });
         return;
       }
-    if (this.totalVenta <= 0) { 
-      this.showModal = false;
-      Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "El total de la venta debe ser mayor a cero"
-        });
-    return; 
+
+      this.creditCustomers = resp.data || [];
+      if (this.creditCustomers.length > 0) {
+        this.customerId = this.creditCustomers[0].id;
+      } else {
+        this.customerId = null;
+      }
+
+    } catch (e: any) {
+      console.error('❌ loadCreditCustomers:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al cargar los clientes con crédito.',
+      });
+    } finally {
+      this.loadingCreditCustomers = false;
+    }
   }
-    if (this.dineroRecibido == null || this.dineroRecibido < this.totalVenta) { 
+
+  async confirmarCobro() {
+    if (this.items.length === 0) {
       this.showModal = false;
-      Swal.fire({
+      await Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: "El dinero recibido debe ser mayor o igual al total de la venta"
-      }); 
-    return; 
-  }
-    const userId = this.currentUserId;
+        text: "Agrega productos a la venta"
+      });
+      return;
+    }
+    if (this.totalVenta <= 0) {
+      this.showModal = false;
+      await Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "El total de la venta debe ser mayor a cero"
+      });
+      return;
+    }
 
-    const detalles = this.items.map(it => ({ productId: it.productId, qty: it.qty, unitPrice: it.unitPrice }));
+    const isCredito = this.paymentMethod === 'CREDITO';
+
+    if (isCredito) {
+      if (this.customerId == null) {
+        this.showModal = false;
+        await Swal.fire({
+          icon: 'error',
+          title: 'Cliente requerido',
+          text: 'Selecciona o ingresa el cliente para la venta a crédito.',
+        });
+        return;
+      }
+    } else {
+      if (this.dineroRecibido == null || this.dineroRecibido < this.totalVenta) {
+        this.showModal = false;
+        await Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "El dinero recibido debe ser mayor o igual al total de la venta"
+        });
+        return;
+      }
+    }
+
+    const userId = this.currentUserId;
+    const detalles = this.items.map(it => ({
+      productId: it.productId,
+      qty: it.qty,
+      unitPrice: it.unitPrice
+    }));
 
     try {
-      const resp = await (window as any).electronAPI.registerSale(userId, this.paymentMethod, detalles);
+      const resp = await (window as any).electronAPI.registerSale(
+        userId,
+        this.paymentMethod,
+        detalles,
+        isCredito ? this.customerId : null,
+        isCredito ? this.dueDate : null
+      );
 
       if (resp?.success) {
         this.advanceFolioAfterConfirm();
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
+        this.customerId = null;
+        this.dueDate = null;
         this.showModal = false;
 
         await Swal.fire({
           icon: 'success',
-          title: 'Compra realizada con éxito!',
+          title: isCredito ? 'Venta a crédito registrada' : 'Venta registrada',
           text: 'Se guardó correctamente.',
           timer: 1800,
           showConfirmButton: false,
@@ -171,16 +271,16 @@ export class Venta {
         });
       } else {
         this.showModal = false;
-        Swal.fire({
+        await Swal.fire({
           icon: 'error',
-          title: 'Stock insuficiente',
-          text: resp?.message || 'No se pudo registrar la venta.'
+          title: 'Error al registrar venta',
+          text: resp?.error || 'No se pudo registrar la venta.'
         });
       }
-    } catch (e:any) {
+    } catch (e: any) {
       console.error('❌ registerSale:', e);
       this.showModal = false;
-      Swal.fire({
+      await Swal.fire({
         icon: 'error',
         title: 'Error al registrar la venta',
         text: e.message || 'Ocurrió un error inesperado.'

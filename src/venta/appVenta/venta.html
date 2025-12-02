@@ -113,11 +113,64 @@
           <select class="form-select"
                   [(ngModel)]="paymentMethod"
                   name="paymentMethod">
-            <option value="EFECTIVO">Efectivo</option>
+           <option value="EFECTIVO">Efectivo</option>
             <option value="TARJETA">Tarjeta</option>
             <option value="TRANSFERENCIA">Transferencia</option>
+            <option value="CREDITO">Crédito</option>
           </select>
         </div>
+        <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoTemplate">
+          <div class="mb-3">
+            <label class="form-label">Cliente con crédito</label>
+            <select class="form-select"
+                    [(ngModel)]="customerId"
+                    name="customerId">
+              <option [ngValue]="null" disabled>-- Selecciona cliente --</option>
+              <option *ngFor="let c of creditCustomers" [ngValue]="c.id">
+                {{ c.customerName }} — Saldo:
+                {{ c.total_balance | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                <span *ngIf="c.next_due_date">
+                  (Próx. venc: {{ c.next_due_date | date:'dd/MM/yyyy' }})
+                </span>
+              </option>
+            </select>
+            <small class="text-muted" *ngIf="loadingCreditCustomers">
+              Cargando clientes con crédito...
+            </small>
+            <small class="text-danger" *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
+              No hay clientes con crédito activo y saldo disponible.
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Fecha de vencimiento</label>
+            <input type="date"
+                   class="form-control"
+                   [(ngModel)]="dueDate"
+                   name="dueDate" />
+          </div>
+
+          <div class="alert alert-info py-2">
+            Esta venta se registrará como <strong>crédito</strong>.  
+            El pago se capturará después en el módulo de abonos.
+          </div>
+        </ng-container>
+
+        <ng-template #contadoTemplate>
+          <div class="mb-3">
+            <label class="form-label">Dinero recibido</label>
+            <input type="number" min="0" step="0.01" class="form-control form-control-lg"
+              [(ngModel)]="dineroRecibido"
+              name="dineroRecibido"
+              placeholder="¿Cuánto recibió del cliente?" />
+          </div>
+          <div>
+            <label class="form-label">Cambio a regresar:</label>
+            <div class="form-control-plaintext fs-2 fw-bold" style="color:#10b981;">
+              {{ cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            </div>
+          </div>
+        </ng-template>
         <div class="mb-3">
           <label class="form-label">Dinero recibido</label>
           <input type="number" min="0" step="0.01" class="form-control form-control-lg"

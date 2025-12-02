@@ -171,7 +171,7 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
     }
 });
 
-ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) => {
+ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, customerId, dueDate) => {
   try {
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('La venta no tiene partidas.');
@@ -180,11 +180,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     const pool = await poolPromise;
 
     // --- Construir TVP para @SaleDetails ---
-    // Importante: Las columnas y su orden deben coincidir con el tipo SQL:
-    // CREATE TYPE dbo.SaleDetailType AS TABLE (
-    //   product_id INT, quantity INT, unit_price DECIMAL(10,2)
-    // )
-    const tvp = new sql.Table();     
+    const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Int, { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
@@ -194,9 +190,11 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     }
 
     const request = pool.request()
-      .input('user_id', sql.Int, userId)
-      .input('payment_method', sql.NVarChar(50), paymentMethod)
-      .input('SaleDetails', tvp); 
+      .input('user_id',        sql.Int,           userId)
+      .input('payment_method', sql.NVarChar(50),  paymentMethod)
+      .input('SaleDetails',    tvp)
+      .input('customer_id',    sql.Int,           customerId ?? null)
+      .input('due_date',       sql.Date,          dueDate ? new Date(dueDate) : null);
 
     const result = await request.execute('sp_register_sale');
 
@@ -206,6 +204,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     return { success: false, error: err.message };
   }
 });
+
     
 ipcMain.handle('sp-get-suppliers', async (event, data) => {
     try {   
@@ -454,6 +453,26 @@ ipcMain.handle('sp-get-customers', async (event) => {
         console.error('❌ Error en get-customers:', err);
         return { success: false, error: err.message };
     }
+});
+
+ipcMain.handle('sp-get-credit-customers', async () => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    const result = await request.execute('sp_get_customers_open_credit_not_overdue');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_get_customers_open_credit_not_overdue:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
 });
 
 
