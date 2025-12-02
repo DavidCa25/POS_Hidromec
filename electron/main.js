@@ -352,7 +352,6 @@ ipcMain.handle('sp-get-total-orders', async (event, data) => {
 
 // main.js
 ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
-  // usa snake_case en ambos lados
   const {
     start_date = null,   // 'YYYY-MM-DD' o null
     end_date   = null,   // 'YYYY-MM-DD' o null
@@ -366,7 +365,7 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     const pool = await poolPromise;
 
     const req = pool.request()
-      .input('start_date', sql.Date, start_date)          // mssql acepta string 'YYYY-MM-DD' para Date
+      .input('start_date', sql.Date, start_date)         
       .input('end_date',   sql.Date, end_date)
       .input('user_id',    sql.Int, user_id)
       .input('typee',      sql.NVarChar(20), typee)
@@ -386,4 +385,106 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     return { success: false, error: err.message };
   }
 });
+
+//CUSTOMER
+
+// CREATE
+ipcMain.handle(
+  'sp-create-customer',
+  async (event, code, customerName, email, phone, creditLimit, termsDays, active) => {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request
+        .input('code',          sql.NVarChar(30),  code)
+        .input('customerName',  sql.NVarChar(120), customerName)
+        .input('email',         sql.NVarChar(120), email)
+        .input('phone',         sql.NVarChar(30),  phone)
+        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',    sql.Int,            termsDays)
+        .input('active',        sql.Bit,            active);
+
+      // output del SP
+      request.output('NewId', sql.Int);
+
+      const result = await request.execute('sp_create_customer');
+
+      return {
+        success: true,
+        id: result.output.NewId
+      };
+    } catch (err) {
+      console.error('❌ Error al ejecutar sp_create_customer:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
+
+
+
+ipcMain.handle('sp-get-customer', async (event, { id, code }) => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    request.input('id',   sql.Int,          id   ?? null);
+    request.input('code', sql.NVarChar(30), code ?? null);
+
+    const result = await request.execute('sp_get_customer');
+    const rows = result.recordset || [];
+
+    return { success: true, data: rows };
+  } catch (err) {
+    console.error('❌ Error sp-get-customer:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-customers', async (event) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_customers');
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en get-customers:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+
+ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email, phone, creditLimit, termsDays, active) => {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request
+        .input('id',            sql.Int,           id)
+        .input('code',          sql.NVarChar(30),  code)
+        .input('customerName',  sql.NVarChar(120), customerName)
+        .input('email',         sql.NVarChar(120), email)
+        .input('phone',         sql.NVarChar(30),  phone)
+        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',    sql.Int,            termsDays)
+        .input('active',        sql.Bit,            active);
+
+      const result = await request.execute('sp_update_customer');
+
+      return {
+        success: true,
+        rowsAffected: result.rowsAffected?.[0] ?? 0
+      };
+    } catch (err) {
+      console.error('❌ Error al ejecutar sp_update_customer:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
 

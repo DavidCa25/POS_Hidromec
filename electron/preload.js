@@ -24,4 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getTotalOrders: () => ipcRenderer.invoke('sp-get-total-orders'),
     getCashMovements: (opts) => ipcRenderer.invoke('sp-get-cash-movements', opts),
 
+    getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
+    createCustomer: (code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke('sp-create-customer', code, customerName, email, phone, creditLimit, termsDays, active),
+    updateCustomer: (id, code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke(
+      'sp-update-customer', id, code, customerName, email, phone, creditLimit, termsDays, active),
 });
