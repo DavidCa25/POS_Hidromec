@@ -72,6 +72,10 @@ export class Login {
     }
   }
 
+  crearUsuario() {
+    this.router.navigate(['/sign_up']);
+  }
+
   onInputChange() {
     this.mensaje = '';
     this.advertencia = '';

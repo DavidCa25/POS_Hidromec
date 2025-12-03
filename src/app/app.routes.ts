@@ -10,9 +10,11 @@ import { Cajon } from '../venta/appCajon/abrirCajon';
 import { Clientes } from '../clientes/clientes';
 import { RegistrarCompra } from '../compras/appRegistrarCompra/registrarCompra';
 import { TablaCompra } from '../compras/appTablaCompra/tablaCompra';
+import { CrearUsuarioComponent } from '../sign_up/sign_up';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
+  { path: 'sign_up', component: CrearUsuarioComponent },
   {
     path: 'dashboard',
     component: Dashboard,
@@ -25,7 +27,7 @@ export const routes: Routes = [
       { path: 'venta', component: Venta},
       { path: 'corte-dia', component: Corte},
       { path: 'abrir-cajon', component: Cajon},
-      { path: 'clientes', component: Clientes }
+      { path: 'clientes', component: Clientes },
     ]
   },
   { path: '', redirectTo: '/login', pathMatch: 'full' },

@@ -76,7 +76,6 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   }
 });
 
-
 ipcMain.handle('sp-get-products', async () => {
     try {
         const pool = await poolPromise;

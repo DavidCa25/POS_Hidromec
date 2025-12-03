@@ -1,0 +1,76 @@
+<div class="login-container">
+  <div class="login-card">
+
+    <img src="../assets/logo.png" alt="Logo" class="logo" />
+
+    <h2>Crear cuenta</h2>
+
+    <form (submit)="onCrearCuenta($event)">
+      <div class="input-group">
+        <input
+          type="text"
+          placeholder="Nombre de usuario"
+          [(ngModel)]="usuario"
+          name="usuario"
+          (input)="onInputChange()"
+        />
+      </div>
+
+      <div class="input-group">
+        <input
+          [type]="mostrarContrasena ? 'text' : 'password'"
+          placeholder="Contraseña"
+          [(ngModel)]="contrasena"
+          name="contrasena"
+          (input)="onInputChange()"
+        />
+        <button type="button" class="toggle-btn" (click)="toggleMostrarContrasena()">
+          <span [class]="mostrarContrasena ? 'icon-eye-off' : 'icon-eye'"></span>
+        </button>
+      </div>
+
+      <div class="input-group">
+        <input
+          [type]="mostrarConfirmacion ? 'text' : 'password'"
+          placeholder="Confirmar contraseña"
+          [(ngModel)]="confirmarContrasena"
+          name="confirmarContrasena"
+          (input)="onInputChange()"
+        />
+       <button type="button" class="toggle-btn" (click)="toggleMostrarContrasena()">
+          <span [class]="mostrarContrasena ? 'icon-eye-off' : 'icon-eye'"></span>
+        </button>
+      </div>
+
+      <div class="input-group">
+        <select
+          [(ngModel)]="rol"
+          name="rol"
+          (change)="onInputChange()"
+          style="width: 100%; padding: 0.75rem 1.2rem; border-radius: 8px; border: 1px solid #ccc; background: #f8fafb; font-family: 'Poppins', sans-serif;"
+        >
+          <option *ngFor="let r of rolesOpciones" [value]="r.value">
+            {{ r.label }}
+          </option>
+        </select>
+      </div>
+
+      <div *ngIf="advertencia" class="warning-message">
+        {{ advertencia }}
+      </div>
+
+      <div *ngIf="mensaje" class="error-message" [ngStyle]="{ 'background-color': mensaje.startsWith('✅') ? '#e0ffe4' : '#ffe0e0', 'color': mensaje.startsWith('✅') ? '#166534' : '#b00020' }">
+        {{ mensaje }}
+      </div>
+
+      <button type="submit" [disabled]="cargando">
+        {{ cargando ? 'Creando usuario...' : 'Crear cuenta' }}
+      </button>
+    </form>
+
+    <div class="footer">
+      ¿Ya tienes cuenta?
+      <a href="javascript:void(0)" (click)="irALogin()">Inicia sesión aquí</a>
+    </div>
+  </div>
+</div>

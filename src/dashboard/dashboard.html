@@ -52,7 +52,7 @@
         </li>
       </ul>
     </li>
-      <li>
+      <li *ngIf="auth.esAdmin">
         <a routerLink="/dashboard/inventario"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">

@@ -27,6 +27,7 @@
       </div>
       <button type="submit" id="btnLogin">Entrar</button>
     </form>
+    <button type="button" (click)="crearUsuario()">Crear Usuario</button>
     <div class="error-message" *ngIf="mensaje" margin-top="15px">
       🚨 {{ mensaje }}
     </div>
