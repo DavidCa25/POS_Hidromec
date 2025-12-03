@@ -17,6 +17,15 @@ type Cliente = {
   active: boolean;
 };
 
+type ClienteVenta = {
+  id: number;
+  datee: string;
+  total: number;
+  paid_amount: number;
+  balance: number;
+  due_date: string | null;
+};
+
 @Component({
   selector: 'app-clientes',
   templateUrl: './clientes.html',
@@ -40,10 +49,21 @@ export class Clientes implements OnInit {
   estado: 'todos' | 'activos' | 'inactivos' = 'todos';
   preset: 'todos' | 'con_saldo' | 'vencidos' = 'todos';
 
-  // ------- Modal -------
+  // ------- Modal Nuevo/Editar -------
   showModal = false;
   editing: Cliente | null = null;
   form: Partial<Cliente> = {};
+
+  // ------- Modal Abono -------
+  showAbonoModal = false;
+  abonoCliente: Cliente | null = null;
+  ventasCliente: ClienteVenta[] = [];
+  selectedSaleId: number | null = null;
+  abonoAmount: number | null = null;
+  abonoPaymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' = 'EFECTIVO';
+  abonoNote: string = '';
+  loadingVentas = false;
+  savingAbono = false;
 
   hoy = new Date();
 
@@ -84,7 +104,6 @@ export class Clientes implements OnInit {
         email: row.email,
         creditLimit: Number(row.credit_limit ?? 0),
         termsDays: Number(row.terms_days ?? 0),
-        // De momento estos son “demo” hasta que tengas SP de saldos
         balance: Number(row.balance ?? 0),
         overdueCount: Number(row.overdueCount ?? 0),
         active: !!row.active,
@@ -274,9 +293,178 @@ export class Clientes implements OnInit {
 
   cerrarModal() { this.showModal = false; }
 
-  abonar(c: Cliente) {
-    const pago = 100; // demo
-    c.balance = Math.max(0, c.balance - pago);
-    if (c.balance === 0) c.overdueCount = 0;
+  // ===== ABONOS =====
+  async abonar(c: Cliente) {
+  this.abonoCliente = c;
+  this.showAbonoModal = true;
+  this.ventasCliente = [];
+  this.selectedSaleId = null;
+  this.abonoAmount = null;
+  this.abonoPaymentMethod = 'EFECTIVO';
+  this.abonoNote = '';
+
+  await this.loadVentasCliente(c.id);
+
+  if (!this.loadingVentas && this.ventasCliente.length === 0) {
+    await Swal.fire({
+      icon: 'info',
+      title: 'Sin saldo pendiente',
+      text: 'Este cliente no tiene ventas a crédito con saldo por cobrar.',
+    });
+    this.cerrarAbonoModal();
+  }
+}
+
+
+  private async loadVentasCliente(customerId: number) {
+    const api = (window as any).electronAPI;
+    if (!api || !api.getCustomerOpenSales) {
+      console.warn('getCustomerOpenSales no disponible');
+      return;
+    }
+
+    try {
+      this.loadingVentas = true;
+      const resp = await api.getCustomerOpenSales(customerId);
+
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar ventas',
+          text: resp?.error || 'No se pudieron obtener las ventas a crédito del cliente.',
+        });
+        return;
+      }
+
+      this.ventasCliente = (resp.data || []).map((r: any) => ({
+        id: r.id,
+        datee: r.datee,
+        total: Number(r.total ?? 0),
+        paid_amount: Number(r.paid_amount ?? 0),
+        balance: Number(r.balance ?? 0),
+        due_date: r.due_date
+      }));
+
+      if (this.ventasCliente.length > 0) {
+        this.selectedSaleId = this.ventasCliente[0].id;
+        this.abonoAmount = this.ventasCliente[0].balance;
+      }
+
+    } catch (e: any) {
+      console.error('❌ loadVentasCliente:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al cargar las ventas a crédito.',
+      });
+    } finally {
+      this.loadingVentas = false;
+    }
+  }
+
+  cerrarAbonoModal() {
+    this.showAbonoModal = false;
+    this.abonoCliente = null;
+    this.ventasCliente = [];
+    this.selectedSaleId = null;
+    this.abonoAmount = null;
+    this.abonoNote = '';
+  }
+
+  async confirmarAbono() {
+    if (!this.abonoCliente) return;
+
+    if (!this.selectedSaleId) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Selecciona una venta',
+        text: 'Debes elegir a qué venta aplicar el abono.',
+      });
+      return;
+    }
+
+    if (this.abonoAmount == null || this.abonoAmount <= 0) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Monto inválido',
+        text: 'El monto del abono debe ser mayor a 0.',
+      });
+      return;
+    }
+
+    const venta = this.ventasCliente.find(v => v.id === this.selectedSaleId);
+    if (!venta) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Venta no encontrada',
+        text: 'No se encontró la venta seleccionada.',
+      });
+      return;
+    }
+
+    if (this.abonoAmount > venta.balance) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Monto mayor al saldo',
+        text: `El monto no puede ser mayor al saldo pendiente (${venta.balance.toFixed(2)}).`,
+      });
+      return;
+    }
+
+    const api = (window as any).electronAPI;
+    if (!api || !api.registerCustomerPayment) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'No se puede registrar el abono (Electron no disponible).',
+      });
+      return;
+    }
+
+    try {
+      this.savingAbono = true;
+
+      const userId = 1;
+
+      const resp = await api.registerCustomerPayment(
+        this.abonoCliente.id,
+        this.selectedSaleId,
+        this.abonoAmount,
+        userId,
+        this.abonoPaymentMethod,
+        this.abonoNote || null
+      );
+
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar abono',
+          text: resp?.error || 'No se pudo registrar el abono.',
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Abono registrado',
+        text: 'El abono se aplicó correctamente.',
+        timer: 1700,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
+      await this.loadClientes();
+      this.cerrarAbonoModal();
+
+    } catch (e: any) {
+      console.error('❌ confirmarAbono:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al registrar el abono.',
+      });
+    } finally {
+      this.savingAbono = false;
+    }
   }
 }

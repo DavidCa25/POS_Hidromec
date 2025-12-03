@@ -460,20 +460,36 @@ ipcMain.handle('sp-get-credit-customers', async () => {
     const pool = await poolPromise;
     const request = pool.request();
 
-    const result = await request.execute('sp_get_customers_open_credit_not_overdue');
+    const result = await request.execute('sp_get_customers_with_credit_available');
+
+    console.log('sp_get_customers_with_credit_available result:', result.recordset); 
 
     return {
       success: true,
       data: result.recordset ?? []
     };
   } catch (err) {
-    console.error('❌ Error en sp_get_customers_open_credit_not_overdue:', err);
+    console.error('❌ Error en sp_get_customers_with_credit_available:', err);
     return {
       success: false,
       error: err.message
     };
   }
 });
+
+ipcMain.handle('sp-get-customers-summary', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_customers_credit_summary');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ Error sp_get_customers_credit_summary:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 
 
 ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email, phone, creditLimit, termsDays, active) => {
@@ -506,4 +522,53 @@ ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email
     }
   }
 );
+
+ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('customer_id', sql.Int, customerId)
+      .execute('sp_get_customer_open_credit_sales');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_customer_open_credit_sales:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+ipcMain.handle(
+  'sp-register-customer-payment',
+  async (event, customerId, saleId, amount, userId, paymentMethod, note) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request()
+        .input('customer_id',    sql.Int,          customerId)
+        .input('sale_id',        sql.Int,          saleId)
+        .input('amount',         sql.Decimal(10,2), amount)
+        .input('user_id',        sql.Int,          userId)
+        .input('payment_method', sql.NVarChar(50), paymentMethod)
+        .input('note',           sql.NVarChar(255), note ?? null)
+        .execute('sp_register_customer_payment');
+
+      return {
+        success: true,
+        data: result.recordset ?? []
+      };
+    } catch (err) {
+      console.error('❌ Error sp_register_customer_payment:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
+
 

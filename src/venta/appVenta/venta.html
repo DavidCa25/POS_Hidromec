@@ -93,104 +93,123 @@
   </div>
 </div>
 
-<!-- MODAL COBRAR (igual que antes) -->
-<div class="modal fade show d-block" *ngIf="showModal" style="background:rgba(0,0,0,0.13);z-index:10000;">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:410px">
-    <div class="modal-content rounded-4">
+<!-- MODAL COBRO -->
+<div class="modal fade show d-block modal-cobro"
+     *ngIf="showModal"
+     style="background:rgba(0,0,0,0.13);z-index:10000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <!-- Header -->
       <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0">Cobro</h5>
         <button type="button" class="btn-close" (click)="cerrarModalCobrar()"></button>
       </div>
-      <div class="modal-body px-4 pt-0 pb-4">
-        <h3 class="fw-bold mb-4 text-center" style="font-size:2rem;">Cobro</h3>
-        <div class="mb-3">
-          <label class="form-label">Total a pagar:</label>
-          <div class="form-control-plaintext fs-2 fw-bold">
-            {{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Método de pago</label>
-          <select class="form-select"
-                  [(ngModel)]="paymentMethod"
-                  name="paymentMethod">
-           <option value="EFECTIVO">Efectivo</option>
-            <option value="TARJETA">Tarjeta</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
-            <option value="CREDITO">Crédito</option>
-          </select>
-        </div>
-        <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoTemplate">
-          <div class="mb-3">
-            <label class="form-label">Cliente con crédito</label>
-            <select class="form-select"
-                    [(ngModel)]="customerId"
-                    name="customerId">
-              <option [ngValue]="null" disabled>-- Selecciona cliente --</option>
-              <option *ngFor="let c of creditCustomers" [ngValue]="c.id">
-                {{ c.customerName }} — Saldo:
-                {{ c.total_balance | currency:'MXN':'symbol-narrow':'1.2-2' }}
-                <span *ngIf="c.next_due_date">
-                  (Próx. venc: {{ c.next_due_date | date:'dd/MM/yyyy' }})
-                </span>
-              </option>
-            </select>
-            <small class="text-muted" *ngIf="loadingCreditCustomers">
-              Cargando clientes con crédito...
-            </small>
-            <small class="text-danger" *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
-              No hay clientes con crédito activo y saldo disponible.
-            </small>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label">Fecha de vencimiento</label>
-            <input type="date"
-                   class="form-control"
-                   [(ngModel)]="dueDate"
-                   name="dueDate" />
-          </div>
-
-          <div class="alert alert-info py-2">
-            Esta venta se registrará como <strong>crédito</strong>.  
-            El pago se capturará después en el módulo de abonos.
-          </div>
-        </ng-container>
-
-        <ng-template #contadoTemplate>
-          <div class="mb-3">
-            <label class="form-label">Dinero recibido</label>
-            <input type="number" min="0" step="0.01" class="form-control form-control-lg"
-              [(ngModel)]="dineroRecibido"
-              name="dineroRecibido"
-              placeholder="¿Cuánto recibió del cliente?" />
-          </div>
-          <div>
-            <label class="form-label">Cambio a regresar:</label>
-            <div class="form-control-plaintext fs-2 fw-bold" style="color:#10b981;">
-              {{ cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="cobro-layout">
+          <!-- Columna izquierda: resumen -->
+          <div class="cobro-left">
+            <div class="cobro-total-card">
+              <span class="label">Total a pagar</span>
+              <div class="total-amount">
+                {{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </div>
             </div>
+
+            <ng-container *ngIf="paymentMethod !== 'CREDITO'">
+              <div class="mt-3">
+                <label class="form-label mb-1">Dinero recibido</label>
+                <input type="number"
+                       min="0"
+                       step="0.01"
+                       class="form-control form-control-lg"
+                       [(ngModel)]="dineroRecibido"
+                       name="dineroRecibido"
+                       placeholder="¿Cuánto recibió del cliente?" />
+              </div>
+
+              <div class="mt-3">
+                <label class="form-label mb-1">Cambio a regresar</label>
+                <div class="cobro-cambio">
+                  {{ cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-container *ngIf="paymentMethod === 'CREDITO'">
+              <div class="alert alert-info cobro-alert">
+                Esta venta se registrará como <strong>crédito</strong>.  
+                El pago se capturará después en el módulo de abonos.
+              </div>
+            </ng-container>
           </div>
-        </ng-template>
-        <div class="mb-3">
-          <label class="form-label">Dinero recibido</label>
-          <input type="number" min="0" step="0.01" class="form-control form-control-lg"
-            [(ngModel)]="dineroRecibido"
-            name="dineroRecibido"
-            placeholder="¿Cuánto recibió del cliente?" />
-        </div>
-        <div>
-          <label class="form-label">Cambio a regresar:</label>
-          <div class="form-control-plaintext fs-2 fw-bold" style="color:#10b981;">
-            {{ cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}
+
+          <!-- Columna derecha: forma de pago / cliente -->
+          <div class="cobro-right">
+            <div class="mb-3">
+              <label class="form-label mb-1">Método de pago</label>
+              <select class="form-select cobro-select"
+                      [(ngModel)]="paymentMethod"
+                      name="paymentMethod"
+                      (ngModelChange)="onPaymentMethodChange($event)">
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="TARJETA">Tarjeta</option>
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="CREDITO">Crédito</option>
+              </select>
+            </div>
+
+            <!-- Crédito -->
+            <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoInfo">
+              <div class="mb-3">
+                <label class="form-label mb-1">Cliente con crédito</label>
+                <select class="form-select cobro-select"
+                        [(ngModel)]="customerId"
+                        name="customerId">
+                  <option [ngValue]="null" disabled>-- Selecciona cliente --</option>
+                  <option *ngFor="let c of creditCustomers" [ngValue]="c.id">
+                    {{ c.customerName }} — Disp.:
+                    {{ c.availableCredit | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                  </option>
+                </select>
+                <small class="text-muted" *ngIf="loadingCreditCustomers">
+                  Cargando clientes con crédito...
+                </small>
+                <small class="text-danger" *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
+                  No hay clientes con crédito activo y saldo disponible.
+                </small>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label mb-1">Fecha de vencimiento</label>
+                <input type="date"
+                       class="form-control"
+                       [(ngModel)]="dueDate"
+                       name="dueDate" />
+              </div>
+            </ng-container>
+
+            <!-- Info contado -->
+            <ng-template #contadoInfo>
+              <div class="small text-muted mt-1">
+                Para pagos en efectivo, tarjeta o transferencia se registrará el ingreso en caja.
+              </div>
+            </ng-template>
           </div>
         </div>
+
+        <!-- Footer -->
         <div class="d-flex justify-content-end mt-4">
-          <button type="button" class="btn btn-primary px-4" (click)="confirmarCobro()">Confirmar</button>
+          <button type="button" class="btn btn-primary px-4" (click)="confirmarCobro()">
+            Confirmar
+          </button>
         </div>
       </div>
     </div>
   </div>
 </div>
+
 
 <div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
@@ -216,6 +235,7 @@
                 <th style="width:160px;">Marca</th>
                 <th style="width:180px;">Categoría</th>
                 <th style="width:120px;" class="text-end">Precio</th>
+                <th style="width:120px;" class="text-end">Stock</th>
                 <th style="width:110px;" class="text-center">Acción</th>
               </tr>
             </thead>
@@ -233,6 +253,7 @@
                 <td class="nowrap">{{ p.brand_name }}</td>
                 <td class="nowrap">{{ p.category_name }}</td>
                 <td class="text-end">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                <td class="text-end">{{ p.stock }}</td>
                 <td class="text-center">
                   <button type="button" class="btn btn-primary btn-add"
                           (click)="seleccionarProducto(p)">

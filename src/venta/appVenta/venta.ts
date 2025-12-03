@@ -29,9 +29,9 @@ interface CreditCustomer {
   customerName: string;
   phone?: string;
   email?: string;
-  total_balance: number;
-  next_due_date: string | null;
-  open_credit_count: number;
+  creditLimit: number;
+  currentBalance: number;
+  availableCredit: number;
 }
 
 @Component({
@@ -137,6 +137,7 @@ export class Venta {
   cerrarModalCobrar() { this.showModal = false; }
 
   async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
+    console.log('onPaymentMethodChange =>', method);
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
@@ -149,6 +150,7 @@ export class Venta {
   }
 
   private async loadCreditCustomers() {
+    console.log('loadCreditCustomers() called');
     const api = (window as any).electronAPI;
     if (!api || !api.getCreditCustomers) {
       await Swal.fire({
@@ -164,6 +166,8 @@ export class Venta {
       this.creditCustomers = [];
 
       const resp = await api.getCreditCustomers();
+      console.log('getCreditCustomers resp:', resp); 
+
       if (!resp?.success) {
         await Swal.fire({
           icon: 'error',
@@ -173,7 +177,16 @@ export class Venta {
         return;
       }
 
-      this.creditCustomers = resp.data || [];
+      this.creditCustomers = (resp.data || []).map((r: any) => ({
+        id: r.id,
+        customerName: r.customerName,
+        phone: r.phone,
+        email: r.email,
+        creditLimit: Number(r.credit_limit ?? 0),
+        currentBalance: Number(r.current_balance ?? 0),
+        availableCredit: Number(r.available_credit ?? 0),
+      }));
+
       if (this.creditCustomers.length > 0) {
         this.customerId = this.creditCustomers[0].id;
       } else {

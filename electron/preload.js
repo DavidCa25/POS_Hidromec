@@ -27,7 +27,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
     getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
+    getCustomersSummary: () => ipcRenderer.invoke('sp-get-customers-summary'),
     createCustomer: (code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke('sp-create-customer', code, customerName, email, phone, creditLimit, termsDays, active),
     updateCustomer: (id, code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke(
       'sp-update-customer', id, code, customerName, email, phone, creditLimit, termsDays, active),
+    getCustomerOpenSales: (customerId) =>
+    ipcRenderer.invoke('sp-get-customer-open-sales', customerId),
+    registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
+        ipcRenderer.invoke('sp-register-customer-payment',
+        customerId, saleId, amount, userId, paymentMethod, note),
+
 });

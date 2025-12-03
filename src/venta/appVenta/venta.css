@@ -244,3 +244,99 @@ input, select {
   .venta-table td:first-child { max-width: 300px; }
 }
 
+/* ===== Modal de COBRO más ANCHO y horizontal ===== */
+.modal-cobro .modal-dialog {
+  max-width: 760px;              /* más ancho que el default */
+}
+
+.modal-cobro .modal-content {
+  border-radius: 26px;
+  box-shadow: 0 16px 60px rgba(15, 23, 42, .18);
+  border: none;
+}
+
+.modal-cobro .modal-header {
+  padding: 1rem 1.6rem .4rem 1.6rem;
+}
+
+.modal-cobro .modal-title {
+  font-size: 1.35rem;
+  letter-spacing: -.02em;
+}
+
+.modal-cobro .modal-body {
+  padding: .25rem 1.6rem 1.4rem 1.6rem;
+}
+
+/* Layout a dos columnas */
+.cobro-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 1.6rem;
+}
+
+.cobro-left,
+.cobro-right {
+  min-width: 0;
+}
+
+/* Tarjeta de total */
+.cobro-total-card {
+  background: linear-gradient(135deg, #0f172a, #020617);
+  border-radius: 1.4rem;
+  padding: 1rem 1.3rem 1.1rem;
+  color: #f9fafb;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .45);
+}
+.cobro-total-card .label {
+  font-size: .9rem;
+  opacity: .8;
+}
+.cobro-total-card .total-amount {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  margin-top: .25rem;
+}
+
+/* Cambio */
+.cobro-cambio {
+  background: #ecfdf5;
+  border-radius: .9rem;
+  padding: .55rem .85rem;
+  font-weight: 700;
+  color: #059669;
+  font-size: 1.05rem;
+}
+
+/* Alert crédito */
+.cobro-alert {
+  margin-top: 1rem;
+  border-radius: 1rem;
+  padding: .7rem .9rem;
+  font-size: .9rem;
+}
+
+/* Selects del modal de cobro */
+.cobro-select {
+  height: 2.6rem !important;
+  font-size: .95rem !important;
+  border-radius: .9rem !important;
+  padding: .35rem .75rem;
+}
+
+/* Responsive: en móviles se apila en una sola columna */
+@media (max-width: 768px) {
+  .modal-cobro .modal-dialog {
+    max-width: 96vw;
+  }
+  .cobro-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+
+
+
