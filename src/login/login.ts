@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../services/auth.service';
+import { AuthService, RolUsuario } from '../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -18,7 +18,10 @@ export class Login {
   advertencia = '';
   mostrarContrasena = false;
 
-  constructor(private router: Router, private authService: AuthService) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   async onLogin(event: Event) {
     event.preventDefault();
@@ -29,22 +32,48 @@ export class Login {
     }
 
     this.advertencia = '';
+    this.mensaje = '';
 
+    try {
+      const resultado = await (window as any).electronAPI.iniciarSesion(
+        this.usuario,
+        this.contrasena
+      );
 
-    const resultado = await (window as any).electronAPI.iniciarSesion(this.usuario, this.contrasena);
-    if (resultado && resultado.success) {
-      localStorage.setItem('usuario', JSON.stringify(resultado.data));
-      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-      console.log(usuario.rol);
-      this.authService.login(usuario.id, usuario.nombre);
-      this.router.navigate(['/dashboard/estadisticas']);
-    } else {
-      this.mensaje = resultado.message || 'Usuario o contraseña inválidos';
+      if (resultado && resultado.success && resultado.data) {
+        const data = resultado.data as {
+          id: number;
+          usuario: string;
+          rol: RolUsuario | string;
+        };
+
+        const usuarioLS = {
+          id: data.id,
+          nombre: data.usuario,
+          rol: data.rol as RolUsuario
+        };
+        localStorage.setItem('usuarioActual', JSON.stringify(usuarioLS));
+
+        this.authService.login(
+          usuarioLS.id,
+          usuarioLS.nombre,
+          usuarioLS.rol
+        );
+
+        console.log('Login OK, rol:', usuarioLS.rol);
+
+        this.router.navigate(['/dashboard/estadisticas']);
+      } else {
+        this.mensaje = resultado?.message || 'Usuario o contraseña inválidos';
+      }
+    } catch (e: any) {
+      console.error('❌ Error en login:', e);
+      this.mensaje = e?.message || 'Ocurrió un error al iniciar sesión';
     }
   }
 
   onInputChange() {
     this.mensaje = '';
-    this.advertencia = ''
+    this.advertencia = '';
   }
 }
