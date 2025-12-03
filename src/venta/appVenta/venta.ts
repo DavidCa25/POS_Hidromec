@@ -266,6 +266,19 @@ export class Venta {
       );
 
       if (resp?.success) {
+        if (!isCredito) {
+          const api = (window as any).electronAPI;
+          if (api && api.openCashDrawer) {
+            try {
+              await api.openCashDrawer();
+            } catch (e) {
+              console.error('⚠ Error al abrir el cajón después de la venta:', e);
+            }
+          } else {
+            console.warn('openCashDrawer no disponible (¿modo ng serve?)');
+          }
+        }
+
         this.advanceFolioAfterConfirm();
         this.items = [];
         this.totalVenta = 0;
@@ -300,6 +313,7 @@ export class Venta {
       });
     }
   }
+
 
 
   async abrirModalProductos() {

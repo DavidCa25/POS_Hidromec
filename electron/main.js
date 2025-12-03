@@ -571,4 +571,17 @@ ipcMain.handle(
   }
 );
 
+ipcMain.handle('open-cash-drawer', async () => {
+  try {
+    console.log('🧾 Simulación: abrir cajón de efectivo');
 
+    // TODO: aquí en un futuro:
+    // - Enviar comando ESC/POS a la impresora
+    // - Escribir en puerto serial/USB, etc.
+
+    return { success: true };
+  } catch (err) {
+    console.error('❌ Error al abrir cajón:', err);
+    return { success: false, error: err.message };
+  }
+});

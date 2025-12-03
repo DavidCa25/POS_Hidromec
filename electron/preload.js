@@ -36,5 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
         ipcRenderer.invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
+    openCashDrawer: () => ipcRenderer.invoke('open-cash-drawer'),
+
 
 });
