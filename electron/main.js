@@ -41,34 +41,41 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('username', sql.VarChar, usuario)
-            .input('password', sql.VarChar, contrasena)
-            .execute('sp_login_user');
-        
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('username', sql.NVarChar, usuario)
+      .input('password', sql.NVarChar, contrasena)
+      .execute('sp_login_user');
 
-        if (result.recordset.length > 0) {
-            return {
-                success: true,
-                data: result.recordset[0] // Retorna el primer registro
-            };
-        } else {
-            return {
-                success: false,
-                message: 'Usuario o contraseña incorrectos'
-            };
-        }
+    const row = result.recordset[0];
 
-    } catch (err) {
-        console.error('❌ Error al ejecutar sp_login_user:', err);
-        return {
-            success: false,
-            error: err.message
-        };
+    if (!row) {
+      return {
+        success: false,
+        message: 'Usuario o contraseña incorrectos'
+      };
     }
+  
+    return {
+      success: true,
+      data: {
+        id: row.id,
+        usuario: row.usuario,
+        rol: row.rol,
+        active: row.active,
+        creation_date: row.creation_date
+      }
+    };
+  } catch (err) {
+    console.error('❌ Error login:', err);
+    return {
+      success: false,
+      message: err.message
+    };
+  }
 });
+
 
 ipcMain.handle('sp-get-products', async () => {
     try {
