@@ -1,0 +1,179 @@
+<div class="container">
+  <div class="card shadow-lg border-0 mt-4 venta-densa">
+    <div class="card-body">
+      <h2 class="text-center mb-5">Registrar Compras</h2>
+
+      <form>
+        <!-- Encabezado compra -->
+        <div class="row g-4 mb-4">
+          <div class="col-md-2">
+            <label class="form-label">Folio</label>
+            <input type="text" class="form-control" [value]="folio" readonly />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha</label>
+            <div class="fw-bold fecha-texto">
+              {{ today | date:'longDate':'':'es-MX' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla productos -->
+        <div class="mb-4">
+          <div class="table-responsive">
+            <table class="table align-middle shadow-sm mb-2 venta-table">
+              <thead>
+                <tr>
+                  <th style="min-width:280px;">Producto</th>
+                  <th style="min-width:280px;">Proveedor</th>
+                  <th style="width:120px;">Cantidad</th>
+                  <th style="width:180px;">Precio Compra</th>
+                  <th style="width:130px;">Subtotal</th>
+                  <th style="width:60px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let it of items; let i = index; trackBy: trackByItem">
+                  <td class="fw-semibold">{{ it.productName }}</td>
+                  <td>
+                    <select class="form-select form-select-sm"
+                            name="prov-{{ i }}"                       
+                            [(ngModel)]="items[i].proveedorId"      
+                            (ngModelChange)="onProveedorChange(i, $event)">
+                      <option [ngValue]="null" disabled>Seleccione proveedor</option>
+                      <option *ngFor="let prov of proveedores" [ngValue]="prov.id">
+                        {{ prov.nombre }}
+                      </option>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="number" class="form-control"
+                           min="1"
+                           [(ngModel)]="it.qty"
+                           name="qty-{{i}}"
+                           (ngModelChange)="onQtyChange(i)" />
+                  </td>
+                  <td>
+                    <input type="number" class="form-control"
+                           min="0" step="0.01"
+                           [(ngModel)]="it.purchasePrice"
+                           name="price-{{i}}"
+                           (ngModelChange)="onPurchasePriceChange(i)" />
+                  </td>
+                  <td class="fw-semibold">
+                    {{ it.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
+                            (click)="quitarItem(i)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Mensaje cuando no hay productos -->
+                <tr *ngIf="items.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">
+                    No hay productos agregados. Usa “Agregar producto”.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Botón agregar producto -->
+          <button type="button"
+                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"  
+                  (click)="abrirModalProductos()">
+            <i class="bi bi-plus-lg"></i> Agregar producto
+          </button>
+        </div>
+
+        <!-- Totales y botón registrar -->
+        <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
+          <div class="mb-0 me-4 text-end totales-box">
+            <div id="subtotal">Subtotal: {{ subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div id="subtotal-iva">IVA (16%): {{ iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div id="total-venta" class="fw-bold fs-5">Total: {{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          </div>
+          <button type="button"
+                  class="btn btn-success d-flex align-items-center gap-2 btn-registrar"
+                  (click)="registrarCompra()">
+            <i class="bi bi-save"></i> Registrar compra
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal productos -->
+<div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
+     style="background:rgba(0,0,0,0.13);z-index:10000;">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 py-2">
+        <h3 class="modal-title fw-bold m-0 mt-2 modal-title-compra">Seleccionar producto(s)</h3>
+        <button id="button-close" type="button" class="btn-close fa-2x" (click)="cerrarModalProductos()"></button>
+      </div>
+
+      <div class="modal-body pt-0 mt-4">
+        <input class="form-control mb-2 buscador"
+               placeholder="Buscar por nombre, número de parte, marca o categoría..."
+               [(ngModel)]="filtro" name="filtro">
+
+        <div class="table-responsive listado mt-4">
+          <table class="table table-hover align-middle compact-table">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>No. Parte</th>
+                <th>Producto</th>
+                <th>Marca</th>
+                <th>Categoría</th>
+                <th>Precio Sugerido</th>
+                <th style="width:180px;">Precio Compra</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of productos; let i = index"
+                  [hidden]="filtro && !(
+                    (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                    (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
+                  )">
+                <td class="text-muted">{{ i + 1 }}</td>
+                <td class="text-monospace">{{ p.part_number }}</td>
+                <td class="prod-name">{{ p.product_name }}</td>
+                <td class="nowrap">{{ p.brand_name }}</td>
+                <td class="nowrap">{{ p.category_name }}</td>
+                <td class="text-end">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                <td>
+                  <input type="number" min="0" step="0.01"
+                         class="form-control form-control-sm"
+                         [(ngModel)]="p.purchasePrice"
+                         name="precioCompra-{{i}}"
+                         (ngModelChange)="onPurchasePriceChange(i)" />
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-primary btn-add"
+                          (click)="seleccionarProducto(p)">
+                    Agregar
+                  </button>
+                </td>
+              </tr>
+
+              <tr *ngIf="productos.length === 0">
+                <td colspan="8" class="text-center text-muted py-4">
+                  No hay productos activos.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

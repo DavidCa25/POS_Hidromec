@@ -8,6 +8,8 @@ import { Venta } from '../venta/appVenta/venta';
 import { Corte } from '../venta/appCorte/corte';
 import { Cajon } from '../venta/appCajon/abrirCajon';
 import { Clientes } from '../clientes/clientes';
+import { RegistrarCompra } from '../compras/appRegistrarCompra/registrarCompra';
+import { TablaCompra } from '../compras/appTablaCompra/tablaCompra';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -17,6 +19,8 @@ export const routes: Routes = [
     children: [
       { path: 'inventario', component: Inventario },
       { path: 'compras', component: Compras },
+      { path: 'registrarCompra', component: RegistrarCompra},
+      { path: 'tablaCompra', component: TablaCompra},
       { path: 'estadisticas', component: Estadisticas },
       { path: 'venta', component: Venta},
       { path: 'corte-dia', component: Corte},

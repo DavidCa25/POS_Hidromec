@@ -1,0 +1,87 @@
+.cajon-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 3rem 1rem;
+  background: #f4f6fa;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+.cajon-card {
+  background: #ffffff;
+  border-radius: 2rem;
+  padding: 2.5rem 2.8rem;
+  max-width: 640px;
+  width: 100%;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.cajon-card h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 1.3rem;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.descripcion {
+  color: #4b5563;
+  font-size: 0.98rem;
+  margin-bottom: 1.8rem;
+}
+
+.estado {
+  background: #f9fafb;
+  border-radius: 1.3rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.8rem;
+  border: 1px solid #e5e7eb;
+}
+
+.estado-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 0.15rem;
+}
+
+.estado-valor {
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.estado-tip {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin-top: 0.4rem;
+}
+
+.btn {
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.8rem 2.6rem;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(37, 99, 235, 0.35);
+  transition: background 0.2s ease, transform 0.08s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.75;
+  cursor: default;
+}

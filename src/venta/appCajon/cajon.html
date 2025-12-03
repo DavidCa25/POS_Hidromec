@@ -1,0 +1,27 @@
+<div class="cajon-container">
+  <div class="cajon-card">
+    <h2>Cajón de efectivo</h2>
+
+    <p class="descripcion">
+      Aquí puedes simular la apertura del cajón de efectivo.
+      Cuando el sistema esté conectado al hardware real, este botón enviará la señal
+      al cajón (por ejemplo usando la impresora térmica).
+    </p>
+
+    <div class="estado">
+      <div class="estado-label">Última acción:</div>
+      <div class="estado-valor">
+        {{ ultimaAccion || 'Sin acciones recientes.' }}
+      </div>
+      <div class="estado-tip">
+        Atajo: presiona <strong>F9</strong> para abrir el cajón.
+      </div>
+    </div>
+
+    <button class="btn btn-primary"
+            [disabled]="loading"
+            (click)="abrirCajon()">
+      {{ loading ? 'Enviando señal...' : 'Abrir cajón' }}
+    </button>
+  </div>
+</div>

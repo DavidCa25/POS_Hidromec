@@ -24,7 +24,7 @@
         [class.active]="isOperacionesOpen"
         style="cursor: pointer;"
         [attr.aria-expanded]="isOperacionesOpen">
-        <i class="bi bi-box me-2"></i>
+        <i class="bi bi-cart-plus me-2"></i>
         <span>Venta</span>
         <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
       </a>
@@ -59,13 +59,36 @@
           <i class="bi bi-box me-2"></i> <span>Inventario</span>
         </a>
       </li>
-      <li>
-        <a routerLink="/dashboard/compras"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-cart me-2"></i> <span>Compras</span>
-        </a>
-      </li>
+    <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
+      [class.is-open]="isOperacionesCompraOpen">
+      <a 
+        class="sidebar-link d-flex align-items-center px-4 py-3"
+        (click)="toggleOperacionesCompra()" 
+        [class.active]="isOperacionesCompraOpen"
+        style="cursor: pointer;"
+        [attr.aria-expanded]="isOperacionesCompraOpen">
+        <i class="bi bi-bag-check me-2"></i>
+        <span>Compra</span>
+        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesCompraOpen"></i>
+      </a>
+      <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
+        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
+        <li>
+          <a routerLink="/dashboard/tablaCompra"
+            routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-table me-2"></i> Tabla de compras
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/registrarCompra"
+            routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-bag-plus me-2"></i> Registrar compra
+          </a>
+        </li>
+      </ul>
+    </li>
       <li>
         <a routerLink="/dashboard/clientes"
            routerLinkActive="active"

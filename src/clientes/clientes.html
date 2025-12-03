@@ -165,3 +165,129 @@
     </div>
   </div>
 </div>
+
+<div class="cierre-modal"
+       *ngIf="showAbonoModal"
+       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+    <div class="cierre-dialog modal-content"
+         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width: 96%; max-width: 780px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem;">
+        <h3 style="margin:0; font-size:1.4rem; font-weight:800;">
+          Abonar a crédito
+        </h3>
+        <button class="btn btn-ghost" (click)="cerrarAbonoModal()">✕</button>
+      </div>
+
+      <div *ngIf="abonoCliente" style="margin-bottom:.6rem; font-size:.95rem;">
+        <div style="font-weight:600;">{{ abonoCliente.name }}</div>
+        <div class="nota">
+          Saldo total: $ {{ abonoCliente.balance | number:'1.2-2' }}
+          <span *ngIf="abonoCliente.overdueCount>0">
+            — {{ abonoCliente.overdueCount }} vencida(s)
+          </span>
+        </div>
+      </div>
+
+      <div class="filter-row"
+           style="grid-template-columns: minmax(0, 1.35fr) minmax(0, .95fr); align-items:flex-start; gap:1rem;">
+        <!-- Columna izquierda: ventas -->
+        <div class="filter-group">
+          <label>Ventas a crédito pendientes</label>
+          <div style="border-radius:1rem; border:1px solid #e2e8f0; max-height:320px; overflow:auto;">
+
+            <table class="tabla-corte" style="margin:0; font-size:.9rem;">
+              <thead>
+                <tr>
+                  <th style="width:36px;"></th>
+                  <th>Fecha</th>
+                  <th class="right">Total</th>
+                  <th class="right">Pagado</th>
+                  <th class="right">Saldo</th>
+                  <th>Vence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngIf="loadingVentas">
+                  <td colspan="6" style="text-align:center; padding:.9rem;">
+                    Cargando ventas...
+                  </td>
+                </tr>
+
+                <tr *ngFor="let v of ventasCliente"
+                    [class.selected-row]="v.id === selectedSaleId"
+                    (click)="selectedSaleId = v.id; abonoAmount = v.balance"
+                    style="cursor:pointer;">
+                  <td>
+                    <input type="radio"
+                           [checked]="v.id === selectedSaleId"
+                           (click)="$event.stopPropagation(); selectedSaleId = v.id; abonoAmount = v.balance;">
+                  </td>
+                  <td>{{ v.datee | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="right">$ {{ v.total | number:'1.2-2' }}</td>
+                  <td class="right">$ {{ v.paid_amount | number:'1.2-2' }}</td>
+                  <td class="right">$ {{ v.balance | number:'1.2-2' }}</td>
+                  <td>
+                    <span *ngIf="v.due_date; else sinFecha">
+                      {{ v.due_date | date:'dd/MM/yyyy' }}
+                    </span>
+                    <ng-template #sinFecha>
+                      <span class="nota">Sin fecha</span>
+                    </ng-template>
+                  </td>
+                </tr>
+
+                <tr *ngIf="!loadingVentas && ventasCliente.length === 0">
+                  <td colspan="6" style="text-align:center; padding:.9rem;">
+                    No hay ventas a crédito con saldo pendiente para este cliente.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Columna derecha: datos de abono -->
+        <div class="filter-group">
+          <label>Monto del abono</label>
+          <input class="form-control"
+                 type="number"
+                 step="0.01"
+                 min="0"
+                 [(ngModel)]="abonoAmount">
+
+          <div class="filter-group" style="margin-top:.7rem;">
+            <label>Método de pago</label>
+            <select class="form-control"
+                    [(ngModel)]="abonoPaymentMethod">
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TARJETA">Tarjeta</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select>
+          </div>
+
+          <div class="filter-group" style="margin-top:.7rem;">
+            <label>Nota (opcional)</label>
+            <textarea class="form-control"
+                      rows="3"
+                      [(ngModel)]="abonoNote"
+                      style="resize:vertical; border-radius:0.9rem;"></textarea>
+          </div>
+
+          <div class="nota" style="margin-top:.6rem;">
+            Selecciona una venta, ajusta el monto si es parcial y confirma el abono.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
+        <button class="btn btn-ghost" (click)="cerrarAbonoModal()" [disabled]="savingAbono">
+          Cancelar
+        </button>
+        <button class="btn btn-primary"
+                (click)="confirmarAbono()"
+                [disabled]="savingAbono || ventasCliente.length === 0">
+          {{ savingAbono ? 'Guardando...' : 'Confirmar abono' }}
+        </button>
+      </div>
+    </div>
+  </div>

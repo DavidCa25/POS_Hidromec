@@ -171,7 +171,7 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
     }
 });
 
-ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) => {
+ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, customerId, dueDate) => {
   try {
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('La venta no tiene partidas.');
@@ -180,11 +180,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     const pool = await poolPromise;
 
     // --- Construir TVP para @SaleDetails ---
-    // Importante: Las columnas y su orden deben coincidir con el tipo SQL:
-    // CREATE TYPE dbo.SaleDetailType AS TABLE (
-    //   product_id INT, quantity INT, unit_price DECIMAL(10,2)
-    // )
-    const tvp = new sql.Table();     
+    const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Int, { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
@@ -194,9 +190,11 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     }
 
     const request = pool.request()
-      .input('user_id', sql.Int, userId)
-      .input('payment_method', sql.NVarChar(50), paymentMethod)
-      .input('SaleDetails', tvp); 
+      .input('user_id',        sql.Int,           userId)
+      .input('payment_method', sql.NVarChar(50),  paymentMethod)
+      .input('SaleDetails',    tvp)
+      .input('customer_id',    sql.Int,           customerId ?? null)
+      .input('due_date',       sql.Date,          dueDate ? new Date(dueDate) : null);
 
     const result = await request.execute('sp_register_sale');
 
@@ -206,6 +204,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items) =
     return { success: false, error: err.message };
   }
 });
+
     
 ipcMain.handle('sp-get-suppliers', async (event, data) => {
     try {   
@@ -267,6 +266,18 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
     console.error('❌ Error sp_register_purchase:', err);
     return { success: false, error: err.message };
   }
+});
+
+ipcMain.handle('sp-get-purchases', async (event) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_purchases');
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en get-purchases:', err);
+        return { success: false, error: err.message };
+    }
 });
 
 ipcMain.handle('sp-get-user-by-id', async (event, userId) => { 
@@ -340,7 +351,6 @@ ipcMain.handle('sp-get-total-orders', async (event, data) => {
 
 // main.js
 ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
-  // usa snake_case en ambos lados
   const {
     start_date = null,   // 'YYYY-MM-DD' o null
     end_date   = null,   // 'YYYY-MM-DD' o null
@@ -354,7 +364,7 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     const pool = await poolPromise;
 
     const req = pool.request()
-      .input('start_date', sql.Date, start_date)          // mssql acepta string 'YYYY-MM-DD' para Date
+      .input('start_date', sql.Date, start_date)         
       .input('end_date',   sql.Date, end_date)
       .input('user_id',    sql.Int, user_id)
       .input('typee',      sql.NVarChar(20), typee)
@@ -375,3 +385,203 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
   }
 });
 
+//CUSTOMER
+
+// CREATE
+ipcMain.handle(
+  'sp-create-customer',
+  async (event, code, customerName, email, phone, creditLimit, termsDays, active) => {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request
+        .input('code',          sql.NVarChar(30),  code)
+        .input('customerName',  sql.NVarChar(120), customerName)
+        .input('email',         sql.NVarChar(120), email)
+        .input('phone',         sql.NVarChar(30),  phone)
+        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',    sql.Int,            termsDays)
+        .input('active',        sql.Bit,            active);
+
+      // output del SP
+      request.output('NewId', sql.Int);
+
+      const result = await request.execute('sp_create_customer');
+
+      return {
+        success: true,
+        id: result.output.NewId
+      };
+    } catch (err) {
+      console.error('❌ Error al ejecutar sp_create_customer:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
+
+
+
+ipcMain.handle('sp-get-customer', async (event, { id, code }) => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    request.input('id',   sql.Int,          id   ?? null);
+    request.input('code', sql.NVarChar(30), code ?? null);
+
+    const result = await request.execute('sp_get_customer');
+    const rows = result.recordset || [];
+
+    return { success: true, data: rows };
+  } catch (err) {
+    console.error('❌ Error sp-get-customer:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-customers', async (event) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_customers');
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en get-customers:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sp-get-credit-customers', async () => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    const result = await request.execute('sp_get_customers_with_credit_available');
+
+    console.log('sp_get_customers_with_credit_available result:', result.recordset); 
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_get_customers_with_credit_available:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+ipcMain.handle('sp-get-customers-summary', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_customers_credit_summary');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ Error sp_get_customers_credit_summary:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
+
+ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email, phone, creditLimit, termsDays, active) => {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request
+        .input('id',            sql.Int,           id)
+        .input('code',          sql.NVarChar(30),  code)
+        .input('customerName',  sql.NVarChar(120), customerName)
+        .input('email',         sql.NVarChar(120), email)
+        .input('phone',         sql.NVarChar(30),  phone)
+        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',    sql.Int,            termsDays)
+        .input('active',        sql.Bit,            active);
+
+      const result = await request.execute('sp_update_customer');
+
+      return {
+        success: true,
+        rowsAffected: result.rowsAffected?.[0] ?? 0
+      };
+    } catch (err) {
+      console.error('❌ Error al ejecutar sp_update_customer:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
+
+ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('customer_id', sql.Int, customerId)
+      .execute('sp_get_customer_open_credit_sales');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_customer_open_credit_sales:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+ipcMain.handle(
+  'sp-register-customer-payment',
+  async (event, customerId, saleId, amount, userId, paymentMethod, note) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request()
+        .input('customer_id',    sql.Int,          customerId)
+        .input('sale_id',        sql.Int,          saleId)
+        .input('amount',         sql.Decimal(10,2), amount)
+        .input('user_id',        sql.Int,          userId)
+        .input('payment_method', sql.NVarChar(50), paymentMethod)
+        .input('note',           sql.NVarChar(255), note ?? null)
+        .execute('sp_register_customer_payment');
+
+      return {
+        success: true,
+        data: result.recordset ?? []
+      };
+    } catch (err) {
+      console.error('❌ Error sp_register_customer_payment:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+);
+
+ipcMain.handle('open-cash-drawer', async () => {
+  try {
+    console.log('🧾 Simulación: abrir cajón de efectivo');
+
+    // TODO: aquí en un futuro:
+    // - Enviar comando ESC/POS a la impresora
+    // - Escribir en puerto serial/USB, etc.
+
+    return { success: true };
+  } catch (err) {
+    console.error('❌ Error al abrir cajón:', err);
+    return { success: false, error: err.message };
+  }
+});
