@@ -1,0 +1,13 @@
+<div class="facturacion-container">
+  <div class="loading" *ngIf="cargando">
+    <div class="spinner"></div>
+    <p>Cargando FL Premium...</p>
+  </div>
+  
+  <iframe 
+    src="https://fel.blikon.com/CFDI33FP/Presentacion/Usuario/Ingreso.aspx?v2" 
+    class="iframe-flpremium"
+    (load)="onIframeLoad()"
+    frameborder="0">
+  </iframe>
+</div>
