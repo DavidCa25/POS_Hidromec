@@ -591,3 +591,67 @@ ipcMain.handle('open-cash-drawer', async () => {
     return { success: false, error: err.message };
   }
 });
+
+ipcMain.handle('sp-get-daily-sales-last-7-days', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_daily_sales_last_7_days');
+
+    console.log('▶ sp_get_daily_sales_last_7_days result:', result.recordset);
+
+    return {
+      success: true,
+      data: result.recordset || []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_daily_sales_last_7_days:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-daily-sales-current-month', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_daily_sales_current_month');
+
+    return {
+      success: true,
+      data: result.recordset || []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_daily_sales_current_month:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-profit-overview', async (event, { fromDate, toDate }) => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    if (fromDate) {
+      request.input('from_date', sql.Date, fromDate);
+    }
+    if (toDate) {
+      request.input('to_date', sql.Date, toDate);
+    }
+
+    const result = await request.execute('sp_get_profit_overview');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_get_profit_overview:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+
+

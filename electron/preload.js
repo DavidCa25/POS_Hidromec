@@ -40,6 +40,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
     openCashDrawer: () => ipcRenderer.invoke('open-cash-drawer'),
+    getDailySalesLast7Days: () => ipcRenderer.invoke('sp-get-daily-sales-last-7-days'),
+    getDailySalesCurrentMonth: () =>
+        ipcRenderer.invoke('sp-get-daily-sales-current-month'),
+    getProfitOverview: (fromDate, toDate) =>
+        ipcRenderer.invoke('sp-get-profit-overview', { fromDate, toDate }),
+
 
 
 });
