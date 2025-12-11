@@ -10,7 +10,7 @@
     </div>
     <ul class="sidebar-menu list-unstyled">
       <li>
-        <a routerLink="/dashboard/estadisticas"
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/estadisticas"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="bi bi-bar-chart-line"></i> <span>Estadisticas</span>
@@ -39,13 +39,13 @@
           </a>
         </li>
         <li>
-          <a routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
           </a>
         </li>
         <li>
-          <a routerLink="/dashboard/corte-dia" routerLinkActive="active"
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/corte-dia" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="bi bi-calendar2-check me-2"></i> Corte del día
           </a>
@@ -53,7 +53,7 @@
       </ul>
     </li>
       <li>
-        <a routerLink="/dashboard/inventario"
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="bi bi-box me-2"></i> <span>Inventario</span>
@@ -74,7 +74,7 @@
       <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
         style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
         <li>
-          <a routerLink="/dashboard/tablaCompra"
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaCompra"
             routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="bi bi-table me-2"></i> Tabla de compras
@@ -90,10 +90,17 @@
       </ul>
     </li>
       <li>
-        <a routerLink="/dashboard/clientes"
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/clientes"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="bi bi-credit-card-2-front me-2"></i> <span>Clientes</span>
+        </a>
+      </li>
+      <li>
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/facturacion"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="bi bi-envelope-paper"></i> <span>Facturación</span>
         </a>
       </li>
     </ul>
@@ -140,6 +147,11 @@
           <li>
             <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
               <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+            </a>
+          </li>
+          <li>
+            <a (click)="crearUsuario()" class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-box-arrow-right me-2"></i> Crear Usuario
             </a>
           </li>
         </ul>

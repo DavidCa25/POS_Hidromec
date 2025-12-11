@@ -1,4 +1,24 @@
 <div class="container">
+  <!-- Barra de atajos POS -->
+  <div class="pos-shortcuts-bar mb-3">
+    <div class="pos-shortcut" (click)="abrirCajonManual()">
+      <span class="pos-key">F1</span>
+      <span class="pos-label">Abrir cajón</span>
+    </div>
+    <div class="pos-shortcut" (click)="abrirModalProductos()">
+      <span class="pos-key">F7</span>
+      <span class="pos-label">Buscar / Agregar producto</span>
+    </div>
+    <div class="pos-shortcut" (click)="abrirModalCobrar()">
+      <span class="pos-key">F8</span>
+      <span class="pos-label">Cobrar</span>
+    </div>
+    <div class="pos-shortcut" (click)="abrirSalidaEfectivo()">
+      <span class="pos-key">F10</span>
+      <span class="pos-label">Salida de efectivo</span>
+    </div>
+  </div>
+
   <div class="card shadow-lg border-0 mt-4 venta-densa">
     <div class="card-body">
       <h2 class="text-center mb-5">Punto de Venta</h2>
@@ -73,7 +93,7 @@
           </div>
 
           <button type="button"
-                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"  
+                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"
                   (click)="abrirModalProductos()">
             <i class="bi bi-plus-lg"></i> Agregar producto
           </button>
@@ -81,10 +101,12 @@
 
         <!-- Total y acciones -->
         <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
-          <div id="total-venta" class="mb-0 me-4">
+          <div id="total-venta" class="mb-0 me-4 fs-4 fw-bold text-success">
             {{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </div>
-          <button type="button" class="btn btn-success d-flex align-items-center gap-2" (click)="abrirModalCobrar()">
+          <button type="button"
+                  class="btn btn-success d-flex align-items-center gap-2"
+                  (click)="abrirModalCobrar()">
             <i class="bi bi-cash-stack"></i> Cobrar
           </button>
         </div>
@@ -99,16 +121,13 @@
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <!-- Header -->
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold m-0">Cobro</h5>
         <button type="button" class="btn-close" (click)="cerrarModalCobrar()"></button>
       </div>
 
-      <!-- Body -->
       <div class="modal-body">
         <div class="cobro-layout">
-          <!-- Columna izquierda: resumen -->
           <div class="cobro-left">
             <div class="cobro-total-card">
               <span class="label">Total a pagar</span>
@@ -139,13 +158,12 @@
 
             <ng-container *ngIf="paymentMethod === 'CREDITO'">
               <div class="alert alert-info cobro-alert">
-                Esta venta se registrará como <strong>crédito</strong>.  
+                Esta venta se registrará como <strong>crédito</strong>.
                 El pago se capturará después en el módulo de abonos.
               </div>
             </ng-container>
           </div>
 
-          <!-- Columna derecha: forma de pago / cliente -->
           <div class="cobro-right">
             <div class="mb-3">
               <label class="form-label mb-1">Método de pago</label>
@@ -160,7 +178,6 @@
               </select>
             </div>
 
-            <!-- Crédito -->
             <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoInfo">
               <div class="mb-3">
                 <label class="form-label mb-1">Cliente con crédito</label>
@@ -176,7 +193,8 @@
                 <small class="text-muted" *ngIf="loadingCreditCustomers">
                   Cargando clientes con crédito...
                 </small>
-                <small class="text-danger" *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
+                <small class="text-danger"
+                       *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
                   No hay clientes con crédito activo y saldo disponible.
                 </small>
               </div>
@@ -190,7 +208,6 @@
               </div>
             </ng-container>
 
-            <!-- Info contado -->
             <ng-template #contadoInfo>
               <div class="small text-muted mt-1">
                 Para pagos en efectivo, tarjeta o transferencia se registrará el ingreso en caja.
@@ -199,7 +216,6 @@
           </div>
         </div>
 
-        <!-- Footer -->
         <div class="d-flex justify-content-end mt-4">
           <button type="button" class="btn btn-primary px-4" (click)="confirmarCobro()">
             Confirmar
@@ -210,7 +226,7 @@
   </div>
 </div>
 
-
+<!-- MODAL PRODUCTOS -->
 <div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered">
@@ -225,7 +241,7 @@
                placeholder="Buscar por nombre, número de parte, marca o categoría..."
                [(ngModel)]="filtro" name="filtro">
 
-        <div class="table-responsive listado" >
+        <div class="table-responsive listado">
           <table class="table table-hover align-middle compact-table">
             <thead class="table-light">
               <tr>
@@ -272,7 +288,9 @@
         </div>
 
         <div class="d-flex justify-content-end mt-2">
-          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalProductos()">
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  (click)="cerrarModalProductos()">
             Cerrar
           </button>
         </div>
@@ -281,3 +299,109 @@
   </div>
 </div>
 
+<!-- MODAL SALIDA EFECTIVO -->
+<div class="modal fade show d-block"
+     *ngIf="showCashOutModal"
+     style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Registrar salida de efectivo</h5>
+        <button type="button" class="btn-close" (click)="cerrarSalidaEfectivo()"></button>
+      </div>
+
+      <div class="modal-body px-4 pt-1 pb-3">
+        <div class="mb-3">
+          <label class="form-label">Monto a retirar</label>
+          <input type="number"
+                 class="form-control"
+                 min="0" step="0.01"
+                 [(ngModel)]="cashOutAmount"
+                 name="cashOutAmount"
+                 placeholder="0.00" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Descripción / Nota</label>
+          <textarea class="form-control"
+                    rows="2"
+                    [(ngModel)]="cashOutNote"
+                    name="cashOutNote"
+                    placeholder="Ej. Pago a proveedor Filtros CAT, gasolina, etc."></textarea>
+        </div>
+
+        <div class="alert alert-info small">
+          Esta salida afectará el efectivo del cajón y aparecerá en el corte de caja
+          como una <strong>salida</strong>.
+        </div>
+
+        <div class="d-flex justify-content-end mt-3 gap-2">
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="cerrarSalidaEfectivo()">
+            Cancelar
+          </button>
+          <button type="button"
+                  class="btn btn-danger"
+                  (click)="confirmarSalidaEfectivo()">
+            Registrar salida
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POST-VENTA: PDF / WHATSAPP -->
+<div class="modal fade show d-block"
+     *ngIf="showPostSaleModal"
+     style="background:rgba(0,0,0,0.25);z-index:12000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Venta registrada</h5>
+        <button type="button" class="btn-close" (click)="cerrarPostSaleModal()"></button>
+      </div>
+
+      <div class="modal-body px-4 pt-2 pb-4">
+        <p class="mb-2">
+          La venta se guardó correctamente.
+        </p>
+        <p class="mb-3 small text-muted">
+          Folio: <strong>{{ lastSaleId || 'N/D' }}</strong> ·
+          Importe: <strong>{{ lastSaleTotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
+          <span *ngIf="lastSaleIsCredito">· tipo: <strong>Crédito</strong></span>
+          <span *ngIf="!lastSaleIsCredito">· tipo: <strong>Contado</strong></span>
+        </p>
+
+        <div class="mb-3">
+          <span class="fw-semibold">¿Qué deseas hacer ahora?</span>
+        </div>
+
+        <div class="d-flex flex-column gap-2">
+          <button type="button"
+                  class="btn btn-outline-primary w-100"
+                  [disabled]="!lastSaleId"
+                  (click)="generarPdfUltimaVenta()">
+            <i class="bi bi-file-earmark-pdf me-2"></i>
+            Generar / ver PDF
+          </button>
+
+          <button type="button"
+                  class="btn btn-outline-success w-100"
+                  [disabled]="!lastSaleId"
+                  (click)="enviarTicketWhatsApp()">
+            <i class="bi bi-whatsapp me-2"></i>
+            Enviar ticket por WhatsApp
+          </button>
+
+          <button type="button"
+                  class="btn btn-light w-100"
+                  (click)="cerrarPostSaleModal()">
+            Nada más, cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -335,6 +335,48 @@ input, select {
   }
 }
 
+.pos-shortcuts-bar {
+  max-width: 900px;
+  margin: 0 auto 1rem auto;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.pos-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #f5f7ff;
+  border: 1px solid #d5ddff;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.pos-shortcut:hover {
+  background: #e6edff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+}
+
+.pos-key {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: #1e3a8a;
+  color: #fff;
+}
+
+.pos-label {
+  font-size: 0.78rem;
+  color: #111827;
+}
+
 
 
 

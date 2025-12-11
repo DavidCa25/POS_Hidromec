@@ -1,7 +1,7 @@
-import { Component, HostListener,LOCALE_ID, OnInit } from '@angular/core';
+import { Component, HostListener, LOCALE_ID, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgClass } from '@angular/common';
 import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
 import { AuthService } from '../services/auth.service';
@@ -42,7 +42,7 @@ class PurchaseItem {
 @Component({
   selector: 'app-compras',
   templateUrl: './compras.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgClass],
   styleUrls: ['./compras.css'],
   providers: [
     { provide: LOCALE_ID, useValue: 'es-MX' }
@@ -52,49 +52,41 @@ export class Compras implements OnInit {
   folio: number | null = null;
   today = new Date();
 
-  // Proveedor
   proveedores: Proveedor[] = [];
-  proveedorSeleccionado: number | null = null;
-
-  // Productos
-  showModalProductos = false;
   productos: ProductRow[] = [];
   filtro = '';
 
-  // Items de compra
   items: PurchaseItem[] = [];
 
+  // Forma de pago al proveedor
+  pagoProveedor: 'NOPAGAR' | 'EFECTIVO' | 'CHEQUE' | 'TRANSFERENCIA' = 'NOPAGAR';
+
+  // Estado modales
+  showModalProductos = false;
+  showPagoModal = false;
+
+  // Datos del modal de pago
+  montoEntregado: number | null = null;
+  numeroCheque = '';
+  referenciaTransferencia = '';
+  proveedorPagoNombre = '';
+
   // IVA
-  ivaTasa = 0.16; // 16%
+  ivaTasa = 0.16;
 
   constructor(private authService: AuthService) {
     this.cargarProveedores();
-
-    console.log('📅 today:', this.today);
-
   }
 
   ngOnInit() {
     this.cargarFolio();
   }
 
-  cargarFolio() {
-    (window as any).electronAPI.getNextPurchaseFolio()
-      .then((resFolio: any) => {
-        if (resFolio.success) {
-          this.folio = resFolio.folio;
-        }
-      })
-      .catch((err: any) => {
-        console.error('Error al obtener folio al iniciar:', err);
-      });
-  }
-
   get usuarioActualId(): number {
     return this.authService.usuarioActualId ?? 0;
   }
 
-  /** ----- CALCULOS ----- **/
+  /** ====== Cálculos ====== **/
   get subtotal(): number {
     return this.items.reduce((acc, it) => acc + it.subtotal, 0);
   }
@@ -104,8 +96,12 @@ export class Compras implements OnInit {
   get total(): number {
     return this.subtotal + this.iva;
   }
+  get cambioProveedor(): number {
+    if (this.montoEntregado == null) return 0;
+    return this.montoEntregado - this.total;
+  }
 
-  /** ----- PROVEEDORES ----- **/
+  /** ====== Cargar catálogo ====== **/
   async cargarProveedores() {
     try {
       const rs = await (window as any).electronAPI.getSuppliers();
@@ -116,13 +112,28 @@ export class Compras implements OnInit {
     }
   }
 
-  /** ----- PRODUCTOS ----- **/
+  cargarFolio() {
+    (window as any).electronAPI.getNextPurchaseFolio()
+      .then((resFolio: any) => {
+        if (resFolio?.success) {
+          this.folio = resFolio.folio;
+        }
+      })
+      .catch((err: any) => {
+        console.error('Error al obtener folio al iniciar:', err);
+      });
+  }
+
+  /** ====== Productos ====== **/
   async abrirModalProductos() {
     this.filtro = '';
     await this.cargarProductosActivos();
     this.showModalProductos = true;
   }
-  cerrarModalProductos() { this.showModalProductos = false; }
+
+  cerrarModalProductos() {
+    this.showModalProductos = false;
+  }
 
   async cargarProductosActivos() {
     try {
@@ -136,14 +147,13 @@ export class Compras implements OnInit {
         stock: r.stock,
         category_name: r.category_name,
         brand_name: r.brand_name,
-        purchasePrice: 0  
+        purchasePrice: 0
       })) as (ProductRow & { purchasePrice: number })[];
     } catch (e) {
       console.error('❌ Error al cargar productos activos:', e);
       this.productos = [];
     }
   }
-
 
   seleccionarProducto(p: ProductRow & { purchasePrice?: number }) {
     const existing = this.items.find(it => it.productId === p.id);
@@ -159,67 +169,66 @@ export class Compras implements OnInit {
       1,
       p.price ?? 0,
       p.purchasePrice ?? 0,
-      null    
+      null
     );
     this.items.push(item);
     this.showModalProductos = false;
   }
 
-  /** ----- EVENTOS DE CAMBIO ----- **/
+  /** ====== Eventos de edición de items ====== **/
   onQtyChange(i: number) {
     const it = this.items[i];
     if (!it) return;
     if (it.qty < 1) it.qty = 1;
-
-    console.log(`Item ${i}: qty=${it.qty}, purchasePrice=${it.purchasePrice}, subtotal=${it.subtotal}`);
   }
 
   onPurchasePriceChange(i: number) {
     const it = this.items[i];
     if (!it) return;
     if (it.purchasePrice < 0) it.purchasePrice = 0;
-
-    console.log(`Item ${i}: qty=${it.qty}, purchasePrice=${it.purchasePrice}, subtotal=${it.subtotal}`);
   }
-  trackByItem = (_: number, it: PurchaseItem) => it.productId;
 
   onProveedorChange(i: number, value?: number | null) {
     const item = this.items[i];
     if (!item) return;
-    if (value !== undefined) item.proveedorId = value === null ? null : Number(value);
-    console.log(`Proveedor cambiado en item ${i}:`, item.proveedorId);
+    if (value !== undefined) {
+      item.proveedorId = value === null ? null : Number(value);
+    }
   }
-
 
   quitarItem(i: number) {
     this.items.splice(i, 1);
   }
 
-  /** ----- GUARDAR COMPRA ----- **/
-  registrarCompra() {
+  /** ====== Flujo principal de guardar ====== **/
 
+  private async validarAntesDeGuardar(): Promise<boolean> {
     if (this.items.length === 0) {
-      Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "No hay productos en la compra"
+      await Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'No hay productos en la compra'
       });
-      return;      
+      return false;
     }
 
     const sinProveedor = this.items.some(it => !it.proveedorId);
     if (sinProveedor) {
-      Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Todos los productos deben tener un proveedor seleccionado"
+      await Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Todos los productos deben tener un proveedor seleccionado'
       });
-      return;
+      return false;
     }
 
-    const payload = {
-      user_id: this.usuarioActualId, 
-      tax_rate: this.ivaTasa, 
+    return true;
+  }
+
+  private construirPayloadCompra() {
+    return {
+      user_id: this.usuarioActualId,
+      tax_rate: this.ivaTasa,
       tax_amount: this.iva,
       subtotal: this.subtotal,
       total: this.total,
@@ -230,47 +239,145 @@ export class Compras implements OnInit {
         unit_price: it.purchasePrice
       }))
     };
-
-    console.log('💾 Registrando compra:', payload);
-
-    (window as any).electronAPI.registerPurchase(payload)
-      .then((res: any) => {
-        if (res.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Compra registrada',
-            text: `Folio: ${res.folio}`,
-            confirmButtonText: 'Aceptar'
-          });
-          this.items = [];
-
-          (window as any).electronAPI.getNextPurchaseFolio()
-          .then((resFolio: any) => {
-            if (resFolio.success) {
-              this.folio = resFolio.folio;
-            }
-          });
-        } else {
-          console.error(res.error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error al registrar compra',
-            text: res.message || 'Ocurrió un error inesperado.'
-          });
-        }
-      })
-      .catch((err: any) => {
-        console.error('❌ Error en registrarCompra:', err);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al registrar compra',
-          text: 'Ocurrió un error inesperado.'
-        });
-      });
   }
 
+  private async ejecutarCompra(conPago: boolean): Promise<void> {
+    const esValido = await this.validarAntesDeGuardar();
+    if (!esValido) return;
 
-  /** ----- ATAJOS DE TECLADO ----- **/
+    const payload = this.construirPayloadCompra();
+    console.log('Registrando compra:', payload);
+
+    try {
+      const res = await (window as any).electronAPI.registerPurchase(payload);
+
+      if (!res?.success) {
+        console.error(res?.error);
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar compra',
+          text: res?.message || 'Ocurrió un error inesperado.'
+        });
+        return;
+      }
+
+      const purchaseId: number | undefined =
+        res.purchaseId ?? res.purchase_id ?? res.id;
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Compra registrada',
+        text: purchaseId ? `Folio: ${purchaseId}` : 'La compra se guardó correctamente.',
+        confirmButtonText: 'Aceptar'
+      });
+
+      if (conPago && this.pagoProveedor !== 'NOPAGAR' && purchaseId) {
+        const supplierId = this.items[0].proveedorId!;
+        const allSameSupplier = this.items.every(
+          it => it.proveedorId === supplierId
+        );
+
+        if (!allSameSupplier) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Pago al proveedor no registrado',
+            text: 'Para registrar el pago inmediato, todos los productos deben ser del mismo proveedor.'
+          });
+        } else {
+          const noteParts: string[] = [`Pago ${this.pagoProveedor} compra ${purchaseId}`];
+
+          if (this.pagoProveedor === 'EFECTIVO' && this.montoEntregado != null) {
+            const cambio = this.montoEntregado - this.total;
+            noteParts.push(
+              `Entregado: ${this.montoEntregado.toFixed(2)}`,
+              `Cambio: ${cambio.toFixed(2)}`
+            );
+          } else if (this.pagoProveedor === 'CHEQUE' && this.numeroCheque) {
+            noteParts.push(`Cheque: ${this.numeroCheque}`);
+          } else if (this.pagoProveedor === 'TRANSFERENCIA' && this.referenciaTransferencia) {
+            noteParts.push(`Referencia: ${this.referenciaTransferencia}`);
+          }
+
+          const payPayload = {
+            user_id: this.usuarioActualId,
+            supplier_id: supplierId,
+            purchase_id: purchaseId,
+            amount: this.total,
+            payment_method: this.pagoProveedor,
+            note: noteParts.join(' | ')
+          };
+
+          console.log('💸 Registrando pago a proveedor:', payPayload);
+
+          const payRes = await (window as any).electronAPI.registerSupplierPayment(payPayload);
+
+          if (!payRes?.success) {
+            console.error(payRes?.error);
+            await Swal.fire({
+              icon: 'warning',
+              title: 'Compra guardada, pero…',
+              text: 'No se pudo registrar el pago al proveedor. Revísalo en el módulo de pagos.'
+            });
+          }
+        }
+      }
+
+      // Reset formulario + folio
+      this.items = [];
+      this.pagoProveedor = 'NOPAGAR';
+      this.montoEntregado = null;
+      this.numeroCheque = '';
+      this.referenciaTransferencia = '';
+
+      const resFolio = await (window as any).electronAPI.getNextPurchaseFolio();
+      if (resFolio?.success) {
+        this.folio = resFolio.folio;
+      }
+
+    } catch (err: any) {
+      console.error('❌ Error en ejecutarCompra:', err);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al registrar compra',
+        text: 'Ocurrió un error inesperado.'
+      });
+    }
+  }
+
+  async registrarCompra() {
+    const esValido = await this.validarAntesDeGuardar();
+    if (!esValido) return;
+
+    if (this.pagoProveedor === 'NOPAGAR') {
+      await this.ejecutarCompra(false);
+      return;
+    }
+
+    const firstSupplierId = this.items[0].proveedorId;
+    const prov = this.proveedores.find(p => p.id === firstSupplierId);
+    this.proveedorPagoNombre = prov?.nombre || '';
+
+    this.montoEntregado = this.total; 
+    this.numeroCheque = '';
+    this.referenciaTransferencia = '';
+
+    this.showPagoModal = true;
+  }
+
+  cerrarPagoModal() {
+    this.showPagoModal = false;
+  }
+
+  async soloRegistrarCompra() {
+    this.showPagoModal = false;
+    await this.ejecutarCompra(false);
+  }
+
+  async confirmarCompraConPago() {
+    this.showPagoModal = false;
+    await this.ejecutarCompra(true);
+  }
+
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     if (event.key === 'F8') {

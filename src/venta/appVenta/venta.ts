@@ -5,7 +5,6 @@ import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common'
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
 
-
 interface ProductRow {
   id: number;
   part_number: string;
@@ -43,14 +42,14 @@ interface CreditCustomer {
 export class Venta {
   today = new Date();
 
-  folio: number = 1; 
-  private FOLIO_KEY = 'folioCounter'; 
+  folio: number = 1;
+  private FOLIO_KEY = 'folioCounter';
 
   showModal = false;
   dineroRecibido: number | null = null;
   paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
 
-  customerId: number | null = null; 
+  customerId: number | null = null;
   dueDate: string | null = null;
 
   creditCustomers: CreditCustomer[] = [];
@@ -62,6 +61,17 @@ export class Venta {
 
   items: SaleItem[] = [];
   totalVenta = 0;
+
+  // Salida de efectivo (F10)
+  showCashOutModal = false;
+  cashOutAmount: number | null = null;
+  cashOutNote = '';
+
+  // Post-venta (acciones: PDF / WhatsApp)
+  showPostSaleModal = false;
+  lastSaleId: number | null = null;
+  lastSaleIsCredito = false;
+  lastSaleTotal = 0;
 
   constructor(private auth: AuthService, private router: Router) {
     this.totalVenta = 0;
@@ -86,7 +96,7 @@ export class Venta {
 
   private readFolioCounter(): number {
     const v = Number(localStorage.getItem(this.FOLIO_KEY) || '0');
-    return Number.isFinite(v) ? v : 0; 
+    return Number.isFinite(v) ? v : 0;
   }
   private writeFolioCounter(v: number) {
     localStorage.setItem(this.FOLIO_KEY, String(v));
@@ -96,9 +106,9 @@ export class Venta {
   }
   private advanceFolioAfterConfirm() {
     const current = this.readFolioCounter();
-    const confirmed = current + 1;    
-    this.writeFolioCounter(confirmed); 
-    this.folio = confirmed + 1;     
+    const confirmed = current + 1;
+    this.writeFolioCounter(confirmed);
+    this.folio = confirmed + 1;
   }
 
   get cambio(): number {
@@ -141,7 +151,7 @@ export class Venta {
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
-      this.dineroRecibido = null; 
+      this.dineroRecibido = null;
       await this.loadCreditCustomers();
     } else {
       this.customerId = null;
@@ -166,7 +176,7 @@ export class Venta {
       this.creditCustomers = [];
 
       const resp = await api.getCreditCustomers();
-      console.log('getCreditCustomers resp:', resp); 
+      console.log('getCreditCustomers resp:', resp);
 
       if (!resp?.success) {
         await Swal.fire({
@@ -205,6 +215,7 @@ export class Venta {
     }
   }
 
+  /** ================== CONFIRMAR COBRO ================== */
   async confirmarCobro() {
     if (this.items.length === 0) {
       this.showModal = false;
@@ -266,6 +277,7 @@ export class Venta {
       );
 
       if (resp?.success) {
+        // Abrir cajón sólo en ventas de contado
         if (!isCredito) {
           const api = (window as any).electronAPI;
           if (api && api.openCashDrawer) {
@@ -279,22 +291,26 @@ export class Venta {
           }
         }
 
+        // Guardamos info de la venta para el modal post-venta
+        const saleId: number | null =
+          resp.saleId ?? resp.id ?? resp.folio ?? null;
+
+        this.lastSaleId = saleId;
+        this.lastSaleIsCredito = isCredito;
+        this.lastSaleTotal = this.totalVenta;
+
+        // Avanzar folio y limpiar la pantalla de venta
         this.advanceFolioAfterConfirm();
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
         this.customerId = null;
         this.dueDate = null;
-        this.showModal = false;
 
-        await Swal.fire({
-          icon: 'success',
-          title: isCredito ? 'Venta a crédito registrada' : 'Venta registrada',
-          text: 'Se guardó correctamente.',
-          timer: 1800,
-          showConfirmButton: false,
-          timerProgressBar: true
-        });
+        // Cerrar modal de cobro y abrir modal post-venta
+        this.showModal = false;
+        this.showPostSaleModal = true;
+
       } else {
         this.showModal = false;
         await Swal.fire({
@@ -314,7 +330,7 @@ export class Venta {
     }
   }
 
-
+  /** ================== PRODUCTOS ================== */
 
   async abrirModalProductos() {
     this.filtro = '';
@@ -325,7 +341,7 @@ export class Venta {
 
   async cargarProductosActivos() {
     try {
-      const rs = await (window as any).electronAPI.getActiveProducts(); 
+      const rs = await (window as any).electronAPI.getActiveProducts();
       const rows = Array.isArray(rs?.recordset) ? rs.recordset : Array.isArray(rs) ? rs : [];
       this.productos = rows.map((r: any) => ({
         id: r.id,
@@ -363,11 +379,228 @@ export class Venta {
     this.showModalProductos = false;
   }
 
+  /** ================== CAJÓN MANUAL & SALIDA EFECTIVO ================== */
+
+  async abrirCajonManual() {
+    const api = (window as any).electronAPI;
+    if (!api || !api.openCashDrawer) {
+      console.warn('openCashDrawer no disponible (¿modo ng serve?)');
+      await Swal.fire({
+        icon: 'info',
+        title: 'No disponible',
+        text: 'La apertura del cajón no está disponible en este entorno.'
+      });
+      return;
+    }
+
+    try {
+      await api.openCashDrawer();
+    } catch (e) {
+      console.error('⚠ Error al abrir el cajón:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo abrir el cajón. Revisa la configuración.'
+      });
+    }
+  }
+
+  abrirSalidaEfectivo() {
+    this.cashOutAmount = null;
+    this.cashOutNote = '';
+    this.showCashOutModal = true;
+  }
+
+  cerrarSalidaEfectivo() {
+    this.showCashOutModal = false;
+  }
+
+  async confirmarSalidaEfectivo() {
+    const amount = Number(this.cashOutAmount ?? 0);
+
+    if (amount <= 0) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Monto inválido',
+        text: 'El monto a retirar debe ser mayor a cero.'
+      });
+      return;
+    }
+
+    if (!this.cashOutNote.trim()) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Nota requerida',
+        text: 'Describe brevemente para qué es la salida de efectivo (pago a proveedor, etc.).'
+      });
+      return;
+    }
+
+    const api = (window as any).electronAPI;
+    if (!api || !api.registerCashMovement) {
+      console.error('registerCashMovement no disponible');
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'No se pudo registrar la salida de efectivo (API no disponible).'
+      });
+      return;
+    }
+
+    const payload = {
+      user_id: this.currentUserId,
+      typee: 'WITHDRAW',
+      amount,
+      reference_id: null,
+      reference: 'SALIDA CAJA',
+      note: this.cashOutNote
+    };
+
+    try {
+      console.log('💸 Registrando salida de efectivo:', payload);
+      const resp = await api.registerCashMovement(payload);
+
+      if (resp?.success) {
+        this.showCashOutModal = false;
+        this.cashOutAmount = null;
+        this.cashOutNote = '';
+        await Swal.fire({
+          icon: 'success',
+          title: 'Salida registrada',
+          text: 'La salida de efectivo se registró correctamente.'
+        });
+      } else {
+        console.error(resp?.error);
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar salida',
+          text: resp?.error || 'No se pudo registrar la salida de efectivo.'
+        });
+      }
+    } catch (e: any) {
+      console.error('❌ registrar salida efectivo:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al registrar la salida.'
+      });
+    }
+  }
+
+  /** ================== POST-VENTA: PDF / WHATSAPP ================== */
+
+  cerrarPostSaleModal() {
+    this.showPostSaleModal = false;
+  }
+
+  async generarPdfUltimaVenta() {
+    if (!this.lastSaleId) return;
+
+    const api = (window as any).electronAPI;
+    if (!api || !api.generateSalePdf) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'No disponible',
+        text: 'La generación de PDF no está configurada en este entorno.'
+      });
+      return;
+    }
+
+    try {
+      const resp = await api.generateSalePdf(this.lastSaleId);
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al generar PDF',
+          text: resp?.error || 'No se pudo generar el PDF de la venta.'
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'PDF generado',
+        text: 'El PDF de la venta se generó correctamente.'
+      });
+    } catch (e: any) {
+      console.error('❌ generarPdfUltimaVenta:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al generar el PDF.'
+      });
+    }
+  }
+
+  async enviarTicketWhatsApp() {
+    if (!this.lastSaleId) return;
+
+    const api = (window as any).electronAPI;
+    if (!api || !api.sendSaleTicketWhatsApp) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'No disponible',
+        text: 'El envío por WhatsApp no está configurado en este entorno.'
+      });
+      return;
+    }
+
+    try {
+      const resp = await api.sendSaleTicketWhatsApp(this.lastSaleId);
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al enviar ticket',
+          text: resp?.error || 'No se pudo enviar el ticket por WhatsApp.'
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Ticket enviado',
+        text: 'Se envió el ticket por WhatsApp correctamente.'
+      });
+    } catch (e: any) {
+      console.error('❌ enviarTicketWhatsApp:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al enviar el ticket.'
+      });
+    }
+  }
+
+  /** ================== ATAJOS ================== */
+
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-    if (event.key === 'F8') {
-      event.preventDefault();
-      if (!this.showModal) this.abrirModalCobrar();
+    switch (event.key) {
+      case 'F1':
+        event.preventDefault();
+        this.abrirCajonManual();
+        break;
+
+      case 'F7':
+        event.preventDefault();
+        if (!this.showModalProductos) {
+          this.abrirModalProductos();
+        }
+        break;
+
+      case 'F8':
+        event.preventDefault();
+        if (!this.showModal) {
+          this.abrirModalCobrar();
+        }
+        break;
+
+      case 'F10':
+        event.preventDefault();
+        if (!this.showCashOutModal) {
+          this.abrirSalidaEfectivo();
+        }
+        break;
     }
   }
 }

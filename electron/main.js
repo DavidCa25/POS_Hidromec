@@ -76,7 +76,6 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   }
 });
 
-
 ipcMain.handle('sp-get-products', async () => {
     try {
         const pool = await poolPromise;
@@ -592,3 +591,129 @@ ipcMain.handle('open-cash-drawer', async () => {
     return { success: false, error: err.message };
   }
 });
+
+ipcMain.handle('sp-get-daily-sales-last-7-days', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_daily_sales_last_7_days');
+
+    console.log('▶ sp_get_daily_sales_last_7_days result:', result.recordset);
+
+    return {
+      success: true,
+      data: result.recordset || []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_daily_sales_last_7_days:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-daily-sales-current-month', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_daily_sales_current_month');
+
+    return {
+      success: true,
+      data: result.recordset || []
+    };
+  } catch (err) {
+    console.error('❌ Error sp_get_daily_sales_current_month:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-profit-overview', async (event, { fromDate, toDate }) => {
+  try {
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    if (fromDate) {
+      request.input('from_date', sql.Date, fromDate);
+    }
+    if (toDate) {
+      request.input('to_date', sql.Date, toDate);
+    }
+
+    const result = await request.execute('sp_get_profit_overview');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_get_profit_overview:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+//CIERRE DE CAJA
+
+ipcMain.handle('sp-close-shift', async (event, { userId, cashDelivered, closureDate }) => {
+  try {
+    const pool = await poolPromise;
+    const req = pool.request()
+      .input('user_id', sql.Int, userId)                      // cajero
+      .input('cash_delivered', sql.Decimal(12, 2), cashDelivered)
+      .input('closure_date', sql.Date, closureDate || null);
+
+    const result = await req.execute('sp_close_shift');
+
+    return {
+      success: true,
+      data: result.recordset && result.recordset[0] ? result.recordset[0] : null
+    };
+  } catch (err) {
+    console.error('Error en sp_close_shift:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-active-users', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT id, usuario, rol
+      FROM users
+      WHERE active = 1
+      ORDER BY usuario
+    `);
+    return { success: true, data: result.recordset };
+  } catch (err) {
+    console.error('Error sp-get-active-users:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Pago a Proveedores
+
+ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('user_id',        sql.Int,          payload.user_id)
+      .input('supplier_id',    sql.Int,          payload.supplier_id)
+      .input('purchase_id',    sql.Int,          payload.purchase_id)
+      .input('amount',         sql.Decimal(10,2),payload.amount)
+      .input('payment_method', sql.NVarChar(50), payload.payment_method)
+      .input('note',           sql.NVarChar(255),payload.note || null)
+      .execute('sp_register_supplier_payment');
+
+    return { success: true, data: result.recordset[0] ?? null };
+  } catch (err) {
+    console.error('❌ sp_register_supplier_payment:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
+
+
+
+

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
     onSaleResult: (callback) => ipcRenderer.on('sale-result', (event, data) => callback(data)),
     iniciarSesion: (usuario, contrasena) => ipcRenderer.invoke('sp-iniciar-sesion', { usuario, contrasena }),
+    crearUsuario: (username, password, role) =>
+        ipcRenderer.invoke('sp-add-user', { username, password, role }),
+
     consultarDetallesProducto: (CategoryID) => ipcRenderer.invoke('sp-Consultar-Detalle-Productos', CategoryID),
     agregarProducto: (brand, category, partNumber, name, price, stock) =>
         ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock),
@@ -37,6 +40,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
     openCashDrawer: () => ipcRenderer.invoke('open-cash-drawer'),
+    getDailySalesLast7Days: () => ipcRenderer.invoke('sp-get-daily-sales-last-7-days'),
+    getDailySalesCurrentMonth: () =>
+        ipcRenderer.invoke('sp-get-daily-sales-current-month'),
+    getProfitOverview: (fromDate, toDate) =>
+        ipcRenderer.invoke('sp-get-profit-overview', { fromDate, toDate }),
+    closeShift: (userId, cashDelivered, closureDate) =>
+        ipcRenderer.invoke('sp-close-shift', { userId, cashDelivered, closureDate }),
+    getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
+    registerSupplierPayment: (payload) =>
+        ipcRenderer.invoke('sp-register-supplier-payment', payload)
+
 
 
 });

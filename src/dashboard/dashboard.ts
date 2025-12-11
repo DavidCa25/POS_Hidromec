@@ -21,7 +21,7 @@ export class Dashboard {
 
   userName: string = 'Usuario';
 
-  constructor(private router: Router, private auth: AuthService) {}
+  constructor(private router: Router, public auth: AuthService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -62,6 +62,10 @@ export class Dashboard {
 
   cerrarSesion() {
     this.router.navigate(['/login']);
+  }
+
+  crearUsuario() {
+    this.router.navigate(['/sign_up']);
   }
 
   @HostListener('document:click', ['$event'])

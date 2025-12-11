@@ -61,8 +61,12 @@ export class Login {
         );
 
         console.log('Login OK, rol:', usuarioLS.rol);
-
-        this.router.navigate(['/dashboard/estadisticas']);
+        if (usuarioLS.rol == 'cajero') {
+          this.router.navigate(['/dashboard/venta']);
+        }
+        else {
+          this.router.navigate(['/dashboard/estadisticas']);
+        }
       } else {
         this.mensaje = resultado?.message || 'Usuario o contraseña inválidos';
       }
