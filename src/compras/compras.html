@@ -16,12 +16,6 @@
               {{ today | date:'longDate':'':'es-MX' }}
             </div>
           </div>
-          <!-- <div class="col-md-4">
-            <label class="form-label">Proveedor</label>
-            <select class="form-select" [(ngModel)]="proveedorSeleccionado" name="proveedor">
-              <option *ngFor="let prov of proveedores" [value]="prov.id">{{ prov.nombre }}</option>
-            </select>
-          </div> -->
         </div>
 
         <!-- Tabla productos -->
@@ -31,7 +25,7 @@
               <thead>
                 <tr>
                   <th style="min-width:280px;">Producto</th>
-                  <th style="min-width:280px;">Proveedor</th> 
+                  <th style="min-width:280px;">Proveedor</th>
                   <th style="width:120px;">Cantidad</th>
                   <th style="width:180px;">Precio Compra</th>
                   <th style="width:130px;">Subtotal</th>
@@ -43,9 +37,9 @@
                   <td class="fw-semibold">{{ it.productName }}</td>
                   <td>
                     <select class="form-select form-select-sm"
-                            name="prov-{{ i }}"                       
-                            [(ngModel)]="items[i].proveedorId"      
-                            (ngModelChange)="onProveedorChange(i, $event)"> 
+                            name="prov-{{ i }}"
+                            [(ngModel)]="items[i].proveedorId"
+                            (ngModelChange)="onProveedorChange(i, $event)">
                       <option [ngValue]="null" disabled>Seleccione proveedor</option>
                       <option *ngFor="let prov of proveedores" [ngValue]="prov.id">
                         {{ prov.nombre }}
@@ -57,7 +51,7 @@
                            min="1"
                            [(ngModel)]="it.qty"
                            name="qty-{{i}}"
-                           (ngModelChange)="onQtyChange(i)"/>
+                           (ngModelChange)="onQtyChange(i)" />
                   </td>
                   <td>
                     <input type="number" class="form-control"
@@ -65,22 +59,22 @@
                            [(ngModel)]="it.purchasePrice"
                            name="price-{{i}}"
                            (ngModelChange)="onPurchasePriceChange(i)"
-                           readonly/>
+                           readonly />
                   </td>
                   <td class="fw-semibold">
                     {{ it.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
                   </td>
                   <td>
-                    <button type="button" class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
+                    <button type="button"
+                            class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
                             (click)="quitarItem(i)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
                 </tr>
 
-                <!-- Mensaje cuando no hay productos -->
                 <tr *ngIf="items.length === 0">
-                  <td colspan="5" class="text-center text-muted py-4">
+                  <td colspan="6" class="text-center text-muted py-4">
                     No hay productos agregados. Usa “Agregar producto”.
                   </td>
                 </tr>
@@ -88,22 +82,50 @@
             </table>
           </div>
 
-          <!-- Botón agregar producto -->
           <button type="button"
-                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"  
+                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"
                   (click)="abrirModalProductos()">
             <i class="bi bi-plus-lg"></i> Agregar producto
           </button>
         </div>
 
-        <!-- Totales y botón registrar -->
-        <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
-          <div class="mb-0 me-4 text-end">
-            <div id="subtotal">Subtotal: {{ subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-            <div id="subtotal-iva">IVA (16%): {{ iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-            <div id="total-venta" class="fw-bold fs-5">Total: {{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+        <!-- Totales + forma de pago proveedor + botón -->
+        <div class="d-flex flex-wrap justify-content-end align-items-end gap-4 mt-5">
+
+          <!-- Forma de pago al proveedor -->
+          <div class="me-4">
+            <label class="form-label">Pago al proveedor</label>
+            <select class="form-select form-select-sm"
+                    [(ngModel)]="pagoProveedor"
+                    name="pagoProveedor">
+              <option value="NOPAGAR">No pagar ahora (queda pendiente)</option>
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="CHEQUE">Cheque</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select>
+            <div class="form-text">
+              Si eliges Efectivo/Cheque/Transferencia, podrás capturar el pago en un modal.
+            </div>
           </div>
-          <button type="button" class="btn btn-success d-flex align-items-center gap-2" style="width: 200px; height: 50px" (click)="registrarCompra()">
+
+          <!-- Totales -->
+          <div class="mb-0 me-4 text-end">
+            <div id="subtotal">
+              Subtotal: {{ subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            </div>
+            <div id="subtotal-iva">
+              IVA (16%): {{ iva | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            </div>
+            <div id="total-venta" class="fw-bold fs-5">
+              Total: {{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            </div>
+          </div>
+
+          <!-- Botón registrar -->
+          <button type="button"
+                  class="btn btn-success d-flex align-items-center gap-2"
+                  style="width: 220px; height: 50px"
+                  (click)="registrarCompra()">
             <i class="bi bi-save"></i> Registrar compra
           </button>
         </div>
@@ -112,14 +134,20 @@
   </div>
 </div>
 
-<!-- Modal productos -->
-<div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
+<!-- MODAL: Seleccionar productos -->
+<div class="modal fade show d-block modal-productos"
+     *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content rounded-4">
       <div class="modal-header border-0 py-2">
-        <h3 class="modal-title fw-bold m-0 mt-2" style="color: #000080;">Seleccionar producto(s)</h3>
-        <button id="button-close" type="button" class="btn-close fa-2x" (click)="cerrarModalProductos()"></button>
+        <h3 class="modal-title fw-bold m-0 mt-2" style="color: #000080;">
+          Seleccionar producto(s)
+        </h3>
+        <button id="button-close"
+                type="button"
+                class="btn-close fa-2x"
+                (click)="cerrarModalProductos()"></button>
       </div>
 
       <div class="modal-body pt-0 mt-4">
@@ -154,18 +182,21 @@
                 <td>{{ p.product_name }}</td>
                 <td class="nowrap">{{ p.brand_name }}</td>
                 <td class="nowrap">{{ p.category_name }}</td>
-                <td class="text-end">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                <td class="text-end">
+                  {{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </td>
                 <td>
-                  <input  id="precio-compra" type="number"
-                    min="0"
-                    step="0.01"
-                    class="form-control form-control-sm"
-                    [(ngModel)]="p.purchasePrice"
-                    name="precioCompra-{{i}}"
-                    (ngModelChange)="onPurchasePriceChange(i)" />
+                  <input type="number"
+                         min="0"
+                         step="0.01"
+                         class="form-control form-control-sm"
+                         [(ngModel)]="p.purchasePrice"
+                         name="precioCompra-{{i}}"
+                         (ngModelChange)="onPurchasePriceChange(i)" />
                 </td>
                 <td class="text-center">
-                  <button type="button" class="btn btn-primary btn-add"
+                  <button type="button"
+                          class="btn btn-primary btn-add"
                           (click)="seleccionarProducto(p)">
                     Agregar
                   </button>
@@ -180,92 +211,83 @@
             </tbody>
           </table>
         </div>
-        <!-- <div class="d-flex justify-content-end mt-2">
-          <button type="button" class="btn btn-outline-primary btn-sm" (click)="cerrarModalProductos()">
-            Cerrar
-          </button>
-        </div> -->
       </div>
     </div>
   </div>
 </div>
 
+<div class="modal fade show d-block"
+     *ngIf="showPagoModal"
+     style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Registrar pago al proveedor</h5>
+        <button type="button" class="btn-close" (click)="cerrarPagoModal()"></button>
+      </div>
 
-
-
-
-
-<div class="castrol-table-container mt-4">
-  <h2 class="castrol-table-title">Compras</h2>
-
-  <div class="mb-3">
-    <button class="castrol-btn-add" >Agregar Compra</button>
-  </div>
-
-  <div class="table-responsive">
-    <table class="castrol-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Proveedor</th>
-          <th>Producto</th>
-          <th>Cantidad</th>
-          <th>Fecha</th>
-          <th>Total</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr >
-          <td>1</td>
-          <td>Caterpillar</td>
-          <td>Producto 1</td>
-          <td>25</td>
-          <td>09-07-2025</td>
-          <td>25,000 MXN</td>
-          <td>
-            <!-- Acciones (editar, eliminar, etc.) -->
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- <p *ngIf="compras.length === 0" class="text-muted text-center">
-      No hay datos de compras disponibles.
-    </p> -->
-  </div>
-
-  <!-- Modal Agregar Compra
-  <div class="producto-modal" *ngIf="compraModalAbierto">
-    <h2 class="producto-modal-title">Agregar compra</h2>
-    <form autocomplete="off">
-      <div class="producto-form-grid">
-        <div>
-          <label>Proveedor</label>
-          <input type="text" name="Proveedor" required>
+      <div class="modal-body px-4 pt-1 pb-3">
+        <div class="mb-2 small text-muted">
+          Proveedor:
+          <b>{{ proveedorPagoNombre || '—' }}</b>
         </div>
-        <div>
-          <label>Producto</label>
-          <input type="text" name="Producto" required>
+
+        <div class="mb-3">
+          <label class="form-label">Total de la compra</label>
+          <div class="form-control-plaintext fs-5 fw-bold text-primary">
+            {{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}
+          </div>
         </div>
-        <div>
-          <label>Cantidad</label>
-          <input type="number" name="Cantidad" required min="1">
+
+        <div *ngIf="pagoProveedor === 'EFECTIVO'" class="mb-3">
+          <label class="form-label">Efectivo entregado</label>
+          <input type="number"
+                 class="form-control"
+                 min="0" step="0.01"
+                 [(ngModel)]="montoEntregado"
+                 name="montoEntregado"
+                 placeholder="0.00" />
+          <div class="mt-1 small"
+               [ngClass]="{'text-danger': cambioProveedor < 0, 'text-success': cambioProveedor >= 0}">
+            Cambio: {{ cambioProveedor | currency:'MXN':'symbol-narrow':'1.2-2' }}
+          </div>
         </div>
-        <div>
-          <label>Fecha</label>
-          <input type="date" name="Fecha" required>
+
+        <div *ngIf="pagoProveedor === 'CHEQUE'" class="mb-3">
+          <label class="form-label">Número de cheque (opcional)</label>
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="numeroCheque"
+                 name="numeroCheque"
+                 placeholder="Ej. 000123" />
         </div>
-        <div>
-          <label>Total</label>
-          <input type="number" step="0.01" name="Total" required>
+
+        <div *ngIf="pagoProveedor === 'TRANSFERENCIA'" class="mb-3">
+          <label class="form-label">Referencia de transferencia (opcional)</label>
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="referenciaTransferencia"
+                 name="referenciaTransferencia"
+                 placeholder="Referencia / folio" />
+        </div>
+
+        <div class="alert alert-info small" *ngIf="pagoProveedor !== 'NOPAGAR'">
+          El sistema registrará un pago por el total de la compra; el cambio es sólo informativo.
+        </div>
+
+        <div class="d-flex justify-content-between mt-3">
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="soloRegistrarCompra()">
+            Solo registrar compra
+          </button>
+          <button type="button"
+                  class="btn btn-primary"
+                  (click)="confirmarCompraConPago()">
+            Registrar compra y pago
+          </button>
         </div>
       </div>
-      <div class="producto-modal-actions">
-        <button type="button" class="producto-cancel-btn" (click)="cerrarCompraModal()">Cancelar</button>
-        <button type="submit" class="producto-save-btn" (click)="addCompra()">Guardar</button>
-      </div>
-    </form>
-  </div> -->
-
+    </div>
+  </div>
 </div>

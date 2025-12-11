@@ -5,6 +5,16 @@
     <div class="filter-card" *ngIf="showFilters">
       <div class="filter-row">
         <div class="filter-group">
+          <label>Cajero</label>
+          <select class="form-control" [(ngModel)]="selectedUserId">
+            <option [ngValue]="null">-- Selecciona cajero --</option>
+            <option *ngFor="let u of usuarios" [ngValue]="u.id">
+              {{ u.usuario }} ({{ u.rol }})
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-group">
           <label>Rango rápido</label>
           <div class="preset-group">
             <button type="button" class="preset" [class.active]="preset==='HOY'" (click)="setPreset('HOY')">Hoy</button>
@@ -38,16 +48,25 @@
     <div class="corte-header" *ngIf="!showFilters">
       <h2>Movimientos de caja</h2>
       <div class="header-right">
-        <div class="hoy">{{ hoy | date:'fullDate':undefined:'es-MX' }}</div>
+
+        <!-- NUEVO: Mostrar cajero elegido -->
+        <div class="hoy">
+          <b>Cajero:</b> {{ selectedUserName || '—' }}
+          <br>
+          {{ hoy | date:'fullDate':undefined:'es-MX' }}
+        </div>
+
         <button class="btn btn-success d-flex align-items-center gap-2"
             type="button"
-            [disabled]="loading || movimientos.length === 0"
+            [disabled]="loading || movimientos.length === 0 || !selectedUserId"
             (click)="abrirModalCierre()">
           <i class="bi bi-check2-circle"></i> Cerrar turno
         </button>
+
         <button class="btn btn-ghost" type="button" (click)="editarFiltros()">
           <i class="bi bi-sliders"></i> Cambiar rango
         </button>
+
       </div>
     </div>
 
@@ -63,6 +82,9 @@
           </div>
 
           <div class="modal-body px-4 pt-1 pb-4">
+            <div class="mb-2 small">
+              <b>Cajero:</b> {{ selectedUserName || '—' }}
+            </div>
             <div class="mb-2 text-muted small">
               Rango:
               <span class="mono">
@@ -109,8 +131,8 @@
               <button type="button"
                       class="btn btn-primary"
                       [disabled]="cashDelivered === null"
-                      (click)="confirmarCierrePreview()">
-                Guardar (preview)
+                      (click)="confirmarCierreReal()">
+                Guardar
               </button>
             </div>
           </div>

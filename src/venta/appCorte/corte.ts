@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass} from '@angular/common';
+import { AuthService } from '../../services/auth.service';
+import Swal from 'sweetalert2';
 
 type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
@@ -23,6 +25,12 @@ interface Summary {
   neto: number;
 }
 
+interface UserOption {
+  id: number;
+  usuario: string;
+  rol: string;
+}
+
 @Component({
   selector: 'app-corte',
   templateUrl: './corte.html',
@@ -32,6 +40,9 @@ interface Summary {
 })
 export class Corte {
   hoy = new Date();
+
+  usuarios: UserOption[] = [];
+  selectedUserId: number | null = null;
 
   showCloseModal = false;
   cashDelivered: number | null = null;
@@ -51,8 +62,11 @@ export class Corte {
   movimientos: CashMovementRow[] = [];
   summary: Summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
 
-  constructor() {
+  constructor(private auth: AuthService) {
     this.setPreset('HOY');
+  }
+  ngOnInit(){
+    this.cargarUsuariosActivos();
   }
 
   private toStr(d: Date){ return d.toISOString().slice(0,10); }
@@ -94,12 +108,17 @@ export class Corte {
   }
 
   async consultar(){
+    if (!this.selectedUserId) {
+      console.warn('Selecciona un usuario para consultar el corte.');
+      return;
+    }
+
     this.loading = true;
     try {
       const payload = {
         start_date: this.desdeStr || null,
         end_date:   this.hastaStr || null,
-        user_id:    null,
+        user_id:    this.selectedUserId,
         typee:      null,
         only_open:  this.onlyOpen ? 1 : 0,
         closure_id: null
@@ -110,12 +129,11 @@ export class Corte {
       if (res?.success) {
         const rows: CashMovementRow[] = (res.data?.rows ?? []).map((r: any) => ({
           ...r,
-          datee: new Date(r.datee) // para DatePipe
+          datee: new Date(r.datee) 
         }));
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
 
-        // ocultar filtros tras consultar
         this.showFilters = false;
       } else {
         console.error(res?.error || 'Respuesta inválida');
@@ -139,7 +157,6 @@ export class Corte {
     return Number(d.toFixed(2));
   }
 
-  // Abrir/cerrar modal
   abrirModalCierre() {
     this.cashDelivered = null;
     this.closeNotes = '';
@@ -148,16 +165,87 @@ export class Corte {
   cerrarModalCierre() {
     this.showCloseModal = false;
   }
-  confirmarCierrePreview() {
-    console.log('🧾 Preview cierre:', {
-      start_date: this.desdeStr || this.hoy.toISOString().slice(0,10),
-      end_date:   this.hastaStr || this.hoy.toISOString().slice(0,10),
-      only_open:  this.onlyOpen ? 1 : 0,
-      expected:   this.cashExpected,
-      delivered:  this.cashDelivered,
-      diff:       this.cashDiff,
-      notes:      this.closeNotes
-    });
-    this.showCloseModal = false;
+
+  async confirmarCierreReal() {
+    if (!this.selectedUserId) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Selecciona un cajero',
+        text: 'Debes elegir el usuario al que le vas a hacer el corte.'
+      });
+      return;
+    }
+
+    if (this.cashDelivered == null) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Falta efectivo entregado',
+        text: 'Captura el efectivo entregado por el cajero.'
+      });
+      return;
+    }
+
+    const cierreFecha = this.hastaStr || this.desdeStr || new Date().toISOString().slice(0,10);
+
+    try {
+      const resp = await (window as any).electronAPI.closeShift(
+        this.selectedUserId,          
+        this.cashDelivered,
+        cierreFecha
+      );
+
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'No se pudo cerrar el turno',
+          text: resp?.error || 'Ocurrió un error al registrar el cierre.'
+        });
+        return;
+      }
+
+      const data = resp.data || {};
+      await Swal.fire({
+        icon: 'success',
+        title: 'Corte registrado',
+        html: `
+          <div style="text-align:left">
+            <div><b>Cajero:</b> ${this.selectedUserName}</div>
+            <div><b>Fecha:</b> ${data.closure_date || cierreFecha}</div>
+            <div><b>Efectivo esperado:</b> $${(data.cash_expected ?? this.cashExpected).toFixed(2)}</div>
+            <div><b>Efectivo entregado:</b> $${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</div>
+            <div><b>Diferencia:</b> $${(data.difference ?? this.cashDiff).toFixed(2)}</div>
+          </div>
+        `
+      });
+
+      this.showCloseModal = false;
+      await this.consultar();  
+    } catch (e: any) {
+      console.error('closeShift:', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al registrar el cierre.'
+      });
+    }
+  }
+
+
+  private async cargarUsuariosActivos() {
+    try {
+      const res = await (window as any).electronAPI.getActiveUsers();
+      if (res?.success) {
+        this.usuarios = res.data || [];
+      } else {
+        console.error('No se pudieron cargar usuarios', res?.error);
+      }
+    } catch (e) {
+      console.error('Error getActiveUsers:', e);
+    }
+  }
+
+  get selectedUserName(): string {
+    const u = this.usuarios.find(x => x.id === this.selectedUserId);
+    return u ? u.usuario : '';
   }
 }
