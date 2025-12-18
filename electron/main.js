@@ -1,8 +1,15 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { poolPromise, sql } = require('./db');
 const { pool } = require('mssql');
+const puppeteer = require("puppeteer");
 const isDev = process.env.NODE_ENV === 'development';
+const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
+const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
+const { htmlToPdf } = require('./pdf/printToPdfElectron');
+
+let businessConfig = null;
 
 function toDateOrNull(value, endOfDay = false) {
   if (!value) return null;
@@ -23,6 +30,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
+      nodeIntegration: false,  
+      sandbox: false,       
       enableRemoteModule: false
     }
   });
@@ -34,11 +43,38 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+
+async function ensureBusinessConfig() {
+  if (businessConfig) return businessConfig;  
+  const pool = await poolPromise;
+  const result = await pool.request().execute('sp_get_business_config');
+  businessConfig = result.recordset[0] || null;
+
+  return businessConfig;
+}
+
+app.whenReady().then(async () => {
+  try {
+    createWindow();  
+
+    ensureBusinessConfig().catch(err => {
+      console.error('❌ Error cargando businessConfig al inicio:', err);
+    });
+  
+  } catch (err) {
+  }
+});
+
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
+
+ipcMain.handle('getConfig', async () => {
+  const cfg = await ensureBusinessConfig();
+  return cfg;
+});
+
 
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   try {
@@ -185,7 +221,6 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, c
 
     const pool = await poolPromise;
 
-    // --- Construir TVP para @SaleDetails ---
     const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Int, { nullable: false });
@@ -204,12 +239,22 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, c
 
     const result = await request.execute('sp_register_sale');
 
-    return { success: true, data: result.recordset ?? [] };
+    const newSaleId =
+      result.recordset?.[0]?.sale_id ??
+      result.recordset?.[0]?.id ??
+      null;
+
+    return {
+      success: true,
+      saleId: newSaleId,
+      data: result.recordset ?? []
+    };
   } catch (err) {
     console.error('❌ Error en sp_register_sale:', err);
     return { success: false, error: err.message };
   }
 });
+
 
     
 ipcMain.handle('sp-get-suppliers', async (event, data) => {
@@ -711,6 +756,229 @@ ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
     return { success: false, error: err.message };
   }
 });
+
+async function loadSaleFromDbWithSp(saleId) {
+  const pool = await poolPromise;
+
+  const result = await pool
+    .request()
+    .input('sale_id', sql.Int, saleId)
+    .execute('sp_get_sale_ticket');
+
+  const headerSet = result.recordsets[0] || [];
+  const linesSet  = result.recordsets[1] || [];
+
+  if (!headerSet.length) {
+    throw new Error(`No se encontró la venta ${saleId}`);
+  }
+
+  return {
+    header: headerSet[0],
+    lines: linesSet,
+  };
+}
+
+function ensureTicketsDir() {
+  const baseDir = path.join(app.getPath('documents'), 'TicketsPOS');
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+  return baseDir;
+}
+
+function formatDateTimeEsMX(d) {
+  if (!d) return "";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("es-MX", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function money(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
+}
+
+async function generateSaleTicketPdf(header, lines, extras = {}) {
+  await ensureBusinessConfig();
+  const template = fs.readFileSync(
+    path.join(__dirname, "templates/ticket.html"),
+    "utf8"
+  );
+
+  const rowsHtml = (lines || []).map(l => {
+    const qty  = Number(l.quantity ?? l.qty ?? 0);
+    const unit = Number(l.unitary_price ?? l.price ?? 0);
+
+    const nombre = (l.nombre ?? l.product_name ?? l.product ?? "").toString() || "—";
+
+    const sub = Number(
+      l.subtotal ?? (Number.isFinite(qty * unit) ? qty * unit : 0)
+    );
+
+    return `
+      <tr>
+        <td>${nombre}</td>
+        <td class="right">${qty}</td>
+        <td class="right">$${unit.toFixed(2)}</td>
+        <td class="right">$${sub.toFixed(2)}</td>
+      </tr>`;
+  }).join("");
+
+  // --- Totales ---
+  const subtotal = (lines || []).reduce((a, l) => {
+    const qty  = Number(l.quantity ?? l.qty ?? 0);
+    const unit = Number(l.unitary_price ?? l.price ?? 0);
+    const sub  = Number(l.subtotal ?? (Number.isFinite(qty * unit) ? qty * unit : 0));
+    return a + sub;
+  }, 0);
+
+  const iva   = subtotal * 0.16;
+  const total = Number(header.total ?? subtotal);
+
+  // si me mandas pagado/cambio desde el front, tienen prioridad
+  const pagado = extras.pagado != null
+    ? Number(extras.pagado)
+    : Number(header.paid_amount ?? total);
+
+  const cambio = extras.cambio != null
+    ? Number(extras.cambio)
+    : pagado - total;
+
+  // helper dinero
+  const money = (n) => Number(n || 0).toFixed(2);
+
+  // --- rellenar template ---
+  let filledHtml = template
+    .replace(/{{LOGO}}/g, `file://${path
+      .join(__dirname, "assets/LogoHidromec.jpg")
+      .replace(/\\/g, "/")}`)
+
+    .replace(/{{BUSINESS_NAME}}/g, businessConfig.business_name || "")
+    .replace(/{{ADDRESS}}/g,       businessConfig.address || "")
+    .replace(/{{PHONE}}/g,         businessConfig.phone || "")
+    .replace(/{{RFC}}/g,           businessConfig.rfc || "")
+    .replace(/{{FOOTER}}/g,        businessConfig.ticket_footer || "")
+
+    .replace(/{{FOLIO}}/g,   String(header.id ?? header.sale_id ?? ""))
+    .replace(/{{DATE}}/g,    String(header.datee ?? header.date ?? header.created_at ?? ""))
+    .replace(/{{METHOD}}/g,  String(header.payment_method ?? ""))
+
+    .replace(/{{SUBTOTAL}}/g, money(subtotal))
+    .replace(/{{IVA}}/g,       money(iva))
+    .replace(/{{TOTAL}}/g,     money(total))
+    .replace(/{{PAGADO}}/g,    money(pagado))
+    .replace(/{{CAMBIO}}/g,    money(cambio))
+
+    .replace(/{{ROWS}}/g, rowsHtml);
+
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox"],
+  });
+
+  const page = await browser.newPage();
+  await page.setContent(filledHtml, { waitUntil: "networkidle0" });
+
+  const pdfPath = path.join(ensureTicketsDir(), `ticket_${header.id}.pdf`);
+
+  await page.pdf({
+    path: pdfPath,
+    width: "80mm",
+    printBackground: true,
+  });
+
+  await browser.close();
+  return pdfPath;
+}
+
+
+
+ipcMain.handle("generate-sale-pdf", async (event, payload) => {
+  try {
+    const { saleId, pagado, cambio } =
+      typeof payload === "object"
+        ? payload
+        : { saleId: payload, pagado: null, cambio: null };
+
+    if (!saleId) {
+      throw new Error("ID de venta no proporcionado");
+    }
+
+    const { header, lines } = await loadSaleFromDbWithSp(saleId);
+
+    const pdfPath = await generateSaleTicketPdf(header, lines, {
+      pagado,
+      cambio,
+    });
+
+    await shell.openPath(pdfPath);
+    return { success: true, path: pdfPath };
+  } catch (err) {
+    console.error("❌ Error generate-sale-pdf:", err);
+    return { success: false, error: err.message || "Error al generar PDF" };
+  }
+});
+
+ipcMain.handle('sp-get-sales', async (_event, payload = {}) => {
+  try {
+    const { start_date = null, end_date = null } = payload;
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('start_date', sql.Date, start_date)
+      .input('end_date',   sql.Date, end_date)
+      .execute('sp_get_sales_filtered');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ sp-get-sales:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
+ipcMain.handle('export-sales-pdf', async (_event, payload = {}) => {
+  try {
+    const { start_date = null, end_date = null } = payload;
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('start_date', sql.Date, start_date)
+      .input('end_date',   sql.Date, end_date)
+      .execute('sp_get_sales_filtered');
+
+    const sales = result.recordset ?? [];
+    if (!sales.length) {
+      return { success: false, error: 'No hay ventas en ese rango.' };
+    }
+
+    const cfg = await ensureBusinessConfig();
+
+    const docs = [];
+    for (const s of sales) {
+      const { header, lines } = await loadSaleFromDbWithSp(s.id);
+      docs.push({ header, lines });
+    }
+
+    const pdfPath = await generateSalesBatchA4Pdf(docs, { businessConfig: cfg, start_date, end_date });
+    await shell.openPath(pdfPath); 
+    return { success: true, count: 1, paths: [pdfPath] };
+
+  } catch (err) {
+    console.error('export-sales-pdf:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
+
 
 
 

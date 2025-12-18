@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial; color:#111; padding: 20px; }
+    .top { display:flex; justify-content:space-between; }
+    h1 { margin:0; font-size:18px; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
+    th, td { border-bottom:1px solid #eee; padding:8px; }
+    th { background:#f5f5f5; text-align:left; }
+    .r { text-align:right; white-space:nowrap; }
+    .tot { margin-top:12px; display:flex; justify-content:flex-end; }
+    .box { width:260px; border:1px solid #ddd; padding:10px; border-radius:10px; }
+    .row { display:flex; justify-content:space-between; margin:6px 0; }
+    .big { font-weight:800; font-size:14px; border-top:1px solid #eee; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>REPORTE DE VENTA</h1>
+      <div>{{BUSINESS_NAME}}</div>
+      <div>{{ADDRESS}}</div>
+    </div>
+    <div style="text-align:right">
+      <div><b>Venta #{{FOLIO}}</b></div>
+      <div>{{DATE}}</div>
+      <div>{{METHOD}}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th class="r">Cant.</th>
+        <th class="r">Precio</th>
+        <th class="r">Importe</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ROWS}}
+    </tbody>
+  </table>
+
+  <div class="tot">
+    <div class="box">
+      <div class="row"><span>Subtotal</span><span class="r">${{SUBTOTAL}}</span></div>
+      <div class="row"><span>IVA</span><span class="r">${{IVA}}</span></div>
+      <div class="row big"><span>Total</span><span class="r">${{TOTAL}}</span></div>
+      <div class="row"><span>Pagado</span><span class="r">${{PAGADO}}</span></div>
+      <div class="row"><span>Cambio</span><span class="r">${{CAMBIO}}</span></div>
+    </div>
+  </div>
+</body>
+</html>
