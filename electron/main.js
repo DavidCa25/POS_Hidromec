@@ -4,12 +4,108 @@ const fs = require('fs');
 const { poolPromise, sql } = require('./db');
 const { pool } = require('mssql');
 const puppeteer = require("puppeteer");
-const isDev = process.env.NODE_ENV === 'development';
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 
+const isDev = process.env.NODE_ENV === 'development';
 let businessConfig = null;
+
+let updateCheckTimer = null;
+
+function setupAutoUpdater(win) {
+  if (isDev) {
+    console.log('🔧 Modo desarrollo: Auto-updater desactivado');
+    return;
+  }
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates();
+  }, 3000);
+
+  updateCheckTimer = setInterval(() => {
+    autoUpdater.checkForUpdates();
+  }, 4 * 60 * 60 * 1000);
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('🔍 Buscando actualizaciones...');
+    win.webContents.send('update-status', {
+      type: 'checking',
+      message: 'Buscando actualizaciones...'
+    });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('Actualización disponible:', info.version);
+    win.webContents.send('update-status', {
+      type: 'available',
+      message: `Nueva versión ${info.version} disponible`,
+      version: info.version
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('Sistema actualizado');
+    win.webContents.send('update-status', {
+      type: 'not-available',
+      message: 'El sistema está actualizado'
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Error en auto-updater:', err);
+    win.webContents.send('update-status', {
+      type: 'error',
+      message: 'Error al buscar actualizaciones',
+      error: err.message
+    });
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    const msg = `Descargando: ${progressObj.percent.toFixed(2)}%`;
+    console.log(msg);
+    win.webContents.send('update-status', {
+      type: 'downloading',
+      message: msg,
+      percent: progressObj.percent
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Actualización descargada');
+    win.webContents.send('update-status', {
+      type: 'downloaded',
+      message: 'Actualización lista para instalar',
+      version: info.version
+    });
+  });
+}
+
+ipcMain.handle('download-update', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (err) {
+    console.error('Error descargando actualización:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, updateInfo: result };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
 
 function toDateOrNull(value, endOfDay = false) {
   if (!value) return null;
@@ -41,6 +137,10 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '../dist/filtros_lubs_rios/browser/index.html'));
   }
+
+  setupAutoUpdater(win);
+
+  return win;
 }
 
 
@@ -58,23 +158,26 @@ app.whenReady().then(async () => {
     createWindow();  
 
     ensureBusinessConfig().catch(err => {
-      console.error('❌ Error cargando businessConfig al inicio:', err);
+      console.error('Error cargando businessConfig al inicio:', err);
     });
   
   } catch (err) {
+    console.error(err);
   }
 });
 
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 ipcMain.handle('getConfig', async () => {
   const cfg = await ensureBusinessConfig();
   return cfg;
 });
-
 
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   try {
