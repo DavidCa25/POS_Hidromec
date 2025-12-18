@@ -1,10 +1,14 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
+/release
 /dist
+/out
 /tmp
 /out-tsc
 /bazel-out
+*.blockmap
+latest.yml
 
 # Node
 /node_modules

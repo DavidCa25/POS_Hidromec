@@ -56,7 +56,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSales: (payload) => ipcRenderer.invoke('sp-get-sales', payload),
     exportSalesPdf: (payload) => ipcRenderer.invoke('export-sales-pdf', payload),
     
-
+    //Auto Updater
+    onUpdateStatus: (callback) => {
+        ipcRenderer.on('update-status', (_event, data) => callback(data));
+    },
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    installUpdate: () => ipcRenderer.invoke('install-update'),
 
 
 });
