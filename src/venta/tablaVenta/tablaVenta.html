@@ -1,0 +1,130 @@
+<div class="container">
+  <div class="ventas-header-section">
+    <div class="ventas-header-content">
+      <div class="ventas-title-wrapper">
+        <i class="bi bi-receipt-cutoff ventas-icon"></i>
+        <h1 class="ventas-main-title">Ventas</h1>
+      </div>
+      <p class="ventas-subtitle">Gestiona y visualiza todas tus ventas registradas</p>
+    </div>
+
+    <div class="ventas-actions-group">
+      <button type="button" class="castrol-btn-color" (click)="abrirExportModal()">
+        <i class="bi bi-download"></i> Descargar PDFs
+      </button>
+
+      <button type="button" class="castrol-btn-add" (click)="loadSales()">
+        <i class="bi bi-arrow-clockwise"></i> Recargar
+      </button>
+    </div>
+  </div>
+
+  <div class="castrol-table-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="ventas-stats-badge">
+        <i class="bi bi-list-check"></i>
+        <span>{{ sales.length }} ventas registradas</span>
+      </div>
+    </div>
+
+    <div class="small text-muted mb-3" *ngIf="loading">Cargando ventas...</div>
+
+    <div class="table-responsive">
+      <table class="castrol-table align-middle">
+        <thead>
+          <tr>
+            <th style="width:90px;">Ticket</th>
+            <th style="min-width:220px;">Fecha</th>
+            <th style="min-width:160px;">Cajero</th>
+            <th style="width:150px;">Método</th>
+            <th style="width:130px;">Total</th>
+            <th style="width:130px;">Pagado</th>
+            <th style="width:130px;">Cambio</th>
+            <th style="min-width:180px;">Cliente</th>
+            <th style="width:130px;">Vence</th>
+            <th style="width:140px;">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let s of sales">
+            <td class="fw-semibold">#{{ s.id }}</td>
+            <td>{{ s.datee | date:'medium':'':'es-MX' }}</td>
+            <td>{{ s.user_name || '—' }}</td>
+            <td class="fw-semibold">{{ s.payment_method || '—' }}</td>
+            <td class="fw-semibold">{{ s.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td>{{ s.paid_amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td>{{ calcCambio(s) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td>{{ s.customer_name || '—' }}</td>
+            <td>{{ s.due_date ? (s.due_date | date:'shortDate':'':'es-MX') : '—' }}</td>
+
+            <td>
+              <button type="button" class="castrol-btn-color btn-sm" (click)="verPdfVenta(s.id)">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="!loading && sales.length === 0">
+            <td colspan="10" class="text-center text-muted py-4">
+              No hay ventas para mostrar.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para exportar PDFs -->
+<div class="modal fade show d-block"
+     *ngIf="showExportModal"
+     style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Descargar PDFs de ventas</h5>
+        <button type="button" class="btn-close" (click)="cerrarExportModal()"></button>
+      </div>
+
+      <div class="modal-body px-4 pt-1 pb-3">
+        <div class="mb-3">
+          <label class="form-label">Tipo</label>
+          <div class="d-flex gap-3">
+            <label class="d-flex align-items-center gap-2">
+              <input type="radio" name="mode" [(ngModel)]="exportMode" value="DIA"> Por día
+            </label>
+            <label class="d-flex align-items-center gap-2">
+              <input type="radio" name="mode" [(ngModel)]="exportMode" value="RANGO"> Por rango
+            </label>
+          </div>
+        </div>
+
+        <div *ngIf="exportMode === 'DIA'" class="mb-3">
+          <label class="form-label">Día</label>
+          <input type="date" class="form-control" [(ngModel)]="exportDay" name="exportDay">
+        </div>
+
+        <div *ngIf="exportMode === 'RANGO'" class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Desde</label>
+            <input type="date" class="form-control" [(ngModel)]="exportFrom" name="exportFrom">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Hasta</label>
+            <input type="date" class="form-control" [(ngModel)]="exportTo" name="exportTo">
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarExportModal()">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" (click)="exportarPdfs()">
+            Generar PDFs
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

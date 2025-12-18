@@ -49,7 +49,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-close-shift', { userId, cashDelivered, closureDate }),
     getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
     registerSupplierPayment: (payload) =>
-        ipcRenderer.invoke('sp-register-supplier-payment', payload)
+        ipcRenderer.invoke('sp-register-supplier-payment', payload),
+    generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
+    getConfig: () => ipcRenderer.invoke("getConfig"),
+
+    getSales: (payload) => ipcRenderer.invoke('sp-get-sales', payload),
+    exportSalesPdf: (payload) => ipcRenderer.invoke('export-sales-pdf', payload),
+    
 
 
 

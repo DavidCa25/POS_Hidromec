@@ -1,0 +1,566 @@
+:root {
+  --castrol-main: #00662f;
+  --castrol-light: #e9fbe3;
+  --castrol-hover: #008c3c;
+}
+
+/* ==================== HEADER DE VENTAS ==================== */
+.ventas-header-section {
+  background: linear-gradient(135deg, #00662f 0%, #008c3c 100%);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 102, 47, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ventas-header-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.ventas-header-content {
+  position: relative;
+  z-index: 1;
+}
+
+.ventas-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ventas-icon {
+  font-size: 2.5rem;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.ventas-main-title {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.ventas-subtitle {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.05rem;
+  margin: 0;
+  margin-left: 3.5rem;
+  font-weight: 400;
+}
+
+.ventas-actions-group {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ventas-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--castrol-light);
+  color: var(--castrol-main);
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1.5px solid rgba(0, 102, 47, 0.2);
+}
+
+.ventas-stats-badge i {
+  font-size: 1.1rem;
+}
+
+/* Contenedor principal de la tabla */
+.castrol-table-container {
+  background: #f7faf7;
+  border-radius: 20px;
+  box-shadow: 0 6px 24px 0 rgba(0,0,0,0.08);
+  padding: 2rem 1.5rem;
+}
+
+/* Título de la tabla */
+.castrol-table-title {
+  color: var(--castrol-main);
+  font-size: 2rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+/* Botón verde principal (Recargar) */
+.castrol-btn-add {
+  background: var(--castrol-main, #00662f);
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 12px;
+  padding: 0.6em 1.5em;
+  box-shadow: 0 3px 10px 0 rgba(0,102,47,0.10);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.castrol-btn-add:hover { 
+  background: #008c3c; 
+}
+
+/* Botón secundario (outline verde - Descargar PDFs) */
+.castrol-btn-color {
+  background: #e9fbe3;
+  border: 1.5px solid var(--castrol-main);
+  color: var(--castrol-main);
+  font-weight: bold;
+  border-radius: 12px;
+  padding: 0.6em 1.2em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.castrol-btn-color:hover {
+  background: var(--castrol-main);
+  color: #fff;
+}
+
+/* Tabla principal */
+.castrol-table {
+  background: var(--castrol-main, #00662f);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  margin-top: 1rem;
+  border-radius: 16px;
+}
+
+/* Bordes redondeados SOLO en las esquinas externas */
+.castrol-table thead th:first-child { 
+  border-top-left-radius: 16px; 
+}
+.castrol-table thead th:last-child { 
+  border-top-right-radius: 16px; 
+}
+.castrol-table tbody tr:last-child td:first-child { 
+  border-bottom-left-radius: 16px; 
+}
+.castrol-table tbody tr:last-child td:last-child { 
+  border-bottom-right-radius: 16px; 
+}
+
+/* Estilos generales de celdas */
+.castrol-table th, 
+.castrol-table td {
+  background: #fff;
+  border: none;
+  padding: 1rem 0.8rem;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 1rem;
+}
+
+/* Header de la tabla - FONDO VERDE */
+.castrol-table thead th {
+  background: var(--castrol-main);
+  color: #fff;
+  font-size: 1.08rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  border-bottom: 3px solid #4caf50;
+}
+
+/* Filas del body - FONDO BLANCO */
+.castrol-table tbody tr {
+  background: #fff;
+  transition: background 0.15s;
+}
+
+/* Hover en filas */
+.castrol-table tbody tr:hover { 
+  background: #e9fbe3; 
+}
+
+/* Bordes sutiles entre filas */
+.castrol-table tbody td { 
+  border-bottom: 1.5px solid #ebf6ee; 
+}
+
+/* Última fila sin borde inferior */
+.castrol-table tbody tr:last-child td { 
+  border-bottom: none; 
+}
+
+/* Botón PDF dentro de tabla */
+.castrol-table .btn-sm {
+  padding: .45rem 1em !important;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .ventas-header-section {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .ventas-title-wrapper {
+    justify-content: center;
+  }
+
+  .ventas-subtitle {
+    margin-left: 0;
+  }
+
+  .ventas-actions-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .castrol-table-container {
+    padding: 1.5rem 1rem;
+  }
+  
+  .castrol-table-title {
+    font-size: 1.6rem;
+  }
+  
+  .castrol-btn-add,
+  .castrol-btn-color {
+    padding: 0.5em 1em;
+    font-size: 0.9rem;
+  }
+  
+  .castrol-table th,
+  .castrol-table td {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .ventas-export-modal {
+    max-width: 95vw;
+    margin: 1rem;
+  }
+
+  .ventas-date-range {
+    flex-direction: column;
+  }
+
+  .ventas-date-separator {
+    transform: rotate(90deg);
+  }
+}
+
+/* ==================== MODAL DE EXPORTACIÓN ==================== */
+.ventas-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 10999;
+  animation: fadeIn 0.2s ease;
+}
+
+.ventas-export-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  z-index: 11000;
+  max-width: 600px;
+  width: 90vw;
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translate(-50%, -45%);
+    opacity: 0;
+  }
+  to { 
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+}
+
+.ventas-modal-header {
+  background: linear-gradient(135deg, var(--castrol-main) 0%, var(--castrol-hover) 100%);
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.ventas-modal-header::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.ventas-modal-title-group {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.ventas-modal-icon {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.ventas-modal-title {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  margin-bottom: 0.3rem;
+}
+
+.ventas-modal-subtitle {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+.ventas-modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 1;
+}
+
+.ventas-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.ventas-modal-body {
+  padding: 2rem;
+}
+
+.ventas-export-section {
+  margin-bottom: 1.5rem;
+}
+
+.ventas-modal-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.ventas-modal-label i {
+  color: var(--castrol-main);
+  font-size: 1.1rem;
+}
+
+.ventas-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.ventas-radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 2px solid #e0e7ed;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.ventas-radio-option:hover {
+  border-color: var(--castrol-main);
+  background: #f8fcf9;
+}
+
+.ventas-radio-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ventas-radio-custom {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #cbd5e0;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.ventas-radio-option input:checked ~ .ventas-radio-custom {
+  border-color: var(--castrol-main);
+  background: var(--castrol-main);
+}
+
+.ventas-radio-option input:checked ~ .ventas-radio-custom::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.ventas-radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ventas-radio-text strong {
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.ventas-radio-text small {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.ventas-modal-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2px solid #e0e7ed;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.ventas-modal-input:focus {
+  outline: none;
+  border-color: var(--castrol-main);
+  background: #f8fcf9;
+}
+
+.ventas-date-range {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ventas-date-input-wrapper {
+  flex: 1;
+}
+
+.ventas-date-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+.ventas-date-separator {
+  color: var(--castrol-main);
+  font-size: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.ventas-modal-footer {
+  padding: 1.5rem 2rem;
+  background: #f8fafb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-top: 1px solid #e0e7ed;
+}
+
+.ventas-btn-secondary,
+.ventas-btn-primary {
+  padding: 0.75rem 1.8rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ventas-btn-secondary {
+  background: #e0e7ed;
+  color: #475569;
+}
+
+.ventas-btn-secondary:hover {
+  background: #cbd5e0;
+}
+
+.ventas-btn-primary {
+  background: linear-gradient(135deg, var(--castrol-main) 0%, var(--castrol-hover) 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 102, 47, 0.2);
+}
+
+.ventas-btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(0, 102, 47, 0.3);
+  transform: translateY(-2px);
+}

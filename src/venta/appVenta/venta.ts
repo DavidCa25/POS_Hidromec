@@ -55,6 +55,9 @@ export class Venta {
   creditCustomers: CreditCustomer[] = [];
   loadingCreditCustomers = false;
 
+  lastSalePaid: number = 0;
+  lastSaleChange: number = 0;
+
   showModalProductos = false;
   productos: ProductRow[] = [];
   filtro = '';
@@ -277,21 +280,23 @@ export class Venta {
       );
 
       if (resp?.success) {
-        // Abrir cajón sólo en ventas de contado
         if (!isCredito) {
+          this.lastSalePaid = this.dineroRecibido ?? this.totalVenta;
+          this.lastSaleChange = this.cambio;
           const api = (window as any).electronAPI;
           if (api && api.openCashDrawer) {
             try {
               await api.openCashDrawer();
             } catch (e) {
-              console.error('⚠ Error al abrir el cajón después de la venta:', e);
+              console.error('Error al abrir el cajón después de la venta:', e);
             }
           } else {
+            this.lastSalePaid = this.totalVenta;
+            this.lastSaleChange = 0;
             console.warn('openCashDrawer no disponible (¿modo ng serve?)');
           }
         }
 
-        // Guardamos info de la venta para el modal post-venta
         const saleId: number | null =
           resp.saleId ?? resp.id ?? resp.folio ?? null;
 
@@ -299,7 +304,6 @@ export class Venta {
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
 
-        // Avanzar folio y limpiar la pantalla de venta
         this.advanceFolioAfterConfirm();
         this.items = [];
         this.totalVenta = 0;
@@ -307,7 +311,6 @@ export class Venta {
         this.customerId = null;
         this.dueDate = null;
 
-        // Cerrar modal de cobro y abrir modal post-venta
         this.showModal = false;
         this.showPostSaleModal = true;
 
@@ -494,9 +497,9 @@ export class Venta {
   }
 
   async generarPdfUltimaVenta() {
-    if (!this.lastSaleId) return;
+  if (!this.lastSaleId) return;
 
-    const api = (window as any).electronAPI;
+  const api = (window as any).electronAPI;
     if (!api || !api.generateSalePdf) {
       await Swal.fire({
         icon: 'info',
@@ -507,7 +510,14 @@ export class Venta {
     }
 
     try {
-      const resp = await api.generateSalePdf(this.lastSaleId);
+      const payload = {
+        saleId: this.lastSaleId,
+        pagado: this.lastSalePaid,
+        cambio: this.lastSaleChange,
+      };
+
+      const resp = await api.generateSalePdf(payload);
+
       if (!resp?.success) {
         await Swal.fire({
           icon: 'error',
@@ -570,6 +580,8 @@ export class Venta {
       });
     }
   }
+
+  
 
   /** ================== ATAJOS ================== */
 

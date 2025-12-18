@@ -50,6 +50,12 @@
             <i class="bi bi-calendar2-check me-2"></i> Corte del día
           </a>
         </li>
+        <li>
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaVenta" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-calendar2-check me-2"></i> Tabla de Ventas
+          </a>
+        </li>|
       </ul>
     </li>
       <li>
