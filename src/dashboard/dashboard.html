@@ -128,13 +128,72 @@
         </span>
         <input type="text" class="form-control border-start-0" placeholder="Buscar..." />
       </div>
+      <div class="position-relative" id="theme-wrapper">
+        <button class="theme-swatch-btn" (click)="toggleTheme()"
+                title="Cambiar color del inventario" type="button">
+          <span class="swatch s1"></span>
+          <span class="swatch s2"></span>
+          <span class="swatch s3"></span>
+          <span class="swatch s4"></span>
+        </button>
+
+        <div *ngIf="themeOpen"
+            class="position-absolute end-0 mt-2 bg-white border rounded shadow p-2"
+            style="width: 220px; z-index: 1050;">
+          <div class="fw-semibold mb-2">Color de Inventario</div>
+
+          <div class="d-grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            <button *ngFor="let c of invColors"
+                    class="theme-option"
+                    type="button"
+                    [style.background]="c.value"
+                    (click)="setInvTheme(c.value)"
+                    [class.active]="c.value === currentInvColor">
+            </button>
+          </div>
+
+          <div class="small text-muted mt-2">Se guarda para la próxima vez.</div>
+        </div>
+      </div>
       <!-- Icono de notificación -->
-      <button class="btn btn-light position-relative p-2 me-1">
-        <i class="bi bi-bell fs-5"></i>
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-          3
-        </span>
-      </button>
+      <div class="position-relative" id="notif-wrapper">
+        <button class="btn btn-light position-relative p-2 me-1" (click)="toggleNotif()">
+          <i class="bi bi-bell fs-5"></i>
+
+          <span
+            *ngIf="unreadCount > 0"
+            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ unreadCount }} 
+          </span>
+        </button>
+
+        <!-- Dropdown -->
+        <div
+          *ngIf="notifOpen"
+          class="position-absolute end-0 mt-2 bg-white border rounded shadow"
+          style="width: 320px; z-index: 1050;">
+          
+          <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+            <div class="fw-semibold">Notificaciones</div>
+            <button class="btn btn-sm btn-outline-secondary" (click)="markAllAsRead()">Marcar leídas</button>
+          </div>
+
+          <div *ngIf="notifications.length === 0" class="p-3 text-muted">
+            Sin notificaciones
+          </div>
+
+          <div *ngFor="let n of notifications" class="p-2 border-bottom">
+            <div class="fw-semibold" [class.text-muted]="n.read">{{ n.title }}</div>
+            <div class="small text-muted">{{ n.message }}</div>
+
+            <div class="mt-2" *ngIf="n.action">
+              <button class="btn btn-sm btn-primary" (click)="onNotifAction(n)">
+                {{ n.action === 'download' ? 'Descargar' : 'Instalar y reiniciar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Icono de descarga -->
       <button class="btn btn-light p-2 me-2" title="Descargar">
         <i class="bi bi-download fs-5"></i>

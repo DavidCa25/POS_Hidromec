@@ -1,322 +1,247 @@
-.castrol-table-container {
-  background: #f7faf7;
-  border-radius: 20px;
-  box-shadow: 0 6px 24px 0 rgba(0,0,0,0.08);
+/* =========================================================
+   INVENTARIO (Tema corporativo, header tipo Ventas)
+   - Se elimina el botón/barra "Cambiar color" del inventario
+   - El color principal viene de: :root --inv-main
+   - Tabla más redondeada + look premium
+   ========================================================= */
+
+/* Color global (lo actualiza ThemeService desde Dashboard) */
+:root{
+  --inv-main: #1f2e86;     /* default azul */
+  --inv-main-dark: #18256c;
+  --inv-bg: #f7faf7;
+  --inv-card: #ffffff;
+  --inv-text: #1f2937;
+  --inv-muted: #6b7280;
+  --inv-border: rgba(0,0,0,.08);
+}
+
+/* =========================
+   Header tipo “Ventas”
+   ========================= */
+.inv-header-section{
+  background: linear-gradient(
+    135deg,
+    var(--inv-main) 0%,
+    color-mix(in srgb, var(--inv-main) 97%, white 3%) 100%
+  );
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 8px 24px rgba(31,46,134,.18);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.inv-header-section::before{
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.inv-header-content{
+  position: relative;
+  z-index: 1;
+}
+
+.inv-title-wrapper{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .55rem;
+}
+
+.inv-icon{
+  font-size: 2.5rem;
+  color: #fff;
+  opacity: .95;
+}
+
+.inv-main-title{
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  font-family: 'Raleway', sans-serif;
+}
+
+.inv-subtitle{
+  color: rgba(255,255,255,.85);
+  font-size: 1.05rem;
+  margin: 0;
+  margin-left: 3.5rem;
+  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+}
+
+.inv-actions-group{
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================
+   Contenedor “card”
+   ========================= */
+.castrol-table-container{
+  background: var(--inv-bg);
+  border-radius: 24px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
   padding: 2rem 1.5rem;
 }
 
-.castrol-table-title {
-   color: #262626;
-   margin-top: 15px;
-   text-align: center;
-   font-family: 'Raleway', sans-serif;
+/* Si mantienes el título interno, lo estiliza */
+.castrol-table-title{
+  color: var(--inv-text);
+  margin-top: 0;
+  text-align: left;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 900;
+  font-size: 1.9rem;
 }
 
-.castrol-btn-add {
-  background: var(--castrol-main, #000080);
+/* =========================
+   Botones
+   ========================= */
+.castrol-btn-add{
+  background: var(--inv-main);
   border: none;
   color: #fff;
-  font-weight: bold;
+  font-weight: 800;
   border-radius: 12px;
-  padding: 0.6em 1.5em;
-  box-shadow: 0 3px 10px 0 rgba(0,102,47,0.10);
-  transition: background 0.2s;
+  padding: 0.65em 1.5em;
+  box-shadow: 0 3px 10px rgba(31,46,134,0.16);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  cursor: pointer;
   font-family: 'Poppins', sans-serif;
-  margin-left: auto;
-}
-.castrol-btn-add:hover {
-   background: var(--castrol-main, #000080);
 }
 
-.castrol-table {
-  background: var(--castrol-main, #000080);
+.castrol-btn-add:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(31,46,134,0.20);
+  filter: brightness(1.02);
+}
+
+.castrol-btn-add:active{
+  transform: translateY(0px);
+  filter: brightness(.98);
+}
+
+/* Este ya no se usa en inventario, pero lo dejo por compatibilidad
+   (si lo usas en otro lado) */
+.castrol-btn-color{
+  background: #eef2ff;
+  border: 1.5px solid var(--inv-main);
+  color: var(--inv-main);
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 0.6em 1.2em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform .12s;
+  font-family: 'Poppins', sans-serif;
+}
+.castrol-btn-color:hover{
+  background: var(--inv-main);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* =========================
+   Tabla premium
+   ========================= */
+.castrol-table{
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
   margin-top: 1rem;
-  font-family: 'Poppins', sans-serif;
+  border-radius: 20px;
 }
 
-/* Bordes solo en esquinas externas */
-.castrol-table thead th:first-child {
-  border-top-left-radius: 16px;
-}
-.castrol-table thead th:last-child {
-  border-top-right-radius: 16px;
-}
-.castrol-table tbody tr:last-child td:first-child {
-  border-bottom-left-radius: 16px;
-}
-.castrol-table tbody tr:last-child td:last-child {
-  border-bottom-right-radius: 16px;
-}
-
-/* Estilos generales */
-.castrol-table th, .castrol-table td {
+/* Celdas generales */
+.castrol-table th,
+.castrol-table td{
   background: #fff;
   border: none;
   padding: 1rem 0.8rem;
   text-align: center;
   vertical-align: middle;
   font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
+  color: var(--inv-text);
 }
 
-.castrol-table thead th {
-  background: var(--castrol-main);
+/* Header de la tabla */
+.castrol-table thead th{
+  background: var(--inv-main);
   color: #fff;
-  font-size: 1.08rem;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  border-bottom: 3px solid #104E8B;
+  font-size: 1.06rem;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  border-bottom: 3px solid rgba(0,0,0,0.16);
 }
 
-.castrol-table tr {
-  transition: background 0.15s;
+/* Esquinas externas redondeadas */
+.castrol-table thead th:first-child{
+  border-top-left-radius: 20px;
+}
+.castrol-table thead th:last-child{
+  border-top-right-radius: 20px;
+}
+.castrol-table tbody tr:last-child td:first-child{
+  border-bottom-left-radius: 20px;
+}
+.castrol-table tbody tr:last-child td:last-child{
+  border-bottom-right-radius: 20px;
 }
 
-
-.castrol-table tbody tr:hover {
-  background: #e9fbe3;
+/* Filas */
+.castrol-table tbody tr{
+  background: #fff;
+  transition: background .15s ease;
 }
 
-.castrol-table td {
-  border-bottom: 1.5px solid #ebf6ee;
+/* Hover suave (amarillo tenue) */
+.castrol-table tbody tr:hover{
+  background: #fff7cc;
 }
 
-.castrol-table tbody tr:last-child td {
+/* Líneas divisorias sutiles */
+.castrol-table tbody td{
+  border-bottom: 1.5px solid rgba(0,0,0,0.06);
+}
+
+.castrol-table tbody tr:last-child td{
   border-bottom: none;
 }
 
-:root {
-  --castrol-main: #000080;
+/* =========================
+   Acciones (botones icono)
+   ========================= */
+.acciones-cell{
+  padding: 8px 12px;
 }
 
-.castrol-btn-color {
-  background: #e9fbe3;
-  border: 1.5px solid var(--castrol-main);
-  color: var(--castrol-main);
-  font-weight: bold;
-  border-radius: 10px;
-  margin-left: 1px;
-  padding: 0.45em 1em;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  font-family: 'Poppins', sans-serif;
-  margin-bottom: 10px;
-}
-.castrol-btn-color:hover {
-  background: var(--castrol-main);
-  color: #fff;
-}
-.color-modal-backdrop {
-  position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.15);
-  z-index: 900;
-}
-.color-modal {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  background: #fff;
-  padding: 2em;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
-  z-index: 999;
-  min-width: 250px;
-  text-align: center;
-  font-family: 'Raleway', sans-serif;
+.action-group{
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.color-modal h4 {
-  margin-bottom: 1.2em;
-}
-
-.color-options {
-  display: grid;
-  grid-template-columns: repeat(2, 90px); /* O 3, 4 columnas según colores */
-  gap: 14px 20px;
-  justify-content: center;
-  margin: 12px 0;
-}
-
-.color-options button {
-  border: 2px solid #e0e0e0;
-  outline: none;
-  width: 90px; height: 44px;
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.09);
-  transition: border 0.15s, transform 0.12s;
-  margin: 0; /* Importante para grid */
-  font-family: 'Poppins', sans-serif;
-}
-.color-options button:hover {
-  border: 2px solid var(--castrol-main);
-  transform: scale(1.07);
-  filter: brightness(0.95);
-}
-
-.producto-modal {
-  background: var(--castrol-main);
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 550px;
-  max-width: 96vw;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 10px 36px 0 rgba(0,0,0,0.17);
-  padding: 2.5em 2em 1.5em 2em;
-  z-index: 2000;
-}
-
-.producto-modal-title {
-  margin-bottom: 1.5em;
-  color: var(--castrol-main, #000080);
-  font-size: 1.7em;
-  text-align: left;
-  font-family: 'Raleway', sans-serif;
-}
-
-.producto-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 18px 22px;
-  margin-bottom: 1.5em;
-}
-
-.grid-col-span-2 {
-  grid-column: span 2;
-}
-
-.producto-form-grid label {
-  display: block;
-  font-weight: 600;
-  color: #6C7B8B;
-  margin-bottom: 3px;
-  font-family: 'Poppins', sans-serif;
-}
-
-.producto-form-grid input,
-.producto-form-grid select {
-  color: #222 !important;   
-  background: #f9fbf9;
-  width: 100%;
-  padding: 0.5em 0.9em;
-  border-radius: 8px;
-  border: 1.5px solid #e3e9e4;
-  background: #f9fbf9;
-  /* font-size: 1em; */
-  margin-bottom: 2px;
-  transition: border-color 0.17s;
-  font-family: 'Poppins', sans-serif;
-}
-.producto-form-grid input:focus,
-.producto-form-grid select:focus {
-  border-color: var(--castrol-main, #000080);
-  outline: none;
-}
-
-/* Inputs cortos alineados en el mismo renglón */
-.producto-short-row {
-  display: flex;
-  gap: 14px;
-}
-.producto-short-row > div {
-  flex: 1;
-  min-width: 90px;
-}
-
-/* Botones y acciones */
-.producto-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1em;
-}
-
-.producto-save-btn {
-  background: var(--castrol-main, #000080);
-  color: #fff;
-  font-weight: bold;
-  border: none;
-  border-radius: 9px;
-  padding: 0.65em 2em;
-  box-shadow: 0 2px 8px 0 rgba(0,102,47,0.09);
-  transition: background 0.17s;
-}
-.producto-save-btn:hover {
-  background: var(--castrol-main, #000080);
-}
-.producto-cancel-btn {
-  background: #efefef;
-  color: #444;
-  border: none;
-  border-radius: 9px;
-  padding: 0.65em 2em;
-  font-weight: bold;
-  transition: background 0.17s;
-}
-.producto-cancel-btn:hover {
-  background: #e0e0e0;
-}
-
-/* Toast wrapper (posición) */
-.toast-wrap{
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 9999;
-  pointer-events: none;
-  animation: toast-in .25s ease-out;
-}
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(8px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Tarjeta */
-.toast-card{
-  pointer-events: auto;
-  display: flex; align-items: center; gap: 10px;
-  min-width: 280px; max-width: 420px;
-  background: #0f172a; /* slate-900 */
-  color: #e2e8f0;      /* slate-200 */
-  border: 1px solid rgba(226,232,240,.12);
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  padding: 14px 16px;
-  border-radius: 14px;
-  backdrop-filter: blur(6px);
-  font-family: 'Poppins', sans-serif;
-}
-.toast-card.error{
-  background: #3f1f23; /* rojo oscuro elegante */
-  border-color: rgba(248,113,113,.35);
-}
-
-/* Accent dot */
-.toast-dot{
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #22c55e; /* success */
-  box-shadow: 0 0 0 4px rgba(34,197,94,.15);
-  flex-shrink: 0;
-}
-.toast-card.error .toast-dot{
-  background: #ef4444; /* error */
-  box-shadow: 0 0 0 4px rgba(239,68,68,.15);
-}
-
-.toast-msg{
-  font-size: 14px;
-  letter-spacing: .2px;
-}
-
-
-.acciones-cell { padding: 8px 12px; }
-.action-group { display: inline-flex; gap: 8px; align-items: center; }
-
-/* Botón base (soft/ghost) */
-.action-btn {
+/* Botón base */
+.action-btn{
   border: 0;
-  background: #f3f4f6;         /* gris claro fijo */
+  background: #f3f4f6;
   border-radius: 12px;
   padding: 8px;
   display: inline-grid;
@@ -325,28 +250,40 @@
   transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, filter .15s ease;
   outline: none;
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  position: relative;
 }
 
-.action-btn:hover {
-  background: #e5e7eb;         /* hover gris */
+.action-btn:hover{
+  background: #e5e7eb;
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(0,0,0,.08);
 }
 
-.action-btn:active { transform: translateY(0); filter: brightness(.98); }
-.action-btn:focus-visible { box-shadow: 0 0 0 4px rgba(37, 99, 235, .18); }
+.action-btn:active{
+  transform: translateY(0);
+  filter: brightness(.98);
+}
 
-/* Iconos */
-.action-btn svg { width: 18px; height: 18px; fill: #1f2937; transition: fill .15s ease, transform .15s ease; }
+/* Foco al color principal */
+.action-btn:focus-visible{
+  box-shadow: 0 0 0 4px rgba(31,46,134,.22);
+}
 
-/* Colores duros por acción */
-.btn-edit:hover svg   { fill: #2563eb; } /* azul editar */
-.btn-view:hover svg   { fill: #64748b; } /* gris ver */
-.btn-delete:hover svg { fill: #ef4444; } /* rojo eliminar */
+/* Icono */
+.action-btn svg{
+  width: 18px;
+  height: 18px;
+  fill: #1f2937;
+  transition: fill .15s ease, transform .15s ease;
+}
 
-/* Tooltip puro CSS */
-.action-btn { position: relative; }
-.action-btn::after {
+/* Colores por acción */
+.btn-edit:hover svg{ fill: var(--inv-main); }
+.btn-view:hover svg{ fill: #64748b; }
+.btn-delete:hover svg{ fill: #ef4444; }
+
+/* Tooltip */
+.action-btn::after{
   content: attr(data-tooltip);
   position: absolute;
   bottom: calc(100% + 8px);
@@ -363,7 +300,178 @@
   transition: opacity .15s ease, transform .15s ease;
   box-shadow: 0 8px 20px rgba(0,0,0,.15);
 }
-.action-btn:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* Foco rojo para destruir */
-.btn-delete:focus-visible { box-shadow: 0 0 0 4px rgba(239, 68, 68, .22); }
+.action-btn:hover::after{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Foco rojo para eliminar */
+.btn-delete:focus-visible{
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, .22);
+}
+
+/* =========================
+   Modal de producto (lo dejo completo)
+   ========================= */
+.producto-modal{
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 550px;
+  max-width: 96vw;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 10px 36px rgba(0,0,0,.17);
+  padding: 2.5em 2em 1.5em 2em;
+  z-index: 2000;
+}
+
+.producto-modal-title{
+  margin-bottom: 1.5em;
+  color: var(--inv-main);
+  font-size: 1.7em;
+  text-align: left;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 900;
+}
+
+.producto-form-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px 22px;
+  margin-bottom: 1.5em;
+}
+
+.grid-col-span{ grid-column: span 1; }
+.grid-col-span-2{ grid-column: span 2; }
+.grid-col-span-3{ grid-column: span 3; }
+
+.producto-form-grid label{
+  display: block;
+  font-weight: 600;
+  color: #6C7B8B;
+  margin-bottom: 3px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.producto-form-grid input,
+.producto-form-grid select{
+  color: #222 !important;
+  width: 100%;
+  padding: 0.55em 0.95em;
+  border-radius: 10px;
+  border: 1.5px solid #e3e9e4;
+  background: #f9fbf9;
+  margin-bottom: 2px;
+  transition: border-color .17s, box-shadow .17s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.producto-form-grid input:focus,
+.producto-form-grid select:focus{
+  border-color: var(--inv-main);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(31,46,134,.12);
+}
+
+/* Acciones modal */
+.producto-modal-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 1em;
+}
+
+.producto-save-btn{
+  background: var(--inv-main);
+  color: #fff;
+  font-weight: 800;
+  border: none;
+  border-radius: 10px;
+  padding: 0.70em 2em;
+  box-shadow: 0 2px 8px rgba(31,46,134,.12);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  cursor: pointer;
+}
+
+.producto-save-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(31,46,134,.18);
+  filter: brightness(1.02);
+}
+
+.producto-save-btn:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.producto-cancel-btn{
+  background: #efefef;
+  color: #444;
+  border: none;
+  border-radius: 10px;
+  padding: 0.70em 2em;
+  font-weight: 800;
+  transition: background .17s, transform .12s;
+  cursor: pointer;
+}
+
+.producto-cancel-btn:hover{
+  background: #e0e0e0;
+  transform: translateY(-1px);
+}
+
+/* =========================
+   Responsive
+   ========================= */
+@media (max-width: 1100px){
+  .inv-header-section{
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .inv-title-wrapper{
+    justify-content: center;
+  }
+
+  .inv-subtitle{
+    margin-left: 0;
+  }
+
+  .inv-actions-group{
+    width: 100%;
+    justify-content: center;
+  }
+
+  .castrol-table-container{
+    padding: 1.5rem 1rem;
+  }
+
+  .inv-main-title{
+    font-size: 2.1rem;
+  }
+
+  .castrol-table th,
+  .castrol-table td{
+    padding: 0.7rem 0.5rem;
+    font-size: 0.92rem;
+  }
+
+  .producto-modal{
+    min-width: 92vw;
+    padding: 2rem 1.2rem 1.2rem 1.2rem;
+  }
+
+  .producto-form-grid{
+    grid-template-columns: 1fr;
+  }
+
+  .grid-col-span-2,
+  .grid-col-span-3{
+    grid-column: span 1;
+  }
+}
