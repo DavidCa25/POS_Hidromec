@@ -1,27 +1,58 @@
 <div class="container">
   <!-- Barra de atajos POS -->
   <div class="pos-shortcuts-bar mb-3">
-    <div class="pos-shortcut" (click)="abrirCajonManual()">
-      <span class="pos-key">F1</span>
-      <span class="pos-label">Abrir cajón</span>
+    <div class="pos-shortcuts-left">
+      <div class="pos-shortcut" (click)="abrirCajonManual()">
+        <span class="pos-key">F1</span>
+        <span class="pos-label">Abrir cajón</span>
+      </div>
+      <div class="pos-shortcut" (click)="abrirModalProductos()">
+        <span class="pos-key">F7</span>
+        <span class="pos-label">Buscar / Agregar producto</span>
+      </div>
+      <div class="pos-shortcut" (click)="abrirModalCobrar()">
+        <span class="pos-key">F8</span>
+        <span class="pos-label">Cobrar</span>
+      </div>
+      <div class="pos-shortcut" (click)="abrirSalidaEfectivo()">
+        <span class="pos-key">F10</span>
+        <span class="pos-label">Salida de efectivo</span>
+      </div>
     </div>
-    <div class="pos-shortcut" (click)="abrirModalProductos()">
-      <span class="pos-key">F7</span>
-      <span class="pos-label">Buscar / Agregar producto</span>
-    </div>
-    <div class="pos-shortcut" (click)="abrirModalCobrar()">
-      <span class="pos-key">F8</span>
-      <span class="pos-label">Cobrar</span>
-    </div>
-    <div class="pos-shortcut" (click)="abrirSalidaEfectivo()">
-      <span class="pos-key">F10</span>
-      <span class="pos-label">Salida de efectivo</span>
+
+    <!-- Chip estado turno -->
+    <div class="pos-shift-chip"
+         [class.open]="shiftOpen"
+         [class.closed]="!shiftOpen"
+         (click)="!shiftOpen ? abrirModalAbrirTurno(true) : null">
+      <span class="dot"></span>
+
+      <ng-container *ngIf="shiftOpen; else noShiftTpl">
+        <div class="txt">
+          <div class="t1">Turno abierto</div>
+          <div class="t2">
+            {{ shiftOpenedAt | date:'HH:mm' }} · Fondo:
+            {{ shiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #noShiftTpl>
+        <div class="txt">
+          <div class="t1">Sin turno</div>
+          <div class="t2">Abrir turno para vender</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary btn-open-shift">
+          Abrir
+        </button>
+      </ng-template>
     </div>
   </div>
 
   <div class="card shadow-lg border-0 mt-4 venta-densa">
     <div class="card-body">
       <h2 class="text-center mb-5">Punto de Venta</h2>
+
       <form>
         <div class="row g-4 mb-4">
           <div class="col-md-6">
@@ -82,7 +113,6 @@
                   </td>
                 </tr>
 
-                <!-- Si no hay items -->
                 <tr *ngIf="items.length === 0">
                   <td colspan="5" class="text-center text-muted py-4">
                     No hay productos agregados. Usa “Agregar producto”.
@@ -99,7 +129,6 @@
           </button>
         </div>
 
-        <!-- Total y acciones -->
         <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
           <div id="total-venta" class="mb-0 me-4 fs-4 fw-bold text-success">
             {{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}
@@ -111,6 +140,80 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABRIR TURNO -->
+<div class="modal fade show d-block"
+     *ngIf="showOpenShiftModal"
+     [ngStyle]="{'background': openShiftRequired ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.16)', 'z-index': '13000'}">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 open-shift-modal">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0">Abrir turno</h5>
+
+        <!-- si es requerido, no muestro la X para que sea 100% claro -->
+        <button *ngIf="!openShiftRequired"
+                type="button"
+                class="btn-close"
+                (click)="cerrarModalAbrirTurno()"></button>
+      </div>
+
+      <div class="modal-body px-4 pt-1 pb-4">
+        <div class="open-shift-hero">
+          <div class="icon">
+            <i class="bi bi-safe2"></i>
+          </div>
+          <div class="copy">
+            <div class="t1">Necesitas un turno abierto para vender</div>
+            <div class="t2">
+              Así el corte queda bien y el efectivo del cajón cuadra (fondo inicial, entradas y salidas).
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-3">
+          <div class="col-12">
+            <label class="form-label">Fondo inicial (opcional)</label>
+            <input type="number"
+                   class="form-control"
+                   min="0" step="0.01"
+                   [(ngModel)]="openingCash"
+                   name="openingCash"
+                   placeholder="0.00">
+            <div class="hint">
+              Si vas a dejar cambio en el cajón, ponlo aquí. Si no, déjalo en 0.00.
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Nota (opcional)</label>
+            <textarea class="form-control"
+                      rows="2"
+                      [(ngModel)]="openingNote"
+                      name="openingNote"
+                      placeholder="Ej. Fondo para cambio, inicio de turno, etc."></textarea>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  *ngIf="openShiftRequired"
+                  (click)="salirDeVentas()">
+            Salir
+          </button>
+
+          <button type="button"
+                  class="btn btn-primary"
+                  [disabled]="openingShiftLoading"
+                  (click)="confirmarAbrirTurno()">
+            <span *ngIf="!openingShiftLoading">Abrir turno</span>
+            <span *ngIf="openingShiftLoading">Abriendo…</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

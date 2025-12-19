@@ -50,19 +50,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
+    registerCashMovement: (payload) =>
+        ipcRenderer.invoke('sp-register-cash-out', payload),
     generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
     getConfig: () => ipcRenderer.invoke("getConfig"),
 
     getSales: (payload) => ipcRenderer.invoke('sp-get-sales', payload),
     exportSalesPdf: (payload) => ipcRenderer.invoke('export-sales-pdf', payload),
     
-    //Auto Updater
     onUpdateStatus: (callback) => {
         ipcRenderer.on('update-status', (_event, data) => callback(data));
     },
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
     installUpdate: () => ipcRenderer.invoke('install-update'),
+
+    getOpenShift: (payload) =>
+        ipcRenderer.invoke('sp-get-open-shift', payload),
+
+    openShift: (payload) =>
+        ipcRenderer.invoke('sp-open-shift', payload),
 
 
 });

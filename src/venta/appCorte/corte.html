@@ -4,9 +4,13 @@
     <!-- FILTROS -->
     <div class="filter-card" *ngIf="showFilters">
       <div class="filter-row">
+
+        <!-- Cajero -->
         <div class="filter-group">
           <label>Cajero</label>
-          <select class="form-control" [(ngModel)]="selectedUserId">
+          <select class="form-control"
+                  [(ngModel)]="selectedUserId"
+                  (change)="onUserChange()">
             <option [ngValue]="null">-- Selecciona cajero --</option>
             <option *ngFor="let u of usuarios" [ngValue]="u.id">
               {{ u.usuario }} ({{ u.rol }})
@@ -14,70 +18,151 @@
           </select>
         </div>
 
+        <!-- MODO -->
         <div class="filter-group">
-          <label>Rango rápido</label>
+          <label>Modo</label>
           <div class="preset-group">
-            <button type="button" class="preset" [class.active]="preset==='HOY'" (click)="setPreset('HOY')">Hoy</button>
-            <button type="button" class="preset" [class.active]="preset==='AYER'" (click)="setPreset('AYER')">Ayer</button>
-            <button type="button" class="preset" [class.active]="preset==='SEMANA'" (click)="setPreset('SEMANA')">Esta semana</button>
+            <button type="button"
+                    class="preset"
+                    [class.active]="mode==='TURNO'"
+                    (click)="mode='TURNO'; onlyOpen=true; onUserChange()">
+              Turno (cierre)
+            </button>
+
+            <button type="button"
+                    class="preset"
+                    [class.active]="mode==='DIA'"
+                    (click)="mode='DIA'; onUserChange()">
+              Día (reporte)
+            </button>
           </div>
         </div>
 
-        <div class="filter-group">
-          <label>Desde</label>
-          <input type="date" class="form-control" [(ngModel)]="desdeStr">
-        </div>
+        <!-- CONTROLES SOLO PARA DIA -->
+        <ng-container *ngIf="mode==='DIA'">
+          <div class="filter-group">
+            <label>Rango rápido</label>
+            <div class="preset-group">
+              <button type="button" class="preset"
+                      [class.active]="preset==='HOY'"
+                      (click)="setPreset('HOY')">Hoy</button>
+              <button type="button" class="preset"
+                      [class.active]="preset==='AYER'"
+                      (click)="setPreset('AYER')">Ayer</button>
+              <button type="button" class="preset"
+                      [class.active]="preset==='SEMANA'"
+                      (click)="setPreset('SEMANA')">Esta semana</button>
+            </div>
+          </div>
 
-        <div class="filter-group">
-          <label>Hasta</label>
-          <input type="date" class="form-control" [(ngModel)]="hastaStr">
-        </div>
+          <div class="filter-group">
+            <label>Desde</label>
+            <input type="date" class="form-control" [(ngModel)]="desdeStr">
+          </div>
 
+          <div class="filter-group">
+            <label>Hasta</label>
+            <input type="date" class="form-control" [(ngModel)]="hastaStr">
+          </div>
+        </ng-container>
+
+        <!-- INFO SOLO PARA TURNO -->
+        <ng-container *ngIf="mode==='TURNO'">
+          <div class="filter-group" style="min-width: 320px;">
+            <label>Turno detectado</label>
+
+            <div class="small text-muted" *ngIf="!selectedUserId">
+              Selecciona un cajero para detectar su turno abierto.
+            </div>
+
+            <div class="small" *ngIf="selectedUserId && !openShiftId">
+              <span class="badge badge-open" style="background:#ffe9e9;color:#b42318;border:1px solid #ffd0d0;">
+                Sin turno abierto
+              </span>
+              <div class="text-muted mt-1">No se puede cerrar porque no hay turno abierto.</div>
+            </div>
+
+            <div class="small" *ngIf="openShiftId">
+              <span class="badge badge-open">Turno abierto</span>
+              <div class="mt-1">
+                <b>ID:</b> {{ openShiftId }} ·
+                <b>Abierto:</b> {{ openShiftOpenedAt ? (openShiftOpenedAt | date:'HH:mm') : '—' }} ·
+                <b>Fondo:</b> {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Acciones -->
         <div class="filter-actions">
           <button class="btn btn-ghost" type="button" (click)="limpiar()">
             <i class="bi bi-x-circle"></i> Limpiar
           </button>
-          <button class="btn btn-primary" type="button" (click)="consultar()">
+
+          <button class="btn btn-primary" type="button" (click)="consultar()"
+                  [disabled]="loading || !selectedUserId || (mode==='TURNO' && !openShiftId)">
             <i class="bi bi-search"></i> Consultar
           </button>
         </div>
+
       </div>
     </div>
 
     <!-- HEADER (cuando filtros están ocultos) -->
     <div class="corte-header" *ngIf="!showFilters">
-      <h2>Movimientos de caja</h2>
-      <div class="header-right">
+      <h2>
+        Movimientos de caja
+        <span *ngIf="mode==='TURNO' && openShiftId" class="text-muted" style="font-size: 14px;">
+          · Turno #{{ openShiftId }}
+        </span>
+      </h2>
 
-        <!-- NUEVO: Mostrar cajero elegido -->
+      <div class="header-right">
         <div class="hoy">
           <b>Cajero:</b> {{ selectedUserName || '—' }}
           <br>
-          {{ hoy | date:'fullDate':undefined:'es-MX' }}
+
+          <!-- DIA: rango -->
+          <ng-container *ngIf="mode==='DIA'">
+            <span class="mono">
+              {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
+            </span>
+          </ng-container>
+
+          <!-- TURNO: info turno -->
+          <ng-container *ngIf="mode==='TURNO'">
+            <span *ngIf="openShiftId" class="mono">
+              Abierto: {{ openShiftOpenedAt ? (openShiftOpenedAt | date:'HH:mm') : '—' }} ·
+              Fondo: {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            </span>
+            <span *ngIf="!openShiftId" class="mono">Sin turno abierto</span>
+          </ng-container>
         </div>
 
         <button class="btn btn-success d-flex align-items-center gap-2"
-            type="button"
-            [disabled]="loading || movimientos.length === 0 || !selectedUserId"
-            (click)="abrirModalCierre()">
-          <i class="bi bi-check2-circle"></i> Cerrar turno
+                type="button"
+                [disabled]="loading || !selectedUserId || (mode==='TURNO' && !openShiftId)"
+                (click)="abrirModalCierre()">
+          <i class="bi bi-check2-circle"></i>
+          {{ mode==='TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
         </button>
 
         <button class="btn btn-ghost" type="button" (click)="editarFiltros()">
-          <i class="bi bi-sliders"></i> Cambiar rango
+          <i class="bi bi-sliders"></i> Cambiar filtros
         </button>
-
       </div>
     </div>
 
-    <!-- MODAL CERRAR TURNO (solo UI) -->
+    <!-- MODAL CERRAR TURNO -->
     <div class="modal fade show d-block cierre-modal"
-        *ngIf="showCloseModal"
-        style="background: rgba(0,0,0,.12); z-index:10000;">
+         *ngIf="showCloseModal"
+         style="background: rgba(0,0,0,.12); z-index:10000;">
       <div class="modal-dialog modal-dialog-centered cierre-dialog">
         <div class="modal-content rounded-4">
           <div class="modal-header border-0 pb-1">
-            <h5 class="modal-title fw-bold">Registrar cierre</h5>
+            <h5 class="modal-title fw-bold">
+              {{ mode==='TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
+            </h5>
             <button type="button" class="btn-close" (click)="cerrarModalCierre()"></button>
           </div>
 
@@ -85,12 +170,20 @@
             <div class="mb-2 small">
               <b>Cajero:</b> {{ selectedUserName || '—' }}
             </div>
+
             <div class="mb-2 text-muted small">
-              Rango:
-              <span class="mono">
-                {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
-              </span>
-              <span *ngIf="onlyOpen" class="badge badge-open">abiertos</span>
+              <ng-container *ngIf="mode==='DIA'">
+                Rango:
+                <span class="mono">
+                  {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
+                </span>
+              </ng-container>
+
+              <ng-container *ngIf="mode==='TURNO'">
+                Turno:
+                <span class="mono">#{{ openShiftId || '—' }}</span>
+                <span *ngIf="openShiftId" class="badge badge-open ms-2">abierto</span>
+              </ng-container>
             </div>
 
             <div class="mb-3">
@@ -98,23 +191,27 @@
               <div class="form-control-plaintext fs-5 fw-bold text-success">
                 {{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}
               </div>
-              <div class="hint text-muted">Netos del rango (entradas − salidas).</div>
+              <div class="hint text-muted">
+                {{ mode==='TURNO'
+                    ? 'Calculado por movimientos del turno + fondo inicial.'
+                    : 'Calculado por movimientos del rango + (si aplica) fondo del turno abierto.' }}
+              </div>
             </div>
 
             <div class="mb-3">
               <label class="form-label">Efectivo entregado</label>
               <input type="number"
-                    min="0" step="0.01"
-                    class="form-control"
-                    [(ngModel)]="cashDelivered"
-                    name="cashDelivered"
-                    placeholder="0.00">
+                     min="0" step="0.01"
+                     class="form-control"
+                     [(ngModel)]="cashDelivered"
+                     name="cashDelivered"
+                     placeholder="0.00">
             </div>
 
             <div class="mb-3">
               <label class="form-label">Diferencia</label>
               <div class="form-control-plaintext fs-5 fw-bold"
-                  [ngClass]="{'text-success': cashDiff >= 0, 'text-danger': cashDiff < 0}">
+                   [ngClass]="{'text-success': cashDiff >= 0, 'text-danger': cashDiff < 0}">
                 {{ cashDiff | currency:'MXN':'symbol-narrow':'1.2-2' }}
               </div>
             </div>
@@ -130,7 +227,7 @@
               <button type="button" class="btn btn-ghost" (click)="cerrarModalCierre()">Cancelar</button>
               <button type="button"
                       class="btn btn-primary"
-                      [disabled]="cashDelivered === null"
+                      [disabled]="cashDelivered === null || (mode==='TURNO' && !openShiftId)"
                       (click)="confirmarCierreReal()">
                 Guardar
               </button>
@@ -139,7 +236,6 @@
         </div>
       </div>
     </div>
-
 
     <!-- KPIs -->
     <div class="resumen-grid" *ngIf="!showFilters">
@@ -189,7 +285,7 @@
             <td class="num strong">{{ m.amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
           </tr>
           <tr *ngIf="movimientos.length === 0">
-            <td colspan="7" class="text-center text-muted py-3">Sin movimientos en el rango.</td>
+            <td colspan="7" class="text-center text-muted py-3">Sin movimientos.</td>
           </tr>
         </tbody>
         <tfoot>
@@ -206,7 +302,10 @@
     </ng-template>
 
     <div class="nota" *ngIf="!showFilters">
-      * Mostrando movimientos consultados para el rango seleccionado.
+      * {{ mode==='TURNO'
+          ? 'Mostrando movimientos del turno seleccionado (closure_id).'
+          : 'Mostrando movimientos del rango seleccionado.' }}
     </div>
+
   </div>
 </div>
