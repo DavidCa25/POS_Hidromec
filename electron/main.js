@@ -860,6 +860,24 @@ ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
   }
 });
 
+ipcMain.handle('sp-register-cash-out', async (event, payload) => {
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('user_id', sql.Int, payload.user_id)
+      .input('amount', sql.Decimal(10,2), payload.amount)
+      .input('note', sql.NVarChar(255), payload.note || null)
+      .execute('sp_register_cash_out');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('❌ sp_register_cash_out:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
 async function loadSaleFromDbWithSp(saleId) {
   const pool = await poolPromise;
 
@@ -1076,6 +1094,38 @@ ipcMain.handle('export-sales-pdf', async (_event, payload = {}) => {
 
   } catch (err) {
     console.error('export-sales-pdf:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-open-shift', async (event, payload) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('user_id', sql.Int, payload.user_id)
+      .input('date', sql.Date, payload.date || null) 
+      .execute('sp_get_open_shift');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('❌ sp_get_open_shift:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-open-shift', async (event, payload) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('user_id', sql.Int, payload.user_id)
+      .input('opening_cash', sql.Decimal(12,2), Number(payload.opening_cash ?? 0))
+      .input('opening_note', sql.NVarChar(255), payload.note || null)
+      .input('opening_user_id', sql.Int, payload.opening_user_id ?? payload.user_id)
+      .execute('sp_open_shift');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('❌ sp_open_shift:', err);
     return { success: false, error: err.message };
   }
 });

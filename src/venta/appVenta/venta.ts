@@ -1,7 +1,7 @@
 import { Component, HostListener } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angular/common';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
 
@@ -36,7 +36,7 @@ interface CreditCustomer {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle],
   styleUrls: ['./venta.css']
 })
 export class Venta {
@@ -76,11 +76,29 @@ export class Venta {
   lastSaleIsCredito = false;
   lastSaleTotal = 0;
 
+  // =========================
+  // Turno (Abrir / estado)
+  // =========================
+  shiftOpen = false;
+  shiftId: number | null = null;
+  shiftOpenedAt: Date | null = null;
+  shiftOpeningCash = 0;
+
+  showOpenShiftModal = false;
+  openShiftRequired = false;
+  openingShiftLoading = false;
+
+  openingCash: number | null = null;
+  openingNote = '';
+
+  // evita carreras/duplicados al consultar/abrir
+  private shiftCheckInProgress = false;
+
   constructor(private auth: AuthService, private router: Router) {
     this.totalVenta = 0;
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     if (!this.auth.usuarioActualId) {
       Swal.fire({
         icon: 'info',
@@ -91,6 +109,9 @@ export class Venta {
       }).then(() => this.router.navigate(['/login']));
       return;
     }
+
+    // al entrar a ventas, checo si hay turno abierto
+    await this.ensureShiftOpen('VENTA');
   }
 
   private get currentUserId(): number {
@@ -103,9 +124,6 @@ export class Venta {
   }
   private writeFolioCounter(v: number) {
     localStorage.setItem(this.FOLIO_KEY, String(v));
-  }
-  private peekNextFolio(): number {
-    return this.readFolioCounter() + 1;
   }
   private advanceFolioAfterConfirm() {
     const current = this.readFolioCounter();
@@ -143,14 +161,190 @@ export class Venta {
     this.recalcularTotal();
   }
 
-  abrirModalCobrar() {
+  // =========================
+  // Turno helpers
+  // =========================
+
+  private setShiftFromRow(row: any) {
+    this.shiftOpen = true;
+    this.shiftId = row?.id ?? row?.shift_id ?? row?.closure_id ?? null;
+    this.shiftOpenedAt = row?.opened_at ? new Date(row.opened_at) : null;
+    this.shiftOpeningCash = Number(row?.opening_cash ?? row?.openingCash ?? 0);
+  }
+
+  private clearShift() {
+    this.shiftOpen = false;
+    this.shiftId = null;
+    this.shiftOpenedAt = null;
+    this.shiftOpeningCash = 0;
+  }
+
+  private async fetchOpenShift(): Promise<boolean> {
+    const api = (window as any).electronAPI;
+    if (!api || !api.getOpenShift) {
+      // En modo ng serve puede no existir: no bloqueo.
+      return true;
+    }
+
+    try {
+      const resp = await api.getOpenShift({ user_id: this.currentUserId });
+
+      if (!resp?.success) {
+        return false;
+      }
+
+      const row = resp.data;
+
+      // con tu SP actual: si hay fila y closed_at es null => abierto
+      const isOpen = !!row?.id && (row.closed_at == null);
+
+      if (isOpen) {
+        this.setShiftFromRow(row);
+        return true;
+      }
+
+      this.clearShift();
+      return false;
+    } catch {
+      this.clearShift();
+      return false;
+    }
+  }
+
+  private async ensureShiftOpen(source: 'VENTA' | 'COBRO' | 'SALIDA'): Promise<boolean> {
+    // ya abierto
+    if (this.shiftOpen) return true;
+
+    // evita carreras si se llama varias veces (entrar + hotkeys, etc)
+    if (this.shiftCheckInProgress) return false;
+
+    this.shiftCheckInProgress = true;
+    try {
+      const ok = await this.fetchOpenShift();
+      if (ok) return true;
+
+      // si no hay turno, abro modal
+      this.abrirModalAbrirTurno(true);
+
+      // si venía de cobrar o salida, cierro lo que esté abierto
+      if (source === 'COBRO') this.showModal = false;
+      if (source === 'SALIDA') this.showCashOutModal = false;
+
+      return false;
+    } finally {
+      this.shiftCheckInProgress = false;
+    }
+  }
+
+  abrirModalAbrirTurno(required: boolean) {
+    // si ya hay turno, no vuelvo a abrir modal
+    if (this.shiftOpen) return;
+
+    this.openShiftRequired = required;
+
+    // defaults suaves
+    this.openingCash = 0;
+    this.openingNote = '';
+
+    this.showOpenShiftModal = true;
+  }
+
+  cerrarModalAbrirTurno() {
+    this.showOpenShiftModal = false;
+    this.openShiftRequired = false;
+  }
+
+  async confirmarAbrirTurno() {
+    const api = (window as any).electronAPI;
+    if (!api || !api.openShift) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'No se pudo abrir turno (API no disponible).'
+      });
+      return;
+    }
+
+    const opening_cash = Number(this.openingCash ?? 0);
+    if (opening_cash < 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Monto inválido',
+        text: 'El fondo inicial no puede ser negativo.'
+      });
+      return;
+    }
+
+    try {
+      this.openingShiftLoading = true;
+
+      const payload = {
+        user_id: this.currentUserId,
+        opening_cash,
+        opening_note: (this.openingNote || '').trim() || null,
+        opening_user_id: this.currentUserId
+      };
+
+      const resp = await api.openShift(payload);
+
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'No se pudo abrir el turno',
+          text: resp?.error || 'Ocurrió un error al abrir el turno.'
+        });
+        return;
+      }
+
+      const row = resp.data ?? resp.recordset?.[0] ?? null;
+      if (row) {
+        this.setShiftFromRow(row);
+        // si tu SP devuelve closure_id, úsalo
+        if (row?.closure_id && !this.shiftId) this.shiftId = Number(row.closure_id);
+        if (row?.opened_at && !this.shiftOpenedAt) this.shiftOpenedAt = new Date(row.opened_at);
+        if (row?.opening_cash != null) this.shiftOpeningCash = Number(row.opening_cash);
+      } else {
+        // fallback: vuelve a consultar
+        await this.fetchOpenShift();
+      }
+
+      this.showOpenShiftModal = false;
+      this.openShiftRequired = false;
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Turno abierto',
+        text: 'Listo, ya puedes registrar ventas y movimientos.'
+      });
+    } catch (e: any) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: e?.message || 'Ocurrió un error al abrir el turno.'
+      });
+    } finally {
+      this.openingShiftLoading = false;
+    }
+  }
+
+  salirDeVentas() {
+    this.router.navigate(['/dashboard']);
+  }
+
+  // =========================
+  // Cobro / métodos
+  // =========================
+
+  async abrirModalCobrar() {
+    const ok = await this.ensureShiftOpen('COBRO');
+    if (!ok) return;
+
     this.dineroRecibido = null;
     this.showModal = true;
   }
   cerrarModalCobrar() { this.showModal = false; }
 
   async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
-    console.log('onPaymentMethodChange =>', method);
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
@@ -163,7 +357,6 @@ export class Venta {
   }
 
   private async loadCreditCustomers() {
-    console.log('loadCreditCustomers() called');
     const api = (window as any).electronAPI;
     if (!api || !api.getCreditCustomers) {
       await Swal.fire({
@@ -179,7 +372,6 @@ export class Venta {
       this.creditCustomers = [];
 
       const resp = await api.getCreditCustomers();
-      console.log('getCreditCustomers resp:', resp);
 
       if (!resp?.success) {
         await Swal.fire({
@@ -200,14 +392,8 @@ export class Venta {
         availableCredit: Number(r.available_credit ?? 0),
       }));
 
-      if (this.creditCustomers.length > 0) {
-        this.customerId = this.creditCustomers[0].id;
-      } else {
-        this.customerId = null;
-      }
-
+      this.customerId = this.creditCustomers.length > 0 ? this.creditCustomers[0].id : null;
     } catch (e: any) {
-      console.error('❌ loadCreditCustomers:', e);
       await Swal.fire({
         icon: 'error',
         title: 'Error inesperado',
@@ -220,22 +406,17 @@ export class Venta {
 
   /** ================== CONFIRMAR COBRO ================== */
   async confirmarCobro() {
+    const ok = await this.ensureShiftOpen('COBRO');
+    if (!ok) return;
+
     if (this.items.length === 0) {
       this.showModal = false;
-      await Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Agrega productos a la venta"
-      });
+      await Swal.fire({ icon: "error", title: "Oops...", text: "Agrega productos a la venta" });
       return;
     }
     if (this.totalVenta <= 0) {
       this.showModal = false;
-      await Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "El total de la venta debe ser mayor a cero"
-      });
+      await Swal.fire({ icon: "error", title: "Oops...", text: "El total de la venta debe ser mayor a cero" });
       return;
     }
 
@@ -283,22 +464,17 @@ export class Venta {
         if (!isCredito) {
           this.lastSalePaid = this.dineroRecibido ?? this.totalVenta;
           this.lastSaleChange = this.cambio;
+
           const api = (window as any).electronAPI;
           if (api && api.openCashDrawer) {
-            try {
-              await api.openCashDrawer();
-            } catch (e) {
-              console.error('Error al abrir el cajón después de la venta:', e);
-            }
+            try { await api.openCashDrawer(); } catch { /* noop */ }
           } else {
             this.lastSalePaid = this.totalVenta;
             this.lastSaleChange = 0;
-            console.warn('openCashDrawer no disponible (¿modo ng serve?)');
           }
         }
 
-        const saleId: number | null =
-          resp.saleId ?? resp.id ?? resp.folio ?? null;
+        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
 
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
@@ -313,7 +489,6 @@ export class Venta {
 
         this.showModal = false;
         this.showPostSaleModal = true;
-
       } else {
         this.showModal = false;
         await Swal.fire({
@@ -323,7 +498,6 @@ export class Venta {
         });
       }
     } catch (e: any) {
-      console.error('❌ registerSale:', e);
       this.showModal = false;
       await Swal.fire({
         icon: 'error',
@@ -334,8 +508,11 @@ export class Venta {
   }
 
   /** ================== PRODUCTOS ================== */
-
   async abrirModalProductos() {
+    // opcional: si quieres bloquear agregar producto sin turno, descomenta:
+    // const ok = await this.ensureShiftOpen('VENTA');
+    // if (!ok) return;
+
     this.filtro = '';
     await this.cargarProductosActivos();
     this.showModalProductos = true;
@@ -355,8 +532,7 @@ export class Venta {
         category_name: r.category_name,
         brand_name: r.brand_name
       })) as ProductRow[];
-    } catch (e) {
-      console.error('❌ Error al cargar productos activos:', e);
+    } catch {
       this.productos = [];
     }
   }
@@ -377,76 +553,57 @@ export class Venta {
       unitPrice: p.price ?? 0,
       get subtotal() { return this.qty * this.unitPrice; }
     };
+
     this.items.push(item);
     this.recalcularTotal();
     this.showModalProductos = false;
   }
 
   /** ================== CAJÓN MANUAL & SALIDA EFECTIVO ================== */
-
   async abrirCajonManual() {
     const api = (window as any).electronAPI;
     if (!api || !api.openCashDrawer) {
-      console.warn('openCashDrawer no disponible (¿modo ng serve?)');
-      await Swal.fire({
-        icon: 'info',
-        title: 'No disponible',
-        text: 'La apertura del cajón no está disponible en este entorno.'
-      });
+      await Swal.fire({ icon: 'info', title: 'No disponible', text: 'La apertura del cajón no está disponible en este entorno.' });
       return;
     }
 
     try {
       await api.openCashDrawer();
-    } catch (e) {
-      console.error('⚠ Error al abrir el cajón:', e);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se pudo abrir el cajón. Revisa la configuración.'
-      });
+    } catch {
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo abrir el cajón. Revisa la configuración.' });
     }
   }
 
-  abrirSalidaEfectivo() {
+  async abrirSalidaEfectivo() {
+    const ok = await this.ensureShiftOpen('SALIDA');
+    if (!ok) return;
+
     this.cashOutAmount = null;
     this.cashOutNote = '';
     this.showCashOutModal = true;
   }
 
-  cerrarSalidaEfectivo() {
-    this.showCashOutModal = false;
-  }
+  cerrarSalidaEfectivo() { this.showCashOutModal = false; }
 
   async confirmarSalidaEfectivo() {
+    const ok = await this.ensureShiftOpen('SALIDA');
+    if (!ok) return;
+
     const amount = Number(this.cashOutAmount ?? 0);
 
     if (amount <= 0) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Monto inválido',
-        text: 'El monto a retirar debe ser mayor a cero.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Monto inválido', text: 'El monto a retirar debe ser mayor a cero.' });
       return;
     }
 
     if (!this.cashOutNote.trim()) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Nota requerida',
-        text: 'Describe brevemente para qué es la salida de efectivo (pago a proveedor, etc.).'
-      });
+      await Swal.fire({ icon: 'warning', title: 'Nota requerida', text: 'Describe brevemente para qué es la salida de efectivo.' });
       return;
     }
 
     const api = (window as any).electronAPI;
     if (!api || !api.registerCashMovement) {
-      console.error('registerCashMovement no disponible');
-      await Swal.fire({
-        icon: 'error',
-        title: 'No disponible',
-        text: 'No se pudo registrar la salida de efectivo (API no disponible).'
-      });
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se pudo registrar la salida de efectivo (API no disponible).' });
       return;
     }
 
@@ -454,91 +611,49 @@ export class Venta {
       user_id: this.currentUserId,
       typee: 'WITHDRAW',
       amount,
-      reference_id: null,
-      reference: 'SALIDA CAJA',
       note: this.cashOutNote
     };
 
     try {
-      console.log('💸 Registrando salida de efectivo:', payload);
       const resp = await api.registerCashMovement(payload);
 
       if (resp?.success) {
         this.showCashOutModal = false;
         this.cashOutAmount = null;
         this.cashOutNote = '';
-        await Swal.fire({
-          icon: 'success',
-          title: 'Salida registrada',
-          text: 'La salida de efectivo se registró correctamente.'
-        });
+        await Swal.fire({ icon: 'success', title: 'Salida registrada', text: 'La salida de efectivo se registró correctamente.' });
       } else {
-        console.error(resp?.error);
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error al registrar salida',
-          text: resp?.error || 'No se pudo registrar la salida de efectivo.'
-        });
+        await Swal.fire({ icon: 'error', title: 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });
       }
     } catch (e: any) {
-      console.error('❌ registrar salida efectivo:', e);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al registrar la salida.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al registrar la salida.' });
     }
   }
 
   /** ================== POST-VENTA: PDF / WHATSAPP ================== */
-
-  cerrarPostSaleModal() {
-    this.showPostSaleModal = false;
-  }
+  cerrarPostSaleModal() { this.showPostSaleModal = false; }
 
   async generarPdfUltimaVenta() {
-  if (!this.lastSaleId) return;
+    if (!this.lastSaleId) return;
 
-  const api = (window as any).electronAPI;
+    const api = (window as any).electronAPI;
     if (!api || !api.generateSalePdf) {
-      await Swal.fire({
-        icon: 'info',
-        title: 'No disponible',
-        text: 'La generación de PDF no está configurada en este entorno.'
-      });
+      await Swal.fire({ icon: 'info', title: 'No disponible', text: 'La generación de PDF no está configurada en este entorno.' });
       return;
     }
 
     try {
-      const payload = {
-        saleId: this.lastSaleId,
-        pagado: this.lastSalePaid,
-        cambio: this.lastSaleChange,
-      };
-
+      const payload = { saleId: this.lastSaleId, pagado: this.lastSalePaid, cambio: this.lastSaleChange };
       const resp = await api.generateSalePdf(payload);
 
       if (!resp?.success) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error al generar PDF',
-          text: resp?.error || 'No se pudo generar el PDF de la venta.'
-        });
+        await Swal.fire({ icon: 'error', title: 'Error al generar PDF', text: resp?.error || 'No se pudo generar el PDF.' });
         return;
       }
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'PDF generado',
-        text: 'El PDF de la venta se generó correctamente.'
-      });
+      await Swal.fire({ icon: 'success', title: 'PDF generado', text: 'El PDF de la venta se generó correctamente.' });
     } catch (e: any) {
-      console.error('❌ generarPdfUltimaVenta:', e);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al generar el PDF.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al generar el PDF.' });
     }
   }
 
@@ -547,46 +662,26 @@ export class Venta {
 
     const api = (window as any).electronAPI;
     if (!api || !api.sendSaleTicketWhatsApp) {
-      await Swal.fire({
-        icon: 'info',
-        title: 'No disponible',
-        text: 'El envío por WhatsApp no está configurado en este entorno.'
-      });
+      await Swal.fire({ icon: 'info', title: 'No disponible', text: 'El envío por WhatsApp no está configurado en este entorno.' });
       return;
     }
 
     try {
       const resp = await api.sendSaleTicketWhatsApp(this.lastSaleId);
       if (!resp?.success) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error al enviar ticket',
-          text: resp?.error || 'No se pudo enviar el ticket por WhatsApp.'
-        });
+        await Swal.fire({ icon: 'error', title: 'Error al enviar ticket', text: resp?.error || 'No se pudo enviar el ticket.' });
         return;
       }
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Ticket enviado',
-        text: 'Se envió el ticket por WhatsApp correctamente.'
-      });
+      await Swal.fire({ icon: 'success', title: 'Ticket enviado', text: 'Se envió el ticket por WhatsApp correctamente.' });
     } catch (e: any) {
-      console.error('❌ enviarTicketWhatsApp:', e);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al enviar el ticket.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al enviar el ticket.' });
     }
   }
 
-  
-
   /** ================== ATAJOS ================== */
-
   @HostListener('window:keydown', ['$event'])
-  handleKeyboardEvent(event: KeyboardEvent) {
+  async handleKeyboardEvent(event: KeyboardEvent) {
     switch (event.key) {
       case 'F1':
         event.preventDefault();
@@ -603,14 +698,14 @@ export class Venta {
       case 'F8':
         event.preventDefault();
         if (!this.showModal) {
-          this.abrirModalCobrar();
+          await this.abrirModalCobrar();
         }
         break;
 
       case 'F10':
         event.preventDefault();
         if (!this.showCashOutModal) {
-          this.abrirSalidaEfectivo();
+          await this.abrirSalidaEfectivo();
         }
         break;
     }
