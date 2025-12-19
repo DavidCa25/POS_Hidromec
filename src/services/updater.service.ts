@@ -23,7 +23,7 @@ export class UpdaterService {
   private initializeUpdateListener() {
     if (window.api?.onUpdateStatus) {
       window.api.onUpdateStatus((status: UpdateStatus) => {
-        console.log('📦 Update status:', status);
+        console.log('Update status:', status);
         this.updateStatus$.next(status);
         
         this.handleUpdateStatus(status);

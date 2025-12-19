@@ -1,6 +1,10 @@
-/* ---------- PALETA SUAVE ---------- */
-:root{
-  --castrol-main: #0b2a7a;         /* navy más agradable */
+/* =========================================================
+   COMPRAS - Tabla “cards” + header tipo Ventas
+   FIX: variables en :host + fallbacks en var()
+   ========================================================= */
+
+:host{
+  --castrol-main: #0b2a7a;       /* navy */
   --castrol-accent: #104E8B;
   --row-bg: #ffffff;
   --row-hover: #f7f9ff;
@@ -9,180 +13,310 @@
   --text: #1b1f23;
 }
 
-/* ---------- ARREGLO CRÍTICO: SIN FONDO AZUL EN LA TABLA ---------- */
+/* ==================== CONTENEDOR ==================== */
+.castrol-table-container{
+  background: #f7faf7;
+  border-radius: 20px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  padding: 2rem 1.5rem;
+}
+
+/* ==================== HEADER tipo Ventas ==================== */
+.compras-header-section{
+  background: linear-gradient(
+    135deg,
+    var(--inv-main) 0%,
+    color-mix(in srgb, var(--inv-main) 97%, white 3%) 100%
+  );
+  border-radius: 24px;
+  padding: 2.2rem 2rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 24px rgba(11,42,122,0.16);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.compras-header-section::before{
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.compras-header-content{ position: relative; z-index: 1; }
+
+.compras-title-wrapper{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .45rem;
+}
+
+.compras-icon{
+  font-size: 2.3rem;
+  color: #fff;
+  opacity: .95;
+}
+
+.compras-main-title{
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  font-family: 'Raleway', sans-serif;
+}
+
+.compras-subtitle{
+  color: rgba(255,255,255,.85);
+  font-size: 1.0rem;
+  margin: 0;
+  margin-left: 3.2rem;
+  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* ==================== TOOLBAR ==================== */
+.toolbar{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: .6rem 0 .2rem;
+}
+
+.search{
+  flex: 1;
+  max-width: 360px;
+  height: 38px;
+  border: 1.25px solid #e3e9e4;
+  border-radius: 12px;
+  font-size: .95rem;
+  padding: 0 .8rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+.castrol-btn-add{
+  background: var(--inv-main, #00662f);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: .55rem 1.15rem;
+  font-weight: 800;
+  font-size: .9rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,.10);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: 'Poppins', sans-serif;
+}
+.castrol-btn-add:hover{
+  background: var(--inv-main-dark, #008c3c);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  filter: brightness(1.02);
+}
+
+/* ==================== TABLA “CARDS” ==================== */
 .castrol-table{
-  background: transparent !important;      /* <— evita el bloque azul */
+  background: transparent !important;
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 12px;                  /* separación tipo tarjetas */
+  border-spacing: 0 12px;
   font-family: 'Poppins', sans-serif;
   margin-top: .6rem;
 }
 
-.castrol-table thead {
-  background: var(--castrol-main);
+/* ✅ FIX: si --castrol-main no existe, cae a #0b2a7a */
+.castrol-table thead{
+  background: var(--castrol-main, #0b2a7a);
   color: #fff;
 }
 
 .castrol-table thead th{
-  background: transparent !important; 
+  background: var(--inv-main, #00662f);
+  border-bottom: 3px solid var(--inv-main-dark, #008c3c);
   color: #fff !important;
-  font-weight: 700;
+  font-weight: 800;
   font-size: .94rem;
   padding: .75rem .7rem;
-  border-bottom: 3px solid var(--castrol-accent);
+  vertical-align: middle;
 }
 
-.castrol-table thead th:first-child {
-  border-top-left-radius: 12px;
-}
-
-.castrol-table thead th:last-child {
-  border-top-right-radius: 12px;
-}
-
-.castrol-table thead th:not(:first-child):not(:last-child) {
-  border-radius: 0 !important;
-}
+.castrol-table thead th:first-child{ border-top-left-radius: 12px; }
+.castrol-table thead th:last-child{ border-top-right-radius: 12px; }
 .castrol-table thead tr{ transform: translateY(2px); }
 
-/* FILAS como “cards” blancas */
+/* Filas como tarjetas */
 .castrol-table tbody .parent-row td{
-  background: var(--row-bg) !important;
-  color: var(--text);
+  background: var(--row-bg, #fff) !important;
+  color: var(--text, #1b1f23);
   border: 0 !important;
   padding: .7rem .7rem !important;
   vertical-align: middle;
   font-size: .93rem;
   box-shadow: 0 4px 14px rgba(0,0,0,.06);
 }
-.castrol-table tbody .parent-row:hover td{ background: var(--row-hover) !important; }
+
+.castrol-table tbody .parent-row:hover td{
+  background: var(--row-hover, #f7f9ff) !important;
+}
+
 .castrol-table tbody .parent-row td:first-child{
-  border-top-left-radius: 12px; border-bottom-left-radius: 12px;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
 }
 .castrol-table tbody .parent-row td:last-child{
-  border-top-right-radius: 12px; border-bottom-right-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 .nowrap{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mono{ font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; }
-.fw-semibold{ font-weight: 700; }
+.fw-semibold{ font-weight: 800; }
 .empty{ text-align:center; color:#7a7a7a; padding: 18px 0; }
 
+/* ==================== Acciones ==================== */
 .acciones-cell{ padding: .5rem .6rem !important; }
 .action-group{ display:inline-flex; gap:8px; align-items:center; }
+
 .action-btn{
-  border:0; background:#f3f4f6; border-radius:12px; padding:7px;
-  display:inline-grid; place-items:center; cursor:pointer;
+  border:0;
+  background:#f3f4f6;
+  border-radius:12px;
+  padding:7px;
+  display:inline-grid;
+  place-items:center;
+  cursor:pointer;
   transition: transform .15s, box-shadow .15s, background-color .15s;
   box-shadow:0 1px 2px rgba(0,0,0,.06);
+  position: relative;
 }
-.action-btn:hover{ background:#e7eaf3; transform: translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.10); }
+.action-btn:hover{
+  background:#e7eaf3;
+  transform: translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,0,0,.10);
+}
 .action-btn svg{ width:17px; height:17px; fill:#1f2937; }
 
+.action-btn::after{
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(17,17,17,.92);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15);
+}
+.action-btn:hover::after{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ==================== Caret ==================== */
 .caret-cell{ width:44px; text-align:center; }
 .caret-btn{
-  background:transparent; border:0; cursor:pointer; padding:6px; border-radius:10px;
+  background:transparent;
+  border:0;
+  cursor:pointer;
+  padding:6px;
+  border-radius:10px;
   transition: background .15s ease, transform .15s ease;
 }
 .caret-btn:hover{ background:#eef2ff; }
 .caret-btn .chev{
-  width:18px; height:18px; display:block; transform: rotate(0deg);
+  width:18px; height:18px; display:block;
+  transform: rotate(0deg);
   transition: transform .2s ease;
 }
 .caret-btn .chev path{
-  fill:none; stroke:#111827; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;
+  fill:none;
+  stroke:#111827;
+  stroke-width:2.4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 .caret-btn.open .chev{ transform: rotate(90deg); }
 
-.detail-row td{ background: transparent !important; border:0 !important; padding:.2rem 0 0 !important; }
+/* ==================== Detalles ==================== */
+.detail-row td{
+  background: transparent !important;
+  border:0 !important;
+  padding:.2rem 0 0 !important;
+}
+
 .detail-wrap{
-  background: var(--detail-bg);
-  border: 1px solid var(--detail-border);
+  background: var(--detail-bg, #f8fbff);
+  border: 1px solid var(--detail-border, #e6eefb);
   border-radius: 14px;
   padding: .4rem;
   box-shadow: 0 4px 14px rgba(0,0,0,.05);
 }
+
 .detail-anim{
-  max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-2px);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-2px);
   transition: max-height .28s ease, opacity .22s ease, transform .22s ease;
 }
-.detail-row .detail-wrap .detail-anim{ max-height: 1000px; opacity: 1; transform: translateY(0); }
+.detail-row .detail-wrap .detail-anim{
+  max-height: 1200px;
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .detail-header{
-  display:flex; gap:16px; flex-wrap:wrap; align-items:center;
-  color:#333; font-size:.9rem; margin:.45rem .35rem .2rem;
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  align-items:center;
+  color:#333;
+  font-size:.9rem;
+  margin:.45rem .35rem .2rem;
 }
 
-/* TABLA INTERIOR limpia */
-.inner .castrol-table{ border-spacing: 0; margin-top:.35rem; box-shadow:none; }
-.inner .castrol-table thead th{
-  background: var(--castrol-main) !important;
-  border-bottom: 2px solid var(--castrol-accent);
-  font-size: .88rem; padding: .55rem .55rem !important;
-  border-top-left-radius:10px; border-top-right-radius:10px;
-}
-.inner .castrol-table tbody td{
-  background:#fff !important; border-bottom:1px solid #eef1f5 !important;
-  padding:.5rem .55rem !important; font-size:.88rem;
-}
-.inner .castrol-table tbody tr:last-child td{ border-bottom:0 !important; }
-.inner .castrol-table tbody tr:hover td{ background:#f7faff !important; }
-
-/* TOOLBAR compacta */
-.toolbar{ gap:10px; margin:.4rem 0 .2rem; }
-.search{
-  height: 38px; border:1.25px solid #e3e9e4; border-radius:12px;
-  font-size:.95rem; padding:0 .8rem;
-}
-.castrol-btn-add{
-  background: var(--castrol-main); color:#fff; border:0; border-radius:12px;
-  padding:.5rem 1.1rem; font-weight:700; font-size:.9rem;
-  box-shadow:0 3px 10px rgba(0,0,0,.10); transition: transform .15s, box-shadow .15s;
-}
-.castrol-btn-add:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.12); }
-
-/* Responsive */
-@media (max-width: 900px){
-  .castrol-table{ border-spacing: 0 10px; }
-  .castrol-table thead th{ font-size:.88rem; }
-  .castrol-table tbody .parent-row td{ font-size:.9rem; padding:.6rem .55rem !important; }
-  .detail-header{ font-size:.86rem; }
-}
-
-/* Card que envuelve la tabla interna: redondeo y clipping */
+/* ==================== Tabla interna (detalles) ==================== */
 .inner-card{
   border: 1px solid #e6eefb;
   border-radius: 12px;
-  overflow: hidden;                /* <- recorta el header como una sola pieza */
+  overflow: hidden;
   background: #fff;
   box-shadow: 0 4px 12px rgba(0,0,0,.05);
 }
 
-/* La tabla interna no necesita separación entre celdas */
 .inner-card .castrol-table{
   border-spacing: 0 !important;
-  border-collapse: separate;       /* seguimos usando separate para mantener estilos */
   margin: 0 !important;
-  box-shadow: none;
 }
 
-/* Header continuo azul (sin radios por th) */
 .inner-card .castrol-table thead{
-  background: var(--castrol-main);
+  background: var(--castrol-main, #0b2a7a);
   color: #fff;
 }
+
 .inner-card .castrol-table thead th{
   background: transparent !important;
   color: #fff !important;
-  font-weight: 700;
-  font-size: .9rem;
+  font-weight: 800;
+  font-size: .88rem;
   padding: .6rem .6rem !important;
-  border-bottom: 2px solid #0a3c86;
-  border-radius: 0 !important;     /* <- elimina “piquitos” entre columnas */
+  border-bottom: 2px solid var(--castrol-accent, #104E8B);
+  border-radius: 0 !important;
 }
 
-/* Filas del body */
 .inner-card .castrol-table tbody td{
   background: #fff !important;
   border-bottom: 1px solid #eef1f5 !important;
@@ -192,3 +326,21 @@
 .inner-card .castrol-table tbody tr:last-child td{ border-bottom: 0 !important; }
 .inner-card .castrol-table tbody tr:hover td{ background: #f7faff !important; }
 
+/* ==================== Responsive ==================== */
+@media (max-width: 900px){
+  .toolbar{ flex-direction: column; align-items: stretch; }
+  .search{ max-width: 100%; }
+  .castrol-table{ border-spacing: 0 10px; }
+  .castrol-table thead th{ font-size:.88rem; }
+  .castrol-table tbody .parent-row td{
+    font-size:.9rem;
+    padding:.6rem .55rem !important;
+  }
+  .compras-header-section{
+    flex-direction: column;
+    text-align: center;
+    gap: 1.2rem;
+  }
+  .compras-subtitle{ margin-left: 0; }
+  .compras-main-title{ font-size: 2.1rem; }
+}

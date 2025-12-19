@@ -1,10 +1,18 @@
 <div class="castrol-table-container mt-4">
-  <div class="row">
-    <button class="castrol-btn-color" style="background-image: linear-gradient(to right, navy, #CD950C); color: white;" (click)="abrirColorModal()"><i class="bi bi-brush me-2"></i>Cambiar color</button>
-  </div>
-  <h1 class="castrol-table-title"><b>Inventario</b></h1>
-  <div class="mb-3" style="display: flex;">
-    <button class="castrol-btn-add" (click)="abrirProductoModal()"><i class="bi bi-plus-circle-dotted me-2" style="font-size: 15px;"></i>Agregar Producto</button>
+  <div class="inv-header-section">
+    <div class="inv-header-content">
+      <div class="inv-title-wrapper">
+        <i class="bi bi-box-seam inv-icon"></i>
+        <h1 class="inv-main-title">Inventario</h1>
+      </div>
+      <p class="inv-subtitle">Administra productos, stock y precios</p>
+    </div>
+
+    <div class="inv-actions-group">
+      <button class="castrol-btn-add" (click)="abrirProductoModal()">
+        <i class="bi bi-plus-circle-dotted me-2"></i> Agregar Producto
+      </button>
+    </div>
   </div>
   <div class="table-responsive">
      <table class="castrol-table">

@@ -1,16 +1,14 @@
-:root {
-  --castrol-main: #00662f;
-  --castrol-light: #e9fbe3;
-  --castrol-hover: #008c3c;
-}
-
 /* ==================== HEADER DE VENTAS ==================== */
-.ventas-header-section {
-  background: linear-gradient(135deg, #00662f 0%, #008c3c 100%);
+.ventas-header-section{
+  background: linear-gradient(
+    135deg,
+    var(--inv-main) 0%,
+    color-mix(in srgb, var(--inv-main) 97%, white 3%) 100%
+  );
   border-radius: 24px;
   padding: 2.5rem 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 8px 24px rgba(0, 102, 47, 0.15);
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -74,13 +72,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--castrol-light);
-  color: var(--castrol-main);
+  background: #eef2ff;             
+  color: var(--inv-main, #00662f);
   padding: 0.6rem 1.2rem;
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.95rem;
-  border: 1.5px solid rgba(0, 102, 47, 0.2);
+  border: 1.5px solid rgba(0,0,0,0.10);
 }
 
 .ventas-stats-badge i {
@@ -105,7 +103,7 @@
 
 /* Botón verde principal (Recargar) */
 .castrol-btn-add {
-  background: var(--castrol-main, #00662f);
+  background: var(--inv-main, #00662f);
   border: none;
   color: #fff;
   font-weight: bold;
@@ -116,14 +114,14 @@
   cursor: pointer;
 }
 .castrol-btn-add:hover { 
-  background: #008c3c; 
+  background: var(--inv-main-dark, #008c3c);
 }
 
 /* Botón secundario (outline verde - Descargar PDFs) */
 .castrol-btn-color {
   background: #e9fbe3;
-  border: 1.5px solid var(--castrol-main);
-  color: var(--castrol-main);
+  border: 1.5px solid var(--inv-main, #00662f);
+  color: var(--inv-main, #00662f);
   font-weight: bold;
   border-radius: 12px;
   padding: 0.6em 1.2em;
@@ -131,7 +129,7 @@
   transition: background 0.2s, color 0.2s;
 }
 .castrol-btn-color:hover {
-  background: var(--castrol-main);
+  background: var(--inv-main, #00662f);
   color: #fff;
 }
 
@@ -173,12 +171,12 @@
 
 /* Header de la tabla - FONDO VERDE */
 .castrol-table thead th {
-  background: var(--castrol-main);
+  background: var(--inv-main, #00662f);
+  border-bottom: 3px solid var(--inv-main-dark, #008c3c);
   color: #fff;
   font-size: 1.08rem;
   font-weight: bold;
   letter-spacing: 0.5px;
-  border-bottom: 3px solid #4caf50;
 }
 
 /* Filas del body - FONDO BLANCO */

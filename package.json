@@ -1,9 +1,9 @@
 {
   "name": "filtros-lubs-rios",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "electron/main.js",
   "scripts": {
-    "build": "ng build",
+    "build": "ng build --configuration production --base-href ./",
     "electron": "electron ./electron/main.js",
     "start": "npm run build && npm run electron",
     "start:ng": "ng serve",
