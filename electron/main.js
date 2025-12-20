@@ -803,13 +803,26 @@ ipcMain.handle('sp-get-profit-overview', async (event, { fromDate, toDate }) => 
 
 //CIERRE DE CAJA
 
-ipcMain.handle('sp-close-shift', async (event, { userId, cashDelivered, closureDate }) => {
+ipcMain.handle('sp-close-shift', async (event, payload) => {
   try {
+    console.log('sp-close-shift payload RAW:', payload);
+
+    const userId = parseInt(payload?.user_id ?? payload?.userId, 10);
+    const cashDelivered = Number(payload?.cash_delivered ?? payload?.cashDelivered);
+
+    console.log('parsed:', { userId, cashDelivered });
+
+    if (!Number.isFinite(userId)) {
+      return { success: false, error: `user_id inválido: ${payload?.user_id ?? payload?.userId}` };
+    }
+    if (!Number.isFinite(cashDelivered)) {
+      return { success: false, error: `cash_delivered inválido: ${payload?.cash_delivered ?? payload?.cashDelivered}` };
+    }
+
     const pool = await poolPromise;
     const req = pool.request()
-      .input('user_id', sql.Int, userId)                      // cajero
-      .input('cash_delivered', sql.Decimal(12, 2), cashDelivered)
-      .input('closure_date', sql.Date, closureDate || null);
+      .input('user_id', sql.Int, userId)
+      .input('cash_delivered', sql.Decimal(12, 2), cashDelivered);
 
     const result = await req.execute('sp_close_shift');
 
@@ -818,10 +831,12 @@ ipcMain.handle('sp-close-shift', async (event, { userId, cashDelivered, closureD
       data: result.recordset && result.recordset[0] ? result.recordset[0] : null
     };
   } catch (err) {
-    console.error('Error en sp_close_shift:', err);
+    console.error('❌ Error en sp_close_shift:', err);
     return { success: false, error: err.message };
   }
 });
+
+
 
 ipcMain.handle('sp-get-active-users', async () => {
   try {

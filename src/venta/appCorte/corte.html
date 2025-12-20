@@ -1,311 +1,426 @@
 <div class="corte-container">
+  <!-- WIZARD DE PASOS -->
+  <div class="wizard-steps" *ngIf="showFilters">
+    <div class="step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
+      <div class="step-number">1</div>
+      <div class="step-label">Cajero</div>
+    </div>
+    <div class="step-line" [class.active]="currentStep > 1"></div>
+    <div class="step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
+      <div class="step-number">2</div>
+      <div class="step-label">Tipo</div>
+    </div>
+    <div class="step-line" [class.active]="currentStep > 2"></div>
+    <div class="step" [class.active]="currentStep >= 3">
+      <div class="step-number">3</div>
+      <div class="step-label">Consultar</div>
+    </div>
+  </div>
+
   <div class="corte-card">
+    <!-- FILTROS CON WIZARD -->
+    <div class="filter-wizard" *ngIf="showFilters">
+      <div class="wizard-header">
+        <h1>Corte de Caja</h1>
+        <p class="subtitle">Selecciona el cajero y tipo de consulta</p>
+      </div>
 
-    <!-- FILTROS -->
-    <div class="filter-card" *ngIf="showFilters">
-      <div class="filter-row">
-
-        <!-- Cajero -->
-        <div class="filter-group">
-          <label>Cajero</label>
-          <select class="form-control"
-                  [(ngModel)]="selectedUserId"
-                  (change)="onUserChange()">
-            <option [ngValue]="null">-- Selecciona cajero --</option>
-            <option *ngFor="let u of usuarios" [ngValue]="u.id">
-              {{ u.usuario }} ({{ u.rol }})
-            </option>
-          </select>
-        </div>
-
-        <!-- MODO -->
-        <div class="filter-group">
-          <label>Modo</label>
-          <div class="preset-group">
-            <button type="button"
-                    class="preset"
-                    [class.active]="mode==='TURNO'"
-                    (click)="mode='TURNO'; onlyOpen=true; onUserChange()">
-              Turno (cierre)
-            </button>
-
-            <button type="button"
-                    class="preset"
-                    [class.active]="mode==='DIA'"
-                    (click)="mode='DIA'; onUserChange()">
-              Día (reporte)
-            </button>
+      <!-- PASO 1: CAJERO -->
+      <div class="wizard-panel" *ngIf="currentStep === 1">
+        <label class="section-label">Selecciona el cajero</label>
+        <div class="user-grid">
+          <button type="button" 
+                  class="user-card"
+                  *ngFor="let u of usuarios"
+                  [class.selected]="selectedUserId === u.id"
+                  (click)="selectUser(u.id)">
+            <div class="user-avatar">
+              <i class="bi bi-person-fill"></i>
+            </div>
+            <div class="user-info">
+              <div class="user-name">{{ u.usuario }}</div>
+              <div class="user-role">{{ u.rol }}</div>
+            </div>
+            <i class="bi bi-check-circle-fill check-icon"></i>
+          </button>
+          <div class="empty-state" *ngIf="usuarios.length === 0">
+            <i class="bi bi-people"></i>
+            <p>No hay cajeros disponibles</p>
           </div>
         </div>
+        <div class="wizard-actions">
+          <button class="btn btn-primary btn-lg" 
+                  [disabled]="!selectedUserId"
+                  (click)="nextStep()">
+            Continuar
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
 
-        <!-- CONTROLES SOLO PARA DIA -->
-        <ng-container *ngIf="mode==='DIA'">
-          <div class="filter-group">
-            <label>Rango rápido</label>
-            <div class="preset-group">
-              <button type="button" class="preset"
-                      [class.active]="preset==='HOY'"
-                      (click)="setPreset('HOY')">Hoy</button>
-              <button type="button" class="preset"
-                      [class.active]="preset==='AYER'"
-                      (click)="setPreset('AYER')">Ayer</button>
-              <button type="button" class="preset"
-                      [class.active]="preset==='SEMANA'"
-                      (click)="setPreset('SEMANA')">Esta semana</button>
+      <!-- PASO 2: MODO -->
+      <div class="wizard-panel" *ngIf="currentStep === 2">
+        <button class="btn-back" (click)="prevStep()">
+          <i class="bi bi-arrow-left"></i> Cambiar cajero
+        </button>
+
+        <div class="selected-user-badge">
+          <i class="bi bi-person-check-fill"></i>
+          <span>{{ selectedUserName }}</span>
+        </div>
+
+        <label class="section-label mt-4">¿Qué deseas hacer?</label>
+        <div class="mode-grid">
+          <button type="button"
+                  class="mode-card"
+                  [class.selected]="mode==='TURNO'"
+                  (click)="selectMode('TURNO')">
+            <div class="mode-icon turno">
+              <i class="bi bi-clock-history"></i>
             </div>
-          </div>
-
-          <div class="filter-group">
-            <label>Desde</label>
-            <input type="date" class="form-control" [(ngModel)]="desdeStr">
-          </div>
-
-          <div class="filter-group">
-            <label>Hasta</label>
-            <input type="date" class="form-control" [(ngModel)]="hastaStr">
-          </div>
-        </ng-container>
-
-        <!-- INFO SOLO PARA TURNO -->
-        <ng-container *ngIf="mode==='TURNO'">
-          <div class="filter-group" style="min-width: 320px;">
-            <label>Turno detectado</label>
-
-            <div class="small text-muted" *ngIf="!selectedUserId">
-              Selecciona un cajero para detectar su turno abierto.
-            </div>
-
-            <div class="small" *ngIf="selectedUserId && !openShiftId">
-              <span class="badge badge-open" style="background:#ffe9e9;color:#b42318;border:1px solid #ffd0d0;">
+            <div class="mode-content">
+              <h3>Cerrar turno</h3>
+              <p>Cierra el turno activo del cajero y registra el efectivo entregado</p>
+              <div class="mode-badge" *ngIf="mode==='TURNO' && openShiftId">
+                <i class="bi bi-check-circle-fill"></i>
+                Turno #{{ openShiftId }} detectado
+              </div>
+              <div class="mode-badge warning" *ngIf="mode==='TURNO' && selectedUserId && !openShiftId">
+                <i class="bi bi-exclamation-triangle-fill"></i>
                 Sin turno abierto
-              </span>
-              <div class="text-muted mt-1">No se puede cerrar porque no hay turno abierto.</div>
-            </div>
-
-            <div class="small" *ngIf="openShiftId">
-              <span class="badge badge-open">Turno abierto</span>
-              <div class="mt-1">
-                <b>ID:</b> {{ openShiftId }} ·
-                <b>Abierto:</b> {{ openShiftOpenedAt ? (openShiftOpenedAt | date:'HH:mm') : '—' }} ·
-                <b>Fondo:</b> {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
               </div>
             </div>
-          </div>
-        </ng-container>
-
-        <!-- Acciones -->
-        <div class="filter-actions">
-          <button class="btn btn-ghost" type="button" (click)="limpiar()">
-            <i class="bi bi-x-circle"></i> Limpiar
+            <i class="bi bi-check-circle-fill check-icon"></i>
           </button>
 
-          <button class="btn btn-primary" type="button" (click)="consultar()"
-                  [disabled]="loading || !selectedUserId || (mode==='TURNO' && !openShiftId)">
-            <i class="bi bi-search"></i> Consultar
+          <button type="button"
+                  class="mode-card"
+                  [class.selected]="mode==='DIA'"
+                  (click)="selectMode('DIA')">
+            <div class="mode-icon dia">
+              <i class="bi bi-calendar3"></i>
+            </div>
+            <div class="mode-content">
+              <h3>Reporte por fecha</h3>
+              <p>Consulta movimientos de caja en un rango de fechas específico</p>
+            </div>
+            <i class="bi bi-check-circle-fill check-icon"></i>
           </button>
         </div>
 
+        <!-- CONTROLES FECHA PARA DIA -->
+        <div class="date-controls" *ngIf="mode === 'DIA'">
+          <label class="section-label">Rango de fechas</label>
+          <div class="preset-chips">
+            <button type="button" 
+                    class="chip"
+                    [class.active]="preset==='HOY'"
+                    (click)="setPreset('HOY')">
+              <i class="bi bi-calendar-day"></i> Hoy
+            </button>
+            <button type="button" 
+                    class="chip"
+                    [class.active]="preset==='AYER'"
+                    (click)="setPreset('AYER')">
+              <i class="bi bi-calendar-minus"></i> Ayer
+            </button>
+            <button type="button" 
+                    class="chip"
+                    [class.active]="preset==='SEMANA'"
+                    (click)="setPreset('SEMANA')">
+              <i class="bi bi-calendar-week"></i> Esta semana
+            </button>
+          </div>
+
+          <div class="date-range">
+            <div class="date-input-group">
+              <label>Desde</label>
+              <input type="date" class="form-control" [(ngModel)]="desdeStr">
+            </div>
+            <div class="date-separator">
+              <i class="bi bi-arrow-right"></i>
+            </div>
+            <div class="date-input-group">
+              <label>Hasta</label>
+              <input type="date" class="form-control" [(ngModel)]="hastaStr">
+            </div>
+          </div>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="btn btn-primary btn-lg" 
+                  [disabled]="loading || !canConsult"
+                  (click)="consultar()">
+            <span *ngIf="!loading">
+              <i class="bi bi-search"></i> Consultar movimientos
+            </span>
+            <span *ngIf="loading">
+              <i class="bi bi-arrow-repeat spinner"></i> Consultando...
+            </span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- HEADER (cuando filtros están ocultos) -->
-    <div class="corte-header" *ngIf="!showFilters">
-      <h2>
-        Movimientos de caja
-        <span *ngIf="mode==='TURNO' && openShiftId" class="text-muted" style="font-size: 14px;">
-          · Turno #{{ openShiftId }}
-        </span>
-      </h2>
-
-      <div class="header-right">
-        <div class="hoy">
-          <b>Cajero:</b> {{ selectedUserName || '—' }}
-          <br>
-
-          <!-- DIA: rango -->
-          <ng-container *ngIf="mode==='DIA'">
-            <span class="mono">
-              {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
-            </span>
-          </ng-container>
-
-          <!-- TURNO: info turno -->
-          <ng-container *ngIf="mode==='TURNO'">
-            <span *ngIf="openShiftId" class="mono">
-              Abierto: {{ openShiftOpenedAt ? (openShiftOpenedAt | date:'HH:mm') : '—' }} ·
-              Fondo: {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
-            </span>
-            <span *ngIf="!openShiftId" class="mono">Sin turno abierto</span>
-          </ng-container>
+    <!-- RESULTADOS -->
+    <div class="results-view" *ngIf="!showFilters">
+      <!-- HEADER COMPACTO -->
+      <div class="results-header">
+        <div class="header-left">
+          <button class="btn-icon" (click)="editarFiltros()" title="Cambiar filtros">
+            <i class="bi bi-arrow-left"></i>
+          </button>
+          <div class="header-info">
+            <h2>
+              {{ mode === 'TURNO' ? 'Cierre de turno' : 'Reporte de caja' }}
+              <span class="turno-badge" *ngIf="mode==='TURNO' && openShiftId">
+                #{{ openShiftId }}
+              </span>
+            </h2>
+            <div class="header-meta">
+              <span class="meta-item">
+                <i class="bi bi-person-fill"></i>
+                {{ selectedUserName }}
+              </span>
+              <span class="meta-divider">·</span>
+              <span class="meta-item" *ngIf="mode === 'DIA'">
+                <i class="bi bi-calendar3"></i>
+                {{ desdeStr }} → {{ hastaStr }}
+              </span>
+              <span class="meta-item" *ngIf="mode === 'TURNO' && openShiftOpenedAt">
+                <i class="bi bi-clock"></i>
+                Abierto {{ openShiftOpenedAt | date:'HH:mm' }}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <button class="btn btn-success d-flex align-items-center gap-2"
-                type="button"
-                [disabled]="loading || !selectedUserId || (mode==='TURNO' && !openShiftId)"
+        <button class="btn btn-success btn-lg"
+                [disabled]="loading || !canClose"
                 (click)="abrirModalCierre()">
           <i class="bi bi-check2-circle"></i>
-          {{ mode==='TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
-        </button>
-
-        <button class="btn btn-ghost" type="button" (click)="editarFiltros()">
-          <i class="bi bi-sliders"></i> Cambiar filtros
+          {{ mode === 'TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
         </button>
       </div>
-    </div>
 
-    <!-- MODAL CERRAR TURNO -->
-    <div class="modal fade show d-block cierre-modal"
-         *ngIf="showCloseModal"
-         style="background: rgba(0,0,0,.12); z-index:10000;">
-      <div class="modal-dialog modal-dialog-centered cierre-dialog">
-        <div class="modal-content rounded-4">
-          <div class="modal-header border-0 pb-1">
-            <h5 class="modal-title fw-bold">
-              {{ mode==='TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
-            </h5>
-            <button type="button" class="btn-close" (click)="cerrarModalCierre()"></button>
+      <!-- KPIs MEJORADOS -->
+      <div class="kpis-section">
+        <div class="kpi-card entradas">
+          <div class="kpi-icon">
+            <i class="bi bi-arrow-down-circle"></i>
           </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Entradas</div>
+            <div class="kpi-value">{{ summary.total_entradas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          </div>
+        </div>
 
-          <div class="modal-body px-4 pt-1 pb-4">
-            <div class="mb-2 small">
-              <b>Cajero:</b> {{ selectedUserName || '—' }}
-            </div>
+        <div class="kpi-card salidas">
+          <div class="kpi-icon">
+            <i class="bi bi-arrow-up-circle"></i>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Salidas</div>
+            <div class="kpi-value">{{ summary.total_salidas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          </div>
+        </div>
 
-            <div class="mb-2 text-muted small">
-              <ng-container *ngIf="mode==='DIA'">
-                Rango:
-                <span class="mono">
-                  {{ (desdeStr || (hoy | date:'yyyy-MM-dd')) }} → {{ (hastaStr || (hoy | date:'yyyy-MM-dd')) }}
-                </span>
-              </ng-container>
+        <div class="kpi-card neto">
+          <div class="kpi-icon">
+            <i class="bi bi-calculator"></i>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Neto</div>
+            <div class="kpi-value">{{ summary.neto | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          </div>
+        </div>
 
-              <ng-container *ngIf="mode==='TURNO'">
-                Turno:
-                <span class="mono">#{{ openShiftId || '—' }}</span>
-                <span *ngIf="openShiftId" class="badge badge-open ms-2">abierto</span>
-              </ng-container>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Efectivo esperado</label>
-              <div class="form-control-plaintext fs-5 fw-bold text-success">
-                {{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}
-              </div>
-              <div class="hint text-muted">
-                {{ mode==='TURNO'
-                    ? 'Calculado por movimientos del turno + fondo inicial.'
-                    : 'Calculado por movimientos del rango + (si aplica) fondo del turno abierto.' }}
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Efectivo entregado</label>
-              <input type="number"
-                     min="0" step="0.01"
-                     class="form-control"
-                     [(ngModel)]="cashDelivered"
-                     name="cashDelivered"
-                     placeholder="0.00">
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Diferencia</label>
-              <div class="form-control-plaintext fs-5 fw-bold"
-                   [ngClass]="{'text-success': cashDiff >= 0, 'text-danger': cashDiff < 0}">
-                {{ cashDiff | currency:'MXN':'symbol-narrow':'1.2-2' }}
-              </div>
-            </div>
-
-            <div class="mb-2">
-              <label class="form-label">Notas (opcional)</label>
-              <textarea class="form-control" rows="2"
-                        [(ngModel)]="closeNotes" name="closeNotes"
-                        placeholder="Observaciones…"></textarea>
-            </div>
-
-            <div class="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" class="btn btn-ghost" (click)="cerrarModalCierre()">Cancelar</button>
-              <button type="button"
-                      class="btn btn-primary"
-                      [disabled]="cashDelivered === null || (mode==='TURNO' && !openShiftId)"
-                      (click)="confirmarCierreReal()">
-                Guardar
-              </button>
-            </div>
+        <div class="kpi-card esperado" *ngIf="mode === 'TURNO'">
+          <div class="kpi-icon">
+            <i class="bi bi-wallet2"></i>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">Efectivo esperado</div>
+            <div class="kpi-value">{{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div class="kpi-hint">Incluye fondo: {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
           </div>
         </div>
       </div>
+
+      <!-- TABLA MEJORADA -->
+      <div class="movements-section">
+        <div class="section-header">
+          <h3>
+            <i class="bi bi-list-ul"></i>
+            Movimientos ({{ movimientos.length }})
+          </h3>
+        </div>
+
+        <div class="table-container" *ngIf="!loading; else loadingTpl">
+          <table class="movements-table" *ngIf="movimientos.length > 0">
+            <thead>
+              <tr>
+                <th class="col-fecha">Fecha y hora</th>
+                <th class="col-tipo">Tipo</th>
+                <th class="col-ref">Referencia</th>
+                <th class="col-monto">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of movimientos" class="movement-row">
+                <td class="col-fecha">
+                  <div class="datetime-cell">
+                    <span class="date">{{ m.datee | date:'dd/MM/yyyy' }}</span>
+                    <span class="time">{{ m.datee | date:'HH:mm' }}</span>
+                  </div>
+                </td>
+                <td class="col-tipo">
+                  <span class="type-badge" [attr.data-type]="m.typee">
+                    <i class="bi" [ngClass]="{
+                      'bi-cart-check': m.typee === 'SALE',
+                      'bi-piggy-bank': m.typee === 'DEPOSIT',
+                      'bi-cash-coin': m.typee === 'WITHDRAW',
+                      'bi-arrow-counterclockwise': m.typee === 'REFUND'
+                    }"></i>
+                    {{ m.typee }}
+                  </span>
+                </td>
+                <td class="col-ref">
+                  <div class="ref-cell">
+                    <span class="ref-text">{{ m.reference || ('#' + (m.reference_id ?? '—')) }}</span>
+                    <span class="ref-note" *ngIf="m.note" [title]="m.note">
+                      <i class="bi bi-sticky"></i>
+                    </span>
+                  </div>
+                </td>
+                <td class="col-monto">
+                  <span class="amount" [class.positive]="m.amount >= 0" [class.negative]="m.amount < 0">
+                    {{ m.amount | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="empty-state" *ngIf="movimientos.length === 0">
+            <i class="bi bi-inbox"></i>
+            <h4>Sin movimientos</h4>
+            <p>No se encontraron movimientos en el período seleccionado</p>
+          </div>
+        </div>
+
+        <ng-template #loadingTpl>
+          <div class="loading-state">
+            <i class="bi bi-arrow-repeat spinner"></i>
+            <p>Cargando movimientos...</p>
+          </div>
+        </ng-template>
+      </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="resumen-grid" *ngIf="!showFilters">
-      <div class="kpi-card">
-        <div class="kpi-title">Entradas</div>
-        <div class="kpi-value">{{ summary.total_entradas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Salidas</div>
-        <div class="kpi-value">{{ summary.total_salidas | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-      <div class="kpi-card total">
-        <div class="kpi-title">Neto</div>
-        <div class="kpi-value">{{ summary.neto | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-      </div>
-    </div>
+    <!-- MODAL CIERRE MEJORADO -->
+    <div class="modal-overlay" *ngIf="showCloseModal" (click)="!closing && cerrarModalCierre()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>
+            <i class="bi bi-check2-circle"></i>
+            {{ mode === 'TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
+          </h3>
+          <button class="btn-close" (click)="cerrarModalCierre()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
 
-    <!-- TABLA -->
-    <div class="tabla-wrap" *ngIf="!loading; else loadingTpl">
-      <table class="tabla-corte" *ngIf="!showFilters">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Fecha</th>
-            <th>Hora</th>
-            <th>Tipo</th>
-            <th>Referencia</th>
-            <th>Usuario</th>
-            <th class="num">Monto</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let m of movimientos; let i = index">
-            <td>{{ i + 1 }}</td>
-            <td>{{ m.datee | date:'shortDate':'':'es-MX' }}</td>
-            <td class="mono">{{ m.datee | date:'HH:mm' }}</td>
-            <td>
-              <span class="badge"
-                    [class.efectivo]="m.typee==='SALE'"
-                    [class.tarjeta]="m.typee==='DEPOSIT'"
-                    [class.transfer]="m.typee==='TRANSFER'">
-                {{ m.typee }}
+        <div class="modal-body">
+          <div class="modal-info-card">
+            <div class="info-row">
+              <span class="info-label">Cajero</span>
+              <span class="info-value">{{ selectedUserName }}</span>
+            </div>
+            <div class="info-row" *ngIf="mode === 'TURNO'">
+              <span class="info-label">Turno</span>
+              <span class="info-value">
+                #{{ openShiftId }}
+                <span class="badge-sm badge-success">Abierto</span>
               </span>
-            </td>
-            <td>{{ m.reference || ('#' + (m.reference_id ?? '')) }}</td>
-            <td>{{ m.user_name }}</td>
-            <td class="num strong">{{ m.amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-          </tr>
-          <tr *ngIf="movimientos.length === 0">
-            <td colspan="7" class="text-center text-muted py-3">Sin movimientos.</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="6" class="right strong">Neto</td>
-            <td class="num strong">{{ summary.neto | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-          </tr>
-        </tfoot>
-      </table>
+            </div>
+            <div class="info-row" *ngIf="mode === 'DIA'">
+              <span class="info-label">Período</span>
+              <span class="info-value">{{ desdeStr }} → {{ hastaStr }}</span>
+            </div>
+          </div>
+
+          <div class="amount-display expected">
+            <div class="amount-label">
+              <i class="bi bi-calculator-fill"></i>
+              Efectivo esperado
+            </div>
+            <div class="amount-value">{{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div class="amount-hint">
+              {{ mode === 'TURNO' 
+                  ? 'Movimientos + fondo inicial (' + (openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2') + ')'
+                  : 'Calculado por movimientos del período' }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <i class="bi bi-cash-stack"></i>
+              Efectivo entregado
+            </label>
+            <div class="input-with-currency">
+              <span class="currency-symbol">$</span>
+              <input type="number"
+                     min="0" 
+                     step="0.01"
+                     class="form-control form-control-lg"
+                     [(ngModel)]="cashDelivered"
+                     placeholder="0.00"
+                     autofocus>
+            </div>
+          </div>
+
+          <div class="amount-display difference" [class.positive]="cashDiff >= 0" [class.negative]="cashDiff < 0">
+            <div class="amount-label">
+              <i class="bi" [ngClass]="cashDiff >= 0 ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+              Diferencia
+            </div>
+            <div class="amount-value">{{ cashDiff | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div class="amount-hint" *ngIf="cashDiff !== 0">
+              {{ cashDiff > 0 ? 'Sobrante' : 'Faltante' }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <i class="bi bi-pencil-square"></i>
+              Notas (opcional)
+            </label>
+            <textarea class="form-control" 
+                      rows="3"
+                      [(ngModel)]="closeNotes"
+                      placeholder="Observaciones sobre el cierre..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-ghost" [disabled]="closing" (click)="cerrarModalCierre()">
+            Cancelar
+          </button>
+          <button class="btn btn-primary btn-lg"
+                [disabled]="closing || cashDelivered === null || (mode==='TURNO' && !openShiftId)"
+                (click)="confirmarCierreReal()">
+          <ng-container *ngIf="!closing; else closingTpl">
+            <i class="bi bi-check-circle"></i>
+            Confirmar cierre
+          </ng-container>
+          <ng-template #closingTpl>
+            <i class="bi bi-arrow-repeat spinner"></i>
+            Cerrando...
+          </ng-template>
+        </button>
+        </div>
+      </div>
     </div>
-
-    <ng-template #loadingTpl>
-      <div class="text-center text-muted py-4">Cargando…</div>
-    </ng-template>
-
-    <div class="nota" *ngIf="!showFilters">
-      * {{ mode==='TURNO'
-          ? 'Mostrando movimientos del turno seleccionado (closure_id).'
-          : 'Mostrando movimientos del rango seleccionado.' }}
-    </div>
-
   </div>
 </div>

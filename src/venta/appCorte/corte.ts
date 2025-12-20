@@ -24,8 +24,6 @@ interface Summary {
   total_entradas: number;
   total_salidas: number;
   neto: number;
-
-  // opcionales si tu SP los regresa:
   opening_cash?: number;
   cash_expected?: number;
 }
@@ -48,12 +46,17 @@ type Mode = 'TURNO' | 'DIA';
 export class Corte {
   hoy = new Date();
 
+  // Wizard control
+  currentStep = 1;
+
   usuarios: UserOption[] = [];
   selectedUserId: number | null = null;
 
   showCloseModal = false;
   cashDelivered: number | null = null;
   closeNotes = '';
+
+  closing = false;
 
   showFilters = true;
   loading = false;
@@ -67,7 +70,7 @@ export class Corte {
   hastaStr = '';
 
   // TURNO
-  onlyOpen = true;            // en TURNO casi siempre true
+  onlyOpen = true;
   openShiftId: number | null = null;
   openShiftOpenedAt: Date | null = null;
   openShiftOpeningCash = 0;
@@ -87,7 +90,7 @@ export class Corte {
 
   private startOfWeek(d: Date){
     const x = new Date(d);
-    const dow = x.getDay(); // 0=Dom
+    const dow = x.getDay();
     const diff = (dow === 0 ? -6 : 1) - dow;
     x.setDate(x.getDate() + diff);
     x.setHours(0,0,0,0);
@@ -112,13 +115,64 @@ export class Corte {
     }
   }
 
-  editarFiltros(){ this.showFilters = true; }
+  // ===== WIZARD NAVIGATION =====
+  async selectUser(userId: number) {
+    this.selectedUserId = userId;
+    await this.onUserChange();
+  }
+
+  nextStep() {
+    if (this.currentStep < 3) {
+      this.currentStep++;
+    }
+  }
+
+  prevStep() {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
+  }
+
+  async selectMode(mode: Mode) {
+    this.mode = mode;
+    if (mode === 'TURNO') {
+      this.onlyOpen = true;
+      if (this.selectedUserId) {
+        await this.fetchOpenShiftForSelectedUser();
+      }
+    } else {
+      this.setPreset('HOY');
+    }
+  }
+
+  get canConsult(): boolean {
+    if (!this.selectedUserId) return false;
+    if (this.mode === 'TURNO') {
+      return !!this.openShiftId;
+    }
+    return true;
+  }
+
+  get canClose(): boolean {
+    if (!this.selectedUserId) return false;
+    if (this.mode === 'TURNO') {
+      return !!this.openShiftId;
+    }
+    return true;
+  }
+
+  editarFiltros(){
+    this.showFilters = true;
+    this.currentStep = 1;
+  }
 
   limpiar(){
     this.preset = null;
     this.desdeStr = '';
     this.hastaStr = '';
     this.onlyOpen = true;
+    this.selectedUserId = null;
+    this.mode = 'TURNO';
 
     this.openShiftId = null;
     this.openShiftOpenedAt = null;
@@ -127,9 +181,9 @@ export class Corte {
     this.movimientos = [];
     this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
     this.showFilters = true;
+    this.currentStep = 1;
   }
 
-  // Cuando el usuario cambie de cajero, puedes llamar esto desde el HTML (change)
   async onUserChange() {
     this.openShiftId = null;
     this.openShiftOpenedAt = null;
@@ -165,11 +219,14 @@ export class Corte {
     return true;
   }
 
-
-
   async consultar(){
     if (!this.selectedUserId) {
-      await Swal.fire({ icon: 'warning', title: 'Selecciona cajero', text: 'Elige un cajero para consultar.' });
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Selecciona cajero',
+        text: 'Elige un cajero para consultar.',
+        confirmButtonColor: '#10b981'
+      });
       return;
     }
 
@@ -183,22 +240,19 @@ export class Corte {
           await Swal.fire({
             icon: 'info',
             title: 'Sin turno abierto',
-            text: 'Este cajero no tiene un turno abierto para cerrar.'
+            text: 'Este cajero no tiene un turno abierto para cerrar.',
+            confirmButtonColor: '#10b981'
           });
           return;
         }
       }
 
       const payload = {
-        // DIA: usa rango; TURNO: opcional
         start_date: this.mode === 'DIA' ? (this.desdeStr || null) : null,
         end_date:   this.mode === 'DIA' ? (this.hastaStr || null) : null,
-
         user_id:    this.selectedUserId,
         typee:      null,
-
         closure_id: this.mode === 'TURNO' ? this.openShiftId : null,
-
         only_open:  this.mode === 'TURNO' ? 1 : (this.onlyOpen ? 1 : 0),
       };
 
@@ -227,9 +281,17 @@ export class Corte {
 
   get cashExpected(): number {
     const opening = Number((this.summary as any)?.opening_cash ?? this.openShiftOpeningCash ?? 0);
-    const expected = Number((this.summary as any)?.cash_expected ?? ((this.summary?.neto ?? 0) + opening));
+
+    const openingMovSum = this.movimientos
+      .filter(m => String(m.typee || '').toUpperCase() === 'OPENING')
+      .reduce((acc, m) => acc + Number(m.amount || 0), 0);
+
+    const neto = Number(this.summary?.neto ?? 0);
+    const expected = neto + opening - openingMovSum;
+
     return Number(expected.toFixed(2));
   }
+
 
   get cashDiff(): number {
     const d = (this.cashDelivered ?? 0) - this.cashExpected;
@@ -238,7 +300,12 @@ export class Corte {
 
   abrirModalCierre() {
     if (this.mode !== 'TURNO') {
-      Swal.fire({ icon: 'info', title: 'Modo reporte', text: 'Para cerrar un turno, cambia a modo TURNO.' });
+      Swal.fire({
+        icon: 'info',
+        title: 'Modo reporte',
+        text: 'Para cerrar un turno, cambia a modo TURNO.',
+        confirmButtonColor: '#10b981'
+      });
       return;
     }
     this.cashDelivered = null;
@@ -246,30 +313,58 @@ export class Corte {
     this.showCloseModal = true;
   }
 
-  cerrarModalCierre() { this.showCloseModal = false; }
+  cerrarModalCierre() {
+    this.showCloseModal = false;
+  }
 
   async confirmarCierreReal() {
     if (!this.selectedUserId) {
-      await Swal.fire({ icon: 'warning', title: 'Selecciona un cajero', text: 'Debes elegir el usuario al que le vas a hacer el corte.' });
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Selecciona un cajero',
+        text: 'Debes elegir el usuario al que le vas a hacer el corte.',
+        confirmButtonColor: '#10b981'
+      });
       return;
     }
 
     if (!this.openShiftId) {
-      await Swal.fire({ icon: 'warning', title: 'Sin turno abierto', text: 'No hay turno abierto detectado para cerrar.' });
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Sin turno abierto',
+        text: 'No hay turno abierto detectado para cerrar.',
+        confirmButtonColor: '#10b981'
+      });
       return;
     }
 
     if (this.cashDelivered == null) {
-      await Swal.fire({ icon: 'warning', title: 'Falta efectivo entregado', text: 'Captura el efectivo entregado por el cajero.' });
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Falta efectivo entregado',
+        text: 'Captura el efectivo entregado por el cajero.',
+        confirmButtonColor: '#10b981'
+      });
       return;
     }
+    this.closing = true;
 
+    const userId = Number(this.selectedUserId);
+    const closureId = Number(this.openShiftId);
+
+    if (!Number.isFinite(userId) || userId <= 0) {
+      await Swal.fire({ icon: 'error', title: 'user_id inválido', text: String(this.selectedUserId) });
+      return;
+    }
+    if (!Number.isFinite(closureId) || closureId <= 0) {
+      await Swal.fire({ icon: 'error', title: 'closure_id inválido', text: String(this.openShiftId) });
+      return;
+    }
     try {
-      // Recomendado: cerrar por closure_id (turno), NO por fecha
       const resp = await (window as any).electronAPI.closeShift({
-        closure_id: this.openShiftId,
-        user_id: this.selectedUserId,
-        cash_delivered: this.cashDelivered,
+        closure_id: closureId,
+        user_id: userId,
+        cash_delivered: Number(this.cashDelivered),
         note: (this.closeNotes || '').trim() || null
       });
 
@@ -277,7 +372,8 @@ export class Corte {
         await Swal.fire({
           icon: 'error',
           title: 'No se pudo cerrar el turno',
-          text: resp?.error || 'Ocurrió un error al registrar el cierre.'
+          text: resp?.error || 'Ocurrió un error al registrar el cierre.',
+          confirmButtonColor: '#10b981'
         });
         return;
       }
@@ -285,21 +381,37 @@ export class Corte {
       const data = resp.data || {};
       await Swal.fire({
         icon: 'success',
-        title: 'Corte registrado',
+        title: '¡Corte registrado exitosamente!',
         html: `
-          <div style="text-align:left">
-            <div><b>Cajero:</b> ${this.selectedUserName}</div>
-            <div><b>Turno ID:</b> ${this.openShiftId}</div>
-            <div><b>Efectivo esperado:</b> $${(data.cash_expected ?? this.cashExpected).toFixed(2)}</div>
-            <div><b>Efectivo entregado:</b> $${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</div>
-            <div><b>Diferencia:</b> $${(data.difference ?? this.cashDiff).toFixed(2)}</div>
+          <div style="text-align:left; background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
+            <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+              <span style="font-weight: 600; color: #64748b;">Cajero:</span>
+              <span style="font-weight: 700;">${this.selectedUserName}</span>
+            </div>
+            <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+              <span style="font-weight: 600; color: #64748b;">Turno ID:</span>
+              <span style="font-weight: 700;">#${this.openShiftId}</span>
+            </div>
+            <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+              <span style="font-weight: 600; color: #64748b;">Efectivo esperado:</span>
+              <span style="font-weight: 700;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
+            </div>
+            <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+              <span style="font-weight: 600; color: #64748b;">Efectivo entregado:</span>
+              <span style="font-weight: 700;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid #e2e8f0;">
+              <span style="font-weight: 700; color: #0f172a;">Diferencia:</span>
+              <span style="font-weight: 800; font-size: 1.2rem; color: ${(data.difference ?? this.cashDiff) >= 0 ? '#16a34a' : '#dc2626'};">
+                $${(data.difference ?? this.cashDiff).toFixed(2)}
+              </span>
+            </div>
           </div>
-        `
+        `,
+        confirmButtonColor: '#10b981'
       });
-
+      
       this.showCloseModal = false;
-
-      // refresca: ya no debe aparecer turno abierto
       this.openShiftId = null;
       this.openShiftOpenedAt = null;
       this.openShiftOpeningCash = 0;
@@ -310,7 +422,8 @@ export class Corte {
       await Swal.fire({
         icon: 'error',
         title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al registrar el cierre.'
+        text: e?.message || 'Ocurrió un error al registrar el cierre.',
+        confirmButtonColor: '#10b981'
       });
     }
   }
