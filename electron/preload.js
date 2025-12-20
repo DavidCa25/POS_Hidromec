@@ -45,8 +45,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-get-daily-sales-current-month'),
     getProfitOverview: (fromDate, toDate) =>
         ipcRenderer.invoke('sp-get-profit-overview', { fromDate, toDate }),
-    closeShift: (userId, cashDelivered, closureDate) =>
-        ipcRenderer.invoke('sp-close-shift', { userId, cashDelivered, closureDate }),
+    closeShift: (payload) => {
+        console.log('🧾 preload closeShift payload:', payload);
+        return ipcRenderer.invoke('sp-close-shift', payload);
+    },
+
     getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
