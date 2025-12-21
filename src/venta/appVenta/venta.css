@@ -498,6 +498,708 @@ input, select {
   margin-top:6px;
 }
 
+.folio-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  padding:14px 16px;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  background:#fff;
+  margin-bottom:14px;
+}
+
+.folio-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.badge-edit{
+  background:#eef2ff;
+  color:#3730a3;
+  padding:4px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+}
+
+.badge-new{
+  background:#ecfdf5;
+  color:#065f46;
+  padding:4px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+}
+
+.folio-input{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  max-width:520px;
+}
+
+.folio-meta{
+  display:flex;
+  gap:14px;
+  margin-top:8px;
+  color:#6b7280;
+  font-size:12px;
+  flex-wrap:wrap;
+}
+
+.folio-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.modal-backdrop-refund {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 14000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.refund-dialog {
+  width: 100%;
+  max-width: 950px;
+  max-height: 90vh;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.refund-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.refund-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.refund-title i {
+  font-size: 1.5rem;
+  color: #f59e0b;
+}
+
+.refund-title h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.refund-folio {
+  padding: 0.25rem 0.75rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.btn-close-refund {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: none;
+  border-radius: 8px;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-close-refund:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+/* Body */
+.refund-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Controles */
+.refund-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.control-group label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.refund-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  background: white;
+  color: #212529;
+  transition: border-color 0.15s ease;
+}
+
+.refund-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.refund-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.refund-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.refund-checkbox input:checked + .checkbox-custom {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.refund-checkbox input:checked + .checkbox-custom::after {
+  content: '\f633';
+  font-family: 'Bootstrap Icons';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 11px;
+}
+
+.checkbox-label {
+  font-size: 0.875rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+/* Tabla */
+.refund-table-container {
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.refund-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.refund-table thead th {
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #495057;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.refund-table tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background 0.1s ease;
+}
+
+.refund-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.refund-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.refund-table td {
+  padding: 0.875rem 1rem;
+  color: #495057;
+  vertical-align: middle;
+}
+
+.col-product { width: 35%; }
+.col-price { width: 15%; }
+.col-max { width: 10%; text-align: center; }
+.col-qty { width: 25%; }
+.col-subtotal { width: 15%; text-align: right; }
+
+.product-name {
+  font-weight: 600;
+  color: #212529;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.price-cell {
+  color: #6c757d;
+}
+
+.max-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: #e9ecef;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.8125rem;
+}
+
+/* Qty input group */
+.qty-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 140px;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.75rem;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qty-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  background: white;
+  color: #212529;
+}
+
+.qty-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.subtotal-amount {
+  font-weight: 700;
+  color: #212529;
+}
+
+.empty-cell {
+  padding: 3rem 2rem !important;
+}
+
+.empty-state-refund {
+  text-align: center;
+  color: #adb5bd;
+}
+
+.empty-state-refund i {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.empty-state-refund p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+/* Nota */
+.refund-note-section {
+  margin-bottom: 1rem;
+}
+
+.note-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.note-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  background: white;
+  color: #212529;
+  transition: border-color 0.15s ease;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Alert */
+.refund-info-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.refund-info-alert i {
+  font-size: 1.125rem;
+  color: #0369a1;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.alert-text {
+  font-size: 0.8125rem;
+  color: #0c4a6e;
+  line-height: 1.5;
+}
+
+/* Total preview */
+.refund-total-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.total-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.total-amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-family: ui-monospace, monospace;
+}
+
+/* Footer */
+.refund-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-refund {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-refund:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-refund.secondary {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.btn-refund.secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.btn-refund.primary {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-refund.primary:hover:not(:disabled) {
+  background: #d97706;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .refund-dialog {
+    max-width: 95vw;
+  }
+
+  .refund-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .checkbox-group {
+    margin-top: 0;
+  }
+
+  .refund-table {
+    font-size: 0.8125rem;
+  }
+
+  .refund-table thead th,
+  .refund-table td {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .product-name {
+    font-size: 0.8125rem;
+  }
+
+  .qty-input-group {
+    max-width: 120px;
+  }
+
+  .refund-footer {
+    flex-direction: column;
+  }
+
+  .btn-refund {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* =========================
+   Folio bar (más limpia)
+   ========================= */
+.folio-bar{
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.folio-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.folio-grid{
+  display:grid;
+  grid-template-columns: 1.2fr 1.8fr;
+  gap: 14px;
+  align-items:start;
+}
+
+.folio-field .form-label{
+  font-size: .85rem;
+  margin-bottom: 6px;
+}
+
+.folio-input-field{
+  height: 2.45rem !important;
+  font-size: .95rem !important;
+  border-radius: .75rem !important;
+}
+
+.folio-hint{
+  margin-top: 6px;
+  font-size: .78rem;
+  color: #64748b;
+}
+
+.folio-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top: 28px; /* alinea con input + label */
+  color:#6b7280;
+  font-size: .78rem;
+}
+
+/* Botón cancelar edición mini (icon) */
+.folio-cancel-btn{
+  padding: .38rem .55rem !important;
+  border-radius: 12px !important;
+  font-size: .95rem !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+.folio-cancel-btn:hover{
+  background:#eef2f7 !important;
+}
+
+/* Botones de acciones en modo edición (abajo) compactos */
+.venta-edit-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.btn-action-sm{
+  padding: .55rem 1.05rem !important;
+  font-size: .92rem !important;
+  border-radius: 14px !important;
+}
+
+/* Responsive */
+@media (max-width: 900px){
+  .folio-grid{
+    grid-template-columns: 1fr;
+  }
+  .folio-meta{
+    margin-top: 0;
+  }
+}
+
+.locked-cell{
+  height: 2.35rem;
+  display:flex;
+  align-items:center;
+  padding: .35rem .6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: .65rem;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.refund-kind{
+  display:flex;
+  gap:10px;
+}
+
+.kind-pill{
+  border:1px solid #e2e8f0;
+  background:#fff;
+  border-radius: 999px;
+  padding:.45rem .8rem;
+  font-size:.9rem;
+  font-weight:700;
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+}
+
+.kind-pill.active{
+  background:#0f172a;
+  color:#fff;
+  border-color:#0f172a;
+}
+
+
+
 
 
 

@@ -33,6 +33,39 @@ interface CreditCustomer {
   availableCredit: number;
 }
 
+interface SaleHeader {
+  sale_id: number;
+  datee: string | Date;
+  user_id: number;
+  total: number;
+  payment_method: string;
+  customer_id: number | null;
+  paid_amount: number;
+  balance: number;
+  due_date: string | null;
+  refund_total: number;
+}
+
+interface SaleDetailRow {
+  sale_id: number;
+  product_id: number;
+  product_name?: string;
+  productName?: string;
+  name?: string;
+  quantity: number;
+  unitary_price: number;
+  refunded_qty?: number;
+  remaining_qty?: number;
+}
+
+interface RefundLine {
+  productId: number;
+  productName: string;
+  maxQty: number;
+  qty: number;
+  unitPrice: number;
+}
+
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
@@ -42,8 +75,11 @@ interface CreditCustomer {
 export class Venta {
   today = new Date();
 
-  folio: number = 1;
-  private FOLIO_KEY = 'folioCounter';
+  // Folio UI (1 solo input)
+  nextFolioSuggested = 1;
+  folioInput: number | null = null;
+
+  private lastAddedProductId: number | null = null;
 
   showModal = false;
   dineroRecibido: number | null = null;
@@ -91,14 +127,32 @@ export class Venta {
   openingCash: number | null = null;
   openingNote = '';
 
-  // evita carreras/duplicados al consultar/abrir
   private shiftCheckInProgress = false;
 
-  constructor(private auth: AuthService, private router: Router) {
-    this.totalVenta = 0;
-  }
+  // =========================
+  // Modo edición
+  // =========================
+  editingSaleId: number | null = null;
+  editingHeader: SaleHeader | null = null;
+  editingLoading = false;
+
+  // Nuevo: solo lectura por default, “Modificar” desbloquea
+  editUnlocked = false;
+
+  // =========================
+  // Reembolso / Cambio
+  // =========================
+  showRefundModal = false;
+  refundLines: RefundLine[] = [];
+  refundKind: 'EFECTIVO' | 'CAMBIO' = 'EFECTIVO';
+  refundNote = '';
+  refundLoading = false;
+
+  constructor(private auth: AuthService, private router: Router) {}
 
   async ngOnInit() {
+    await this.refreshFolioFromDb();
+
     if (!this.auth.usuarioActualId) {
       Swal.fire({
         icon: 'info',
@@ -110,7 +164,6 @@ export class Venta {
       return;
     }
 
-    // al entrar a ventas, checo si hay turno abierto
     await this.ensureShiftOpen('VENTA');
   }
 
@@ -118,18 +171,8 @@ export class Venta {
     return this.auth.usuarioActualId as number;
   }
 
-  private readFolioCounter(): number {
-    const v = Number(localStorage.getItem(this.FOLIO_KEY) || '0');
-    return Number.isFinite(v) ? v : 0;
-  }
-  private writeFolioCounter(v: number) {
-    localStorage.setItem(this.FOLIO_KEY, String(v));
-  }
-  private advanceFolioAfterConfirm() {
-    const current = this.readFolioCounter();
-    const confirmed = current + 1;
-    this.writeFolioCounter(confirmed);
-    this.folio = confirmed + 1;
+  get isEditing(): boolean {
+    return this.editingSaleId != null;
   }
 
   get cambio(): number {
@@ -140,6 +183,20 @@ export class Venta {
 
   private recalcularTotal() {
     this.totalVenta = this.items.reduce((acc, it) => acc + it.subtotal, 0);
+  }
+
+  private adjustLastAddedQty(delta: number) {
+    if (!this.items.length) return;
+
+    const fallback = this.items[this.items.length - 1];
+    const target = this.lastAddedProductId != null
+      ? this.items.find(it => it.productId === this.lastAddedProductId) ?? fallback
+      : fallback;
+
+    if (!target) return;
+
+    target.qty = Math.max(1, Number(target.qty || 0) + delta);
+    this.recalcularTotal();
   }
 
   onQtyChange(i: number) {
@@ -157,14 +214,19 @@ export class Venta {
   }
 
   quitarItem(i: number) {
+    const removed = this.items[i];
     this.items.splice(i, 1);
+
+    if (removed && removed.productId === this.lastAddedProductId) {
+      this.lastAddedProductId = this.items.length ? this.items[this.items.length - 1].productId : null;
+    }
+
     this.recalcularTotal();
   }
 
   // =========================
   // Turno helpers
   // =========================
-
   private setShiftFromRow(row: any) {
     this.shiftOpen = true;
     this.shiftId = row?.id ?? row?.shift_id ?? row?.closure_id ?? null;
@@ -188,14 +250,9 @@ export class Venta {
 
     try {
       const resp = await api.getOpenShift({ user_id: this.currentUserId });
-
-      if (!resp?.success) {
-        return false;
-      }
+      if (!resp?.success) return false;
 
       const row = resp.data;
-
-      // con tu SP actual: si hay fila y closed_at es null => abierto
       const isOpen = !!row?.id && (row.closed_at == null);
 
       if (isOpen) {
@@ -212,10 +269,7 @@ export class Venta {
   }
 
   private async ensureShiftOpen(source: 'VENTA' | 'COBRO' | 'SALIDA'): Promise<boolean> {
-    // ya abierto
     if (this.shiftOpen) return true;
-
-    // evita carreras si se llama varias veces (entrar + hotkeys, etc)
     if (this.shiftCheckInProgress) return false;
 
     this.shiftCheckInProgress = true;
@@ -223,10 +277,8 @@ export class Venta {
       const ok = await this.fetchOpenShift();
       if (ok) return true;
 
-      // si no hay turno, abro modal
       this.abrirModalAbrirTurno(true);
 
-      // si venía de cobrar o salida, cierro lo que esté abierto
       if (source === 'COBRO') this.showModal = false;
       if (source === 'SALIDA') this.showCashOutModal = false;
 
@@ -237,15 +289,10 @@ export class Venta {
   }
 
   abrirModalAbrirTurno(required: boolean) {
-    // si ya hay turno, no vuelvo a abrir modal
     if (this.shiftOpen) return;
-
     this.openShiftRequired = required;
-
-    // defaults suaves
     this.openingCash = 0;
     this.openingNote = '';
-
     this.showOpenShiftModal = true;
   }
 
@@ -257,21 +304,13 @@ export class Venta {
   async confirmarAbrirTurno() {
     const api = (window as any).electronAPI;
     if (!api || !api.openShift) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'No disponible',
-        text: 'No se pudo abrir turno (API no disponible).'
-      });
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se pudo abrir turno (API no disponible).' });
       return;
     }
 
     const opening_cash = Number(this.openingCash ?? 0);
     if (opening_cash < 0) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Monto inválido',
-        text: 'El fondo inicial no puede ser negativo.'
-      });
+      await Swal.fire({ icon: 'warning', title: 'Monto inválido', text: 'El fondo inicial no puede ser negativo.' });
       return;
     }
 
@@ -288,40 +327,24 @@ export class Venta {
       const resp = await api.openShift(payload);
 
       if (!resp?.success) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'No se pudo abrir el turno',
-          text: resp?.error || 'Ocurrió un error al abrir el turno.'
-        });
+        await Swal.fire({ icon: 'error', title: 'No se pudo abrir el turno', text: resp?.error || 'Ocurrió un error al abrir el turno.' });
         return;
       }
 
       const row = resp.data ?? resp.recordset?.[0] ?? null;
       if (row) {
         this.setShiftFromRow(row);
-        // si tu SP devuelve closure_id, úsalo
         if (row?.closure_id && !this.shiftId) this.shiftId = Number(row.closure_id);
-        if (row?.opened_at && !this.shiftOpenedAt) this.shiftOpenedAt = new Date(row.opened_at);
-        if (row?.opening_cash != null) this.shiftOpeningCash = Number(row.opening_cash);
       } else {
-        // fallback: vuelve a consultar
         await this.fetchOpenShift();
       }
 
       this.showOpenShiftModal = false;
       this.openShiftRequired = false;
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Turno abierto',
-        text: 'Listo, ya puedes registrar ventas y movimientos.'
-      });
+      await Swal.fire({ icon: 'success', title: 'Turno abierto', text: 'Listo, ya puedes registrar ventas y movimientos.' });
     } catch (e: any) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al abrir el turno.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al abrir el turno.' });
     } finally {
       this.openingShiftLoading = false;
     }
@@ -334,14 +357,23 @@ export class Venta {
   // =========================
   // Cobro / métodos
   // =========================
-
   async abrirModalCobrar() {
     const ok = await this.ensureShiftOpen('COBRO');
     if (!ok) return;
 
+    if (this.isEditing) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Folio cargado',
+        text: 'Esta pantalla es para reembolsos/cambios. Cierra el folio (X) para cobrar una venta nueva.'
+      });
+      return;
+    }
+
     this.dineroRecibido = null;
     this.showModal = true;
   }
+
   cerrarModalCobrar() { this.showModal = false; }
 
   async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
@@ -359,11 +391,7 @@ export class Venta {
   private async loadCreditCustomers() {
     const api = (window as any).electronAPI;
     if (!api || !api.getCreditCustomers) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'No disponible',
-        text: 'No se pudo cargar la lista de clientes con crédito.',
-      });
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se pudo cargar la lista de clientes con crédito.' });
       return;
     }
 
@@ -374,11 +402,7 @@ export class Venta {
       const resp = await api.getCreditCustomers();
 
       if (!resp?.success) {
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error al cargar clientes',
-          text: resp?.error || 'No se pudieron obtener los clientes con crédito.',
-        });
+        await Swal.fire({ icon: 'error', title: 'Error al cargar clientes', text: resp?.error || 'No se pudieron obtener los clientes con crédito.' });
         return;
       }
 
@@ -394,17 +418,12 @@ export class Venta {
 
       this.customerId = this.creditCustomers.length > 0 ? this.creditCustomers[0].id : null;
     } catch (e: any) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error inesperado',
-        text: e?.message || 'Ocurrió un error al cargar los clientes con crédito.',
-      });
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al cargar los clientes con crédito.' });
     } finally {
       this.loadingCreditCustomers = false;
     }
   }
 
-  /** ================== CONFIRMAR COBRO ================== */
   async confirmarCobro() {
     const ok = await this.ensureShiftOpen('COBRO');
     if (!ok) return;
@@ -425,26 +444,17 @@ export class Venta {
     if (isCredito) {
       if (this.customerId == null) {
         this.showModal = false;
-        await Swal.fire({
-          icon: 'error',
-          title: 'Cliente requerido',
-          text: 'Selecciona o ingresa el cliente para la venta a crédito.',
-        });
+        await Swal.fire({ icon: 'error', title: 'Cliente requerido', text: 'Selecciona el cliente para la venta a crédito.' });
         return;
       }
     } else {
       if (this.dineroRecibido == null || this.dineroRecibido < this.totalVenta) {
         this.showModal = false;
-        await Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "El dinero recibido debe ser mayor o igual al total de la venta"
-        });
+        await Swal.fire({ icon: "error", title: "Oops...", text: "El dinero recibido debe ser mayor o igual al total de la venta" });
         return;
       }
     }
 
-    const userId = this.currentUserId;
     const detalles = this.items.map(it => ({
       productId: it.productId,
       qty: it.qty,
@@ -453,7 +463,7 @@ export class Venta {
 
     try {
       const resp = await (window as any).electronAPI.registerSale(
-        userId,
+        this.currentUserId,
         this.paymentMethod,
         detalles,
         isCredito ? this.customerId : null,
@@ -480,7 +490,7 @@ export class Venta {
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
 
-        this.advanceFolioAfterConfirm();
+        // reset venta nueva
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
@@ -489,34 +499,55 @@ export class Venta {
 
         this.showModal = false;
         this.showPostSaleModal = true;
+
+        await this.refreshFolioFromDb();
       } else {
         this.showModal = false;
-        await Swal.fire({
-          icon: 'error',
-          title: 'Error al registrar venta',
-          text: resp?.error || 'No se pudo registrar la venta.'
-        });
+        await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: resp?.error || 'No se pudo registrar la venta.' });
       }
     } catch (e: any) {
       this.showModal = false;
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error al registrar la venta',
-        text: e.message || 'Ocurrió un error inesperado.'
-      });
+      await Swal.fire({ icon: 'error', title: 'Error al registrar la venta', text: e.message || 'Ocurrió un error inesperado.' });
     }
   }
 
-  /** ================== PRODUCTOS ================== */
+  private async refreshFolioFromDb() {
+    const api = (window as any).electronAPI;
+    if (!api?.getActualFolio) return;
+
+    try {
+      const resp = await api.getActualFolio();
+      const next = Number(resp?.data?.next_folio ?? 1);
+      this.nextFolioSuggested = Number.isFinite(next) && next > 0 ? next : 1;
+
+      // Si NO está editando, deja el input listo con el sugerido
+      if (!this.isEditing) {
+        this.folioInput = this.nextFolioSuggested;
+      }
+    } catch {
+      this.nextFolioSuggested = 1;
+      if (!this.isEditing) this.folioInput = 1;
+    }
+  }
+
+  // ==================
+  // PRODUCTOS
+  // ==================
   async abrirModalProductos() {
-    // opcional: si quieres bloquear agregar producto sin turno, descomenta:
-    // const ok = await this.ensureShiftOpen('VENTA');
-    // if (!ok) return;
+    if (this.isEditing && !this.editUnlocked) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Solo lectura',
+        text: 'Esta venta está cargada. Para agregar/quitar productos debes entrar a “Modificar” (supervisor).'
+      });
+      return;
+    }
 
     this.filtro = '';
     await this.cargarProductosActivos();
     this.showModalProductos = true;
   }
+
   cerrarModalProductos() { this.showModalProductos = false; }
 
   async cargarProductosActivos() {
@@ -541,6 +572,7 @@ export class Venta {
     const existing = this.items.find(it => it.productId === p.id);
     if (existing) {
       existing.qty += 1;
+      this.lastAddedProductId = p.id;
       this.recalcularTotal();
       this.showModalProductos = false;
       return;
@@ -555,11 +587,14 @@ export class Venta {
     };
 
     this.items.push(item);
+    this.lastAddedProductId = p.id;
     this.recalcularTotal();
     this.showModalProductos = false;
   }
 
-  /** ================== CAJÓN MANUAL & SALIDA EFECTIVO ================== */
+  // ==================
+  // CAJÓN MANUAL & SALIDA EFECTIVO
+  // ==================
   async abrirCajonManual() {
     const api = (window as any).electronAPI;
     if (!api || !api.openCashDrawer) {
@@ -630,7 +665,9 @@ export class Venta {
     }
   }
 
-  /** ================== POST-VENTA: PDF / WHATSAPP ================== */
+  // ==================
+  // POST-VENTA
+  // ==================
   cerrarPostSaleModal() { this.showPostSaleModal = false; }
 
   async generarPdfUltimaVenta() {
@@ -679,7 +716,9 @@ export class Venta {
     }
   }
 
-  /** ================== ATAJOS ================== */
+  // ==================
+  // ATAJOS
+  // ==================
   @HostListener('window:keydown', ['$event'])
   async handleKeyboardEvent(event: KeyboardEvent) {
     switch (event.key) {
@@ -690,24 +729,386 @@ export class Venta {
 
       case 'F7':
         event.preventDefault();
-        if (!this.showModalProductos) {
-          this.abrirModalProductos();
-        }
+        if (!this.showModalProductos) this.abrirModalProductos();
         break;
 
       case 'F8':
         event.preventDefault();
-        if (!this.showModal) {
-          await this.abrirModalCobrar();
-        }
+        if (!this.showModal) await this.abrirModalCobrar();
         break;
 
       case 'F10':
         event.preventDefault();
-        if (!this.showCashOutModal) {
-          await this.abrirSalidaEfectivo();
-        }
+        if (!this.showCashOutModal) await this.abrirSalidaEfectivo();
         break;
+
+      case '+':
+        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) break;
+        if (this.isEditing && !this.editUnlocked) break;
+        event.preventDefault();
+        this.adjustLastAddedQty(+1);
+        break;
+
+      case '-':
+        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) break;
+        if (this.isEditing && !this.editUnlocked) break;
+        event.preventDefault();
+        this.adjustLastAddedQty(-1);
+        break;
+    }
+  }
+
+  // ==================
+  // EDICIÓN / CARGA FOLIO
+  // ==================
+  public resetToNewSaleMode() {
+    this.editingSaleId = null;
+    this.editingHeader = null;
+    this.editUnlocked = false;
+
+    this.items = [];
+    this.recalcularTotal();
+
+    // vuelve al sugerido
+    this.folioInput = this.nextFolioSuggested;
+  }
+
+  async buscarFolioPorInput() {
+    const saleId = Number(this.folioInput ?? 0);
+
+    if (!Number.isFinite(saleId) || saleId <= 0) {
+      await Swal.fire({ icon: 'warning', title: 'Folio inválido', text: 'Ingresa un folio válido.' });
+      return;
+    }
+
+    const api = (window as any).electronAPI;
+    if (!api?.getSaleByFolio) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta electronAPI.getSaleByFolio' });
+      return;
+    }
+
+    this.editingLoading = true;
+    try {
+      const resp = await api.getSaleByFolio(saleId);
+
+      if (!resp?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se encontró', text: resp?.error || 'No se encontró la venta.' });
+        return;
+      }
+
+      const header: SaleHeader | null = resp.data?.header ?? resp.data?.[0] ?? null;
+      const details: SaleDetailRow[] = resp.data?.details ?? resp.data?.rows ?? resp.data?.detail ?? [];
+
+      if (!header || !header.sale_id) {
+        await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No se encontró la venta o no regresó header.' });
+        return;
+      }
+
+      this.editingSaleId = Number(header.sale_id);
+      this.editingHeader = {
+        ...header,
+        datee: header.datee ? new Date(header.datee) : header.datee,
+        total: Number(header.total ?? 0),
+        refund_total: Number(header.refund_total ?? 0),
+      };
+
+      // por default: SOLO LECTURA
+      this.editUnlocked = false;
+
+      // Llenar items desde detalle (fix robusto del nombre)
+      this.items = (details || []).map((d: any) => {
+        const name =
+          d.product_name ??
+          d.productName ??
+          d.nombre_producto ??
+          d.name ??
+          '';
+
+        return {
+          productId: Number(d.product_id),
+          productName: String(name || `Producto #${d.product_id}`),
+          qty: Number(d.quantity ?? 1),
+          unitPrice: Number(d.unitary_price ?? 0),
+          get subtotal() { return this.qty * this.unitPrice; }
+        };
+      });
+
+      this.recalcularTotal();
+
+      await Swal.fire({
+        icon: 'success',
+        title: `Folio #${this.editingSaleId}`,
+        text: 'Venta cargada (solo lectura).',
+        timer: 1000,
+        showConfirmButton: false
+      });
+
+    } catch (e: any) {
+      console.error('❌ buscarFolioPorInput:', e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al cargar la venta.' });
+    } finally {
+      this.editingLoading = false;
+    }
+  }
+
+  async habilitarEdicion() {
+    // aquí puedes pedir PIN de supervisor si quieres
+    const confirm = await Swal.fire({
+      icon: 'question',
+      title: 'Modificar venta',
+      text: 'Esto es modo supervisor. ¿Deseas continuar?',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, modificar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    this.editUnlocked = true;
+  }
+
+  async cancelarEdicion() {
+    this.editUnlocked = false;
+
+    // recarga el folio para descartar cambios locales
+    if (this.editingSaleId) {
+      this.folioInput = this.editingSaleId;
+      await this.buscarFolioPorInput();
+    }
+  }
+
+  async guardarCambiosVenta() {
+    if (!this.editingSaleId) {
+      await Swal.fire({ icon: 'info', title: 'No estás editando', text: 'Primero carga un folio.' });
+      return;
+    }
+
+    if (!this.editUnlocked) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Edición bloqueada',
+        text: 'Presiona “Modificar” (supervisor) para habilitar cambios.'
+      });
+      return;
+    }
+
+    const ok = await this.ensureShiftOpen('VENTA');
+    if (!ok) return;
+
+    if (this.items.length === 0) {
+      await Swal.fire({ icon: 'warning', title: 'Sin partidas', text: 'La venta no puede quedar vacía.' });
+      return;
+    }
+
+    const api = (window as any).electronAPI;
+    if (!api?.updateSale) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta electronAPI.updateSale' });
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      icon: 'question',
+      title: `Guardar cambios (Folio #${this.editingSaleId})`,
+      text: 'Se actualizará inventario y (si aplica) caja con el ajuste.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, guardar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const payload = {
+        sale_id: this.editingSaleId,
+        user_id: this.currentUserId,
+        items: this.items.map(it => ({
+          productId: it.productId,
+          qty: it.qty,
+          unitPrice: it.unitPrice
+        })),
+        note: 'Edición de venta desde POS'
+      };
+
+      const resp = await api.updateSale(payload);
+
+      if (!resp?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: resp?.error || 'Error al actualizar.' });
+        return;
+      }
+
+      await Swal.fire({ icon: 'success', title: 'Actualizada', text: 'La venta se actualizó correctamente.' });
+
+      // vuelve a solo lectura y recarga
+      this.editUnlocked = false;
+      this.folioInput = this.editingSaleId;
+      await this.buscarFolioPorInput();
+
+    } catch (e: any) {
+      console.error('❌ guardarCambiosVenta:', e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al actualizar.' });
+    }
+  }
+
+  // ==================
+  // REEMBOLSO / CAMBIO
+  // ==================
+  async abrirReembolso() {
+    if (!this.editingSaleId || !this.editingHeader) {
+      await Swal.fire({ icon: 'info', title: 'Carga una venta', text: 'Primero escribe un folio y presiona Enter.' });
+      return;
+    }
+
+    const ok = await this.ensureShiftOpen('VENTA');
+    if (!ok) return;
+
+    const api = (window as any).electronAPI;
+    if (!api?.getSaleByFolio) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta electronAPI.getSaleByFolio' });
+      return;
+    }
+
+    try {
+      const resp = await api.getSaleByFolio(this.editingSaleId);
+      if (!resp?.success) {
+        await Swal.fire({ icon: 'error', title: 'Error', text: resp?.error || 'No se pudo cargar la venta.' });
+        return;
+      }
+
+      const details: SaleDetailRow[] = resp.data?.details ?? resp.data?.detail ?? [];
+
+      this.refundLines = (details || [])
+        .filter(d => Number(d.remaining_qty ?? 0) > 0)
+        .map(d => {
+          const name =
+            (d as any).product_name ??
+            (d as any).productName ??
+            (d as any).name ??
+            '';
+
+          return {
+            productId: Number(d.product_id),
+            productName: String(name || `Producto #${d.product_id}`),
+            maxQty: Number(d.remaining_qty ?? 0),
+            qty: 0,
+            unitPrice: Number(d.unitary_price ?? 0),
+          };
+        });
+
+      this.refundKind = 'EFECTIVO';
+      this.refundNote = '';
+      this.showRefundModal = true;
+
+    } catch (e: any) {
+      console.error('❌ abrirReembolso:', e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al preparar el reembolso.' });
+    }
+  }
+
+  cerrarReembolso() {
+    this.showRefundModal = false;
+    this.refundLines = [];
+    this.refundNote = '';
+    this.refundLoading = false;
+  }
+
+  get refundTotalPreview(): number {
+    const total = (this.refundLines || [])
+      .filter(l => Number(l.qty) > 0)
+      .reduce((acc, l) => acc + (Number(l.qty) * Number(l.unitPrice)), 0);
+    return Number(total.toFixed(2));
+  }
+
+  incQty(l: RefundLine) {
+    const max = Number(l?.maxQty ?? Infinity);
+    const qty = Number(l?.qty ?? 0);
+    l.qty = Math.min(max, qty + 1);
+  }
+
+  decQty(l: RefundLine) {
+    const qty = Number(l?.qty ?? 0);
+    l.qty = Math.max(0, qty - 1);
+  }
+
+  async confirmarReembolso() {
+    if (!this.editingSaleId) return;
+
+    const api = (window as any).electronAPI;
+    if (!api?.refundSale) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta electronAPI.refundSale' });
+      return;
+    }
+
+    for (const l of this.refundLines) {
+      l.qty = Number(l.qty ?? 0);
+      if (l.qty < 0) l.qty = 0;
+      if (l.qty > l.maxQty) l.qty = l.maxQty;
+    }
+
+    const selected = this.refundLines.filter(l => l.qty > 0);
+    if (selected.length === 0) {
+      await Swal.fire({ icon: 'warning', title: 'Nada que devolver', text: 'Selecciona al menos un producto.' });
+      return;
+    }
+
+    const totalPreview = this.refundTotalPreview;
+
+    this.showRefundModal = false;
+
+    const confirm = await Swal.fire({
+      icon: 'question',
+      title: this.refundKind === 'EFECTIVO' ? 'Confirmar reembolso en efectivo' : 'Confirmar cambio',
+      html: `<div style="text-align:left">Total: <b>$${totalPreview.toFixed(2)}</b></div>`,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, confirmar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    this.refundLoading = true;
+    try {
+      const payload = {
+        sale_id: this.editingSaleId,
+        user_id: this.currentUserId,
+
+        // Para tu SP actual quizá solo exista payment_method:
+        payment_method: 'EFECTIVO',
+
+        // Flags para que tu backend/SP pueda decidir si afecta caja o no:
+        refund_kind: this.refundKind,
+        register_cash_movement: this.refundKind === 'EFECTIVO' ? 1 : 0,
+
+        items: selected.map(x => ({
+          productId: x.productId,
+          qty: x.qty,
+          unitPrice: x.unitPrice
+        })),
+
+        note: (this.refundNote || '').trim() || null,
+
+        // Se recomienda que siempre actualice venta (reduzca remaining)
+        apply_net_update: 1
+      };
+
+      const resp = await api.refundSale(payload);
+
+      if (!resp?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: resp?.error || 'Error en reembolso/cambio.' });
+        return;
+      }
+
+      await Swal.fire({ icon: 'success', title: 'Listo', text: 'Se registró correctamente.' });
+
+      this.showRefundModal = false;
+
+      this.folioInput = this.editingSaleId;
+      await this.buscarFolioPorInput();
+
+    } catch (e: any) {
+      console.error('❌ confirmarReembolso:', e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al registrar.' });
+    } finally {
+      this.refundLoading = false;
     }
   }
 }

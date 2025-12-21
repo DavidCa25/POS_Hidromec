@@ -836,7 +836,17 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
   }
 });
 
-
+ipcMain.handle('sp-get-actual-folio', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('sp_get_actual_folio');
+    const row = result.recordset?.[0] ?? null;
+    return { success: true, data: row };
+  } catch (err) {
+    console.error('Error en sp_get_actual_folio:', err);
+    return { success: false, error: err.message };
+  }
+});
 
 ipcMain.handle('sp-get-active-users', async () => {
   try {
@@ -1142,6 +1152,138 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
   } catch (err) {
     console.error('❌ sp_open_shift:', err);
     return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-update-sale', async (event, payload) => {
+  try {
+    const saleId = Number(payload?.sale_id ?? payload?.saleId ?? 0);
+    const userId = Number(payload?.user_id ?? payload?.userId ?? 0);
+    const items = payload?.items ?? [];
+    const note = payload?.note ?? null;
+
+    if (!Number.isFinite(saleId) || saleId <= 0) throw new Error('sale_id inválido.');
+    if (!Number.isFinite(userId) || userId <= 0) throw new Error('user_id inválido.');
+    if (!Array.isArray(items) || items.length === 0) throw new Error('La venta no tiene partidas.');
+
+    const pool = await poolPromise;
+
+    // TVP (mismo tipo que usas en register sale)
+    const tvp = new sql.Table();
+    tvp.columns.add('product_id', sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+
+    for (const it of items) {
+      const pid = Number(it.productId ?? it.product_id);
+      const qty = Number(it.qty ?? it.quantity);
+      const up  = Number(it.unitPrice ?? it.unit_price);
+
+      if (!Number.isFinite(pid) || pid <= 0) throw new Error('Producto inválido en detalle.');
+      if (!Number.isFinite(qty) || qty <= 0) throw new Error('Cantidad inválida en detalle.');
+      if (!Number.isFinite(up)  || up < 0)   throw new Error('Precio inválido en detalle.');
+
+      tvp.rows.add(pid, qty, up);
+    }
+
+    const req = pool.request()
+      .input('sale_id',     sql.Int, saleId)
+      .input('user_id',     sql.Int, userId)
+      .input('SaleDetails', tvp)
+      .input('note',        sql.NVarChar(250), note);
+
+    const result = await req.execute('sp_update_sale');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_update_sale:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-get-sale-by-folio', async (event, payload) => {
+  try {
+    const saleId =
+      typeof payload === 'number' ? payload :
+      typeof payload === 'string' ? Number(payload) :
+      Number(payload?.sale_id ?? payload?.saleId ?? payload?.id ?? 0);
+
+    if (!Number.isFinite(saleId) || saleId <= 0) {
+      throw new Error('Folio inválido.');
+    }
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('sale_id', sql.Int, saleId);
+
+    const result = await req.execute('sp_get_sale_by_folio');
+
+    const header = result.recordsets?.[0]?.[0] ?? null;
+    const details = result.recordsets?.[1] ?? [];
+
+    return {
+      success: true,
+      data: { header, details }
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_get_sale_by_folio:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-refund-sale', async (event, payload) => {
+  try {
+    const saleId = Number(payload?.sale_id ?? payload?.saleId ?? 0);
+    const userId = Number(payload?.user_id ?? payload?.userId ?? 0);
+    const paymentMethod = String(payload?.payment_method ?? payload?.paymentMethod ?? 'EFECTIVO');
+    const items = payload?.items ?? [];
+    const note = payload?.note ?? null;
+    const applyNetUpdate = payload?.apply_net_update ? 1 : 0;
+
+    if (!Number.isFinite(saleId) || saleId <= 0) throw new Error('sale_id inválido.');
+    if (!Number.isFinite(userId) || userId <= 0) throw new Error('user_id inválido.');
+    if (!Array.isArray(items) || items.length === 0) throw new Error('El reembolso no tiene partidas.');
+
+    const pool = await poolPromise;
+
+    const tvp = new sql.Table();
+    tvp.columns.add('product_id', sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+
+    for (const it of items) {
+      const pid = Number(it.productId ?? it.product_id);
+      const qty = Number(it.qty ?? it.quantity);
+      const up  = Number(it.unitPrice ?? it.unit_price ?? 0);
+
+      if (!Number.isFinite(pid) || pid <= 0) throw new Error('Producto inválido en reembolso.');
+      if (!Number.isFinite(qty) || qty <= 0) throw new Error('Cantidad inválida en reembolso.');
+      if (!Number.isFinite(up)  || up < 0)   throw new Error('Precio inválido en reembolso.');
+
+      tvp.rows.add(pid, qty, up);
+    }
+
+    const req = pool.request()
+      .input('sale_id',        sql.Int, saleId)
+      .input('user_id',        sql.Int, userId)
+      .input('payment_method', sql.NVarChar(50), paymentMethod)
+      .input('RefundDetails',  tvp)
+      .input('note',           sql.NVarChar(250), note)
+      .input('apply_net_update', sql.Bit, applyNetUpdate ? 1 : 0);
+
+    const result = await req.execute('sp_refund_sale');
+
+    return {
+      success: true,
+      data: result.recordset ?? []
+    };
+  } catch (err) {
+    console.error('❌ Error en sp_refund_sale:', err);
+    return { success: false, error: err?.message || String(err) };
   }
 });
 
