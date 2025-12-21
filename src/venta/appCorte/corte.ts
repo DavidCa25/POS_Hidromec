@@ -280,16 +280,12 @@ export class Corte {
   }
 
   get cashExpected(): number {
+    const fromDb = (this.summary as any)?.cash_expected;
+    if (fromDb != null) return Number(Number(fromDb).toFixed(2));
+
     const opening = Number((this.summary as any)?.opening_cash ?? this.openShiftOpeningCash ?? 0);
-
-    const openingMovSum = this.movimientos
-      .filter(m => String(m.typee || '').toUpperCase() === 'OPENING')
-      .reduce((acc, m) => acc + Number(m.amount || 0), 0);
-
     const neto = Number(this.summary?.neto ?? 0);
-    const expected = neto + opening - openingMovSum;
-
-    return Number(expected.toFixed(2));
+    return Number((opening + neto).toFixed(2));
   }
 
 

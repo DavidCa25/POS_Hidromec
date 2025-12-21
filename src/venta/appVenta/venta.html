@@ -51,18 +51,88 @@
 
   <div class="card shadow-lg border-0 mt-4 venta-densa">
     <div class="card-body">
-      <h2 class="text-center mb-5">Punto de Venta</h2>
+      <h2 class="text-center mb-4">Punto de Venta</h2>
+
+      <!-- ===== BARRA FOLIO (único input + enter) ===== -->
+      <div class="folio-bar mb-4">
+        <div class="folio-left">
+          <div class="folio-title">
+            <b>Folio</b>
+
+            <ng-container *ngIf="isEditing; else ventaNuevaTpl">
+              <span class="badge-edit">Cargado #{{ editingSaleId }}</span>
+              <span class="badge-edit" *ngIf="editUnlocked">Modificando</span>
+            </ng-container>
+
+            <ng-template #ventaNuevaTpl>
+              <span class="badge-new">Venta nueva</span>
+            </ng-template>
+          </div>
+
+          <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label">Folio (Enter para cargar)</label>
+              <input type="number"
+                     class="form-control"
+                     [(ngModel)]="folioInput"
+                     name="folioInput"
+                     placeholder="Ej. 45"
+                     [disabled]="editingLoading"
+                     (keydown.enter)="buscarFolioPorInput()" />
+              <div class="folio-meta">
+                <span>Siguiente sugerido: <b>{{ nextFolioSuggested }}</b></span>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="folio-meta" *ngIf="editingHeader">
+                <span>Fecha: {{ editingHeader.datee | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span>Pago: {{ editingHeader.payment_method }}</span>
+                <span>Reembolsado:
+                  {{ editingHeader.refund_total | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </span>
+              </div>
+
+              <div class="small text-muted mt-1" *ngIf="isEditing && !editUnlocked">
+                Venta cargada en <b>solo lectura</b>. Para devolver usa <b>Reembolso / Cambio</b>.
+              </div>
+
+              <div class="small text-muted mt-1" *ngIf="isEditing && editUnlocked">
+                Estás en modo <b>modificación</b> (supervisor).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón pequeño para salir de edición -->
+        <div class="folio-actions" *ngIf="isEditing">
+          <button type="button"
+                  class="btn btn-outline-secondary btn-icon-xs"
+                  title="Cerrar folio (volver a venta nueva)"
+                  (click)="resetToNewSaleMode()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
 
       <form>
         <div class="row g-4 mb-4">
           <div class="col-md-6">
-            <label class="form-label">Folio</label>
-            <input type="text" class="form-control" [value]="folio" readonly />
-          </div>
-          <div class="col-md-6">
             <label class="form-label">Fecha</label>
             <div class="form-control-plaintext fw-bold">
               {{ today | date: 'longDate' : undefined : 'es-MX' }}
+            </div>
+          </div>
+
+          <div class="col-md-6 text-md-end">
+            <div class="small text-muted" *ngIf="isEditing && !editUnlocked">
+              Estás en modo edición (lectura): aquí no se “cobra”, solo se <b>reembolsa</b>.
+            </div>
+            <div class="small text-muted" *ngIf="isEditing && editUnlocked">
+              Estás en modo edición (supervisor): puedes <b>modificar</b> y <b>guardar</b>.
+            </div>
+            <div class="small text-muted" *ngIf="!isEditing">
+              Venta nueva: agrega productos y cobra normalmente.
             </div>
           </div>
         </div>
@@ -85,27 +155,46 @@
                   <td class="fw-semibold">
                     {{ it.productName }}
                   </td>
+
+                  <!-- Cantidad: input solo si (venta nueva) o (editUnlocked) -->
                   <td>
-                    <input type="number"
-                           class="form-control"
-                           min="1"
-                           [(ngModel)]="it.qty"
-                           name="qty-{{i}}"
-                           (ngModelChange)="onQtyChange(i)"/>
+                    <ng-container *ngIf="!isEditing || editUnlocked; else qtyLocked">
+                      <input type="number"
+                             class="form-control"
+                             min="1"
+                             [(ngModel)]="it.qty"
+                             name="qty-{{i}}"
+                             (ngModelChange)="onQtyChange(i)"/>
+                    </ng-container>
+                    <ng-template #qtyLocked>
+                      <div class="locked-cell">{{ it.qty }}</div>
+                    </ng-template>
                   </td>
+
+                  <!-- Precio: input solo si (venta nueva) o (editUnlocked) -->
                   <td>
-                    <input type="number"
-                           class="form-control"
-                           min="0" step="0.01"
-                           [(ngModel)]="it.unitPrice"
-                           name="price-{{i}}"
-                           (ngModelChange)="onPriceChange(i)"/>
+                    <ng-container *ngIf="!isEditing || editUnlocked; else priceLocked">
+                      <input type="number"
+                             class="form-control"
+                             min="0" step="0.01"
+                             [(ngModel)]="it.unitPrice"
+                             name="price-{{i}}"
+                             (ngModelChange)="onPriceChange(i)"/>
+                    </ng-container>
+                    <ng-template #priceLocked>
+                      <div class="locked-cell">
+                        {{ it.unitPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                      </div>
+                    </ng-template>
                   </td>
+
                   <td class="fw-semibold">
                     {{ it.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
                   </td>
+
                   <td>
-                    <button type="button"
+                    <button *ngIf="!isEditing || editUnlocked"
+                            type="button"
                             class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
                             (click)="quitarItem(i)">
                       <i class="bi bi-trash"></i>
@@ -124,20 +213,65 @@
 
           <button type="button"
                   class="btn btn-outline-primary btn-sm mt-2 btn-compact"
+                  [disabled]="isEditing && !editUnlocked"
                   (click)="abrirModalProductos()">
             <i class="bi bi-plus-lg"></i> Agregar producto
           </button>
+
+          <div class="small text-muted mt-2" *ngIf="isEditing && !editUnlocked">
+            Para evitar errores, esta venta está en <b>solo lectura</b>. Si necesitas corregirla, entra a <b>Modificar</b> (supervisor).
+          </div>
         </div>
 
-        <div class="d-flex flex-wrap justify-content-end align-items-center gap-4 mt-5">
-          <div id="total-venta" class="mb-0 me-4 fs-4 fw-bold text-success">
+        <!-- ===== ACCIONES INFERIORES ===== -->
+        <div class="d-flex flex-wrap justify-content-end align-items-center gap-3 mt-5">
+          <div id="total-venta" class="mb-0 me-2 fs-4 fw-bold text-success">
             {{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </div>
-          <button type="button"
+
+          <!-- Venta nueva => Cobrar -->
+          <button *ngIf="!isEditing"
+                  type="button"
                   class="btn btn-success d-flex align-items-center gap-2"
                   (click)="abrirModalCobrar()">
             <i class="bi bi-cash-stack"></i> Cobrar
           </button>
+
+          <!-- Folio cargado => acciones -->
+          <div *ngIf="isEditing" class="d-flex gap-2 align-items-center">
+            <!-- Principal cajero -->
+            <button type="button"
+                    class="btn btn-warning d-flex align-items-center gap-2"
+                    (click)="abrirReembolso()">
+              <i class="bi bi-arrow-counterclockwise"></i>
+              Reembolso / Cambio
+            </button>
+
+            <!-- Supervisor -->
+            <button *ngIf="!editUnlocked"
+                    type="button"
+                    class="btn btn-outline-secondary d-flex align-items-center gap-2"
+                    (click)="habilitarEdicion()">
+              <i class="bi bi-pencil"></i>
+              Modificar
+            </button>
+
+            <ng-container *ngIf="editUnlocked">
+              <button type="button"
+                      class="btn btn-outline-primary d-flex align-items-center gap-2"
+                      (click)="guardarCambiosVenta()">
+                <i class="bi bi-save"></i>
+                Guardar
+              </button>
+
+              <button type="button"
+                      class="btn btn-outline-danger d-flex align-items-center gap-2"
+                      (click)="cancelarEdicion()">
+                <i class="bi bi-x-lg"></i>
+                Cancelar
+              </button>
+            </ng-container>
+          </div>
         </div>
       </form>
     </div>
@@ -153,7 +287,6 @@
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold m-0">Abrir turno</h5>
 
-        <!-- si es requerido, no muestro la X para que sea 100% claro -->
         <button *ngIf="!openShiftRequired"
                 type="button"
                 class="btn-close"
@@ -430,7 +563,7 @@
                     rows="2"
                     [(ngModel)]="cashOutNote"
                     name="cashOutNote"
-                    placeholder="Ej. Pago a proveedor Filtros CAT, gasolina, etc."></textarea>
+                    placeholder="Ej. Pago a proveedor, gasolina, etc."></textarea>
         </div>
 
         <div class="alert alert-info small">
@@ -505,6 +638,165 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL REEMBOLSO / CAMBIO (simplificado) ===== -->
+<div class="modal-backdrop-refund" *ngIf="showRefundModal" (click)="cerrarReembolso()">
+  <div class="refund-dialog" (click)="$event.stopPropagation()">
+    <div class="refund-header">
+      <div class="refund-title">
+        <i class="bi bi-arrow-counterclockwise"></i>
+        <h3>Reembolso / Cambio</h3>
+        <span class="refund-folio">Folio #{{ editingSaleId }}</span>
+      </div>
+      <button class="btn-close-refund" (click)="cerrarReembolso()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div class="refund-body">
+      <div class="refund-controls">
+        <div class="control-group">
+          <label>Tipo</label>
+          <div class="refund-kind">
+            <button type="button"
+                    class="kind-pill"
+                    [class.active]="refundKind==='EFECTIVO'"
+                    (click)="refundKind='EFECTIVO'">
+              <i class="bi bi-cash"></i> Efectivo
+            </button>
+
+            <button type="button"
+                    class="kind-pill"
+                    [class.active]="refundKind==='CAMBIO'"
+                    (click)="refundKind='CAMBIO'">
+              <i class="bi bi-arrow-left-right"></i> Cambio
+            </button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="small text-muted" style="margin-bottom:.25rem;">Tip</label>
+          <div class="small text-muted">
+            Elige cantidades a devolver. Se reintegra stock.
+          </div>
+        </div>
+      </div>
+
+      <div class="refund-table-container">
+        <table class="refund-table">
+          <thead>
+            <tr>
+              <th class="col-product">Producto</th>
+              <th class="col-price">Precio</th>
+              <th class="col-max">Máx</th>
+              <th class="col-qty">Cantidad</th>
+              <th class="col-subtotal">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let l of refundLines">
+              <td class="product-cell">
+                <span class="product-name">{{ l.productName }}</span>
+              </td>
+              <td class="price-cell">
+                {{ l.unitPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </td>
+              <td class="max-cell">
+                <span class="max-badge">{{ l.maxQty }}</span>
+              </td>
+              <td class="qty-cell">
+                <div class="qty-input-group">
+                  <button type="button"
+                          class="qty-btn"
+                          (click)="decQty(l)"
+                          [disabled]="l.qty <= 0">
+                    <i class="bi bi-dash"></i>
+                  </button>
+
+                  <input type="number"
+                         class="qty-input"
+                         min="0"
+                         [max]="l.maxQty"
+                         [(ngModel)]="l.qty"
+                         name="rqty-{{l.productId}}"/>
+
+                  <button type="button"
+                          class="qty-btn"
+                          (click)="incQty(l)"
+                          [disabled]="l.qty >= l.maxQty">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+              </td>
+              <td class="subtotal-cell">
+                <span class="subtotal-amount">
+                  {{ (l.qty * l.unitPrice) | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </span>
+              </td>
+            </tr>
+
+            <tr *ngIf="refundLines.length === 0">
+              <td colspan="5" class="empty-cell">
+                <div class="empty-state-refund">
+                  <i class="bi bi-inbox"></i>
+                  <p>No hay partidas disponibles para reembolso</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="refund-note-section">
+        <label class="note-label">
+          <i class="bi bi-pencil"></i>
+          Nota (opcional)
+        </label>
+        <input type="text"
+               class="note-input"
+               [(ngModel)]="refundNote"
+               name="refundNote"
+               placeholder="Ej. Cliente cambió, defecto, etc.">
+      </div>
+
+      <div class="refund-info-alert">
+        <i class="bi bi-info-circle"></i>
+        <div class="alert-text">
+          <ng-container *ngIf="refundKind==='EFECTIVO'; else cambioTpl">
+            <strong>Efectivo:</strong> registrará una <b>salida</b> en caja del turno actual.
+          </ng-container>
+          <ng-template #cambioTpl>
+            <strong>Cambio:</strong> no registra salida de caja; registra nota y ajusta cantidades.
+          </ng-template>
+        </div>
+      </div>
+
+      <div class="refund-total-preview">
+        <span class="total-label">Total a devolver</span>
+        <span class="total-amount">{{ refundTotalPreview | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <div class="refund-footer">
+      <button type="button"
+              class="btn-refund secondary"
+              [disabled]="refundLoading"
+              (click)="cerrarReembolso()">
+        Cancelar
+      </button>
+
+      <button type="button"
+              class="btn-refund primary"
+              [disabled]="refundLoading || refundTotalPreview <= 0"
+              (click)="confirmarReembolso()">
+        <i class="bi bi-check-circle" *ngIf="!refundLoading"></i>
+        <i class="bi bi-arrow-repeat spinner" *ngIf="refundLoading"></i>
+        <span *ngIf="!refundLoading">Confirmar</span>
+        <span *ngIf="refundLoading">Procesando...</span>
+      </button>
     </div>
   </div>
 </div>

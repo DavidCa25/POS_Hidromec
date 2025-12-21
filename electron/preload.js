@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { ref } = require('pdfkit');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
@@ -73,6 +74,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     openShift: (payload) =>
         ipcRenderer.invoke('sp-open-shift', payload),
+
+    getActualFolio: () => ipcRenderer.invoke('sp-get-actual-folio'),
+
+    getSaleByFolio: (payload) => ipcRenderer.invoke('sp-get-sale-by-folio', payload),
+    updateSale: (payload) => ipcRenderer.invoke('sp-update-sale', payload),
+    refundSale: (payload) => ipcRenderer.invoke('sp-refund-sale', payload),
 
 
 });
