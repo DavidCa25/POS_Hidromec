@@ -769,7 +769,6 @@ export class Venta {
     this.items = [];
     this.recalcularTotal();
 
-    // vuelve al sugerido
     this.folioInput = this.nextFolioSuggested;
   }
 
@@ -811,11 +810,8 @@ export class Venta {
         total: Number(header.total ?? 0),
         refund_total: Number(header.refund_total ?? 0),
       };
-
-      // por default: SOLO LECTURA
       this.editUnlocked = false;
 
-      // Llenar items desde detalle (fix robusto del nombre)
       this.items = (details || []).map((d: any) => {
         const name =
           d.product_name ??
@@ -852,7 +848,6 @@ export class Venta {
   }
 
   async habilitarEdicion() {
-    // aquí puedes pedir PIN de supervisor si quieres
     const confirm = await Swal.fire({
       icon: 'question',
       title: 'Modificar venta',
@@ -870,7 +865,6 @@ export class Venta {
   async cancelarEdicion() {
     this.editUnlocked = false;
 
-    // recarga el folio para descartar cambios locales
     if (this.editingSaleId) {
       this.folioInput = this.editingSaleId;
       await this.buscarFolioPorInput();
@@ -938,7 +932,6 @@ export class Venta {
 
       await Swal.fire({ icon: 'success', title: 'Actualizada', text: 'La venta se actualizó correctamente.' });
 
-      // vuelve a solo lectura y recarga
       this.editUnlocked = false;
       this.folioInput = this.editingSaleId;
       await this.buscarFolioPorInput();
@@ -1071,10 +1064,8 @@ export class Venta {
         sale_id: this.editingSaleId,
         user_id: this.currentUserId,
 
-        // Para tu SP actual quizá solo exista payment_method:
         payment_method: 'EFECTIVO',
 
-        // Flags para que tu backend/SP pueda decidir si afecta caja o no:
         refund_kind: this.refundKind,
         register_cash_movement: this.refundKind === 'EFECTIVO' ? 1 : 0,
 
@@ -1086,7 +1077,6 @@ export class Venta {
 
         note: (this.refundNote || '').trim() || null,
 
-        // Se recomienda que siempre actualice venta (reduzca remaining)
         apply_net_update: 1
       };
 
