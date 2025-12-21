@@ -7,6 +7,8 @@ const puppeteer = require("puppeteer");
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
+const { autoUpdater } = require('electron-updater');
+
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -97,6 +99,7 @@ ipcMain.handle('download-update', async () => {
 
 ipcMain.handle('install-update', () => {
   autoUpdater.quitAndInstall(false, true);
+  return { success: true };
 });
 
 ipcMain.handle('check-for-updates', async () => {
