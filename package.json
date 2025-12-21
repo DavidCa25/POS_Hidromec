@@ -1,6 +1,6 @@
 {
-  "name": "filtros-lubs-rios",
-  "version": "1.0.2",
+  "name": "ocus-cr",
+  "version": "1.0.3",
   "main": "electron/main.js",
   "scripts": {
     "build": "ng build --configuration production --base-href ./",
@@ -25,14 +25,14 @@
   },
   "private": true,
   "build": {
-    "appId": "com.filtros-lubs-rios.pos",
-    "productName": "Filtros Lubs Rios POS",
+    "appId": "com.ocuscr.pos",
+    "productName": "Ocus CR",
     "directories": {
       "output": "release",
       "buildResources": "electron/assets"
     },
     "files": [
-      "dist/filtros_lubs_rios/**/*",
+      "dist/**/*",
       "electron/**/*",
       "!electron/node_modules",
       "node_modules/**/*",
@@ -57,16 +57,16 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "electron/assets/FILURI.ico"
+      "icon": "electron/assets/OcusCR_icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Filtros Lubs Rios POS",
-      "installerIcon": "electron/assets/FILURI.ico",
-      "uninstallerIcon": "electron/assets/FILURI.ico"
+      "shortcutName": "Ocus CR",
+      "installerIcon": "electron/assets/OcusCR_icon.ico",
+      "uninstallerIcon": "electron/assets/OcusCR_icon.ico"
     },
     "publish": {
       "provider": "github",
