@@ -75,9 +75,11 @@ interface RefundLine {
 export class Venta {
   today = new Date();
 
-  // Folio UI (1 solo input)
   nextFolioSuggested = 1;
   folioInput: number | null = null;
+
+  private scanBuffer = '';
+  private scanTimer: any = null;
 
   private lastAddedProductId: number | null = null;
 
@@ -557,7 +559,7 @@ export class Venta {
       this.productos = rows.map((r: any) => ({
         id: r.id,
         part_number: r.part_number,
-        product_name: r.product_name,
+        product_name: r.product_name ?? r.nombre ?? r.name ?? '',
         price: r.price,
         stock: r.stock,
         category_name: r.category_name,
@@ -721,6 +723,13 @@ export class Venta {
   // ==================
   @HostListener('window:keydown', ['$event'])
   async handleKeyboardEvent(event: KeyboardEvent) {
+
+    if (this.isTypingInInput()) return;
+    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) {
+      return;
+    }
+    if (this.isEditing && !this.editUnlocked) {
+    }
     switch (event.key) {
       case 'F1':
         event.preventDefault();
@@ -755,6 +764,33 @@ export class Venta {
         event.preventDefault();
         this.adjustLastAddedQty(-1);
         break;
+    }
+
+    if (event.key === 'Enter') {
+      if (this.scanBuffer.length) {
+        event.preventDefault();
+        const code = this.scanBuffer;
+        this.clearScanBuffer();
+        await this.addByPartNumber(code);
+      }
+      return;
+    }
+
+    if (event.key === 'Backspace') {
+      if (this.scanBuffer.length) {
+        this.scanBuffer = this.scanBuffer.slice(0, -1);
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (/^[a-zA-Z0-9]$/.test(event.key)) {
+      this.scanBuffer += event.key;
+
+      if (this.scanTimer) clearTimeout(this.scanTimer);
+      this.scanTimer = setTimeout(() => this.clearScanBuffer(), 600);
+
+      return;
     }
   }
 
@@ -816,6 +852,7 @@ export class Venta {
         const name =
           d.product_name ??
           d.productName ??
+          d.nombre ??
           d.nombre_producto ??
           d.name ??
           '';
@@ -1100,5 +1137,35 @@ export class Venta {
     } finally {
       this.refundLoading = false;
     }
+  }
+
+
+  private isTypingInInput(): boolean {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return false;
+    return ['INPUT','TEXTAREA','SELECT'].includes(el.tagName) || el.isContentEditable;
+  }
+
+  private clearScanBuffer() {
+    this.scanBuffer = '';
+    if (this.scanTimer) clearTimeout(this.scanTimer);
+    this.scanTimer = null;
+  }
+
+  private async addByPartNumber(code: string) {
+    const key = (code || '').trim().toLowerCase();
+    if (!key) return;
+
+    if (!this.productos.length) {
+      await this.cargarProductosActivos();
+    }
+
+    const p = this.productos.find(x => (x.part_number || '').toLowerCase() === key);
+    if (!p) {
+      await Swal.fire({ icon:'warning', title:'No encontrado', text:`No existe No. Parte: ${code}` , timer: 1000, showConfirmButton:false });
+      return;
+    }
+
+    this.seleccionarProducto(p);
   }
 }
