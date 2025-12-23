@@ -1,7 +1,7 @@
 import { Component, HostListener  } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NgClass, NgIf, NgFor } from '@angular/common';
+import { NgClass, NgIf, NgFor, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
@@ -24,7 +24,7 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor],
+  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor, DecimalPipe],
   styleUrls: ['./dashboard.css']
 })
 
