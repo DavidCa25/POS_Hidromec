@@ -14,6 +14,7 @@ type AppNotification = {
   title: string;
   message: string;
   action?: 'download' | 'install';
+  subtype?: 'available' | 'downloading' | 'downloaded' | 'error';
   version?: string;
   percent?: number;
   createdAt: number;
@@ -64,6 +65,8 @@ export class Dashboard {
   ngOnInit() { this.onResize();if (this.auth.usuarioActual?.nombre) {
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();
+
+      this.updater.checkForUpdates();
     }
 
     const uid = this.auth.usuarioActualId;
@@ -98,7 +101,10 @@ export class Dashboard {
   }
 
   private handleUpdateNotification(status: UpdateStatus) {
-    if (!['available', 'downloaded', 'progress', 'error'].includes(status.type)) return;
+    if (!['available', 'downloaded', 'downloading', 'checking', 'not-available', 'error'].includes(status.type)) {
+      return;
+    }
+
     const id = `update:${status.type}:${status.version ?? 'na'}`;
 
     const existing = this.notifications.find(n => n.id === id);
@@ -106,7 +112,9 @@ export class Dashboard {
     const title =
       status.type === 'available' ? 'Actualización disponible' :
       status.type === 'downloaded' ? 'Actualización lista para instalar' :
-      status.type === 'progress' ? 'Descargando actualización...' :
+      status.type === 'downloading' ? 'Descargando actualización…' :
+      status.type === 'checking' ? 'Buscando actualizaciones…' :
+      status.type === 'not-available' ? 'Sin actualizaciones' :
       'Error de actualización';
 
     const message =
@@ -115,8 +123,12 @@ export class Dashboard {
         ? `Hay una nueva versión ${status.version}`
         : status.type === 'downloaded'
         ? `Versión ${status.version} descargada`
-        : status.type === 'progress'
+        : status.type === 'downloading'
         ? `Progreso: ${Math.round(status.percent ?? 0)}%`
+        : status.type === 'checking'
+        ? 'Buscando actualizaciones…'
+        : status.type === 'not-available'
+        ? 'El sistema está actualizado'
         : 'Ocurrió un error al actualizar');
 
     const action =
@@ -125,14 +137,19 @@ export class Dashboard {
       undefined;
 
     if (existing) {
+      existing.title = title;
       existing.message = message;
+      existing.action = action;
+      existing.version = status.version;
       existing.percent = status.percent;
+      existing.subtype = status.type as any;  
       existing.createdAt = Date.now();
-      existing.read = false; 
+      existing.read = false;
     } else {
       this.notifications.unshift({
         id,
         type: 'update',
+        subtype: status.type as any,       
         title,
         message,
         action,
@@ -163,13 +180,14 @@ export class Dashboard {
   }
 
   onNotifAction(n: AppNotification) {
-    if (n.action === 'download' && (window as any).api?.downloadUpdate) {
-      (window as any).api.downloadUpdate();
+    if (n.action === 'download' && (window as any).electronAPI?.downloadUpdate) {
+      (window as any).electronAPI.downloadUpdate();
       n.read = true;
       this.recalcUnread();
     }
-    if (n.action === 'install' && (window as any).api?.installUpdate) {
-      (window as any).api.installUpdate();
+
+    if (n.action === 'install' && (window as any).electronAPI?.installUpdate) {
+      (window as any).electronAPI.installUpdate();
       n.read = true;
       this.recalcUnread();
     }
