@@ -185,12 +185,29 @@
             <div class="fw-semibold" [class.text-muted]="n.read">{{ n.title }}</div>
             <div class="small text-muted">{{ n.message }}</div>
 
+            <div class="mt-2" *ngIf="n.subtype === 'downloading'">
+              <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
+                <span>Descargando…</span>
+                <span>{{ (n.percent ?? 0) | number:'1.0-0' }}%</span>
+              </div>
+
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar"
+                    role="progressbar"
+                    [style.width.%]="(n.percent ?? 0)"
+                    [attr.aria-valuenow]="(n.percent ?? 0)"
+                    aria-valuemin="0"
+                    aria-valuemax="100"></div>
+              </div>
+            </div>
+
             <div class="mt-2" *ngIf="n.action">
               <button class="btn btn-sm btn-primary" (click)="onNotifAction(n)">
                 {{ n.action === 'download' ? 'Descargar' : 'Instalar y reiniciar' }}
               </button>
             </div>
           </div>
+
         </div>
       </div>
       <!-- Icono de descarga -->

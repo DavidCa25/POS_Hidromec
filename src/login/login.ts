@@ -61,6 +61,22 @@ export class Login {
         );
 
         console.log('Login OK, rol:', usuarioLS.rol);
+
+        const api = (window as any).electronAPI;
+
+        console.log('AutoUpdater bridge:', {
+          isPackaged: api?.isPackaged ?? '(no expuesto)',
+          hasOnUpdateStatus: typeof api?.onUpdateStatus === 'function',
+          hasCheckForUpdates: typeof api?.checkForUpdates === 'function',
+          hasDownloadUpdate: typeof api?.downloadUpdate === 'function',
+          hasInstallUpdate: typeof api?.installUpdate === 'function',
+        });
+
+        if (typeof api?.checkForUpdates === 'function') {
+          api.checkForUpdates()
+            .then((r: any) => console.log('checkForUpdates() ->', r))
+            .catch((err: any) => console.log('checkForUpdates() error ->', err));
+        }
         if (usuarioLS.rol == 'cajero') {
           this.router.navigate(['/dashboard/venta']);
         }

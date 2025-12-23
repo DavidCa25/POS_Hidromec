@@ -21,13 +21,14 @@ export class UpdaterService {
   }
 
   private initializeUpdateListener() {
-    if (window.api?.onUpdateStatus) {
-      window.api.onUpdateStatus((status: UpdateStatus) => {
+    if (window.electronAPI?.onUpdateStatus) {
+      window.electronAPI.onUpdateStatus((status: UpdateStatus) => {
         console.log('Update status:', status);
         this.updateStatus$.next(status);
-        
         this.handleUpdateStatus(status);
       });
+    } else {
+      console.warn('electronAPI.onUpdateStatus no existe (preload no expuso electronAPI?)');
     }
   }
 
@@ -46,22 +47,16 @@ export class UpdaterService {
   }
 
   private showUpdateAvailableDialog(status: UpdateStatus) {
-    const result = confirm(
-      `Nueva versión ${status.version} disponible.\n¿Descargar ahora?`
-    );
-    
-    if (result && window.api?.downloadUpdate) {
-      window.api.downloadUpdate();
+    const result = confirm(`Nueva versión ${status.version} disponible.\n¿Descargar ahora?`);
+    if (result && window.electronAPI?.downloadUpdate) {
+      window.electronAPI.downloadUpdate();
     }
   }
 
   private showUpdateReadyDialog(status: UpdateStatus) {
-    const result = confirm(
-      `Actualización ${status.version} descargada.\n¿Instalar y reiniciar ahora?`
-    );
-    
-    if (result && window.api?.installUpdate) {
-      window.api.installUpdate();
+    const result = confirm(`Actualización ${status.version} descargada.\n¿Instalar y reiniciar ahora?`);
+    if (result && window.electronAPI?.installUpdate) {
+      window.electronAPI.installUpdate();
     }
   }
 
