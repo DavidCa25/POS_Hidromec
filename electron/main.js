@@ -395,68 +395,45 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
   try {
     const pool = await poolPromise;
 
-    // Construir TVP (mssql.Table) exactamente como el tipo PurchaseDetailType
     const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int);
     tvp.columns.add('supplier_id', sql.Int);
     tvp.columns.add('quantity', sql.Int);
-    tvp.columns.add('unit_price', sql.Decimal(10, 2));
+    tvp.columns.add('unit_price', sql.Decimal(10, 2));      
+    tvp.columns.add('profit_percent', sql.Decimal(5, 2));  
 
     detalles.forEach(d => {
+      const qty = d.cantidad ?? d.quantity ?? 0;
+      const unitPrice = d.precio_unitario ?? d.unit_price ?? 0; 
+      const profit = d.profit_percent ?? d.profitPercent ?? 0;  
+
       tvp.rows.add(
         d.product_id,
         d.supplier_id,
-        d.cantidad ?? d.quantity,
-        d.precio_unitario ?? d.unit_price
+        qty,
+        unitPrice,
+        profit
       );
     });
 
     const request = pool.request();
     request.input('user_id', sql.Int, user_id);
-    request.input('tax_rate', sql.Decimal(5, 2), tax_rate); 
+    request.input('tax_rate', sql.Decimal(5, 2), tax_rate);
     request.input('tax_amount', sql.Decimal(10, 2), tax_amount);
-    request.input('subtotal', sql.Decimal(10,2), subtotal) 
-    request.input('total', sql.Decimal(10,2), total)
+    request.input('subtotal', sql.Decimal(10, 2), subtotal);
+    request.input('total', sql.Decimal(10, 2), total);
+
     request.input('PurchaseDetails', tvp);
 
     const result = await request.execute('sp_register_purchase');
 
-    return { success: true, purchase_id: result.recordset[0].purchase_id  };
+    return { success: true, purchase_id: result.recordset[0].purchase_id };
   } catch (err) {
     console.error('❌ Error sp_register_purchase:', err);
     return { success: false, error: err.message };
   }
 });
 
-ipcMain.handle('sp-get-purchases', async (event) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .execute('sp_get_purchases');
-        return { success: true, data: result.recordset };
-    } catch (err) {
-        console.error('❌ Error en get-purchases:', err);
-        return { success: false, error: err.message };
-    }
-});
-
-ipcMain.handle('sp-get-user-by-id', async (event, userId) => { 
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-        .input('userID', sql.Int, userId)
-        .execute('sp_get_user_by_id');
-    
-        if (result.recordset.length > 0) {
-        return { success: true, user: result.recordset[0] };
-        } else {
-        return { success: false, message: 'Usuario no encontrado' };
-        }
-    } catch (err) {
-        console.error('❌ Error en get-user-by-id:', err);
-        return { success: false, error: err.message };
-    }
-});
 
 ipcMain.handle('sp-get-top-selling-products', async (event, data) => {
     try {
