@@ -81,5 +81,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateSale: (payload) => ipcRenderer.invoke('sp-update-sale', payload),
     refundSale: (payload) => ipcRenderer.invoke('sp-refund-sale', payload),
 
+    onBarcodeScan: (cb) => {
+        const handler = (_event, payload) => cb(payload);
+        ipcRenderer.on('barcode-scan', handler);
+        return () => ipcRenderer.removeListener('barcode-scan', handler);
+    },
 
+    printSaleTicket: (payload) => ipcRenderer.invoke('print-sale-ticket', payload),
 });

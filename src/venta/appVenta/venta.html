@@ -632,6 +632,14 @@
           </button>
 
           <button type="button"
+                  class="btn btn-outline-dark w-100"
+                  [disabled]="!lastSaleId || printingTicket"
+                  (click)="imprimirTicketUltimaVenta(true)">
+            <i class="bi bi-printer me-2"></i>
+            Imprimir ticket
+          </button>
+
+          <button type="button"
                   class="btn btn-light w-100"
                   (click)="cerrarPostSaleModal()">
             Nada más, cerrar

@@ -8,6 +8,8 @@ const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { autoUpdater } = require('electron-updater');
+const { startSerialScanner } = require('./scanner');
+const { start } = require('repl');
 
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
@@ -143,7 +145,7 @@ function createWindow() {
   }
 
   setupAutoUpdater(win);
-
+  startSerialScanner(mainWindow, { path: 'COM3', baudRate: 9600 });
   return win;
 }
 
@@ -1292,6 +1294,165 @@ ipcMain.handle('sp-refund-sale', async (event, payload) => {
     return { success: false, error: err?.message || String(err) };
   }
 });
+
+async function loadSaleByFolioFromDb(saleId) {
+  const pool = await poolPromise;
+
+  const result = await pool
+    .request()
+    .input('sale_id', sql.Int, saleId)
+    .execute('sp_get_sale_by_folio');
+
+  const header = result.recordsets?.[0]?.[0] ?? null;
+  const details = result.recordsets?.[1] ?? [];
+
+  if (!header) throw new Error(`No se encontró la venta ${saleId}`);
+  return { header, details };
+}
+
+function escHtmlTicket(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function moneyTicket(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+
+function buildTicketHtmlFromTemplate(header, details, extras = {}) {
+  const templatePath = path.join(__dirname, "templates", "ticket.html");
+  const template = fs.readFileSync(templatePath, "utf8");
+
+  const rowsHtml = (details || []).map(l => {
+    const qty  = Number(l.quantity ?? 0);
+    const unit = Number(l.unitary_price ?? 0);
+    const nombre = (l.nombre ?? "").toString() || "—";
+    const sub = Number(l.line_total ?? (qty * unit));
+
+    return `
+      <tr>
+        <td>${escHtmlTicket(nombre)}</td>
+        <td class="right">${qty}</td>
+        <td class="right">$${moneyTicket(unit)}</td>
+        <td class="right">$${moneyTicket(sub)}</td>
+      </tr>`;
+  }).join("");
+
+  const subtotal = (details || []).reduce((a, l) => a + Number(l.line_total ?? 0), 0);
+  const iva = subtotal * 0.16;
+
+  const total = Number(header.total ?? subtotal);
+
+  const pagado = extras.pagado != null
+    ? Number(extras.pagado)
+    : Number(header.paid_amount ?? total);
+
+  const cambio = extras.cambio != null
+    ? Number(extras.cambio)
+    : (pagado - total);
+
+  const folio = header.id ?? header.sale_id ?? "";
+  const method = extras.payment_method ?? header.payment_method ?? "";
+
+  const dateText = (typeof formatDateTimeEsMX === "function")
+    ? formatDateTimeEsMX(header.datee)
+    : String(header.datee ?? "");
+
+  const logoPath = `file://${path.join(__dirname, "assets/LogoHidromec.jpg").replace(/\\/g, "/")}`;
+
+  let filledHtml = template
+    .replace(/{{LOGO}}/g, logoPath)
+
+    .replace(/{{BUSINESS_NAME}}/g, escHtmlTicket(businessConfig?.business_name || ""))
+    .replace(/{{ADDRESS}}/g,       escHtmlTicket(businessConfig?.address || ""))
+    .replace(/{{PHONE}}/g,         escHtmlTicket(businessConfig?.phone || ""))
+    .replace(/{{RFC}}/g,           escHtmlTicket(businessConfig?.rfc || ""))
+    .replace(/{{FOOTER}}/g,        escHtmlTicket(businessConfig?.ticket_footer || ""))
+
+    .replace(/{{FOLIO}}/g,   escHtmlTicket(String(folio)))
+    .replace(/{{DATE}}/g,    escHtmlTicket(String(dateText)))
+    .replace(/{{METHOD}}/g,  escHtmlTicket(String(method)))
+
+    .replace(/{{SUBTOTAL}}/g, moneyTicket(subtotal))
+    .replace(/{{IVA}}/g,      moneyTicket(iva))
+    .replace(/{{TOTAL}}/g,    moneyTicket(total))
+    .replace(/{{PAGADO}}/g,   moneyTicket(pagado))
+    .replace(/{{CAMBIO}}/g,   moneyTicket(cambio))
+
+    .replace(/{{ROWS}}/g, rowsHtml);
+
+  return filledHtml;
+}
+
+ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
+  let printWin = null;
+
+  try {
+    const saleId = Number(payload?.saleId ?? payload?.sale_id ?? 0);
+    if (!Number.isFinite(saleId) || saleId <= 0) {
+      return { success: false, error: 'saleId inválido' };
+    }
+
+    await ensureBusinessConfig();
+
+    const { header, details } = await loadSaleByFolioFromDb(saleId);
+
+    const html = buildTicketHtmlFromTemplate(header, details, {
+      pagado: payload?.pagado ?? payload?.paid ?? null,
+      cambio: payload?.cambio ?? payload?.change ?? null,
+      payment_method: payload?.paymentMethod ?? payload?.payment_method ?? null
+    });
+
+    printWin = new BrowserWindow({
+      show: false,
+      width: 380,
+      height: 700,
+      webPreferences: {
+        contextIsolation: true,
+        sandbox: false
+      }
+    });
+
+    await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+
+    await new Promise(r => setTimeout(r, 150));
+
+    const silent = payload?.silent !== false; 
+    const deviceName = payload?.printerName || undefined; 
+    const ok = await new Promise((resolve) => {
+      printWin.webContents.print(
+        {
+          silent,
+          printBackground: true,
+          deviceName
+        },
+        (success, failureReason) => {
+          if (!success) console.error('Print failed:', failureReason);
+          resolve(success);
+        }
+      );
+    });
+
+    try { printWin.close(); } catch {}
+
+    if (!ok) {
+      return { success: false, error: 'No se pudo imprimir (revisa impresora predeterminada / driver / deviceName).' };
+    }
+
+
+    return { success: true };
+  } catch (err) {
+    console.error('❌ print-sale-ticket:', err);
+    try { if (printWin) printWin.close(); } catch {}
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
 
 
 

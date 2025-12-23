@@ -42,19 +42,25 @@
       {
         "from": "electron/templates",
         "to": "templates",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "electron/assets",
         "to": "assets",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "electron/assets/OcusCR_icon.ico"
@@ -91,6 +97,7 @@
     "pdfkit": "^0.17.2",
     "puppeteer": "^24.33.0",
     "rxjs": "~7.8.0",
+    "serialport": "^13.0.0",
     "sweetalert2": "^11.22.3",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
