@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 interface ProductRow {
   id: number;
   part_number: string;
+  bar_code: string;
   product_name: string;
   price: number;
   stock: number;
@@ -78,8 +79,23 @@ export class Venta {
   nextFolioSuggested = 1;
   folioInput: number | null = null;
 
+  // =========================
+  // Scanner/tecleo sin inputs
+  // =========================
   private scanBuffer = '';
   private scanTimer: any = null;
+  private lastKeyTs = 0;
+  private isScannerLike = false;
+
+  private readonly SCAN_GAP_MS = 35;     
+  private readonly IDLE_CLEAR_MS = 600;
+  private readonly MAX_BUFFER_LEN = 32;  
+  private readonly PART_MAX_LEN = 3;    
+  private readonly BARCODE_MIN_LEN = 6; 
+
+  printingTicket = false;
+
+  autoPrintTicketOnSale = true;
 
   private lastAddedProductId: number | null = null;
 
@@ -166,8 +182,23 @@ export class Venta {
       return;
     }
 
+    const api = (window as any).electronAPI;
+    if (api?.onBarcodeScan) {
+      api.onBarcodeScan(async (_payload: any) => {
+        const code = String(_payload?.code || '').trim();
+        if (!code) return;
+
+        if (this.isTypingInInput()) return;
+        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) return;
+        if (this.isEditing && !this.editUnlocked) return;
+
+        await this.addByBarcode(code); 
+      });
+    }
+
     await this.ensureShiftOpen('VENTA');
   }
+
 
   private get currentUserId(): number {
     return this.auth.usuarioActualId as number;
@@ -492,6 +523,17 @@ export class Venta {
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
 
+        if (!isCredito && this.autoPrintTicketOnSale && saleId) {
+          try {
+            await this.printTicketBySaleId(saleId, {
+              pagado: this.lastSalePaid,
+              cambio: this.lastSaleChange,
+              silent: true,
+              paymentMethod: this.paymentMethod
+            });
+          } catch { /* noop */ }
+        }
+
         // reset venta nueva
         this.items = [];
         this.totalVenta = 0;
@@ -558,12 +600,13 @@ export class Venta {
       const rows = Array.isArray(rs?.recordset) ? rs.recordset : Array.isArray(rs) ? rs : [];
       this.productos = rows.map((r: any) => ({
         id: r.id,
-        part_number: r.part_number,
+        part_number: r.part_number ?? '',
+        bar_code: r.bar_code ?? r.barcode ?? r.barCode ?? '',
         product_name: r.product_name ?? r.nombre ?? r.name ?? '',
-        price: r.price,
-        stock: r.stock,
-        category_name: r.category_name,
-        brand_name: r.brand_name
+        price: Number(r.price ?? 0),
+        stock: Number(r.stock ?? 0),
+        category_name: r.category_name ?? '',
+        brand_name: r.brand_name ?? ''
       })) as ProductRow[];
     } catch {
       this.productos = [];
@@ -718,60 +761,145 @@ export class Venta {
     }
   }
 
+  private async printTicketBySaleId(saleId: number, opts?: {
+    pagado?: number | null;
+    cambio?: number | null;
+    silent?: boolean;     
+    printerName?: string | null;
+    paymentMethod?: string | null;
+  }) {
+    const api = (window as any).electronAPI;
+
+    if (!api?.printSaleTicket) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'No disponible',
+        text: 'Falta electronAPI.printSaleTicket en preload.'
+      });
+      return;
+    }
+
+    this.printingTicket = true;
+    try {
+      const payload = {
+        saleId,
+        pagado: opts?.pagado ?? null,
+        cambio: opts?.cambio ?? null,
+        silent: opts?.silent ?? true,
+        printerName: opts?.printerName ?? undefined,
+        paymentMethod: opts?.paymentMethod ?? undefined,
+      };
+
+      const resp = await api.printSaleTicket(payload);
+
+      if (!resp?.success) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'No se pudo imprimir',
+          text: resp?.error || 'Error al imprimir el ticket.'
+        });
+        return;
+      }
+
+      if (payload.silent === false) {
+        await Swal.fire({ icon: 'success', title: 'Impresión enviada', timer: 900, showConfirmButton: false });
+      }
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Error al imprimir.' });
+    } finally {
+      this.printingTicket = false;
+    }
+  }
+
+  async imprimirTicketUltimaVenta(silent: boolean = true) {
+    if (!this.lastSaleId) return;
+
+    const pagado = this.lastSaleIsCredito ? null : (this.lastSalePaid ?? null);
+    const cambio = this.lastSaleIsCredito ? null : (this.lastSaleChange ?? null);
+
+    await this.printTicketBySaleId(this.lastSaleId, {
+      pagado,
+      cambio,
+      silent,
+      paymentMethod: this.lastSaleIsCredito ? 'CREDITO' : this.paymentMethod
+    });
+  }
+
+  async imprimirTicketFolioCargado(silent: boolean = true) {
+    if (!this.editingSaleId || !this.editingHeader) {
+      await Swal.fire({ icon: 'info', title: 'Carga un folio', text: 'Primero carga un folio para imprimir.' });
+      return;
+    }
+
+    const total = Number(this.editingHeader.total ?? 0);
+    const paid = Number(this.editingHeader.paid_amount ?? total);
+    const pagado = Number.isFinite(paid) ? paid : null;
+
+    const cambio = (this.editingHeader.payment_method === 'CREDITO')
+      ? null
+      : (pagado != null ? Math.max(0, pagado - total) : null);
+
+    await this.printTicketBySaleId(Number(this.editingSaleId), {
+      pagado,
+      cambio,
+      silent,
+      paymentMethod: this.editingHeader.payment_method ?? null
+    });
+  }
+
   // ==================
-  // ATAJOS
+  // ATAJOS + TECLEO/SCANNER
   // ==================
   @HostListener('window:keydown', ['$event'])
   async handleKeyboardEvent(event: KeyboardEvent) {
 
     if (this.isTypingInInput()) return;
+
+    if (this.isEditing && !this.editUnlocked) {
+      return;
+    }
+
     if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) {
       return;
     }
-    if (this.isEditing && !this.editUnlocked) {
-    }
+
+    // ===== Atajos =====
     switch (event.key) {
       case 'F1':
         event.preventDefault();
         this.abrirCajonManual();
-        break;
+        return;
 
       case 'F7':
         event.preventDefault();
         if (!this.showModalProductos) this.abrirModalProductos();
-        break;
+        return;
 
       case 'F8':
         event.preventDefault();
         if (!this.showModal) await this.abrirModalCobrar();
-        break;
+        return;
 
       case 'F10':
         event.preventDefault();
         if (!this.showCashOutModal) await this.abrirSalidaEfectivo();
-        break;
+        return;
 
       case '+':
-        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) break;
-        if (this.isEditing && !this.editUnlocked) break;
         event.preventDefault();
         this.adjustLastAddedQty(+1);
-        break;
+        return;
 
       case '-':
-        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) break;
-        if (this.isEditing && !this.editUnlocked) break;
         event.preventDefault();
         this.adjustLastAddedQty(-1);
-        break;
+        return;
     }
 
     if (event.key === 'Enter') {
       if (this.scanBuffer.length) {
         event.preventDefault();
-        const code = this.scanBuffer;
-        this.clearScanBuffer();
-        await this.addByPartNumber(code);
+        await this.commitScanBuffer();
       }
       return;
     }
@@ -785,11 +913,7 @@ export class Venta {
     }
 
     if (/^[a-zA-Z0-9]$/.test(event.key)) {
-      this.scanBuffer += event.key;
-
-      if (this.scanTimer) clearTimeout(this.scanTimer);
-      this.scanTimer = setTimeout(() => this.clearScanBuffer(), 600);
-
+      this.pushChar(event.key);
       return;
     }
   }
@@ -1139,7 +1263,9 @@ export class Venta {
     }
   }
 
-
+  // ==================
+  // Helpers scanner/tecleo
+  // ==================
   private isTypingInInput(): boolean {
     const el = document.activeElement as HTMLElement | null;
     if (!el) return false;
@@ -1148,13 +1274,52 @@ export class Venta {
 
   private clearScanBuffer() {
     this.scanBuffer = '';
+    this.lastKeyTs = 0;
     if (this.scanTimer) clearTimeout(this.scanTimer);
     this.scanTimer = null;
   }
 
+  private pushChar(ch: string) {
+    const now = Date.now();
+
+    if (this.lastKeyTs) {
+      const gap = now - this.lastKeyTs;
+      if (gap <= this.SCAN_GAP_MS) this.isScannerLike = true; 
+    }
+    this.lastKeyTs = now;
+
+    if (this.scanBuffer.length >= this.MAX_BUFFER_LEN) return;
+
+    this.scanBuffer += ch;
+
+    if (this.scanTimer) clearTimeout(this.scanTimer);
+    this.scanTimer = setTimeout(() => this.clearScanBuffer(), this.IDLE_CLEAR_MS);
+  }
+
+
+  private async commitScanBuffer() {
+    const code = (this.scanBuffer || '').trim();
+    const scannerLike = this.isScannerLike;
+
+    this.clearScanBuffer();
+    if (!code) return;
+
+    if (scannerLike || code.length >= this.BARCODE_MIN_LEN) {
+      await this.addByBarcode(code);
+    } else {
+      await this.addByPartNumber(code);
+    }
+  }
+
+
   private async addByPartNumber(code: string) {
     const key = (code || '').trim().toLowerCase();
     if (!key) return;
+
+    if (key.length > this.PART_MAX_LEN) {
+      await Swal.fire({ icon:'warning', title:'No. Parte inválido', text:`Máximo ${this.PART_MAX_LEN} dígitos.`, timer: 1200, showConfirmButton:false });
+      return;
+    }
 
     if (!this.productos.length) {
       await this.cargarProductosActivos();
@@ -1162,10 +1327,32 @@ export class Venta {
 
     const p = this.productos.find(x => (x.part_number || '').toLowerCase() === key);
     if (!p) {
-      await Swal.fire({ icon:'warning', title:'No encontrado', text:`No existe No. Parte: ${code}` , timer: 1000, showConfirmButton:false });
+      await Swal.fire({ icon:'warning', title:'No encontrado', text:`No existe No. Parte: ${code}`, timer: 1000, showConfirmButton:false });
       return;
     }
 
     this.seleccionarProducto(p);
   }
+
+  private async addByBarcode(code: string) {
+  const key = (code || '').trim().toLowerCase();
+  if (!key) return;
+
+  if (!this.productos.length) await this.cargarProductosActivos();
+
+  const p = this.productos.find(x => (x.bar_code || '').trim().toLowerCase() === key);
+
+  if (!p) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'No encontrado',
+      text: `No existe código de barras: ${code}`,
+      timer: 1000,
+      showConfirmButton: false
+    });
+    return;
+  }
+
+  this.seleccionarProducto(p);
+}
 }
