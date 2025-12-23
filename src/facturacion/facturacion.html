@@ -1,13 +1,108 @@
-<div class="facturacion-container">
-  <div class="loading" *ngIf="cargando">
-    <div class="spinner"></div>
-    <p>Cargando FL Premium...</p>
+<div class="page">
+  <div class="header">
+    <div>
+      <h2 class="title">Facturación</h2>
+      <p class="subtitle">Configura los datos del negocio y (opcional) los fiscales para cuando integremos timbrado.</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" (click)="cargarConfig()" [disabled]="cargando || guardando">
+        Recargar
+      </button>
+      <button class="btn btn-primary" type="button" (click)="guardar()" [disabled]="!puedeGuardar">
+        {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
   </div>
-  
-  <iframe 
-    src="https://fel.blikon.com/CFDI33FP/Presentacion/Usuario/Ingreso.aspx?v2" 
-    class="iframe-flpremium"
-    (load)="onIframeLoad()"
-    frameborder="0">
-  </iframe>
+
+  <div class="card" *ngIf="cargando">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando configuración...</p>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="!cargando && errorMsg">
+    <strong>Error:</strong> {{ errorMsg }}
+  </div>
+
+  <div class="alert alert-ok" *ngIf="!cargando && okMsg">
+    {{ okMsg }}
+  </div>
+
+  <div class="grid" *ngIf="!cargando">
+    <!-- Datos del negocio -->
+    <div class="card">
+      <h3 class="card-title">Datos del negocio</h3>
+
+      <div class="form-grid">
+        <div class="field span-2">
+          <label>Nombre del negocio <span class="req">*</span></label>
+          <input class="input" [(ngModel)]="config.business_name" (input)="limpiarMensajes()" placeholder="Ej. Refaccionaria El Güero" />
+        </div>
+
+        <div class="field span-2">
+          <label>Dirección</label>
+          <input class="input" [(ngModel)]="config.address" (input)="limpiarMensajes()" placeholder="Calle, número, colonia, ciudad" />
+        </div>
+
+        <div class="field">
+          <label>Teléfono</label>
+          <input class="input" [(ngModel)]="config.phone" (input)="limpiarMensajes()" placeholder="Ej. 8112345678" />
+        </div>
+
+        <div class="field">
+          <label>RFC (si aplica)</label>
+          <input class="input" [(ngModel)]="config.rfc" (input)="limpiarMensajes()" placeholder="ABC123456T12" />
+        </div>
+      </div>
+
+      <div class="hint">
+        * Con esto personalizas el sistema por negocio. Lo fiscal lo puedes configurar abajo cuando lo necesites.
+      </div>
+    </div>
+
+    <!-- Datos fiscales -->
+    <div class="card">
+      <div class="row-between">
+        <h3 class="card-title">Datos fiscales (opcional)</h3>
+
+        <label class="toggle">
+          <input type="checkbox" [(ngModel)]="config.invoicing_enabled" (change)="limpiarMensajes()" />
+          <span>Habilitar facturación</span>
+        </label>
+      </div>
+
+      <div class="form-grid">
+        <div class="field span-2">
+          <label>Razón social (emisor)</label>
+          <input class="input" [(ngModel)]="config.fiscal_name" (input)="limpiarMensajes()" placeholder="Ej. REFACCIONES EL GUERO SA DE CV" />
+        </div>
+
+        <div class="field">
+          <label>CP fiscal</label>
+          <input class="input" [(ngModel)]="config.fiscal_zip" (input)="limpiarMensajes()" placeholder="Ej. 64000" />
+        </div>
+
+        <div class="field">
+          <label>Régimen fiscal</label>
+          <input class="input" [(ngModel)]="config.fiscal_regime" (input)="limpiarMensajes()" placeholder="Ej. 601" />
+        </div>
+
+        <div class="field span-2">
+          <label>Proveedor (más adelante)</label>
+          <select class="input" [(ngModel)]="config.invoicing_provider" (change)="limpiarMensajes()">
+            <option [ngValue]="null">-- Sin configurar --</option>
+            <option [ngValue]="'facturama'">Facturama</option>
+            <option [ngValue]="'sw'">SW Sapien</option>
+            <option [ngValue]="'finkok'">Finkok</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hint">
+        Si habilitas facturación, más adelante aquí mismo conectamos el proveedor y certificados (por negocio).
+      </div>
+    </div>
+  </div>
 </div>

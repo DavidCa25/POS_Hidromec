@@ -239,6 +239,17 @@
 
           <!-- Folio cargado => acciones -->
           <div *ngIf="isEditing" class="d-flex gap-2 align-items-center">
+
+            <!-- (Opcional) Solicitar factura también aquí -->
+            <!--
+            <button type="button"
+                    class="btn btn-outline-dark d-flex align-items-center gap-2"
+                    (click)="solicitarFactura()">
+              <i class="bi bi-receipt"></i>
+              Solicitar factura
+            </button>
+            -->
+
             <!-- Principal cajero -->
             <button type="button"
                     class="btn btn-warning d-flex align-items-center gap-2"
@@ -588,7 +599,7 @@
   </div>
 </div>
 
-<!-- MODAL POST-VENTA: PDF / WHATSAPP -->
+<!-- MODAL POST-VENTA: PDF / WHATSAPP / FACTURA -->
 <div class="modal fade show d-block"
      *ngIf="showPostSaleModal"
      style="background:rgba(0,0,0,0.25);z-index:12000;">
@@ -629,6 +640,15 @@
                   (click)="enviarTicketWhatsApp()">
             <i class="bi bi-whatsapp me-2"></i>
             Enviar ticket por WhatsApp
+          </button>
+
+          <!-- ✅ NUEVO: Solicitar factura desde el post-venta -->
+          <button type="button"
+                  class="btn btn-outline-dark w-100"
+                  [disabled]="!lastSaleId"
+                  (click)="solicitarFactura(lastSaleId!)">
+            <i class="bi bi-receipt me-2"></i>
+            Solicitar factura
           </button>
 
           <button type="button"

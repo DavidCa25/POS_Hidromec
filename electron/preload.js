@@ -81,5 +81,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateSale: (payload) => ipcRenderer.invoke('sp-update-sale', payload),
     refundSale: (payload) => ipcRenderer.invoke('sp-refund-sale', payload),
 
+    upsertFiscalReceiver: (payload) => ipcRenderer.invoke('sp-upsert-fiscal-receiver', payload),
 
+    createInvoiceRequest: (payload) => ipcRenderer.invoke('sp-create-invoice-request', payload),
+
+    getInvoiceRequests: (payload) => ipcRenderer.invoke('sp-get-invoice-requests', payload),
+
+    getInvoiceRequestDetail: (payload) => ipcRenderer.invoke('sp-get-invoice-request-detail', payload),
+
+    updateInvoiceRequestStatus: (payload) => ipcRenderer.invoke('sp-update-invoice-request-status', payload),
+
+    updateBusinessConfig: (payload) => ipcRenderer.invoke('sp-update-business-config', payload),
+
+    getBusinessConfig: () => ipcRenderer.invoke('sp-get-business-config'),
 });

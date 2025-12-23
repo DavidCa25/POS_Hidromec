@@ -77,6 +77,7 @@ export class Venta {
 
   nextFolioSuggested = 1;
   folioInput: number | null = null;
+  lastSaleInvoiceStatus: 'NONE' | 'PENDING' | 'STAMPED' | 'CANCELED' | 'ERROR' = 'NONE';
 
   private scanBuffer = '';
   private scanTimer: any = null;
@@ -488,6 +489,8 @@ export class Venta {
 
         const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
 
+        this.lastSaleInvoiceStatus = 'NONE';
+
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
@@ -840,6 +843,7 @@ export class Venta {
       }
 
       this.editingSaleId = Number(header.sale_id);
+      this.lastSaleInvoiceStatus = (String((header as any)?.invoice_status ?? 'NONE').toUpperCase() as any) || 'NONE';
       this.editingHeader = {
         ...header,
         datee: header.datee ? new Date(header.datee) : header.datee,
@@ -1167,5 +1171,112 @@ export class Venta {
     }
 
     this.seleccionarProducto(p);
+  }
+
+    async solicitarFactura(saleIdOverride?: number) {
+    const sale_id = Number(saleIdOverride ?? this.editingSaleId ?? this.lastSaleId ?? 0);
+    if (!Number.isFinite(sale_id) || sale_id <= 0) {
+      await Swal.fire({ icon: 'info', title: 'Sin folio', text: 'Primero registra o carga una venta.' });
+      return;
+    }
+
+    const api = (window as any).electronAPI;
+    if (!api?.getBusinessConfig || !api?.createInvoiceRequest) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'No disponible',
+        text: 'Falta electronAPI.getBusinessConfig o electronAPI.createInvoiceRequest.'
+      });
+      return;
+    }
+
+    try {
+      const cfgResp = await api.getBusinessConfig();
+      const row = Array.isArray(cfgResp?.data) ? cfgResp.data[0] : (cfgResp?.data?.[0] ?? cfgResp?.data ?? null);
+
+      const enabled = Boolean(row?.invoicing_enabled ?? row?.invoicingEnabled ?? false);
+
+      if (!enabled) {
+        await Swal.fire({
+          icon: 'info',
+          title: 'Facturación deshabilitada',
+          text: 'Actívala en el módulo Facturación para poder solicitar facturas.'
+        });
+        return;
+      }
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo validar configuración.' });
+      return;
+    }
+
+    const currentStatus = String(this.lastSaleInvoiceStatus ?? 'NONE').toUpperCase();
+    if (currentStatus === 'PENDING' || currentStatus === 'STAMPED') {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Ya existe solicitud',
+        text: currentStatus === 'PENDING'
+          ? 'Esta venta ya está en cola de facturación (PENDIENTE).'
+          : 'Esta venta ya fue timbrada (STAMPED).'
+      });
+      return;
+    }
+
+    const { value } = await Swal.fire({
+      title: 'Solicitar factura',
+      html: `
+        <div style="text-align:left">
+          <label style="display:block;font-weight:700;margin:.25rem 0;">RFC *</label>
+          <input id="swal-rfc" class="swal2-input" placeholder="ABC123456T12" style="margin-top:6px;" />
+
+          <label style="display:block;font-weight:700;margin:.5rem 0 .25rem;">Email (opcional)</label>
+          <input id="swal-email" class="swal2-input" placeholder="correo@cliente.com" style="margin-top:6px;" />
+
+          <div style="margin-top:.5rem;font-size:12px;color:#6b7280">
+            Se creará una solicitud en cola (PENDING). Más adelante aquí mismo se timbra.
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Solicitar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const rfc = (document.getElementById('swal-rfc') as HTMLInputElement)?.value?.trim()?.toUpperCase();
+        const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || null;
+        if (!rfc) {
+          Swal.showValidationMessage('RFC requerido.');
+          return;
+        }
+        return { rfc, email };
+      }
+    });
+
+    if (!value) return;
+
+    try {
+      const receiver_snapshot = {
+        rfc: value.rfc,
+        email: value.email
+      };
+
+      const resp = await api.createInvoiceRequest({
+        sale_id,
+        receiver_snapshot
+      });
+
+      if (!resp?.success) throw new Error(resp?.error || 'No se pudo crear la solicitud.');
+
+      this.lastSaleInvoiceStatus = 'PENDING';
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Solicitud creada',
+        text: 'Listo. La venta quedó en cola de facturación (PENDING).'
+      });
+
+    } catch (e: any) {
+      console.error('solicitarFactura:', e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo solicitar.' });
+    }
   }
 }

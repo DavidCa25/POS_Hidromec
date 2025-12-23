@@ -1293,6 +1293,224 @@ ipcMain.handle('sp-refund-sale', async (event, payload) => {
   }
 });
 
+// Facturacion
+
+ipcMain.handle('sp-upsert-fiscal-receiver', async (event, payload) => {
+  try {
+    const rfc = String(payload?.rfc ?? '').trim().toUpperCase();
+    const name = String(payload?.name ?? payload?.fiscal_name ?? '').trim();
+    const fiscalZip = String(payload?.fiscal_zip ?? payload?.fiscalZip ?? '').trim();
+    const fiscalRegime = String(payload?.fiscal_regime ?? payload?.fiscalRegime ?? '').trim();
+    const cfdiUse = String(payload?.cfdi_use ?? payload?.cfdiUse ?? '').trim().toUpperCase();
+    const email = payload?.email != null ? String(payload.email).trim() : null;
+
+    if (!rfc) throw new Error('RFC requerido.');
+    if (!name) throw new Error('Nombre/Razón social requerida.');
+    if (!fiscalZip) throw new Error('CP fiscal requerido.');
+    if (!fiscalRegime) throw new Error('Régimen fiscal requerido.');
+    if (!cfdiUse) throw new Error('Uso CFDI requerido.');
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('rfc', sql.NVarChar(20), rfc)
+      .input('name', sql.NVarChar(250), name)
+      .input('fiscal_zip', sql.NVarChar(10), fiscalZip)
+      .input('fiscal_regime', sql.NVarChar(10), fiscalRegime)
+      .input('cfdi_use', sql.NVarChar(5), cfdiUse)
+      .input('email', sql.NVarChar(120), email);
+
+    const result = await req.execute('sp_upsert_fiscal_receiver');
+    const receiverId = result?.recordset?.[0]?.receiver_id ?? null;
+
+    return { success: true, data: { receiver_id: receiverId } };
+  } catch (err) {
+    console.error('❌ Error en sp_upsert_fiscal_receiver:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-create-invoice-request', async (event, payload) => {
+  try {
+    const saleId = Number(payload?.sale_id ?? payload?.saleId ?? payload?.id ?? 0);
+    const receiverIdRaw = payload?.receiver_id ?? payload?.receiverId ?? null;
+    const receiverId = receiverIdRaw == null ? null : Number(receiverIdRaw);
+
+    const receiverSnapshot =
+      payload?.receiver_snapshot_json ??
+      payload?.receiverSnapshotJson ??
+      payload?.receiver_snapshot ??
+      payload?.receiverSnapshot ??
+      null;
+
+    if (!Number.isFinite(saleId) || saleId <= 0) throw new Error('sale_id inválido.');
+    if (receiverId !== null && (!Number.isFinite(receiverId) || receiverId <= 0)) {
+      throw new Error('receiver_id inválido.');
+    }
+
+    // snapshot puede ser string JSON o objeto -> lo convertimos a string
+    let snapshotJson = null;
+    if (receiverSnapshot != null) {
+      snapshotJson = typeof receiverSnapshot === 'string'
+        ? receiverSnapshot
+        : JSON.stringify(receiverSnapshot);
+    }
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('sale_id', sql.Int, saleId)
+      .input('receiver_id', sql.Int, receiverId)
+      .input('receiver_snapshot_json', sql.NVarChar(sql.MAX), snapshotJson);
+
+    const result = await req.execute('sp_create_invoice_request');
+    const row = result?.recordset?.[0] ?? null;
+
+    return { success: true, data: row };
+  } catch (err) {
+    console.error('❌ Error en sp_create_invoice_request:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-get-invoice-requests', async (event, payload) => {
+  try {
+    const status = payload?.status != null ? String(payload.status).trim().toUpperCase() : null;
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('status', sql.NVarChar(20), status);
+
+    const result = await req.execute('sp_get_invoice_requests');
+
+    return { success: true, data: result?.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ Error en sp_get_invoice_requests:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-get-invoice-request-detail', async (event, payload) => {
+  try {
+    const invoiceRequestId =
+      typeof payload === 'number' ? payload :
+      typeof payload === 'string' ? Number(payload) :
+      Number(payload?.invoice_request_id ?? payload?.invoiceRequestId ?? payload?.id ?? 0);
+
+    if (!Number.isFinite(invoiceRequestId) || invoiceRequestId <= 0) {
+      throw new Error('invoice_request_id inválido.');
+    }
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('invoice_request_id', sql.Int, invoiceRequestId);
+
+    const result = await req.execute('sp_get_invoice_request_detail');
+
+    const header = result?.recordsets?.[0]?.[0] ?? null;
+    const receiver = result?.recordsets?.[1]?.[0] ?? null;
+    const items = result?.recordsets?.[2] ?? [];
+
+    return { success: true, data: { header, receiver, items } };
+  } catch (err) {
+    console.error('❌ Error en sp_get_invoice_request_detail:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-update-invoice-request-status', async (event, payload) => {
+  try {
+    const invoiceRequestId = Number(payload?.invoice_request_id ?? payload?.invoiceRequestId ?? payload?.id ?? 0);
+    const status = String(payload?.status ?? '').trim().toUpperCase();
+
+    const cfdiUuid = payload?.cfdi_uuid ?? payload?.cfdiUuid ?? null;
+    const xmlPath = payload?.xml_path ?? payload?.xmlPath ?? null;
+    const pdfPath = payload?.pdf_path ?? payload?.pdfPath ?? null;
+    const errorMessage = payload?.error_message ?? payload?.errorMessage ?? null;
+
+    if (!Number.isFinite(invoiceRequestId) || invoiceRequestId <= 0) throw new Error('invoice_request_id inválido.');
+    if (!status) throw new Error('status requerido.');
+
+    const allowed = new Set(['PENDING', 'STAMPED', 'CANCELED', 'ERROR']);
+    if (!allowed.has(status)) throw new Error('status inválido (PENDING|STAMPED|CANCELED|ERROR).');
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('invoice_request_id', sql.Int, invoiceRequestId)
+      .input('status', sql.NVarChar(20), status)
+      .input('cfdi_uuid', sql.NVarChar(50), cfdiUuid)
+      .input('xml_path', sql.NVarChar(400), xmlPath)
+      .input('pdf_path', sql.NVarChar(400), pdfPath)
+      .input('error_message', sql.NVarChar(1000), errorMessage);
+
+    const result = await req.execute('sp_update_invoice_request_status');
+
+    return { success: true, data: result?.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('❌ Error en sp_update_invoice_request_status:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-update-business-config', async (event, payload) => {
+  try {
+    const businessName = String(payload?.business_name ?? payload?.businessName ?? '').trim();
+    if (!businessName) throw new Error('business_name requerido.');
+
+    const address = payload?.address != null ? String(payload.address).trim() : null;
+    const phone = payload?.phone != null ? String(payload.phone).trim() : null;
+    const rfc = payload?.rfc != null ? String(payload.rfc).trim().toUpperCase() : null;
+
+    const fiscalName = payload?.fiscal_name ?? payload?.fiscalName ?? null;
+    const fiscalZip = payload?.fiscal_zip ?? payload?.fiscalZip ?? null;
+    const fiscalRegime = payload?.fiscal_regime ?? payload?.fiscalRegime ?? null;
+
+    const invoicingEnabled = payload?.invoicing_enabled ?? payload?.invoicingEnabled ?? 0;
+    const invoicingProvider = payload?.invoicing_provider ?? payload?.invoicingProvider ?? null;
+
+    const pool = await poolPromise;
+
+    const req = pool.request()
+      .input('business_name', sql.NVarChar(200), businessName)
+      .input('address', sql.NVarChar(300), address)
+      .input('phone', sql.NVarChar(50), phone)
+      .input('rfc', sql.NVarChar(50), rfc)
+
+      .input('fiscal_name', sql.NVarChar(250), fiscalName ? String(fiscalName).trim() : null)
+      .input('fiscal_zip', sql.NVarChar(10), fiscalZip ? String(fiscalZip).trim() : null)
+      .input('fiscal_regime', sql.NVarChar(10), fiscalRegime ? String(fiscalRegime).trim() : null)
+
+      .input('invoicing_enabled', sql.Bit, Number(invoicingEnabled) ? 1 : 0)
+      .input('invoicing_provider', sql.NVarChar(30), invoicingProvider ? String(invoicingProvider).trim() : null);
+
+    const result = await req.execute('sp_update_business_config');
+    const row = result?.recordset?.[0] ?? null;
+
+    return { success: true, data: row };
+  } catch (err) {
+    console.error('❌ Error en sp_update_business_config:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('sp-get-business-config', async () => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('sp_get_business_config');
+    const row = result?.recordset?.[0] ?? null;
+    return { success: true, data: row };
+  } catch (err) {
+    console.error('Error en sp_get_business_config:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+
+
 
 
 
