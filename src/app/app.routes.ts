@@ -13,6 +13,7 @@ import { TablaCompra } from '../compras/appTablaCompra/tablaCompra';
 import { CrearUsuarioComponent } from '../sign_up/sign_up';
 import { Facturacion } from '../facturacion/facturacion';
 import { TablaVentaComponent } from '../venta/tablaVenta/tablaVenta';
+import { ConfigurationApp } from '../configuration/configurationApp';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -31,7 +32,8 @@ export const routes: Routes = [
       { path: 'corte-dia', component: Corte},
       { path: 'abrir-cajon', component: Cajon},
       { path: 'clientes', component: Clientes },
-      { path: 'facturacion', component: Facturacion }
+      { path: 'facturacion', component: Facturacion },
+      { path: 'configuracion', component: ConfigurationApp }
     ]
   },
   { path: '', redirectTo: '/login', pathMatch: 'full' },

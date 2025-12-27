@@ -8,8 +8,9 @@ const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { autoUpdater } = require('electron-updater');
-const { startSerialScanner } = require('./scanner');
 const { start } = require('repl');
+const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
+
 
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
@@ -17,6 +18,33 @@ const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 let businessConfig = null;
 
 let updateCheckTimer = null;
+let mainWindow = null;
+
+function getDeviceConfigPath() {
+  return path.join(app.getPath('userData'), 'device-config.json');
+}
+
+function loadDeviceConfig() {
+  const p = getDeviceConfigPath();
+  try {
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error leyendo device-config.json:', e);
+  }
+  return {
+    scanner: { enabled: false, path: '', baudRate: 9600 },
+    printer: { ticketPrinterName: '' },
+    cashDrawer: { mode: 'printer', serialPath: '' } 
+  };
+}
+
+function saveDeviceConfig(cfg) {
+  const p = getDeviceConfigPath();
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2), 'utf8');
+  return cfg;
+}
 
 function setupAutoUpdater(win) {
   if (isDev) {
@@ -145,7 +173,7 @@ function createWindow() {
   }
 
   setupAutoUpdater(win);
-  startSerialScanner(mainWindow, { path: 'COM3', baudRate: 9600 });
+  startSerialScanner(win, { path: 'COM3', baudRate: 9600 });
   return win;
 }
 
@@ -1429,6 +1457,79 @@ ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
     return { success: false, error: err?.message || String(err) };
   }
 });
+
+ipcMain.handle('devices:list-serial-ports', async () => {
+  try {
+    const ports = await listSerialPorts();
+    const data = ports.map(p => ({
+      path: p.path,
+      manufacturer: p.manufacturer || '',
+      serialNumber: p.serialNumber || '',
+      vendorId: p.vendorId || '',
+      productId: p.productId || ''
+    }));
+    return { success: true, data };
+  } catch (err) {
+    console.error('devices:list-serial-ports:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:list-printers', async () => {
+  try {
+    if (!mainWindow) throw new Error('Ventana principal no disponible');
+    const printers = await mainWindow.webContents.getPrintersAsync();
+    const data = printers.map(p => ({
+      name: p.name,
+      displayName: p.displayName || p.name,
+      isDefault: !!p.isDefault,
+      status: p.status || 0,
+      description: p.description || ''
+    }));
+    return { success: true, data };
+  } catch (err) {
+    console.error('devices:list-printers:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:get-config', async () => {
+  try {
+    return { success: true, data: loadDeviceConfig() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
+  try {
+    const current = loadDeviceConfig();
+    const merged = {
+      ...current,
+      ...partialCfg,
+      scanner: { ...(current.scanner || {}), ...(partialCfg.scanner || {}) },
+      printer: { ...(current.printer || {}), ...(partialCfg.printer || {}) },
+      cashDrawer: { ...(current.cashDrawer || {}), ...(partialCfg.cashDrawer || {}) }
+    };
+
+    saveDeviceConfig(merged);
+
+    if (merged.scanner?.enabled && merged.scanner?.path) {
+      startSerialScanner(mainWindow, {
+        path: merged.scanner.path,
+        baudRate: merged.scanner.baudRate || 9600
+      });
+    } else {
+      stopSerialScanner();
+    }
+
+    return { success: true, data: merged };
+  } catch (err) {
+    console.error('devices:set-config:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 
 
 

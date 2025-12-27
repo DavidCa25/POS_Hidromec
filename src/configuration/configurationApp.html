@@ -1,0 +1,631 @@
+<div class="container">
+  <!-- Header compacto -->
+  <div class="cfg-header">
+    <div class="cfg-title">
+      <div class="cfg-icon">
+        <i class="bi bi-gear-fill"></i>
+      </div>
+
+      <div>
+        <h1>Configuración</h1>
+        <p>Dispositivos, ticket, backups y preferencias del sistema</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-outline-secondary" type="button" (click)="refreshDevices()">
+        <i class="bi bi-usb-plug"></i> Detectar
+      </button>
+      <button class="btn btn-primary" type="button" (click)="save()">
+        <i class="bi bi-check2-circle"></i> Guardar
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid compacto -->
+  <div class="cfg-grid">
+
+    <!-- ============= DISPOSITIVOS (PUERTOS) ============= -->
+    <div class="cfg-card span-6">
+      <div class="cfg-card-h">
+        <div class="h-left">
+          <span class="chip chip-blue"><i class="bi bi-usb-symbol"></i></span>
+          <div>
+            <div class="h-title">Dispositivos (Puertos)</div>
+            <div class="h-sub">Cajón, scanner, báscula y otros por COM/USB</div>
+          </div>
+        </div>
+        <span class="pill ok"><i class="bi bi-plug"></i> Auto-detect</span>
+      </div>
+
+      <div class="cfg-card-b">
+
+        <!-- Cajón (UI placeholder por ahora) -->
+        <div class="section-title">
+          <i class="bi bi-safe2"></i> Cajón de dinero
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Puerto del cajón</label>
+            <select class="ctl" disabled>
+              <option selected>Auto (recomendado)</option>
+            </select>
+            <div class="hint">Lo conectamos después a puertos / ESC-POS o serial.</div>
+          </div>
+
+          <div>
+            <label class="lbl">Tipo de apertura</label>
+            <select class="ctl" disabled>
+              <option selected>Pulse (impulso)</option>
+              <option>Toggle</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Duración impulso</label>
+            <div class="ig">
+              <input class="ctl" type="number" min="50" step="10" value="120" disabled>
+              <span class="addon">ms</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Abrir al cobrar</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Automático</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-outline" disabled>
+            <i class="bi bi-wrench-adjustable"></i> Probar
+          </button>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- Scanner (YA CONECTADO AL TS REAL) -->
+        <div class="section-title">
+          <i class="bi bi-upc-scan"></i> Scanner / Lector
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Habilitado</label>
+            <select class="ctl" [(ngModel)]="scannerEnabled" name="scannerEnabled">
+              <option [ngValue]="false">No</option>
+              <option [ngValue]="true">Sí (Serial COM)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">Puerto scanner</label>
+            <select
+              class="ctl"
+              [(ngModel)]="scannerPath"
+              name="scannerPath"
+              [disabled]="!scannerEnabled"
+            >
+              <option value="">— Selecciona —</option>
+              <option *ngFor="let p of serialPorts" [value]="p.path">
+                {{ portLabel(p) }}
+              </option>
+            </select>
+            <div class="hint">
+              Si tu scanner es USB tipo teclado, no aparecerá aquí (es normal).
+            </div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Baudrate</label>
+            <input
+              class="ctl"
+              type="number"
+              min="1200"
+              step="100"
+              [(ngModel)]="scannerBaudRate"
+              name="scannerBaudRate"
+              [disabled]="!scannerEnabled"
+            >
+          </div>
+
+          <div>
+            <label class="lbl">Estado</label>
+            <div class="pill neutral" style="justify-content:flex-start;">
+              <i class="bi bi-info-circle"></i>
+              <span *ngIf="scannerEnabled && scannerPath">Listo: {{ scannerPath }}</span>
+              <span *ngIf="scannerEnabled && !scannerPath">Selecciona un COM</span>
+              <span *ngIf="!scannerEnabled">Deshabilitado</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- Báscula (placeholder) -->
+        <div class="section-title">
+          <i class="bi bi-speedometer2"></i> Báscula (opcional)
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Puerto báscula</label>
+            <select class="ctl" disabled>
+              <option selected>Ninguno</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">Unidad</label>
+            <select class="ctl" disabled>
+              <option selected>kg</option>
+              <option>g</option>
+              <option>lb</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Decimales</label>
+            <input class="ctl" type="number" min="0" step="1" value="3" disabled>
+          </div>
+
+          <div>
+            <label class="lbl">Auto-captura</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Tomar al estabilizar</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============= TICKET / IMPRESIÓN ============= -->
+    <div class="cfg-card span-6">
+      <div class="cfg-card-h">
+        <div class="h-left">
+          <span class="chip chip-purple"><i class="bi bi-receipt-cutoff"></i></span>
+          <div>
+            <div class="h-title">Ticket e impresión</div>
+            <div class="h-sub">Tamaño, impresora y comportamiento</div>
+          </div>
+        </div>
+        <span class="pill warn"><i class="bi bi-printer"></i> Ajustable</span>
+      </div>
+
+      <div class="cfg-card-b">
+        <div class="row two">
+          <div>
+            <label class="lbl">Impresora</label>
+            <select class="ctl" [(ngModel)]="ticketPrinterName" name="ticketPrinterName">
+              <option value="">(Predeterminada del sistema)</option>
+              <option *ngFor="let pr of printers" [value]="pr.name">
+                {{ pr.displayName || pr.name }}<span *ngIf="pr.isDefault"> (Default)</span>
+              </option>
+            </select>
+            <div class="hint">Se usará como <code>deviceName</code> al imprimir.</div>
+          </div>
+
+          <div>
+            <label class="lbl">Tamaño ticket</label>
+            <select class="ctl" disabled>
+              <option selected>80mm</option>
+              <option>58mm</option>
+              <option>A4</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Margen</label>
+            <div class="ig">
+              <input class="ctl" type="number" min="0" step="1" value="0" disabled>
+              <span class="addon">mm</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Copias</label>
+            <input class="ctl" type="number" min="1" step="1" value="1" disabled>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Impresión silenciosa</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">No mostrar diálogo</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Imprimir al terminar venta</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Automático</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Incluir logo</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Mostrar imagen</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Mostrar QR</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Opcional</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Texto pie del ticket</label>
+            <input class="ctl" type="text" value="Gracias por su compra" disabled>
+          </div>
+
+          <div>
+            <label class="lbl">Formato fecha</label>
+            <select class="ctl" disabled>
+              <option selected>dd/MM/yyyy HH:mm</option>
+              <option>dd-MM-yyyy HH:mm</option>
+              <option>yyyy-MM-dd HH:mm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-outline" disabled>
+            <i class="bi bi-eye"></i> Vista previa
+          </button>
+          <button type="button" class="btn-primary-sm" disabled>
+            <i class="bi bi-printer"></i> Prueba
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============= BD / BACKUPS (placeholder) ============= -->
+    <div class="cfg-card span-6">
+      <div class="cfg-card-h">
+        <div class="h-left">
+          <span class="chip chip-green"><i class="bi bi-database-fill"></i></span>
+          <div>
+            <div class="h-title">Base de datos / Backups</div>
+            <div class="h-sub">Respaldo, exportación y mantenimiento</div>
+          </div>
+        </div>
+        <span class="pill ok"><i class="bi bi-shield-check"></i> Seguro</span>
+      </div>
+
+      <div class="cfg-card-b">
+        <div class="row two">
+          <div>
+            <label class="lbl">Exportar BD</label>
+            <button type="button" class="btn-soft" disabled>
+              <i class="bi bi-download"></i> Exportar
+            </button>
+          </div>
+          <div>
+            <label class="lbl">Importar BD</label>
+            <button type="button" class="btn-soft" disabled>
+              <i class="bi bi-upload"></i> Importar
+            </button>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Backups automáticos</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Habilitar</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Frecuencia</label>
+            <select class="ctl" disabled>
+              <option selected>Diario</option>
+              <option>Semanal</option>
+              <option>Mensual</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Conservar</label>
+            <div class="ig">
+              <input class="ctl" type="number" min="1" step="1" value="7" disabled>
+              <span class="addon">archivos</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lbl">Limpiar logs</label>
+            <button type="button" class="btn-outline" disabled>
+              <i class="bi bi-trash3"></i> Limpiar
+            </button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="lbl">Carpeta destino backups</label>
+          <div class="path-row">
+            <input class="ctl" type="text" value="C:\Users\Public\POS\Backups" disabled>
+            <button type="button" class="btn-outline" disabled>
+              <i class="bi bi-folder2-open"></i>
+            </button>
+          </div>
+          <div class="hint">Seleccionable desde Electron con un diálogo de carpeta.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============= PREFERENCIAS (placeholder) ============= -->
+    <div class="cfg-card span-6">
+      <div class="cfg-card-h">
+        <div class="h-left">
+          <span class="chip chip-orange"><i class="bi bi-sliders"></i></span>
+          <div>
+            <div class="h-title">Preferencias</div>
+            <div class="h-sub">IVA, moneda, facturación, WhatsApp y red</div>
+          </div>
+        </div>
+        <span class="pill neutral"><i class="bi bi-gear"></i> General</span>
+      </div>
+
+      <div class="cfg-card-b">
+        <div class="row two">
+          <div>
+            <label class="lbl">Moneda</label>
+            <select class="ctl" disabled>
+              <option selected>MXN</option>
+              <option>USD</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">IVA por defecto</label>
+            <div class="ig">
+              <input class="ctl" type="number" min="0" step="0.01" value="0.16" disabled>
+              <span class="addon">tasa</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Redondeo</label>
+            <select class="ctl" disabled>
+              <option selected>2 decimales</option>
+              <option>0 decimales</option>
+              <option>3 decimales</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">Precio sugerido en compras</label>
+            <select class="ctl" disabled>
+              <option selected>Costo + IVA</option>
+              <option>Último precio venta</option>
+              <option>Manual</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="section-title">
+          <i class="bi bi-receipt"></i> Facturación
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Proveedor facturación</label>
+            <select class="ctl" disabled>
+              <option selected>Ninguno</option>
+              <option>Facturama</option>
+              <option>SW Sapien</option>
+              <option>Otra API</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">Solicitar datos al cobrar</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Activado</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="lbl">WhatsApp (ticket)</label>
+          <div class="toggle">
+            <label class="sw">
+              <input type="checkbox" checked disabled>
+              <span class="sl"></span>
+            </label>
+            <span class="ttext">Habilitar envío</span>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="section-title">
+          <i class="bi bi-wifi"></i> Red / Sincronización
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Modo</label>
+            <select class="ctl" disabled>
+              <option selected>Local</option>
+              <option>Servidor</option>
+              <option>Offline</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="lbl">Auto-update</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Buscar actualizaciones</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============= SEGURIDAD / APARIENCIA / DIAGNÓSTICO (placeholder) ============= -->
+    <div class="cfg-card span-12">
+      <div class="cfg-card-h">
+        <div class="h-left">
+          <span class="chip chip-gray"><i class="bi bi-shield-lock-fill"></i></span>
+          <div>
+            <div class="h-title">Seguridad y Diagnóstico</div>
+            <div class="h-sub">Permisos, logs, depuración y accesos</div>
+          </div>
+        </div>
+        <span class="pill neutral"><i class="bi bi-bug"></i> Tools</span>
+      </div>
+
+      <div class="cfg-card-b">
+
+        <div class="grid-3">
+          <!-- Seguridad -->
+          <div class="mini">
+            <div class="mini-title"><i class="bi bi-person-badge"></i> Usuarios</div>
+            <div class="mini-row">
+              <span class="mini-label">Requerir supervisor</span>
+              <label class="sw sm">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">PIN supervisor</span>
+              <input class="ctl sm" type="password" value="1234" disabled>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">Bloqueo por inactividad</span>
+              <select class="ctl sm" disabled>
+                <option selected>10 min</option>
+                <option>5 min</option>
+                <option>30 min</option>
+                <option>Nunca</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Apariencia -->
+          <div class="mini">
+            <div class="mini-title"><i class="bi bi-palette2"></i> Apariencia</div>
+            <div class="mini-row">
+              <span class="mini-label">Tema</span>
+              <select class="ctl sm" disabled>
+                <option selected>Claro</option>
+                <option>Oscuro</option>
+                <option>Auto</option>
+              </select>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">Densidad</span>
+              <select class="ctl sm" disabled>
+                <option selected>Compacto</option>
+                <option>Normal</option>
+              </select>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">Animaciones</span>
+              <label class="sw sm">
+                <input type="checkbox" checked disabled>
+                <span class="sl"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Diagnóstico -->
+          <div class="mini">
+            <div class="mini-title"><i class="bi bi-activity"></i> Diagnóstico</div>
+            <div class="mini-row">
+              <span class="mini-label">Logs detallados</span>
+              <label class="sw sm">
+                <input type="checkbox" disabled>
+                <span class="sl"></span>
+              </label>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">Abrir carpeta logs</span>
+              <button type="button" class="btn-soft sm" disabled>
+                <i class="bi bi-folder2-open"></i>
+                Abrir
+              </button>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">Test impresión</span>
+              <button type="button" class="btn-soft sm" disabled>
+                <i class="bi bi-printer"></i>
+                Probar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint" style="margin-top:10px;">
+          Aquí después conectas: probar dispositivos, exportar/importar BD, y guardar settings.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
