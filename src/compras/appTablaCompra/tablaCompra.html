@@ -1,5 +1,5 @@
-<div class="castrol-table-container">
-  <<div class="compras-header-section">
+<div class="container">
+  <div class="compras-header-section">
     <div class="compras-header-content">
       <div class="compras-title-wrapper">
         <i class="bi bi-bag-check compras-icon"></i>
@@ -9,106 +9,191 @@
     </div>
   </div>
 
-  <div class="toolbar">
-    <input class="search" type="search" placeholder="Buscar por proveedor o ID..." [(ngModel)]="filtro">
-    <a (click)="agregarCompra()" class="castrol-btn-add">Agregar Compra</a>
-  </div>
+  <div class="castrol-table-container">
+    <!-- TOP BAR: conteo + buscador + rango + pageSize -->
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+      <div class="ventas-stats-badge">
+        <i class="bi bi-list-check"></i>
+        <span>{{ totalItems }} compras registradas</span>
+      </div>
 
-  <div class="table-responsive" *ngIf="!loading; else cargando">
-    <table class="castrol-table">
-      <thead>
-        <tr>
-          <th style="width:46px;"></th>
-          <th>ID</th>
-          <th>Proveedor</th>
-          <th>Fecha</th>
-          <th>Total</th>
-          <th style="width:160px;">Acciones</th>
-        </tr>
-      </thead>
+      <div class="ventas-tools">
+        <div class="ventas-search">
+          <i class="bi bi-search"></i>
+          <input
+            type="text"
+            placeholder="Buscar por proveedor, usuario o ID…"
+            [(ngModel)]="filterText"
+            (ngModelChange)="onFilterChange()"
+          />
+          <button
+            *ngIf="filterText"
+            class="clear-btn"
+            type="button"
+            (click)="filterText=''; onFilterChange()"
+            title="Limpiar">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
 
-      <tbody>
-        <ng-container *ngFor="let c of comprasFiltradas; let i = index">
-          <tr class="parent-row">
-            <td class="caret-cell">
-              <button type="button"
-                      class="caret-btn"
-                      (click)="toggle(c.id)"
-                      [class.open]="isOpen(c.id)"
-                      aria-label="Mostrar detalles">
-                <svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 6l6 6-6 6"></path>
-                </svg>
-              </button>
-            </td>
-            <td class="mono id-cell" (click)="toggle(c.id)">{{ c.id }}</td>
-            <td class="nowrap">{{ c.supplierLabel }}</td>
-            <td>{{ c.date | date:'dd/MM/yyyy' }}</td>
-            <td class="fw-semibold">{{ c.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td class="acciones-cell">
-              <div class="action-group">
-                <button class="action-btn btn-edit" data-tooltip="Editar" (click)="editar(c)">
-                  <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                </button>
-                <button class="action-btn btn-delete" data-tooltip="Eliminar" (click)="eliminar(c)">
-                  <svg viewBox="0 0 24 24"><path d="M6 7h12v13a2 2 0 01-2 2H8a2 2 0 01-2-2V7zm3-4h6l1 1h4v2H4V4h4l1-1z"/></svg>
-                </button>
-              </div>
-            </td>
+        <div class="ventas-meta">
+          <span class="range">{{ pageFrom }}–{{ pageTo }} de {{ totalItems }}</span>
+
+          <div class="ventas-page-size">
+            <span>Mostrar</span>
+            <select [(ngModel)]="pageSize" (ngModelChange)="setPageSize($event)">
+              <option *ngFor="let s of pageSizeOptions" [ngValue]="s">{{ s }}</option>
+            </select>
+          </div>
+
+          <a (click)="agregarCompra()" class="castrol-btn-add">
+            <i class="bi bi-plus-circle"></i> Agregar Compra
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="small text-muted mb-3" *ngIf="loading">Cargando compras…</div>
+
+    <div class="table-responsive" *ngIf="!loading">
+      <table class="castrol-table">
+        <thead>
+          <tr>
+            <th style="width:46px;"></th>
+            <th>ID</th>
+            <th>Proveedor</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th style="width:160px;">Acciones</th>
           </tr>
+        </thead>
 
-          <tr class="detail-row" *ngIf="isOpen(c.id)">
-            <td></td>
-            <td colspan="5">
-              <div class="detail-wrap">
-                <div class="detail-anim">
-                  <div class="detail-header">
-                    <div><b>Usuario:</b> {{ c.user_name }}</div>
-                    <div><b>IVA:</b> {{ c.tax_amount | currency:'MXN':'symbol-narrow':'1.2-2' }} ({{ (c.tax_rate*100) | number:'1.0-2' }}%)</div>
-                  </div>
-                  <div class="table-responsive inner">
-                    <div class="inner-card">
-                      <table class="castrol-table inner-table">
-                        <thead>
-                          <tr>
-                            <th style="width:56px;">#</th>
-                            <th>Producto</th>
-                            <th>Proveedor</th>
-                            <th>Cantidad</th>
-                            <th>Precio</th>
-                            <th>Importe</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr *ngFor="let d of c.details; let j = index">
-                            <td>{{ j + 1 }}</td>
-                            <td class="nowrap">{{ d.product_name }}</td>
-                            <td class="nowrap">{{ d.supplier_name }}</td>
-                            <td>{{ d.quantity }}</td>
-                            <td>{{ d.unit_price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-                            <td class="fw-semibold">{{ d.line_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-                          </tr>
-                          <tr *ngIf="c.details.length === 0">
-                            <td colspan="6" class="empty">Sin partidas.</td>
-                          </tr>
-                        </tbody>
-                      </table>
+        <tbody>
+          <!-- OJO: aquí usamos pagedCompras, NO comprasFiltradas -->
+          <ng-container *ngFor="let c of pagedCompras; trackBy: trackByCompraId">
+            <tr class="parent-row">
+              <td class="caret-cell">
+                <button type="button"
+                        class="caret-btn"
+                        (click)="toggle(c.id)"
+                        [class.open]="isOpen(c.id)"
+                        aria-label="Mostrar detalles">
+                  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6"></path>
+                  </svg>
+                </button>
+              </td>
+
+              <td class="mono id-cell" (click)="toggle(c.id)">{{ c.id }}</td>
+              <td class="nowrap">{{ c.supplierLabel }}</td>
+              <td>{{ c.date | date:'dd/MM/yyyy' }}</td>
+              <td class="fw-semibold">{{ c.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+
+              <td class="acciones-cell">
+                <div class="action-group">
+                  <button class="action-btn btn-edit" data-tooltip="Editar" (click)="editar(c)">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                  </button>
+
+                  <button class="action-btn btn-delete" data-tooltip="Eliminar" (click)="eliminar(c)">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 7h12v13a2 2 0 01-2 2H8a2 2 0 01-2-2V7zm3-4h6l1 1h4v2H4V4h4l1-1z"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <tr class="detail-row" *ngIf="isOpen(c.id)">
+              <td></td>
+              <td colspan="5">
+                <div class="detail-wrap">
+                  <div class="detail-anim">
+                    <div class="detail-header">
+                      <div><b>Usuario:</b> {{ c.user_name }}</div>
+                      <div>
+                        <b>IVA:</b>
+                        {{ c.tax_amount | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                        ({{ (c.tax_rate*100) | number:'1.0-2' }}%)
+                      </div>
                     </div>
+
+                    <div class="table-responsive inner">
+                      <div class="inner-card">
+                        <table class="castrol-table inner-table">
+                          <thead>
+                            <tr>
+                              <th style="width:56px;">#</th>
+                              <th>Producto</th>
+                              <th>Proveedor</th>
+                              <th>Cantidad</th>
+                              <th>Precio</th>
+                              <th>Importe</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let d of c.details; let j = index">
+                              <td>{{ j + 1 }}</td>
+                              <td class="nowrap">{{ d.product_name }}</td>
+                              <td class="nowrap">{{ d.supplier_name }}</td>
+                              <td>{{ d.quantity }}</td>
+                              <td>{{ d.unit_price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                              <td class="fw-semibold">{{ d.line_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                            </tr>
+
+                            <tr *ngIf="c.details.length === 0">
+                              <td colspan="6" class="empty">Sin partidas.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-              </div>
-            </td>
+              </td>
+            </tr>
+          </ng-container>
+
+          <tr *ngIf="!loading && totalItems === 0">
+            <td colspan="6" class="empty">No hay compras registradas.</td>
           </tr>
-        </ng-container>
+        </tbody>
+      </table>
+    </div>
 
-        <tr *ngIf="comprasFiltradas.length===0">
-          <td colspan="6" class="empty">No hay compras registradas.</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- PAGER -->
+    <div class="ventas-pager" *ngIf="!loading && totalItems > 0">
+      <button
+        type="button"
+        class="pager-btn"
+        [disabled]="currentPage === 1"
+        (click)="prevPage()">
+        <i class="bi bi-chevron-left"></i> Anterior
+      </button>
+
+      <div class="pager-pages">
+        <button
+          type="button"
+          class="page-btn"
+          *ngFor="let p of pages"
+          [class.active]="p === currentPage"
+          [class.dots]="p === '...'"
+          [disabled]="p === '...'"
+          (click)="onPageTokenClick(p)">
+          {{ p }}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="pager-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="nextPage()">
+        Siguiente <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
   </div>
-
-  <ng-template #cargando>
-    <div class="loading">Cargando compras…</div>
-  </ng-template>
 </div>
