@@ -47,18 +47,43 @@
 
         <div class="row two">
           <div>
-            <label class="lbl">Puerto del cajón</label>
-            <select class="ctl" disabled>
-              <option selected>Auto (recomendado)</option>
-            </select>
-            <div class="hint">Lo conectamos después a puertos / ESC-POS o serial.</div>
+            <label class="lbl">Habilitar</label>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" [(ngModel)]="drawerEnabled">
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">{{ drawerEnabled ? 'Activo' : 'Inactivo' }}</span>
+            </div>
           </div>
 
           <div>
-            <label class="lbl">Tipo de apertura</label>
-            <select class="ctl" disabled>
-              <option selected>Pulse (impulso)</option>
-              <option>Toggle</option>
+            <label class="lbl">Pin</label>
+            <select class="ctl" [(ngModel)]="drawerPin" [disabled]="!drawerEnabled">
+              <option [ngValue]="0">0</option>
+              <option [ngValue]="1">1</option>
+            </select>
+            <div class="hint">Algunos controladores usan 0 o 1.</div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label class="lbl">Puerto del cajón (COM/USB)</label>
+            <select class="ctl" [(ngModel)]="drawerPath" [disabled]="!drawerEnabled">
+              <option value="">Auto (pendiente)</option>
+              <option *ngFor="let p of serialPorts" [value]="p.path">{{ portLabel(p) }}</option>
+            </select>
+            <div class="hint">El cajón debe aparecer como puerto serial (USB-Serial) para abrirlo por aquí.</div>
+          </div>
+
+          <div>
+            <label class="lbl">Baudrate</label>
+            <select class="ctl" [(ngModel)]="drawerBaudRate" [disabled]="!drawerEnabled">
+              <option [ngValue]="9600">9600</option>
+              <option [ngValue]="19200">19200</option>
+              <option [ngValue]="38400">38400</option>
+              <option [ngValue]="115200">115200</option>
             </select>
           </div>
         </div>
@@ -67,7 +92,9 @@
           <div>
             <label class="lbl">Duración impulso</label>
             <div class="ig">
-              <input class="ctl" type="number" min="50" step="10" value="120" disabled>
+              <input class="ctl" type="number" min="50" step="10"
+                    [(ngModel)]="drawerPulseMs"
+                    [disabled]="!drawerEnabled">
               <span class="addon">ms</span>
             </div>
           </div>
@@ -76,7 +103,7 @@
             <label class="lbl">Abrir al cobrar</label>
             <div class="toggle">
               <label class="sw">
-                <input type="checkbox" checked disabled>
+                <input type="checkbox" [(ngModel)]="drawerOpenOnPayment" [disabled]="!drawerEnabled">
                 <span class="sl"></span>
               </label>
               <span class="ttext">Automático</span>
@@ -85,12 +112,14 @@
         </div>
 
         <div class="btn-row">
-          <button type="button" class="btn-outline" disabled>
-            <i class="bi bi-wrench-adjustable"></i> Probar
+          <button type="button"
+                  class="btn-outline"
+                  (click)="testDrawer()"
+                  [disabled]="!drawerEnabled || !drawerPath || busyTestDrawer">
+            <i class="bi bi-wrench-adjustable"></i>
+            {{ busyTestDrawer ? 'Probando...' : 'Probar' }}
           </button>
         </div>
-
-        <div class="sep"></div>
 
         <!-- Scanner (YA CONECTADO AL TS REAL) -->
         <div class="section-title">
@@ -339,14 +368,14 @@
         <div class="row two">
           <div>
             <label class="lbl">Exportar BD</label>
-            <button type="button" class="btn-soft" disabled>
-              <i class="bi bi-download"></i> Exportar
+            <button type="button" class="btn-soft" (click)="exportDb()" [disabled]="busyExport || busyImport">
+                <i class="bi bi-download"></i> Exportar
             </button>
           </div>
           <div>
             <label class="lbl">Importar BD</label>
-            <button type="button" class="btn-soft" disabled>
-              <i class="bi bi-upload"></i> Importar
+            <button type="button" class="btn-soft" (click)="importDb()" [disabled]="busyExport || busyImport">
+                <i class="bi bi-upload"></i> Importar
             </button>
           </div>
         </div>

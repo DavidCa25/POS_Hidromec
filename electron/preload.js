@@ -93,4 +93,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     getDeviceConfig: () => ipcRenderer.invoke('devices:get-config'),
     setDeviceConfig: (cfg) => ipcRenderer.invoke('devices:set-config', cfg),
+
+    exportDatabase: () => ipcRenderer.invoke('export-database'),
+    importDatabase: () => ipcRenderer.invoke('import-database'),
 });
