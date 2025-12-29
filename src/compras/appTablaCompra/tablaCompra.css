@@ -344,3 +344,229 @@
   .compras-subtitle{ margin-left: 0; }
   .compras-main-title{ font-size: 2.1rem; }
 }
+
+
+.ventas-tools{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.ventas-stats-badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #f1f6ff;
+  border: 1px solid rgba(31,46,134,0.15);
+  color: #0b1b4d;
+  font-weight: 600;
+}
+
+.ventas-stats-badge i{
+  font-size: 1.05rem;
+  opacity: 0.85;
+}
+
+.ventas-search{
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 360px;
+  max-width: 520px;
+  flex: 1 1 420px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+}
+
+.ventas-search i{
+  font-size: 1.05rem;
+  margin-right: 10px;
+  color: rgba(11,27,77,0.55);
+}
+
+.ventas-search input{
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  color: #0b1b4d;
+  background: transparent;
+}
+
+.ventas-search input::placeholder{
+  color: rgba(11,27,77,0.45);
+}
+
+.ventas-search .clear-btn{
+  border: none;
+  background: transparent;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(11,27,77,0.55);
+  cursor: pointer;
+}
+
+.ventas-search .clear-btn:hover{
+  background: rgba(11,27,77,0.06);
+  color: rgba(11,27,77,0.8);
+}
+
+.ventas-meta{
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ventas-meta .range{
+  color: rgba(11,27,77,0.65);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(11,27,77,0.04);
+  border: 1px solid rgba(11,27,77,0.08);
+}
+
+.ventas-page-size{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+}
+
+.ventas-page-size span{
+  font-size: 0.9rem;
+  color: rgba(11,27,77,0.65);
+  font-weight: 600;
+}
+
+.ventas-page-size select{
+  border: none;
+  outline: none;
+  background: transparent;
+  font-weight: 700;
+  color: #0b1b4d;
+  cursor: pointer;
+}
+
+.ventas-pager{
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 14px 34px rgba(17, 24, 39, 0.07);
+}
+
+.pager-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(11,27,77,0.14);
+  background: rgba(241,246,255,0.75);
+  color: #0b1b4d;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.pager-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(11,27,77,0.12);
+}
+
+.pager-btn:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pager-pages{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.page-btn{
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(11,27,77,0.12);
+  background: #fff;
+  color: #0b1b4d;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.page-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(11,27,77,0.10);
+  background: rgba(241,246,255,0.65);
+}
+
+.page-btn.active{
+  background: #0b1b4d;
+  color: #fff;
+  border-color: #0b1b4d;
+  box-shadow: 0 10px 22px rgba(11,27,77,0.20);
+}
+
+.page-btn.dots{
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+  color: rgba(11,27,77,0.55);
+}
+
+
+@media (max-width: 900px){
+  .ventas-search{
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .ventas-pager{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pager-pages{
+    flex-wrap: wrap;
+  }
+
+  .pager-btn{
+    width: 100%;
+    justify-content: center;
+  }
+}
+

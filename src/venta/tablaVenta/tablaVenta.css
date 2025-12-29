@@ -562,3 +562,126 @@
   box-shadow: 0 6px 20px rgba(0, 102, 47, 0.3);
   transform: translateY(-2px);
 }
+
+.ventas-tools{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-left:auto;
+  flex-wrap:wrap;
+}
+
+.ventas-search{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:14px;
+  padding:10px 12px;
+  min-width:320px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.05);
+}
+
+.ventas-search i{ opacity:.65; }
+.ventas-search input{
+  border:0;
+  outline:0;
+  width:100%;
+  background:transparent;
+  font-size:14px;
+}
+
+.ventas-search .clear-btn{
+  border:0;
+  background:transparent;
+  padding:2px 6px;
+  border-radius:10px;
+  opacity:.7;
+}
+.ventas-search .clear-btn:hover{ background:rgba(0,0,0,.06); opacity:1; }
+
+.ventas-meta{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.ventas-meta .range{
+  font-size:13px;
+  color: rgba(0,0,0,.55);
+}
+
+.ventas-page-size{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:14px;
+  padding:8px 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.05);
+}
+
+.ventas-page-size select{
+  border:0;
+  outline:0;
+  background:transparent;
+  font-weight:600;
+}
+
+/* pager */
+.ventas-pager{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px 6px 4px;
+}
+
+.pager-btn{
+  border:1px solid rgba(0,0,0,.10);
+  background:#fff;
+  border-radius:14px;
+  padding:10px 14px;
+  font-weight:600;
+  box-shadow: 0 10px 26px rgba(0,0,0,.06);
+}
+
+.pager-btn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+
+.pager-pages{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.page-btn{
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  border:1px solid rgba(0,0,0,.10);
+  background:#fff;
+  font-weight:700;
+  box-shadow: 0 10px 26px rgba(0,0,0,.06);
+}
+
+.page-btn.active{
+  border-color: rgba(31,46,134,.55);
+  box-shadow: 0 12px 30px rgba(31,46,134,.20);
+}
+
+.page-btn.dots{
+  width:auto;
+  padding:0 12px;
+  font-weight:800;
+  opacity:.7;
+  box-shadow:none;
+}

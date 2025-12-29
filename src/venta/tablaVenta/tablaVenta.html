@@ -20,10 +20,42 @@
   </div>
 
   <div class="castrol-table-container">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- TOP BAR: conteo + buscador + rango + pageSize -->
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
       <div class="ventas-stats-badge">
         <i class="bi bi-list-check"></i>
-        <span>{{ sales.length }} ventas registradas</span>
+        <span>{{ totalItems }} ventas registradas</span>
+      </div>
+
+      <div class="ventas-tools">
+        <div class="ventas-search">
+          <i class="bi bi-search"></i>
+          <input
+            type="text"
+            placeholder="Buscar por ticket, cliente, cajero, método…"
+            [(ngModel)]="filterText"
+            (ngModelChange)="onFilterChange()"
+          />
+          <button
+            *ngIf="filterText"
+            class="clear-btn"
+            type="button"
+            (click)="filterText=''; onFilterChange()"
+            title="Limpiar">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+
+        <div class="ventas-meta">
+          <span class="range">{{ pageFrom }}–{{ pageTo }} de {{ totalItems }}</span>
+
+          <div class="ventas-page-size">
+            <span>Mostrar</span>
+            <select [(ngModel)]="pageSize" (ngModelChange)="setPageSize($event)">
+              <option *ngFor="let s of pageSizeOptions" [ngValue]="s">{{ s }}</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -47,7 +79,8 @@
         </thead>
 
         <tbody>
-          <tr *ngFor="let s of sales">
+          <!-- OJO: aquí usamos pagedSales, NO sales -->
+          <tr *ngFor="let s of pagedSales; trackBy: trackBySaleId">
             <td class="fw-semibold">#{{ s.id }}</td>
             <td>{{ s.datee | date:'medium':'':'es-MX' }}</td>
             <td>{{ s.user_name || '—' }}</td>
@@ -65,13 +98,45 @@
             </td>
           </tr>
 
-          <tr *ngIf="!loading && sales.length === 0">
+          <tr *ngIf="!loading && pagedSales.length === 0">
             <td colspan="10" class="text-center text-muted py-4">
               No hay ventas para mostrar.
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- PAGER -->
+    <div class="ventas-pager" *ngIf="totalItems > 0">
+      <button
+        type="button"
+        class="pager-btn"
+        [disabled]="currentPage === 1"
+        (click)="prevPage()">
+        <i class="bi bi-chevron-left"></i> Anterior
+      </button>
+
+      <div class="pager-pages">
+        <button
+          type="button"
+          class="page-btn"
+          *ngFor="let p of pages"
+          [class.active]="p === currentPage"
+          [class.dots]="p === '...'"
+          [disabled]="p === '...'"
+          (click)="onPageTokenClick(p)">
+          {{ p }}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="pager-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="nextPage()">
+        Siguiente <i class="bi bi-chevron-right"></i>
+      </button>
     </div>
   </div>
 </div>

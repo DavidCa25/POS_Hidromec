@@ -88,4 +88,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     printSaleTicket: (payload) => ipcRenderer.invoke('print-sale-ticket', payload),
+    listSerialPorts: () => ipcRenderer.invoke('devices:list-serial-ports'),
+    listPrinters: () => ipcRenderer.invoke('devices:list-printers'),
+
+    getDeviceConfig: () => ipcRenderer.invoke('devices:get-config'),
+    setDeviceConfig: (cfg) => ipcRenderer.invoke('devices:set-config', cfg),
+
+    exportDatabase: () => ipcRenderer.invoke('export-database'),
+    importDatabase: () => ipcRenderer.invoke('import-database'),
 });

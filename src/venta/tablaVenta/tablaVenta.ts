@@ -1,8 +1,8 @@
 import { Component } from "@angular/core";
 import Swal from "sweetalert2";
-import { FormsModule } from '@angular/forms';
-import { Router, RouterOutlet } from '@angular/router';
-import { NgIf, NgFor, DatePipe, CurrencyPipe } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { RouterOutlet } from "@angular/router";
+import { NgIf, NgFor, DatePipe, CurrencyPipe, NgClass } from "@angular/common";
 
 interface SaleRow {
   id: number;
@@ -15,17 +15,23 @@ interface SaleRow {
   due_date?: string;
 }
 
+type PageToken = number | "...";
+
 @Component({
   selector: "app-tabla-venta",
   templateUrl: "./tablaVenta.html",
   styleUrls: ["./tablaVenta.css"],
-  imports: [NgIf, NgFor, DatePipe, CurrencyPipe, FormsModule, RouterOutlet],
+  standalone: true,
+  imports: [NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet],
 })
 export class TablaVentaComponent {
-  today = new Date();
-
   loading = false;
   sales: SaleRow[] = [];
+
+  filterText = "";
+  pageSizeOptions: number[] = [10, 25, 50, 100];
+  pageSize = 10;
+  currentPage = 1;
 
   showExportModal = false;
   exportMode: "DIA" | "RANGO" = "DIA";
@@ -49,6 +55,12 @@ export class TablaVentaComponent {
     return c > 0 ? c : 0;
   }
 
+  trackBySaleId = (_: number, s: SaleRow) => s.id;
+
+  private norm(v: any) {
+    return String(v ?? "").toLowerCase().trim();
+  }
+
   async loadSales(start_date: string | null = null, end_date: string | null = null) {
     const api = (window as any).electronAPI;
     if (!api?.getSales) {
@@ -61,13 +73,109 @@ export class TablaVentaComponent {
       const resp = await api.getSales({ start_date, end_date });
       if (!resp?.success) throw new Error(resp?.error || "Error al cargar ventas");
       this.sales = resp.data ?? [];
+
+      this.currentPage = 1;
     } catch (e: any) {
       console.error(e);
       await Swal.fire("Error", e?.message || "No se pudieron cargar las ventas.", "error");
       this.sales = [];
+      this.currentPage = 1;
     } finally {
       this.loading = false;
     }
+  }
+  onFilterChange() {
+    this.currentPage = 1;
+  }
+
+  get filteredSales(): SaleRow[] {
+    const q = this.norm(this.filterText);
+    if (!q) return this.sales;
+
+    return this.sales.filter(s => {
+      const haystack = [
+        s.id,
+        s.datee,
+        s.user_name,
+        s.customer_name,
+        s.payment_method,
+        s.total,
+        s.paid_amount,
+        s.due_date
+      ].map(this.norm).join(" | ");
+
+      return haystack.includes(q);
+    });
+  }
+
+  get totalItems() {
+    return this.filteredSales.length;
+  }
+
+  get totalPages() {
+    return Math.max(1, Math.ceil(this.totalItems / this.pageSize));
+  }
+
+  get pageFrom() {
+    if (this.totalItems === 0) return 0;
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get pageTo() {
+    if (this.totalItems === 0) return 0;
+    return Math.min(this.currentPage * this.pageSize, this.totalItems);
+  }
+
+  get pagedSales(): SaleRow[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filteredSales.slice(start, start + this.pageSize);
+  }
+
+  setPageSize(size: number) {
+    this.pageSize = Number(size) || 10;
+    this.currentPage = 1;
+  }
+
+  goToPage(page: number) {
+    const p = Math.max(1, Math.min(this.totalPages, Number(page) || 1));
+    this.currentPage = p;
+  }
+
+  prevPage() {
+    if (this.currentPage > 1) this.currentPage--;
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) this.currentPage++;
+  }
+
+  get pages(): PageToken[] {
+    const total = this.totalPages;
+    const current = this.currentPage;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const out: PageToken[] = [];
+    const left = Math.max(2, current - 1);
+    const right = Math.min(total - 1, current + 1);
+
+    out.push(1);
+
+    if (left > 2) out.push("...");
+
+    for (let p = left; p <= right; p++) out.push(p);
+
+    if (right < total - 1) out.push("...");
+
+    out.push(total);
+    return out;
+  }
+
+  onPageTokenClick(p: PageToken) {
+    if (p === "...") return;
+    this.goToPage(p);
   }
 
   async verPdfVenta(saleId: number) {
@@ -124,7 +232,7 @@ export class TablaVentaComponent {
       start_date = this.exportFrom;
       end_date = this.exportTo;
     }
-    
+
     this.showExportModal = false;
 
     Swal.fire({
@@ -132,24 +240,14 @@ export class TablaVentaComponent {
       html: "Por favor espera. Al terminar se abrirá automáticamente.",
       allowOutsideClick: false,
       allowEscapeKey: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+      didOpen: () => Swal.showLoading(),
     });
 
     try {
       const resp = await api.exportSalesPdf({ start_date, end_date });
-
       if (!resp?.success) throw new Error(resp?.error || "No se pudo exportar");
 
-      Swal.update({
-        title: "Abriendo PDF…",
-        html: "Un momento…",
-      });
-
       Swal.close();
-
-      this.showExportModal = false;
       await Swal.fire("Listo", `Reporte generado y abierto.`, "success");
     } catch (e: any) {
       console.error(e);
@@ -157,5 +255,4 @@ export class TablaVentaComponent {
       await Swal.fire("Error", e?.message || "Error al exportar PDFs.", "error");
     }
   }
-  
 }

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
@@ -8,8 +8,10 @@ const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { autoUpdater } = require('electron-updater');
-const { startSerialScanner } = require('./scanner');
 const { start } = require('repl');
+const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
+const { runMigrations } = require('./migrationsRunner');
+
 
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
@@ -17,6 +19,166 @@ const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 let businessConfig = null;
 
 let updateCheckTimer = null;
+let mainWindow = null;
+
+function escSqlString(s) {
+  return String(s ?? '').replace(/'/g, "''");
+}
+
+function safeSqlBackupDir() {
+  return process.env.SQL_BACKUP_DIR || 'C:\\POS_Backups';
+}
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+async function getCurrentDbName() {
+  const pool = await poolPromise;
+  return pool?.config?.database || 'Hidromec_DataBase';
+}
+
+async function runOnMaster(fn) {
+  const poolDb = await poolPromise;
+  const baseCfg = poolDb.config; 
+  const masterPool = await new sql.ConnectionPool({ ...baseCfg, database: 'master' }).connect();
+  try {
+    return await fn(masterPool);
+  } finally {
+    try { await masterPool.close(); } catch {}
+  }
+}
+
+function buildDrawerKickCmd({ pulseMs = 120, pin = 0 } = {}) {
+  const t = Math.max(1, Math.min(255, Math.round((Number(pulseMs) || 120) / 2)));
+  return Buffer.from([0x1B, 0x70, pin ? 0x01 : 0x00, t, t]);
+}
+
+ipcMain.handle('export-database', async () => {
+  try {
+    const dbName = await getCurrentDbName();
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Exportar base de datos',
+      defaultPath: `${dbName}_${stamp()}.bak`,
+      filters: [{ name: 'SQL Server Backup', extensions: ['bak'] }]
+    });
+
+    if (canceled || !filePath) return { success: false, canceled: true };
+
+    const sqlDir = safeSqlBackupDir();
+    if (!fs.existsSync(sqlDir)) fs.mkdirSync(sqlDir, { recursive: true });
+
+    const tmpBak = path.join(sqlDir, `${dbName}_${stamp()}_${Math.random().toString(16).slice(2)}.bak`);
+
+    const pool = await poolPromise;
+
+    const query = `
+      DECLARE @p NVARCHAR(4000) = N'${escSqlString(tmpBak)}';
+      BACKUP DATABASE [${dbName}]
+      TO DISK = @p
+      WITH INIT, STATS = 5;
+    `;
+    await pool.request().query(query);
+
+    fs.copyFileSync(tmpBak, filePath);
+
+    try { fs.unlinkSync(tmpBak); } catch {}
+
+    return { success: true, path: filePath };
+  } catch (err) {
+    console.error('❌ export-database:', err);
+    return {
+      success: false,
+      error:
+        err?.message ||
+        'No se pudo exportar. Asegura permisos para SQL Server en C:\\POS_Backups (o SQL_BACKUP_DIR).'
+    };
+  }
+});
+
+ipcMain.handle('import-database', async () => {
+  try {
+    const dbName = await getCurrentDbName();
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+
+    const pick = await dialog.showOpenDialog(win, {
+      title: 'Importar (restaurar) base de datos',
+      properties: ['openFile'],
+      filters: [{ name: 'SQL Server Backup', extensions: ['bak'] }]
+    });
+
+    if (pick.canceled || !pick.filePaths?.length) return { success: false, canceled: true };
+
+    const bakPath = pick.filePaths[0];
+
+    const confirm = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['Cancelar', 'Restaurar'],
+      defaultId: 1,
+      cancelId: 0,
+      title: 'Confirmar restauración',
+      message: 'Esto reemplazará la base de datos actual con el respaldo seleccionado.',
+      detail: `BD: ${dbName}\nArchivo: ${bakPath}\n\n¿Deseas continuar?`
+    });
+
+    if (confirm.response !== 1) return { success: false, canceled: true };
+
+    await runOnMaster(async (masterPool) => {
+      const q = `
+        DECLARE @p NVARCHAR(4000) = N'${escSqlString(bakPath)}';
+
+        ALTER DATABASE [${dbName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+        RESTORE DATABASE [${dbName}]
+        FROM DISK = @p
+        WITH REPLACE, RECOVERY, STATS = 5;
+
+        ALTER DATABASE [${dbName}] SET MULTI_USER;
+      `;
+      await masterPool.request().query(q);
+    });
+
+    return { success: true, requiresRestart: true };
+  } catch (err) {
+    console.error('❌ import-database:', err);
+    return {
+      success: false,
+      error:
+        err?.message ||
+        'No se pudo importar. Revisa que SQL Server pueda acceder a la ruta del .bak.'
+    };
+  }
+});
+
+function getDeviceConfigPath() {
+  return path.join(app.getPath('userData'), 'device-config.json');
+}
+
+function loadDeviceConfig() {
+  const p = getDeviceConfigPath();
+  try {
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error leyendo device-config.json:', e);
+  }
+  return {
+    scanner: { enabled: false, path: '', baudRate: 9600 },
+    printer: { ticketPrinterName: '' },
+    cashDrawer: { mode: 'printer', serialPath: '' } 
+  };
+}
+
+function saveDeviceConfig(cfg) {
+  const p = getDeviceConfigPath();
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2), 'utf8');
+  return cfg;
+}
 
 function setupAutoUpdater(win) {
   if (isDev) {
@@ -145,7 +307,7 @@ function createWindow() {
   }
 
   setupAutoUpdater(win);
-  startSerialScanner(mainWindow, { path: 'COM3', baudRate: 9600 });
+  startSerialScanner(win, { path: 'COM3', baudRate: 9600 });
   return win;
 }
 
@@ -161,6 +323,14 @@ async function ensureBusinessConfig() {
 
 app.whenReady().then(async () => {
   try {
+    const pool = await poolPromise;
+    const migrationsDir = isDev
+      ? path.join(__dirname, 'migrations')
+      : path.join(process.resourcesPath, 'migrations');
+
+    const mig = await runMigrations({ pool, sql, migrationsDir });
+    console.log('Migraciones:', mig);
+
     createWindow();  
 
     ensureBusinessConfig().catch(err => {
@@ -708,18 +878,50 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle('open-cash-drawer', async () => {
+ipcMain.handle('open-cash-drawer', async (_event, payload = {}) => {
   try {
-    console.log('🧾 Simulación: abrir cajón de efectivo');
+    const portPath = String(payload?.portPath || payload?.path || '').trim();
+    const baudRate = Number(payload?.baudRate || 9600);
+    const pulseMs  = Number(payload?.pulseMs  || 120);
+    const pin      = Number(payload?.pin || 0); // 0 default, 1 alternativo
 
-    // TODO: aquí en un futuro:
-    // - Enviar comando ESC/POS a la impresora
-    // - Escribir en puerto serial/USB, etc.
+    if (!portPath) {
+      return { success: false, error: 'Falta portPath (ej. COM5).' };
+    }
+    if (!Number.isFinite(baudRate) || baudRate <= 0) {
+      return { success: false, error: 'baudRate inválido.' };
+    }
+
+    const cmd = buildDrawerKickCmd({ pulseMs, pin });
+
+    const result = await new Promise((resolve) => {
+      const sp = new SerialPort({ path: portPath, baudRate, autoOpen: false });
+
+      sp.open((openErr) => {
+        if (openErr) return resolve({ ok: false, error: openErr.message });
+
+        sp.write(cmd, (writeErr) => {
+          if (writeErr) {
+            try { sp.close(); } catch {}
+            return resolve({ ok: false, error: writeErr.message });
+          }
+
+          sp.drain(() => {
+            try { sp.close(); } catch {}
+            resolve({ ok: true });
+          });
+        });
+      });
+    });
+
+    if (!result.ok) {
+      return { success: false, error: result.error || 'No se pudo abrir el cajón.' };
+    }
 
     return { success: true };
   } catch (err) {
-    console.error('❌ Error al abrir cajón:', err);
-    return { success: false, error: err.message };
+    console.error('open-cash-drawer:', err);
+    return { success: false, error: err?.message || String(err) };
   }
 });
 
@@ -1429,6 +1631,109 @@ ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
     return { success: false, error: err?.message || String(err) };
   }
 });
+
+ipcMain.handle('devices:list-serial-ports', async () => {
+  try {
+    const ports = await listSerialPorts();
+    const data = ports.map(p => ({
+      path: p.path,
+      manufacturer: p.manufacturer || '',
+      serialNumber: p.serialNumber || '',
+      vendorId: p.vendorId || '',
+      productId: p.productId || ''
+    }));
+    return { success: true, data };
+  } catch (err) {
+    console.error('devices:list-serial-ports:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:list-printers', async () => {
+  try {
+    if (!mainWindow) throw new Error('Ventana principal no disponible');
+    const printers = await mainWindow.webContents.getPrintersAsync();
+    const data = printers.map(p => ({
+      name: p.name,
+      displayName: p.displayName || p.name,
+      isDefault: !!p.isDefault,
+      status: p.status || 0,
+      description: p.description || ''
+    }));
+    return { success: true, data };
+  } catch (err) {
+    console.error('devices:list-printers:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:get-config', async () => {
+  try {
+    return { success: true, data: loadDeviceConfig() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
+  try {
+    const current = loadDeviceConfig();
+    const merged = {
+      ...current,
+      ...partialCfg,
+      scanner: { ...(current.scanner || {}), ...(partialCfg.scanner || {}) },
+      printer: { ...(current.printer || {}), ...(partialCfg.printer || {}) },
+      cashDrawer: { ...(current.cashDrawer || {}), ...(partialCfg.cashDrawer || {}) }
+    };
+
+    saveDeviceConfig(merged);
+
+    if (merged.scanner?.enabled && merged.scanner?.path) {
+      startSerialScanner(mainWindow, {
+        path: merged.scanner.path,
+        baudRate: merged.scanner.baudRate || 9600
+      });
+    } else {
+      stopSerialScanner();
+    }
+
+    return { success: true, data: merged };
+  } catch (err) {
+    console.error('devices:set-config:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-purchases', async (event) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .execute('sp_get_purchases');
+        return { success: true, data: result.recordset };
+    } catch (err) {
+        console.error('❌ Error en get-purchases:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sp-get-user-by-id', async (event, userId) => { 
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+        .input('userID', sql.Int, userId)
+        .execute('sp_get_user_by_id');
+    
+        if (result.recordset.length > 0) {
+        return { success: true, user: result.recordset[0] };
+        } else {
+        return { success: false, message: 'Usuario no encontrado' };
+        }
+    } catch (err) {
+        console.error('❌ Error en get-user-by-id:', err);
+        return { success: false, error: err.message };
+    }
+});
+
 
 
 
