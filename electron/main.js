@@ -10,6 +10,7 @@ const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { autoUpdater } = require('electron-updater');
 const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
+const { runMigrations } = require('./migrationsRunner');
 
 
 
@@ -322,6 +323,14 @@ async function ensureBusinessConfig() {
 
 app.whenReady().then(async () => {
   try {
+    const pool = await poolPromise;
+    const migrationsDir = isDev
+      ? path.join(__dirname, 'migrations')
+      : path.join(process.resourcesPath, 'migrations');
+
+    const mig = await runMigrations({ pool, sql, migrationsDir });
+    console.log('Migraciones:', mig);
+
     createWindow();  
 
     ensureBusinessConfig().catch(err => {

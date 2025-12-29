@@ -52,6 +52,11 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "electron/migrations",
+        "to": "migrations",
+        "filter": ["**/*.sql"]
       }
     ],
     "win": {
