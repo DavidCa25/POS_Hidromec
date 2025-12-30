@@ -699,3 +699,209 @@
     justify-content:center;
   }
 }
+/* ===== Modal Proveedores por producto ===== */
+.modal-backdrop-soft{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.18);
+  z-index: 11000;
+}
+
+.suppliers-modal{
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: min(980px, calc(100vw - 24px));
+  max-height: min(82vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  z-index: 11010;
+  box-shadow: 0 18px 55px rgba(0,0,0,.18);
+  padding: 18px 18px 16px;
+}
+
+.suppliers-modal-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.suppliers-title{
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.suppliers-subtitle{
+  margin-top: 2px;
+  color: rgba(0,0,0,.55);
+  display:flex;
+  gap: 8px;
+  align-items:center;
+}
+
+.suppliers-pill{
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.05);
+  font-weight: 700;
+  color: rgba(0,0,0,.65);
+  font-size: .85rem;
+}
+
+.suppliers-close{
+  border: 0;
+  background: rgba(0,0,0,.05);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+.suppliers-add-card{
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(0,0,0,.02);
+}
+
+.suppliers-list{
+  margin-top: 14px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.supplier-row{
+  display:flex;
+  justify-content:space-between;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+.supplier-main{
+  min-width: 260px;
+}
+
+.supplier-name{
+  font-weight: 800;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap: 6px;
+}
+
+.supplier-meta{
+  margin-top: 4px;
+  color: rgba(0,0,0,.55);
+  font-size: .9rem;
+}
+
+.supplier-actions{
+  display:flex;
+  align-items:end;
+  gap: 10px;
+  flex-wrap:wrap;
+}
+
+.supplier-cost{
+  display:flex;
+  flex-direction:column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.supplier-cost label{
+  font-size: .82rem;
+  color: rgba(0,0,0,.55);
+}
+
+/* Botón de proveedores en actions */
+.action-btn.btn-suppliers{
+  background: rgba(0,0,0,.04);
+  border: 1px solid rgba(0,0,0,.06);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.action-btn.btn-suppliers i{
+  font-size: 1.05rem;
+}
+
+/* Backdrop suave reutilizable */
+.modal-backdrop-soft{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.25);
+  z-index: 11000;
+}
+
+/* Mini modal moderno */
+.mini-modal{
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.18);
+  z-index: 11010;
+  overflow: hidden;
+}
+
+.mini-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.mini-modal-title{
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #2b2b2b;
+  display:flex;
+  align-items:center;
+}
+
+.mini-close{
+  border: 0;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+.mini-close:hover{
+  background: rgba(0,0,0,.06);
+}
+
+.mini-modal-body{
+  padding: 16px;
+}
+
+.mini-modal-actions{
+  padding: 14px 16px 16px;
+  display:flex;
+  justify-content:flex-end;
+  gap: 10px;
+}

@@ -96,4 +96,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     importDatabase: () => ipcRenderer.invoke('import-database'),
+
+    // Proveedores por producto
+    getProductSuppliers: (productId, onlyActive = true) =>
+    ipcRenderer.invoke('sp-get-product-suppliers', { product_id: productId, only_active: onlyActive ? 1 : 0 }),
+
+    upsertProductSupplier: (payload) =>
+    ipcRenderer.invoke('sp-upsert-product-supplier', payload),
+
+    setProductDefaultSupplier: (productId, supplierId) =>
+    ipcRenderer.invoke('sp-set-product-default-supplier', { product_id: productId, supplier_id: supplierId }),
+
+    removeProductSupplier: (productId, supplierId) =>
+    ipcRenderer.invoke('sp-remove-product-supplier', { product_id: productId, supplier_id: supplierId }),
+
+    getProductDefaultSupplier: (productId) =>
+    ipcRenderer.invoke('sp-get-product-default-supplier', { product_id: productId }),
+
+    addSupplier: (nombre) =>
+        ipcRenderer.invoke('sp-add-supplier', { nombre }),
+
+    createBrand: (payload) => ipcRenderer.invoke('sp-add-brand', payload),
+    createCategory: (payload) => ipcRenderer.invoke('sp-add-category', payload),
+
 });

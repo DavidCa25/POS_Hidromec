@@ -1734,6 +1734,194 @@ ipcMain.handle('sp-get-user-by-id', async (event, userId) => {
     }
 });
 
+// PRODUCT SUPPLIERS (proveedores por producto)
+
+// Lista proveedores vinculados a un producto
+ipcMain.handle('sp-get-product-suppliers', async (_event, payload) => {
+  try {
+    const product_id = Number(payload?.product_id ?? payload?.productId ?? 0);
+    const only_active = payload?.only_active ?? payload?.onlyActive ?? 1;
+
+    if (!Number.isFinite(product_id) || product_id <= 0) {
+      return { success: false, error: 'product_id inválido' };
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('product_id', sql.Int, product_id)
+      .input('only_active', sql.Bit, only_active ? 1 : 0)
+      .execute('sp_get_product_suppliers');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ sp-get-product-suppliers:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Agrega/actualiza vínculo producto-proveedor
+ipcMain.handle('sp-upsert-product-supplier', async (_event, payload) => {
+  try {
+    const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
+    const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
+
+    const is_default  = payload?.is_default ?? payload?.isDefault ?? 0;
+    const active      = payload?.active ?? 1;
+
+    // last_cost puede venir null
+    const last_cost_raw = payload?.last_cost ?? payload?.lastCost ?? null;
+    const last_cost = (last_cost_raw === null || last_cost_raw === '' || last_cost_raw === undefined)
+      ? null
+      : Number(last_cost_raw);
+
+    if (!Number.isFinite(product_id) || product_id <= 0) return { success: false, error: 'product_id inválido' };
+    if (!Number.isFinite(supplier_id) || supplier_id <= 0) return { success: false, error: 'supplier_id inválido' };
+    if (last_cost !== null && !Number.isFinite(last_cost)) return { success: false, error: 'last_cost inválido' };
+
+    const pool = await poolPromise;
+    const req = pool.request()
+      .input('product_id',  sql.Int, product_id)
+      .input('supplier_id', sql.Int, supplier_id)
+      .input('is_default',  sql.Bit, is_default ? 1 : 0)
+      .input('active',      sql.Bit, active ? 1 : 0);
+
+    req.input('last_cost', sql.Decimal(10,2), last_cost);
+
+    const result = await req.execute('sp_upsert_product_supplier');
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ sp-upsert-product-supplier:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Poner proveedor default
+ipcMain.handle('sp-set-product-default-supplier', async (_event, payload) => {
+  try {
+    const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
+    const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
+
+    if (!Number.isFinite(product_id) || product_id <= 0) return { success: false, error: 'product_id inválido' };
+    if (!Number.isFinite(supplier_id) || supplier_id <= 0) return { success: false, error: 'supplier_id inválido' };
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('product_id',  sql.Int, product_id)
+      .input('supplier_id', sql.Int, supplier_id)
+      .execute('sp_set_product_default_supplier');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ sp-set-product-default-supplier:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Quitar (desactivar) proveedor de producto
+ipcMain.handle('sp-remove-product-supplier', async (_event, payload) => {
+  try {
+    const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
+    const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
+
+    if (!Number.isFinite(product_id) || product_id <= 0) return { success: false, error: 'product_id inválido' };
+    if (!Number.isFinite(supplier_id) || supplier_id <= 0) return { success: false, error: 'supplier_id inválido' };
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('product_id',  sql.Int, product_id)
+      .input('supplier_id', sql.Int, supplier_id)
+      .execute('sp_remove_product_supplier');
+
+    return { success: true, data: result.recordset ?? [] };
+  } catch (err) {
+    console.error('❌ sp-remove-product-supplier:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Obtener default (rápido)
+ipcMain.handle('sp-get-product-default-supplier', async (_event, payload) => {
+  try {
+    const product_id = Number(payload?.product_id ?? payload?.productId ?? 0);
+    if (!Number.isFinite(product_id) || product_id <= 0) {
+      return { success: false, error: 'product_id inválido' };
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('product_id', sql.Int, product_id)
+      .execute('sp_get_product_default_supplier');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('❌ sp-get-product-default-supplier:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-add-supplier', async (_event, payload) => {
+  try {
+    const nombre = String(payload?.nombre ?? payload?.name ?? '').trim();
+    if (!nombre) return { success: false, error: 'nombre requerido' };
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('nombre', sql.NVarChar(150), nombre)
+      .execute('sp_add_supplier');
+
+    const newId = result.recordset?.[0]?.id ?? null;
+    return { success: true, data: { id: newId } };
+  } catch (err) {
+    console.error('❌ sp-add-supplier:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+function pickName(payload) {
+  if (typeof payload === 'string') return payload.trim();
+
+  const v = payload?.nombre ?? payload?.name ?? payload?.namee ?? '';
+  if (typeof v !== 'string') return '';
+  return v.trim();
+}
+
+ipcMain.handle('sp-add-brand', async (_event, payload) => {
+  try {
+    const nombre = pickName(payload);
+    if (!nombre) return { success: false, error: 'nombre requerido' };
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('namee', sql.NVarChar(150), nombre)
+      .execute('sp_add_brand');
+
+    const newId = result.recordset?.[0]?.id ?? null;
+    return { success: true, data: { id: newId } };
+  } catch (err) {
+    console.error('sp-add-brand:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-add-category', async (_event, payload) => {
+  try {
+    const nombre = pickName(payload);
+    if (!nombre) return { success: false, error: 'nombre requerido' };
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('namee', sql.NVarChar(150), nombre)
+      .execute('sp_add_categories');
+
+    const newId = result.recordset?.[0]?.id ?? null;
+    return { success: true, data: { id: newId } };
+  } catch (err) {
+    console.error('sp-add-categories:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+
 
 
 
