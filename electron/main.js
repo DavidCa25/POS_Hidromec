@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
-const { pool } = require('mssql');
 const puppeteer = require("puppeteer");
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
@@ -11,6 +10,7 @@ const { autoUpdater } = require('electron-updater');
 const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
+
 
 
 
@@ -1919,6 +1919,32 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
     console.error('sp-add-categories:', err);
     return { success: false, error: err.message };
   }
+
+  //Mercado Pago
+
+  ipcMain.handle('mp-create-order', async (_event, payload = {}) => {
+    return mpPoint.createPointOrder({
+      amount: payload?.amount,
+      externalReference: payload?.externalReference,
+      expirationTime: payload?.expirationTime,        
+      printOnTerminal: payload?.printOnTerminal      
+    });
+  });
+
+  ipcMain.handle('mp-get-order', async (_event, orderId) => {
+    return mpPoint.getOrder(orderId);
+  });
+
+  ipcMain.handle('mp-cancel-order', async (_event, orderId) => {
+    return mpPoint.cancelOrder(orderId);
+  });
+
+  ipcMain.handle('mp-list-terminals', async () => {
+    return mpPoint.listTerminals();
+  });
+
+  ipcMain.handle('mp-get-config', async () => mpPoint.getPublicConfig());
+  ipcMain.handle('mp-set-config', async (_event, cfg = {}) => mpPoint.setConfig(cfg));
 });
 
 

@@ -118,5 +118,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     createBrand: (payload) => ipcRenderer.invoke('sp-add-brand', payload),
     createCategory: (payload) => ipcRenderer.invoke('sp-add-category', payload),
+    mpCreateOrder: (payload) => ipcRenderer.invoke('mp-create-order', payload),
+    mpGetOrder: (orderId) => ipcRenderer.invoke('mp-get-order', orderId),
+    mpCancelOrder: (orderId) => ipcRenderer.invoke('mp-cancel-order', orderId),
+    mpListTerminals: () => ipcRenderer.invoke('mp-list-terminals'),
+    mpGetConfig: () => ipcRenderer.invoke('mp-get-config'),
+    mpSetConfig: (cfg) => ipcRenderer.invoke('mp-set-config', cfg),
 
 });
