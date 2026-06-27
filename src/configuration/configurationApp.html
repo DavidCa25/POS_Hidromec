@@ -553,6 +553,89 @@
         </div>
 
       </div>
+
+      <!-- ============= MERCADO PAGO POINT ============= -->
+      <div class="cfg-card span-6">
+        <div class="cfg-card-h">
+          <div class="h-left">
+            <span class="chip chip-blue"><i class="bi bi-credit-card-2-back"></i></span>
+            <div>
+              <div class="h-title">Terminal Mercado Pago</div>
+              <div class="h-sub">Credenciales Point y terminal en modo PDV</div>
+            </div>
+          </div>
+          <span class="pill" [class.ok]="mpHasToken" [class.warn]="!mpHasToken">
+            <i class="bi bi-shield-lock"></i> {{ mpHasToken ? 'Token guardado' : 'Sin token' }}
+          </span>
+        </div>
+
+        <div class="cfg-card-b">
+          <div class="row">
+            <label class="lbl">Access Token</label>
+            <input class="ctl" type="password"
+                  [(ngModel)]="mpAccessToken"
+                  [placeholder]="mpHasToken ? 'Token guardado — deja vacío para conservarlo' : 'APP_USR-... o TEST-...'">
+            <div class="hint">Por seguridad el token no se muestra. Escribe uno nuevo solo si quieres reemplazarlo.</div>
+          </div>
+
+          <div class="row">
+            <label class="lbl">Terminal ID (modo PDV)</label>
+            <div class="path-row">
+              <input class="ctl" type="text" [(ngModel)]="mpTerminalId"
+                    placeholder="NEWLAND_N950__N950NCB...">
+              <button type="button" class="btn-outline"
+                      (click)="cargarTerminalesMp()"
+                      [disabled]="mpLoadingTerminals || !mpHasToken">
+                <i class="bi bi-search"></i>
+                {{ mpLoadingTerminals ? 'Buscando...' : 'Listar' }}
+              </button>
+            </div>
+            <div class="hint">Usa "Listar" para traer las terminales de la cuenta y elegir la tuya.</div>
+          </div>
+
+          <div class="row" *ngIf="mpTerminals.length">
+            <label class="lbl">Terminales encontradas</label>
+            <select class="ctl" [(ngModel)]="mpTerminalId">
+              <option *ngFor="let t of mpTerminals" [value]="t.id">
+                {{ t.id }} — {{ t.operating_mode || 'UNDEFINED' }}
+              </option>
+            </select>
+            <div class="hint">Debe estar en modo <b>PDV</b> para recibir cobros. Si dice STANDALONE, actívalo por API/terminal.</div>
+          </div>
+          <div class="row two">
+      <div>
+        <label class="lbl">Modo prueba</label>
+        <div class="toggle">
+          <label class="sw">
+            <input type="checkbox" [(ngModel)]="mpTestMode">
+            <span class="sl"></span>
+          </label>
+          <span class="ttext">{{ mpTestMode ? 'Activo (simula pagos)' : 'Producción (cobros reales)' }}</span>
+        </div>
+        <div class="hint">
+          Con modo prueba, las ventas con terminal se aprueban solas para validar el flujo.
+          Apágalo para cobros reales con tarjeta.
+        </div>
+      </div>
+
+      <div>
+        <label class="lbl">Estado</label>
+        <div class="pill" [class.warn]="mpTestMode" [class.ok]="!mpTestMode" style="justify-content:flex-start;">
+          <i class="bi" [class.bi-cone-striped]="mpTestMode" [class.bi-check-circle]="!mpTestMode"></i>
+          <span>{{ mpTestMode ? 'Simulación activada' : 'Listo para producción' }}</span>
+        </div>
+      </div>
+    </div>
+          <div class="btn-row">
+            <button type="button" class="btn-primary-sm"
+                    (click)="guardarCredencialesMp()"
+                    [disabled]="busyMpSave">
+              <i class="bi bi-check2-circle"></i>
+              {{ busyMpSave ? 'Guardando...' : 'Guardar credenciales' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ============= SEGURIDAD / APARIENCIA / DIAGNÓSTICO (placeholder) ============= -->
@@ -658,3 +741,4 @@
 
   </div>
 </div>
+

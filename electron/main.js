@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
-const { pool } = require('mssql');
 const puppeteer = require("puppeteer");
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
@@ -11,6 +10,7 @@ const { autoUpdater } = require('electron-updater');
 const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
+const mpPoint  = require('./mercadoPoint');
 
 
 
@@ -331,7 +331,7 @@ app.whenReady().then(async () => {
     const mig = await runMigrations({ pool, sql, migrationsDir });
     console.log('Migraciones:', mig);
 
-    createWindow();  
+    mainWindow = createWindow();
 
     ensureBusinessConfig().catch(err => {
       console.error('Error cargando businessConfig al inicio:', err);
@@ -500,7 +500,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, c
 
     const pool = await poolPromise;
 
-    const tvp = new sql.Table();
+    const tvp = new sql.Table('dbo.SaleDetailType');
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Int, { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
@@ -1165,15 +1165,16 @@ async function generateSaleTicketPdf(header, lines, extras = {}) {
   }).join("");
 
   // --- Totales ---
-  const subtotal = (lines || []).reduce((a, l) => {
+  const total = (lines || []).reduce((a, l) => {
     const qty  = Number(l.quantity ?? l.qty ?? 0);
     const unit = Number(l.unitary_price ?? l.price ?? 0);
     const sub  = Number(l.subtotal ?? (Number.isFinite(qty * unit) ? qty * unit : 0));
     return a + sub;
   }, 0);
 
-  const iva   = subtotal * 0.16;
-  const total = Number(header.total ?? subtotal);
+  const IVA_RATE = 0.16;
+  const subtotal = total / (1 + IVA_RATE);   
+  const iva      = total - subtotal;
 
   // si me mandas pagado/cambio desde el front, tienen prioridad
   const pagado = extras.pagado != null
@@ -1522,10 +1523,11 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
       </tr>`;
   }).join("");
 
-  const subtotal = (details || []).reduce((a, l) => a + Number(l.line_total ?? 0), 0);
-  const iva = subtotal * 0.16;
+  const total = (details || []).reduce((a, l) => a + Number(l.line_total ?? 0), 0);
 
-  const total = Number(header.total ?? subtotal);
+  const IVA_RATE = 0.16;
+  const subtotal = total / (1 + IVA_RATE);
+  const iva      = total - subtotal;
 
   const pagado = extras.pagado != null
     ? Number(extras.pagado)
@@ -1919,7 +1921,45 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
     console.error('sp-add-categories:', err);
     return { success: false, error: err.message };
   }
+
 });
+
+ //Mercado Pago
+
+  ipcMain.handle('mp-create-order', async (_event, payload = {}) => {
+    return mpPoint.createPointOrder({
+      amount: payload?.amount,
+      externalReference: payload?.externalReference,
+      expirationTime: payload?.expirationTime,        
+      printOnTerminal: payload?.printOnTerminal      
+    });
+  });
+
+  ipcMain.handle('mp-get-order', async (_event, orderId) => {
+    return mpPoint.getOrder(orderId);
+  });
+
+  ipcMain.handle('mp-cancel-order', async (_event, orderId) => {
+    return mpPoint.cancelOrder(orderId);
+  });
+
+  ipcMain.handle('mp-list-terminals', async () => {
+    return mpPoint.listTerminals();
+  });
+
+  ipcMain.handle('mp-get-config', async () => mpPoint.getPublicConfig());
+  ipcMain.handle('mp-set-config', async (_event, cfg = {}) => mpPoint.setConfig(cfg));
+
+  ipcMain.handle('mp-simulate-order', async (_event, payload = {}) => {
+    const orderId = typeof payload === 'string' ? payload : payload?.orderId;
+    const status  = (typeof payload === 'object' ? payload?.status : null) || 'processed';
+    return mpPoint.simulateOrderEvent(orderId, status, payload?.opts || {});
+  });
+
+  ipcMain.handle('mp-validate-token', async () => mpPoint.validateToken());
+  ipcMain.handle('mp-create-store', async (_event, payload = {}) => mpPoint.createStore(payload));
+  ipcMain.handle('mp-create-pos', async (_event, payload = {}) => mpPoint.createPos(payload));
+  ipcMain.handle('mp-set-pdv', async (_event, terminalId) => mpPoint.setPdv(terminalId));
 
 
 

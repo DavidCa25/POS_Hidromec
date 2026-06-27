@@ -1,0 +1,110 @@
+<div class="panel-content">
+    
+    <div class="section-title"><i class="bi bi-printer"></i> Impresora y formato</div>
+    
+    <div class="row two">
+        <div>
+            <label class="lbl">Impresora principal</label>
+            
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" (click)="printerOpen = !printerOpen; paperSizeOpen = false;">
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ nombreImpresoraSeleccionada }}
+                    </span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                
+                <div class="custom-sel-menu" *ngIf="printerOpen">
+                    <div class="custom-sel-option" 
+                         (click)="seleccionarImpresora('')"
+                         [class.selected]="ticketPrinterName === ''">
+                        (Predeterminada del sistema)
+                    </div>
+                    <div class="custom-sel-option" 
+                         *ngFor="let pr of printers" 
+                         (click)="seleccionarImpresora(pr.name)"
+                         [class.selected]="ticketPrinterName === pr.name">
+                        {{ pr.displayName || pr.name }}
+                    </div>
+                </div>
+            </div>
+            <div class="hint">Se usará para despachar todos los recibos de venta.</div>
+        </div>
+        
+        <div>
+            <label class="lbl">Tamaño de papel</label>
+            
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" (click)="paperSizeOpen = !paperSizeOpen; printerOpen = false;">
+                    <span>{{ ticketPaperSize }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                
+                <div class="custom-sel-menu" *ngIf="paperSizeOpen">
+                    <div class="custom-sel-option" 
+                         *ngFor="let size of paperSizes" 
+                         (click)="seleccionarTamano(size)"
+                         [class.selected]="ticketPaperSize === size">
+                        {{ size }}
+                    </div>
+                </div>
+            </div>
+            <div class="hint">Estándar para impresoras térmicas.</div>
+        </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-sliders"></i> Comportamiento</div>
+
+    <div class="row two">
+        <div>
+            <label class="lbl">Impresión silenciosa</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" checked>
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">No mostrar diálogo</span>
+            </div>
+        </div>
+
+        <div>
+            <label class="lbl">Imprimir al cobrar</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" checked>
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">Automático</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-palette2"></i> Diseño del comprobante</div>
+    
+    <div class="row two">
+        <div>
+            <label class="lbl">Texto pie de página</label>
+            <input class="ctl" type="text" value="¡Gracias por su preferencia!">
+        </div>
+        <div>
+            <label class="lbl">Incluir Logo</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" checked>
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">Mostrar en cabecera</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-row" style="justify-content: flex-end; margin-top: 32px;">
+        <button type="button" class="btn-outline">
+            <i class="bi bi-eye"></i> Vista previa
+        </button>
+        <button type="button" class="btn-primary" (click)="save()">
+            <i class="bi bi-check2-circle"></i> Guardar cambios
+        </button>
+    </div>
+
+</div>

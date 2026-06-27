@@ -409,6 +409,7 @@
                       (ngModelChange)="onPaymentMethodChange($event)">
                 <option value="EFECTIVO">Efectivo</option>
                 <option value="TARJETA">Tarjeta</option>
+                <option value="TERMINAL_MP">Mercado Pago</option>
                 <option value="TRANSFERENCIA">Transferencia</option>
                 <option value="CREDITO">Crédito</option>
               </select>
@@ -636,7 +637,7 @@
                   [disabled]="!lastSaleId || printingTicket"
                   (click)="imprimirTicketUltimaVenta(true)">
             <i class="bi bi-printer me-2"></i>
-            Imprimir ticket
+            Imprimir tickets
           </button>
 
           <button type="button"

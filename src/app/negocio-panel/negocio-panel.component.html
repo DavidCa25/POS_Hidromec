@@ -1,0 +1,71 @@
+<div class="panel-content">
+
+    <div class="section-title"><i class="bi bi-shop"></i> Información General</div>
+    
+    <div style="margin-bottom: 16px;">
+        <label class="lbl">Nombre del comercio</label>
+        <input class="ctl" type="text" [(ngModel)]="nombreComercio" placeholder="Ej. Abarrotes La Esperanza">
+    </div>
+
+    <div class="row two">
+        <div>
+            <label class="lbl">Moneda principal</label>
+            
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" (click)="monedaOpen = !monedaOpen">
+                    <span>{{ monedaSeleccionada }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                
+                <div class="custom-sel-menu" *ngIf="monedaOpen">
+                    <div class="custom-sel-option" 
+                         *ngFor="let m of monedas" 
+                         (click)="seleccionarMoneda(m)"
+                         [class.selected]="monedaSeleccionada === m">
+                        {{ m }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <label class="lbl">IVA por defecto (%)</label>
+            <input class="ctl" type="number" [(ngModel)]="iva" min="0" step="1">
+        </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-plug"></i> Integraciones</div>
+
+    <div class="row two">
+        <div>
+            <label class="lbl">Tickets por WhatsApp</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" [(ngModel)]="whatsappHabilitado">
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">Habilitar envío</span>
+            </div>
+            <div class="hint">Permite mandar el comprobante al cliente.</div>
+        </div>
+
+        <div>
+            <label class="lbl">Facturación</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" [(ngModel)]="facturacionHabilitada">
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">Solicitar RFC</span>
+            </div>
+            <div class="hint">Pide datos fiscales al finalizar la venta.</div>
+        </div>
+    </div>
+
+    <div class="btn-row" style="justify-content: flex-end; margin-top: 32px;">
+        <button type="button" class="btn-primary" (click)="save()">
+            <i class="bi bi-check2-circle"></i> Guardar preferencias
+        </button>
+    </div>
+
+</div>

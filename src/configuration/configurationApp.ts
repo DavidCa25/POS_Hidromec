@@ -52,6 +52,16 @@ export class ConfigurationApp implements OnInit {
   busyImport = false;
   busyTestDrawer = false;
 
+  mpHasToken = false;   
+  mpAccessToken = '';         
+  mpTerminalId = '';
+  mpTerminals: { id: string; operating_mode?: string; pos_id?: string; store_id?: string }[] = [];
+  mpLoadingTerminals = false;
+  busyMpSave = false;
+  mpTestMode = false;
+
+  showMpWizard = false;
+
   constructor(private router: Router) {}
 
   async ngOnInit() {
@@ -79,6 +89,13 @@ export class ConfigurationApp implements OnInit {
       this.drawerPulseMs = Number(cfg?.drawer?.pulseMs || 120);
       this.drawerPin = Number(cfg?.drawer?.pin ?? 0);
       this.drawerOpenOnPayment = !!cfg?.drawer?.openOnPayment;
+
+      // mercado pago
+      const mpRs = await (window as any).electronAPI.mpGetConfig?.();
+      const mp = mpRs?.data;
+      this.mpHasToken = !!mp?.hasToken;
+      this.mpTerminalId = mp?.terminalId || '';
+      this.mpTestMode = !!mp?.testMode;
 
       await this.refreshDevices();
     } catch (e:any) {
@@ -244,4 +261,81 @@ export class ConfigurationApp implements OnInit {
       this.busyImport = false;
     }
   }
+
+  async guardarCredencialesMp() {
+  const api = (window as any).electronAPI;
+  if (!api?.mpSetConfig) {
+    await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta mpSetConfig en preload.' });
+    return;
+  }
+
+  const payload: any = { 
+      terminalId: (
+        this.mpTerminalId || '').trim(),
+        testMode: this.mpTestMode
+      };
+  const tokenNuevo = (this.mpAccessToken || '').trim();
+  if (tokenNuevo) payload.accessToken = tokenNuevo;
+
+  try {
+    this.busyMpSave = true;
+    const rs = await api.mpSetConfig(payload);
+
+    if (!rs?.success) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: rs?.error || 'Error al guardar credenciales.' });
+      return;
+    }
+
+    this.mpHasToken = !!rs.data?.hasToken;
+    this.mpAccessToken = '';  // nunca dejamos el token escrito en pantalla
+    await Swal.fire({ icon: 'success', title: 'Credenciales guardadas', timer: 1200, showConfirmButton: false });
+  } catch (e: any) {
+    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error inesperado.' });
+  } finally {
+    this.busyMpSave = false;
+  }
+}
+
+async cargarTerminalesMp() {
+  const api = (window as any).electronAPI;
+  if (!api?.mpListTerminals) {
+    await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta mpListTerminals en preload.' });
+    return;
+  }
+
+  // Necesita token guardado primero
+  if (!this.mpHasToken) {
+    await Swal.fire({ icon: 'info', title: 'Falta el token', text: 'Guarda primero el Access Token para listar terminales.' });
+    return;
+  }
+
+  try {
+    this.mpLoadingTerminals = true;
+    const rs = await api.mpListTerminals();
+
+    if (!rs?.success) {
+      await Swal.fire({ icon: 'error', title: 'No se pudieron listar', text: rs?.error || 'Revisa el token.' });
+      return;
+    }
+
+    this.mpTerminals = rs.data ?? [];
+    if (!this.mpTerminals.length) {
+      await Swal.fire({ icon: 'info', title: 'Sin terminales', text: 'No se encontraron terminales en esta cuenta.' });
+    }
+  } catch (e: any) {
+    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error inesperado.' });
+  } finally {
+    this.mpLoadingTerminals = false;
+  }
+}
+
+  seleccionarTerminalMp(id: string) {
+    this.mpTerminalId = id;
+  }
+
+  //MP
+
+  abrirMpWizard() { this.showMpWizard = true; }
+  onMpWizardDone() { this.showMpWizard = false; this.loadAll(); }  
+  onMpWizardClose() { this.showMpWizard = false; }
 }

@@ -101,7 +101,7 @@ export class Venta {
 
   showModal = false;
   dineroRecibido: number | null = null;
-  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
+  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP' = 'EFECTIVO';
 
   customerId: number | null = null;
   dueDate: string | null = null;
@@ -469,6 +469,12 @@ export class Venta {
     if (this.totalVenta <= 0) {
       this.showModal = false;
       await Swal.fire({ icon: "error", title: "Oops...", text: "El total de la venta debe ser mayor a cero" });
+      return;
+    }
+
+    if (this.paymentMethod === 'TERMINAL_MP') {
+      this.showModal = false;
+      await this.cobrarConTerminalMP();
       return;
     }
 
@@ -1354,5 +1360,208 @@ export class Venta {
   }
 
   this.seleccionarProducto(p);
+}
+
+private sleep(ms: number) {
+  return new Promise(res => setTimeout(res, ms));
+}
+
+async cobrarConTerminalMP() {
+  const api = (window as any).electronAPI;
+  if (!api?.mpCreateOrder || !api?.mpGetOrder) {
+    await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta la integración de Mercado Pago en preload.' });
+    return;
+  }
+
+  if (!(this.totalVenta > 0)) {
+    await Swal.fire({ icon: 'error', title: 'Total inválido', text: 'El total debe ser mayor a cero.' });
+    return;
+  }
+
+  let orderId: string | null = null;
+  try {
+    const createResp = await api.mpCreateOrder({
+      amount: this.totalVenta,
+      externalReference: `POS-${Date.now()}-${Math.floor(Math.random() * 100000)}`
+    });
+
+    if (!createResp?.success || !createResp.orderId) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo iniciar el cobro', text: createResp?.error || 'Error al crear la orden en la terminal.' });
+      return;
+    }
+    orderId = createResp.orderId;
+    console.log('MP orderId =>', orderId);
+  } catch (e: any) {
+    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al crear la orden.' });
+    return;
+  }
+
+  if (!orderId) return;
+  let canceledByUser = false;
+  Swal.fire({
+    title: 'Esperando pago en terminal',
+    html: 'Pide al cliente que acerque o inserte la tarjeta en la terminal.',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    showCancelButton: true,
+    cancelButtonText: 'Cancelar',
+    didOpen: () => Swal.showLoading()
+  }).then(res => {
+    if (res.dismiss === Swal.DismissReason.cancel) canceledByUser = true;
+  });
+
+  try {
+    const cfgRs = await api.mpGetConfig?.();
+    if (cfgRs?.data?.testMode && api.mpSimulateOrder) {
+      setTimeout(() => {
+        api.mpSimulateOrder(orderId, 'processed').catch(() => { /* noop */ });
+      }, 2500);
+    }
+  } catch { /* noop */ }
+
+  const intervalMs = 2500;
+  const maxMs = 180000; 
+  const startedAt = Date.now();
+
+  let finalState: 'approved' | 'failed' | 'canceled' | 'verify' | 'timeout' = 'timeout';
+
+  while (Date.now() - startedAt < maxMs) {
+    if (canceledByUser) {
+      Swal.close();
+      const cancelResp = await api.mpCancelOrder(orderId).catch(() => null);
+      finalState = cancelResp?.success ? 'canceled' : 'verify';
+      break;
+    }
+
+    await this.sleep(intervalMs);
+
+    let statusResp: any;
+    try {
+      statusResp = await api.mpGetOrder(orderId);
+    } catch {
+      continue;
+    }
+    if (!statusResp?.success) continue;
+
+    if (statusResp.state === 'approved') { finalState = 'approved'; break; }
+    if (statusResp.state === 'failed') { finalState = 'failed'; break; }
+    if (statusResp.state === 'action_required') { finalState = 'verify'; break; }
+  }
+
+  Swal.close();
+
+  if (finalState === 'approved') {
+    await this.registrarVentaTerminal(orderId);
+    return;
+  }
+  if (finalState === 'canceled') {
+    await Swal.fire({ icon: 'info', title: 'Cobro cancelado', text: 'No se registró la venta.' });
+    return;
+  }
+  if (finalState === 'failed') {
+    await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'La terminal no aprobó el pago. No se registró la venta.' });
+    return;
+  }
+
+  await this.verificarEstadoTerminal(orderId, finalState === 'timeout');
+}
+
+private async verificarEstadoTerminal(orderId: string, wasTimeout = false) {
+  const api = (window as any).electronAPI;
+
+  const choice = await Swal.fire({
+    icon: 'warning',
+    title: wasTimeout ? 'No se confirmó el pago a tiempo' : 'Verifica la terminal',
+    text: 'Revisa la pantalla de la terminal. Si el pago quedó aprobado, vuelve a consultar para registrar la venta.',
+    showCancelButton: true,
+    confirmButtonText: 'Volver a consultar',
+    cancelButtonText: 'Descartar'
+  });
+
+  if (!choice.isConfirmed) return; // descarta sin registrar
+
+  try {
+    const resp = await api.mpGetOrder(orderId);
+    if (resp?.success && resp.state === 'approved') {
+      await this.registrarVentaTerminal(orderId);
+      return;
+    }
+    if (resp?.success && resp.state === 'failed') {
+      await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'No se registró la venta.' });
+      return;
+    }
+    // sigue pendiente / action_required => vuelve a ofrecer consultar
+    await this.verificarEstadoTerminal(orderId, false);
+  } catch (e: any) {
+    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo consultar el estado.' });
+  }
+}
+
+private async registrarVentaTerminal(orderId: string) {
+  const detalles = this.items.map(it => ({
+    productId: it.productId,
+    qty: it.qty,
+    unitPrice: it.unitPrice
+  }));
+
+  try {
+    const resp = await (window as any).electronAPI.registerSale(
+      this.currentUserId,
+      'TERMINAL_MP',
+      detalles,
+      null,
+      null
+    );
+
+    // El pago YA se cobró en la terminal. Si la venta no se registra, hay que conciliar manual:
+    // por eso mostramos el orderId en el error en lugar de reintentar a ciegas.
+    if (!resp?.success) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Pago aprobado, pero no se registró la venta',
+        text: `${resp?.error || 'Revisa la conexión a la base de datos.'} Orden MP: ${orderId}`
+      });
+      return;
+    }
+
+    const saleId: number | null = resp.saleId ?? resp.id ?? null;
+
+    // Pago con tarjeta: no se abre el cajón
+    this.lastSalePaid = this.totalVenta;
+    this.lastSaleChange = 0;
+    this.lastSaleId = saleId;
+    this.lastSaleIsCredito = false;
+    this.lastSaleTotal = this.totalVenta;
+
+    if (this.autoPrintTicketOnSale && saleId) {
+      try {
+        await this.printTicketBySaleId(saleId, {
+          pagado: this.lastSalePaid,
+          cambio: 0,
+          silent: true,
+          paymentMethod: 'TERMINAL_MP'
+        });
+      } catch { /* noop */ }
+    }
+
+    // Reset para nueva venta
+    this.items = [];
+    this.totalVenta = 0;
+    this.dineroRecibido = null;
+    this.customerId = null;
+    this.dueDate = null;
+    this.paymentMethod = 'EFECTIVO';
+
+    this.showPostSaleModal = true;
+    await this.refreshFolioFromDb();
+
+  } catch (e: any) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al registrar la venta',
+      text: `${e?.message || 'Error inesperado.'} Orden MP: ${orderId}`
+    });
+  }
 }
 }

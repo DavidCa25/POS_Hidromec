@@ -416,3 +416,11 @@
   font-weight: 900;
   color:#334155;
 }
+
+.wz-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(15,23,42,.55);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 32px 16px; overflow-y: auto;
+}
+.wz-overlay-inner { width: 100%; max-width: 760px; }
