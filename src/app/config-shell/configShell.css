@@ -1,0 +1,154 @@
+/* ===== Shell de configuración — mosaico bento + drawer ===== */
+
+.cs {
+  --cs-blue: #2563eb;
+  --cs-ink: #0f172a;
+  --cs-muted: #64748b;
+  --cs-line: rgba(148,163,184,.30);
+  padding-bottom: 28px;
+}
+
+/* Encabezado */
+.cs-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 0 18px;
+}
+.cs-head-ic {
+  width: 44px; height: 44px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(37,99,235,.10); color: var(--cs-blue); font-size: 20px;
+}
+.cs-head h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.02em; color: var(--cs-ink); }
+.cs-head p { margin: 2px 0 0; font-size: 13px; color: var(--cs-muted); }
+
+/* Secciones */
+.cs-section { margin-bottom: 22px; }
+.cs-section-h {
+  font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--cs-muted); margin: 0 2px 10px;
+}
+
+/* Mosaico bento */
+.cs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 148px;
+  grid-auto-flow: dense;
+  gap: 14px;
+}
+.t-2x1 { grid-column: span 2; }
+.t-1x2 { grid-row: span 2; }
+.t-2x2 { grid-column: span 2; grid-row: span 2; }
+
+@media (max-width: 900px) {
+  .cs-grid { grid-template-columns: repeat(2, 1fr); }
+  .t-2x1, .t-2x2 { grid-column: span 2; }
+  .t-2x2 { grid-row: span 2; }
+}
+@media (max-width: 560px) {
+  .cs-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .t-2x1, .t-2x2, .t-1x2 { grid-column: span 1; grid-row: auto; }
+  .cs-tile { min-height: 118px; }
+}
+
+/* Tarjeta */
+.cs-tile {
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--cs-line);
+  border-radius: 18px; padding: 16px;
+  box-shadow: 0 8px 24px rgba(15,23,42,.05);
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  overflow: hidden;
+}
+.cs-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 38px rgba(15,23,42,.12);
+  border-color: rgba(37,99,235,.35);
+}
+.cs-tile:focus-visible { outline: 3px solid rgba(37,99,235,.35); outline-offset: 2px; }
+
+.cs-tile-chip {
+  width: 42px; height: 42px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; flex: 0 0 auto;
+}
+.cs-tile-chip[data-c="blue"]   { background: rgba(37,99,235,.12);  color: #2563eb; }
+.cs-tile-chip[data-c="green"]  { background: rgba(16,185,129,.12); color: #10b981; }
+.cs-tile-chip[data-c="purple"] { background: rgba(139,92,246,.12); color: #7c3aed; }
+.cs-tile-chip[data-c="orange"] { background: rgba(245,158,11,.14); color: #f59e0b; }
+.cs-tile-chip[data-c="gray"]   { background: rgba(148,163,184,.18);color: #334155; }
+
+.cs-tile-title { font-size: 14.5px; font-weight: 900; color: var(--cs-ink); margin-top: 2px; }
+.cs-tile-desc { font-size: 12.3px; color: var(--cs-muted); line-height: 1.4; }
+
+.cs-tile-foot {
+  margin-top: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 800; color: var(--cs-muted);
+}
+.cs-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+.cs-dot.ok { background: #10b981; }
+.cs-dot.pending { background: #f59e0b; }
+.cs-dot.off { background: #cbd5e1; }
+
+.cs-tile-go {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 20px; color: #cbd5e1; transition: transform .14s, color .14s;
+}
+.cs-tile:hover .cs-tile-go { color: var(--cs-blue); transform: translateX(2px); }
+
+/* ===== Drawer ===== */
+.cs-drawer-wrap {
+  position: fixed; inset: 0; z-index: 70;
+  pointer-events: none;
+}
+.cs-drawer-wrap.open { pointer-events: auto; }
+
+.cs-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(15,23,42,.5);
+  opacity: 0; transition: opacity .25s ease;
+}
+.cs-drawer-wrap.open .cs-backdrop { opacity: 1; }
+
+.cs-drawer {
+  position: absolute; top: 0; right: 0; height: 100%;
+  width: min(540px, 100%);
+  background: #fff;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  box-shadow: -24px 0 60px rgba(15,23,42,.22);
+}
+.cs-drawer-wrap.open .cs-drawer { transform: translateX(0); }
+
+.cs-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 18px 20px; border-bottom: 1px solid var(--cs-line);
+  background: linear-gradient(135deg, #eff4ff, #fff);
+}
+.cs-drawer-title { display: flex; gap: 12px; align-items: center; }
+.cs-drawer-title h3 { margin: 0; font-size: 16px; font-weight: 900; color: var(--cs-ink); }
+.cs-drawer-title p { margin: 2px 0 0; font-size: 12px; color: var(--cs-muted); }
+.cs-x {
+  border: none; background: transparent; color: var(--cs-muted);
+  width: 36px; height: 36px; border-radius: 10px; cursor: pointer; font-size: 16px; flex: 0 0 auto;
+}
+.cs-x:hover { background: rgba(148,163,184,.16); color: var(--cs-ink); }
+
+.cs-drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+
+/* "Próximamente" para tiles sin panel aún */
+.cs-soon {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 60px 20px; text-align: center; color: var(--cs-muted);
+}
+.cs-soon i { font-size: 34px; color: #cbd5e1; }
+.cs-soon p { margin: 0; font-size: 13.5px; }
+
+/* Aplana el wizard (u otro panel auto-estilizado) cuando va embebido en el drawer */
+.cs-drawer-body ::ng-deep .wz {
+  max-width: none; border: none; box-shadow: none; border-radius: 0;
+}
+.cs-drawer-body ::ng-deep .wz-head { display: none; }

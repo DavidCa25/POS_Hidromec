@@ -1,0 +1,56 @@
+<div class="wz-body">
+    <h3 style="margin-top: 0;">Base de datos y Respaldos</h3>
+    <p class="wz-lead">Exporta tu información de forma segura o restaura un respaldo previo.</p>
+
+    <div class="wz-grid2" style="margin-top: 16px;">
+        <div class="wz-mode-opt" (click)="exportDb()" [class.sel]="busyExport" style="border-color: var(--wz-green);">
+            <i class="bi bi-cloud-download" style="color: var(--wz-green);"></i>
+            <b>Exportar BD</b>
+            <small>Crea un archivo de respaldo con tu info actual</small>
+        </div>
+
+        <div class="wz-mode-opt" (click)="importDb()" [class.sel]="busyImport" style="border-color: var(--wz-blue);">
+            <i class="bi bi-cloud-upload" style="color: var(--wz-blue);"></i>
+            <b>Importar BD</b>
+            <small>Restaura el sistema desde un archivo guardado</small>
+        </div>
+    </div>
+
+    <div class="wz-note" style="margin: 16px 0;">
+        <i class="bi bi-shield-check"></i>
+        <span>Es recomendable realizar una exportación al finalizar cada turno o semana de ventas.</span>
+    </div>
+
+    <h3 style="margin-top: 24px; font-size: 15px;">Respaldos Automáticos</h3>
+
+    <div class="wz-grid2">
+        <div class="wz-field" style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px; border-radius: 12px;">
+            <div>
+                <label style="margin-bottom: 2px;">Habilitar backups</label>
+                <small style="margin-top: 0;">Se ejecutarán en segundo plano</small>
+            </div>
+            <label class="sw" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                <input type="checkbox" style="opacity: 0; width: 0; height: 0;">
+                <span class="sl" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px;"></span>
+            </label>
+        </div>
+        
+        <div class="wz-field">
+            <label>Frecuencia</label>
+            <select class="ctl" style="width: 100%; border: 1px solid #ced4da; border-radius: 11px; padding: 10px; background: #fff;" disabled>
+                <option selected>Diario (Cierre de caja)</option>
+                <option>Semanal</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="wz-field">
+        <label>Carpeta destino</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" value="C:\Users\Public\POS\Backups" disabled style="flex: 1; border: 1px solid #ced4da; border-radius: 11px; padding: 10px; background: #f8fafc;">
+            <button class="wz-btn ghost" type="button" disabled>
+                <i class="bi bi-folder2-open"></i>
+            </button>
+        </div>
+    </div>
+</div>

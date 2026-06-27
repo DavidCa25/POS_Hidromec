@@ -1,4 +1,3 @@
-
 /* ==========================================================================
    ESTILOS DE FORMULARIOS PARA LOS PANELES (Cajón, Ticket, Scanner, etc.)
    ========================================================================== */
@@ -215,4 +214,98 @@ select.ctl option {
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+}
+
+select.ctl option {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-size: 14px;
+    padding: 12px; /* Chrome/Electron casi siempre ignoran esto, pero Firefox sí lo lee */
+}
+
+/* ==========================================================================
+   CUSTOM SELECT (Menús desplegables simulados)
+   ========================================================================== */
+.custom-sel-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.custom-sel-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    background-color: #fff;
+}
+
+.custom-sel-box.disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.custom-sel-box i {
+    color: #64748b;
+    transition: transform 0.2s;
+}
+
+/* El menú que flota por encima */
+.custom-sel-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+    
+    /* z-index alto para que pase por encima de los demás controles */
+    z-index: 9999; 
+    
+    /* Si la lista es muy larga (ej. muchas impresoras), hace scroll */
+    max-height: 250px;
+    overflow-y: auto;
+    
+    animation: dropDownIn 0.2s ease-out forwards;
+}
+
+/* Las opciones dentro del menú */
+.custom-sel-option {
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #334155;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.custom-sel-option:hover {
+    background-color: #f8fafc;
+    color: #2563eb;
+}
+
+.custom-sel-option.selected {
+    background-color: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    font-weight: 800;
+}
+
+/* Scrollbar personalizado para el menú desplegable (opcional pero se ve mejor) */
+.custom-sel-menu::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-sel-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-sel-menu::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+@keyframes dropDownIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
 }

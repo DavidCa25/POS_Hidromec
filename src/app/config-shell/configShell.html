@@ -1,0 +1,75 @@
+<div class="cs">
+
+  <!-- Encabezado -->
+  <header class="cs-head">
+    <div class="cs-head-ic"><i class="bi bi-sliders2"></i></div>
+    <div>
+      <h1>Configuración</h1>
+      <p>Elige una sección para ajustarla</p>
+    </div>
+  </header>
+
+  <!-- Secciones con mosaico bento -->
+  <section class="cs-section" *ngFor="let sec of sections">
+    <div class="cs-section-h">{{ sec.title }}</div>
+
+    <div class="cs-grid">
+      <button *ngFor="let tile of sec.tiles"
+              type="button"
+              class="cs-tile"
+              [ngClass]="'t-' + tile.size"
+              (click)="abrir(tile)">
+
+        <span class="cs-tile-chip" [attr.data-c]="tile.color">
+          <i class="bi bi-{{ tile.icon }}"></i>
+        </span>
+
+        <span class="cs-tile-title">{{ tile.title }}</span>
+        <span class="cs-tile-desc">{{ tile.desc }}</span>
+
+        <span class="cs-tile-foot" *ngIf="statusOf(tile) !== 'none'">
+          <span class="cs-dot" [ngClass]="statusOf(tile)"></span>
+          {{ statusLabel(tile) }}
+        </span>
+
+        <i class="bi bi-arrow-right-short cs-tile-go"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- Drawer lateral -->
+  <div class="cs-drawer-wrap" [class.open]="activeTile">
+    <div class="cs-backdrop" (click)="cerrar()"></div>
+
+    <aside class="cs-drawer" role="dialog" aria-modal="true">
+      <header class="cs-drawer-head" *ngIf="activeTile">
+        <div class="cs-drawer-title">
+          <span class="cs-tile-chip" [attr.data-c]="activeTile.color">
+            <i class="bi bi-{{ activeTile.icon }}"></i>
+          </span>
+          <div>
+            <h3>{{ activeTile.title }}</h3>
+            <p>{{ activeTile.desc }}</p>
+          </div>
+        </div>
+        <button class="cs-x" type="button" (click)="cerrar()" aria-label="Cerrar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </header>
+
+      <div class="cs-drawer-body">
+        <ng-container *ngIf="activeComponent; else soon">
+          <ng-container *ngComponentOutlet="activeComponent"></ng-container>
+        </ng-container>
+
+        <ng-template #soon>
+          <div class="cs-soon">
+            <i class="bi bi-tools"></i>
+            <p>Este módulo estará disponible pronto.</p>
+          </div>
+        </ng-template>
+      </div>
+    </aside>
+  </div>
+
+</div>

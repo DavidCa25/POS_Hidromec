@@ -1390,6 +1390,7 @@ async cobrarConTerminalMP() {
       return;
     }
     orderId = createResp.orderId;
+    console.log('MP orderId =>', orderId);
   } catch (e: any) {
     await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al crear la orden.' });
     return;
@@ -1410,9 +1411,17 @@ async cobrarConTerminalMP() {
     if (res.dismiss === Swal.DismissReason.cancel) canceledByUser = true;
   });
 
-  // Polling acotado al checkout
+  try {
+    const cfgRs = await api.mpGetConfig?.();
+    if (cfgRs?.data?.testMode && api.mpSimulateOrder) {
+      setTimeout(() => {
+        api.mpSimulateOrder(orderId, 'processed').catch(() => { /* noop */ });
+      }, 2500);
+    }
+  } catch { /* noop */ }
+
   const intervalMs = 2500;
-  const maxMs = 180000; // 3 min, alineado al expiration_time de la orden
+  const maxMs = 180000; 
   const startedAt = Date.now();
 
   let finalState: 'approved' | 'failed' | 'canceled' | 'verify' | 'timeout' = 'timeout';

@@ -124,5 +124,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     mpListTerminals: () => ipcRenderer.invoke('mp-list-terminals'),
     mpGetConfig: () => ipcRenderer.invoke('mp-get-config'),
     mpSetConfig: (cfg) => ipcRenderer.invoke('mp-set-config', cfg),
+    mpSimulateOrder: (orderId, status) => ipcRenderer.invoke('mp-simulate-order', { orderId, status }),
+
+    mpValidateToken: () => ipcRenderer.invoke('mp-validate-token'),
+    mpCreateStore: (payload) => ipcRenderer.invoke('mp-create-store', payload),
+    mpCreatePos: (payload) => ipcRenderer.invoke('mp-create-pos', payload),
+    mpSetPdv: (terminalId) => ipcRenderer.invoke('mp-set-pdv', terminalId),
 
 });

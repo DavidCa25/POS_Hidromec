@@ -1,0 +1,169 @@
+<div class="panel-content">
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+        <button class="btn btn-outline-secondary" type="button" (click)="refreshDevices()">
+            <i class="bi bi-usb-plug"></i> Detectar Puertos
+        </button>
+    </div>
+
+    <div class="section-title"><i class="bi bi-safe2"></i> Cajón de dinero</div>
+    
+    <div class="row two">
+        <div>
+            <label class="lbl">Habilitar</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" [(ngModel)]="drawerEnabled">
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">{{ drawerEnabled ? 'Activo' : 'Inactivo' }}</span>
+            </div>
+        </div>
+        <div>
+            <label class="lbl">Pin</label>
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" 
+                     [class.disabled]="!drawerEnabled"
+                     (click)="toggleMenu('pin')">
+                    <span>{{ drawerPin }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="custom-sel-menu" *ngIf="pinOpen">
+                    <div class="custom-sel-option" 
+                         *ngFor="let val of opcionesPin" 
+                         (click)="seleccionarPin(val)"
+                         [class.selected]="drawerPin === val">
+                        {{ val }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row two">
+        <div>
+            <label class="lbl">Puerto del cajón (COM/USB)</label>
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" 
+                     [class.disabled]="!drawerEnabled"
+                     (click)="toggleMenu('drawerPort')">
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ nombrePuertoCajon }}
+                    </span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="custom-sel-menu" *ngIf="drawerPortOpen">
+                    <div class="custom-sel-option" 
+                         (click)="seleccionarPuertoCajon('')"
+                         [class.selected]="drawerPath === ''">
+                        Auto (pendiente)
+                    </div>
+                    <div class="custom-sel-option" 
+                         *ngFor="let p of serialPorts" 
+                         (click)="seleccionarPuertoCajon(p.path)"
+                         [class.selected]="drawerPath === p.path">
+                        {{ portLabel(p) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="lbl">Baudrate</label>
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" 
+                     [class.disabled]="!drawerEnabled"
+                     (click)="toggleMenu('drawerBaud')">
+                    <span>{{ drawerBaudRate }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="custom-sel-menu" *ngIf="drawerBaudOpen">
+                    <div class="custom-sel-option" 
+                         *ngFor="let val of opcionesBaudrate" 
+                         (click)="seleccionarBaudrateCajon(val)"
+                         [class.selected]="drawerBaudRate === val">
+                        {{ val }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row two">
+        <div>
+            <label class="lbl">Abrir al cobrar</label>
+            <div class="toggle">
+                <label class="sw">
+                    <input type="checkbox" [(ngModel)]="drawerOpenOnPayment" [disabled]="!drawerEnabled">
+                    <span class="sl"></span>
+                </label>
+                <span class="ttext">Automático</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <button type="button" class="btn-outline" (click)="testDrawer()" [disabled]="!drawerEnabled || !drawerPath || busyTestDrawer">
+            <i class="bi bi-wrench-adjustable"></i> {{ busyTestDrawer ? 'Probando...' : 'Probar Cajón' }}
+        </button>
+    </div>
+
+    <div class="sep" style="margin: 2rem 0; border-top: 1px solid #eee;"></div>
+
+    <div class="section-title"><i class="bi bi-upc-scan"></i> Scanner / Lector</div>
+    
+    <div class="row two">
+        <div>
+            <label class="lbl">Habilitado</label>
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" (click)="toggleMenu('scannerEnabled')">
+                    <span>{{ scannerEnabled ? 'Sí (Serial COM)' : 'No' }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="custom-sel-menu" *ngIf="scannerEnabledOpen">
+                    <div class="custom-sel-option" 
+                         (click)="seleccionarScannerHabilitado(false)"
+                         [class.selected]="!scannerEnabled">
+                        No
+                    </div>
+                    <div class="custom-sel-option" 
+                         (click)="seleccionarScannerHabilitado(true)"
+                         [class.selected]="scannerEnabled">
+                        Sí (Serial COM)
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="lbl">Puerto scanner</label>
+            <div class="custom-sel-wrap">
+                <div class="ctl custom-sel-box" 
+                     [class.disabled]="!scannerEnabled"
+                     (click)="toggleMenu('scannerPort')">
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ nombrePuertoScanner }}
+                    </span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="custom-sel-menu" *ngIf="scannerPortOpen">
+                    <div class="custom-sel-option" 
+                         (click)="seleccionarPuertoScanner('')"
+                         [class.selected]="scannerPath === ''">
+                        — Selecciona —
+                    </div>
+                    <div class="custom-sel-option" 
+                         *ngFor="let p of serialPorts" 
+                         (click)="seleccionarPuertoScanner(p.path)"
+                         [class.selected]="scannerPath === p.path">
+                        {{ portLabel(p) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-row" style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary" type="button" (click)="save()">
+            <i class="bi bi-check2-circle"></i> Guardar Dispositivos
+        </button>
+    </div>
+</div>
