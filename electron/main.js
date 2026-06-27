@@ -11,6 +11,7 @@ const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
 const mpPoint  = require('./mercadoPoint');
+const backup = require('./backupManager');
 
 
 
@@ -332,7 +333,7 @@ app.whenReady().then(async () => {
     console.log('Migraciones:', mig);
 
     mainWindow = createWindow();
-
+    backup.startScheduler();
     ensureBusinessConfig().catch(err => {
       console.error('Error cargando businessConfig al inicio:', err);
     });
@@ -1960,6 +1961,24 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
   ipcMain.handle('mp-create-store', async (_event, payload = {}) => mpPoint.createStore(payload));
   ipcMain.handle('mp-create-pos', async (_event, payload = {}) => mpPoint.createPos(payload));
   ipcMain.handle('mp-set-pdv', async (_event, terminalId) => mpPoint.setPdv(terminalId));
+
+  //Backups
+  ipcMain.handle('backup-get-config', async () => ({ success: true, data: backup.loadBackupConfig() }));
+
+  ipcMain.handle('backup-set-config', async (_event, partial = {}) => {
+    const saved = backup.saveBackupConfig(partial);
+    backup.startScheduler();   
+    return { success: true, data: saved };
+  });
+
+  ipcMain.handle('backup-run-now', async () => backup.runBackup('manual'));
+  ipcMain.handle('backup-list', async () => ({ success: true, data: backup.listBackups() }));
+
+  ipcMain.handle('backup-open-folder', async () => {
+    const cfg = backup.loadBackupConfig();
+    await shell.openPath(cfg.folder);
+    return { success: true };
+  });
 
 
 

@@ -5,6 +5,7 @@ import { TicketPanelComponent } from '../ticket-panel/ticket-panel.component';
 import { BackupsPanelComponent } from '../backups-panel/backups-panel.component';
 import { NegocioPanelComponent } from '../negocio-panel/negocio-panel.component';
 
+
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
 
 export type StatusKey = 'mp' | 'printer' | 'scanner' | 'drawer' | 'backup' | string;
