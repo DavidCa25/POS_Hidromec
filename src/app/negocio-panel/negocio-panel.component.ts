@@ -12,8 +12,6 @@ import Swal from 'sweetalert2';
     styleUrls: ['../panel-controls.css']
 })
 export class NegocioPanelComponent {
-    
-    // Variables de formulario
     nombreComercio = '';
     iva = 16;
     whatsappHabilitado = true;

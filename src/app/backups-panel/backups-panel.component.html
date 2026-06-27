@@ -1,56 +1,119 @@
-<div class="wz-body">
-    <h3 style="margin-top: 0;">Base de datos y Respaldos</h3>
-    <p class="wz-lead">Exporta tu información de forma segura o restaura un respaldo previo.</p>
+<div class="bk">
 
-    <div class="wz-grid2" style="margin-top: 16px;">
-        <div class="wz-mode-opt" (click)="exportDb()" [class.sel]="busyExport" style="border-color: var(--wz-green);">
-            <i class="bi bi-cloud-download" style="color: var(--wz-green);"></i>
-            <b>Exportar BD</b>
-            <small>Crea un archivo de respaldo con tu info actual</small>
-        </div>
+  <p class="bk-intro">Exporta tu información de forma segura o restaura un respaldo previo.</p>
 
-        <div class="wz-mode-opt" (click)="importDb()" [class.sel]="busyImport" style="border-color: var(--wz-blue);">
-            <i class="bi bi-cloud-upload" style="color: var(--wz-blue);"></i>
-            <b>Importar BD</b>
-            <small>Restaura el sistema desde un archivo guardado</small>
-        </div>
+  <!-- Exportar / Importar manual -->
+  <div class="bk-cards">
+    <button type="button" class="bk-card green" (click)="exportDb()" [disabled]="busyExport">
+      <span class="bk-card-ic"><i class="bi bi-cloud-download"></i></span>
+      <span class="bk-card-txt">
+        <b>{{ busyExport ? 'Exportando...' : 'Exportar BD' }}</b>
+        <small>Crea un archivo de respaldo con tu info actual</small>
+      </span>
+    </button>
+
+    <button type="button" class="bk-card blue" (click)="importDb()" [disabled]="busyImport">
+      <span class="bk-card-ic"><i class="bi bi-cloud-upload"></i></span>
+      <span class="bk-card-txt">
+        <b>{{ busyImport ? 'Importando...' : 'Importar BD' }}</b>
+        <small>Restaura el sistema desde un archivo guardado</small>
+      </span>
+    </button>
+  </div>
+
+  <div class="bk-tip">
+    <i class="bi bi-shield-check"></i>
+    <span>Es recomendable exportar al finalizar cada turno o semana de ventas.</span>
+  </div>
+
+  <!-- ===== Respaldos automáticos ===== -->
+  <div class="bk-section-h">Respaldos automáticos</div>
+
+  <!-- Estado del último respaldo -->
+  <div class="bk-status" [class.ok]="lastStatus==='ok'" [class.err]="lastStatus==='error'">
+    <i class="bi"
+       [class.bi-shield-check]="lastStatus==='ok'"
+       [class.bi-shield-exclamation]="lastStatus==='error'"
+       [class.bi-shield]="!lastStatus"></i>
+    <div>
+      <b *ngIf="lastStatus==='ok'">Último respaldo correcto</b>
+      <b *ngIf="lastStatus==='error'">El último respaldo falló</b>
+      <b *ngIf="!lastStatus">Aún no hay respaldos automáticos</b>
+      <small *ngIf="lastBackupAt">{{ lastBackupAt | date:'EEEE d MMM, h:mm a' }}</small>
+      <small *ngIf="lastStatus==='error' && lastError" class="bk-err">{{ lastError }}</small>
     </div>
+  </div>
 
-    <div class="wz-note" style="margin: 16px 0;">
-        <i class="bi bi-shield-check"></i>
-        <span>Es recomendable realizar una exportación al finalizar cada turno o semana de ventas.</span>
+  <!-- Activar -->
+  <div class="bk-toggle-row">
+    <div>
+      <b>Habilitar respaldos</b>
+      <small>Diario automático, sin que nadie se acuerde</small>
     </div>
+    <label class="bk-switch">
+      <input type="checkbox" [(ngModel)]="enabled">
+      <span class="track"></span>
+      <span class="knob"></span>
+    </label>
+  </div>
 
-    <h3 style="margin-top: 24px; font-size: 15px;">Respaldos Automáticos</h3>
-
-    <div class="wz-grid2">
-        <div class="wz-field" style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px; border-radius: 12px;">
-            <div>
-                <label style="margin-bottom: 2px;">Habilitar backups</label>
-                <small style="margin-top: 0;">Se ejecutarán en segundo plano</small>
-            </div>
-            <label class="sw" style="position: relative; display: inline-block; width: 44px; height: 24px;">
-                <input type="checkbox" style="opacity: 0; width: 0; height: 0;">
-                <span class="sl" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px;"></span>
-            </label>
-        </div>
-        
-        <div class="wz-field">
-            <label>Frecuencia</label>
-            <select class="ctl" style="width: 100%; border: 1px solid #ced4da; border-radius: 11px; padding: 10px; background: #fff;" disabled>
-                <option selected>Diario (Cierre de caja)</option>
-                <option>Semanal</option>
-            </select>
-        </div>
+  <div class="bk-grid2">
+    <div class="bk-field">
+      <label>Hora</label>
+      <input class="bk-ctl" type="time" [(ngModel)]="time" [disabled]="!enabled">
+      <small class="bk-help">Si la tienda está cerrada a esa hora, se respalda al abrir la app al día siguiente.</small>
     </div>
-
-    <div class="wz-field">
-        <label>Carpeta destino</label>
-        <div style="display: flex; gap: 8px;">
-            <input type="text" value="C:\Users\Public\POS\Backups" disabled style="flex: 1; border: 1px solid #ced4da; border-radius: 11px; padding: 10px; background: #f8fafc;">
-            <button class="wz-btn ghost" type="button" disabled>
-                <i class="bi bi-folder2-open"></i>
-            </button>
-        </div>
+    <div class="bk-field">
+      <label>Conservar (días)</label>
+      <input class="bk-ctl" type="number" min="1" step="1" [(ngModel)]="retentionDays" [disabled]="!enabled">
+      <small class="bk-help">Los respaldos más viejos se borran solos.</small>
     </div>
+  </div>
+
+  <!-- Carpeta fija -->
+  <div class="bk-field">
+    <label>Carpeta de respaldos</label>
+    <div class="bk-fixed">
+      <i class="bi bi-lock-fill lock"></i>
+      <span class="path">C:\POS_Backups</span>
+      <button class="bk-iconbtn" type="button" (click)="abrirCarpeta()" title="Abrir carpeta">
+        <i class="bi bi-folder2-open"></i>
+      </button>
+    </div>
+    <small class="bk-help">Siempre se guarda aquí. El sistema crea la carpeta solo si no existe.</small>
+  </div>
+
+  <!-- Copia off-site opcional -->
+  <div class="bk-field">
+    <label>Copia fuera de la máquina <span class="opt">(opcional)</span></label>
+    <input class="bk-ctl" type="text" [(ngModel)]="copyToFolder" placeholder="Ej. C:\Users\Tu\OneDrive\Respaldos">
+    <small class="bk-help">
+      Apunta a una carpeta de OneDrive o Google Drive del cliente. Así el respaldo sale de la máquina:
+      si se daña el disco, la copia sigue en su nube personal.
+    </small>
+  </div>
+
+  <div class="bk-actions">
+    <button class="bk-btn secondary" type="button" (click)="respaldarAhora()" [disabled]="busyRun">
+      <i class="bi bi-arrow-repeat"></i>
+      {{ busyRun ? 'Respaldando...' : 'Respaldar ahora' }}
+    </button>
+    <button class="bk-btn primary" type="button" (click)="guardarBackup()" [disabled]="busySave">
+      <i class="bi bi-check2-circle"></i>
+      {{ busySave ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </div>
+
+  <!-- Lista -->
+  <div *ngIf="backups.length">
+    <div class="bk-list-h">Respaldos guardados ({{ backups.length }})</div>
+    <div class="bk-item" *ngFor="let b of backups">
+      <i class="bi bi-file-earmark-zip"></i>
+      <div>
+        <span class="bk-item-name">{{ b.name }}</span>
+        <span class="bk-item-meta">{{ b.modified | date:'d MMM, h:mm a' }} · {{ b.sizeMB }} MB</span>
+      </div>
+    </div>
+  </div>
+
 </div>

@@ -69,7 +69,9 @@ export class ConfigShell implements OnInit, OnDestroy {
         try {
             const mp = await api?.mpGetConfig?.();
             const d = mp?.data;
+            const bk = await api?.backupGetConfig?.();
             this.statuses['mp'] = (d?.hasToken && d?.terminalId) ? 'ok' : 'pending';
+            this.statuses['backup'] = bk?.data?.enabled ? 'ok' : 'off';
         } catch { /* noop */ }
 
         try {

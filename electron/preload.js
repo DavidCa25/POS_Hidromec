@@ -131,4 +131,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     mpCreatePos: (payload) => ipcRenderer.invoke('mp-create-pos', payload),
     mpSetPdv: (terminalId) => ipcRenderer.invoke('mp-set-pdv', terminalId),
 
+    //Backup Manager
+    backupGetConfig: () => ipcRenderer.invoke('backup-get-config'),
+    backupSetConfig: (cfg) => ipcRenderer.invoke('backup-set-config', cfg),
+    backupRunNow: () => ipcRenderer.invoke('backup-run-now'),
+    backupList: () => ipcRenderer.invoke('backup-list'),
+    backupOpenFolder: () => ipcRenderer.invoke('backup-open-folder'),
+
 });
