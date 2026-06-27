@@ -1,0 +1,29 @@
+<div class="dg">
+  <p class="dg-intro">
+    El sistema guarda un registro de lo que pasa (errores, ventas, respaldos). Si algo falla,
+    abre la carpeta y envíanos el archivo del día para revisarlo.
+  </p>
+
+  <div class="dg-card">
+    <span class="dg-ic"><i class="bi bi-file-earmark-text"></i></span>
+    <div class="dg-info">
+      <b>Registro de hoy</b>
+      <small *ngIf="logPath">{{ logPath }}</small>
+      <small *ngIf="logSizeMB >= 0">{{ logSizeMB }} MB</small>
+    </div>
+  </div>
+
+  <div class="dg-actions">
+    <button class="dg-btn secondary" type="button" (click)="probarLog()">
+      <i class="bi bi-pencil-square"></i> Escribir prueba
+    </button>
+    <button class="dg-btn primary" type="button" (click)="abrirLogs()">
+      <i class="bi bi-folder2-open"></i> Abrir carpeta de logs
+    </button>
+  </div>
+
+  <div class="dg-note">
+    <i class="bi bi-info-circle"></i>
+    <span>Se guarda un archivo por día y se conservan los últimos 14 días. No incluye contraseñas.</span>
+  </div>
+</div>

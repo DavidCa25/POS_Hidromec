@@ -137,5 +137,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     backupRunNow: () => ipcRenderer.invoke('backup-run-now'),
     backupList: () => ipcRenderer.invoke('backup-list'),
     backupOpenFolder: () => ipcRenderer.invoke('backup-open-folder'),
+    logToFile: (level, message, meta) => ipcRenderer.send('app-log', { level, message, meta }),
+    openLogsFolder: () => ipcRenderer.invoke('logs-open-folder'),
+    logsInfo: () => ipcRenderer.invoke('logs-info'),
 
 });

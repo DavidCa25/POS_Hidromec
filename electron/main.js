@@ -12,8 +12,9 @@ const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./sc
 const { runMigrations } = require('./migrationsRunner');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
+const logger = require('./logger');
 
-
+logger.setupLogging({ retentionDays: 14 });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -1980,6 +1981,9 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
     return { success: true };
   });
 
+  ipcMain.on('app-log', (_event, payload) => logger.logFromRenderer(payload));
+  ipcMain.handle('logs-open-folder', async () => { await logger.openLogsFolder(); return { success: true }; });
+  ipcMain.handle('logs-info', async () => ({ success: true, data: logger.logsInfo() }));
 
 
 
