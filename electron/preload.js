@@ -68,6 +68,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
     installUpdate: () => ipcRenderer.invoke('install-update'),
+    onUpdateStatus: (callback) => {
+        ipcRenderer.removeAllListeners('update-status'); 
+        ipcRenderer.on('update-status', (_event, value) => callback(value));
+    },
 
     getOpenShift: (payload) =>
         ipcRenderer.invoke('sp-get-open-shift', payload),

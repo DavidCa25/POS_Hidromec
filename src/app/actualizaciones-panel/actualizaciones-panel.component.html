@@ -1,0 +1,56 @@
+<div class="panel-wrapper">
+  <div class="panel-header">
+    <div class="header-icon blue">
+      <i class="bi bi-arrow-repeat"></i>
+    </div>
+    <div class="header-text">
+      <h2>Actualizaciones del Sistema</h2>
+      <p>Mantén tu punto de venta al día con las últimas mejoras y correcciones.</p>
+    </div>
+  </div>
+
+  <div class="panel-card update-card">
+    <div class="status-icon" [ngClass]="status">
+      <i class="bi" [ngClass]="{
+        'bi-box-seam': status === 'idle' || status === 'not-available',
+        'bi-search spinner': status === 'checking',
+        'bi-cloud-arrow-down': status === 'available' || status === 'downloading',
+        'bi-check-circle-fill': status === 'downloaded',
+        'bi-exclamation-triangle-fill': status === 'error'
+      }"></i>
+    </div>
+    
+    <div class="status-info">
+      <h3>{{ message }}</h3>
+      <span *ngIf="version && status !== 'error'" class="version-badge">Versión encontrada: {{ version }}</span>
+      
+      <div class="progress-container" *ngIf="status === 'downloading'">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="progress"></div>
+        </div>
+        <span class="progress-text">{{ progress | number:'1.0-0' }}%</span>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn btn-primary" 
+              *ngIf="status === 'idle' || status === 'not-available' || status === 'error'"
+              [disabled]="loading"
+              (click)="buscarActualizaciones()">
+        <i class="bi bi-search"></i> Buscar actualizaciones
+      </button>
+
+      <button class="btn btn-success" 
+              *ngIf="status === 'available'"
+              (click)="descargarActualizacion()">
+        <i class="bi bi-download"></i> Descargar ahora
+      </button>
+
+      <button class="btn btn-warning" 
+              *ngIf="status === 'downloaded'"
+              (click)="instalarActualizacion()">
+        <i class="bi bi-power"></i> Reiniciar e Instalar
+      </button>
+    </div>
+  </div>
+</div>

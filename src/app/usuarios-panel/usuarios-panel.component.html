@@ -1,0 +1,106 @@
+<div class="us-container">
+  <div class="us-header">
+    <div class="us-header-left">
+      <div class="us-logo">
+        <i class="bi bi-person-badge"></i>
+      </div>
+      <div>
+        <h2>Usuarios y Permisos</h2>
+        <p>Administra los cajeros y supervisores del sistema.</p>
+      </div>
+    </div>
+    <button class="us-btn primary" (click)="abrirModalNuevo()">
+      <i class="bi bi-plus-lg"></i> Nuevo Usuario
+    </button>
+  </div>
+
+  <div class="us-loading" *ngIf="loading">
+    <i class="bi bi-arrow-repeat us-spinner"></i>
+    <p>Cargando usuarios...</p>
+  </div>
+
+  <div class="us-body" *ngIf="!loading">
+    <h3 class="us-list-h">Usuarios Registrados</h3>
+    
+    <div class="us-item" *ngFor="let u of usuarios">
+      <div class="us-item-ic">
+        <i class="bi bi-person-fill"></i>
+      </div>
+      <div class="us-item-info">
+        <span class="us-item-name">{{ u.usuario }}</span>
+        <span class="us-item-meta">ID: #{{ u.id }}</span>
+      </div>
+      
+      <div class="us-item-role" [ngClass]="u.rol.toLowerCase()">
+        {{ u.rol }}
+      </div>
+
+      <button class="us-iconbtn" title="Editar usuario" (click)="abrirModalEditar(u)">
+        <i class="bi bi-pencil-square"></i>
+      </button>
+    </div>
+
+    <div class="us-empty" *ngIf="usuarios.length === 0">
+      <i class="bi bi-people"></i>
+      <p>No hay usuarios registrados en el sistema.</p>
+    </div>
+  </div>
+
+  <div class="us-modal-overlay" *ngIf="showUserModal">
+    <div class="us-dropdown-backdrop" *ngIf="roleOpen" (click)="cerrarDropdown()"></div>
+    
+    <div class="us-modal">
+      <div class="us-modal-head">
+        <h3>{{ editingUserId ? 'Editar' : 'Nuevo' }} Usuario</h3>
+        <button class="us-x" (click)="cerrarModal()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      
+      <div class="us-modal-body">
+        <div class="us-tip">
+          <i class="bi bi-info-circle-fill"></i>
+          <span>El nivel de acceso determinará las funciones disponibles en el punto de venta.</span>
+        </div>
+
+        <div class="us-field">
+          <label>Nombre de usuario</label>
+          <input type="text" class="us-ctl" [(ngModel)]="userForm.usuario" placeholder="Ej. jperez">
+        </div>
+
+        <div class="us-field">
+          <label>Contraseña</label>
+          <input type="password" class="us-ctl" [(ngModel)]="userForm.contrasena" 
+                 [placeholder]="editingUserId ? 'Dejar en blanco para conservar la actual' : 'Asigna una contraseña'">
+          <small class="us-help" *ngIf="editingUserId">Si no deseas cambiarla, deja este campo vacío.</small>
+        </div>
+
+        <div class="us-field" style="position: relative;">
+          <label>Nivel de acceso (Rol)</label>
+          
+          <div class="us-custom-sel" (click)="toggleRoleSelect()" [class.active]="roleOpen">
+            <span class="val">{{ userForm.rol }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </div>
+
+          <div class="us-sel-menu" *ngIf="roleOpen">
+            <div class="us-sel-option" 
+                 *ngFor="let rol of rolesPermitidos" 
+                 (click)="seleccionarRol(rol)"
+                 [class.selected]="userForm.rol === rol">
+              {{ rol }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="us-modal-footer">
+        <button class="us-btn ghost" [disabled]="saving" (click)="cerrarModal()">Cancelar</button>
+        <button class="us-btn primary" [disabled]="saving" (click)="guardarUsuario()">
+          <i class="bi" [ngClass]="saving ? 'bi-arrow-repeat us-spinner' : 'bi-check2'"></i>
+          {{ saving ? 'Guardando...' : 'Guardar usuario' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
