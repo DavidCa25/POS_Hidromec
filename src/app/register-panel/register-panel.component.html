@@ -1,0 +1,63 @@
+<div class="rg">
+
+  <p class="rg-intro">
+    Elige qué caja es esta máquina. Cada caja lleva su propio turno, sus ventas y su corte.
+  </p>
+
+  <!-- Caja actual de esta máquina -->
+  <div class="rg-current" [class.set]="currentId">
+    <span class="rg-current-ic"><i class="bi" [class.bi-pc-display]="currentId" [class.bi-question-circle]="!currentId"></i></span>
+    <div>
+      <small>Esta máquina es</small>
+      <b *ngIf="currentId">{{ (registers && registers.length) ? (nombreDe(currentId)) : 'Caja asignada' }}</b>
+      <b *ngIf="!currentId">Sin caja asignada</b>
+    </div>
+  </div>
+
+  <!-- Lista de cajas -->
+  <div class="rg-list-h">Cajas disponibles</div>
+
+  <div class="rg-empty" *ngIf="!loading && !registers.length">
+    <i class="bi bi-inbox"></i>
+    <p>No hay cajas. Crea la primera abajo.</p>
+  </div>
+
+  <div class="rg-item" *ngFor="let r of registers"
+       [class.sel]="esActual(r)" [class.off]="!r.is_active">
+    <button type="button" class="rg-pick" (click)="elegirCaja(r)">
+      <span class="rg-radio">
+        <i class="bi" [class.bi-check-circle-fill]="esActual(r)" [class.bi-circle]="!esActual(r)"></i>
+      </span>
+      <span class="rg-info">
+        <span class="rg-name">{{ r.name }} <span class="rg-code">{{ r.code }}</span></span>
+        <span class="rg-badge" *ngIf="!r.is_active">Inactiva</span>
+        <span class="rg-badge me" *ngIf="esActual(r)">Esta máquina</span>
+      </span>
+    </button>
+
+    <button type="button" class="rg-toggle" (click)="toggleActiva(r)"
+            [title]="r.is_active ? 'Desactivar' : 'Activar'">
+      <i class="bi" [class.bi-toggle-on]="r.is_active" [class.bi-toggle-off]="!r.is_active"></i>
+    </button>
+  </div>
+
+  <!-- Crear caja -->
+  <div class="rg-add">
+    <div class="rg-add-h">Agregar caja</div>
+    <div class="rg-add-row">
+      <input class="rg-ctl" type="text" [(ngModel)]="nuevoNombre" placeholder="Ej. Caja 2"
+             (keyup.enter)="crearCaja()">
+      <button class="rg-btn primary" type="button" (click)="crearCaja()" [disabled]="busyAdd">
+        <i class="bi bi-plus-lg"></i>
+        {{ busyAdd ? 'Creando...' : 'Crear' }}
+      </button>
+    </div>
+    <small class="rg-hint">El código de folio (C2, C3…) se genera automáticamente.</small>
+  </div>
+
+  <div class="rg-note">
+    <i class="bi bi-info-circle"></i>
+    <span>Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es la suya.</span>
+  </div>
+
+</div>

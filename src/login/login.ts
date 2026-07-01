@@ -20,7 +20,7 @@ export class Login {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
   ) {}
 
   async onLogin(event: Event) {

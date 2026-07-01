@@ -1,7 +1,7 @@
 const sql = require('mssql/msnodesqlv8');
 const path = require('path');
 const fs = require('fs');
-const { app } = require('electron');
+const { app, safeStorage } = require('electron');
 
 // ============================================================
 // Configuracion
@@ -17,74 +17,128 @@ function buildServerName(host, instance) {
   return inst ? `${h}\\${inst}` : h;
 }
 
+// auth: 'windows' (principal) o 'sql' (cajas secundarias por red).
 const defaultConfig = {
   server: buildServerName(process.env.DB_HOST, process.env.DB_INSTANCE),
   database: process.env.DB_NAME || '',
+  auth: process.env.DB_AUTH || 'windows',
+  user: process.env.DB_USER || 'ocus_app',
   options: {
-    trustedConnection: true,
     encrypt: String(process.env.DB_ENCRYPT || 'false').toLowerCase() === 'true',
     trustServerCertificate: String(process.env.DB_TRUST_SERVER_CERT || 'true').toLowerCase() === 'true',
     enableArithAbort: true
   },
-  // Resiliencia: configurable por cliente
   retry: {
     maxAttempts: Number(process.env.DB_RETRY_ATTEMPTS || 20),
     delayMs: Number(process.env.DB_RETRY_DELAY_MS || 3000)
   }
 };
 
+function writeConfigFile(obj) {
+  const p = getConfigPath();
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(obj, null, 2), 'utf8');
+}
+
 function loadConfig() {
   const configPath = getConfigPath();
-
   try {
     if (fs.existsSync(configPath)) {
       const userCfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
-      const merged = {
+      return {
         ...defaultConfig,
         ...userCfg,
         server: userCfg.server || defaultConfig.server,
         database: userCfg.database || defaultConfig.database,
-        options: { ...defaultConfig.options, ...(userCfg.options || {}), trustedConnection: true },
+        auth: userCfg.auth || defaultConfig.auth,
+        user: userCfg.user || defaultConfig.user,
+        options: { ...defaultConfig.options, ...(userCfg.options || {}) },
         retry: { ...defaultConfig.retry, ...(userCfg.retry || {}) }
       };
-
-      delete merged.user;
-      delete merged.password;
-
-      fs.writeFileSync(configPath, JSON.stringify(merged, null, 2));
-      console.log('[DB] Configuracion cargada desde:', configPath);
-      return merged;
     }
-
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+    writeConfigFile(defaultConfig);
     console.log('[DB] Archivo de configuracion creado en:', configPath);
-    return defaultConfig;
+    return { ...defaultConfig };
   } catch (err) {
     console.error('[DB] Error cargando configuracion:', err);
     try { if (fs.existsSync(configPath)) fs.renameSync(configPath, `${configPath}.bak`); } catch { /* noop */ }
-    return defaultConfig;
+    return { ...defaultConfig };
   }
 }
 
-const dbConfig = loadConfig();
+// Cifrado de la contraseña (SQL Auth) con el almacen del SO
 
-// mssql no conoce la clave "retry": la separamos del config del pool
-const { retry, ...poolConfig } = dbConfig;
+function encryptSecret(plain) {
+  try {
+    if (safeStorage && safeStorage.isEncryptionAvailable()) {
+      return { enc: safeStorage.encryptString(String(plain)).toString('base64'), method: 'safeStorage' };
+    }
+  } catch (e) {
+    console.error('[DB] safeStorage no disponible:', e.message);
+  }
+  // Fallback: base64 (ofuscacion, no es cifrado real). Mejor que texto plano.
+  return { enc: Buffer.from(String(plain), 'utf8').toString('base64'), method: 'base64' };
+}
 
-// ============================================================
-// Estado de conexion (observable para la UI)
-// ============================================================
+function decryptSecret(b64, method) {
+  if (!b64) return '';
+  try {
+    if (method === 'safeStorage' && safeStorage && safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(Buffer.from(b64, 'base64'));
+    }
+    return Buffer.from(b64, 'base64').toString('utf8');
+  } catch (e) {
+    console.error('[DB] No se pudo descifrar la contrasena:', e.message);
+    return '';
+  }
+}
+
+// Resolver el config real del pool segun el modo de auth
+
+function resolvePoolConfig() {
+  const cfg = loadConfig();
+
+  const base = {
+    server: cfg.server,
+    database: cfg.database,
+    options: {
+      encrypt: cfg.options?.encrypt ?? false,
+      trustServerCertificate: cfg.options?.trustServerCertificate ?? true,
+      enableArithAbort: true
+    }
+  };
+
+  if ((cfg.auth || 'windows') === 'sql') {
+    base.options.trustedConnection = false;
+    base.user = cfg.user || 'ocus_app';
+
+    if (cfg.password) {
+      const { enc, method } = encryptSecret(cfg.password);
+      const persisted = { ...cfg };
+      delete persisted.password;
+      persisted.passwordEnc = enc;
+      persisted.passwordEncMethod = method;
+      writeConfigFile(persisted);
+      base.password = cfg.password;
+    } else {
+      base.password = decryptSecret(cfg.passwordEnc, cfg.passwordEncMethod);
+    }
+  } else {
+    base.options.trustedConnection = true;
+  }
+
+  return { poolConfig: base, retry: cfg.retry };
+}
 
 let pool = null;
-let connecting = null;        // promesa en curso, evita conexiones duplicadas
+let connecting = null;
 let listeners = [];
 
 const STATE = { status: 'disconnected', error: null, attempts: 0 };
 
 function getState() {
-  return { ...STATE, server: poolConfig.server, database: poolConfig.database };
+  const cfg = loadConfig();
+  return { ...STATE, server: cfg.server, database: cfg.database, auth: cfg.auth };
 }
 
 function onStateChange(cb) {
@@ -100,23 +154,19 @@ function setState(status, extra = {}) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function isHealthy(p) { return !!p && p.connected === true; }
 
-function isHealthy(p) {
-  return !!p && p.connected === true;
-}
-
-// ============================================================
-// Conexion con reintento
-// ============================================================
 
 async function connectWithRetry() {
+  const { poolConfig, retry } = resolvePoolConfig();
+
   if (!poolConfig.database) {
     setState('error', { error: 'No hay base de datos configurada en db-config.json.' });
     throw new Error('No hay base de datos configurada (database vacio en db-config.json).');
   }
 
-  const maxAttempts = Number(retry.maxAttempts) || 20;
-  const delayMs = Number(retry.delayMs) || 3000;
+  const maxAttempts = Number(retry?.maxAttempts) || 20;
+  const delayMs = Number(retry?.delayMs) || 3000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     setState('connecting', { attempts: attempt, error: null });
@@ -132,7 +182,7 @@ async function connectWithRetry() {
       await p.connect();
       pool = p;
       setState('connected', { error: null });
-      console.log(`[DB] Conectado. Server: ${poolConfig.server} DB: ${poolConfig.database}`);
+      console.log(`[DB] Conectado. Server: ${poolConfig.server} DB: ${poolConfig.database} Auth: ${poolConfig.options.trustedConnection ? 'windows' : 'sql'}`);
       return pool;
     } catch (err) {
       console.error(`[DB] Intento ${attempt}/${maxAttempts} fallo:`, err.message);
@@ -146,28 +196,52 @@ async function connectWithRetry() {
   throw new Error(`No se pudo conectar a SQL Server tras ${maxAttempts} intentos.`);
 }
 
-// Punto de entrada principal: siempre devuelve un pool sano (reconecta si hace falta)
 async function getPool() {
   if (isHealthy(pool)) return pool;
   if (connecting) return connecting;
-
   connecting = connectWithRetry().finally(() => { connecting = null; });
   return connecting;
 }
 
-// Fuerza un nuevo intento (para el boton "Reintentar" de la UI)
 async function reconnect() {
+  try { if (pool) await pool.close(); } catch { /* noop */ }
   pool = null;
   return getPool();
+}
+
+function getConnectionConfig() {
+  const cfg = loadConfig();
+  return {
+    server: cfg.server,
+    database: cfg.database,
+    auth: cfg.auth || 'windows',
+    user: cfg.user || 'ocus_app',
+    hasPassword: !!(cfg.passwordEnc || cfg.password)
+  };
+}
+
+async function setConnectionConfig(partial = {}) {
+  const cfg = loadConfig();
+  const merged = { ...cfg, ...partial };
+  if (partial.options) merged.options = { ...cfg.options, ...partial.options };
+
+  if (partial.password) {
+    const { enc, method } = encryptSecret(partial.password);
+    merged.passwordEnc = enc;
+    merged.passwordEncMethod = method;
+  }
+  delete merged.password; // nunca en claro
+
+  writeConfigFile(merged);
+  await reconnect();
+  return { success: true };
 }
 
 // ============================================================
 // Exports
 // ============================================================
-// getPool() es lo recomendado (reconecta solo). poolPromise se mantiene como
-// getter para compatibilidad con el codigo existente.
 
-const api = { sql, getPool, reconnect, getState, onStateChange };
+const api = { sql, getPool, reconnect, getState, onStateChange, getConnectionConfig, setConnectionConfig };
 
 Object.defineProperty(api, 'poolPromise', {
   enumerable: true,

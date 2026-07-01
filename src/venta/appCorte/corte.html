@@ -3,7 +3,7 @@
   <div class="wizard-steps" *ngIf="showFilters">
     <div class="step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
       <div class="step-number">1</div>
-      <div class="step-label">Cajero</div>
+      <div class="step-label">Caja</div>
     </div>
     <div class="step-line" [class.active]="currentStep > 1"></div>
     <div class="step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
@@ -22,35 +22,35 @@
     <div class="filter-wizard" *ngIf="showFilters">
       <div class="wizard-header">
         <h1>Corte de Caja</h1>
-        <p class="subtitle">Selecciona el cajero y tipo de consulta</p>
+        <p class="subtitle">Selecciona la caja y tipo de consulta</p>
       </div>
 
-      <!-- PASO 1: CAJERO -->
+      <!-- PASO 1: CAJA -->
       <div class="wizard-panel" *ngIf="currentStep === 1">
-        <label class="section-label">Selecciona el cajero</label>
+        <label class="section-label">Selecciona la caja</label>
         <div class="user-grid">
           <button type="button" 
                   class="user-card"
-                  *ngFor="let u of usuarios"
-                  [class.selected]="selectedUserId === u.id"
-                  (click)="selectUser(u.id)">
+                  *ngFor="let c of cajas"
+                  [class.selected]="selectedRegisterId === c.id"
+                  (click)="selectRegister(c.id)">
             <div class="user-avatar">
-              <i class="bi bi-person-fill"></i>
+              <i class="bi bi-pc-display"></i>
             </div>
             <div class="user-info">
-              <div class="user-name">{{ u.usuario }}</div>
-              <div class="user-role">{{ u.rol }}</div>
+              <div class="user-name">{{ c.name }}</div>
+              <div class="user-role">ID: {{ c.id }}</div>
             </div>
             <i class="bi bi-check-circle-fill check-icon"></i>
           </button>
-          <div class="empty-state" *ngIf="usuarios.length === 0">
-            <i class="bi bi-people"></i>
-            <p>No hay cajeros disponibles</p>
+          <div class="empty-state" *ngIf="cajas.length === 0">
+            <i class="bi bi-display"></i>
+            <p>No hay cajas disponibles</p>
           </div>
         </div>
         <div class="wizard-actions">
           <button class="btn btn-primary btn-lg" 
-                  [disabled]="!selectedUserId"
+                  [disabled]="!selectedRegisterId"
                   (click)="nextStep()">
             Continuar
             <i class="bi bi-arrow-right"></i>
@@ -61,12 +61,12 @@
       <!-- PASO 2: MODO -->
       <div class="wizard-panel" *ngIf="currentStep === 2">
         <button class="btn-back" (click)="prevStep()">
-          <i class="bi bi-arrow-left"></i> Cambiar cajero
+          <i class="bi bi-arrow-left"></i> Cambiar caja
         </button>
 
         <div class="selected-user-badge">
-          <i class="bi bi-person-check-fill"></i>
-          <span>{{ selectedUserName }}</span>
+          <i class="bi bi-pc-display"></i>
+          <span>{{ selectedRegisterName }}</span>
         </div>
 
         <label class="section-label mt-4">¿Qué deseas hacer?</label>
@@ -80,12 +80,12 @@
             </div>
             <div class="mode-content">
               <h3>Cerrar turno</h3>
-              <p>Cierra el turno activo del cajero y registra el efectivo entregado</p>
+              <p>Cierra el turno activo de la caja y registra el efectivo</p>
               <div class="mode-badge" *ngIf="mode==='TURNO' && openShiftId">
                 <i class="bi bi-check-circle-fill"></i>
                 Turno #{{ openShiftId }} detectado
               </div>
-              <div class="mode-badge warning" *ngIf="mode==='TURNO' && selectedUserId && !openShiftId">
+              <div class="mode-badge warning" *ngIf="mode==='TURNO' && selectedRegisterId && !openShiftId">
                 <i class="bi bi-exclamation-triangle-fill"></i>
                 Sin turno abierto
               </div>
@@ -102,7 +102,7 @@
             </div>
             <div class="mode-content">
               <h3>Reporte por fecha</h3>
-              <p>Consulta movimientos de caja en un rango de fechas específico</p>
+              <p>Consulta movimientos de esta caja en un rango específico</p>
             </div>
             <i class="bi bi-check-circle-fill check-icon"></i>
           </button>
@@ -179,8 +179,8 @@
             </h2>
             <div class="header-meta">
               <span class="meta-item">
-                <i class="bi bi-person-fill"></i>
-                {{ selectedUserName }}
+                <i class="bi bi-pc-display"></i>
+                {{ selectedRegisterName }}
               </span>
               <span class="meta-divider">·</span>
               <span class="meta-item" *ngIf="mode === 'DIA'">
@@ -334,8 +334,8 @@
         <div class="modal-body">
           <div class="modal-info-card">
             <div class="info-row">
-              <span class="info-label">Cajero</span>
-              <span class="info-value">{{ selectedUserName }}</span>
+              <span class="info-label">Caja</span>
+              <span class="info-value">{{ selectedRegisterName }}</span>
             </div>
             <div class="info-row" *ngIf="mode === 'TURNO'">
               <span class="info-label">Turno</span>

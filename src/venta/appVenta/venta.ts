@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angular/common';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
+import { RegisterService } from '../../services/register.service';
 
 interface ProductRow {
   id: number;
@@ -166,7 +167,7 @@ export class Venta {
   refundNote = '';
   refundLoading = false;
 
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService) {}
 
   async ngOnInit() {
     await this.refreshFolioFromDb();
@@ -282,7 +283,7 @@ export class Venta {
     }
 
     try {
-      const resp = await api.getOpenShift({ user_id: this.currentUserId });
+      const resp = await api.getOpenShift({ user_id: this.currentUserId, register_id: this.registerSvc.registerId });
       if (!resp?.success) return false;
 
       const row = resp.data;
@@ -354,7 +355,8 @@ export class Venta {
         user_id: this.currentUserId,
         opening_cash,
         opening_note: (this.openingNote || '').trim() || null,
-        opening_user_id: this.currentUserId
+        opening_user_id: this.currentUserId,
+        register_id: this.registerSvc.registerId
       };
 
       const resp = await api.openShift(payload);
@@ -506,7 +508,8 @@ export class Venta {
         this.paymentMethod,
         detalles,
         isCredito ? this.customerId : null,
-        isCredito ? this.dueDate : null
+        isCredito ? this.dueDate : null,
+        this.registerSvc.registerId
       );
 
       if (resp?.success) {
@@ -697,7 +700,8 @@ export class Venta {
       user_id: this.currentUserId,
       typee: 'WITHDRAW',
       amount,
-      note: this.cashOutNote
+      note: this.cashOutNote,
+      register_id: this.registerSvc.registerId
     };
 
     try {

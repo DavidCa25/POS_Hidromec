@@ -14,8 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
-    registerSale: (userId, paymentMethod, items, customerId, dueDate) =>
-        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate),
+    registerSale: (userId, paymentMethod, items, customerId, dueDate, registerId) =>
+        ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate, registerId),
 
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
@@ -140,5 +140,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     logToFile: (level, message, meta) => ipcRenderer.send('app-log', { level, message, meta }),
     openLogsFolder: () => ipcRenderer.invoke('logs-open-folder'),
     logsInfo: () => ipcRenderer.invoke('logs-info'),
+
+    // Cajas
+    registersList: (onlyActive) => ipcRenderer.invoke('registers-list', onlyActive),
+    registersAdd: (payload) => ipcRenderer.invoke('registers-add', payload),
+    registersSetActive: (payload) => ipcRenderer.invoke('registers-set-active', payload),
+
+    // Identidad de esta máquina
+    registerGetCurrent: () => ipcRenderer.invoke('register-get-current'),
+    registerSetCurrent: (payload) => ipcRenderer.invoke('register-set-current', payload),
 
 });
