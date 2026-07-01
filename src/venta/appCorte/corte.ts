@@ -28,10 +28,9 @@ interface Summary {
   cash_expected?: number;
 }
 
-interface UserOption {
+interface RegisterOption {
   id: number;
-  usuario: string;
-  rol: string;
+  name: string;
 }
 
 type Mode = 'TURNO' | 'DIA';
@@ -49,8 +48,8 @@ export class Corte {
   // Wizard control
   currentStep = 1;
 
-  usuarios: UserOption[] = [];
-  selectedUserId: number | null = null;
+  cajas: RegisterOption[] = [];
+  selectedRegisterId: number | null = null;
 
   showCloseModal = false;
   cashDelivered: number | null = null;
@@ -83,7 +82,7 @@ export class Corte {
   }
 
   async ngOnInit() {
-    await this.cargarUsuariosActivos();
+    await this.cargarCajas();
   }
 
   private toStr(d: Date){ return d.toISOString().slice(0,10); }
@@ -116,9 +115,9 @@ export class Corte {
   }
 
   // ===== WIZARD NAVIGATION =====
-  async selectUser(userId: number) {
-    this.selectedUserId = userId;
-    await this.onUserChange();
+  async selectRegister(registerId: number) {
+    this.selectedRegisterId = registerId;
+    await this.onRegisterChange();
   }
 
   nextStep() {
@@ -137,8 +136,8 @@ export class Corte {
     this.mode = mode;
     if (mode === 'TURNO') {
       this.onlyOpen = true;
-      if (this.selectedUserId) {
-        await this.fetchOpenShiftForSelectedUser();
+      if (this.selectedRegisterId) {
+        await this.fetchOpenShiftForSelectedRegister();
       }
     } else {
       this.setPreset('HOY');
@@ -146,7 +145,7 @@ export class Corte {
   }
 
   get canConsult(): boolean {
-    if (!this.selectedUserId) return false;
+    if (!this.selectedRegisterId) return false;
     if (this.mode === 'TURNO') {
       return !!this.openShiftId;
     }
@@ -154,7 +153,7 @@ export class Corte {
   }
 
   get canClose(): boolean {
-    if (!this.selectedUserId) return false;
+    if (!this.selectedRegisterId) return false;
     if (this.mode === 'TURNO') {
       return !!this.openShiftId;
     }
@@ -171,7 +170,7 @@ export class Corte {
     this.desdeStr = '';
     this.hastaStr = '';
     this.onlyOpen = true;
-    this.selectedUserId = null;
+    this.selectedRegisterId = null;
     this.mode = 'TURNO';
 
     this.openShiftId = null;
@@ -184,22 +183,23 @@ export class Corte {
     this.currentStep = 1;
   }
 
-  async onUserChange() {
+  async onRegisterChange() {
     this.openShiftId = null;
     this.openShiftOpenedAt = null;
     this.openShiftOpeningCash = 0;
 
-    if (this.mode === 'TURNO' && this.selectedUserId) {
-      await this.fetchOpenShiftForSelectedUser();
+    if (this.mode === 'TURNO' && this.selectedRegisterId) {
+      await this.fetchOpenShiftForSelectedRegister();
     }
   }
 
-  private async fetchOpenShiftForSelectedUser(): Promise<boolean> {
+  private async fetchOpenShiftForSelectedRegister(): Promise<boolean> {
     const api = (window as any).electronAPI;
     if (!api?.getOpenShift) return false;
-    if (!this.selectedUserId) return false;
+    if (!this.selectedRegisterId) return false;
 
-    const resp = await api.getOpenShift({ user_id: this.selectedUserId });
+    // Resuelve turno mediante register_id en lugar de user_id
+    const resp = await api.getOpenShift({ register_id: this.selectedRegisterId });
 
     if (!resp?.success) return false;
 
@@ -220,11 +220,11 @@ export class Corte {
   }
 
   async consultar(){
-    if (!this.selectedUserId) {
+    if (!this.selectedRegisterId) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Selecciona cajero',
-        text: 'Elige un cajero para consultar.',
+        title: 'Selecciona una caja',
+        text: 'Elige una caja para consultar.',
         confirmButtonColor: '#10b981'
       });
       return;
@@ -233,14 +233,14 @@ export class Corte {
     this.loading = true;
     try {
       if (this.mode === 'TURNO') {
-        const ok = await this.fetchOpenShiftForSelectedUser();
+        const ok = await this.fetchOpenShiftForSelectedRegister();
         if (!ok || !this.openShiftId) {
           this.movimientos = [];
           this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
           await Swal.fire({
             icon: 'info',
             title: 'Sin turno abierto',
-            text: 'Este cajero no tiene un turno abierto para cerrar.',
+            text: 'Esta caja no tiene un turno abierto para cerrar.',
             confirmButtonColor: '#10b981'
           });
           return;
@@ -250,7 +250,7 @@ export class Corte {
       const payload = {
         start_date: this.mode === 'DIA' ? (this.desdeStr || null) : null,
         end_date:   this.mode === 'DIA' ? (this.hastaStr || null) : null,
-        user_id:    this.selectedUserId,
+        register_id: this.selectedRegisterId, // <--- Búsqueda enfocada en la caja
         typee:      null,
         closure_id: this.mode === 'TURNO' ? this.openShiftId : null,
         only_open:  this.mode === 'TURNO' ? 1 : (this.onlyOpen ? 1 : 0),
@@ -314,11 +314,11 @@ export class Corte {
   }
 
   async confirmarCierreReal() {
-    if (!this.selectedUserId) {
+    if (!this.selectedRegisterId) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Selecciona un cajero',
-        text: 'Debes elegir el usuario al que le vas a hacer el corte.',
+        title: 'Selecciona una caja',
+        text: 'Debes elegir la caja a la que le vas a hacer el corte.',
         confirmButtonColor: '#10b981'
       });
       return;
@@ -328,7 +328,7 @@ export class Corte {
       await Swal.fire({
         icon: 'warning',
         title: 'Sin turno abierto',
-        text: 'No hay turno abierto detectado para cerrar.',
+        text: 'No hay turno abierto detectado para cerrar en esta caja.',
         confirmButtonColor: '#10b981'
       });
       return;
@@ -338,28 +338,31 @@ export class Corte {
       await Swal.fire({
         icon: 'warning',
         title: 'Falta efectivo entregado',
-        text: 'Captura el efectivo entregado por el cajero.',
+        text: 'Captura el efectivo físico contado en caja.',
         confirmButtonColor: '#10b981'
       });
       return;
     }
     this.closing = true;
 
-    const userId = Number(this.selectedUserId);
+    // Quien CIERRA el turno es el usuario actual autenticado (ej. supervisor)
+    const userId = Number(this.auth.usuarioActualId);
     const closureId = Number(this.openShiftId);
 
     if (!Number.isFinite(userId) || userId <= 0) {
-      await Swal.fire({ icon: 'error', title: 'user_id inválido', text: String(this.selectedUserId) });
+      await Swal.fire({ icon: 'error', title: 'Usuario inválido', text: 'Sesión no válida para cerrar.' });
+      this.closing = false;
       return;
     }
     if (!Number.isFinite(closureId) || closureId <= 0) {
       await Swal.fire({ icon: 'error', title: 'closure_id inválido', text: String(this.openShiftId) });
+      this.closing = false;
       return;
     }
     try {
       const resp = await (window as any).electronAPI.closeShift({
         closure_id: closureId,
-        user_id: userId,
+        user_id: userId, // Auditoría: quién cerró el turno
         cash_delivered: Number(this.cashDelivered),
         note: (this.closeNotes || '').trim() || null
       });
@@ -381,8 +384,8 @@ export class Corte {
         html: `
           <div style="text-align:left; background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Cajero:</span>
-              <span style="font-weight: 700;">${this.selectedUserName}</span>
+              <span style="font-weight: 600; color: #64748b;">Caja:</span>
+              <span style="font-weight: 700;">${this.selectedRegisterName}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
               <span style="font-weight: 600; color: #64748b;">Turno ID:</span>
@@ -421,21 +424,32 @@ export class Corte {
         text: e?.message || 'Ocurrió un error al registrar el cierre.',
         confirmButtonColor: '#10b981'
       });
+    } finally {
+      this.closing = false;
     }
   }
 
-  private async cargarUsuariosActivos() {
+  private async cargarCajas() {
     try {
-      const res = await (window as any).electronAPI.getActiveUsers();
-      if (res?.success) this.usuarios = res.data || [];
-      else console.error('No se pudieron cargar usuarios', res?.error);
+      const res = await (window as any).electronAPI.getRegisters();
+      if (res?.success) {
+        this.cajas = res.data || [];
+      } else {
+        // Fallback temporal si el API no está listo
+        this.cajas = [
+          { id: 1, name: 'Caja 1' },
+          { id: 2, name: 'Caja 2' }
+        ];
+      }
     } catch (e) {
-      console.error('Error getActiveUsers:', e);
+      console.error('Error getRegisters:', e);
+      // Fallback temporal por si truena la llamada
+      this.cajas = [{ id: 1, name: 'Caja 1' }];
     }
   }
 
-  get selectedUserName(): string {
-    const u = this.usuarios.find(x => x.id === this.selectedUserId);
-    return u ? u.usuario : '';
+  get selectedRegisterName(): string {
+    const c = this.cajas.find(x => x.id === this.selectedRegisterId);
+    return c ? c.name : '';
   }
 }

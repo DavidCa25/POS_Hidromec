@@ -7,6 +7,7 @@ import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService } from '../services/theme.service';
+import { RegisterService } from '../services/register.service';
 
 type AppNotification = {
   id: string;
@@ -54,7 +55,7 @@ export class Dashboard {
 
   private sub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService) {}
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -63,6 +64,7 @@ export class Dashboard {
     this.showOverlay = this.isMobile && this.menuOpen;
   }
   ngOnInit() { this.onResize();if (this.auth.usuarioActual?.nombre) {
+      this.registerService.load();
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();
 

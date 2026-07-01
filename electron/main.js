@@ -13,6 +13,7 @@ const { runMigrations } = require('./migrationsRunner');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
 const logger = require('./logger');
+const db = require('./db');
 
 logger.setupLogging({ retentionDays: 14 });
 
@@ -494,7 +495,7 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
     }
 });
 
-ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, customerId, dueDate) => {
+ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, customerId, dueDate, registerId) => {
   try {
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('La venta no tiene partidas.');
@@ -516,7 +517,8 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, c
       .input('payment_method', sql.NVarChar(50),  paymentMethod)
       .input('SaleDetails',    tvp)
       .input('customer_id',    sql.Int,           customerId ?? null)
-      .input('due_date',       sql.Date,          dueDate ? new Date(dueDate) : null);
+      .input('due_date',       sql.Date,          dueDate ? new Date(dueDate) : null)
+      .input('register_id',    sql.Int,           registerId ?? null);
 
     const result = await request.execute('sp_register_sale');
 
@@ -996,6 +998,9 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
 
     const userId = parseInt(payload?.user_id ?? payload?.userId, 10);
     const cashDelivered = Number(payload?.cash_delivered ?? payload?.cashDelivered);
+    const closureId = Number(payload?.closure_id ?? payload?.closureId);
+    const registerId = payload?.register_id ?? payload?.registerId ?? null;
+
 
     console.log('parsed:', { userId, cashDelivered });
 
@@ -1009,7 +1014,12 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
     const pool = await poolPromise;
     const req = pool.request()
       .input('user_id', sql.Int, userId)
-      .input('cash_delivered', sql.Decimal(12, 2), cashDelivered);
+      .input('cash_delivered', sql.Decimal(12, 2), cashDelivered)
+      .input('register_id', sql.Int, registerId);
+
+    if (Number.isFinite(closureId) && closureId > 0) {
+      req.input('closure_id', sql.Int, closureId);
+    }
 
     const result = await req.execute('sp_close_shift');
 
@@ -1018,7 +1028,7 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
       data: result.recordset && result.recordset[0] ? result.recordset[0] : null
     };
   } catch (err) {
-    console.error('❌ Error en sp_close_shift:', err);
+    console.error('Error en sp_close_shift:', err);
     return { success: false, error: err.message };
   }
 });
@@ -1069,7 +1079,7 @@ ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
 
     return { success: true, data: result.recordset[0] ?? null };
   } catch (err) {
-    console.error('❌ sp_register_supplier_payment:', err);
+    console.error('sp_register_supplier_payment:', err);
     return { success: false, error: err.message };
   }
 });
@@ -1082,11 +1092,12 @@ ipcMain.handle('sp-register-cash-out', async (event, payload) => {
       .input('user_id', sql.Int, payload.user_id)
       .input('amount', sql.Decimal(10,2), payload.amount)
       .input('note', sql.NVarChar(255), payload.note || null)
+      .input('register_id', sql.Int, payload.register_id ?? null)
       .execute('sp_register_cash_out');
 
     return { success: true, data: result.recordset?.[0] ?? null };
   } catch (err) {
-    console.error('❌ sp_register_cash_out:', err);
+    console.error('sp_register_cash_out:', err);
     return { success: false, error: err.message };
   }
 });
@@ -1319,6 +1330,7 @@ ipcMain.handle('sp-get-open-shift', async (event, payload) => {
     const result = await pool.request()
       .input('user_id', sql.Int, payload.user_id)
       .input('date', sql.Date, payload.date || null) 
+      .input('register_id', sql.Int, payload.register_id ?? null)
       .execute('sp_get_open_shift');
 
     return { success: true, data: result.recordset?.[0] ?? null };
@@ -1336,6 +1348,7 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
       .input('opening_cash', sql.Decimal(12,2), Number(payload.opening_cash ?? 0))
       .input('opening_note', sql.NVarChar(255), payload.note || null)
       .input('opening_user_id', sql.Int, payload.opening_user_id ?? payload.user_id)
+      .input('register_id', sql.Int, payload.register_id ?? null)
       .execute('sp_open_shift');
 
     return { success: true, data: result.recordset?.[0] ?? null };
@@ -1984,6 +1997,94 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
   ipcMain.on('app-log', (_event, payload) => logger.logFromRenderer(payload));
   ipcMain.handle('logs-open-folder', async () => { await logger.openLogsFolder(); return { success: true }; });
   ipcMain.handle('logs-info', async () => ({ success: true, data: logger.logsInfo() }));
+
+  db.onStateChange((state) => { mainWindow?.webContents.send('db-status', state); });
+
+  ipcMain.handle('db-status', async () => ({ success: true, data: db.getState() }));
+  ipcMain.handle('db-reconnect', async () => { await db.reconnect(); return { success: true }; });
+  ipcMain.handle('db-get-connection', async () => ({ success: true, data: db.getConnectionConfig() }));
+  ipcMain.handle('db-set-connection', async (_e, cfg = {}) => db.setConnectionConfig(cfg));
+
+  // ===== CAJAS (registers) =====
+
+  // Catálogo de cajas desde la BD
+  ipcMain.handle('registers-list', async (_event, onlyActive = false) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request()
+        .input('only_active', sql.Bit, onlyActive ? 1 : 0)
+        .execute('sp_get_registers');
+      return { success: true, data: result.recordset ?? [] };
+    } catch (err) {
+      console.error('registers-list:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('registers-add', async (_event, payload = {}) => {
+    try {
+      const name = String(payload?.name ?? '').trim();
+      const code = payload?.code ? String(payload.code).trim() : null;
+      if (!name) return { success: false, error: 'El nombre es obligatorio.' };
+
+      const pool = await poolPromise;
+      const req = pool.request().input('name', sql.NVarChar(60), name);
+      req.input('code', sql.NVarChar(10), code);
+
+      const result = await req.execute('sp_add_register');
+      return { success: true, data: result.recordset?.[0] ?? null };
+    } catch (err) {
+      console.error('registers-add:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('registers-set-active', async (_event, payload = {}) => {
+    try {
+      const id = Number(payload?.id);
+      const isActive = payload?.is_active ? 1 : 0;
+      if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
+
+      const pool = await poolPromise;
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .input('is_active', sql.Bit, isActive)
+        .execute('sp_set_register_active');
+      return { success: true, data: result.recordset?.[0] ?? null };
+    } catch (err) {
+      console.error('registers-set-active:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // ===== IDENTIDAD DE ESTA MÁQUINA (qué caja soy) =====
+
+  ipcMain.handle('register-get-current', async () => {
+    try {
+      const cfg = loadDeviceConfig();
+      return { success: true, data: { registerId: cfg?.register?.id ?? null, registerName: cfg?.register?.name ?? null } };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('register-set-current', async (_event, payload = {}) => {
+    try {
+      const id = Number(payload?.id);
+      if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
+
+      const current = loadDeviceConfig();
+      const merged = {
+        ...current,
+        register: { id, name: payload?.name ?? null }
+      };
+      saveDeviceConfig(merged);
+      return { success: true, data: merged.register };
+    } catch (err) {
+      console.error('register-set-current:', err);
+      return { success: false, error: err.message };
+    }
+  });
 
 
 

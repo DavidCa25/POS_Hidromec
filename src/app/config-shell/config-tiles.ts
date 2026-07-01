@@ -5,6 +5,7 @@ import { TicketPanelComponent } from '../ticket-panel/ticket-panel.component';
 import { BackupsPanelComponent } from '../backups-panel/backups-panel.component';
 import { NegocioPanelComponent } from '../negocio-panel/negocio-panel.component';
 import { DiagnosticoPanel } from '../diagnostico-panel/diagnostico-panel.component';
+import { RegistersPanel } from '../register-panel/register-panel.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -85,6 +86,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'person-badge', color: 'gray', size: '1x1' },
             { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrow-repeat', color: 'blue', size: '1x1' },
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },
+            { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'pc-display', color: 'blue', size: '2x1', component: RegistersPanel },
         ]
     }
 ];
