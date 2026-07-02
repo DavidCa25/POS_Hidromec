@@ -453,6 +453,38 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
    
 });
 
+ipcMain.handle('sp-update-product', async (event, payload = {}) => {
+  try {
+    const productId = Number(payload?.product_id ?? payload?.productId ?? 0);
+    const nombre = String(payload?.nombre ?? payload?.name ?? '').trim();
+    const precio = Number(payload?.precio ?? payload?.price ?? 0);
+    const stock = Number(payload?.stock ?? 0);
+    const numeroParte = String(payload?.numero_parte ?? payload?.partNumber ?? '').trim();
+    const barCode = payload?.bar_code ?? payload?.barCode ?? null;
+
+    if (!Number.isFinite(productId) || productId <= 0) return { success: false, error: 'product_id invalido.' };
+    if (!nombre) return { success: false, error: 'El nombre es obligatorio.' };
+    if (!Number.isFinite(precio) || precio < 0) return { success: false, error: 'Precio invalido.' };
+    if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Stock invalido.' };
+
+    const pool = await poolPromise;
+    const req = pool.request()
+      .input('product_id', sql.Int, productId)
+      .input('nombre', sql.NVarChar(100), nombre)
+      .input('precio', sql.Decimal(10, 2), precio)
+      .input('stock', sql.Decimal(10, 2), stock)
+      .input('numero_parte', sql.NVarChar(100), numeroParte);
+
+    req.input('bar_code', sql.NVarChar(100), barCode === undefined ? null : barCode);
+
+    await req.execute('sp_update_product');
+    return { success: true };
+  } catch (err) {
+    console.error('sp-update-product:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('sp-get-categories', async (event, data) => {
     try {   
         const pool = await poolPromise;
@@ -505,7 +537,7 @@ ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, c
 
     const tvp = new sql.Table('dbo.SaleDetailType');
     tvp.columns.add('product_id', sql.Int, { nullable: false });
-    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
 
     for (const it of items) {
@@ -560,7 +592,7 @@ ipcMain.handle('get-next-purchase-folio', async () => {
     const result = await pool.request().execute('sp_get_next_purchase_folio');
     return { success: true, folio: result.recordset[0].next_folio };
   } catch (err) {
-    console.error('❌ Error get-next-purchase-folio:', err);
+    console.error('Error get-next-purchase-folio:', err);
     return { success: false, error: err.message };
   }
 });
@@ -572,7 +604,7 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
     const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int);
     tvp.columns.add('supplier_id', sql.Int);
-    tvp.columns.add('quantity', sql.Int);
+    tvp.columns.add('quantity', sql.Decimal(12, 2));
     tvp.columns.add('unit_price', sql.Decimal(10, 2));      
     tvp.columns.add('profit_percent', sql.Decimal(5, 2));  
 
@@ -1353,7 +1385,7 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
 
     return { success: true, data: result.recordset?.[0] ?? null };
   } catch (err) {
-    console.error('❌ sp_open_shift:', err);
+    console.error('sp_open_shift:', err);
     return { success: false, error: err.message };
   }
 });
@@ -1374,7 +1406,7 @@ ipcMain.handle('sp-update-sale', async (event, payload) => {
     // TVP (mismo tipo que usas en register sale)
     const tvp = new sql.Table();
     tvp.columns.add('product_id', sql.Int, { nullable: false });
-    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
 
     for (const it of items) {

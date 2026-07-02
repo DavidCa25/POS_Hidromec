@@ -116,6 +116,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     addSupplier: (nombre) =>
         ipcRenderer.invoke('sp-add-supplier', { nombre }),
 
+    actualizarProducto: (payload) => ipcRenderer.invoke('sp-update-product', payload),
+
     createBrand: (payload) => ipcRenderer.invoke('sp-add-brand', payload),
     createCategory: (payload) => ipcRenderer.invoke('sp-add-category', payload),
     mpCreateOrder: (payload) => ipcRenderer.invoke('mp-create-order', payload),

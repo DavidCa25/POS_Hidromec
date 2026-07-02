@@ -4,6 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe } from '@angular/common';
 import Swal from 'sweetalert2';
 
+
+interface ProductRow {
+  id: number;
+  part_number: string;
+  product_name?: string;
+  nombre?: string;
+  name?: string;
+  bar_code?: string;
+  price: number;
+  stock: number;
+  brand_id?: number;
+  category_id?: number;
+  category_name?: string;
+  brand_name?: string;
+  default_supplier_name?: string;
+}
+
 interface ProductForm {
   brand: number | null;
   category: number | null;
@@ -11,6 +28,7 @@ interface ProductForm {
   name: string;
   price: number | null;
   stock: number;
+  barCode: string; 
 }
 
 interface CategoryRow { id: number; namee: string; }
@@ -37,7 +55,7 @@ type ProductSupplierRow = {
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
-  form: ProductForm = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0 };
+  form: ProductForm = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '' };
 
   inventario: any[] = [];
   colorModalAbierto = false;
@@ -51,6 +69,7 @@ export class Inventario {
   supplierToAdd: number | null = null;
   supplierIsDefault = false;
   supplierLastCost: number | null = null;
+  editingProductId: number | null = null; 
 
   newSupplierName = '';
   creatingSupplier = false;
@@ -66,6 +85,9 @@ export class Inventario {
 
   creatingBrand = false;
   creatingCategory = false;
+
+  capturandoCodigo = false;
+  guardando = false;
 
   colores = [
     { nombre: 'Navy Blue', value: '#000080' },
@@ -84,6 +106,17 @@ export class Inventario {
     await this.cargarCategorias();
     await this.cargarMarcas();
     await this.cargarCatalogoProveedores();
+
+    const api = (window as any).electronAPI;
+    if (api?.onBarcodeScan) {
+      api.onBarcodeScan((payload: any) => {
+        if (!this.capturandoCodigo || !this.productoModalAbierto) return;
+        const code = String(payload?.code || '').trim();
+        if (!code) return;
+        this.form.barCode = code;
+        this.capturandoCodigo = false;
+      });
+    }
   }
 
   async consultarInventario() {
@@ -145,7 +178,7 @@ export class Inventario {
       if (result?.success) {
         await this.consultarInventario();
         this.cerrarProductoModal();
-        this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0 };
+        this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0, barCode: ''};
         await Swal.fire({
           icon: 'success',
           title: '¡Producto agregado!',
@@ -163,11 +196,77 @@ export class Inventario {
     }
   }
 
+  async guardarProducto() {
+    if (this.guardando) return;
+    if (this.editingProductId) {
+      await this.actualizarProducto();
+    } else {
+      await this.addProduct();
+    }
+  }
+
+  async actualizarProducto() {
+    const { name, price, stock, partNumber, barCode } = this.form;
+    if (!name || price == null) {
+      await Swal.fire({ icon: 'error', title: 'Campos incompletos', text: 'Nombre y precio son obligatorios.' });
+      return;
+    }
+
+    try {
+      this.guardando = true;
+      const api = (window as any).electronAPI;
+      const payload = {
+        product_id: this.editingProductId,
+        nombre: name,
+        precio: price,
+        stock: stock,
+        numero_parte: partNumber,
+        bar_code: (barCode ?? '')   
+      };
+
+      const res = await api.actualizarProducto(payload);
+      if (!res?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: res?.error || 'Error al actualizar.' });
+        return;
+      }
+
+      await this.consultarInventario();
+      this.cerrarProductoModal();
+      await Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 1400, showConfirmButton: false });
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error inesperado.' });
+    } finally {
+      this.guardando = false;
+    }
+  }
+
+
   abrirProductoModal() {
+    this.editingProductId = null;
+    this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '' };
+    this.capturandoCodigo = false;
     this.productoModalAbierto = true;
     this.cargarCategorias();
     this.cargarMarcas();
   }
+
+  abrirEditarProducto(item: ProductRow) {
+    this.editingProductId = Number(item?.id ?? 0) || null;
+    this.form = {
+      brand: item?.brand_id ?? null,
+      category: item?.category_id ?? null,
+      partNumber: String(item?.part_number ?? ''),
+      name: String(item?.product_name ?? item?.nombre ?? item?.name ?? ''),
+      price: Number(item?.price ?? 0),
+      stock: Number(item?.stock ?? 0),
+      barCode: String(item?.bar_code ?? '')
+    };
+    this.capturandoCodigo = false;
+    this.productoModalAbierto = true;
+    this.cargarCategorias();
+    this.cargarMarcas();
+  }
+
   cerrarProductoModal() { this.productoModalAbierto = false; }
 
   abrirColorModal() { this.colorModalAbierto = true; }
@@ -533,4 +632,7 @@ export class Inventario {
       this.creatingCategory = false;
     }
   }
+
+  escanearCodigo() { this.capturandoCodigo = true; }
+  cancelarEscaneo() { this.capturandoCodigo = false; }
 }
