@@ -14,6 +14,11 @@ const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
 const logger = require('./logger');
 const db = require('./db');
+const DB_NAME = 'Wybix_POS';
+const setupServer = require('./setupServer');
+const cloudSync = require('./cloudSync');
+
+//Casillas_2512_19
 
 logger.setupLogging({ retentionDays: 14 });
 
@@ -23,6 +28,7 @@ let businessConfig = null;
 
 let updateCheckTimer = null;
 let mainWindow = null;
+let setupWindow = null;
 
 function escSqlString(s) {
   return String(s ?? '').replace(/'/g, "''");
@@ -40,7 +46,7 @@ function stamp() {
 
 async function getCurrentDbName() {
   const pool = await poolPromise;
-  return pool?.config?.database || 'Hidromec_DataBase';
+  return pool?.config?.database || DB_NAME;
 }
 
 async function runOnMaster(fn) {
@@ -58,6 +64,79 @@ function buildDrawerKickCmd({ pulseMs = 120, pin = 0 } = {}) {
   const t = Math.max(1, Math.min(255, Math.round((Number(pulseMs) || 120) / 2)));
   return Buffer.from([0x1B, 0x70, pin ? 0x01 : 0x00, t, t]);
 }
+
+function getInstallConfigPath() {
+  return path.join(app.getPath('userData'), 'install-config.json');
+}
+
+function loadInstallConfig() {
+  const p = getInstallConfigPath();
+  try {
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error('Error leyendo install-config.json:', e);
+  }
+  return null;
+}
+
+function saveInstallConfig(cfg) {
+  fs.writeFileSync(getInstallConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
+  return cfg;
+}
+
+function createSetupWindow() {
+  const win = new BrowserWindow({
+    width: 640,
+    height: 640,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'setup/setup-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  });
+  win.loadFile(path.join(__dirname, 'setup/setup-wizard.html'));
+  return win;
+}
+
+async function bootMainApp() {
+  const pool = await poolPromise;
+  const migrationsDir = isDev
+    ? path.join(__dirname, 'migrations')
+    : path.join(process.resourcesPath, 'migrations');
+
+  const mig = await runMigrations({ pool, sql, migrationsDir });
+  console.log('Migraciones:', mig);
+
+  mainWindow = createWindow();
+  backup.startScheduler();
+  backup.startScheduler();
+  cloudSync.startScheduler();
+  ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
+}
+
+app.whenReady().then(async () => {
+  try {
+    const install = loadInstallConfig();
+
+    if (!install) {
+      // Primera vez: abre el asistente, no arranca la app todavia
+      setupWindow = createSetupWindow();
+      return;
+    }
+
+    // Ya configurado: prepara servidor (rapido si ya esta listo) y arranca
+    await setupServer.ensureServerReady({
+      role: install.role,
+      server: install.server,
+      dbName: install.dbName || DB_NAME
+    });
+    await bootMainApp();
+  } catch (err) {
+    console.error(err);
+  }
+});
 
 ipcMain.handle('export-database', async () => {
   try {
@@ -323,28 +402,6 @@ async function ensureBusinessConfig() {
 
   return businessConfig;
 }
-
-app.whenReady().then(async () => {
-  try {
-    const pool = await poolPromise;
-    const migrationsDir = isDev
-      ? path.join(__dirname, 'migrations')
-      : path.join(process.resourcesPath, 'migrations');
-
-    const mig = await runMigrations({ pool, sql, migrationsDir });
-    console.log('Migraciones:', mig);
-
-    mainWindow = createWindow();
-    backup.startScheduler();
-    ensureBusinessConfig().catch(err => {
-      console.error('Error cargando businessConfig al inicio:', err);
-    });
-  
-  } catch (err) {
-    console.error(err);
-  }
-});
-
 
 app.on('window-all-closed', () => {
   if (updateCheckTimer) {
@@ -2117,6 +2174,70 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
       return { success: false, error: err.message };
     }
   });
+
+
+  ipcMain.handle('setup-run', async (_event, payload = {}) => {
+  try {
+    const role = payload.role;
+    const server = payload.server;
+    const ocusPassword = payload.ocusPassword;
+    const saPassword = payload.saPassword;
+
+    // 1) Escribe db-config.json segun el rol
+    const dbConfig = (role === 'principal')
+      ? { server, database: DB_NAME, auth: 'windows' }
+      : { server, database: DB_NAME, auth: 'sql', user: 'ocus_app', password: ocusPassword };
+
+    fs.writeFileSync(
+      path.join(app.getPath('userData'), 'db-config.json'),
+      JSON.stringify(dbConfig, null, 2), 'utf8'
+    );
+
+    // 2) Prepara el servidor (instala SQL en principal / valida en secundaria)
+    const setupRes = await setupServer.ensureServerReady({
+      role, server, dbName: DB_NAME, saPassword, ocusPassword
+    });
+
+    if (!setupRes?.ok) {
+      return { ok: false, error: 'No se pudo preparar el servidor.' };
+    }
+
+    // 3) En secundaria, confirma que la base responde de verdad
+    if (role === 'secundaria') {
+      await db.reconnect();
+      const st = db.getState();
+      if (st.status !== 'connected') {
+        return { ok: false, error: 'No se pudo conectar con la computadora principal. Revisa la IP y la red.' };
+      }
+    }
+
+    // 4) Guarda la config de instalacion (sin contrasenas en claro)
+    saveInstallConfig({ role, server, configuredAt: new Date().toISOString() });
+
+    // 5) Cierra el asistente y arranca la app normal
+    if (setupWindow) { setupWindow.close(); setupWindow = null; }
+    await bootMainApp();
+
+    return { ok: true };
+  } catch (err) {
+    console.error('setup-run:', err);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('cloud-get-config', async () => ({ success: true, data: cloudSync.getCloudConfig() }));
+
+ipcMain.handle('cloud-set-config', async (_event, partial = {}) => {
+  const res = cloudSync.setCloudConfig(partial);
+  cloudSync.startScheduler();  
+  return res;
+});
+
+ipcMain.handle('cloud-push-now', async () => cloudSync.pushNow());
+
+ipcMain.handle('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre));
+ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
+ipcMain.handle('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key));
 
 
 

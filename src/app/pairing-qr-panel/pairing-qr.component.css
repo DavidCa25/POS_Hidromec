@@ -1,0 +1,46 @@
+.pq { color: #0f2a3f; }
+
+.pq-intro { font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 18px; }
+.pq-intro b { color: #0f2a3f; }
+
+.pq-box {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 40px 20px; color: #64748b; font-size: 13px;
+}
+.pq-spinner {
+  width: 38px; height: 38px; border: 4px solid #e2e8f0; border-top-color: #2563eb;
+  border-radius: 50%; animation: pq-spin 1s linear infinite;
+}
+@keyframes pq-spin { to { transform: rotate(360deg); } }
+
+.pq-error {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  border-radius: 12px; padding: 20px; font-size: 13px; text-align: center;
+}
+.pq-error i { font-size: 22px; }
+
+.pq-qr { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pq-qr img {
+  width: 240px; height: 240px; border-radius: 16px;
+  border: 1px solid #e2e8f0; padding: 8px; background: #fff;
+}
+
+.pq-steps { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.pq-step {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: #334155;
+}
+.pq-step span {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  background: #4F9BB8; color: #fff; font-weight: 800; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.pq-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: none; border-radius: 11px; padding: 10px 16px;
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  background: #2563eb; color: #fff;
+}
+.pq-btn.ghost { background: #f1f5f9; color: #0f2a3f; }

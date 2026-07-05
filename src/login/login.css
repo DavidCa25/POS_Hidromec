@@ -1,11 +1,10 @@
 :host {
   display: block;
-  min-height: 105vh;
-  height: 105vh;
+  min-height: 100vh;
+  height: 100vh;
   font-family: 'Inter', sans-serif;
   background: 
-    linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.93)),
-    url('../assets/OcusCR_fondo.jpg') center center / cover no-repeat;
+    url('../assets/fondo_wybie.png') center center / cover no-repeat;
 }
 
 .login-container {

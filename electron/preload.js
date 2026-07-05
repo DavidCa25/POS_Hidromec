@@ -152,4 +152,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerGetCurrent: () => ipcRenderer.invoke('register-get-current'),
     registerSetCurrent: (payload) => ipcRenderer.invoke('register-set-current', payload),
 
+    cloudGetConfig: () => ipcRenderer.invoke('cloud-get-config'),
+    cloudSetConfig: (partial) => ipcRenderer.invoke('cloud-set-config', partial),
+    cloudPushNow: () => ipcRenderer.invoke('cloud-push-now'),
+
+    cloudEnsureProvisioned: (nombre) => ipcRenderer.invoke('cloud-ensure-provisioned', nombre),
+    cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
+    cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
+
 });

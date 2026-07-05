@@ -1,0 +1,69 @@
+/* ============================================================
+   Generar template.bak - limpieza de datos
+   CORRER SOBRE UNA COPIA de la base, nunca sobre produccion/dev real.
+
+   Deja la estructura completa (tablas, tipos, SPs) y vacia los datos
+   transaccionales y de catalogo del cliente.
+
+   CONSERVA a proposito:
+     - schema_migrations  (para que el fresh install no re-corra migraciones)
+     - registers          (conserva la Caja 1 semilla)
+     - users              (deja al menos un admin para poder entrar)
+     - business_config    (deja una fila para configurar por cliente)
+   ============================================================ */
+
+USE [Hidromec_DataBase];  -- cambia al nombre de tu COPIA
+GO
+
+SET NOCOUNT ON;
+
+/* Borra hijos antes que padres (respeta las FKs) */
+DELETE FROM dbo.cash_movements;
+DELETE FROM dbo.sale_refund_detail;
+DELETE FROM dbo.sale_refunds;
+DELETE FROM dbo.sale_detail;
+DELETE FROM dbo.sales;
+DELETE FROM dbo.cash_closures;
+DELETE FROM dbo.cash_shifts;
+DELETE FROM dbo.customer_payments;
+DELETE FROM dbo.supplier_payments;
+DELETE FROM dbo.purchase_detail;
+DELETE FROM dbo.purchase;
+DELETE FROM dbo.inventory_movements;
+DELETE FROM dbo.invoice_requests;
+DELETE FROM dbo.product_suppliers;
+DELETE FROM dbo.products;
+DELETE FROM dbo.customers;
+DELETE FROM dbo.fiscal_receivers;
+DELETE FROM dbo.CAT_suppliers;
+-- Si quieres conservar marcas/categorias comunes, comenta estas dos:
+DELETE FROM dbo.CAT_brands;
+DELETE FROM dbo.CAT_categories;
+GO
+
+/* Reinicia los contadores IDENTITY para que el cliente empiece en 1 */
+DBCC CHECKIDENT ('dbo.sales', RESEED, 0);
+DBCC CHECKIDENT ('dbo.sale_detail', RESEED, 0);
+DBCC CHECKIDENT ('dbo.sale_refunds', RESEED, 0);
+DBCC CHECKIDENT ('dbo.sale_refund_detail', RESEED, 0);
+DBCC CHECKIDENT ('dbo.cash_movements', RESEED, 0);
+DBCC CHECKIDENT ('dbo.cash_closures', RESEED, 0);
+DBCC CHECKIDENT ('dbo.cash_shifts', RESEED, 0);
+DBCC CHECKIDENT ('dbo.purchase', RESEED, 0);
+DBCC CHECKIDENT ('dbo.purchase_detail', RESEED, 0);
+DBCC CHECKIDENT ('dbo.customer_payments', RESEED, 0);
+DBCC CHECKIDENT ('dbo.supplier_payments', RESEED, 0);
+DBCC CHECKIDENT ('dbo.inventory_movements', RESEED, 0);
+DBCC CHECKIDENT ('dbo.invoice_requests', RESEED, 0);
+DBCC CHECKIDENT ('dbo.products', RESEED, 0);
+DBCC CHECKIDENT ('dbo.customers', RESEED, 0);
+DBCC CHECKIDENT ('dbo.CAT_suppliers', RESEED, 0);
+DBCC CHECKIDENT ('dbo.CAT_brands', RESEED, 0);
+DBCC CHECKIDENT ('dbo.CAT_categories', RESEED, 0);
+GO
+
+/* Genera el respaldo plantilla (ajusta la ruta a donde quieras) */
+BACKUP DATABASE [Hidromec_DataBase]
+TO DISK = N'C:\POS_Backups\template.bak'
+WITH INIT, FORMAT, STATS = 5;
+GO
