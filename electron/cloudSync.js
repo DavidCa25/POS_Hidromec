@@ -210,6 +210,22 @@ async function fetchSummaries(registerId = null) {
   };
 }
 
+async function fetchTrend(registerId = null) {
+  const pool = await poolPromise;
+  const trend = await pool.request()
+    .input('register_id', sql.Int, registerId)
+    .execute('sp_cloud_sales_trend');
+  return trend.recordset ?? [];
+}
+ 
+async function fetchShiftDetail(closureId) {
+  const pool = await poolPromise;
+  const det = await pool.request()
+    .input('closure_id', sql.Int, closureId)
+    .execute('sp_cloud_shift_detail');
+  return det.recordset ?? [];
+}
+
 // ---- Generacion de alertas ----
 
 async function alertaYaExiste(sucursalId, tipo, closureIdLocal) {
@@ -292,16 +308,49 @@ async function pushOnce() {
     }], 'sucursal_id,fecha');
   }
 
-  if (Array.isArray(top) && top.length) {
-    const rows = top.map(t => ({
+  if (Array.isArray(shifts) && shifts.length) {
+    const rows = [];
+    for (const sft of shifts) {
+      const cid = Number(sft.closure_id_local);
+      // Trae el detalle solo de cortes CERRADOS (los abiertos cambian aun)
+      let movimientos = null;
+      if (sft.cerrado_at) {
+        const det = await fetchShiftDetail(cid);
+        movimientos = det.map(m => ({
+          tipo: m.tipo,
+          referencia: m.referencia,
+          monto: Number(m.monto || 0),
+          nota: m.nota,
+          fecha: m.fecha ? new Date(m.fecha).toISOString() : null
+        }));
+      }
+      rows.push({
+        sucursal_id: sucursalId,
+        closure_id_local: cid,
+        caja: sft.caja ?? null,
+        abierto_at: sft.abierto_at ? new Date(sft.abierto_at).toISOString() : null,
+        cerrado_at: sft.cerrado_at ? new Date(sft.cerrado_at).toISOString() : null,
+        fondo_inicial: sft.fondo_inicial != null ? Number(sft.fondo_inicial) : null,
+        esperado: sft.esperado != null ? Number(sft.esperado) : null,
+        entregado: sft.entregado != null ? Number(sft.entregado) : null,
+        diferencia: sft.diferencia != null ? Number(sft.diferencia) : null,
+        movimientos,
+        actualizado_at: new Date().toISOString()
+      });
+    }
+    await supabaseUpsert('cortes_caja', rows, 'sucursal_id,closure_id_local');
+    await evaluarAlertas(sucursalId, shifts, cfg);
+  }
+
+  const trend = await fetchTrend();
+  if (Array.isArray(trend) && trend.length) {
+    const trendRows = trend.map(t => ({
       sucursal_id: sucursalId,
-      fecha: fechaStr,
-      producto: String(t.producto ?? ''),
-      cantidad: Number(t.cantidad || 0),
-      importe: Number(t.importe || 0),
+      fecha: new Date(t.fecha).toISOString().slice(0, 10),
+      total: Number(t.total || 0),
       actualizado_at: new Date().toISOString()
     }));
-    await supabaseUpsert('top_productos', rows);
+    await supabaseUpsert('tendencia_ventas', trendRows, 'sucursal_id,fecha');
   }
 
   if (Array.isArray(shifts) && shifts.length) {

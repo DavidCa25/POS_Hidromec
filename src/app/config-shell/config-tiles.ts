@@ -7,6 +7,7 @@ import { NegocioPanelComponent } from '../negocio-panel/negocio-panel.component'
 import { DiagnosticoPanel } from '../diagnostico-panel/diagnostico-panel.component';
 import { RegistersPanel } from '../register-panel/register-panel.component';
 import { PairingQr } from '../pairing-qr-panel/pairing-qr.component';
+import { FacturacionConfig } from '../facturacionConfig-panel/facturacion-config.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -90,5 +91,13 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },
             { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'pc-display', color: 'blue', size: '2x1', component: RegistersPanel },
         ]
+    },
+    {
+        id: 'facturacion',
+        title: 'Facturación',
+        tiles: [
+            { id: 'facturacion', title: 'Facturación', desc: 'Configura tu facturación electrónica', icon: 'file-earmark-text', color: 'purple', size: '2x1', component: FacturacionConfig } 
+        ]
+
     }
 ];

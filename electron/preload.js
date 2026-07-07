@@ -160,4 +160,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
     cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
 
+
+    //FACTURACION
+    setFiscalIssuerRef: (issuerId) => ipcRenderer.invoke('fiscal-set-issuer-ref', issuerId),
+    getFiscalConfig: () => ipcRenderer.invoke('fiscal-get-config'),
+    saveFiscalConfig: (cfg) => ipcRenderer.invoke('fiscal-save-config', cfg),
+
+    getInvoices: (filtros) => ipcRenderer.invoke('fiscal-get-invoices', filtros),
+    getInvoicesCounts: () => ipcRenderer.invoke('fiscal-get-invoices-counts'),
+
+    saveInvoice: (inv) => ipcRenderer.invoke('fiscal-save-invoice', inv),
 });

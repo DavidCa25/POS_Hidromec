@@ -1,0 +1,111 @@
+<div class="fn-backdrop" (click)="cerrarModal()">
+  <div class="fn-dialog" (click)="$event.stopPropagation()">
+    <div class="fn-header">
+      <div>
+        <h3>Emitir factura</h3>
+        <p *ngIf="saleId">Desde la venta #{{ saleId }}</p>
+      </div>
+      <button class="fn-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="fn-body">
+      <!-- Datos del receptor -->
+      <h4>Datos del cliente (receptor)</h4>
+      <div class="fn-grid">
+        <div class="fn-field">
+          <label>RFC</label>
+          <input type="text" [(ngModel)]="receptor.rfc" maxlength="13" placeholder="XAXX010101000" style="text-transform:uppercase;">
+        </div>
+        <div class="fn-field">
+          <label>Codigo postal</label>
+          <input type="text" [(ngModel)]="receptor.zipCode" maxlength="5" placeholder="37000">
+        </div>
+      </div>
+
+      <div class="fn-field">
+        <label>Razon social / nombre</label>
+        <input type="text" [(ngModel)]="receptor.razonSocial" placeholder="Nombre o razon social del cliente">
+      </div>
+
+      <div class="fn-grid">
+        <!-- Regimen -->
+        <div class="fn-field">
+          <label>Regimen fiscal</label>
+          <div class="fn-select" [class.open]="regimenAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!receptor.regimenFiscal" (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
+              <span>{{ regimenLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="regimenAbierto">
+              <button type="button" class="fn-opt" *ngFor="let r of regimenes" (click)="receptor.regimenFiscal = r.code; regimenAbierto = false">
+                <span class="fn-opt-code">{{ r.code }}</span><span>{{ r.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Uso CFDI -->
+        <div class="fn-field">
+          <label>Uso de CFDI</label>
+          <div class="fn-select" [class.open]="usoAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!receptor.usoCfdi" (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
+              <span>{{ usoLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="usoAbierto">
+              <button type="button" class="fn-opt" *ngFor="let u of usosCfdi" (click)="receptor.usoCfdi = u.code; usoAbierto = false">
+                <span class="fn-opt-code">{{ u.code }}</span><span>{{ u.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fn-field">
+        <label>Correo (opcional)</label>
+        <input type="email" [(ngModel)]="receptor.email" placeholder="cliente@correo.com">
+      </div>
+
+      <!-- Pago -->
+      <h4>Pago</h4>
+      <div class="fn-grid">
+        <div class="fn-field">
+          <label>Forma de pago</label>
+          <select [(ngModel)]="formaPago">
+            <option *ngFor="let f of formasPago" [value]="f.code">{{ f.code }} - {{ f.description }}</option>
+          </select>
+        </div>
+        <div class="fn-field">
+          <label>Metodo de pago</label>
+          <select [(ngModel)]="metodoPago">
+            <option *ngFor="let m of metodosPago" [value]="m.code">{{ m.code }} - {{ m.description }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Conceptos -->
+      <h4>Conceptos</h4>
+      <div class="fn-conceptos">
+        <div class="fn-concepto" *ngFor="let c of conceptos">
+          <span class="fn-c-desc">{{ c.description }}</span>
+          <span class="fn-c-qty">{{ c.quantity }} x {{ money(c.unitPrice) }}</span>
+          <span class="fn-c-sub">{{ money(c.quantity * c.unitPrice) }}</span>
+        </div>
+        <div class="fn-empty" *ngIf="conceptos.length === 0">Sin conceptos.</div>
+      </div>
+
+      <!-- Totales -->
+      <div class="fn-totales">
+        <div class="fn-t-row"><span>Subtotal</span><span>{{ money(subtotal) }}</span></div>
+        <div class="fn-t-row"><span>IVA (estimado)</span><span>{{ money(ivaEstimado) }}</span></div>
+        <div class="fn-t-row total"><span>Total</span><span>{{ money(total) }}</span></div>
+      </div>
+    </div>
+
+    <div class="fn-footer">
+      <button class="fn-btn ghost" (click)="cerrarModal()" [disabled]="timbrando">Cancelar</button>
+      <button class="fn-btn primary" (click)="emitir()" [disabled]="timbrando">
+        <i class="bi bi-receipt" *ngIf="!timbrando"></i>
+        {{ timbrando ? 'Timbrando...' : 'Timbrar factura' }}
+      </button>
+    </div>
+  </div>
+</div>

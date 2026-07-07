@@ -1,13 +1,86 @@
-<div class="facturacion-container">
-  <div class="loading" *ngIf="cargando">
-    <div class="spinner"></div>
-    <p>Cargando FL Premium...</p>
+<div class="fac">
+  <!-- Encabezado -->
+  <div class="fac-head">
+    <div>
+      <h2>Facturacion</h2>
+      <p>Emite y consulta tus facturas CFDI 4.0.</p>
+    </div>
+    <div class="fac-head-actions">
+      <button class="fac-btn ghost" (click)="irAConfiguracion()">
+        <i class="bi bi-gear"></i> Configuracion
+      </button>
+      <button class="fac-btn primary" (click)="nuevaFactura()">
+        <i class="bi bi-plus-lg"></i> Nueva factura
+      </button>
+    </div>
   </div>
-  
-  <iframe 
-    src="https://fel.blikon.com/CFDI33FP/Presentacion/Usuario/Ingreso.aspx?v2" 
-    class="iframe-flpremium"
-    (load)="onIframeLoad()"
-    frameborder="0">
-  </iframe>
+
+  <!-- Resumen por estado -->
+  <div class="fac-tabs">
+    <button class="fac-tab" [class.on]="filtroEstado === null" (click)="filtrar(null)">
+      Todas <span>{{ counts.total }}</span>
+    </button>
+    <button class="fac-tab" [class.on]="filtroEstado === 'timbrada'" (click)="filtrar('timbrada')">
+      Timbradas <span>{{ counts.timbradas }}</span>
+    </button>
+    <button class="fac-tab" [class.on]="filtroEstado === 'borrador'" (click)="filtrar('borrador')">
+      Borradores <span>{{ counts.borradores }}</span>
+    </button>
+    <button class="fac-tab" [class.on]="filtroEstado === 'cancelada'" (click)="filtrar('cancelada')">
+      Canceladas <span>{{ counts.canceladas }}</span>
+    </button>
+    <button class="fac-tab" [class.on]="filtroEstado === 'error'" (click)="filtrar('error')" *ngIf="counts.errores > 0">
+      Con error <span>{{ counts.errores }}</span>
+    </button>
+  </div>
+
+  <!-- Buscador -->
+  <div class="fac-search">
+    <i class="bi bi-search"></i>
+    <input type="text" [(ngModel)]="busqueda" (keyup.enter)="cargar()"
+           placeholder="Buscar por RFC, razon social o folio fiscal...">
+  </div>
+
+  <!-- Cargando -->
+  <div class="fac-loading" *ngIf="cargando">
+    <div class="fac-spinner"></div>
+    <span>Cargando facturas...</span>
+  </div>
+
+  <!-- Vacio -->
+  <div class="fac-empty" *ngIf="!cargando && invoices.length === 0">
+    <i class="bi bi-receipt"></i>
+    <h3>Aun no hay facturas</h3>
+    <p>Cuando emitas tu primera factura, aparecera aqui.</p>
+    <button class="fac-btn primary" (click)="nuevaFactura()">
+      <i class="bi bi-plus-lg"></i> Emitir primera factura
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="fac-table" *ngIf="!cargando && invoices.length > 0">
+    <div class="fac-row fac-row-head">
+      <div class="c-fecha">Fecha</div>
+      <div class="c-receptor">Receptor</div>
+      <div class="c-folio">Folio fiscal</div>
+      <div class="c-total">Total</div>
+      <div class="c-estado">Estado</div>
+      <div class="c-acc"></div>
+    </div>
+    <div class="fac-row" *ngFor="let f of invoices">
+      <div class="c-fecha">{{ (f.fecha_timbrado || f.created_at) | date:'dd/MM/yy HH:mm' }}</div>
+      <div class="c-receptor">
+        <span class="rec-nombre">{{ f.receptor_razon_social }}</span>
+        <span class="rec-rfc">{{ f.receptor_rfc }}</span>
+      </div>
+      <div class="c-folio">{{ f.uuid || '-' }}</div>
+      <div class="c-total">{{ money(f.total) }}</div>
+      <div class="c-estado">
+        <span class="badge" [ngClass]="'badge-' + f.estado">{{ estadoLabel(f.estado) }}</span>
+      </div>
+      <div class="c-acc">
+        <button class="icon-btn" title="Ver"><i class="bi bi-eye"></i></button>
+      </div>
+    </div>
+  </div>
 </div>

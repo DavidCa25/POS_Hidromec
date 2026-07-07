@@ -5,6 +5,7 @@ import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angula
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
 import { RegisterService } from '../../services/register.service';
+import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 
 interface ProductRow {
   id: number;
@@ -15,6 +16,10 @@ interface ProductRow {
   stock: number;
   category_name: string;
   brand_name: string;
+  clave_prod_serv?: string | null;
+  clave_unidad?: string | null;
+  objeto_impuesto?: string | null;
+  tasa_iva?: number | null;
 }
 
 interface SaleItem {
@@ -22,6 +27,10 @@ interface SaleItem {
   productName: string;
   qty: number;
   unitPrice: number;
+  claveProdServ?: string | null;
+  claveUnidad?: string | null;
+  objetoImpuesto?: string | null;
+  tasaIva?: number | null;
   get subtotal(): number;
 }
 
@@ -58,6 +67,10 @@ interface SaleDetailRow {
   unitary_price: number;
   refunded_qty?: number;
   remaining_qty?: number;
+  clave_prod_serv?: string | null;
+  clave_unidad?: string | null;
+  objeto_impuesto?: string | null;
+  tasa_iva?: number | null;
 }
 
 interface RefundLine {
@@ -71,7 +84,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva],
   styleUrls: ['./venta.css']
 })
 export class Venta {
@@ -130,6 +143,13 @@ export class Venta {
   lastSaleId: number | null = null;
   lastSaleIsCredito = false;
   lastSaleTotal = 0;
+
+  // =========================
+  // Facturacion
+  // =========================
+  showFacturaModal = false;
+  facturaConceptos: ConceptoFactura[] = [];
+  facturaSaleId: number | null = null;
 
   // =========================
   // Turno (Abrir / estado)
@@ -502,6 +522,9 @@ export class Venta {
       unitPrice: it.unitPrice
     }));
 
+    // Guarda copia de los items para una eventual factura
+    const itemsSnapshot = this.items.map(it => ({ ...it }));
+
     try {
       const resp = await (window as any).electronAPI.registerSale(
         this.currentUserId,
@@ -531,6 +554,9 @@ export class Venta {
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
+
+        // Guarda los conceptos para facturar despues
+        this.prepararConceptosFactura(itemsSnapshot, saleId);
 
         if (!isCredito && this.autoPrintTicketOnSale && saleId) {
           try {
@@ -584,6 +610,48 @@ export class Venta {
   }
 
   // ==================
+  // FACTURACION
+  // ==================
+  private prepararConceptosFactura(items: SaleItem[], saleId: number | null) {
+    this.facturaSaleId = saleId;
+    this.facturaConceptos = items.map(it => ({
+      description: it.productName,
+      quantity: it.qty,
+      unitPrice: it.unitPrice,
+      claveProdServ: it.claveProdServ ?? null,
+      claveUnidad: it.claveUnidad ?? null,
+      taxObject: it.objetoImpuesto ?? '02',
+      taxRate: it.tasaIva != null ? it.tasaIva : 0.16
+    }));
+  }
+
+  async facturarUltimaVenta() {
+    if (!this.facturaConceptos.length) {
+      await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay conceptos para facturar.' });
+      return;
+    }
+    this.showPostSaleModal = false;
+    this.showFacturaModal = true;
+  }
+
+  async facturarFolioCargado() {
+    if (!this.editingSaleId || !this.items.length) {
+      await Swal.fire({ icon: 'info', title: 'Carga una venta', text: 'Primero carga un folio con productos.' });
+      return;
+    }
+    this.prepararConceptosFactura(this.items, this.editingSaleId);
+    this.showFacturaModal = true;
+  }
+
+  onFacturaCerrada() {
+    this.showFacturaModal = false;
+  }
+
+  onFacturaTimbrada(_out: any) {
+    // Aqui podrias marcar la venta como facturada si quieres
+  }
+
+  // ==================
   // PRODUCTOS
   // ==================
   async abrirModalProductos() {
@@ -615,7 +683,11 @@ export class Venta {
         price: Number(r.price ?? 0),
         stock: Number(r.stock ?? 0),
         category_name: r.category_name ?? '',
-        brand_name: r.brand_name ?? ''
+        brand_name: r.brand_name ?? '',
+        clave_prod_serv: r.clave_prod_serv ?? null,
+        clave_unidad: r.clave_unidad ?? null,
+        objeto_impuesto: r.objeto_impuesto ?? null,
+        tasa_iva: r.tasa_iva != null ? Number(r.tasa_iva) : null
       })) as ProductRow[];
     } catch {
       this.productos = [];
@@ -637,6 +709,10 @@ export class Venta {
       productName: `${p.product_name}`,
       qty: 1,
       unitPrice: p.price ?? 0,
+      claveProdServ: p.clave_prod_serv ?? null,
+      claveUnidad: p.clave_unidad ?? null,
+      objetoImpuesto: p.objeto_impuesto ?? null,
+      tasaIva: p.tasa_iva ?? null,
       get subtotal() { return this.qty * this.unitPrice; }
     };
 
@@ -869,7 +945,7 @@ export class Venta {
       return;
     }
 
-    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) {
+    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }
 
@@ -996,6 +1072,10 @@ export class Venta {
           productName: String(name || `Producto #${d.product_id}`),
           qty: Number(d.quantity ?? 1),
           unitPrice: Number(d.unitary_price ?? 0),
+          claveProdServ: d.clave_prod_serv ?? null,
+          claveUnidad: d.clave_unidad ?? null,
+          objetoImpuesto: d.objeto_impuesto ?? null,
+          tasaIva: d.tasa_iva != null ? Number(d.tasa_iva) : null,
           get subtotal() { return this.qty * this.unitPrice; }
         };
       });
@@ -1509,6 +1589,9 @@ private async registrarVentaTerminal(orderId: string) {
     unitPrice: it.unitPrice
   }));
 
+  // Guarda copia para una eventual factura
+  const itemsSnapshot = this.items.map(it => ({ ...it }));
+
   try {
     const resp = await (window as any).electronAPI.registerSale(
       this.currentUserId,
@@ -1537,6 +1620,8 @@ private async registrarVentaTerminal(orderId: string) {
     this.lastSaleId = saleId;
     this.lastSaleIsCredito = false;
     this.lastSaleTotal = this.totalVenta;
+
+    this.prepararConceptosFactura(itemsSnapshot, saleId);
 
     if (this.autoPrintTicketOnSale && saleId) {
       try {

@@ -1,0 +1,99 @@
+.fc { max-width: 780px; color: #0f2a3f; }
+
+.fc-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; margin-bottom: 20px;
+}
+.fc-head h2 { font-size: 20px; font-weight: 800; margin: 0; }
+.fc-head p { font-size: 13px; color: #64748b; margin: 4px 0 0; }
+
+.fc-status {
+  display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
+  background: #fef3c7; color: #b45309;
+}
+.fc-status.ok { background: #dcfce7; color: #059669; }
+.fc-status i { font-size: 15px; }
+
+.fc-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 20px; margin-bottom: 16px;
+}
+.fc-card h3 { font-size: 15px; font-weight: 800; margin: 0 0 14px; }
+
+.fc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .fc-grid { grid-template-columns: 1fr; } }
+
+.fc-field { margin-bottom: 14px; }
+.fc-field label {
+  display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #0f2a3f;
+}
+.fc-field input, .fc-field select {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 11px;
+  padding: 10px 12px; font-size: 14px; outline: none; background: #f8fafc; color: #0f2a3f;
+}
+.fc-field input:focus, .fc-field select:focus {
+  border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff;
+}
+.fc-field small { display: block; font-size: 11.5px; color: #64748b; margin-top: 6px; }
+
+/* Dropdown personalizado de regimen */
+.fc-select { position: relative; }
+.fc-select-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid #cbd5e1; border-radius: 11px; padding: 10px 12px;
+  font-size: 14px; background: #f8fafc; color: #0f2a3f; cursor: pointer; text-align: left;
+}
+.fc-select-trigger.placeholder { color: #94a3b8; }
+.fc-select.open .fc-select-trigger {
+  border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff;
+}
+.fc-select-trigger i { font-size: 13px; color: #64748b; transition: transform .15s; flex: 0 0 auto; }
+.fc-select.open .fc-select-trigger i { transform: rotate(180deg); }
+
+.fc-select-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(15,42,63,.16); padding: 6px; max-height: 320px; overflow-y: auto;
+}
+.fc-select-option {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  border: none; background: transparent; border-radius: 9px;
+  padding: 9px 10px; cursor: pointer; text-align: left; font-size: 13px; color: #334155;
+}
+.fc-select-option:hover { background: #f1f5f9; }
+.fc-select-option.sel { background: #eef6f9; }
+.fc-opt-code {
+  flex: 0 0 auto; font-weight: 800; font-size: 12px; color: #4F9BB8;
+  background: #eef6f9; border-radius: 6px; padding: 2px 7px; min-width: 38px; text-align: center;
+}
+.fc-select-option.sel .fc-opt-code { background: #4F9BB8; color: #fff; }
+.fc-opt-desc { flex: 1; line-height: 1.35; }
+.fc-select-option i { color: #4F9BB8; font-size: 15px; flex: 0 0 auto; }
+
+.fc-file {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  border: 1px dashed #94a3b8; border-radius: 11px; padding: 11px 12px;
+  font-size: 13px; color: #475569; background: #f8fafc;
+}
+.fc-file:hover { border-color: #4F9BB8; color: #0f2a3f; }
+.fc-file i { font-size: 16px; color: #4F9BB8; }
+
+.fc-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #eef6f9; border: 1px solid rgba(79,155,184,.25);
+  border-radius: 11px; padding: 11px 13px; font-size: 12.5px; color: #245b6e;
+  margin: 0 0 16px;
+}
+.fc-note i { font-size: 15px; margin-top: 1px; }
+
+.fc-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.fc-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none; border-radius: 12px; padding: 11px 20px;
+  font-weight: 700; font-size: 13.5px; cursor: pointer;
+}
+.fc-btn.primary { background: #2E3A8C; color: #fff; }
+.fc-btn.dark { background: #0F2A3F; color: #fff; }
+.fc-btn:disabled { opacity: .55; cursor: not-allowed; }
+.fc-btn i { font-size: 15px; }

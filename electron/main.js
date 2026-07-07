@@ -2240,6 +2240,89 @@ ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
 ipcMain.handle('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key));
 
 
+//FACTURACION
+
+ipcMain.handle('fiscal-get-config', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_fiscal_config');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-save-config', async (_e, cfg) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('rfc', sql.NVarChar(13), cfg.rfc)
+      .input('razon_social', sql.NVarChar(255), cfg.razon_social)
+      .input('regimen_fiscal', sql.NVarChar(5), cfg.regimen_fiscal)
+      .input('codigo_postal', sql.NVarChar(5), cfg.codigo_postal)
+      .input('serie', sql.NVarChar(25), cfg.serie)
+      .execute('sp_save_fiscal_config');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-set-issuer-ref', async (_e, issuerId) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('fiscalapi_issuer_id', sql.NVarChar(100), issuerId)
+      .execute('sp_set_fiscal_issuer_ref');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-get-invoices', async (_e, filtros) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('estado', sql.NVarChar(20), filtros?.estado ?? null)
+      .input('busqueda', sql.NVarChar(100), filtros?.busqueda ?? null)
+      .execute('sp_get_invoices');
+    return { success: true, data: r.recordset ?? [] };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-get-invoices-counts', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_invoices_counts');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-save-invoice', async (_e, inv) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('sale_id', sql.Int, inv.sale_id ?? null)
+      .input('serie', sql.NVarChar(25), inv.serie ?? null)
+      .input('folio', sql.NVarChar(40), inv.folio ?? null)
+      .input('uuid', sql.NVarChar(50), inv.uuid ?? null)
+      .input('receptor_rfc', sql.NVarChar(13), inv.receptor_rfc)
+      .input('receptor_razon_social', sql.NVarChar(255), inv.receptor_razon_social)
+      .input('receptor_regimen', sql.NVarChar(5), inv.receptor_regimen)
+      .input('receptor_uso_cfdi', sql.NVarChar(5), inv.receptor_uso_cfdi)
+      .input('receptor_codigo_postal', sql.NVarChar(5), inv.receptor_codigo_postal)
+      .input('receptor_email', sql.NVarChar(255), inv.receptor_email ?? null)
+      .input('metodo_pago', sql.NVarChar(3), inv.metodo_pago ?? 'PUE')
+      .input('forma_pago', sql.NVarChar(3), inv.forma_pago ?? '01')
+      .input('subtotal', sql.Decimal(12,2), inv.subtotal ?? 0)
+      .input('descuento', sql.Decimal(12,2), inv.descuento ?? 0)
+      .input('iva', sql.Decimal(12,2), inv.iva ?? 0)
+      .input('total', sql.Decimal(12,2), inv.total ?? 0)
+      .input('estado', sql.NVarChar(20), inv.estado ?? 'timbrada')
+      .input('fiscalapi_invoice_id', sql.NVarChar(100), inv.fiscalapi_invoice_id ?? null)
+      .input('xml_content', sql.NVarChar(sql.MAX), inv.xml_content ?? null)
+      .input('error_mensaje', sql.NVarChar(sql.MAX), inv.error_mensaje ?? null)
+      .execute('sp_save_invoice');
+    return { success: true, id: r.recordset?.[0]?.id ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+
 
 
 
