@@ -32,9 +32,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
     getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
     getCustomersSummary: () => ipcRenderer.invoke('sp-get-customers-summary'),
-    createCustomer: (code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke('sp-create-customer', code, customerName, email, phone, creditLimit, termsDays, active),
-    updateCustomer: (id, code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke(
-      'sp-update-customer', id, code, customerName, email, phone, creditLimit, termsDays, active),
+    createCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => 
+    ipcRenderer.invoke(
+        'sp-create-customer', 
+        code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial
+    ),
+
+    updateCustomer: (id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => 
+    ipcRenderer.invoke(
+        'sp-update-customer', 
+        id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial
+    ),
     getCustomerOpenSales: (customerId) =>
     ipcRenderer.invoke('sp-get-customer-open-sales', customerId),
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
@@ -170,4 +178,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getInvoicesCounts: () => ipcRenderer.invoke('fiscal-get-invoices-counts'),
 
     saveInvoice: (inv) => ipcRenderer.invoke('fiscal-save-invoice', inv),
+    getInvoiceFilesData: (id) => ipcRenderer.invoke('fiscal-get-invoice-files-data', id),
 });

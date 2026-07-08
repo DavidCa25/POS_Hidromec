@@ -1,0 +1,34 @@
+<div class="csp">
+  <label *ngIf="label">{{ label }}</label>
+
+  <!-- Valor seleccionado -->
+  <div class="csp-selected" *ngIf="valor && !abierto">
+    <span class="csp-code">{{ valor }}</span>
+    <span class="csp-desc" *ngIf="descripcion">{{ descripcion }}</span>
+    <button type="button" class="csp-clear" (click)="limpiar(); abrir()" title="Cambiar">
+      <i class="bi bi-pencil"></i>
+    </button>
+  </div>
+
+  <!-- Buscador -->
+  <div class="csp-search" *ngIf="!valor || abierto">
+    <div class="csp-input">
+      <i class="bi bi-search"></i>
+      <input type="text" [ngModel]="termino" (ngModelChange)="onInput($event)"
+             [placeholder]="placeholder" (focus)="abierto = true">
+    </div>
+
+    <div class="csp-menu" *ngIf="abierto && (buscando || resultados.length > 0 || termino.length >= 2)">
+      <div class="csp-loading" *ngIf="buscando">
+        <div class="csp-spinner"></div> Buscando...
+      </div>
+      <div class="csp-empty" *ngIf="!buscando && resultados.length === 0 && termino.length >= 2">
+        Sin resultados para "{{ termino }}"
+      </div>
+      <button type="button" class="csp-option" *ngFor="let r of resultados" (click)="elegir(r)">
+        <span class="csp-opt-code">{{ r.code }}</span>
+        <span class="csp-opt-desc">{{ r.description }}</span>
+      </button>
+    </div>
+  </div>
+</div>

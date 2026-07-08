@@ -1,0 +1,42 @@
+<div class="fd-backdrop" (click)="cerrarModal()">
+  <div class="fd-dialog" (click)="$event.stopPropagation()">
+    <div class="fd-header">
+      <div>
+        <h3>Detalle de factura</h3>
+        <p *ngIf="data?.uuid">Folio fiscal: {{ data?.uuid }}</p>
+      </div>
+      <button class="fd-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="fd-body">
+      <div class="fd-loading" *ngIf="cargando">
+        <div class="fd-spinner"></div> Cargando...
+      </div>
+
+      <ng-container *ngIf="!cargando && data">
+        <div class="fd-rows">
+          <div class="fd-row"><span>Estado</span>
+            <span class="fd-badge" [ngClass]="'fd-badge-' + data.estado">{{ data.estado }}</span>
+          </div>
+          <div class="fd-row"><span>Serie / Folio</span><b>{{ data.serie || '-' }} {{ data.folio || '' }}</b></div>
+          <div class="fd-row"><span>Receptor</span><b>{{ data.receptor_razon_social }}</b></div>
+          <div class="fd-row"><span>Folio fiscal (UUID)</span><b class="fd-uuid">{{ data.uuid || '-' }}</b></div>
+        </div>
+
+        <div class="fd-actions">
+          <button class="fd-btn primary" (click)="descargarArchivos()" [disabled]="descargando">
+            <i class="bi bi-download" *ngIf="!descargando"></i>
+            {{ descargando ? 'Descargando...' : 'Descargar PDF y XML' }}
+          </button>
+          <button class="fd-btn ghost" (click)="descargarXmlLocal()">
+            <i class="bi bi-filetype-xml"></i> Solo XML (local)
+          </button>
+        </div>
+
+        <p class="fd-hint">
+          El PDF y XML se obtienen del timbrador. El "Solo XML (local)" usa la copia guardada al timbrar.
+        </p>
+      </ng-container>
+    </div>
+  </div>
+</div>

@@ -905,3 +905,34 @@
   justify-content:flex-end;
   gap: 10px;
 }
+
+.sat-dd { position: relative; }
+.sat-dd-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px;
+  font-size: 14px; background: #f8fafc; color: #0f2a3f; cursor: pointer; text-align: left;
+}
+.sat-dd-trigger span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sat-dd-trigger i { font-size: 12px; color: #64748b; transition: transform .15s; flex: 0 0 auto; }
+.sat-dd.open .sat-dd-trigger { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff; }
+.sat-dd.open .sat-dd-trigger i { transform: rotate(180deg); }
+ 
+.sat-dd-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 11px;
+  box-shadow: 0 14px 40px rgba(15,42,63,.16); padding: 5px; max-height: 260px; overflow-y: auto;
+}
+.sat-dd-opt {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  border: none; background: transparent; border-radius: 8px; padding: 9px 10px;
+  cursor: pointer; text-align: left; font-size: 13px; color: #334155;
+}
+.sat-dd-opt:hover { background: #f1f5f9; }
+.sat-dd-opt.sel { background: #eef6f9; }
+.sat-dd-opt .sat-dd-code {
+  flex: 0 0 auto; font-weight: 800; font-size: 11px; color: #4F9BB8;
+  background: #eef6f9; border-radius: 5px; padding: 2px 7px; min-width: 26px; text-align: center;
+}
+.sat-dd-opt.sel .sat-dd-code { background: #4F9BB8; color: #fff; }
+.sat-dd-opt > span:not(.sat-dd-code) { flex: 1; }
+.sat-dd-opt i { color: #4F9BB8; font-size: 15px; flex: 0 0 auto; }

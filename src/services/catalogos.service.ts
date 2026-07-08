@@ -20,7 +20,7 @@ export class CatalogosService {
     if (!forzarRed && this.cache.has(catalog)) {
       return this.cache.get(catalog)!;
     }
-
+ 
     if (!forzarRed) {
       const guardado = localStorage.getItem(this.cacheKey(catalog));
       if (guardado) {
@@ -33,10 +33,10 @@ export class CatalogosService {
         } catch { /* cache corrupto, sigue a red */ }
       }
     }
-
+ 
     return this.refrescar(catalog);
   }
-
+ 
   private async refrescar(catalog: string): Promise<CatalogoItem[]> {
     const endpoint = `${this.supabaseUrl}/functions/v1/fiscal-catalogs?catalog=${encodeURIComponent(catalog)}`;
     const res = await fetch(endpoint, {
@@ -53,5 +53,21 @@ export class CatalogosService {
     this.cache.set(catalog, items);
     localStorage.setItem(this.cacheKey(catalog), JSON.stringify(items));
     return items;
+  }
+ 
+  async search(catalog: string, term: string, page = 1, pageSize = 20): Promise<CatalogoItem[]> {
+    if (!term || term.trim().length < 2) return [];
+    const endpoint = `${this.supabaseUrl}/functions/v1/fiscal-catalogs` +
+      `?catalog=${encodeURIComponent(catalog)}` +
+      `&search=${encodeURIComponent(term.trim())}&page=${page}&pageSize=${pageSize}`;
+    const res = await fetch(endpoint, {
+      headers: {
+        'Authorization': `Bearer ${this.anonKey}`,
+        'apikey': this.anonKey
+      }
+    });
+    const out = await res.json();
+    if (!out?.success) return [];
+    return (out.items ?? []) as CatalogoItem[];
   }
 }

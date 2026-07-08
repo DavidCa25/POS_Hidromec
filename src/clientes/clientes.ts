@@ -8,6 +8,10 @@ type Cliente = {
   id: number;
   code?: string;
   name: string;
+  tax_id?: string;          
+  regimen_fiscal?: string;  
+  uso_cfdi?: string;        
+  razon_social?: string;    
   phone?: string;
   email?: string;
   creditLimit: number;
@@ -100,6 +104,10 @@ export class Clientes implements OnInit {
         id: row.id,
         code: row.code,
         name: row.customerName,
+        tax_id: row.tax_id,                
+        regimen_fiscal: row.regimen_fiscal, 
+        uso_cfdi: row.uso_cfdi,          
+        razon_social: row.razon_social,     
         phone: row.phone,
         email: row.email,
         creditLimit: Number(row.credit_limit ?? 0),
@@ -206,11 +214,15 @@ export class Clientes implements OnInit {
           this.editing.id,
           this.form.code ?? '',
           this.form.name!,
+          this.form.tax_id ?? null,
           this.form.email ?? '',
           this.form.phone ?? '',
           this.form.creditLimit ?? 0,
           this.form.termsDays ?? 0,
-          this.form.active ?? true
+          this.form.active ?? true,
+          this.form.regimen_fiscal ?? null,
+          this.form.uso_cfdi ?? null,
+          this.form.razon_social ?? null
         );
 
         if (!res?.success) {
@@ -238,11 +250,15 @@ export class Clientes implements OnInit {
         const res = await api.createCustomer(
           this.form.code ?? null,
           this.form.name!,
+          this.form.tax_id ?? null,       
           this.form.email ?? '',
           this.form.phone ?? '',
           this.form.creditLimit ?? 0,
           this.form.termsDays ?? 0,
-          this.form.active ?? true
+          this.form.active ?? true,
+          this.form.regimen_fiscal ?? null, 
+          this.form.uso_cfdi ?? null,       
+          this.form.razon_social ?? null    
         );
 
         if (!res?.success) {
@@ -260,6 +276,10 @@ export class Clientes implements OnInit {
           id,
           code: this.form.code ?? '',
           name: this.form.name!,
+          tax_id: this.form.tax_id ?? '',                
+          regimen_fiscal: this.form.regimen_fiscal ?? '', 
+          uso_cfdi: this.form.uso_cfdi ?? '',            
+          razon_social: this.form.razon_social ?? '',     
           phone: this.form.phone ?? '',
           email: this.form.email ?? '',
           creditLimit: this.form.creditLimit ?? 0,

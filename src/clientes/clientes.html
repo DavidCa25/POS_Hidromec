@@ -145,6 +145,28 @@
         </div>
       </div>
 
+      <h4 style="margin: 1.5rem 0 .8rem; font-size:1.1rem; font-weight:700; border-top: 1px solid #e2e8f0; padding-top: 1.2rem;">
+        Datos de Facturación <span style="font-size: 0.9rem; font-weight: 400; color: #64748b;">(Opcional)</span>
+      </h4>
+      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="filter-group">
+          <label>RFC</label>
+          <input class="form-control" [(ngModel)]="form.tax_id" placeholder="Ej. XAXX010101000">
+        </div>
+        <div class="filter-group">
+          <label>Razón Social</label>
+          <input class="form-control" [(ngModel)]="form.razon_social" placeholder="Nombre legal">
+        </div>
+        <div class="filter-group">
+          <label>Régimen Fiscal</label>
+          <input class="form-control" [(ngModel)]="form.regimen_fiscal" placeholder="Ej. 601">
+        </div>
+        <div class="filter-group">
+          <label>Uso CFDI</label>
+          <input class="form-control" [(ngModel)]="form.uso_cfdi" placeholder="Ej. G03">
+        </div>
+      </div>
+
       <div class="nota" style="text-align:left;">
       </div>
       <div class="filter-row" style="grid-template-columns: 1fr 1fr;">

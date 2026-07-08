@@ -57,6 +57,34 @@
       <aside class="pos-side">
         <h2 class="pos-title">Punto de Venta</h2>
 
+        <div class="fecha-box mt-3" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 1rem;">
+          <label class="form-label">Cliente asignado</label>
+          
+          <div *ngIf="!clienteSeleccionado" class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Público General</span>
+            <button class="btn btn-sm btn-outline-primary" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
+              <i class="bi bi-search"></i> Buscar
+            </button>
+          </div>
+
+          <div *ngIf="clienteSeleccionado">
+            <div class="fw-bold text-primary text-truncate mb-1" style="font-size: 0.95rem;">
+              {{ clienteSeleccionado.name }}
+            </div>
+            <div class="small text-muted mb-2" *ngIf="clienteSeleccionado.tax_id">
+              RFC: {{ clienteSeleccionado.tax_id }}
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
+                Cambiar
+              </button>
+              <button class="btn btn-sm btn-outline-danger w-100" [disabled]="isEditing && !editUnlocked" (click)="quitarCliente()">
+                Quitar
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="folio-box">
           <div class="folio-title">
             <b>Folio</b>
@@ -300,14 +328,29 @@
           </div>
           <div class="cobro-right">
             <div class="mb-3">
-              <label class="form-label mb-1">Método de pago</label>
-              <select class="form-select cobro-select" [(ngModel)]="paymentMethod" name="paymentMethod" (ngModelChange)="onPaymentMethodChange($event)">
-                <option value="EFECTIVO">Efectivo</option>
-                <option value="TARJETA">Tarjeta</option>
-                <option value="TERMINAL_MP">Mercado Pago</option>
-                <option value="TRANSFERENCIA">Transferencia</option>
-                <option value="CREDITO">Crédito</option>
-              </select>
+              <label class="form-label mb-2">Método de pago</label>
+              <div class="pay-methods">
+                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'EFECTIVO'"
+                        (click)="onPaymentMethodChange('EFECTIVO')">
+                  <i class="bi bi-cash-coin"></i><span>Efectivo</span>
+                </button>
+                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'TARJETA'"
+                        (click)="onPaymentMethodChange('TARJETA')">
+                  <i class="bi bi-credit-card"></i><span>Tarjeta</span>
+                </button>
+                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'TERMINAL_MP'"
+                        (click)="onPaymentMethodChange('TERMINAL_MP')">
+                  <i class="bi bi-phone"></i><span>Mercado Pago</span>
+                </button>
+                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'TRANSFERENCIA'"
+                        (click)="onPaymentMethodChange('TRANSFERENCIA')">
+                  <i class="bi bi-bank"></i><span>Transferencia</span>
+                </button>
+                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'CREDITO'"
+                        (click)="onPaymentMethodChange('CREDITO')">
+                  <i class="bi bi-hourglass-split"></i><span>Crédito</span>
+                </button>
+              </div>
             </div>
             <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoInfo">
               <div class="mb-3">
@@ -356,45 +399,47 @@
         <input class="form-control mb-2 buscador"
                placeholder="Buscar por nombre, número de parte, marca o categoría..."
                [(ngModel)]="filtro" name="filtro">
-        <div class="table-responsive listado">
-          <table class="table table-hover align-middle compact-table">
-            <thead class="table-light">
-              <tr>
-                <th style="width:48px;">#</th>
-                <th style="width:140px;">No. Parte</th>
-                <th>Producto</th>
-                <th style="width:160px;">Marca</th>
-                <th style="width:180px;">Categoría</th>
-                <th style="width:120px;" class="text-end">Precio</th>
-                <th style="width:120px;" class="text-end">Stock</th>
-                <th style="width:110px;" class="text-center">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let p of productos; let i = index"
-                  [hidden]="filtro && !(
-                    (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                    (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                    (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                    (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
-                  )">
-                <td class="text-muted">{{ i + 1 }}</td>
-                <td class="part text-monospace">{{ p.part_number }}</td>
-                <td class="prod-name">{{ p.product_name }}</td>
-                <td class="nowrap">{{ p.brand_name }}</td>
-                <td class="nowrap">{{ p.category_name }}</td>
-                <td class="text-end">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-                <td class="text-end">{{ p.stock }}</td>
-                <td class="text-center">
-                  <button type="button" class="btn btn-primary btn-add" (click)="seleccionarProducto(p)">Agregar</button>
-                </td>
-              </tr>
-              <tr *ngIf="productos.length === 0">
-                <td colspan="7" class="text-center text-muted py-4">No hay productos activos.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="prod-hint">
+  <i class="bi bi-hand-index"></i> Toca un producto para agregarlo a la venta
+      </div>
+      
+      <div class="table-responsive listado">
+        <table class="table align-middle compact-table prod-pick-table">
+          <thead class="table-light">
+            <tr>
+              <th style="width:140px;">No. Parte</th>
+              <th>Producto</th>
+              <th style="width:150px;">Marca</th>
+              <th style="width:160px;">Categoría</th>
+              <th style="width:120px;" class="text-end">Precio</th>
+              <th style="width:90px;" class="text-end">Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="prod-pick-row" *ngFor="let p of productos; let i = index"
+                (click)="seleccionarProducto(p)"
+                [hidden]="filtro && !(
+                  (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                  (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                  (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                  (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
+                )">
+              <td class="part text-monospace">{{ p.part_number }}</td>
+              <td class="prod-name">
+                {{ p.product_name }}
+                <i class="bi bi-plus-circle-fill prod-add-icon"></i>
+              </td>
+              <td class="nowrap">{{ p.brand_name }}</td>
+              <td class="nowrap">{{ p.category_name }}</td>
+              <td class="text-end fw-semibold">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+              <td class="text-end">{{ p.stock }}</td>
+            </tr>
+            <tr *ngIf="productos.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">No hay productos activos.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
         <div class="d-flex justify-content-end mt-2">
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalProductos()">Cerrar</button>
         </div>
@@ -567,11 +612,71 @@
   </div>
 </div>
 
+<div class="modal fade show d-block modal-productos" *ngIf="showModalClientes" style="background:rgba(0,0,0,0.13);z-index:10000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 py-2">
+        <h5 class="modal-title fw-bold m-0">Seleccionar cliente</h5>
+        <button type="button" class="btn-close" (click)="cerrarModalClientes()"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <input class="form-control mb-2 buscador"
+               placeholder="Buscar por nombre, RFC, teléfono o correo..."
+               [(ngModel)]="filtroClientes" name="filtroClientes">
+        <div class="prod-hint">
+          <i class="bi bi-hand-index"></i> Toca un cliente para asignarlo a la venta
+        </div>
+        
+        <div class="table-responsive listado" style="max-height: 350px;">
+          <table class="table align-middle compact-table prod-pick-table">
+            <thead class="table-light">
+              <tr>
+                <th>Nombre</th>
+                <th style="width:140px;">RFC</th>
+                <th style="width:130px;">Teléfono</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="prod-pick-row" *ngFor="let c of clientesGenerales"
+                  (click)="seleccionarCliente(c)"
+                  [hidden]="filtroClientes && !(
+                    (c.name || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
+                    (c.tax_id || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
+                    (c.phone || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
+                    (c.email || '').toLowerCase().includes(filtroClientes.toLowerCase())
+                  )">
+                <td class="fw-semibold">
+                  {{ c.name }}
+                  <i class="bi bi-check-circle-fill text-success" *ngIf="clienteSeleccionado?.id === c.id"></i>
+                </td>
+                <td class="text-monospace text-muted">{{ c.tax_id || 'N/A' }}</td>
+                <td>{{ c.phone || 'N/A' }}</td>
+              </tr>
+              <tr *ngIf="clientesGenerales.length === 0">
+                <td colspan="3" class="text-center text-muted py-4">No hay clientes registrados.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-end mt-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalClientes()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL FACTURA (emitir CFDI) ===== -->
 <app-factura-nueva
   *ngIf="showFacturaModal"
   [saleId]="facturaSaleId"
   [conceptos]="facturaConceptos"
+  
+  [receptorRfc]="facturaReceptorRfc"
+  [receptorNombre]="facturaReceptorNombre"
+  [receptorRegimen]="facturaReceptorRegimen"
+  [receptorUsoCfdi]="facturaReceptorUso"
+  
   (cerrar)="onFacturaCerrada()"
   (timbrada)="onFacturaTimbrada($event)">
 </app-factura-nueva>

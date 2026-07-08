@@ -224,6 +224,73 @@
           </div>
           <small *ngIf="capturandoCodigo" style="color:#2563eb;">Escanea ahora con la pistola...</small>
         </div>
+
+        <ng-container *ngIf="facturacionActiva">
+ 
+          <!-- ClaveProdServ (buscador) -->
+          <div class="grid-col-span-3 sat-field">
+            <app-clave-sat-picker
+              catalog="SatProductCodes"
+              label="Clave de producto/servicio (SAT)"
+              placeholder="Busca por descripcion, ej. filtro, aceite..."
+              [valor]="form.claveProdServ"
+              [descripcion]="form.claveProdServDesc"
+              (seleccionado)="onClaveProdServ($event)">
+            </app-clave-sat-picker>
+          </div>
+        
+          <!-- ClaveUnidad (buscador) -->
+          <div class="grid-col-span-3 sat-field">
+            <app-clave-sat-picker
+              catalog="SatUnitMeasurements"
+              label="Clave de unidad (SAT)"
+              placeholder="Busca, ej. pieza, litro, kilogramo..."
+              [valor]="form.claveUnidad"
+              [descripcion]="form.claveUnidadDesc"
+              (seleccionado)="onClaveUnidad($event)">
+            </app-clave-sat-picker>
+          </div>
+        
+          <!-- Objeto de impuesto -->
+          <div class="sat-field">
+            <label>Objeto de impuesto</label>
+            <div class="sat-dd" [class.open]="objImpAbierto">
+              <button type="button" class="sat-dd-trigger" (click)="objImpAbierto = !objImpAbierto; tasaAbierta = false">
+                <span>{{ objetoImpuestoLabel }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <div class="sat-dd-menu" *ngIf="objImpAbierto">
+                <button type="button" class="sat-dd-opt" *ngFor="let o of objetoImpuestoOpts"
+                        [class.sel]="o.code === form.objetoImpuesto"
+                        (click)="form.objetoImpuesto = o.code; objImpAbierto = false">
+                  <span class="sat-dd-code">{{ o.code }}</span>
+                  <span>{{ o.label }}</span>
+                  <i class="bi bi-check2" *ngIf="o.code === form.objetoImpuesto"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tasa de IVA -->
+          <div class="sat-field">
+            <label>Tasa de IVA</label>
+            <div class="sat-dd" [class.open]="tasaAbierta">
+              <button type="button" class="sat-dd-trigger" (click)="tasaAbierta = !tasaAbierta; objImpAbierto = false">
+                <span>{{ tasaIvaLabel }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <div class="sat-dd-menu" *ngIf="tasaAbierta">
+                <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
+                        [class.sel]="t.value === form.tasaIva"
+                        (click)="form.tasaIva = t.value; tasaAbierta = false">
+                  <span>{{ t.label }}</span>
+                  <i class="bi bi-check2" *ngIf="t.value === form.tasaIva"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        
+        </ng-container>
       </div>
 
       <div class="producto-modal-actions">

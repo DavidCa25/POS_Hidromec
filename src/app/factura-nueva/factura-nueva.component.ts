@@ -35,6 +35,12 @@ export class FacturaNueva implements OnInit {
   // Venta origen (opcional) y conceptos a facturar
   @Input() saleId: number | null = null;
   @Input() conceptos: ConceptoFactura[] = [];
+
+  @Input() receptorRfc?: string | null;
+  @Input() receptorNombre?: string | null;
+  @Input() receptorRegimen?: string | null;
+  @Input() receptorUsoCfdi?: string | null;
+
   @Output() cerrar = new EventEmitter<void>();
   @Output() timbrada = new EventEmitter<any>();
 
@@ -56,6 +62,9 @@ export class FacturaNueva implements OnInit {
   timbrando = false;
 
   private issuerId: string | null = null;
+  private issuerRfc = '';
+  private issuerLegalName = '';
+  private issuerRegimen = '';
   private expeditionZipCode = '';
   private serie: string | null = null;
 
@@ -64,6 +73,7 @@ export class FacturaNueva implements OnInit {
   private get api() { return (window as any).electronAPI; }
 
   async ngOnInit() {
+    this.asignarDatosReceptor();
     await this.cargarConfigEmisor();
     await this.cargarCatalogos();
   }
@@ -73,6 +83,9 @@ export class FacturaNueva implements OnInit {
       const res = await this.api?.getFiscalConfig?.();
       if (res?.success && res.data) {
         this.issuerId = res.data.fiscalapi_issuer_id;
+        this.issuerRfc = res.data.rfc;
+        this.issuerLegalName = res.data.razon_social;
+        this.issuerRegimen = res.data.regimen_fiscal;
         this.expeditionZipCode = res.data.codigo_postal;
         this.serie = res.data.serie;
       }
@@ -92,6 +105,15 @@ export class FacturaNueva implements OnInit {
       this.formasPago = fp;
       this.metodosPago = mp;
     } catch { /* offline usa cache */ }
+  }
+
+  private asignarDatosReceptor() {
+    if (this.receptorRfc) {
+      this.receptor.rfc = this.receptorRfc;
+      this.receptor.razonSocial = this.receptorNombre || '';
+      this.receptor.regimenFiscal = this.receptorRegimen || '';
+      this.receptor.usoCfdi = this.receptorUsoCfdi || '';
+    }
   }
 
   get regimenLabel(): string {
@@ -157,6 +179,9 @@ export class FacturaNueva implements OnInit {
         },
         body: JSON.stringify({
           issuerId: this.issuerId,
+          issuerRfc: this.issuerRfc,
+          issuerLegalName: this.issuerLegalName,
+          issuerRegimen: this.issuerRegimen,
           expeditionZipCode: this.expeditionZipCode,
           series: this.serie,
           receptor: {

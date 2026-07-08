@@ -186,3 +186,40 @@
 .btn-refund:disabled { opacity: .55; cursor: not-allowed; }
 .spinner { animation: rf-spin 1s linear infinite; }
 @keyframes rf-spin { to { transform: rotate(360deg); } }
+
+.prod-hint {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: #64748b; margin-bottom: 8px;
+}
+.prod-hint i { color: #4F9BB8; }
+ 
+/* Filas clicables (sin columna de boton, sin scroll horizontal) */
+.prod-pick-table { table-layout: fixed; width: 100%; }
+.prod-pick-table th, .prod-pick-table td {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prod-pick-row { cursor: pointer; transition: background .12s ease; }
+.prod-pick-row:hover { background: #eef6f9; }
+.prod-pick-row:active { background: #dcedf4; }
+.prod-pick-row .prod-name { position: relative; font-weight: 600; color: #0F2A3F; }
+.prod-add-icon {
+  color: #16a34a; margin-left: 8px; opacity: 0; font-size: 14px;
+  transition: opacity .12s ease;
+}
+.prod-pick-row:hover .prod-add-icon { opacity: 1; }
+ 
+/* Pills de metodo de pago (reemplazo del select) */
+.pay-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+.pay-pill {
+  display: flex; align-items: center; gap: 9px;
+  border: 1.5px solid #e2e8f0; background: #f8fafc; border-radius: 12px;
+  padding: 11px 13px; cursor: pointer; font-weight: 600; font-size: 13.5px; color: #475569;
+  transition: all .12s ease; text-align: left;
+}
+.pay-pill i { font-size: 17px; color: #94a3b8; transition: color .12s ease; }
+.pay-pill:hover { border-color: #cfe0ea; background: #fff; }
+.pay-pill.active {
+  border-color: #2E3A8C; background: #2E3A8C; color: #fff;
+  box-shadow: 0 4px 14px rgba(46,58,140,.22);
+}
+.pay-pill.active i { color: #fff; }

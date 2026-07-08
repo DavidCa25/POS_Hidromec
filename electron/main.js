@@ -484,7 +484,8 @@ ipcMain.handle('sp-Consultar-Detalle-Productos', async (event, CategoryID) => {
     }
 });
 
-ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock) => {
+ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock,
+                                        claveProdServ, claveUnidad, objetoImpuesto, tasaIva) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -494,22 +495,27 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
             .input('name', sql.NVarChar(100), name)
             .input('price', sql.Decimal(10, 2), price)
             .input('stock', sql.Int, stock)
+            .input('bar_code', sql.NVarChar(100), null)
+            .input('clave_prod_serv', sql.NVarChar(8), claveProdServ ?? null)
+            .input('clave_unidad', sql.NVarChar(5), claveUnidad ?? null)
+            .input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto ?? '02')
+            .input('tasa_iva', sql.Decimal(5, 4), tasaIva ?? 0.16)
             .execute('sp_add_product');
-
+ 
         return {
             success: true,
             data: result.recordset
         };
     } catch (err) {
-        console.error('❌ Error al ejecutar sp_add_product:', err);
+        console.error('Error al ejecutar sp_add_product:', err);
         return {
             success: false,
             error: err.message
         };
     }
-   
+ 
 });
-
+ 
 ipcMain.handle('sp-update-product', async (event, payload = {}) => {
   try {
     const productId = Number(payload?.product_id ?? payload?.productId ?? 0);
@@ -518,12 +524,17 @@ ipcMain.handle('sp-update-product', async (event, payload = {}) => {
     const stock = Number(payload?.stock ?? 0);
     const numeroParte = String(payload?.numero_parte ?? payload?.partNumber ?? '').trim();
     const barCode = payload?.bar_code ?? payload?.barCode ?? null;
-
+ 
+    const claveProdServ = payload?.clave_prod_serv ?? null;
+    const claveUnidad = payload?.clave_unidad ?? null;
+    const objetoImpuesto = payload?.objeto_impuesto ?? null;
+    const tasaIva = payload?.tasa_iva ?? null;
+ 
     if (!Number.isFinite(productId) || productId <= 0) return { success: false, error: 'product_id invalido.' };
     if (!nombre) return { success: false, error: 'El nombre es obligatorio.' };
     if (!Number.isFinite(precio) || precio < 0) return { success: false, error: 'Precio invalido.' };
     if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Stock invalido.' };
-
+ 
     const pool = await poolPromise;
     const req = pool.request()
       .input('product_id', sql.Int, productId)
@@ -531,9 +542,14 @@ ipcMain.handle('sp-update-product', async (event, payload = {}) => {
       .input('precio', sql.Decimal(10, 2), precio)
       .input('stock', sql.Decimal(10, 2), stock)
       .input('numero_parte', sql.NVarChar(100), numeroParte);
-
+ 
     req.input('bar_code', sql.NVarChar(100), barCode === undefined ? null : barCode);
-
+ 
+    req.input('clave_prod_serv', sql.NVarChar(8), claveProdServ);
+    req.input('clave_unidad', sql.NVarChar(5), claveUnidad);
+    req.input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto);
+    req.input('tasa_iva', sql.Decimal(5, 4), tasaIva);
+ 
     await req.execute('sp_update_product');
     return { success: true };
   } catch (err) {
@@ -551,7 +567,7 @@ ipcMain.handle('sp-get-categories', async (event, data) => {
         return result.recordset; 
 
     } catch (err) {
-        console.error('❌ Error al ejecutar sp_get_categories:', err);
+        console.error('Error al ejecutar sp_get_categories:', err);
         throw err; 
     }
 });
@@ -790,21 +806,24 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
 // CREATE
 ipcMain.handle(
   'sp-create-customer',
-  async (event, code, customerName, email, phone, creditLimit, termsDays, active) => {
+  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
     try {
       const pool = await poolPromise;
       const request = pool.request();
 
       request
-        .input('code',          sql.NVarChar(30),  code)
-        .input('customerName',  sql.NVarChar(120), customerName)
-        .input('email',         sql.NVarChar(120), email)
-        .input('phone',         sql.NVarChar(30),  phone)
-        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
-        .input('terms_days',    sql.Int,            termsDays)
-        .input('active',        sql.Bit,            active);
+        .input('code',           sql.NVarChar(30),  code)
+        .input('customerName',   sql.NVarChar(120), customerName)
+        .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
+        .input('email',          sql.NVarChar(120), email)
+        .input('phone',          sql.NVarChar(30),  phone)
+        .input('credit_limit',   sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',     sql.Int,           termsDays)
+        .input('active',         sql.Bit,           active)
+        .input('regimen_fiscal', sql.NVarChar(5),   regimenFiscal ?? null)
+        .input('uso_cfdi',       sql.NVarChar(5),   usoCfdi ?? null)
+        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null);
 
-      // output del SP
       request.output('NewId', sql.Int);
 
       const result = await request.execute('sp_create_customer');
@@ -814,11 +833,8 @@ ipcMain.handle(
         id: result.output.NewId
       };
     } catch (err) {
-      console.error('❌ Error al ejecutar sp_create_customer:', err);
-      return {
-        success: false,
-        error: err.message
-      };
+      console.error('Error al ejecutar sp_create_customer:', err);
+      return { success: false, error: err.message };
     }
   }
 );
@@ -892,20 +908,26 @@ ipcMain.handle('sp-get-customers-summary', async () => {
 
 
 
-ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email, phone, creditLimit, termsDays, active) => {
+ipcMain.handle(
+  'sp-update-customer', 
+  async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
     try {
       const pool = await poolPromise;
       const request = pool.request();
 
       request
-        .input('id',            sql.Int,           id)
-        .input('code',          sql.NVarChar(30),  code)
-        .input('customerName',  sql.NVarChar(120), customerName)
-        .input('email',         sql.NVarChar(120), email)
-        .input('phone',         sql.NVarChar(30),  phone)
-        .input('credit_limit',  sql.Decimal(12, 2), creditLimit)
-        .input('terms_days',    sql.Int,            termsDays)
-        .input('active',        sql.Bit,            active);
+        .input('id',             sql.Int,           id)
+        .input('code',           sql.NVarChar(30),  code)
+        .input('customerName',   sql.NVarChar(120), customerName)
+        .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
+        .input('email',          sql.NVarChar(120), email)
+        .input('phone',          sql.NVarChar(30),  phone)
+        .input('credit_limit',   sql.Decimal(12, 2), creditLimit)
+        .input('terms_days',     sql.Int,           termsDays)
+        .input('active',         sql.Bit,           active)
+        .input('regimen_fiscal', sql.NVarChar(5),   regimenFiscal ?? null)
+        .input('uso_cfdi',       sql.NVarChar(5),   usoCfdi ?? null)
+        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null);
 
       const result = await request.execute('sp_update_customer');
 
@@ -914,11 +936,8 @@ ipcMain.handle('sp-update-customer', async (event, id, code, customerName, email
         rowsAffected: result.rowsAffected?.[0] ?? 0
       };
     } catch (err) {
-      console.error('❌ Error al ejecutar sp_update_customer:', err);
-      return {
-        success: false,
-        error: err.message
-      };
+      console.error('Error al ejecutar sp_update_customer:', err);
+      return { success: false, error: err.message };
     }
   }
 );
@@ -2319,6 +2338,14 @@ ipcMain.handle('fiscal-save-invoice', async (_e, inv) => {
       .input('error_mensaje', sql.NVarChar(sql.MAX), inv.error_mensaje ?? null)
       .execute('sp_save_invoice');
     return { success: true, id: r.recordset?.[0]?.id ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('fiscal-get-invoice-files-data', async (_e, id) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('id', sql.Int, id).execute('sp_get_invoice_files_data');
+    return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) { return { success: false, error: e.message }; }
 });
 

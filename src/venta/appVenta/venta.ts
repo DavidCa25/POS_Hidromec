@@ -151,6 +151,13 @@ export class Venta {
   facturaConceptos: ConceptoFactura[] = [];
   facturaSaleId: number | null = null;
 
+  lastCustomerId: number | null = null;
+
+  facturaReceptorRfc: string | null = null;
+  facturaReceptorNombre: string | null = null;
+  facturaReceptorRegimen: string | null = null;
+  facturaReceptorUso: string | null = null;
+
   // =========================
   // Turno (Abrir / estado)
   // =========================
@@ -186,6 +193,12 @@ export class Venta {
   refundKind: 'EFECTIVO' | 'CAMBIO' = 'EFECTIVO';
   refundNote = '';
   refundLoading = false;
+
+  showModalClientes = false;
+  clientesGenerales: any[] = [];
+  filtroClientes = '';
+  clienteSeleccionado: any | null = null;
+  lastClienteSeleccionado: any | null = null;
 
   constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService) {}
 
@@ -431,12 +444,17 @@ export class Venta {
 
   cerrarModalCobrar() { this.showModal = false; }
 
-  async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
+ async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP') {
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
       await this.loadCreditCustomers();
+      
+      if (this.clienteSeleccionado && this.creditCustomers.length > 0) {
+        const match = this.creditCustomers.find(c => c.id === this.clienteSeleccionado.id);
+        if (match) this.customerId = match.id;
+      }
     } else {
       this.customerId = null;
       this.dueDate = null;
@@ -502,6 +520,12 @@ export class Venta {
 
     const isCredito = this.paymentMethod === 'CREDITO';
 
+    // 1. Identificamos el cliente correcto para la venta
+    const finalCustomerId = isCredito ? this.customerId : (this.clienteSeleccionado ? this.clienteSeleccionado.id : null);
+
+    // 2. Guardamos el cliente en memoria para facturar después de limpiar la vista
+    this.lastClienteSeleccionado = this.clienteSeleccionado;
+
     if (isCredito) {
       if (this.customerId == null) {
         this.showModal = false;
@@ -530,12 +554,16 @@ export class Venta {
         this.currentUserId,
         this.paymentMethod,
         detalles,
-        isCredito ? this.customerId : null,
+        finalCustomerId, // Aquí enviamos el cliente (ya sea crédito o contado)
         isCredito ? this.dueDate : null,
         this.registerSvc.registerId
       );
 
       if (resp?.success) {
+        
+        // 3. Declaramos y sacamos el saleId PRIMERO
+        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
+
         if (!isCredito) {
           this.lastSalePaid = this.dineroRecibido ?? this.totalVenta;
           this.lastSaleChange = this.cambio;
@@ -549,13 +577,11 @@ export class Venta {
           }
         }
 
-        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
-
+        // 4. Asignamos a las variables post-venta (ya usando el saleId sin error)
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
 
-        // Guarda los conceptos para facturar despues
         this.prepararConceptosFactura(itemsSnapshot, saleId);
 
         if (!isCredito && this.autoPrintTicketOnSale && saleId) {
@@ -569,12 +595,12 @@ export class Venta {
           } catch { /* noop */ }
         }
 
-        // reset venta nueva
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
         this.customerId = null;
         this.dueDate = null;
+        this.clienteSeleccionado = null; // Limpia el cliente asignado en la pantalla principal
 
         this.showModal = false;
         this.showPostSaleModal = true;
@@ -623,15 +649,6 @@ export class Venta {
       taxObject: it.objetoImpuesto ?? '02',
       taxRate: it.tasaIva != null ? it.tasaIva : 0.16
     }));
-  }
-
-  async facturarUltimaVenta() {
-    if (!this.facturaConceptos.length) {
-      await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay conceptos para facturar.' });
-      return;
-    }
-    this.showPostSaleModal = false;
-    this.showFacturaModal = true;
   }
 
   async facturarFolioCargado() {
@@ -1653,4 +1670,67 @@ private async registrarVentaTerminal(orderId: string) {
     });
   }
 }
+
+async facturarUltimaVenta() {
+    if (!this.facturaConceptos.length) {
+      await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay conceptos para facturar.' });
+      return;
+    }
+    if (this.lastClienteSeleccionado) {
+      this.facturaReceptorRfc = this.lastClienteSeleccionado.tax_id ?? null;
+      this.facturaReceptorNombre = this.lastClienteSeleccionado.razon_social || this.lastClienteSeleccionado.name;
+      this.facturaReceptorRegimen = this.lastClienteSeleccionado.regimen_fiscal ?? null;
+      this.facturaReceptorUso = this.lastClienteSeleccionado.uso_cfdi ?? null;
+    } else {
+      this.facturaReceptorRfc = null;
+      this.facturaReceptorNombre = null;
+      this.facturaReceptorRegimen = null;
+      this.facturaReceptorUso = null;
+    }
+
+    this.showPostSaleModal = false;
+    this.showFacturaModal = true;
+}
+
+async abrirModalClientes() {
+    const api = (window as any).electronAPI;
+    if (!api || !api.getCustomers) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'La búsqueda de clientes no está disponible.' });
+      return;
+    }
+
+    try {
+      this.filtroClientes = '';
+      const res = await api.getCustomers();
+      if (res?.success) {
+        this.clientesGenerales = (res.data || []).map((row: any) => ({
+          id: row.id,
+          name: row.customerName,
+          tax_id: row.tax_id,
+          razon_social: row.razon_social,
+          regimen_fiscal: row.regimen_fiscal,
+          uso_cfdi: row.uso_cfdi,
+          phone: row.phone,
+          email: row.email
+        }));
+        this.showModalClientes = true;
+      }
+    } catch (e: any) {
+      console.error(e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los clientes.' });
+    }
+  }
+
+  cerrarModalClientes() {
+    this.showModalClientes = false;
+  }
+
+  seleccionarCliente(cliente: any) {
+    this.clienteSeleccionado = cliente;
+    this.cerrarModalClientes();
+  }
+
+  quitarCliente() {
+    this.clienteSeleccionado = null;
+  }
 }
