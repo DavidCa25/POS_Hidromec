@@ -157,15 +157,65 @@
           <label>Razón Social</label>
           <input class="form-control" [(ngModel)]="form.razon_social" placeholder="Nombre legal">
         </div>
+        <!-- Regimen -->
         <div class="filter-group">
           <label>Régimen Fiscal</label>
-          <input class="form-control" [(ngModel)]="form.regimen_fiscal" placeholder="Ej. 601">
+          <div class="fn-select" [class.open]="regimenAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!form.regimen_fiscal" (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
+              <span>{{ regimenLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="regimenAbierto">
+              <button type="button" class="fn-opt" *ngFor="let r of regimenes" (click)="form.regimen_fiscal = r.code; regimenAbierto = false">
+                <span class="fn-opt-code">{{ r.code }}</span><span>{{ r.description }}</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        <!-- Uso CFDI -->
         <div class="filter-group">
           <label>Uso CFDI</label>
-          <input class="form-control" [(ngModel)]="form.uso_cfdi" placeholder="Ej. G03">
+          <div class="fn-select" [class.open]="usoAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!form.uso_cfdi" (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
+              <span>{{ usoLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="usoAbierto">
+              <button type="button" class="fn-opt" *ngFor="let u of usosCfdi" (click)="form.uso_cfdi = u.code; usoAbierto = false">
+                <span class="fn-opt-code">{{ u.code }}</span><span>{{ u.description }}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- INICIO CONFIGURACIÓN AVANZADA CRÉDITO -->
+      <h4 style="margin: 1.5rem 0 .8rem; font-size:1.1rem; font-weight:700; border-top: 1px solid #e2e8f0; padding-top: 1.2rem;">
+        Opciones avanzadas de crédito
+      </h4>
+      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="filter-group">
+          <label>Días de gracia</label>
+          <input class="form-control" type="number" [(ngModel)]="form.graceDays" placeholder="0">
+        </div>
+        <div class="filter-group">
+          <label>Interés moratorio (%)</label>
+          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.lateFeePct" placeholder="0.00">
+        </div>
+        <div class="filter-group">
+          <label>Recargo fijo por mora ($)</label>
+          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.lateFeeFixed" placeholder="0.00">
+        </div>
+        <div class="filter-group">
+          <label>Nivel de riesgo</label>
+          <select class="form-control" [(ngModel)]="form.riskLevel">
+            <option [ngValue]="0">0 - Normal</option>
+            <option [ngValue]="1">1 - Bajo Riesgo</option>
+            <option [ngValue]="2">2 - Medio Riesgo</option>
+            <option [ngValue]="3">3 - Alto Riesgo</option>
+          </select>
+        </div>
+      </div>
+      <!-- FIN CONFIGURACIÓN AVANZADA CRÉDITO -->
 
       <div class="nota" style="text-align:left;">
       </div>

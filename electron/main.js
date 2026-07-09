@@ -910,24 +910,28 @@ ipcMain.handle('sp-get-customers-summary', async () => {
 
 ipcMain.handle(
   'sp-update-customer', 
-  async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
+  async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
     try {
       const pool = await poolPromise;
       const request = pool.request();
 
       request
         .input('id',             sql.Int,           id)
-        .input('code',           sql.NVarChar(30),  code)
+        .input('code',           sql.NVarChar(30),  code ?? null)
         .input('customerName',   sql.NVarChar(120), customerName)
         .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
-        .input('email',          sql.NVarChar(120), email)
-        .input('phone',          sql.NVarChar(30),  phone)
+        .input('email',          sql.NVarChar(120), email ?? null)
+        .input('phone',          sql.NVarChar(30),  phone ?? null)
         .input('credit_limit',   sql.Decimal(12, 2), creditLimit)
         .input('terms_days',     sql.Int,           termsDays)
         .input('active',         sql.Bit,           active)
         .input('regimen_fiscal', sql.NVarChar(5),   regimenFiscal ?? null)
         .input('uso_cfdi',       sql.NVarChar(5),   usoCfdi ?? null)
-        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null);
+        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null)
+        .input('grace_days',     sql.Int,           graceDays ?? 0)
+        .input('late_fee_pct',   sql.Decimal(5, 2), lateFeePct ?? 0)
+        .input('late_fee_fixed', sql.Decimal(12, 2), lateFeeFixed ?? 0)
+        .input('risk_level',     sql.TinyInt,       riskLevel ?? 0);
 
       const result = await request.execute('sp_update_customer');
 

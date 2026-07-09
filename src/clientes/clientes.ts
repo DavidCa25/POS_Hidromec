@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import Swal from 'sweetalert2';
+import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
 
 type Cliente = {
   id: number;
@@ -19,6 +20,11 @@ type Cliente = {
   balance: number;
   overdueCount: number;
   active: boolean;
+
+  graceDays?: number;
+  lateFeePct?: number;
+  lateFeeFixed?: number;
+  riskLevel?: number;
 };
 
 type ClienteVenta = {
@@ -71,7 +77,16 @@ export class Clientes implements OnInit {
 
   hoy = new Date();
 
+  regimenes: CatalogoItem[] = [];
+  usosCfdi: CatalogoItem[] = [];
+
+  regimenAbierto = false;
+  usoAbierto = false;
+
+  constructor(private catalogos: CatalogosService) {}
+
   async ngOnInit() {
+    await this.cargarCatalogos();
     await this.loadClientes();
   }
 
@@ -115,6 +130,10 @@ export class Clientes implements OnInit {
         balance: Number(row.balance ?? 0),
         overdueCount: Number(row.overdueCount ?? 0),
         active: !!row.active,
+        graceDays: Number(row.grace_days ?? 0),
+        lateFeePct: Number(row.late_fee_pct ?? 0),
+        lateFeeFixed: Number(row.late_fee_fixed ?? 0),
+        riskLevel: Number(row.risk_level ?? 0),
       }));
     } catch (e: any) {
       console.error(e);
@@ -176,7 +195,11 @@ export class Clientes implements OnInit {
       termsDays: 0,
       balance: 0,
       overdueCount: 0,
-      active: true
+      active: true,
+      graceDays: 0,
+      lateFeePct: 0,
+      lateFeeFixed: 0,
+      riskLevel: 0
     };
     this.showModal = true;
   }
@@ -222,7 +245,11 @@ export class Clientes implements OnInit {
           this.form.active ?? true,
           this.form.regimen_fiscal ?? null,
           this.form.uso_cfdi ?? null,
-          this.form.razon_social ?? null
+          this.form.razon_social ?? null,
+          this.form.graceDays ?? 0,
+          this.form.lateFeePct ?? 0,
+          this.form.lateFeeFixed ?? 0,
+          this.form.riskLevel ?? 0
         );
 
         if (!res?.success) {
@@ -486,5 +513,28 @@ export class Clientes implements OnInit {
     } finally {
       this.savingAbono = false;
     }
+  }
+
+  private async cargarCatalogos() {
+    try {
+      const [reg, uso] = await Promise.all([
+        this.catalogos.get('SatTaxRegimes'),
+        this.catalogos.get('SatCfdiUses')
+      ]);
+      this.regimenes = reg;
+      this.usosCfdi = uso;
+    } catch (e) {
+      console.error('Error al cargar catálogos SAT en clientes:', e);
+    }
+  }
+
+  get regimenLabel(): string {
+    const r = this.regimenes.find(x => x.code === this.form.regimen_fiscal);
+    return r ? `${r.code} - ${r.description}` : 'Selecciona régimen';
+  }
+
+  get usoLabel(): string {
+    const u = this.usosCfdi.find(x => x.code === this.form.uso_cfdi);
+    return u ? `${u.code} - ${u.description}` : 'Selecciona uso de CFDI';
   }
 }

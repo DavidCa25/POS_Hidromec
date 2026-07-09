@@ -32,16 +32,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
     getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
     getCustomersSummary: () => ipcRenderer.invoke('sp-get-customers-summary'),
-    createCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => 
+    ccreateCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
     ipcRenderer.invoke(
-        'sp-create-customer', 
-        code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial
+      'sp-create-customer', 
+      code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel
     ),
 
-    updateCustomer: (id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => 
+    updateCustomer: (id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
     ipcRenderer.invoke(
-        'sp-update-customer', 
-        id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial
+      'sp-update-customer', 
+      id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel
     ),
     getCustomerOpenSales: (customerId) =>
     ipcRenderer.invoke('sp-get-customer-open-sales', customerId),

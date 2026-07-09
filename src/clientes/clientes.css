@@ -188,3 +188,26 @@
   border-radius: 8px;
   margin-left: .35rem;
 }
+
+.fn-select { position: relative; }
+.fn-select-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 11px;
+  font-size: 13.5px; background: #f8fafc; color: #0f2a3f; cursor: pointer; text-align: left;
+}
+.fn-select-trigger.ph { color: #94a3b8; }
+.fn-select-trigger span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fn-select-trigger i { font-size: 12px; color: #64748b; flex: 0 0 auto; }
+.fn-select.open .fn-select-trigger { border-color: #4F9BB8; background: #fff; }
+.fn-select-menu {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 11px;
+  box-shadow: 0 12px 34px rgba(15,42,63,.16); padding: 5px; max-height: 240px; overflow-y: auto;
+}
+.fn-opt {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  border: none; background: transparent; border-radius: 8px; padding: 8px 9px;
+  cursor: pointer; text-align: left; font-size: 12.5px; color: #334155;
+}
+.fn-opt:hover { background: #f1f5f9; }
+.fn-opt-code { flex: 0 0 auto; font-weight: 800; font-size: 11px; color: #4F9BB8; background: #eef6f9; border-radius: 5px; padding: 2px 7px; min-width: 40px; text-align: center; }
