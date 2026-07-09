@@ -17,6 +17,9 @@ const db = require('./db');
 const DB_NAME = 'Wybix_POS';
 const setupServer = require('./setupServer');
 const cloudSync = require('./cloudSync');
+const { execSync } = require('child_process');
+const crypto = require('crypto');
+const os = require('os');
 
 //Casillas_2512_19
 
@@ -83,6 +86,40 @@ function saveInstallConfig(cfg) {
   fs.writeFileSync(getInstallConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
   return cfg;
 }
+
+function obtenerSerialDisco() {
+  try {
+    const out = execSync('wmic diskdrive get serialnumber', { encoding: 'utf8', timeout: 4000 });
+    const lineas = out.split('\n').map(l => l.trim()).filter(l => l && l !== 'SerialNumber');
+    return lineas[0] || '';
+  } catch {
+    return '';
+  }
+}
+
+function obtenerUuidPlaca() {
+  try {
+    const out = execSync('wmic csproduct get uuid', { encoding: 'utf8', timeout: 4000 });
+    const lineas = out.split('\n').map(l => l.trim()).filter(l => l && l !== 'UUID');
+    return lineas[0] || '';
+  } catch {
+    return '';
+  }
+}
+ 
+function generarMachineId() {
+  const partes = [
+    obtenerUuidPlaca(),
+    obtenerSerialDisco(),
+    os.hostname(),
+    os.platform(),
+    os.arch()
+  ].filter(Boolean).join('|');
+ 
+  return crypto.createHash('sha256').update(partes).digest('hex').slice(0, 32);
+}
+
+let cachedMachineId = null;
 
 function createSetupWindow() {
   const win = new BrowserWindow({
@@ -2365,6 +2402,11 @@ ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
+//LICENCIA
+ipcMain.handle('get-machine-id', async () => {
+  if (!cachedMachineId) cachedMachineId = generarMachineId();
+  return cachedMachineId;
+});
 
 
 

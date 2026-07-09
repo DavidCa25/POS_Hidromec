@@ -1,0 +1,44 @@
+.lic-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #0F2A3F 0%, #0B2436 100%); padding: 24px;
+}
+.lic-card {
+  background: #fff; border-radius: 22px; padding: 38px 34px; width: 100%; max-width: 460px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+.lic-brand { text-align: center; margin-bottom: 28px; }
+.lic-logo {
+  width: 62px; height: 62px; margin: 0 auto 14px; border-radius: 18px;
+  background: #2E3A8C; color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800;
+}
+.lic-brand h1 { font-size: 24px; font-weight: 800; color: #0F2A3F; margin: 0; }
+.lic-brand p { font-size: 13.5px; color: #64748b; margin: 6px 0 0; }
+
+.lic-field { margin-bottom: 16px; }
+.lic-field label { display: block; font-size: 12.5px; font-weight: 700; color: #0f2a3f; margin-bottom: 7px; }
+.lic-field input {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px 14px;
+  font-size: 15px; outline: none; background: #f8fafc; color: #0f2a3f;
+}
+.lic-field input:focus { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff; }
+.lic-key { font-family: monospace; letter-spacing: 2px; text-align: center; font-size: 17px !important; font-weight: 700; }
+.lic-field small { display: block; font-size: 11.5px; color: #94a3b8; margin-top: 6px; }
+
+.lic-btn {
+  width: 100%; border: none; border-radius: 12px; background: #2E3A8C; color: #fff;
+  padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+.lic-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.lic-help { margin-top: 28px; padding-top: 22px; border-top: 1px solid #eef2f7; }
+.lic-help p { font-size: 12.5px; color: #64748b; text-align: center; margin: 0 0 14px; }
+.lic-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lic-plan {
+  border: 1px solid #e2e8f0; border-radius: 12px; padding: 13px; text-align: center; background: #f8fafc;
+}
+.lic-plan.destacado { border-color: #4F9BB8; background: #eef6f9; }
+.lic-plan-name { display: block; font-size: 12.5px; font-weight: 800; color: #0F2A3F; }
+.lic-plan-price { display: block; font-size: 19px; font-weight: 800; color: #2E3A8C; margin: 3px 0; }
+.lic-plan-desc { display: block; font-size: 10.5px; color: #64748b; line-height: 1.35; }

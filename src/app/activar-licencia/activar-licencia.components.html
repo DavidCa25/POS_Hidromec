@@ -1,0 +1,42 @@
+<div class="lic-wrap">
+  <div class="lic-card">
+    <div class="lic-brand">
+      <div class="lic-logo">W</div>
+      <h1>Wybix POS</h1>
+      <p>Activa tu licencia para empezar a vender</p>
+    </div>
+
+    <div class="lic-field">
+      <label>Clave de licencia</label>
+      <input type="text" [ngModel]="clave" (ngModelChange)="onClaveInput($event)"
+             placeholder="WYBX-M1-XXXX-XXXX" maxlength="17" class="lic-key">
+      <small>La recibiste por correo o WhatsApp al comprar.</small>
+    </div>
+
+    <div class="lic-field">
+      <label>Nombre de esta caja (opcional)</label>
+      <input type="text" [(ngModel)]="alias" placeholder="Ej. Caja 1, Mostrador">
+    </div>
+
+    <button class="lic-btn" (click)="activar()" [disabled]="activando">
+      <i class="bi bi-key" *ngIf="!activando"></i>
+      {{ activando ? 'Activando...' : 'Activar licencia' }}
+    </button>
+
+    <div class="lic-help">
+      <p>¿No tienes licencia? Escríbenos para adquirirla.</p>
+      <div class="lic-plans">
+        <div class="lic-plan">
+          <span class="lic-plan-name">MonoCaja</span>
+          <span class="lic-plan-price">$2,000</span>
+          <span class="lic-plan-desc">1 caja · App movil incluida</span>
+        </div>
+        <div class="lic-plan destacado">
+          <span class="lic-plan-name">MultiCaja</span>
+          <span class="lic-plan-price">$4,000</span>
+          <span class="lic-plan-desc">Cajas ilimitadas · Nube · App movil</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

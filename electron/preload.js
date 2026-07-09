@@ -181,4 +181,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getInvoiceFilesData: (id) => ipcRenderer.invoke('fiscal-get-invoice-files-data', id),
 
     cancelInvoice: (p) => ipcRenderer.invoke('fiscal-cancel-invoice', p),
+
+    //Licencia
+    getMachineId: () => ipcRenderer.invoke('get-machine-id'),
 });
+
