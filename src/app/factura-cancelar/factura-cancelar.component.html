@@ -1,4 +1,4 @@
-<div class="fc-backdrop" (click)="cerrarModal()">
+<div class="fc-backdrop" [style.display]="oculto ? 'none' : 'flex'" (click)="cerrarModal()">
   <div class="fc-dialog" (click)="$event.stopPropagation()">
     <div class="fc-header">
       <div>

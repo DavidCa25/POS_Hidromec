@@ -36,6 +36,13 @@ export class FacturaNueva implements OnInit {
   @Output() cerrar = new EventEmitter<void>();
   @Output() timbrada = new EventEmitter<any>();
 
+  @Input() receptorRfc: string | null = null;
+  @Input() receptorNombre: string | null = null;
+  @Input() receptorRegimen: string | null = null;
+  @Input() receptorUsoCfdi: string | null = null;
+  @Input() receptorZip: string | null = null;
+  @Input() receptorEmail: string | null = null;
+
   // Cuando se abre sin venta, se puede capturar todo a mano o traer una venta
   get modoLibre(): boolean { return this.saleId == null; }
 
@@ -293,6 +300,7 @@ export class FacturaNueva implements OnInit {
         xml_content: out.xml
       });
 
+      
       await Swal.fire({ icon: 'success', title: 'Factura timbrada', html: `Folio fiscal:<br><b>${out.uuid || 'N/D'}</b>`, confirmButtonText: 'Listo' });
       this.timbrada.emit(out);
       this.cerrar.emit();

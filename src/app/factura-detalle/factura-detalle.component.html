@@ -1,4 +1,4 @@
-<div class="fd-backdrop" (click)="cerrarModal()">
+<div class="fd-backdrop" [style.display]="oculto ? 'none' : 'flex'" (click)="cerrarModal()">
   <div class="fd-dialog" (click)="$event.stopPropagation()">
     <div class="fd-header">
       <div>
@@ -56,5 +56,6 @@
   [fiscalapiInvoiceId]="data.fiscalapi_invoice_id || ''"
   [uuid]="data.uuid"
   (cerrar)="onCancelarCerrado()"
-  (cancelada)="onFacturaCancelada()">
+  (cancelada)="onFacturaCancelada()"
+  (ocultarPadre)="onOcultarDetalle($event)">
 </app-factura-cancelar>

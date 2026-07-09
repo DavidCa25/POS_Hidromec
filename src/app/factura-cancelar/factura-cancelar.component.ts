@@ -23,6 +23,7 @@ export class FacturaCancelar {
   @Input() uuid: string | null = null;
   @Output() cerrar = new EventEmitter<void>();
   @Output() cancelada = new EventEmitter<void>();
+  @Output() ocultarPadre = new EventEmitter<boolean>();
 
   motivos: MotivoCancelacion[] = [
     { code: '01', label: 'Comprobante emitido con errores con relacion', requiereFolio: true },
@@ -34,6 +35,9 @@ export class FacturaCancelar {
   folioSustitucion = '';
   motivosAbierto = false;
   cancelando = false;
+
+  // Oculta este modal (y el de detalle) mientras el SweetAlert esta arriba
+  oculto = false;
 
   constructor(private catalogos: CatalogosService) {}
 
@@ -59,6 +63,10 @@ export class FacturaCancelar {
       return;
     }
 
+    // Oculta los modales mientras el SweetAlert esta arriba
+    this.oculto = true;
+    this.ocultarPadre.emit(true);
+
     const confirmar = await Swal.fire({
       icon: 'warning',
       title: 'Cancelar factura',
@@ -68,9 +76,28 @@ export class FacturaCancelar {
       cancelButtonText: 'No, regresar',
       confirmButtonColor: '#dc2626'
     });
-    if (!confirmar.isConfirmed) return;
 
-    this.cancelando = true;
+    // Si se arrepiente, restaura los modales
+    if (!confirmar.isConfirmed) {
+      this.oculto = false;
+      this.ocultarPadre.emit(false);
+      return;
+    }
+
+    const motivo = this.motivoSeleccionado;
+    const folioSust = this.folioSustitucion.trim() || null;
+    const invoiceIdLocal = this.invoiceId;
+    const fiscalapiId = this.fiscalapiInvoiceId;
+
+    Swal.fire({
+      title: 'Cancelando ante el SAT',
+      text: 'Espera un momento...',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
     try {
       const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-cancel-invoice`;
       const res = await fetch(endpoint, {
@@ -80,29 +107,28 @@ export class FacturaCancelar {
           'Authorization': `Bearer ${this.catalogos.anonKey}`,
           'apikey': this.catalogos.anonKey
         },
-        body: JSON.stringify({
-          invoiceId: this.fiscalapiInvoiceId,
-          motivo: this.motivoSeleccionado,
-          folioSustitucion: this.folioSustitucion.trim() || null
-        })
+        body: JSON.stringify({ invoiceId: fiscalapiId, motivo, folioSustitucion: folioSust })
       });
       const out = await res.json();
       if (!out?.success) throw new Error(out?.error || 'No se pudo cancelar la factura.');
 
-      // Registrar la cancelacion en el SQL local
       await this.api?.cancelInvoice?.({
-        id: this.invoiceId,
-        motivo_cancelacion: this.motivoSeleccionado,
-        folio_sustitucion: this.folioSustitucion.trim() || null
+        id: invoiceIdLocal,
+        motivo_cancelacion: motivo,
+        folio_sustitucion: folioSust
       });
 
-      await Swal.fire({ icon: 'success', title: 'Factura cancelada', text: 'El CFDI se cancelo ante el SAT.' });
+      Swal.close();
+
       this.cancelada.emit();
       this.cerrar.emit();
+
+      await Swal.fire({ icon: 'success', title: 'Factura cancelada', text: 'El CFDI se cancelo ante el SAT.' });
     } catch (e: any) {
+      Swal.close();
       await Swal.fire({ icon: 'error', title: 'Error al cancelar', text: e?.message || 'No se pudo cancelar.' });
-    } finally {
-      this.cancelando = false;
+      this.oculto = false;
+      this.ocultarPadre.emit(false);
     }
   }
 

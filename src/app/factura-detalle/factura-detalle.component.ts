@@ -32,6 +32,13 @@ export class FacturaDetalle implements OnInit {
   descargando = false;
   showCancelarModal = false;
 
+  // Se oculta mientras un SweetAlert del hijo esta arriba
+  oculto = false;
+
+  onOcultarDetalle(v: boolean) {
+    this.oculto = v;
+  }
+
   constructor(private catalogos: CatalogosService) {}
 
   private get api() { return (window as any).electronAPI; }
@@ -118,8 +125,8 @@ export class FacturaDetalle implements OnInit {
 
   async onFacturaCancelada() {
     this.showCancelarModal = false;
-    await this.cargar();          // recarga para mostrar el nuevo estado
-    this.actualizada.emit();      // avisa a la lista para refrescar
+    this.actualizada.emit();     
+    this.cerrar.emit();           
   }
 
   cerrarModal() { this.cerrar.emit(); }
