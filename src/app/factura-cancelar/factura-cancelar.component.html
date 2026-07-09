@@ -1,0 +1,51 @@
+<div class="fc-backdrop" (click)="cerrarModal()">
+  <div class="fc-dialog" (click)="$event.stopPropagation()">
+    <div class="fc-header">
+      <div>
+        <h3>Cancelar factura</h3>
+        <p *ngIf="uuid">{{ uuid }}</p>
+      </div>
+      <button class="fc-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="fc-body">
+      <div class="fc-warn">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>La cancelacion se envia al SAT y no se puede deshacer.</span>
+      </div>
+
+      <label class="fc-label">Motivo de cancelacion</label>
+      <div class="fc-dd" [class.open]="motivosAbierto">
+        <button type="button" class="fc-dd-trigger" [class.ph]="!motivoSeleccionado"
+                (click)="motivosAbierto = !motivosAbierto">
+          <span>{{ motivoLabel }}</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="fc-dd-menu" *ngIf="motivosAbierto">
+          <button type="button" class="fc-dd-opt" *ngFor="let m of motivos"
+                  [class.sel]="m.code === motivoSeleccionado"
+                  (click)="motivoSeleccionado = m.code; motivosAbierto = false">
+            <span class="fc-dd-code">{{ m.code }}</span>
+            <span>{{ m.label }}</span>
+            <i class="bi bi-check2" *ngIf="m.code === motivoSeleccionado"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="fc-field" *ngIf="requiereFolio">
+        <label class="fc-label">Folio fiscal que la sustituye</label>
+        <input type="text" [(ngModel)]="folioSustitucion"
+               placeholder="UUID de la factura que sustituye a esta">
+        <small>El motivo 01 exige indicar el CFDI que reemplaza al cancelado.</small>
+      </div>
+    </div>
+
+    <div class="fc-footer">
+      <button class="fc-btn ghost" (click)="cerrarModal()" [disabled]="cancelando">Regresar</button>
+      <button class="fc-btn danger" (click)="confirmar()" [disabled]="cancelando || !motivoSeleccionado">
+        <i class="bi bi-x-octagon" *ngIf="!cancelando"></i>
+        {{ cancelando ? 'Cancelando...' : 'Cancelar factura' }}
+      </button>
+    </div>
+  </div>
+</div>

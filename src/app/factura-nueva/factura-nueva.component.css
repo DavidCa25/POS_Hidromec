@@ -71,3 +71,45 @@
 .fn-btn.primary { background: #2E3A8C; color: #fff; }
 .fn-btn.ghost { background: #fff; color: #0f2a3f; border: 1px solid #e2e8f0; }
 .fn-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---- Cargar desde venta ---- */
+.fn-load-sale { background: #f8fafc; border: 1px solid #e9eef4; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+.fn-load-input label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 7px; color: #0f2a3f; }
+.fn-load-row { display: flex; gap: 8px; }
+.fn-load-row input { flex: 1; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 11px; font-size: 14px; outline: none; background: #fff; }
+.fn-load-row input:focus { border-color: #4F9BB8; }
+
+/* ---- Encabezado de seccion con accion ---- */
+.fn-section-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 12px; }
+.fn-section-head h4 { margin: 0; }
+.fn-link {
+  display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent;
+  color: #2E3A8C; font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+}
+.fn-link:hover { background: #eef2f7; }
+
+.fn-btn.sm { padding: 9px 14px; font-size: 13px; }
+
+/* ---- Conceptos editables ---- */
+.fn-conceptos-edit { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.fn-cpt-head, .fn-cpt-row {
+  display: grid; grid-template-columns: 1fr 80px 110px 100px 36px;
+  gap: 8px; align-items: center; padding: 9px 12px;
+}
+.fn-cpt-head { background: #f8fafc; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .03em; }
+.fn-cpt-row { border-top: 1px solid #f1f5f9; }
+.fn-cpt-row input {
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 9px; font-size: 13px;
+  outline: none; background: #fff; width: 100%; color: #0f2a3f;
+}
+.fn-cpt-row input:focus { border-color: #4F9BB8; }
+.fn-cpt-row .c-sub { font-weight: 800; font-size: 13px; text-align: right; color: #0f2a3f; }
+.fn-cpt-row .c-del {
+  border: none; background: transparent; color: #94a3b8; cursor: pointer;
+  border-radius: 7px; padding: 5px; font-size: 14px;
+}
+.fn-cpt-row .c-del:hover { background: #fef2f2; color: #dc2626; }
+@media (max-width: 600px) {
+  .fn-cpt-head { display: none; }
+  .fn-cpt-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+}

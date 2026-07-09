@@ -2353,6 +2353,18 @@ ipcMain.handle('fiscal-get-invoice-files-data', async (_e, id) => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
+ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('id', sql.Int, p.id)
+      .input('motivo_cancelacion', sql.NVarChar(2), p.motivo_cancelacion)
+      .input('folio_sustitucion', sql.NVarChar(50), p.folio_sustitucion ?? null)
+      .execute('sp_cancel_invoice');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
 
 
 

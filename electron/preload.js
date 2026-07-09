@@ -179,4 +179,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     saveInvoice: (inv) => ipcRenderer.invoke('fiscal-save-invoice', inv),
     getInvoiceFilesData: (id) => ipcRenderer.invoke('fiscal-get-invoice-files-data', id),
+
+    cancelInvoice: (p) => ipcRenderer.invoke('fiscal-cancel-invoice', p),
 });

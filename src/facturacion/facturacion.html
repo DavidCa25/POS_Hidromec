@@ -79,8 +79,23 @@
         <span class="badge" [ngClass]="'badge-' + f.estado">{{ estadoLabel(f.estado) }}</span>
       </div>
       <div class="c-acc">
-        <button class="icon-btn" title="Ver"><i class="bi bi-eye"></i></button>
+        <button class="icon-btn" title="Ver" (click)="verFactura(f)"><i class="bi bi-eye"></i></button>
       </div>
     </div>
   </div>
 </div>
+
+<app-factura-nueva
+  *ngIf="showFacturaModal"
+  [saleId]="null"
+  [conceptos]="[]"
+  (cerrar)="onFacturaCerrada()"
+  (timbrada)="onFacturaCerrada()">
+</app-factura-nueva>
+
+<app-factura-detalle
+  *ngIf="verId"
+  [invoiceId]="verId"
+  (cerrar)="cerrarDetalle()"
+  (actualizada)="onDetalleActualizado()">
+</app-factura-detalle>

@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { FacturaNueva } from '../app/factura-nueva/factura-nueva.component';
+import { FacturaDetalle } from '../app/factura-detalle/factura-detalle.component';
 
 interface Invoice {
   id: number;
@@ -29,7 +31,7 @@ interface Counts {
   selector: 'app-facturacion',
   standalone: true,
   templateUrl: './facturacion.html',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, FacturaNueva, FacturaDetalle],
   styleUrls: ['./facturacion.css']
 })
 export class Facturacion implements OnInit {
@@ -38,6 +40,8 @@ export class Facturacion implements OnInit {
   filtroEstado: string | null = null;
   busqueda = '';
   cargando = true;
+  showFacturaModal = false;
+  verId: number | null = null;
 
   constructor(private router: Router) {}
 
@@ -65,14 +69,30 @@ export class Facturacion implements OnInit {
     }
   }
 
+  nuevaFactura() {
+    this.showFacturaModal = true;
+  }
+
+  onFacturaCerrada() {
+    this.showFacturaModal = false;
+    this.cargar();  
+  }
+
+  verFactura(f: Invoice) {
+    this.verId = f.id;
+  }
+
+  cerrarDetalle() {
+    this.verId = null;
+  }
+
+  onDetalleActualizado() {
+    this.cargar(); 
+  }
+
   filtrar(estado: string | null) {
     this.filtroEstado = estado;
     this.cargar();
-  }
-
-  nuevaFactura() {
-    // Aqui abriremos el flujo de emision (siguiente etapa)
-    this.router.navigate(['/facturacion/nueva']);
   }
 
   irAConfiguracion() {

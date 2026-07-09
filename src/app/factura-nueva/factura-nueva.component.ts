@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { CatalogosService, CatalogoItem } from '../../services/catalogos.service';
 
-// Concepto a facturar (viene de una venta o capturado a mano)
 export interface ConceptoFactura {
   description: string;
   quantity: number;
@@ -32,24 +31,23 @@ interface Receptor {
   styleUrls: ['./factura-nueva.component.css']
 })
 export class FacturaNueva implements OnInit {
-  // Venta origen (opcional) y conceptos a facturar
   @Input() saleId: number | null = null;
   @Input() conceptos: ConceptoFactura[] = [];
-
-  @Input() receptorRfc?: string | null;
-  @Input() receptorNombre?: string | null;
-  @Input() receptorRegimen?: string | null;
-  @Input() receptorUsoCfdi?: string | null;
-
   @Output() cerrar = new EventEmitter<void>();
   @Output() timbrada = new EventEmitter<any>();
+
+  // Cuando se abre sin venta, se puede capturar todo a mano o traer una venta
+  get modoLibre(): boolean { return this.saleId == null; }
+
+  folioVenta: number | null = null;
+  cargandoVenta = false;
 
   receptor: Receptor = {
     rfc: '', razonSocial: '', regimenFiscal: '', usoCfdi: '', zipCode: '', email: ''
   };
 
-  formaPago = '01';   // 01 efectivo
-  metodoPago = 'PUE'; // pago en una exhibicion
+  formaPago = '01';
+  metodoPago = 'PUE';
 
   regimenes: CatalogoItem[] = [];
   usosCfdi: CatalogoItem[] = [];
@@ -58,6 +56,8 @@ export class FacturaNueva implements OnInit {
 
   regimenAbierto = false;
   usoAbierto = false;
+  formaPagoAbierta = false;
+  metodoPagoAbierto = false;
 
   timbrando = false;
 
@@ -73,7 +73,6 @@ export class FacturaNueva implements OnInit {
   private get api() { return (window as any).electronAPI; }
 
   async ngOnInit() {
-    this.asignarDatosReceptor();
     await this.cargarConfigEmisor();
     await this.cargarCatalogos();
   }
@@ -107,15 +106,7 @@ export class FacturaNueva implements OnInit {
     } catch { /* offline usa cache */ }
   }
 
-  private asignarDatosReceptor() {
-    if (this.receptorRfc) {
-      this.receptor.rfc = this.receptorRfc;
-      this.receptor.razonSocial = this.receptorNombre || '';
-      this.receptor.regimenFiscal = this.receptorRegimen || '';
-      this.receptor.usoCfdi = this.receptorUsoCfdi || '';
-    }
-  }
-
+  // ---------- Labels de dropdowns ----------
   get regimenLabel(): string {
     const r = this.regimenes.find(x => x.code === this.receptor.regimenFiscal);
     return r ? `${r.code} - ${r.description}` : 'Selecciona regimen';
@@ -124,20 +115,78 @@ export class FacturaNueva implements OnInit {
     const u = this.usosCfdi.find(x => x.code === this.receptor.usoCfdi);
     return u ? `${u.code} - ${u.description}` : 'Selecciona uso de CFDI';
   }
+  get formaPagoLabel(): string {
+    const f = this.formasPago.find(x => x.code === this.formaPago);
+    return f ? `${f.code} - ${f.description}` : 'Selecciona forma de pago';
+  }
+  get metodoPagoLabel(): string {
+    const m = this.metodosPago.find(x => x.code === this.metodoPago);
+    return m ? `${m.code} - ${m.description}` : 'Selecciona metodo de pago';
+  }
 
+  // ---------- Conceptos ----------
+  agregarConcepto() {
+    this.conceptos = [...this.conceptos, {
+      description: '', quantity: 1, unitPrice: 0,
+      claveProdServ: null, claveUnidad: null, taxObject: '02', taxRate: 0.16
+    }];
+  }
+
+  quitarConcepto(i: number) {
+    this.conceptos = this.conceptos.filter((_, idx) => idx !== i);
+  }
+
+  // Trae los productos de una venta existente por folio
+  async cargarVenta() {
+    const folio = Number(this.folioVenta ?? 0);
+    if (!Number.isFinite(folio) || folio <= 0) {
+      await Swal.fire({ icon: 'warning', title: 'Folio invalido', text: 'Escribe un folio de venta valido.' });
+      return;
+    }
+    if (!this.api?.getSaleByFolio) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta getSaleByFolio.' });
+      return;
+    }
+
+    this.cargandoVenta = true;
+    try {
+      const resp = await this.api.getSaleByFolio(folio);
+      if (!resp?.success) throw new Error(resp?.error || 'No se encontro la venta.');
+
+      const details: any[] = resp.data?.details ?? resp.data?.detail ?? resp.data?.rows ?? [];
+      if (!details.length) throw new Error('La venta no tiene partidas.');
+
+      this.conceptos = details.map((d: any) => ({
+        description: String(d.product_name ?? d.productName ?? d.name ?? `Producto #${d.product_id}`),
+        quantity: Number(d.quantity ?? 1),
+        unitPrice: Number(d.unitary_price ?? 0),
+        claveProdServ: d.clave_prod_serv ?? null,
+        claveUnidad: d.clave_unidad ?? null,
+        taxObject: d.objeto_impuesto ?? '02',
+        taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16
+      }));
+
+      this.saleId = folio;
+      await Swal.fire({ icon: 'success', title: `Venta #${folio} cargada`, timer: 1100, showConfirmButton: false });
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo cargar la venta.' });
+    } finally {
+      this.cargandoVenta = false;
+    }
+  }
+
+  // ---------- Totales ----------
   get subtotal(): number {
-    return this.conceptos.reduce((a, c) => a + Number(c.quantity) * Number(c.unitPrice), 0);
+    return this.conceptos.reduce((a, c) => a + Number(c.quantity || 0) * Number(c.unitPrice || 0), 0);
   }
   get ivaEstimado(): number {
     return this.conceptos.reduce((a, c) => {
-      const base = Number(c.quantity) * Number(c.unitPrice);
+      const base = Number(c.quantity || 0) * Number(c.unitPrice || 0);
       const tasa = c.taxRate != null ? Number(c.taxRate) : 0.16;
       return a + base * tasa;
     }, 0);
   }
-  get total(): number {
-    return this.subtotal + this.ivaEstimado;
-  }
+  get total(): number { return this.subtotal + this.ivaEstimado; }
 
   money(n: number): string {
     return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -145,6 +194,15 @@ export class FacturaNueva implements OnInit {
 
   private rfcValido(rfc: string): boolean {
     return /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test((rfc || '').trim().toUpperCase());
+  }
+
+  // Atajo: llenar receptor como publico en general
+  usarPublicoGeneral() {
+    this.receptor.rfc = 'XAXX010101000';
+    this.receptor.razonSocial = 'PUBLICO EN GENERAL';
+    this.receptor.regimenFiscal = '616';
+    this.receptor.usoCfdi = 'S01';
+    this.receptor.zipCode = this.expeditionZipCode;
   }
 
   async emitir() {
@@ -162,13 +220,17 @@ export class FacturaNueva implements OnInit {
       return;
     }
     if (this.conceptos.length === 0) {
-      await Swal.fire({ icon: 'warning', title: 'Sin conceptos', text: 'La factura no tiene productos.' });
+      await Swal.fire({ icon: 'warning', title: 'Sin conceptos', text: 'Agrega al menos un concepto.' });
+      return;
+    }
+    const invalido = this.conceptos.find(c => !c.description?.trim() || Number(c.quantity) <= 0 || Number(c.unitPrice) < 0);
+    if (invalido) {
+      await Swal.fire({ icon: 'warning', title: 'Concepto incompleto', text: 'Revisa descripcion, cantidad y precio de los conceptos.' });
       return;
     }
 
     this.timbrando = true;
     try {
-      // 1) Timbra en la Edge Function
       const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-stamp-invoice`;
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -196,8 +258,8 @@ export class FacturaNueva implements OnInit {
           metodoPago: this.metodoPago,
           items: this.conceptos.map(c => ({
             description: c.description,
-            quantity: c.quantity,
-            unitPrice: c.unitPrice,
+            quantity: Number(c.quantity),
+            unitPrice: Number(c.unitPrice),
             claveProdServ: c.claveProdServ || null,
             claveUnidad: c.claveUnidad || null,
             taxObject: c.taxObject || '02',
@@ -207,11 +269,8 @@ export class FacturaNueva implements OnInit {
         })
       });
       const out = await res.json();
-      if (!out?.success) {
-        throw new Error(out?.error || 'No se pudo timbrar la factura.');
-      }
+      if (!out?.success) throw new Error(out?.error || 'No se pudo timbrar la factura.');
 
-      // 2) Guarda la factura en el SQL local
       await this.api?.saveInvoice?.({
         sale_id: this.saleId,
         serie: out.serie,

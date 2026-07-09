@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { CatalogosService } from '../../services/catalogos.service';
+import { FacturaCancelar } from '../factura-cancelar/factura-cancelar.component';
 
 interface InvoiceDetail {
   id: number;
@@ -17,23 +18,30 @@ interface InvoiceDetail {
 @Component({
   selector: 'app-factura-detalle',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FacturaCancelar],
   templateUrl: './factura-detalle.component.html',
   styleUrls: ['./factura-detalle.component.css']
 })
 export class FacturaDetalle implements OnInit {
   @Input() invoiceId!: number;
   @Output() cerrar = new EventEmitter<void>();
+  @Output() actualizada = new EventEmitter<void>();
 
   data: InvoiceDetail | null = null;
   cargando = true;
   descargando = false;
+  showCancelarModal = false;
 
   constructor(private catalogos: CatalogosService) {}
 
   private get api() { return (window as any).electronAPI; }
 
   async ngOnInit() {
+    await this.cargar();
+  }
+
+  private async cargar() {
+    this.cargando = true;
     try {
       const res = await this.api?.getInvoiceFilesData?.(this.invoiceId);
       if (res?.success) this.data = res.data;
@@ -41,6 +49,11 @@ export class FacturaDetalle implements OnInit {
     this.cargando = false;
   }
 
+  get puedeCancelar(): boolean {
+    return this.data?.estado === 'timbrada' && !!this.data?.fiscalapi_invoice_id;
+  }
+
+  // Descarga un base64 como archivo
   private descargarBase64(base64: string, filename: string, mime: string) {
     const link = document.createElement('a');
     link.href = `data:${mime};base64,${base64}`;
@@ -92,6 +105,21 @@ export class FacturaDetalle implements OnInit {
     } finally {
       this.descargando = false;
     }
+  }
+
+  abrirCancelar() {
+    if (!this.puedeCancelar) return;
+    this.showCancelarModal = true;
+  }
+
+  onCancelarCerrado() {
+    this.showCancelarModal = false;
+  }
+
+  async onFacturaCancelada() {
+    this.showCancelarModal = false;
+    await this.cargar();          // recarga para mostrar el nuevo estado
+    this.actualizada.emit();      // avisa a la lista para refrescar
   }
 
   cerrarModal() { this.cerrar.emit(); }

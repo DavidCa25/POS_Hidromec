@@ -31,12 +31,30 @@
           <button class="fd-btn ghost" (click)="descargarXmlLocal()">
             <i class="bi bi-filetype-xml"></i> Solo XML (local)
           </button>
+
+          <!-- Cancelar: solo si esta timbrada -->
+          <button class="fd-btn danger" *ngIf="puedeCancelar" (click)="abrirCancelar()">
+            <i class="bi bi-x-octagon"></i> Cancelar factura
+          </button>
         </div>
 
-        <p class="fd-hint">
+        <p class="fd-hint" *ngIf="data.estado === 'cancelada'">
+          Esta factura fue cancelada ante el SAT.
+        </p>
+        <p class="fd-hint" *ngIf="data.estado !== 'cancelada'">
           El PDF y XML se obtienen del timbrador. El "Solo XML (local)" usa la copia guardada al timbrar.
         </p>
       </ng-container>
     </div>
   </div>
 </div>
+
+<!-- Modal de cancelacion -->
+<app-factura-cancelar
+  *ngIf="showCancelarModal && data"
+  [invoiceId]="data.id"
+  [fiscalapiInvoiceId]="data.fiscalapi_invoice_id || ''"
+  [uuid]="data.uuid"
+  (cerrar)="onCancelarCerrado()"
+  (cancelada)="onFacturaCancelada()">
+</app-factura-cancelar>
