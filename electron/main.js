@@ -27,6 +27,9 @@ logger.setupLogging({ retentionDays: 14 });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
+const SUPABASE_URL = 'https://swlpspgmkwzlrowllvvj.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
+
 let businessConfig = null;
 
 let updateCheckTimer = null;
@@ -117,6 +120,10 @@ function generarMachineId() {
   ].filter(Boolean).join('|');
  
   return crypto.createHash('sha256').update(partes).digest('hex').slice(0, 32);
+}
+
+function getLicensePath() {
+  return path.join(app.getPath('userData'), 'license.json');
 }
 
 let cachedMachineId = null;
@@ -2406,6 +2413,113 @@ ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
 ipcMain.handle('get-machine-id', async () => {
   if (!cachedMachineId) cachedMachineId = generarMachineId();
   return cachedMachineId;
+});
+
+//Setup
+
+ipcMain.handle('setup-status', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_setup_status');
+    const row = r.recordset?.[0] ?? { usuarios: 0, negocio_configurado: 0 };
+    return {
+      success: true,
+      configurado: Number(row.usuarios) > 0,
+      data: row
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+ 
+// Crea el usuario administrador y los datos del negocio
+ipcMain.handle('setup-inicial', async (_e, p) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('usuario', sql.NVarChar(50), p.usuario)
+      .input('password', sql.NVarChar(255), p.password)
+      .input('business_name', sql.NVarChar(200), p.business_name)
+      .input('address', sql.NVarChar(300), p.address ?? null)
+      .input('phone', sql.NVarChar(50), p.phone ?? null)
+      .input('rfc', sql.NVarChar(50), p.rfc ?? null)
+      .execute('sp_setup_inicial');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('license:activate', async (_event, payload) => {
+  try {
+    const licenseKey = typeof payload === 'string' ? payload : payload?.licenseKey;
+    const machineAlias = typeof payload === 'object' ? payload?.machineAlias : null;
+
+    if (!licenseKey) return { ok: false, error: 'Falta la clave de licencia.' };
+
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/license-check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'apikey': ANON_KEY
+      },
+      body: JSON.stringify({
+        action: 'activate',
+        licenseKey: String(licenseKey).trim().toUpperCase(),
+        machineId: cachedMachineId,
+        machineAlias
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data?.success) {
+      return { ok: false, error: data?.error || 'La clave no es valida o esta en uso.', code: data?.code };
+    }
+
+    fs.writeFileSync(getLicensePath(), JSON.stringify(data, null, 2), 'utf8');
+    return { ok: true, plan: data.plan, customerName: data.customerName };
+  } catch (err) {
+    console.error('license:activate:', err);
+    return { ok: false, error: 'No hay conexion para validar la licencia.' };
+  }
+});
+
+// 2. Leer la licencia (Para que Angular la consuma)
+ipcMain.handle('license:get', async () => {
+  try {
+    const p = getLicensePath();
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, 'utf8'));
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+});
+
+// 3. Escribir/Actualizar licencia (Para cuando Angular revalide en segundo plano)
+ipcMain.handle('license:save', async (event, licenseData) => {
+  try {
+    fs.writeFileSync(getLicensePath(), JSON.stringify(licenseData, null, 2), 'utf8');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false };
+  }
+});
+
+// 4. Borrar licencia (Liberar máquina)
+ipcMain.handle('license:clear', async () => {
+  try {
+    const p = getLicensePath();
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false };
+  }
 });
 
 

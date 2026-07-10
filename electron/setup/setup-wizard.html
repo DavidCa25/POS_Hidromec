@@ -12,15 +12,15 @@
   <style>
     :root {
       /* Paleta Wybix POS */
-      --brand-light: #73B4B7; /* Light Teal - Acentos y botones */
+      --brand-light: #73B4B7; 
       --brand-light-hover: #5DA5A8;
-      --brand-dark: #15262D; /* Dark Teal - Tarjetas */
-      --bg-base: #0B1317; /* Fondo general ultra oscuro */
-      --bg-input: #0F1A20; /* Fondo de inputs */
+      --brand-dark: #15262D; 
+      --bg-base: #0B1317; 
+      --bg-input: #0F1A20; 
       
       --text-main: #F8FAFC;
       --text-muted: #829AAB;
-      --line: #223742; /* Separadores */
+      --line: #223742; 
       
       --error-bg: #2C1618;
       --error-text: #E57373;
@@ -51,23 +51,9 @@
       overflow: hidden;
     }
 
-    .head {
-      border-bottom: 1px solid var(--line);
-      padding: 32px 32px 24px;
-    }
-
-    .head h1 { 
-      font-size: 20px; 
-      font-weight: 600; 
-      letter-spacing: -0.3px;
-    }
-
-    .head p { 
-      color: var(--text-muted); 
-      font-size: 13.5px; 
-      margin-top: 6px; 
-      font-weight: 400;
-    }
+    .head { border-bottom: 1px solid var(--line); padding: 32px 32px 24px; }
+    .head h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+    .head p { color: var(--text-muted); font-size: 13.5px; margin-top: 6px; font-weight: 400; }
 
     .body { padding: 32px; }
     
@@ -80,21 +66,8 @@
     }
 
     .field { margin-bottom: 24px; }
-    
-    label { 
-      display: block; 
-      font-size: 13px; 
-      font-weight: 500; 
-      margin-bottom: 8px; 
-      color: var(--text-main);
-    }
-    
-    .hint { 
-      font-size: 12px; 
-      color: var(--text-muted); 
-      margin-top: 6px; 
-      line-height: 1.5; 
-    }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text-main); }
+    .hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
 
     input[type=text], input[type=password] {
       width: 100%; 
@@ -113,16 +86,9 @@
       border-color: var(--brand-light); 
       box-shadow: 0 0 0 3px rgba(115, 180, 183, 0.15); 
     }
-    
-    input::placeholder { color: #4A6372; }
+    input::placeholder { color: #4A6372; text-transform: uppercase; }
 
-    .roles { 
-      display: grid; 
-      grid-template-columns: 1fr 1fr; 
-      gap: 16px; 
-      margin-top: 12px;
-    }
-
+    .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
     .role {
       background: var(--bg-input);
       border: 1px solid var(--line); 
@@ -132,96 +98,43 @@
       text-align: center; 
       transition: all 0.2s ease;
     }
-
-    .role:hover { 
-      border-color: var(--brand-light); 
-      background: rgba(115, 180, 183, 0.03);
-    }
-
+    .role:hover { border-color: var(--brand-light); background: rgba(115, 180, 183, 0.03); }
     .role.sel { 
       border-color: var(--brand-light); 
       background: rgba(115, 180, 183, 0.08); 
       box-shadow: inset 0 0 0 1px var(--brand-light);
     }
-
     .role .t { font-weight: 600; font-size: 15px; margin-bottom: 6px; color: var(--text-main); }
     .role .d { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 
-    .actions { 
-      display: flex; 
-      justify-content: flex-end; 
-      margin-top: 32px; 
-      gap: 12px; 
-    }
-
+    .actions { display: flex; justify-content: flex-end; margin-top: 32px; gap: 12px; }
     .actions.between { justify-content: space-between; }
 
     button {
-      border: none; 
-      border-radius: 8px; 
-      padding: 12px 24px; 
-      font-weight: 600;
-      font-size: 13.5px; 
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.2s;
+      border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;
+      font-size: 13.5px; font-family: inherit; cursor: pointer; transition: all 0.2s;
     }
-
-    .btn-primary { 
-      background: var(--brand-light); 
-      color: #000; /* Texto oscuro para contraste sobre el Light Teal */
-    }
-    
+    .btn-primary { background: var(--brand-light); color: #000; }
     .btn-primary:hover:not(:disabled) { background: var(--brand-light-hover); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .btn-ghost { 
-      background: transparent; 
-      color: var(--text-muted); 
-      border: 1px solid var(--line);
-    }
-    
-    .btn-ghost:hover {
-      background: var(--line);
-      color: var(--text-main);
-    }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--line); }
+    .btn-ghost:hover { background: var(--line); color: var(--text-main); }
 
     .genpass { display: flex; gap: 10px; }
-    
-    .genpass button { 
-      padding: 0 16px; 
-      background: var(--line); 
-      color: var(--text-main); 
-      font-size: 13px; 
-      white-space: nowrap; 
-    }
-    
+    .genpass button { padding: 0 16px; background: var(--line); color: var(--text-main); font-size: 13px; }
     .genpass button:hover { background: #2F4A58; }
 
     .installing { text-align: center; padding: 32px 0; }
-    
     .spinner {
-      width: 40px; 
-      height: 40px; 
-      border: 3px solid var(--line); 
-      border-top-color: var(--brand-light);
-      border-radius: 50%; 
-      animation: spin 0.8s linear infinite; 
-      margin: 0 auto 20px;
+      width: 40px; height: 40px; border: 3px solid var(--line); border-top-color: var(--brand-light);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .err { 
-      background: var(--error-bg); 
-      color: var(--error-text); 
-      border: 1px solid var(--error-border); 
-      border-radius: 8px; 
-      padding: 12px 16px; 
-      font-size: 13px; 
-      margin-top: 20px; 
-      display: none; 
-      font-weight: 500;
+      background: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); 
+      border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-top: 20px; 
+      display: none; font-weight: 500;
     }
   </style>
 </head>
@@ -229,11 +142,25 @@
   <div class="card">
     <div class="head">
       <h1>Configuración del Sistema</h1>
-      <p>Wybix POS - Preparando la arquitectura del equipo</p>
+      <p>Wybix POS - Activación y despliegue local</p>
     </div>
     <div class="body">
 
-      <div class="step active" id="step1">
+      <!-- PASO 0: ACTIVACIÓN DE LICENCIA -->
+      <div class="step active" id="step0">
+        <div class="field">
+          <label>Clave de Activación</label>
+          <<input type="text" id="licenseKey" placeholder="WYBX-M1-XXXX-XXXX" maxlength="17">
+          <div class="hint">Ingresa la licencia de Wybix POS. Se requiere conexión a internet temporalmente para validar este equipo.</div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" id="btnActivate" onclick="activateLicense()">Validar Licencia</button>
+        </div>
+        <div class="err" id="err0"></div>
+      </div>
+
+      <!-- PASO 1: ROLES (Solo si es Multi) -->
+      <div class="step" id="step1">
         <div class="field">
           <label>¿Qué función tendrá esta computadora?</label>
           <div class="roles">
@@ -252,6 +179,7 @@
         </div>
       </div>
 
+      <!-- PASO 2: PRINCIPAL -->
       <div class="step" id="step2p">
         <div class="field">
           <label>Contraseña de conexión (Red local)</label>
@@ -259,7 +187,7 @@
             <input type="text" id="ocusPass" placeholder="Clave para las cajas secundarias">
             <button type="button" onclick="genPass('ocusPass')">Generar</button>
           </div>
-          <div class="hint">Esta clave autenticará a las cajas secundarias. Cópiala; será requerida al configurar los demás equipos.</div>
+          <div class="hint">Esta clave autenticará a las cajas secundarias (Cópiala).</div>
         </div>
         <div class="field">
           <label>Credencial de administrador SQL (SA)</label>
@@ -267,38 +195,40 @@
             <input type="text" id="saPass" placeholder="Clave interna de SQL Server">
             <button type="button" onclick="genPass('saPass')">Generar</button>
           </div>
-          <div class="hint">Uso exclusivo del motor de base de datos. Puedes generarla de forma aleatoria.</div>
+          <div class="hint">Uso exclusivo del motor de base de datos. Recomendado: Generar aleatoria.</div>
         </div>
         <div class="actions between">
-          <button class="btn-ghost" onclick="back()">Volver</button>
+          <button class="btn-ghost" id="btnBackP" onclick="back()">Volver</button>
           <button class="btn-primary" onclick="finishPrincipal()">Instalar sistema</button>
         </div>
         <div class="err" id="errP"></div>
       </div>
 
+      <!-- PASO 2: SECUNDARIA -->
       <div class="step" id="step2s">
         <div class="field">
           <label>Dirección IP del Servidor Principal</label>
           <input type="text" id="serverIp" placeholder="Ej. 192.168.1.10">
-          <div class="hint">La IPv4 del equipo donde se instaló la base de datos central.</div>
+          <div class="hint">La IPv4 del equipo principal en esta misma red.</div>
         </div>
         <div class="field">
           <label>Contraseña de conexión</label>
           <input type="password" id="ocusPassS" placeholder="Clave generada en el servidor">
-          <div class="hint">Ingresa la clave de red local definida en la computadora principal.</div>
+          <div class="hint">La clave de red local definida en la computadora principal.</div>
         </div>
         <div class="actions between">
-          <button class="btn-ghost" onclick="back()">Volver</button>
+          <button class="btn-ghost" id="btnBackS" onclick="back()">Volver</button>
           <button class="btn-primary" onclick="finishSecundaria()">Conectar equipo</button>
         </div>
         <div class="err" id="errS"></div>
       </div>
 
+      <!-- PASO 3: INSTALACIÓN -->
       <div class="step" id="step3">
         <div class="installing">
           <div class="spinner"></div>
           <div id="installMsg" style="font-weight:600; font-size: 15px;">Desplegando arquitectura...</div>
-          <div class="hint" id="installSub" style="margin-top:8px;">Este proceso configurará los servicios locales. Puede demorar unos minutos.</div>
+          <div class="hint" id="installSub" style="margin-top:8px;">Este proceso configurará los servicios. Puede demorar unos minutos.</div>
         </div>
         <div class="err" id="err3"></div>
       </div>
@@ -309,6 +239,64 @@
   <script>
     const api = window.setupAPI;
     let role = null;
+    let activePlan = null;
+
+    document.getElementById('licenseKey').addEventListener('input', function(e) {
+      const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 14);
+      const partes = [];
+      if (val.length > 0)  partes.push(val.slice(0, 4));
+      if (val.length > 4)  partes.push(val.slice(4, 6));
+      if (val.length > 6)  partes.push(val.slice(6, 10));
+      if (val.length > 10) partes.push(val.slice(10, 14));
+      e.target.value = partes.join('-');
+    });
+
+    function show(id) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    // Lógica de Activación
+    async function activateLicense() {
+      const key = document.getElementById('licenseKey').value.trim();
+      if (key.length < 17) {
+        showErr('err0', 'La clave de licencia esta incompleta.');
+        return;
+      }
+
+      const btn = document.getElementById('btnActivate');
+      btn.disabled = true;
+      btn.textContent = 'Validando contra el servidor...';
+      document.getElementById('err0').style.display = 'none';
+
+      const res = await api.activateLicense(key);
+      
+      btn.disabled = false;
+      btn.textContent = 'Validar Licencia';
+
+      if(!res.ok) {
+        showErr('err0', res.error);
+        return;
+      }
+
+      activePlan = res.plan; 
+
+      // El condicional de negocio
+      if (activePlan === 'mono') {
+        selRole('principal'); 
+        document.getElementById('btnBackP').style.display = 'none'; 
+        show('step2p');
+      } else {
+        document.getElementById('btnBackP').style.display = 'block'; 
+        show('step1'); // Pregunta si es caja 1 o caja 2
+      }
+    }
 
     function selRole(r) {
       role = r;
@@ -316,13 +304,8 @@
       document.getElementById('toStep2').disabled = false;
     }
 
-    function show(id) {
-      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-    }
-
     function goStep2() { show(role === 'principal' ? 'step2p' : 'step2s'); }
-    function back() { show('step1'); }
+    function back() { show('step1'); } // Solo accesible si es plan 'multi'
 
     function genPass(targetId) {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -331,12 +314,6 @@
       crypto.getRandomValues(arr);
       for (let i = 0; i < 16; i++) out += chars[arr[i] % chars.length];
       document.getElementById(targetId).value = out;
-    }
-
-    function showErr(id, msg) {
-      const el = document.getElementById(id);
-      el.textContent = msg;
-      el.style.display = 'block';
     }
 
     async function finishPrincipal() {
@@ -349,7 +326,7 @@
       }
 
       show('step3');
-      document.getElementById('installMsg').textContent = 'Instalando SQL Server y estructurando base de datos...';
+      document.getElementById('installMsg').textContent = 'Instalando motor SQL Server...';
 
       const res = await api.runSetup({ role: 'principal', server: 'localhost\\SQLEXPRESS', ocusPassword, saPassword });
       if (!res?.ok) {
@@ -368,7 +345,7 @@
       }
 
       show('step3');
-      document.getElementById('installMsg').textContent = 'Estableciendo conexión con el servidor principal...';
+      document.getElementById('installMsg').textContent = 'Conectando con Servidor Central...';
 
       const res = await api.runSetup({
         role: 'secundaria',
@@ -377,7 +354,7 @@
       });
       if (!res?.ok) {
         show('step2s');
-        showErr('errS', res?.error || 'Fallo de conexión. Verifica la IP y las reglas de red.');
+        showErr('errS', res?.error || 'Fallo de conexión. Verifica la IP y el Firewall.');
       }
     }
   </script>

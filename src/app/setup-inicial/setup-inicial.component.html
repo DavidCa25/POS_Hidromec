@@ -1,0 +1,136 @@
+<div class="su-wrap">
+  <div class="su-card">
+    <!-- Marca -->
+    <div class="su-brand">
+      <div class="su-logo">W</div>
+      <h1>Bienvenido a Wybix</h1>
+      <p>Configuremos tu punto de venta en 3 pasos</p>
+    </div>
+
+    <!-- Indicador de pasos -->
+    <div class="su-steps">
+      <div class="su-step" [class.on]="paso >= 1" [class.done]="paso > 1">
+        <span class="su-step-num"><i class="bi bi-check" *ngIf="paso > 1"></i><span *ngIf="paso <= 1">1</span></span>
+        <span class="su-step-label">Licencia</span>
+      </div>
+      <div class="su-line" [class.on]="paso > 1"></div>
+      <div class="su-step" [class.on]="paso >= 2" [class.done]="paso > 2">
+        <span class="su-step-num"><i class="bi bi-check" *ngIf="paso > 2"></i><span *ngIf="paso <= 2">2</span></span>
+        <span class="su-step-label">Tu negocio</span>
+      </div>
+      <div class="su-line" [class.on]="paso > 2"></div>
+      <div class="su-step" [class.on]="paso >= 3">
+        <span class="su-step-num">3</span>
+        <span class="su-step-label">Administrador</span>
+      </div>
+    </div>
+
+    <!-- ===== PASO 1: LICENCIA ===== -->
+    <div class="su-body" *ngIf="paso === 1">
+      <div class="su-field">
+        <label>Clave de licencia</label>
+        <input type="text" [ngModel]="clave" (ngModelChange)="onClaveInput($event)"
+               placeholder="WYBX-M1-XXXX-XXXX" maxlength="17" class="su-key">
+        <small>La recibiste por correo o WhatsApp al comprar.</small>
+      </div>
+
+      <div class="su-field">
+        <label>Nombre de esta caja (opcional)</label>
+        <input type="text" [(ngModel)]="aliasCaja" placeholder="Ej. Caja 1, Mostrador">
+      </div>
+
+      <div class="su-plans">
+        <div class="su-plan">
+          <span class="su-plan-name">MonoCaja</span>
+          <span class="su-plan-price">$2,000</span>
+          <span class="su-plan-desc">1 caja · App movil</span>
+        </div>
+        <div class="su-plan destacado">
+          <span class="su-plan-name">MultiCaja</span>
+          <span class="su-plan-price">$4,000</span>
+          <span class="su-plan-desc">Cajas ilimitadas · Nube</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PASO 2: NEGOCIO ===== -->
+    <div class="su-body" *ngIf="paso === 2">
+      <div class="su-badge-plan">
+        <i class="bi bi-patch-check-fill"></i>
+        Licencia {{ planTexto }} activada
+      </div>
+
+      <div class="su-field">
+        <label>Nombre de tu negocio</label>
+        <input type="text" [(ngModel)]="businessName" placeholder="Ej. Abarrotes Don Chuy" maxlength="200">
+        <small>Aparecera en los tickets.</small>
+      </div>
+
+      <div class="su-field">
+        <label>Direccion (opcional)</label>
+        <input type="text" [(ngModel)]="address" placeholder="Calle, numero, colonia" maxlength="300">
+      </div>
+
+      <div class="su-grid">
+        <div class="su-field">
+          <label>Telefono (opcional)</label>
+          <input type="text" [(ngModel)]="phone" placeholder="477 123 4567" maxlength="50">
+        </div>
+        <div class="su-field">
+          <label>RFC (opcional)</label>
+          <input type="text" [(ngModel)]="rfc" placeholder="XAXX010101000" maxlength="13" style="text-transform:uppercase;">
+        </div>
+      </div>
+
+      <button class="su-btn" (click)="siguienteNegocio()">
+        Continuar <i class="bi bi-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- ===== PASO 3: ADMINISTRADOR ===== -->
+    <div class="su-body" *ngIf="paso === 3">
+      <div class="su-note">
+        <i class="bi bi-shield-lock"></i>
+        <span>Esta cuenta tendra acceso total. Guarda bien la contrasena.</span>
+      </div>
+
+      <div class="su-field">
+        <label>Usuario</label>
+        <input type="text" [(ngModel)]="usuario" placeholder="Ej. david" maxlength="50" autocomplete="off">
+      </div>
+
+      <div class="su-field">
+        <label>Contrasena</label>
+        <div class="su-pass">
+          <input [type]="verPassword ? 'text' : 'password'" [(ngModel)]="password"
+                 placeholder="Minimo 6 caracteres" autocomplete="new-password">
+          <button type="button" class="su-eye" (click)="verPassword = !verPassword">
+            <i class="bi" [class.bi-eye]="!verPassword" [class.bi-eye-slash]="verPassword"></i>
+          </button>
+        </div>
+        <small [class.su-ok]="passwordValida">
+          {{ passwordValida ? 'Longitud correcta' : 'Debe tener al menos 6 caracteres' }}
+        </small>
+      </div>
+
+      <div class="su-field">
+        <label>Confirmar contrasena</label>
+        <input [type]="verPassword ? 'text' : 'password'" [(ngModel)]="passwordConfirm"
+               placeholder="Escribela de nuevo" autocomplete="new-password">
+        <small *ngIf="passwordConfirm.length > 0" [class.su-ok]="passwordsCoinciden" [class.su-err]="!passwordsCoinciden">
+          {{ passwordsCoinciden ? 'Las contrasenas coinciden' : 'No coinciden' }}
+        </small>
+      </div>
+
+      <div class="su-actions">
+        <button class="su-btn ghost" (click)="paso = 2" [disabled]="procesando">
+          <i class="bi bi-arrow-left"></i> Regresar
+        </button>
+        <button class="su-btn" (click)="finalizar()" [disabled]="procesando">
+          <i class="bi bi-check2-circle" *ngIf="!procesando"></i>
+          {{ procesando ? 'Configurando...' : 'Finalizar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

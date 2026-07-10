@@ -1,5 +1,5 @@
 {
-  "name": "ocus-cr",
+  "name": "wybix-pos",
   "version": "1.0.7",
   "main": "electron/main.js",
   "scripts": {
@@ -27,6 +27,7 @@
   "build": {
     "appId": "com.wybix.pos",
     "productName": "Wybix POS",
+    "artifactName": "Wybix-Setup-${version}.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "electron/assets"
@@ -86,7 +87,7 @@
           ]
         }
       ],
-      "icon": "electron/assets/OcusCR_icon.ico"
+      "icon": "electron/assets/wybix_logo.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -95,9 +96,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Ocus CR",
-      "installerIcon": "electron/assets/OcusCR_icon.ico",
-      "uninstallerIcon": "electron/assets/OcusCR_icon.ico"
+      "shortcutName": "Wybix POS",
+      "installerIcon": "electron/assets/wybix_logo.ico",
+      "uninstallerIcon": "electron/assets/wybix_logo.ico"
     },
     "publish": {
       "provider": "github",

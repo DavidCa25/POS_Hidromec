@@ -184,5 +184,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     //Licencia
     getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+
+    licenseGet:   () => ipcRenderer.invoke('license:get'),
+    licenseSave:  (d) => ipcRenderer.invoke('license:save', d),
+    licenseClear: () => ipcRenderer.invoke('license:clear'),
+    getMachineId: () => ipcRenderer.invoke('get-machine-id'),
 });
 

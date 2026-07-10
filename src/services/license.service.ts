@@ -2,23 +2,20 @@ import { Injectable } from '@angular/core';
 
 export interface LicenseInfo {
   plan: 'mono' | 'multi';
-  maxRegisters: number; 
+  maxRegisters: number;        // 0 = ilimitado
   customerName: string;
   machineId: string;
   supportUntil: string | null;
   supportActive: boolean;
   revalidateBy: string;
   issuedAt: string;
+  token?: string;
 }
-
-const STORAGE_KEY = 'wybix_license_token';
-const STORAGE_INFO = 'wybix_license_info';
 
 @Injectable({ providedIn: 'root' })
 export class LicenseService {
-  // Ajusta con tu proyecto de Supabase
   readonly supabaseUrl = 'https://swlpspgmkwzlrowllvvj.supabase.co';
-  readonly anonKey = 'TU_ANON_KEY_PUBLICA';
+  readonly anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
   private info: LicenseInfo | null = null;
 
@@ -29,7 +26,6 @@ export class LicenseService {
 
   get activa(): boolean {
     if (!this.info) return false;
-    // Vencio la gracia offline: hay que revalidar
     return new Date(this.info.revalidateBy) >= new Date();
   }
 
@@ -45,54 +41,45 @@ export class LicenseService {
     return this.info?.customerName ?? '';
   }
 
-  // ---------- Arranque ----------
-  // Carga el token guardado y revalida si toca. Nunca bloquea por falta de red
-  // mientras la gracia offline siga vigente.
-  async iniciar(): Promise<boolean> {
-    this.cargarLocal();
+  get diasParaRevalidar(): number {
+    if (!this.info) return 0;
+    const ms = new Date(this.info.revalidateBy).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86400000));
+  }
 
-    // Si no hay token, hay que activar
+  // ---------- Arranque ----------
+  // La licencia se activa en el asistente de Electron. Angular solo la lee
+  // y la revalida. Nunca bloquea por falta de red durante la gracia offline.
+  async iniciar(): Promise<boolean> {
+    await this.cargarLocal();
     if (!this.info) return false;
 
-    // Si ya vencio la gracia, obliga a revalidar contra el servidor
+    // Vencio la gracia offline: hay que revalidar contra el servidor
     if (!this.activa) {
-      const ok = await this.validar();
-      return ok;
+      return await this.validar();
     }
 
+    // Revalida en segundo plano sin bloquear el arranque
     this.validar().catch(() => { /* sin red: sigue con el token local */ });
     return true;
   }
 
-  private cargarLocal() {
+  // Lee el license.json que escribio Electron
+  private async cargarLocal(): Promise<void> {
     try {
-      const raw = localStorage.getItem(STORAGE_INFO);
-      this.info = raw ? JSON.parse(raw) as LicenseInfo : null;
+      const data = await this.api?.licenseGet?.();
+      this.info = data ? (data as LicenseInfo) : null;
     } catch {
       this.info = null;
     }
   }
 
-  private guardarLocal(token: string, info: LicenseInfo) {
-    localStorage.setItem(STORAGE_KEY, token);
-    localStorage.setItem(STORAGE_INFO, JSON.stringify(info));
-    this.info = info;
-  }
-
-  private limpiarLocal() {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_INFO);
-    this.info = null;
-  }
-
-  // Huella de la maquina (viene de Electron)
   private async machineId(): Promise<string> {
     const id = await this.api?.getMachineId?.();
     return id || 'unknown-machine';
   }
 
-  // ---------- Llamadas al servidor ----------
-  private async llamar(action: string, licenseKey?: string, machineAlias?: string) {
+  private async llamar(action: string) {
     const machineId = await this.machineId();
     const res = await fetch(`${this.supabaseUrl}/functions/v1/license-check`, {
       method: 'POST',
@@ -101,36 +88,27 @@ export class LicenseService {
         'Authorization': `Bearer ${this.anonKey}`,
         'apikey': this.anonKey
       },
-      body: JSON.stringify({ action, licenseKey, machineId, machineAlias })
+      body: JSON.stringify({ action, machineId })
     });
     return await res.json();
   }
 
-  // Canjea la clave e instala la licencia en esta maquina
-  async activar(licenseKey: string, alias?: string): Promise<{ ok: boolean; error?: string; code?: string }> {
-    try {
-      const out = await this.llamar('activate', licenseKey, alias);
-      if (!out?.success) return { ok: false, error: out?.error, code: out?.code };
-
-      this.guardarLocal(out.token, out as LicenseInfo);
-      return { ok: true };
-    } catch (e: any) {
-      return { ok: false, error: 'No hay conexion para activar la licencia.' };
-    }
-  }
-
-  // Revalida contra el servidor y refresca el token
+  // Revalida y refresca el token en disco
   async validar(): Promise<boolean> {
     try {
       const out = await this.llamar('validate');
+
       if (!out?.success) {
-        // La licencia fue suspendida o la maquina desactivada
+        // Licencia suspendida o maquina desactivada: se borra el token
         if (out?.code === 'SUSPENDED' || out?.code === 'NOT_ACTIVATED') {
-          this.limpiarLocal();
+          await this.api?.licenseClear?.();
+          this.info = null;
         }
         return false;
       }
-      this.guardarLocal(out.token, out as LicenseInfo);
+
+      await this.api?.licenseSave?.(out);
+      this.info = out as LicenseInfo;
       return true;
     } catch {
       // Sin red: se respeta la gracia offline
@@ -138,24 +116,18 @@ export class LicenseService {
     }
   }
 
-  // Libera esta maquina (para cambiar de computadora)
+  // Libera esta computadora (para cambiar de equipo)
   async liberar(): Promise<boolean> {
     try {
       const out = await this.llamar('release');
       if (out?.success) {
-        this.limpiarLocal();
+        await this.api?.licenseClear?.();
+        this.info = null;
         return true;
       }
       return false;
     } catch {
       return false;
     }
-  }
-
-  // Dias que faltan para tener que revalidar
-  get diasParaRevalidar(): number {
-    if (!this.info) return 0;
-    const ms = new Date(this.info.revalidateBy).getTime() - Date.now();
-    return Math.max(0, Math.ceil(ms / 86400000));
   }
 }
