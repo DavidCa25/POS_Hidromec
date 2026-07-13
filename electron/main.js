@@ -714,25 +714,26 @@ ipcMain.handle('get-next-purchase-folio', async () => {
   }
 });
 
-ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_amount, subtotal, total, detalles }) => {
+ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles }) => {
   try {
     const pool = await poolPromise;
 
-    const tvp = new sql.Table();
-    tvp.columns.add('product_id', sql.Int);
-    tvp.columns.add('supplier_id', sql.Int);
-    tvp.columns.add('quantity', sql.Decimal(12, 2));
-    tvp.columns.add('unit_price', sql.Decimal(10, 2));      
-    tvp.columns.add('profit_percent', sql.Decimal(5, 2));  
+    // Una compra = un proveedor: el proveedor va a nivel compra, no por linea
+    // El nombre del tipo (dbo.PurchaseDetailType) es OBLIGATORIO para msnodesqlv8;
+    // sin el sale "Catalog or schema name of XML schema collection...".
+    const tvp = new sql.Table('dbo.PurchaseDetailType');
+    tvp.columns.add('product_id',     sql.Int,            { nullable: false });
+    tvp.columns.add('quantity',       sql.Decimal(12, 2), { nullable: false });
+    tvp.columns.add('unit_price',     sql.Decimal(10, 2), { nullable: false });
+    tvp.columns.add('profit_percent', sql.Decimal(5, 2),  { nullable: true  });
 
     detalles.forEach(d => {
       const qty = d.cantidad ?? d.quantity ?? 0;
-      const unitPrice = d.precio_unitario ?? d.unit_price ?? 0; 
-      const profit = d.profit_percent ?? d.profitPercent ?? 0;  
+      const unitPrice = d.precio_unitario ?? d.unit_price ?? 0;
+      const profit = d.profit_percent ?? d.profitPercent ?? 0;
 
       tvp.rows.add(
         d.product_id,
-        d.supplier_id,
         qty,
         unitPrice,
         profit
@@ -741,6 +742,7 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, tax_rate, tax_am
 
     const request = pool.request();
     request.input('user_id', sql.Int, user_id);
+    request.input('supplier_id', sql.Int, supplier_id);
     request.input('tax_rate', sql.Decimal(5, 2), tax_rate);
     request.input('tax_amount', sql.Decimal(10, 2), tax_amount);
     request.input('subtotal', sql.Decimal(10, 2), subtotal);

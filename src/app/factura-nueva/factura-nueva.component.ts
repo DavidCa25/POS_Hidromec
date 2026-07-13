@@ -182,17 +182,35 @@ export class FacturaNueva implements OnInit {
     }
   }
 
+  // ---------- IVA incluido (modelo Wybix) ----------
+  // El precio del concepto ya trae el IVA dentro. Para el CFDI el IVA
+  // se EXTRAE, nunca se suma (evita el IVA doble).
+
+  // Tasa efectiva del concepto (0 si no es objeto de impuesto)
+  private tasaConcepto(c: ConceptoFactura): number {
+    if ((c.taxObject || '02') === '01') return 0;
+    return c.taxRate != null ? Number(c.taxRate) : 0.16;
+  }
+
+  // Precio unitario sin IVA a partir del precio con IVA
+  private baseUnitaria(c: ConceptoFactura): number {
+    const t = this.tasaConcepto(c);
+    const precio = Number(c.unitPrice || 0);
+    return t > 0 ? precio / (1 + t) : precio;
+  }
+
   // ---------- Totales ----------
   get subtotal(): number {
-    return this.conceptos.reduce((a, c) => a + Number(c.quantity || 0) * Number(c.unitPrice || 0), 0);
+    return this.conceptos.reduce((a, c) => a + this.baseUnitaria(c) * Number(c.quantity || 0), 0);
   }
   get ivaEstimado(): number {
     return this.conceptos.reduce((a, c) => {
-      const base = Number(c.quantity || 0) * Number(c.unitPrice || 0);
-      const tasa = c.taxRate != null ? Number(c.taxRate) : 0.16;
-      return a + base * tasa;
+      const conIva = Number(c.unitPrice || 0) * Number(c.quantity || 0);
+      const base = this.baseUnitaria(c) * Number(c.quantity || 0);
+      return a + (conIva - base);
     }, 0);
   }
+  // Total = suma de precios con IVA (lo que paga el cliente)
   get total(): number { return this.subtotal + this.ivaEstimado; }
 
   money(n: number): string {
@@ -266,11 +284,13 @@ export class FacturaNueva implements OnInit {
           items: this.conceptos.map(c => ({
             description: c.description,
             quantity: Number(c.quantity),
-            unitPrice: Number(c.unitPrice),
+            // Base sin IVA: el PAC vuelve a sumar el IVA sobre esta base,
+            // de modo que el total coincide con el precio con IVA del ticket.
+            unitPrice: Number(this.baseUnitaria(c).toFixed(6)),
             claveProdServ: c.claveProdServ || null,
             claveUnidad: c.claveUnidad || null,
             taxObject: c.taxObject || '02',
-            taxRate: c.taxRate != null ? c.taxRate : 0.16,
+            taxRate: this.tasaConcepto(c),
             discount: 0
           }))
         })

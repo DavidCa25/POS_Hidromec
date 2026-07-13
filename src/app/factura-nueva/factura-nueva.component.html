@@ -135,8 +135,8 @@
         <div class="fn-cpt-head">
           <span class="c-desc">Descripcion</span>
           <span class="c-qty">Cant.</span>
-          <span class="c-price">Precio</span>
-          <span class="c-sub">Subtotal</span>
+          <span class="c-price">Precio (con IVA)</span>
+          <span class="c-sub">Importe</span>
           <span class="c-del"></span>
         </div>
 
@@ -157,8 +157,8 @@
 
       <!-- Totales -->
       <div class="fn-totales">
-        <div class="fn-t-row"><span>Subtotal</span><span>{{ money(subtotal) }}</span></div>
-        <div class="fn-t-row"><span>IVA (estimado)</span><span>{{ money(ivaEstimado) }}</span></div>
+        <div class="fn-t-row"><span>Subtotal (sin IVA)</span><span>{{ money(subtotal) }}</span></div>
+        <div class="fn-t-row"><span>IVA (incluido)</span><span>{{ money(ivaEstimado) }}</span></div>
         <div class="fn-t-row total"><span>Total</span><span>{{ money(total) }}</span></div>
       </div>
     </div>

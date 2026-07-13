@@ -30,10 +30,9 @@ class PurchaseItem {
     public productId: number,
     public productName: string,
     public qty: number,
-    public unitPrice: number,       
-    public purchasePrice: number,    
-    public proveedorId: number | null,
-    public profitPercent: number = 0 
+    public unitPrice: number,
+    public purchasePrice: number,
+    public profitPercent: number = 0
   ) {}
 
   get subtotal() {
@@ -63,6 +62,7 @@ export class RegistrarCompra implements OnInit {
 
   proveedores: Proveedor[] = [];
   proveedorSeleccionado: number | null = null;
+  proveedorAbierto = false;
 
   showModalProductos = false;
   productos: ProductRow[] = [];
@@ -90,17 +90,28 @@ export class RegistrarCompra implements OnInit {
     return this.authService.usuarioActualId ?? 0;
   }
 
-  get totalConIva() {
+  // ---- Proveedor unico de la compra (dropdown div) ----
+  get proveedorLabel(): string {
+    const p = this.proveedores.find(x => x.id === this.proveedorSeleccionado);
+    return p ? p.nombre : 'Selecciona proveedor';
+  }
+
+  seleccionarProveedor(id: number) {
+    this.proveedorSeleccionado = id;
+    this.proveedorAbierto = false;
+  }
+
+  // El "Precio compra" capturado es SIN IVA; el total al proveedor lleva IVA.
+  get subtotalSinIva() {
     return this.items.reduce((a, it) => a + it.subtotal, 0);
   }
 
-  get subtotalSinIva() {
-    const t = this.totalConIva;
-    return t > 0 ? (t / (1 + this.ivaTasa)) : 0;
+  get iva() {
+    return this.subtotalSinIva * this.ivaTasa;
   }
 
-  get iva() {
-    return this.totalConIva - this.subtotalSinIva;
+  get totalConIva() {
+    return this.subtotalSinIva + this.iva;
   }
 
   get total() {
@@ -170,7 +181,6 @@ export class RegistrarCompra implements OnInit {
       1,
       p.price ?? 0,
       purchasePrice,
-      null,
       profit
     ));
 
@@ -196,12 +206,6 @@ export class RegistrarCompra implements OnInit {
     if (it.profitPercent > 100) it.profitPercent = 100;
   }
 
-  onProveedorChange(i: number, val?: number | null) {
-    const it = this.items[i];
-    if (!it) return;
-    it.proveedorId = val == null ? null : Number(val);
-  }
-
   quitarItem(i: number) {
     this.items.splice(i, 1);
   }
@@ -215,8 +219,8 @@ export class RegistrarCompra implements OnInit {
     }
 
     // Validaciones
-    if (this.items.some(it => !it.proveedorId)) {
-      Swal.fire({ icon: 'error', title: 'Oops...', text: 'Todos los productos deben tener un proveedor seleccionado' });
+    if (!this.proveedorSeleccionado) {
+      Swal.fire({ icon: 'error', title: 'Falta proveedor', text: 'Selecciona el proveedor de la compra.' });
       return;
     }
     if (this.items.some(it => (Number(it.purchasePrice) || 0) <= 0)) {
@@ -226,15 +230,15 @@ export class RegistrarCompra implements OnInit {
 
     const payload = {
       user_id: this.usuarioActualId,
+      supplier_id: this.proveedorSeleccionado,
       tax_rate: this.ivaTasa,
       tax_amount: this.iva,
-      subtotal: this.subtotal, 
-      total: this.total,      
+      subtotal: this.subtotal,
+      total: this.total,
       detalles: this.items.map(it => ({
         product_id: it.productId,
-        supplier_id: it.proveedorId,
         quantity: it.qty,
-        unit_price: it.purchasePrice,          
+        unit_price: it.purchasePrice,
         profit_percent: it.profitPercent ?? 0
       }))
     };

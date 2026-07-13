@@ -67,44 +67,94 @@ async function sqlServerReachable(server, attempts = 3, delayMs = 3000) {
 // Corre el .ps1 elevado (UAC) y espera su codigo de salida
 function runElevated(psScript, params) {
   return new Promise((resolve, reject) => {
-    // Construye el arreglo de argumentos para el script destino
-    const argList = ["'-ExecutionPolicy','Bypass','-File',"];
-    argList.push(`'${psScript.replace(/'/g, "''")}'`);
-    for (const [k, v] of Object.entries(params)) {
-      argList.push(`,'-${k}','${String(v).replace(/'/g, "''")}'`);
-    }
-    const argExpr = '@(' + argList.join('') + ')';
-
-    // Lanza un launcher temporal que eleva con Start-Process -Verb RunAs
-    const launcher = path.join(os.tmpdir(), `pos_setup_launch_${Date.now()}.ps1`);
-    const content =
-      `$p = Start-Process powershell -Verb RunAs -PassThru -Wait -ArgumentList ${argExpr}\r\n` +
-      `exit $p.ExitCode\r\n`;
-
+    const tmp = os.tmpdir();
+    const stamp = Date.now();
+ 
+    const paramsFile = path.join(tmp, `wybix_setup_params_${stamp}.json`);
+    const launcher   = path.join(tmp, `wybix_setup_launch_${stamp}.ps1`);
+    const exitFile   = path.join(tmp, `wybix_setup_exit_${stamp}.txt`);
+    const logFile    = path.join(tmp, `wybix_setup_log_${stamp}.txt`);
+ 
+    const limpiar = () => {
+      for (const f of [paramsFile, launcher, exitFile]) {
+        try { fs.unlinkSync(f); } catch { /* noop */ }
+      }
+    };
+ 
     try {
+      // 1) Los parametros viajan en JSON (nada que escapar)
+      fs.writeFileSync(paramsFile, JSON.stringify(params), 'utf8');
+ 
+      // 2) El launcher eleva y le pasa SOLO dos rutas al script real.
+      //    Guarda el codigo de salida en un archivo, porque el ExitCode
+      //    del proceso elevado no siempre llega al proceso padre.
+      const content = `
+        $ErrorActionPreference = "Stop"
+        try {
+          $p = Start-Process powershell -Verb RunAs -PassThru -Wait -ArgumentList @(
+            '-ExecutionPolicy','Bypass',
+            '-NoProfile',
+            '-File', ${psLiteral(psScript)},
+            '-ParamsFile', ${psLiteral(paramsFile)},
+            '-LogFile', ${psLiteral(logFile)}
+          )
+          Set-Content -Path ${psLiteral(exitFile)} -Value $p.ExitCode
+          exit $p.ExitCode
+        } catch {
+          Set-Content -Path ${psLiteral(exitFile)} -Value 9999
+          exit 9999
+        }
+        `.trim();
+ 
       fs.writeFileSync(launcher, content, 'utf8');
     } catch (e) {
-      return reject(new Error(`No se pudo escribir el launcher: ${e.message}`));
+      limpiar();
+      return reject(new Error(`No se pudo preparar la instalacion: ${e.message}`));
     }
-
+ 
     const child = spawn('powershell.exe',
-      ['-ExecutionPolicy', 'Bypass', '-File', launcher],
+      ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', launcher],
       { windowsHide: true });
-
+ 
     let stderr = '';
     child.stderr.on('data', d => { stderr += d.toString(); });
-
+ 
     child.on('close', (code) => {
-      try { fs.unlinkSync(launcher); } catch { /* noop */ }
-      if (code === 0) resolve(true);
-      else reject(new Error(`La configuracion de SQL fallo (codigo ${code}). ${stderr}`));
+      // Prefiere el codigo escrito por el proceso elevado
+      let realCode = code;
+      try {
+        if (fs.existsSync(exitFile)) {
+          realCode = parseInt(fs.readFileSync(exitFile, 'utf8').trim(), 10);
+        }
+      } catch { /* noop */ }
+ 
+      // Rescata el log del script para poder diagnosticar
+      let scriptLog = '';
+      try {
+        if (fs.existsSync(logFile)) scriptLog = fs.readFileSync(logFile, 'utf8');
+      } catch { /* noop */ }
+ 
+      limpiar();
+ 
+      // 3010 = instalado, requiere reinicio. Se considera exito.
+      if (realCode === 0 || realCode === 3010) {
+        console.log(`[SETUP] Script PS ok. Log:\n${scriptLog}`);
+        return resolve(true);
+      }
+ 
+      const detalle = scriptLog || stderr || '(sin detalle)';
+      reject(new Error(`La configuracion de SQL fallo (codigo ${realCode}).\n${detalle}`));
     });
-
+ 
     child.on('error', (err) => {
-      try { fs.unlinkSync(launcher); } catch { /* noop */ }
+      limpiar();
       reject(err);
     });
   });
+}
+
+function psLiteral(s) {
+  return `'${String(s).replace(/'/g, "''")}'`;
 }
 
 async function databaseExists(masterPool, dbName) {
