@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSupplierAccountDetail: (payload) => ipcRenderer.invoke('sp-get-supplier-account-detail', payload),
     supplierSave: (payload) => ipcRenderer.invoke('sp-supplier-save', payload),
     paySupplier: (payload) => ipcRenderer.invoke('sp-pay-supplier', payload),
+    topCustomers: (payload) => ipcRenderer.invoke('sp-top-customers', payload),
+    salesByPayment: (payload) => ipcRenderer.invoke('sp-sales-by-payment', payload),
+    deadProducts: (payload) => ipcRenderer.invoke('sp-dead-products', payload),
+    cashSummary: (payload) => ipcRenderer.invoke('sp-cash-summary', payload),
+    customersKpis: () => ipcRenderer.invoke('sp-customers-kpis'),
     registerSale: (userId, paymentMethod, items, customerId, dueDate, registerId) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate, registerId),
 

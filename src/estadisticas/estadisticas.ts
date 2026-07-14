@@ -1,24 +1,9 @@
 import { DecimalPipe, CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { NgControl } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
 
-interface TopProductRow {
-  product_name?: string;
-  total_sold?: number;
-}
-
-interface ProfitRow {
-  datee?: string;   
-  profit?: number;
-}
-
+type Seg = 'ventas' | 'clientes' | 'productos' | 'caja';
 type ViewMode = 'week' | 'month';
-
-interface DailySalesRow {
-  sale_date: string; 
-  total_sales: number;
-}
 
 @Component({
   selector: 'app-estadisticas',
@@ -27,316 +12,178 @@ interface DailySalesRow {
   standalone: true,
   imports: [NgApexchartsModule, DecimalPipe, CommonModule]
 })
-
 export class Estadisticas {
-  topProductName: string = '—';  
-  topProductQty: number = 0;   
-  totalSalesMonth: number = 0;   
-  totalSalesToday: number = 0;   
-  totalOrders: number = 0;       
+  seg: Seg = 'ventas';
+  private get api() { return (window as any).electronAPI; }
+
+  // ---- Ventas ----
+  totalSalesMonth = 0;
+  totalSalesToday = 0;
+  totalOrders = 0;
   viewMode: ViewMode = 'week';
-  profitTotalWeek: number = 0;
+  salesByPayment: { payment_method: string; tickets: number; total: number }[] = [];
+  get ticketPromedio(): number { return this.totalOrders > 0 ? this.totalSalesMonth / this.totalOrders : 0; }
 
-  public areaChartSeries = [
-    { name: 'Ventas', data: [] as number[] }
-  ];
+  // ---- Clientes ----
+  cliActivos = 0;
+  cliNuevos = 0;
+  cliConCompras = 0;
+  topCustomers: { nombre: string; compras: number; total: number }[] = [];
 
-  public areaChartOptions: Partial<any> = {
-    chart: { type: 'area', height: 270, toolbar: { show: false } },
+  // ---- Productos ----
+  topProductName = '—';
+  topProductQty = 0;
+  topProducts: { nombre: string; total_sold: number }[] = [];
+  deadProducts: { nombre: string; stock: number; price: number }[] = [];
+
+  // ---- Caja / utilidad ----
+  profitTotalWeek = 0;
+  cashEntradas = 0;
+  cashSalidas = 0;
+  cashPagosProv = 0;
+
+  // ---- Charts ----
+  areaChartSeries = [{ name: 'Ventas', data: [] as number[] }];
+  areaChartOptions: any = {
+    chart: { type: 'area', height: 280, toolbar: { show: false } },
     dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 2, colors: ['#228be6'] },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.4,
-        opacityTo: 0.1,
-        stops: [0, 90, 100],
-        colorStops: []
-      }
-    },
-    xaxis: {
-      categories: [] as string[]
-    },
+    stroke: { curve: 'smooth', width: 2 },
+    colors: ['#2563eb'],
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 90, 100] } },
+    xaxis: { categories: [] as string[] },
     yaxis: { min: 0 },
-    grid: { borderColor: '#ececec' }
+    grid: { borderColor: '#eef2f7' }
   };
 
-  public profitChartSeries = [
-    { name: 'Utilidad', data: [] as number[] }
-  ];
-  public profitChartOptions: any = {
-    chart: { type: 'bar', height: 270, toolbar: { show: false } },
+  profitChartSeries = [{ name: 'Utilidad', data: [] as number[] }];
+  profitChartOptions: any = {
+    chart: { type: 'bar', height: 280, toolbar: { show: false } },
     plotOptions: { bar: { borderRadius: 8, columnWidth: '45%' } },
     dataLabels: { enabled: false },
     xaxis: { categories: [] as string[] },
     yaxis: { min: 0 },
-    grid: { borderColor: '#ececec' },
-    colors: ['#31c4be']
+    grid: { borderColor: '#eef2f7' },
+    colors: ['#10b981']
   };
 
   async ngOnInit() {
     await Promise.all([
-      this.loadKPIs(),
-      this.loadDailySalesChart(),
-      this.loadProfitOverviewWeek(),
+      this.loadVentas(),
+      this.loadClientes(),
+      this.loadProductos(),
+      this.loadCaja()
     ]);
   }
 
-  private asNumber(x: any): number {
-    const n = Number(x);
-    return Number.isFinite(n) ? n : 0;
-  }
+  segChange(s: Seg) { this.seg = s; }
+
+  private asNumber(x: any): number { const n = Number(x); return Number.isFinite(n) ? n : 0; }
+  money(n: number): string { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
   private getCurrentWeekRange(): { from: string; to: string } {
     const today = new Date();
-    const day = today.getDay(); 
-    const diffToMonday = (day + 6) % 7; 
-
-    const fromDate = new Date(today);
-    fromDate.setDate(today.getDate() - diffToMonday);
-
-    const toDate = new Date(fromDate);
-    toDate.setDate(fromDate.getDate() + 6);
-
-    const from = fromDate.toISOString().slice(0, 10);
-    const to = toDate.toISOString().slice(0, 10);
-
-    return { from, to };
+    const day = today.getDay();
+    const diffToMonday = (day + 6) % 7;
+    const fromDate = new Date(today); fromDate.setDate(today.getDate() - diffToMonday);
+    const toDate = new Date(fromDate); toDate.setDate(fromDate.getDate() + 6);
+    return { from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10) };
   }
 
-  async setViewMode(mode: ViewMode) {
-    if (this.viewMode === mode) return;
-    this.viewMode = mode;
+  // Barras horizontales (porcentaje relativo al maximo)
+  pct(v: number, max: number): number { return max > 0 ? Math.max(3, Math.round((v / max) * 100)) : 0; }
+  get maxPayment() { return Math.max(1, ...this.salesByPayment.map(p => this.asNumber(p.total))); }
+  get maxTopCustomer() { return Math.max(1, ...this.topCustomers.map(c => this.asNumber(c.total))); }
+  get maxTopProduct() { return Math.max(1, ...this.topProducts.map(p => this.asNumber(p.total_sold))); }
 
-    if (mode === 'week') {
-      await this.loadWeeklyChart();
-    } else {
-      await this.loadMonthlyChart();
-    }
-  }
-
-  private async loadWeeklyChart() {
-    await this.loadChartGeneric(
-      (window as any).electronAPI?.getDailySalesLast7Days,
-      'short',    
-      true        
-    );
-  }
-
-  private async loadMonthlyChart() {
-    await this.loadChartGeneric(
-      (window as any).electronAPI?.getDailySalesCurrentMonth,
-      'numeric',   
-      false    
-    );
-  }
-
-  private async loadKPIs() {
+  // ================= VENTAS =================
+  async loadVentas() {
     try {
-      const [
-        topRes,
-        monthRes,
-        todayRes,
-        ordersRes
-      ] = await Promise.all([
-        (window as any).electronAPI.getTopSellingProducts(),
-        (window as any).electronAPI.getSalesMonthly(),
-        (window as any).electronAPI.getSalesDayly(),
-        (window as any).electronAPI.getTotalOrders()
+      const [monthRes, todayRes, ordersRes, payRes] = await Promise.all([
+        this.api.getSalesMonthly(), this.api.getSalesDayly(), this.api.getTotalOrders(),
+        this.api.salesByPayment?.({ days: 30 })
       ]);
-
-      // 1) Producto más vendido (histórico)
-      const topRows: TopProductRow[] = Array.isArray(topRes?.data) ? topRes.data : [];
-      if (topRows.length) {
-        // usa el nombre correcto según tu columna (product_name o nombre)
-        this.topProductName = (topRows[0] as any).product_name ?? (topRows[0] as any).nombre ?? '—';
-        this.topProductQty  = this.asNumber(topRows[0].total_sold);
-      } else {
-        this.topProductName = '—';
-        this.topProductQty  = 0;
-      }
-
-      // 2) Total ventas del mes -> res.data[0].total_sales
-      const monthRow = monthRes?.data?.[0] ?? {};
-      this.totalSalesMonth = this.asNumber(monthRow.total_sales);
-
-      // 3) Total ventas de hoy -> res.data[0].total_sales_today
-      const todayRow = todayRes?.data?.[0] ?? {};
-      this.totalSalesToday = this.asNumber(todayRow.total_sales_today);
-
-      // 4) Total órdenes del mes -> res.data[0].total_orders
-      const ordersRow = ordersRes?.data?.[0] ?? {};
-      this.totalOrders = this.asNumber(ordersRow.total_orders);
-
-    } catch (err) {
-      console.error('❌ loadKPIs:', err);
-      this.topProductName = '—';
-      this.topProductQty = 0;
-      this.totalSalesMonth = 0;
-      this.totalSalesToday = 0;
-      this.totalOrders = 0;
-    }
+      this.totalSalesMonth = this.asNumber(monthRes?.data?.[0]?.total_sales);
+      this.totalSalesToday = this.asNumber(todayRes?.data?.[0]?.total_sales_today);
+      this.totalOrders = this.asNumber(ordersRes?.data?.[0]?.total_orders);
+      this.salesByPayment = (payRes?.success ? (payRes.data || []) : []).map((r: any) => ({
+        payment_method: r.payment_method ?? '—', tickets: this.asNumber(r.tickets), total: this.asNumber(r.total)
+      }));
+      await this.loadSalesChart();
+    } catch (e) { console.error('loadVentas', e); }
   }
 
-  private async loadDailySalesChart() {
+  async setViewMode(m: ViewMode) { if (this.viewMode === m) return; this.viewMode = m; await this.loadSalesChart(); }
+
+  private async loadSalesChart() {
     try {
-      const res = await (window as any).electronAPI.getDailySalesLast7Days();
-      const rows: DailySalesRow[] = Array.isArray(res?.data) ? res.data : [];
-
-      const categories: string[] = [];
-      const data: number[] = [];
-
+      const fn = this.viewMode === 'week' ? this.api.getDailySalesLast7Days : this.api.getDailySalesCurrentMonth;
+      const res = await fn();
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      const cats: string[] = [], data: number[] = [];
       for (const r of rows) {
         const d = new Date(r.sale_date);
-        const label = d.toLocaleDateString('es-MX', {
-          weekday: 'short'
-        });
-
-        categories.push(label);
+        cats.push(this.viewMode === 'week' ? d.toLocaleDateString('es-MX', { weekday: 'short' }) : String(d.getDate()));
         data.push(this.asNumber(r.total_sales));
       }
-
-      this.areaChartOptions = {
-        ...this.areaChartOptions,
-        xaxis: { ...(this.areaChartOptions['xaxis'] || {}), categories }
-      };
-
-      this.areaChartSeries = [
-        { name: 'Ventas', data }
-      ];
-    } catch (err) {
-      console.error('❌ loadDailySalesChart:', err);
-      this.areaChartSeries = [{ name: 'Ventas', data: [] }];
-    }
+      this.areaChartOptions = { ...this.areaChartOptions, xaxis: { ...(this.areaChartOptions.xaxis || {}), categories: cats } };
+      this.areaChartSeries = [{ name: 'Ventas', data }];
+    } catch (e) { console.error('loadSalesChart', e); }
   }
 
-  private async loadChartGeneric(
-    loaderFn: (() => Promise<any>) | undefined,
-    dayLabelStyle: 'short' | 'numeric',
-    fillGaps: boolean
-  ) {
+  // ================= CLIENTES =================
+  async loadClientes() {
     try {
-      if (!loaderFn) {
-        console.warn('loaderFn no disponible');
-        return;
-      }
-
-      const res = await loaderFn();
-      const rows: DailySalesRow[] =
-        Array.isArray(res?.data) ? res.data :
-        Array.isArray(res?.recordset) ? res.recordset :
-        [];
-
-      if (!rows.length) {
-        this.areaChartSeries = [{ name: 'Ventas', data: [] }];
-        this.areaChartOptions = {
-          ...this.areaChartOptions,
-          xaxis: { ...(this.areaChartOptions['xaxis'] || {}), categories: [] }
-        };
-        return;
-      }
-
-      // Mapear a un diccionario fecha -> total
-      const map = new Map<string, number>();
-      for (const r of rows) {
-        const d = new Date(r.sale_date);
-        const key = d.toISOString().substring(0, 10); // yyyy-mm-dd
-        const prev = map.get(key) || 0;
-        map.set(key, prev + (Number(r.total_sales) || 0));
-      }
-
-      const categories: string[] = [];
-      const data: number[] = [];
-
-      if (fillGaps) {
-        // Rellenar todos los días entre min y max
-        const dates = Array.from(map.keys())
-          .map(k => new Date(k))
-          .sort((a, b) => a.getTime() - b.getTime());
-
-        const start = dates[0];
-        const end   = dates[dates.length - 1];
-
-        for (
-          let d = new Date(start);
-          d <= end;
-          d.setDate(d.getDate() + 1)
-        ) {
-          const key = d.toISOString().substring(0, 10);
-          const val = map.get(key) || 0;
-
-          categories.push(
-            dayLabelStyle === 'short'
-              ? d.toLocaleDateString('es-MX', { weekday: 'short' })
-              : d.getDate().toString()
-          );
-          data.push(val);
-        }
-      } else {
-        // Sólo días que existen en datos
-        const keys = Array.from(map.keys()).sort();
-        for (const k of keys) {
-          const d = new Date(k);
-          categories.push(
-            dayLabelStyle === 'short'
-              ? d.toLocaleDateString('es-MX', { weekday: 'short' })
-              : d.getDate().toString()
-          );
-          data.push(map.get(k) || 0);
-        }
-      }
-
-      this.areaChartOptions = {
-        ...this.areaChartOptions,
-        xaxis: {
-          ...(this.areaChartOptions['xaxis'] || {}),
-          categories
-        }
-      };
-
-      this.areaChartSeries = [
-        { name: 'Ventas', data }
-      ];
-    } catch (err) {
-      console.error('❌ loadChartGeneric:', err);
-    }
+      const [kpiRes, topRes] = await Promise.all([
+        this.api.customersKpis?.(), this.api.topCustomers?.({ limit: 10 })
+      ]);
+      const k = kpiRes?.data || {};
+      this.cliActivos = this.asNumber(k.activos);
+      this.cliNuevos = this.asNumber(k.nuevos_30d);
+      this.cliConCompras = this.asNumber(k.con_compras);
+      this.topCustomers = (topRes?.success ? (topRes.data || []) : []).map((r: any) => ({
+        nombre: r.nombre ?? '—', compras: this.asNumber(r.compras), total: this.asNumber(r.total)
+      }));
+    } catch (e) { console.error('loadClientes', e); }
   }
 
-  private async loadProfitOverviewWeek() {
+  // ================= PRODUCTOS =================
+  async loadProductos() {
+    try {
+      const [topRes, deadRes] = await Promise.all([
+        this.api.getTopSellingProducts(), this.api.deadProducts?.({ limit: 15 })
+      ]);
+      const rows = Array.isArray(topRes?.data) ? topRes.data : [];
+      this.topProducts = rows.map((r: any) => ({ nombre: r.product_name ?? r.nombre ?? '—', total_sold: this.asNumber(r.total_sold) }));
+      if (this.topProducts.length) { this.topProductName = this.topProducts[0].nombre; this.topProductQty = this.topProducts[0].total_sold; }
+      this.deadProducts = (deadRes?.success ? (deadRes.data || []) : []).map((r: any) => ({
+        nombre: r.nombre ?? '—', stock: this.asNumber(r.stock), price: this.asNumber(r.price)
+      }));
+    } catch (e) { console.error('loadProductos', e); }
+  }
+
+  // ================= CAJA / UTILIDAD =================
+  async loadCaja() {
     try {
       const { from, to } = this.getCurrentWeekRange();
-
-      const res = await (window as any).electronAPI.getProfitOverview(from, to);
-      const rows: ProfitRow[] = Array.isArray(res?.data) ? res.data : [];
-
-      const categories: string[] = [];
-      const data: number[] = [];
-      let totalProfit = 0;
-
+      const [profRes, cashRes] = await Promise.all([
+        this.api.getProfitOverview(from, to), this.api.cashSummary?.({ days: 30 })
+      ]);
+      const rows = Array.isArray(profRes?.data) ? profRes.data : [];
+      const cats: string[] = [], data: number[] = []; let total = 0;
       for (const r of rows) {
-        const fecha = (r as any).datee || (r as any).fecha || (r as any).date;
-        const profit = this.asNumber(r.profit ?? (r as any).total_profit);
-
-        const d = new Date(fecha);
-        const label = d.toLocaleDateString('es-MX', { weekday: 'short' });
-
-        categories.push(label);
-        data.push(profit);
-        totalProfit += profit;
+        const fecha = r.datee || r.fecha || r.date;
+        const profit = this.asNumber(r.profit ?? r.total_profit);
+        cats.push(new Date(fecha).toLocaleDateString('es-MX', { weekday: 'short' }));
+        data.push(profit); total += profit;
       }
-
-      this.profitTotalWeek = totalProfit;
+      this.profitTotalWeek = total;
       this.profitChartSeries = [{ name: 'Utilidad', data }];
+      this.profitChartOptions = { ...this.profitChartOptions, xaxis: { ...(this.profitChartOptions.xaxis || {}), categories: cats } };
 
-      this.profitChartOptions['xaxis'] = {
-        ...(this.profitChartOptions['xaxis'] || {}),
-        categories
-      };
-
-    } catch (err) {
-      console.error('❌ loadProfitOverviewWeek:', err);
-      this.profitTotalWeek = 0;
-    }
+      const c = cashRes?.data || {};
+      this.cashEntradas = this.asNumber(c.entradas);
+      this.cashSalidas = this.asNumber(c.salidas);
+      this.cashPagosProv = this.asNumber(c.pagos_proveedores);
+    } catch (e) { console.error('loadCaja', e); }
   }
 }

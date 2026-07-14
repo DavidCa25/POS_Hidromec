@@ -1,91 +1,144 @@
-<div class="stats-header">
-  <div class="stat-card">
-      <div class="stat-title">Producto más vendido (histórico)</div>
-      <div class="stat-value">{{ topProductName }}</div>
-      <div class="stat-extra">
-        <span class="stat-up">▲</span>
-      <div class="stat-info">
-        Vendidas: <b>{{ topProductQty | number }}</b> piezas
-      </div>
+<div class="est-wrap">
+  <div class="est-head">
+    <h2>Estadisticas</h2>
+    <div class="est-seg">
+      <button [class.on]="seg==='ventas'" (click)="segChange('ventas')"><i class="bi bi-graph-up"></i> Ventas</button>
+      <button [class.on]="seg==='clientes'" (click)="segChange('clientes')"><i class="bi bi-people"></i> Clientes</button>
+      <button [class.on]="seg==='productos'" (click)="segChange('productos')"><i class="bi bi-box-seam"></i> Productos</button>
+      <button [class.on]="seg==='caja'" (click)="segChange('caja')"><i class="bi bi-cash-coin"></i> Caja y utilidad</button>
     </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-title">Total Ventas este mes</div>
-    <div class="stat-value">{{ totalSalesMonth | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-    <div class="stat-extra">
-      <span class="stat-up">▲</span>
-      <div class="stat-info">Acumulado del mes</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-title">Total Orders (mes)</div>
-    <div class="stat-value">{{ totalOrders | number }}</div>
-    <div class="stat-extra">
-      <span class="stat-down">▼</span>
-      <div class="stat-info">Tickets generados en el mes</div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-title">Total Sales (hoy)</div>
-    <div class="stat-value">{{ totalSalesToday | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-    <div class="stat-extra">
-      <span class="stat-down">▼</span>
-      <div class="stat-info">Ventas del día</div>
-    </div>
-  </div>
-</div>
 
-<div class="dashboard-charts">
-  <div class="area-chart">
-    <div class="chart-title-row">
-      <span>Ventas diarias</span>
-      <div class="chart-toggle">
-        <button
-          class="tab"
-          [class.active]="viewMode === 'month'"
-          (click)="setViewMode('month')">
-          Month
-        </button>
-        <button
-          class="tab"
-          [class.active]="viewMode === 'week'"
-          (click)="setViewMode('week')">
-          Week
-        </button>
+  <!-- ============ VENTAS ============ -->
+  <div *ngIf="seg==='ventas'">
+    <div class="est-kpis four">
+      <div class="est-kpi"><span class="l">Ventas hoy</span><span class="v">{{ money(totalSalesToday) }}</span></div>
+      <div class="est-kpi"><span class="l">Ventas del mes</span><span class="v">{{ money(totalSalesMonth) }}</span></div>
+      <div class="est-kpi"><span class="l">Tickets (mes)</span><span class="v">{{ totalOrders }}</span></div>
+      <div class="est-kpi"><span class="l">Ticket promedio</span><span class="v">{{ money(ticketPromedio) }}</span></div>
+    </div>
+
+    <div class="est-grid2">
+      <div class="est-card">
+        <div class="est-card-head">
+          <h3>Ventas diarias</h3>
+          <div class="est-toggle">
+            <button [class.on]="viewMode==='week'" (click)="setViewMode('week')">Semana</button>
+            <button [class.on]="viewMode==='month'" (click)="setViewMode('month')">Mes</button>
+          </div>
+        </div>
+        <apx-chart
+          [series]="areaChartSeries"
+          [chart]="areaChartOptions['chart']"
+          [xaxis]="areaChartOptions['xaxis']"
+          [yaxis]="areaChartOptions['yaxis']"
+          [stroke]="areaChartOptions['stroke']"
+          [dataLabels]="areaChartOptions['dataLabels']"
+          [fill]="areaChartOptions['fill']"
+          [colors]="areaChartOptions['colors']"
+          [grid]="areaChartOptions['grid']"
+        ></apx-chart>
+      </div>
+
+      <div class="est-card">
+        <div class="est-card-head"><h3>Por metodo de pago</h3><span class="est-sub">Ultimos 30 dias</span></div>
+        <div class="est-bars">
+          <div class="est-bar-row" *ngFor="let p of salesByPayment">
+            <div class="est-bar-label">{{ p.payment_method }} <span class="est-bar-sub">{{ p.tickets }} tickets</span></div>
+            <div class="est-bar-track"><div class="est-bar-fill" [style.width.%]="pct(p.total, maxPayment)"></div></div>
+            <div class="est-bar-val">{{ money(p.total) }}</div>
+          </div>
+          <div class="est-empty" *ngIf="salesByPayment.length===0">Sin ventas en el periodo.</div>
+        </div>
       </div>
     </div>
-    <apx-chart
-      [series]="areaChartSeries"
-      [chart]="areaChartOptions['chart']"
-      [xaxis]="areaChartOptions['xaxis']"
-      [yaxis]="areaChartOptions['yaxis']"
-      [stroke]="areaChartOptions['stroke']"
-      [dataLabels]="areaChartOptions['dataLabels']"
-      [fill]="areaChartOptions['fill']"
-      [grid]="areaChartOptions['grid']"
-      height="270"
-    ></apx-chart>
   </div>
-  <div class="bar-chart">
-    <div class="chart-title-row">
-      <span>Profit Overview</span>
+
+  <!-- ============ CLIENTES ============ -->
+  <div *ngIf="seg==='clientes'">
+    <div class="est-kpis three">
+      <div class="est-kpi"><span class="l">Clientes activos</span><span class="v">{{ cliActivos }}</span></div>
+      <div class="est-kpi"><span class="l">Nuevos (30 dias)</span><span class="v">{{ cliNuevos }}</span></div>
+      <div class="est-kpi"><span class="l">Con compras</span><span class="v">{{ cliConCompras }}</span></div>
     </div>
-    <div class="income-stat">
-      <div>Utilidad de esta semana</div>
-      <div class="income-value">
-        {{ profitTotalWeek | currency:'MXN':'symbol-narrow':'1.2-2' }}
+
+    <div class="est-card">
+      <div class="est-card-head"><h3>Clientes que mas compran</h3><span class="est-sub">Top 10 historico</span></div>
+      <div class="est-bars">
+        <div class="est-bar-row" *ngFor="let c of topCustomers; let i = index">
+          <div class="est-bar-label"><span class="est-rank">{{ i+1 }}</span> {{ c.nombre }} <span class="est-bar-sub">{{ c.compras }} compras</span></div>
+          <div class="est-bar-track"><div class="est-bar-fill blue" [style.width.%]="pct(c.total, maxTopCustomer)"></div></div>
+          <div class="est-bar-val">{{ money(c.total) }}</div>
+        </div>
+        <div class="est-empty" *ngIf="topCustomers.length===0">Aun no hay clientes con compras registradas.</div>
       </div>
     </div>
-    <apx-chart
-      [series]="profitChartSeries"
-      [chart]="profitChartOptions['chart']"
-      [xaxis]="profitChartOptions['xaxis']"
-      [yaxis]="profitChartOptions['yaxis']"
-      [plotOptions]="profitChartOptions['plotOptions']"
-      [dataLabels]="profitChartOptions['dataLabels']"
-      [colors]="profitChartOptions['colors']"
-      [grid]="profitChartOptions['grid']"
-      height="270"
-    ></apx-chart>
+  </div>
+
+  <!-- ============ PRODUCTOS ============ -->
+  <div *ngIf="seg==='productos'">
+    <div class="est-kpis two">
+      <div class="est-kpi">
+        <span class="l">Producto mas vendido</span>
+        <span class="v vsmall">{{ topProductName }}</span>
+        <span class="est-sub">{{ topProductQty }} piezas</span>
+      </div>
+      <div class="est-kpi">
+        <span class="l">Sin rotacion</span>
+        <span class="v">{{ deadProducts.length }}</span>
+        <span class="est-sub">productos sin ventas</span>
+      </div>
+    </div>
+
+    <div class="est-grid2">
+      <div class="est-card">
+        <div class="est-card-head"><h3>Mas vendidos</h3></div>
+        <div class="est-bars">
+          <div class="est-bar-row" *ngFor="let p of topProducts; let i = index">
+            <div class="est-bar-label"><span class="est-rank">{{ i+1 }}</span> {{ p.nombre }}</div>
+            <div class="est-bar-track"><div class="est-bar-fill green" [style.width.%]="pct(p.total_sold, maxTopProduct)"></div></div>
+            <div class="est-bar-val">{{ p.total_sold }}</div>
+          </div>
+          <div class="est-empty" *ngIf="topProducts.length===0">Sin ventas todavia.</div>
+        </div>
+      </div>
+
+      <div class="est-card">
+        <div class="est-card-head"><h3>Sin rotacion</h3><span class="est-sub">Nunca vendidos</span></div>
+        <div class="est-table-wrap">
+          <table class="est-table">
+            <thead><tr><th>Producto</th><th class="r">Stock</th><th class="r">Precio</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let d of deadProducts"><td>{{ d.nombre }}</td><td class="r">{{ d.stock }}</td><td class="r">{{ money(d.price) }}</td></tr>
+              <tr *ngIf="deadProducts.length===0"><td colspan="3" class="est-empty">Todo tu inventario ha rotado.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CAJA / UTILIDAD ============ -->
+  <div *ngIf="seg==='caja'">
+    <div class="est-kpis four">
+      <div class="est-kpi"><span class="l">Utilidad semana</span><span class="v">{{ money(profitTotalWeek) }}</span></div>
+      <div class="est-kpi"><span class="l">Entradas (30 dias)</span><span class="v">{{ money(cashEntradas) }}</span></div>
+      <div class="est-kpi"><span class="l">Salidas (30 dias)</span><span class="v">{{ money(cashSalidas) }}</span></div>
+      <div class="est-kpi"><span class="l">Pagado a proveedores</span><span class="v">{{ money(cashPagosProv) }}</span></div>
+    </div>
+
+    <div class="est-card">
+      <div class="est-card-head"><h3>Utilidad de la semana</h3></div>
+      <apx-chart
+        [series]="profitChartSeries"
+        [chart]="profitChartOptions['chart']"
+        [xaxis]="profitChartOptions['xaxis']"
+        [yaxis]="profitChartOptions['yaxis']"
+        [plotOptions]="profitChartOptions['plotOptions']"
+        [dataLabels]="profitChartOptions['dataLabels']"
+        [colors]="profitChartOptions['colors']"
+        [grid]="profitChartOptions['grid']"
+      ></apx-chart>
+    </div>
   </div>
 </div>

@@ -2346,6 +2346,47 @@ ipcMain.handle('sp-pay-supplier', async (_event, payload = {}) => {
   }
 });
 
+// ===== Estadisticas =====
+ipcMain.handle('sp-top-customers', async (_e, payload = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('limit', sql.Int, Number(payload?.limit) || 10).execute('sp_top_customers');
+    return { success: true, data: r.recordset };
+  } catch (err) { console.error('sp-top-customers:', err); return { success: false, error: err.message }; }
+});
+
+ipcMain.handle('sp-sales-by-payment', async (_e, payload = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('days', sql.Int, Number(payload?.days) || 30).execute('sp_sales_by_payment');
+    return { success: true, data: r.recordset };
+  } catch (err) { console.error('sp-sales-by-payment:', err); return { success: false, error: err.message }; }
+});
+
+ipcMain.handle('sp-dead-products', async (_e, payload = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('limit', sql.Int, Number(payload?.limit) || 20).execute('sp_dead_products');
+    return { success: true, data: r.recordset };
+  } catch (err) { console.error('sp-dead-products:', err); return { success: false, error: err.message }; }
+});
+
+ipcMain.handle('sp-cash-summary', async (_e, payload = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('days', sql.Int, Number(payload?.days) || 30).execute('sp_cash_summary');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (err) { console.error('sp-cash-summary:', err); return { success: false, error: err.message }; }
+});
+
+ipcMain.handle('sp-customers-kpis', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_customers_kpis');
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (err) { console.error('sp-customers-kpis:', err); return { success: false, error: err.message }; }
+});
+
  //Mercado Pago
 
   ipcMain.handle('mp-create-order', async (_event, payload = {}) => {
