@@ -1,0 +1,123 @@
+<div class="imp-wrap">
+  <div class="imp-head">
+    <div>
+      <h2>Importar productos desde Excel</h2>
+      <p class="imp-sub">Carga tu catalogo o migra tu inventario. Descarga la plantilla, llenala y subela.</p>
+    </div>
+  </div>
+
+  <!-- Paso 1: plantilla + archivo -->
+  <div class="imp-toolbar">
+    <button type="button" class="imp-btn ghost" (click)="descargarPlantilla()">
+      <i class="bi bi-download"></i> Descargar plantilla
+    </button>
+
+    <label class="imp-btn primary" [class.disabled]="cargando">
+      <i class="bi bi-file-earmark-excel"></i>
+      {{ cargando ? 'Leyendo...' : 'Elegir archivo (.xlsx / .csv)' }}
+      <input type="file" accept=".xlsx,.xls,.csv" (change)="onFileSelected($event)" hidden [disabled]="cargando">
+    </label>
+
+    <span class="imp-file" *ngIf="nombreArchivo">
+      <i class="bi bi-paperclip"></i> {{ nombreArchivo }}
+    </span>
+
+    <button type="button" class="imp-btn ghost sm" *ngIf="procesado" (click)="limpiar()">
+      <i class="bi bi-x-lg"></i> Limpiar
+    </button>
+  </div>
+
+  <!-- Paso 2: resumen -->
+  <div class="imp-summary" *ngIf="procesado">
+    <div class="imp-card ok">
+      <span class="n">{{ validas }}</span>
+      <span class="l">Filas validas</span>
+    </div>
+    <div class="imp-card warn" [class.mute]="conError === 0">
+      <span class="n">{{ conError }}</span>
+      <span class="l">Con error</span>
+    </div>
+    <div class="imp-card new" [class.mute]="marcasNuevas.length === 0">
+      <span class="n">{{ marcasNuevas.length }}</span>
+      <span class="l">Marcas nuevas</span>
+    </div>
+    <div class="imp-card new" [class.mute]="categoriasNuevas.length === 0">
+      <span class="n">{{ categoriasNuevas.length }}</span>
+      <span class="l">Categorias nuevas</span>
+    </div>
+  </div>
+
+  <!-- Marcas / categorias que se crearan -->
+  <div class="imp-chips" *ngIf="procesado && (marcasNuevas.length || categoriasNuevas.length)">
+    <div *ngIf="marcasNuevas.length">
+      <b>Se crearan marcas:</b>
+      <span class="chip" *ngFor="let m of marcasNuevas">{{ m }}</span>
+    </div>
+    <div *ngIf="categoriasNuevas.length">
+      <b>Se crearan categorias:</b>
+      <span class="chip" *ngFor="let c of categoriasNuevas">{{ c }}</span>
+    </div>
+  </div>
+
+  <!-- Errores -->
+  <div class="imp-errores" *ngIf="procesado && filasError.length">
+    <h4><i class="bi bi-exclamation-triangle"></i> Filas con error ({{ filasError.length }}) — no se importaran</h4>
+    <div class="imp-err-list">
+      <div class="imp-err" *ngFor="let f of filasError">
+        <span class="fila">Fila {{ f.fila }}</span>
+        <span class="pn">{{ f.part_number || '(sin No. Parte)' }}</span>
+        <span class="msg">{{ f.errores.join(' · ') }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista previa -->
+  <div class="imp-preview" *ngIf="procesado">
+    <div class="imp-table-wrap">
+      <table class="imp-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>No. Parte</th>
+            <th>Nombre</th>
+            <th>Marca</th>
+            <th>Categoria</th>
+            <th class="r">Precio</th>
+            <th class="r">Exist.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of filas" [class.err]="!f.valida">
+            <td class="st">
+              <i class="bi bi-check-circle-fill ok" *ngIf="f.valida"></i>
+              <i class="bi bi-x-circle-fill bad" *ngIf="!f.valida"></i>
+            </td>
+            <td>{{ f.part_number }}</td>
+            <td>{{ f.name }}</td>
+            <td>
+              {{ f.brand_name || 'SIN MARCA' }}
+              <span class="tag" *ngIf="f.marcaNueva">nueva</span>
+            </td>
+            <td>
+              {{ f.category_name || 'GENERAL' }}
+              <span class="tag" *ngIf="f.categoriaNueva">nueva</span>
+            </td>
+            <td class="r">{{ f.price != null ? (f.price | number:'1.2-2') : '—' }}</td>
+            <td class="r">{{ f.stock != null ? f.stock : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Confirmar -->
+  <div class="imp-footer" *ngIf="procesado">
+    <span class="imp-hint">{{ validas }} de {{ totalFilas }} filas se importaran.</span>
+    <button type="button" class="imp-btn primary"
+            [disabled]="validas === 0 || importando"
+            (click)="confirmar()">
+      <i class="bi bi-box-arrow-in-down" *ngIf="!importando"></i>
+      {{ importando ? 'Importando...' : 'Importar ' + validas + ' productos' }}
+    </button>
+  </div>
+</div>

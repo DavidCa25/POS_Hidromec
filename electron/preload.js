@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    importProducts: (payload) => ipcRenderer.invoke('sp-import-products', payload),
+    importCustomers: (payload) => ipcRenderer.invoke('sp-import-customers', payload),
+    importSuppliers: (payload) => ipcRenderer.invoke('sp-import-suppliers', payload),
+    importSales: (payload) => ipcRenderer.invoke('sp-import-sales', payload),
+    getSuppliersAccount: () => ipcRenderer.invoke('sp-get-suppliers-account'),
+    getSupplierAccountDetail: (payload) => ipcRenderer.invoke('sp-get-supplier-account-detail', payload),
     registerSale: (userId, paymentMethod, items, customerId, dueDate, registerId) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate, registerId),
 

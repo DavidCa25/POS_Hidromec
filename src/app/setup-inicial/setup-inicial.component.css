@@ -88,3 +88,63 @@
 .su-plan-name { display: block; font-size: 12px; font-weight: 800; color: #0F2A3F; }
 .su-plan-price { display: block; font-size: 18px; font-weight: 800; color: #2E3A8C; margin: 2px 0; }
 .su-plan-desc { display: block; font-size: 10.5px; color: #64748b; }
+
+/* ===== Paso 4: onboarding ===== */
+.su-ob-head { text-align: center; margin-bottom: 18px; }
+.su-ob-head h2 { margin: 0 0 4px; font-size: 1.25rem; }
+.su-ob-head p { margin: 0; color: #6b7280; font-size: .9rem; }
+
+.su-ob-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px 18px 16px 54px;
+  margin-bottom: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.su-ob-card:hover { border-color: #2563eb; box-shadow: 0 4px 14px rgba(37,99,235,.10); }
+.su-ob-card > i {
+  position: absolute; left: 18px; top: 18px;
+  font-size: 1.3rem; color: #2563eb;
+}
+.su-ob-card .t { display: block; font-weight: 700; font-size: .98rem; }
+.su-ob-card .d { display: block; color: #6b7280; font-size: .85rem; margin-top: 2px; }
+
+.su-btn.full { width: 100%; justify-content: center; margin-top: 6px; }
+
+.su-back {
+  background: none; border: none; color: #2563eb;
+  font-weight: 600; cursor: pointer; padding: 4px 0; margin-bottom: 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+.su-giros {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.su-giro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.su-giro:hover { border-color: #2563eb; box-shadow: 0 4px 14px rgba(37,99,235,.10); }
+.su-giro:disabled { opacity: .6; cursor: default; }
+.su-giro > i { font-size: 1.6rem; color: #2563eb; }
+.su-giro .g-nombre { font-weight: 700; font-size: .95rem; }
+.su-giro .g-count { color: #6b7280; font-size: .8rem; }
+
+.su-card.su-card-wide { max-width: 920px; }

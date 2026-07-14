@@ -14,6 +14,9 @@ import { CrearUsuarioComponent } from '../sign_up/sign_up';
 import { Facturacion } from '../facturacion/facturacion';
 import { TablaVentaComponent } from '../venta/tablaVenta/tablaVenta';
 import { ConfigShell } from './config-shell/configShell';
+import { ImportadorProductos } from './importador-productos/importador-productos.component';
+import { Migracion } from './migracion/migracion.component';
+import { Proveedores } from './proveedores/proveedores.component';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -23,6 +26,9 @@ export const routes: Routes = [
     component: Dashboard,
     children: [
       { path: 'inventario', component: Inventario },
+      { path: 'importador', component: ImportadorProductos },
+      { path: 'migracion', component: Migracion },
+      { path: 'proveedores', component: Proveedores },
       { path: 'compras', component: Compras },
       { path: 'registrarCompra', component: RegistrarCompra},
       { path: 'tablaCompra', component: TablaCompra},

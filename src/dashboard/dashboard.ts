@@ -36,6 +36,7 @@ export class Dashboard {
   isOperacionesOpen = false;
   isUserDropdownOpen = false;
   isOperacionesCompraOpen = false;
+  isDatosOpen = false;
   themeOpen = false;
 
   invColors = [
@@ -207,6 +208,10 @@ export class Dashboard {
 
   toggleOperacionesCompra() {
     this.isOperacionesCompraOpen = !this.isOperacionesCompraOpen;
+  }
+
+  toggleDatos() {
+    this.isDatosOpen = !this.isDatosOpen;
   }
 
   toggleUserDropdown() {

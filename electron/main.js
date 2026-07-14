@@ -2097,6 +2097,211 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
 
 });
 
+// Importacion masiva de productos desde Excel (catalogo por giro / migracion)
+ipcMain.handle('sp-import-products', async (_event, payload = {}) => {
+  try {
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
+
+    const pool = await poolPromise;
+
+    // El nombre del tipo es OBLIGATORIO para msnodesqlv8
+    const tvp = new sql.Table('dbo.ProductImportType');
+    tvp.columns.add('part_number',     sql.NVarChar(100), { nullable: true });
+    tvp.columns.add('name',            sql.NVarChar(100), { nullable: true });
+    tvp.columns.add('brand_name',      sql.NVarChar(150), { nullable: true });
+    tvp.columns.add('category_name',   sql.NVarChar(150), { nullable: true });
+    tvp.columns.add('price',           sql.Decimal(10, 2), { nullable: true });
+    tvp.columns.add('stock',           sql.Decimal(12, 2), { nullable: true });
+    tvp.columns.add('bar_code',        sql.NVarChar(100), { nullable: true });
+    tvp.columns.add('clave_prod_serv', sql.NVarChar(8),   { nullable: true });
+    tvp.columns.add('clave_unidad',    sql.NVarChar(5),   { nullable: true });
+    tvp.columns.add('objeto_impuesto', sql.NVarChar(2),   { nullable: true });
+    tvp.columns.add('tasa_iva',        sql.Decimal(5, 4), { nullable: true });
+
+    const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+    const str = (v) => (v === null || v === undefined) ? null : (String(v).trim() || null);
+
+    rows.forEach(r => {
+      tvp.rows.add(
+        str(r.part_number),
+        str(r.name),
+        str(r.brand_name),
+        str(r.category_name),
+        num(r.price),
+        num(r.stock),
+        str(r.bar_code),
+        str(r.clave_prod_serv),
+        str(r.clave_unidad),
+        str(r.objeto_impuesto),
+        num(r.tasa_iva)
+      );
+    });
+
+    const result = await pool.request()
+      .input('Rows', tvp)
+      .execute('sp_import_products');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('sp-import-products:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Migracion: clientes (reusa sp_create_customer, de-dup en Node)
+ipcMain.handle('sp-import-customers', async (_event, payload = {}) => {
+  try {
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
+    const pool = await poolPromise;
+
+    const existCodes = new Set(), existNames = new Set();
+    try {
+      const ex = await pool.request().execute('sp_get_customers');
+      (ex.recordset || []).forEach(c => {
+        if (c.code) existCodes.add(String(c.code).trim().toLowerCase());
+        const nm = c.name ?? c.customer_name ?? c.nombre;
+        if (nm) existNames.add(String(nm).trim().toLowerCase());
+      });
+    } catch {}
+
+    let inserted = 0, skipped = 0, errors = 0;
+    for (const r of rows) {
+      const name = String(r.name ?? '').trim();
+      if (!name) { skipped++; continue; }
+      const code = r.code ? String(r.code).trim() : null;
+      const nk = name.toLowerCase(), ck = code ? code.toLowerCase() : null;
+      if (existNames.has(nk) || (ck && existCodes.has(ck))) { skipped++; continue; }
+      try {
+        const req = pool.request()
+          .input('code', sql.NVarChar(30), code)
+          .input('customerName', sql.NVarChar(120), name)
+          .input('tax_id', sql.NVarChar(20), r.tax_id ? String(r.tax_id).trim() : null)
+          .input('email', sql.NVarChar(120), r.email ? String(r.email).trim() : '')
+          .input('phone', sql.NVarChar(30), r.phone ? String(r.phone).trim() : '')
+          .input('credit_limit', sql.Decimal(12, 2), Number(r.credit_limit) || 0)
+          .input('terms_days', sql.Int, Number(r.terms_days) || 0)
+          .input('active', sql.Bit, 1)
+          .input('regimen_fiscal', sql.NVarChar(5), null)
+          .input('uso_cfdi', sql.NVarChar(5), null)
+          .input('razon_social', sql.NVarChar(255), null);
+        req.output('NewId', sql.Int);
+        await req.execute('sp_create_customer');
+        inserted++; existNames.add(nk); if (ck) existCodes.add(ck);
+      } catch (e) { errors++; }
+    }
+    return { success: true, data: { inserted, skipped, errors } };
+  } catch (err) {
+    console.error('sp-import-customers:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Migracion: proveedores (reusa sp_add_supplier, de-dup en Node)
+ipcMain.handle('sp-import-suppliers', async (_event, payload = {}) => {
+  try {
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
+    const pool = await poolPromise;
+
+    const existNames = new Set();
+    try {
+      const ex = await pool.request().execute('sp_get_suppliers');
+      (ex.recordset || []).forEach(s => {
+        const nm = s.nombre ?? s.name ?? s.namee;
+        if (nm) existNames.add(String(nm).trim().toLowerCase());
+      });
+    } catch {}
+
+    let inserted = 0, skipped = 0, errors = 0;
+    for (const r of rows) {
+      const name = String(r.name ?? r.nombre ?? '').trim();
+      if (!name) { skipped++; continue; }
+      const nk = name.toLowerCase();
+      if (existNames.has(nk)) { skipped++; continue; }
+      try {
+        // CAT_suppliers guarda nombre, telefono y correo
+        await pool.request()
+          .input('nombre', sql.NVarChar(100), name)
+          .input('telefono', sql.NVarChar(20), r.telefono ? String(r.telefono).trim() : null)
+          .input('correo', sql.NVarChar(100), r.correo ? String(r.correo).trim() : null)
+          .query('INSERT INTO CAT_suppliers (nombre, telefono, correo) VALUES (@nombre, @telefono, @correo)');
+        inserted++; existNames.add(nk);
+      } catch (e) { errors++; }
+    }
+    return { success: true, data: { inserted, skipped, errors } };
+  } catch (err) {
+    console.error('sp-import-suppliers:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Migracion: ventas historicas (TVP + sp_import_sales)
+ipcMain.handle('sp-import-sales', async (_event, payload = {}) => {
+  try {
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const userId = Number(payload?.user_id) || null;
+    if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
+    if (!userId) return { success: false, error: 'Falta el usuario para asignar las ventas.' };
+    const pool = await poolPromise;
+
+    const tvp = new sql.Table('dbo.SaleLineImportType');
+    tvp.columns.add('ext_folio',      sql.NVarChar(40),  { nullable: true });
+    tvp.columns.add('sale_date',      sql.DateTime,      { nullable: true });
+    tvp.columns.add('part_number',    sql.NVarChar(100), { nullable: true });
+    tvp.columns.add('quantity',       sql.Decimal(12, 2), { nullable: true });
+    tvp.columns.add('unit_price',     sql.Decimal(10, 2), { nullable: true });
+    tvp.columns.add('payment_method', sql.NVarChar(50),  { nullable: true });
+
+    const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+    const str = (v) => (v === null || v === undefined) ? null : (String(v).trim() || null);
+
+    rows.forEach(r => {
+      let d = null;
+      if (r.sale_date) { const dt = new Date(r.sale_date); if (!isNaN(dt.getTime())) d = dt; }
+      tvp.rows.add(str(r.ext_folio), d, str(r.part_number), num(r.quantity), num(r.unit_price), str(r.payment_method));
+    });
+
+    const result = await pool.request()
+      .input('Rows', tvp)
+      .input('user_id', sql.Int, userId)
+      .execute('sp_import_sales');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('sp-import-sales:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Proveedores: cuenta (lo que se debe) y detalle
+ipcMain.handle('sp-get-suppliers-account', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_suppliers_account');
+    return { success: true, data: r.recordset };
+  } catch (err) {
+    console.error('sp-get-suppliers-account:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('sp-get-supplier-account-detail', async (_event, payload = {}) => {
+  try {
+    const supplierId = Number(payload?.supplier_id) || null;
+    if (!supplierId) return { success: false, error: 'Falta supplier_id.' };
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('supplier_id', sql.Int, supplierId)
+      .execute('sp_get_supplier_account_detail');
+    return { success: true, data: { openPurchases: r.recordsets?.[0] ?? [], payments: r.recordsets?.[1] ?? [] } };
+  } catch (err) {
+    console.error('sp-get-supplier-account-detail:', err);
+    return { success: false, error: err.message };
+  }
+});
+
  //Mercado Pago
 
   ipcMain.handle('mp-create-order', async (_event, payload = {}) => {

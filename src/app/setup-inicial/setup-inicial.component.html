@@ -1,5 +1,5 @@
 <div class="su-wrap">
-  <div class="su-card">
+  <div class="su-card" [class.su-card-wide]="paso === 4">
     <!-- Marca -->
     <div class="su-brand">
       <div class="su-logo">W</div>
@@ -8,7 +8,7 @@
     </div>
 
     <!-- Indicador de pasos -->
-    <div class="su-steps">
+    <div class="su-steps" *ngIf="paso <= 3">
       <div class="su-step" [class.on]="paso >= 1" [class.done]="paso > 1">
         <span class="su-step-num"><i class="bi bi-check" *ngIf="paso > 1"></i><span *ngIf="paso <= 1">1</span></span>
         <span class="su-step-label">Licencia</span>
@@ -131,6 +131,67 @@
           {{ procesando ? 'Configurando...' : 'Finalizar' }}
         </button>
       </div>
+    </div>
+
+    <!-- ===== PASO 4: DATOS INICIALES (onboarding) ===== -->
+    <div class="su-body" *ngIf="paso === 4">
+
+      <!-- Preguntas -->
+      <div *ngIf="obVista === 'pregunta'">
+        <div class="su-ob-head">
+          <h2>Empecemos con tus productos</h2>
+          <p>Puedes traer los de tu sistema anterior o cargar un catalogo base.</p>
+        </div>
+
+        <button class="su-ob-card" (click)="elegirImportar()">
+          <i class="bi bi-upload"></i>
+          <span class="t">Ya tengo productos en otro sistema</span>
+          <span class="d">Importa tu inventario desde un Excel.</span>
+        </button>
+
+        <button class="su-ob-card" (click)="elegirGiro()">
+          <i class="bi bi-magic"></i>
+          <span class="t">Empezar de cero</span>
+          <span class="d">Te llenamos productos segun tu giro para vender de inmediato.</span>
+        </button>
+
+        <button class="su-btn ghost full" (click)="terminar()">
+          Omitir por ahora <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Importar (migracion) -->
+      <div *ngIf="obVista === 'importar'">
+        <button class="su-back" (click)="volverPregunta()"><i class="bi bi-arrow-left"></i> Regresar</button>
+        <app-importador-productos></app-importador-productos>
+        <div class="su-actions">
+          <button class="su-btn" (click)="terminar()">Terminar <i class="bi bi-check2-circle"></i></button>
+        </div>
+      </div>
+
+      <!-- Catalogo por giro -->
+      <div *ngIf="obVista === 'giro'">
+        <button class="su-back" (click)="volverPregunta()"><i class="bi bi-arrow-left"></i> Regresar</button>
+        <div class="su-ob-head">
+          <h2>Elige tu giro</h2>
+          <p>Cargaremos productos base (sin precio) que podras editar despues.</p>
+        </div>
+
+        <div class="su-giros">
+          <button class="su-giro" *ngFor="let g of giros"
+                  [disabled]="giroCargando" (click)="cargarGiro(g)">
+            <i class="bi" [ngClass]="g.icono"></i>
+            <span class="g-nombre">{{ g.nombre }}</span>
+            <span class="g-count" *ngIf="giroCargando !== g.id">{{ g.productos.length }} productos</span>
+            <span class="g-count" *ngIf="giroCargando === g.id">Cargando...</span>
+          </button>
+        </div>
+
+        <div class="su-actions">
+          <button class="su-btn" (click)="terminar()">Terminar <i class="bi bi-check2-circle"></i></button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
