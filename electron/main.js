@@ -2226,7 +2226,8 @@ ipcMain.handle('sp-import-suppliers', async (_event, payload = {}) => {
           .input('nombre', sql.NVarChar(100), name)
           .input('telefono', sql.NVarChar(20), r.telefono ? String(r.telefono).trim() : null)
           .input('correo', sql.NVarChar(100), r.correo ? String(r.correo).trim() : null)
-          .query('INSERT INTO CAT_suppliers (nombre, telefono, correo) VALUES (@nombre, @telefono, @correo)');
+          .input('rfc', sql.NVarChar(20), r.rfc ? String(r.rfc).trim() : null)
+          .query('INSERT INTO CAT_suppliers (nombre, telefono, correo, rfc) VALUES (@nombre, @telefono, @correo, @rfc)');
         inserted++; existNames.add(nk);
       } catch (e) { errors++; }
     }
@@ -2294,10 +2295,53 @@ ipcMain.handle('sp-get-supplier-account-detail', async (_event, payload = {}) =>
     const pool = await poolPromise;
     const r = await pool.request()
       .input('supplier_id', sql.Int, supplierId)
-      .execute('sp_get_supplier_account_detail');
-    return { success: true, data: { openPurchases: r.recordsets?.[0] ?? [], payments: r.recordsets?.[1] ?? [] } };
+      .execute('sp_get_supplier_payments');
+    return { success: true, data: { payments: r.recordset ?? [] } };
   } catch (err) {
     console.error('sp-get-supplier-account-detail:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Alta / edicion de proveedor
+ipcMain.handle('sp-supplier-save', async (_event, payload = {}) => {
+  try {
+    const nombre = String(payload?.nombre ?? '').trim();
+    if (!nombre) return { success: false, error: 'El nombre es obligatorio.' };
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('id', sql.Int, Number(payload?.id) || null)
+      .input('nombre', sql.NVarChar(100), nombre)
+      .input('telefono', sql.NVarChar(20), payload?.telefono ? String(payload.telefono).trim() : null)
+      .input('correo', sql.NVarChar(100), payload?.correo ? String(payload.correo).trim() : null)
+      .input('rfc', sql.NVarChar(20), payload?.rfc ? String(payload.rfc).trim() : null)
+      .execute('sp_supplier_save');
+    return { success: true, data: { id: r.recordset?.[0]?.id ?? null } };
+  } catch (err) {
+    console.error('sp-supplier-save:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Pago a proveedor (desde salida de efectivo): registra en supplier_payments
+ipcMain.handle('sp-pay-supplier', async (_event, payload = {}) => {
+  try {
+    const supplierId = Number(payload?.supplier_id) || null;
+    const amount = Number(payload?.amount) || 0;
+    const userId = Number(payload?.user_id) || null;
+    if (!supplierId || amount <= 0 || !userId) return { success: false, error: 'Datos incompletos.' };
+    const pool = await poolPromise;
+    await pool.request()
+      .input('supplier_id', sql.Int, supplierId)
+      .input('amount', sql.Decimal(10, 2), amount)
+      .input('payment_method', sql.NVarChar(50), payload?.payment_method || 'EFECTIVO')
+      .input('user_id', sql.Int, userId)
+      .input('note', sql.NVarChar(255), payload?.note ? String(payload.note).trim() : null)
+      .input('cash_movement_id', sql.Int, Number(payload?.cash_movement_id) || null)
+      .query('INSERT INTO supplier_payments (supplier_id, datee, amount, payment_method, user_id, note, cash_movement_id) VALUES (@supplier_id, GETDATE(), @amount, @payment_method, @user_id, @note, @cash_movement_id)');
+    return { success: true };
+  } catch (err) {
+    console.error('sp-pay-supplier:', err);
     return { success: false, error: err.message };
   }
 });

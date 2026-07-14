@@ -160,10 +160,10 @@ export class Migracion implements OnInit {
 
   plantillaProveedores() {
     this.plantilla('plantilla_proveedores_wybix.xlsx',
-      ['Nombre*', 'Telefono', 'Correo'],
-      [['Distribuidora del Bajio', '4771112233', 'ventas@distribuidora.com'],
-       ['Refacciones ABC', '', '']],
-      ['Nombre es OBLIGATORIO.', 'Telefono y Correo son opcionales.',
+      ['Nombre*', 'Telefono', 'Correo', 'RFC'],
+      [['Distribuidora del Bajio', '4771112233', 'ventas@distribuidora.com', 'DBA010101ABC'],
+       ['Refacciones ABC', '', '', '']],
+      ['Nombre es OBLIGATORIO.', 'Telefono, Correo y RFC son opcionales.',
        'Si el nombre ya existe se omite.']);
   }
 
@@ -182,7 +182,8 @@ export class Migracion implements OnInit {
         if (name) { if (vistos.has(nk)) errores.push('Nombre repetido en el archivo'); else vistos.add(nk); }
         const telefono = this.aTxt(this.pick(row, /telefono|tel|phone|celular/)) || null;
         const correo = this.aTxt(this.pick(row, /correo|email|mail/)) || null;
-        return { fila: i + 2, valida: errores.length === 0, errores, data: { name, telefono, correo } };
+        const rfc = this.aTxt(this.pick(row, /rfc|tax/)) || null;
+        return { fila: i + 2, valida: errores.length === 0, errores, data: { name, telefono, correo, rfc } };
       });
       this.provListo = true;
     } catch (e: any) {

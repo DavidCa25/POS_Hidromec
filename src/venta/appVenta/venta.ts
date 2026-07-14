@@ -137,6 +137,11 @@ export class Venta {
   showCashOutModal = false;
   cashOutAmount: number | null = null;
   cashOutNote = '';
+  // Salida como pago a proveedor
+  cashOutIsSupplier = false;
+  cashOutSupplierId: number | null = null;
+  cashOutSuppliers: { id: number; nombre: string }[] = [];
+  cashOutSupAbierto = false;
 
   // Post-venta (acciones: PDF / WhatsApp)
   showPostSaleModal = false;
@@ -762,10 +767,31 @@ export class Venta {
 
     this.cashOutAmount = null;
     this.cashOutNote = '';
+    this.cashOutIsSupplier = false;
+    this.cashOutSupplierId = null;
+    this.cashOutSupAbierto = false;
+    await this.cargarProveedoresCashOut();
     this.showCashOutModal = true;
   }
 
   cerrarSalidaEfectivo() { this.showCashOutModal = false; }
+
+  private async cargarProveedoresCashOut() {
+    try {
+      const api = (window as any).electronAPI;
+      const rs = await api?.getSuppliers?.();
+      const rows = Array.isArray(rs?.recordset) ? rs.recordset : (Array.isArray(rs) ? rs : []);
+      this.cashOutSuppliers = rows.map((x: any) => ({ id: Number(x.id), nombre: x.nombre ?? x.name ?? '' }));
+    } catch { this.cashOutSuppliers = []; }
+  }
+  get cashOutSupplierLabel(): string {
+    const s = this.cashOutSuppliers.find(x => x.id === this.cashOutSupplierId);
+    return s ? s.nombre : 'Selecciona proveedor';
+  }
+  seleccionarCashOutProveedor(s: { id: number; nombre: string }) {
+    this.cashOutSupplierId = s.id;
+    this.cashOutSupAbierto = false;
+  }
 
   async confirmarSalidaEfectivo() {
     const ok = await this.ensureShiftOpen('SALIDA');
@@ -780,6 +806,11 @@ export class Venta {
 
     if (!this.cashOutNote.trim()) {
       await Swal.fire({ icon: 'warning', title: 'Nota requerida', text: 'Describe brevemente para qué es la salida de efectivo.' });
+      return;
+    }
+
+    if (this.cashOutIsSupplier && !this.cashOutSupplierId) {
+      await Swal.fire({ icon: 'warning', title: 'Elige proveedor', text: 'Selecciona el proveedor al que le pagas.' });
       return;
     }
 
@@ -801,9 +832,24 @@ export class Venta {
       const resp = await api.registerCashMovement(payload);
 
       if (resp?.success) {
+        // Si la salida es pago a proveedor, registrarlo tambien
+        if (this.cashOutIsSupplier && this.cashOutSupplierId) {
+          try {
+            await api.paySupplier?.({
+              supplier_id: this.cashOutSupplierId,
+              amount,
+              user_id: this.currentUserId,
+              payment_method: 'EFECTIVO',
+              note: this.cashOutNote,
+              cash_movement_id: resp?.cash_movement_id ?? resp?.id ?? null
+            });
+          } catch { /* el movimiento de caja ya quedo; el pago es complementario */ }
+        }
         this.showCashOutModal = false;
         this.cashOutAmount = null;
         this.cashOutNote = '';
+        this.cashOutIsSupplier = false;
+        this.cashOutSupplierId = null;
         await Swal.fire({ icon: 'success', title: 'Salida registrada', text: 'La salida de efectivo se registró correctamente.' });
       } else {
         await Swal.fire({ icon: 'error', title: 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });

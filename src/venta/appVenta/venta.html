@@ -467,6 +467,27 @@
           <label class="form-label">Descripción / Nota</label>
           <textarea class="form-control" rows="2" [(ngModel)]="cashOutNote" name="cashOutNote" placeholder="Ej. Pago a proveedor, gasolina, etc."></textarea>
         </div>
+        <div class="mb-2 form-check">
+          <input class="form-check-input" type="checkbox" id="cashOutSup" [(ngModel)]="cashOutIsSupplier" name="cashOutIsSupplier">
+          <label class="form-check-label" for="cashOutSup">Es para pagar a un proveedor</label>
+        </div>
+        <div class="mb-3" *ngIf="cashOutIsSupplier">
+          <label class="form-label">Proveedor</label>
+          <div style="position:relative;">
+            <button type="button" class="form-control text-start d-flex justify-content-between align-items-center"
+                    (click)="cashOutSupAbierto = !cashOutSupAbierto">
+              <span [class.text-muted]="!cashOutSupplierId">{{ cashOutSupplierLabel }}</span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+            <div *ngIf="cashOutSupAbierto" class="list-group shadow-sm"
+                 style="position:absolute; z-index:20; left:0; right:0; max-height:220px; overflow:auto;">
+              <button type="button" *ngFor="let s of cashOutSuppliers"
+                      class="list-group-item list-group-item-action text-start"
+                      (click)="seleccionarCashOutProveedor(s)">{{ s.nombre }}</button>
+              <div *ngIf="cashOutSuppliers.length === 0" class="list-group-item text-muted small">No hay proveedores.</div>
+            </div>
+          </div>
+        </div>
         <div class="alert alert-info small">
           Esta salida afectará el efectivo del cajón y aparecerá en el corte de caja como una <strong>salida</strong>.
         </div>

@@ -2,11 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../services/auth.service';
 
-interface Prov { id: number; nombre: string; telefono: string | null; correo: string | null; owed: number; open: number; }
-interface OpenPurchase { purchase_id: number; datee: string; total: number; balance: number; payment_status: string; }
-interface Payment { id: number; purchase_id: number; datee: string; amount: number; payment_method: string; note: string; }
+interface Prov { id: number; nombre: string; telefono: string | null; correo: string | null; rfc: string | null; total_paid: number; }
+interface Payment { id: number; purchase_id: number | null; datee: string; amount: number; payment_method: string; note: string; }
 
 @Component({
   selector: 'app-proveedores',
@@ -17,44 +15,39 @@ interface Payment { id: number; purchase_id: number; datee: string; amount: numb
 })
 export class Proveedores implements OnInit {
   private get api() { return (window as any).electronAPI; }
-  constructor(private auth: AuthService) {}
 
   hoy = new Date();
-  metodos = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'CHEQUE'];
-
   proveedores: Prov[] = [];
   cargando = false;
   search = '';
-  preset: 'todos' | 'con_deuda' = 'todos';
 
-  // Modal de pago
-  showModal = false;
+  // Alta / edicion
+  showForm = false;
+  guardando = false;
+  form = { id: 0, nombre: '', telefono: '', correo: '', rfc: '' };
+
+  // Historial de pagos
+  showHist = false;
   sel: Prov | null = null;
-  openPurchases: OpenPurchase[] = [];
   payments: Payment[] = [];
-  cargandoDetalle = false;
-  selPurchase: OpenPurchase | null = null;
-  monto: number | null = null;
-  metodo = 'EFECTIVO';
-  nota = '';
-  pagando = false;
+  cargandoHist = false;
 
   get kpiTotal() { return this.proveedores.length; }
-  get kpiConDeuda() { return this.proveedores.filter(p => p.owed > 0).length; }
-  get kpiDeudaTotal() { return this.proveedores.reduce((s, p) => s + (p.owed || 0), 0); }
+  get kpiTotalPagado() { return this.proveedores.reduce((s, p) => s + (p.total_paid || 0), 0); }
   get view(): Prov[] {
     const q = this.search.trim().toLowerCase();
-    let arr = this.proveedores;
-    if (q) arr = arr.filter(p => (p.nombre || '').toLowerCase().includes(q) || (p.telefono || '').includes(q));
-    if (this.preset === 'con_deuda') arr = arr.filter(p => p.owed > 0);
-    return arr;
+    if (!q) return this.proveedores;
+    return this.proveedores.filter(p =>
+      (p.nombre || '').toLowerCase().includes(q) ||
+      (p.telefono || '').includes(q) ||
+      (p.rfc || '').toLowerCase().includes(q));
   }
-
-  async ngOnInit() { await this.cargar(); }
 
   money(n: number): string {
     return '$ ' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+
+  async ngOnInit() { await this.cargar(); }
 
   async cargar() {
     this.cargando = true;
@@ -66,8 +59,8 @@ export class Proveedores implements OnInit {
         nombre: r.nombre ?? '',
         telefono: r.telefono ?? null,
         correo: r.correo ?? null,
-        owed: Number(r.owed ?? 0),
-        open: Number(r.open_purchases ?? 0)
+        rfc: r.rfc ?? null,
+        total_paid: Number(r.total_paid ?? 0)
       }));
     } catch {
       this.proveedores = [];
@@ -76,57 +69,39 @@ export class Proveedores implements OnInit {
     }
   }
 
-  async abrir(p: Prov) {
-    this.sel = p;
-    this.showModal = true;
-    this.openPurchases = [];
-    this.payments = [];
-    this.selPurchase = null;
-    this.monto = null;
-    this.metodo = 'EFECTIVO';
-    this.nota = '';
-    this.cargandoDetalle = true;
+  nuevo() { this.form = { id: 0, nombre: '', telefono: '', correo: '', rfc: '' }; this.showForm = true; }
+  editar(p: Prov) { this.form = { id: p.id, nombre: p.nombre, telefono: p.telefono || '', correo: p.correo || '', rfc: p.rfc || '' }; this.showForm = true; }
+  cerrarForm() { this.showForm = false; }
+
+  async guardar() {
+    if (!this.form.nombre.trim()) { await Swal.fire({ icon: 'warning', title: 'Falta el nombre' }); return; }
+    this.guardando = true;
     try {
-      const res = await this.api?.getSupplierAccountDetail?.({ supplier_id: p.id });
-      if (res?.success) {
-        this.openPurchases = res.data?.openPurchases ?? [];
-        this.payments = res.data?.payments ?? [];
-      }
-    } catch { /* sin detalle */ }
-    finally { this.cargandoDetalle = false; }
-  }
-
-  cerrar() { this.showModal = false; this.sel = null; }
-
-  seleccionar(op: OpenPurchase) { this.selPurchase = op; this.monto = op.balance; }
-
-  async confirmar() {
-    if (!this.sel || !this.selPurchase) { await Swal.fire({ icon: 'info', title: 'Elige una compra', text: 'Selecciona la compra a pagar.' }); return; }
-    const m = Number(this.monto || 0);
-    if (!(m > 0)) { await Swal.fire({ icon: 'warning', title: 'Monto invalido' }); return; }
-    if (m > this.selPurchase.balance) { await Swal.fire({ icon: 'warning', title: 'Monto alto', text: 'No puede ser mayor al saldo.' }); return; }
-
-    this.pagando = true;
-    try {
-      const res = await this.api?.registerSupplierPayment?.({
-        user_id: this.auth?.usuarioActualId ?? 0,
-        supplier_id: this.sel.id,
-        purchase_id: this.selPurchase.purchase_id,
-        amount: m,
-        payment_method: this.metodo,
-        note: this.nota.trim() || null
+      const res = await this.api?.supplierSave?.({
+        id: this.form.id || null,
+        nombre: this.form.nombre.trim(),
+        telefono: this.form.telefono.trim() || null,
+        correo: this.form.correo.trim() || null,
+        rfc: this.form.rfc.trim().toUpperCase() || null
       });
-      if (!res?.success) throw new Error(res?.error || 'No se pudo registrar el pago.');
-      await Swal.fire({ icon: 'success', title: 'Pago registrado', timer: 1100, showConfirmButton: false });
-      const id = this.sel.id;
-      await this.abrir(this.sel);
+      if (!res?.success) throw new Error(res?.error || 'No se pudo guardar.');
+      this.showForm = false;
+      await Swal.fire({ icon: 'success', title: this.form.id ? 'Proveedor actualizado' : 'Proveedor agregado', timer: 1100, showConfirmButton: false });
       await this.cargar();
-      const upd = this.proveedores.find(p => p.id === id);
-      if (upd) this.sel = upd;
     } catch (e: any) {
-      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Fallo el pago.' });
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Fallo al guardar.' });
     } finally {
-      this.pagando = false;
+      this.guardando = false;
     }
   }
+
+  async verHistorial(p: Prov) {
+    this.sel = p; this.showHist = true; this.payments = []; this.cargandoHist = true;
+    try {
+      const res = await this.api?.getSupplierAccountDetail?.({ supplier_id: p.id });
+      if (res?.success) this.payments = res.data?.payments ?? [];
+    } catch { /* sin historial */ }
+    finally { this.cargandoHist = false; }
+  }
+  cerrarHist() { this.showHist = false; this.sel = null; }
 }

@@ -1,61 +1,50 @@
 /* ============================================================
-   Cuentas por pagar a proveedores
-   - sp_get_suppliers_account : lista de proveedores (CAT_suppliers)
-        con nombre, telefono, correo y lo que se les debe.
-   - sp_get_supplier_account_detail : compras con saldo + pagos.
+   Proveedores (directorio + pagos)
+   - Agrega RFC a CAT_suppliers (idempotente).
+   - sp_get_suppliers_account : lista con contacto y TOTAL PAGADO
+       (suma de supplier_payments). Ya NO usa purchase.balance como
+       "deuda" (esa cifra no era deuda real: sp_register_purchase pone
+       balance = total en cada compra).
+   - sp_get_supplier_payments : historial de pagos de un proveedor.
+   - sp_supplier_save : alta/edicion de proveedor.
 
-   Tablas: CAT_suppliers, purchase, supplier_payments.
-   Correr en SSMS.
+   Los pagos a proveedor se registran como SALIDAS DE EFECTIVO desde el
+   POS (venta). Correr en SSMS.
    ============================================================ */
+
+/* RFC en proveedores */
+IF COL_LENGTH('dbo.CAT_suppliers', 'rfc') IS NULL
+    ALTER TABLE dbo.CAT_suppliers ADD rfc NVARCHAR(20) NULL;
+GO
 
 CREATE OR ALTER PROCEDURE dbo.sp_get_suppliers_account
 AS
 BEGIN
     SET NOCOUNT ON;
     SELECT
-        s.id                        AS supplier_id,
+        s.id                     AS supplier_id,
         s.nombre,
         s.telefono,
         s.correo,
-        s.contacto,
-        ISNULL(a.owed, 0)           AS owed,
-        ISNULL(a.open_purchases, 0) AS open_purchases,
-        a.last_purchase
+        s.rfc,
+        ISNULL(pg.total_paid, 0) AS total_paid,
+        pg.last_payment
     FROM CAT_suppliers s
     LEFT JOIN (
-        SELECT
-            supplier_id,
-            SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END) AS owed,
-            SUM(CASE WHEN balance > 0 THEN 1 ELSE 0 END)       AS open_purchases,
-            MAX(datee)                                         AS last_purchase
-        FROM purchase
-        WHERE supplier_id IS NOT NULL
+        SELECT supplier_id, SUM(amount) AS total_paid, MAX(datee) AS last_payment
+        FROM supplier_payments
         GROUP BY supplier_id
-    ) a ON a.supplier_id = s.id
+    ) pg ON pg.supplier_id = s.id
     WHERE ISNULL(s.activo, 1) = 1
-    ORDER BY ISNULL(a.owed, 0) DESC, s.nombre ASC;
+    ORDER BY s.nombre ASC;
 END
 GO
 
-CREATE OR ALTER PROCEDURE dbo.sp_get_supplier_account_detail
+CREATE OR ALTER PROCEDURE dbo.sp_get_supplier_payments
     @supplier_id INT
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    -- 1) Compras con saldo pendiente
-    SELECT
-        p.id            AS purchase_id,
-        p.datee,
-        p.total,
-        p.balance,
-        p.payment_status
-    FROM purchase p
-    WHERE p.supplier_id = @supplier_id
-      AND p.balance > 0
-    ORDER BY p.datee ASC;
-
-    -- 2) Pagos hechos al proveedor
     SELECT
         sp.id,
         sp.purchase_id,
@@ -66,5 +55,31 @@ BEGIN
     FROM supplier_payments sp
     WHERE sp.supplier_id = @supplier_id
     ORDER BY sp.datee DESC;
+END
+GO
+
+/* Alta / edicion de proveedor. Si @id es NULL o 0 -> alta. */
+CREATE OR ALTER PROCEDURE dbo.sp_supplier_save
+    @id       INT = NULL,
+    @nombre   NVARCHAR(100),
+    @telefono NVARCHAR(20)  = NULL,
+    @correo   NVARCHAR(100) = NULL,
+    @rfc      NVARCHAR(20)  = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF (@id IS NULL OR @id = 0)
+    BEGIN
+        INSERT INTO CAT_suppliers (nombre, telefono, correo, rfc)
+        VALUES (@nombre, @telefono, @correo, @rfc);
+        SELECT SCOPE_IDENTITY() AS id;
+    END
+    ELSE
+    BEGIN
+        UPDATE CAT_suppliers
+        SET nombre = @nombre, telefono = @telefono, correo = @correo, rfc = @rfc
+        WHERE id = @id;
+        SELECT @id AS id;
+    END
 END
 GO

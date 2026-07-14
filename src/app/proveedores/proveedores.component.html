@@ -5,6 +5,7 @@
       <h2>Proveedores</h2>
       <div class="header-right">
         <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
+        <button class="btn btn-primary" (click)="nuevo()">+ Nuevo proveedor</button>
       </div>
     </div>
 
@@ -13,26 +14,18 @@
       <div class="filter-row">
         <div class="filter-group">
           <label>Buscar</label>
-          <input class="form-control" [(ngModel)]="search" placeholder="Nombre o telefono">
-        </div>
-        <div class="filter-group">
-          <label>Filtro</label>
-          <div class="preset-group">
-            <button class="preset" [class.active]="preset==='todos'" (click)="preset='todos'">Todos</button>
-            <button class="preset" [class.active]="preset==='con_deuda'" (click)="preset='con_deuda'">Con deuda</button>
-          </div>
+          <input class="form-control" [(ngModel)]="search" placeholder="Nombre, telefono o RFC">
         </div>
         <div class="filter-actions">
-          <button class="btn btn-ghost" (click)="search=''; preset='todos'">Limpiar</button>
+          <button class="btn btn-ghost" (click)="search=''">Limpiar</button>
         </div>
       </div>
     </div>
 
     <!-- KPIs -->
-    <div class="resumen-grid three">
+    <div class="resumen-grid two">
       <div class="kpi-card"><div class="kpi-title">Proveedores</div><div class="kpi-value">{{ kpiTotal }}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Con deuda</div><div class="kpi-value">{{ kpiConDeuda }}</div></div>
-      <div class="kpi-card total"><div class="kpi-title">Deuda total</div><div class="kpi-value">{{ money(kpiDeudaTotal) }}</div></div>
+      <div class="kpi-card total"><div class="kpi-title">Total pagado</div><div class="kpi-value">{{ money(kpiTotalPagado) }}</div></div>
     </div>
 
     <!-- Tabla -->
@@ -42,8 +35,8 @@
           <tr>
             <th>Proveedor</th>
             <th>Contacto</th>
-            <th class="right">Compras abiertas</th>
-            <th class="right">Deuda</th>
+            <th>RFC</th>
+            <th class="right">Total pagado</th>
             <th class="right">Acciones</th>
           </tr>
         </thead>
@@ -54,10 +47,11 @@
               <div class="mono">{{ p.telefono || '-' }}</div>
               <div class="sub" *ngIf="p.correo">{{ p.correo }}</div>
             </td>
-            <td class="num">{{ p.open }}</td>
-            <td class="num mono"><span [class.deuda]="p.owed > 0">{{ money(p.owed) }}</span></td>
+            <td class="mono">{{ p.rfc || '-' }}</td>
+            <td class="num mono">{{ money(p.total_paid) }}</td>
             <td class="right">
-              <button class="btn btn-ghost" (click)="abrir(p)">{{ p.owed > 0 ? 'Pagar' : 'Ver' }}</button>
+              <button class="btn btn-ghost" (click)="verHistorial(p)">Ver</button>
+              <button class="btn btn-ghost" (click)="editar(p)">Editar</button>
             </td>
           </tr>
         </tbody>
@@ -66,92 +60,51 @@
     </div>
   </div>
 
-  <!-- Modal de pago (estilo abono de clientes) -->
-  <div class="cierre-modal" *ngIf="showModal"
+  <!-- Modal nuevo / editar -->
+  <div class="cierre-modal" *ngIf="showForm"
        style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:820px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem;">
-        <h3 style="margin:0; font-size:1.4rem; font-weight:800;">Pagar a proveedor</h3>
-        <button class="btn btn-ghost" (click)="cerrar()">X</button>
+         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:520px;">
+      <h3 style="margin:0 0 .9rem; font-size:1.4rem; font-weight:800;">{{ form.id ? 'Editar proveedor' : 'Nuevo proveedor' }}</h3>
+      <div class="filter-row" style="grid-template-columns:1fr 1fr;">
+        <div class="filter-group"><label>Nombre</label><input class="form-control" [(ngModel)]="form.nombre"></div>
+        <div class="filter-group"><label>Telefono</label><input class="form-control" [(ngModel)]="form.telefono"></div>
+        <div class="filter-group"><label>Correo</label><input class="form-control" [(ngModel)]="form.correo"></div>
+        <div class="filter-group"><label>RFC</label><input class="form-control" [(ngModel)]="form.rfc" style="text-transform:uppercase;"></div>
       </div>
-
-      <div *ngIf="sel" style="margin-bottom:.6rem;">
-        <div style="font-weight:600;">{{ sel.nombre }}</div>
-        <div class="sub">Le debes: <b [class.deuda]="sel.owed > 0">{{ money(sel.owed) }}</b></div>
-      </div>
-
-      <div class="filter-row" style="grid-template-columns: minmax(0,1.35fr) minmax(0,.95fr); align-items:flex-start; gap:1rem;">
-        <!-- Izquierda: compras con saldo + pagos -->
-        <div class="filter-group">
-          <label>Compras con saldo</label>
-          <div style="border-radius:1rem; border:1px solid #e2e8f0; max-height:280px; overflow:auto;">
-            <table class="tabla-corte" style="margin:0; font-size:.9rem;">
-              <thead>
-                <tr><th style="width:36px;"></th><th>Folio</th><th>Fecha</th><th class="right">Total</th><th class="right">Saldo</th></tr>
-              </thead>
-              <tbody>
-                <tr *ngIf="cargandoDetalle"><td colspan="5" style="text-align:center; padding:.9rem;">Cargando...</td></tr>
-                <tr *ngFor="let op of openPurchases"
-                    [class.selected-row]="op.purchase_id === selPurchase?.purchase_id"
-                    (click)="seleccionar(op)" style="cursor:pointer;">
-                  <td><input type="radio" [checked]="op.purchase_id === selPurchase?.purchase_id"
-                             (click)="$event.stopPropagation(); seleccionar(op)"></td>
-                  <td>#{{ op.purchase_id }}</td>
-                  <td>{{ op.datee | date:'dd/MM/yyyy' }}</td>
-                  <td class="right">{{ money(op.total) }}</td>
-                  <td class="right">{{ money(op.balance) }}</td>
-                </tr>
-                <tr *ngIf="!cargandoDetalle && openPurchases.length === 0">
-                  <td colspan="5" style="text-align:center; padding:.9rem;">Sin compras pendientes. Al corriente.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <label style="margin-top:.8rem;">Pagos realizados</label>
-          <div class="sub" *ngIf="!cargandoDetalle && payments.length === 0">Aun no hay pagos.</div>
-          <div style="max-height:150px; overflow:auto;" *ngIf="payments.length">
-            <table class="tabla-corte" style="margin:0; font-size:.85rem;">
-              <thead><tr><th>Fecha</th><th class="right">Monto</th><th>Metodo</th><th>Nota</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let pg of payments">
-                  <td>{{ pg.datee | date:'dd/MM/yyyy' }}</td>
-                  <td class="right">{{ money(pg.amount) }}</td>
-                  <td>{{ pg.payment_method }}</td>
-                  <td class="sub">{{ pg.note }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Derecha: form de pago -->
-        <div class="filter-group">
-          <label>Monto del pago</label>
-          <input class="form-control" type="number" step="0.01" min="0" [(ngModel)]="monto">
-
-          <div class="filter-group" style="margin-top:.7rem;">
-            <label>Metodo de pago</label>
-            <div class="preset-group">
-              <button class="preset" *ngFor="let m of metodos" [class.active]="metodo === m" (click)="metodo = m">{{ m }}</button>
-            </div>
-          </div>
-
-          <div class="filter-group" style="margin-top:.7rem;">
-            <label>Nota (opcional)</label>
-            <textarea class="form-control" rows="3" [(ngModel)]="nota" style="resize:vertical; border-radius:.9rem;"></textarea>
-          </div>
-
-          <div class="sub" style="margin-top:.6rem;">Selecciona la compra, ajusta el monto si es parcial y confirma.</div>
-        </div>
-      </div>
-
       <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
-        <button class="btn btn-ghost" (click)="cerrar()" [disabled]="pagando">Cancelar</button>
-        <button class="btn btn-primary" (click)="confirmar()" [disabled]="pagando || !selPurchase">
-          {{ pagando ? 'Guardando...' : 'Registrar pago' }}
-        </button>
+        <button class="btn btn-ghost" (click)="cerrarForm()" [disabled]="guardando">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardar()" [disabled]="guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal historial de pagos -->
+  <div class="cierre-modal" *ngIf="showHist"
+       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+    <div class="cierre-dialog modal-content"
+         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:640px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem;">
+        <h3 style="margin:0; font-size:1.3rem; font-weight:800;">Pagos a {{ sel?.nombre }}</h3>
+        <button class="btn btn-ghost" (click)="cerrarHist()">X</button>
+      </div>
+      <div class="sub" *ngIf="cargandoHist">Cargando...</div>
+      <div class="sub" *ngIf="!cargandoHist && payments.length === 0">Aun no hay pagos a este proveedor.</div>
+      <div style="max-height:360px; overflow:auto;" *ngIf="payments.length">
+        <table class="tabla-corte" style="margin:0; font-size:.9rem;">
+          <thead><tr><th>Fecha</th><th class="right">Monto</th><th>Metodo</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let pg of payments">
+              <td>{{ pg.datee | date:'dd/MM/yyyy' }}</td>
+              <td class="right">{{ money(pg.amount) }}</td>
+              <td>{{ pg.payment_method }}</td>
+              <td class="sub">{{ pg.note }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+        <button class="btn btn-ghost" (click)="cerrarHist()">Cerrar</button>
       </div>
     </div>
   </div>
