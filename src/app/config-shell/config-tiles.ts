@@ -6,6 +6,8 @@ import { BackupsPanelComponent } from '../backups-panel/backups-panel.component'
 import { NegocioPanelComponent } from '../negocio-panel/negocio-panel.component';
 import { DiagnosticoPanel } from '../diagnostico-panel/diagnostico-panel.component';
 import { RegistersPanel } from '../register-panel/register-panel.component';
+import { PairingQr } from '../pairing-qr-panel/pairing-qr.component';
+import { FacturacionConfig } from '../facturacionConfig-panel/facturacion-config.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -61,7 +63,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'impresora', title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', component: TicketPanelComponent },
             { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'upc-scan', color: 'orange', size: '1x1', statusKey: 'scanner', component: DevicesPanelComponent },
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'safe2', color: 'blue', size: '1x1', statusKey: 'drawer', component: DevicesPanelComponent },
-            { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'speedometer2', color: 'gray', size: '1x1', component: DevicesPanelComponent }
+            { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'speedometer2', color: 'gray', size: '1x1', component: DevicesPanelComponent },
+            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code-scan', color: 'green', size: '1x1', component: PairingQr }
         ]
     },
     {
@@ -88,5 +91,13 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },
             { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'pc-display', color: 'blue', size: '2x1', component: RegistersPanel },
         ]
+    },
+    {
+        id: 'facturacion',
+        title: 'Facturación',
+        tiles: [
+            { id: 'facturacion', title: 'Facturación', desc: 'Configura tu facturación electrónica', icon: 'file-earmark-text', color: 'purple', size: '2x1', component: FacturacionConfig } 
+        ]
+
     }
 ];

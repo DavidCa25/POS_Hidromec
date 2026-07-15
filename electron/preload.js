@@ -14,6 +14,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    importProducts: (payload) => ipcRenderer.invoke('sp-import-products', payload),
+    importCustomers: (payload) => ipcRenderer.invoke('sp-import-customers', payload),
+    importSuppliers: (payload) => ipcRenderer.invoke('sp-import-suppliers', payload),
+    importSales: (payload) => ipcRenderer.invoke('sp-import-sales', payload),
+    getSuppliersAccount: () => ipcRenderer.invoke('sp-get-suppliers-account'),
+    getSupplierAccountDetail: (payload) => ipcRenderer.invoke('sp-get-supplier-account-detail', payload),
+    supplierSave: (payload) => ipcRenderer.invoke('sp-supplier-save', payload),
+    paySupplier: (payload) => ipcRenderer.invoke('sp-pay-supplier', payload),
+    topCustomers: (payload) => ipcRenderer.invoke('sp-top-customers', payload),
+    salesByPayment: (payload) => ipcRenderer.invoke('sp-sales-by-payment', payload),
+    deadProducts: (payload) => ipcRenderer.invoke('sp-dead-products', payload),
+    cashSummary: (payload) => ipcRenderer.invoke('sp-cash-summary', payload),
+    customersKpis: () => ipcRenderer.invoke('sp-customers-kpis'),
     registerSale: (userId, paymentMethod, items, customerId, dueDate, registerId) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate, registerId),
 
@@ -32,9 +45,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
     getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
     getCustomersSummary: () => ipcRenderer.invoke('sp-get-customers-summary'),
-    createCustomer: (code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke('sp-create-customer', code, customerName, email, phone, creditLimit, termsDays, active),
-    updateCustomer: (id, code, customerName, email, phone, creditLimit, termsDays, active) => ipcRenderer.invoke(
-      'sp-update-customer', id, code, customerName, email, phone, creditLimit, termsDays, active),
+    ccreateCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
+    ipcRenderer.invoke(
+      'sp-create-customer', 
+      code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel
+    ),
+
+    updateCustomer: (id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
+    ipcRenderer.invoke(
+      'sp-update-customer', 
+      id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel
+    ),
     getCustomerOpenSales: (customerId) =>
     ipcRenderer.invoke('sp-get-customer-open-sales', customerId),
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
@@ -116,6 +137,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     addSupplier: (nombre) =>
         ipcRenderer.invoke('sp-add-supplier', { nombre }),
 
+    actualizarProducto: (payload) => ipcRenderer.invoke('sp-update-product', payload),
+
     createBrand: (payload) => ipcRenderer.invoke('sp-add-brand', payload),
     createCategory: (payload) => ipcRenderer.invoke('sp-add-category', payload),
     mpCreateOrder: (payload) => ipcRenderer.invoke('mp-create-order', payload),
@@ -150,4 +173,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerGetCurrent: () => ipcRenderer.invoke('register-get-current'),
     registerSetCurrent: (payload) => ipcRenderer.invoke('register-set-current', payload),
 
+    cloudGetConfig: () => ipcRenderer.invoke('cloud-get-config'),
+    cloudSetConfig: (partial) => ipcRenderer.invoke('cloud-set-config', partial),
+    cloudPushNow: () => ipcRenderer.invoke('cloud-push-now'),
+
+    cloudEnsureProvisioned: (nombre) => ipcRenderer.invoke('cloud-ensure-provisioned', nombre),
+    cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
+    cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
+
+
+    //FACTURACION
+    setFiscalIssuerRef: (issuerId) => ipcRenderer.invoke('fiscal-set-issuer-ref', issuerId),
+    getFiscalConfig: () => ipcRenderer.invoke('fiscal-get-config'),
+    saveFiscalConfig: (cfg) => ipcRenderer.invoke('fiscal-save-config', cfg),
+
+    getInvoices: (filtros) => ipcRenderer.invoke('fiscal-get-invoices', filtros),
+    getInvoicesCounts: () => ipcRenderer.invoke('fiscal-get-invoices-counts'),
+
+    saveInvoice: (inv) => ipcRenderer.invoke('fiscal-save-invoice', inv),
+    getInvoiceFilesData: (id) => ipcRenderer.invoke('fiscal-get-invoice-files-data', id),
+
+    cancelInvoice: (p) => ipcRenderer.invoke('fiscal-cancel-invoice', p),
+
+    //Licencia
+    getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+
+    licenseGet:   () => ipcRenderer.invoke('license:get'),
+    licenseSave:  (d) => ipcRenderer.invoke('license:save', d),
+    licenseClear: () => ipcRenderer.invoke('license:clear'),
+    getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+
+    setupStatus: () => ipcRenderer.invoke('setup-status'),
+    setupInicial: (p) => ipcRenderer.invoke('setup-inicial', p),
 });
+

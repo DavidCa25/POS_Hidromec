@@ -3,6 +3,30 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe } from '@angular/common';
 import Swal from 'sweetalert2';
+import { ReportService, ReportConfig } from '../services/report.service';
+import { CatalogoItem } from '../services/catalogos.service';
+import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.component';
+
+
+interface ProductRow {
+  id: number;
+  part_number: string;
+  product_name?: string;
+  nombre?: string;
+  name?: string;
+  bar_code?: string;
+  price: number;
+  stock: number;
+  brand_id?: number;
+  category_id?: number;
+  category_name?: string;
+  brand_name?: string;
+  clave_prod_serv?: string;
+  clave_unidad?: string;
+  objeto_impuesto?: string;
+  tasa_iva?: number;
+  default_supplier_name?: string;
+}
 
 interface ProductForm {
   brand: number | null;
@@ -11,6 +35,13 @@ interface ProductForm {
   name: string;
   price: number | null;
   stock: number;
+  barCode: string; 
+  claveProdServ: string;      
+  claveProdServDesc: string;  
+  claveUnidad: string;        
+  claveUnidadDesc: string;   
+  objetoImpuesto: string;   
+  tasaIva: number;           
 }
 
 interface CategoryRow { id: number; namee: string; }
@@ -33,11 +64,15 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe],
+  imports: [RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
-  form: ProductForm = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0 };
+  form: ProductForm = {
+    brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
+    claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
+    objetoImpuesto: '02', tasaIva: 0.16
+  };
 
   inventario: any[] = [];
   colorModalAbierto = false;
@@ -51,6 +86,7 @@ export class Inventario {
   supplierToAdd: number | null = null;
   supplierIsDefault = false;
   supplierLastCost: number | null = null;
+  editingProductId: number | null = null; 
 
   newSupplierName = '';
   creatingSupplier = false;
@@ -67,23 +103,67 @@ export class Inventario {
   creatingBrand = false;
   creatingCategory = false;
 
+  capturandoCodigo = false;
+  guardando = false;
+
+  facturacionActiva = false;
+
+  objImpAbierto = false;
+  tasaAbierta = false;
+
   colores = [
     { nombre: 'Navy Blue', value: '#000080' },
     { nombre: 'Dorado', value: '#B8860B' },
   ];
 
   filtro = '';
+  expExportOpen = false;
   page = 1;
   pageSizeOptions = [10, 20, 50, 100];
   pageSize = 10;
 
-  constructor() {}
+  objetoImpuestoOpts = [
+    { code: '01', label: 'No objeto de impuesto' },
+    { code: '02', label: 'Si objeto de impuesto' },
+    { code: '03', label: 'Si objeto, no obligado al desglose' },
+    { code: '04', label: 'Si objeto, no causa impuesto' }
+  ];
+
+  tasaIvaOpts = [
+    { value: 0.16, label: '16%' },
+    { value: 0.08, label: '8% (frontera)' },
+    { value: 0,    label: '0% / Exento' }
+  ];
+
+  constructor(private reports: ReportService) {}
 
   async ngOnInit() {
     await this.consultarInventario();
     await this.cargarCategorias();
     await this.cargarMarcas();
     await this.cargarCatalogoProveedores();
+    await this.verificarFacturacion();
+    
+
+    const api = (window as any).electronAPI;
+    if (api?.onBarcodeScan) {
+      api.onBarcodeScan((payload: any) => {
+        if (!this.capturandoCodigo || !this.productoModalAbierto) return;
+        const code = String(payload?.code || '').trim();
+        if (!code) return;
+        this.form.barCode = code;
+        this.capturandoCodigo = false;
+      });
+    }
+  }
+
+  async verificarFacturacion() {
+    try {
+      const res = await (window as any).electronAPI?.getFiscalConfig?.();
+      this.facturacionActiva = !!(res?.success && res.data?.csd_registrado);
+    } catch {
+      this.facturacionActiva = false;
+    }
   }
 
   async consultarInventario() {
@@ -139,13 +219,19 @@ export class Inventario {
       }
 
       const result = await (window as any).electronAPI.agregarProducto(
-        brand, category, partNumber, name, price, stock
+        brand, category, partNumber, name, price, stock,
+        this.form.claveProdServ || null,
+        this.form.claveUnidad || null,
+        this.form.objetoImpuesto || '02',
+        this.form.tasaIva ?? 0.16
       );
 
       if (result?.success) {
         await this.consultarInventario();
         this.cerrarProductoModal();
-        this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0 };
+        this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0, barCode: '',
+          claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
+          objetoImpuesto: '02', tasaIva: 0.16 };
         await Swal.fire({
           icon: 'success',
           title: '¡Producto agregado!',
@@ -163,11 +249,89 @@ export class Inventario {
     }
   }
 
+  async guardarProducto() {
+    if (this.guardando) return;
+    if (this.editingProductId) {
+      await this.actualizarProducto();
+    } else {
+      await this.addProduct();
+    }
+  }
+
+  async actualizarProducto() {
+    const { name, price, stock, partNumber, barCode } = this.form;
+    if (!name || price == null) {
+      await Swal.fire({ icon: 'error', title: 'Campos incompletos', text: 'Nombre y precio son obligatorios.' });
+      return;
+    }
+
+    try {
+      this.guardando = true;
+      const api = (window as any).electronAPI;
+      const payload = {
+        product_id: this.editingProductId,
+        nombre: name,
+        precio: price,
+        stock: stock,
+        numero_parte: partNumber,
+        bar_code: (barCode ?? ''),
+        clave_prod_serv: this.form.claveProdServ || null,
+        clave_unidad: this.form.claveUnidad || null,
+        objeto_impuesto: this.form.objetoImpuesto || '02',
+        tasa_iva: this.form.tasaIva ?? 0.16
+      };
+
+      const res = await api.actualizarProducto(payload);
+      if (!res?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: res?.error || 'Error al actualizar.' });
+        return;
+      }
+
+      await this.consultarInventario();
+      this.cerrarProductoModal();
+      await Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 1400, showConfirmButton: false });
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error inesperado.' });
+    } finally {
+      this.guardando = false;
+    }
+  }
+
+
   abrirProductoModal() {
+    this.editingProductId = null;
+    this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
+      claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
+      objetoImpuesto: '02', tasaIva: 0.16 };
+    this.capturandoCodigo = false;
     this.productoModalAbierto = true;
     this.cargarCategorias();
     this.cargarMarcas();
   }
+
+  abrirEditarProducto(item: ProductRow) {
+    this.editingProductId = Number(item?.id ?? 0) || null;
+    this.form = {
+      brand: item?.brand_id ?? null,
+      category: item?.category_id ?? null,
+      partNumber: String(item?.part_number ?? ''),
+      name: String(item?.product_name ?? item?.nombre ?? item?.name ?? ''),
+      price: Number(item?.price ?? 0),
+      stock: Number(item?.stock ?? 0),
+      barCode: String(item?.bar_code ?? ''),
+      claveProdServ: String(item?.clave_prod_serv ?? ''),
+      claveProdServDesc: '',
+      claveUnidad: String(item?.clave_unidad ?? ''),
+      claveUnidadDesc: '',
+      objetoImpuesto: String(item?.objeto_impuesto ?? '02'),
+      tasaIva: item?.tasa_iva != null ? Number(item.tasa_iva) : 0.16
+    };
+    this.capturandoCodigo = false;
+    this.productoModalAbierto = true;
+    this.cargarCategorias();
+    this.cargarMarcas();
+  }
+
   cerrarProductoModal() { this.productoModalAbierto = false; }
 
   abrirColorModal() { this.colorModalAbierto = true; }
@@ -394,6 +558,52 @@ export class Inventario {
   }
 
   clearFilter() { this.filtro = ''; this.page = 1; }
+
+  // ---- Exportar ----
+  private cfgReporteInv(): ReportConfig {
+    const rows = this.inventarioFiltrado.map((p: any) => {
+      const precio = Number(p.price ?? 0);
+      const stock = Number(p.stock ?? 0);
+      return {
+        part_number: p.part_number ?? '-',
+        nombre: p.product_name ?? p.nombre ?? '-',
+        categoria: p.category_name ?? '-',
+        marca: p.brand_name ?? '-',
+        proveedor: p.default_supplier_name ?? '-',
+        precio, stock, valor: precio * stock
+      };
+    });
+    return {
+      titulo: 'Inventario',
+      subtitulo: 'Productos, stock y precios',
+      columns: [
+        { header: 'No. Parte', key: 'part_number', width: 16 },
+        { header: 'Producto', key: 'nombre', width: 30 },
+        { header: 'Categoria', key: 'categoria', width: 16 },
+        { header: 'Marca', key: 'marca', width: 16 },
+        { header: 'Proveedor', key: 'proveedor', width: 18 },
+        { header: 'Precio', key: 'precio', width: 14, align: 'right', money: true },
+        { header: 'Stock', key: 'stock', width: 10, align: 'right' },
+        { header: 'Valor', key: 'valor', width: 14, align: 'right', money: true }
+      ],
+      rows,
+      totals: {
+        stock: rows.reduce((a, r) => a + Number(r.stock || 0), 0),
+        valor: rows.reduce((a, r) => a + Number(r.valor || 0), 0)
+      },
+      filename: 'inventario'
+    };
+  }
+  async exportarInv(tipo: 'pdf' | 'excel') {
+    this.expExportOpen = false;
+    const cfg = this.cfgReporteInv();
+    try {
+      if (tipo === 'excel') await this.reports.exportExcel(cfg);
+      else await this.reports.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error al exportar', text: e?.message || 'No se pudo generar el archivo.' });
+    }
+  }
   onFilterChange() { this.page = 1; }
 
   onPageSizeChange(v: any) {
@@ -532,5 +742,28 @@ export class Inventario {
     } finally {
       this.creatingCategory = false;
     }
+  }
+
+  escanearCodigo() { this.capturandoCodigo = true; }
+  cancelarEscaneo() { this.capturandoCodigo = false; }
+
+  onClaveProdServ(item: CatalogoItem) {
+    this.form.claveProdServ = item.code;
+    this.form.claveProdServDesc = item.description;
+  }
+
+  onClaveUnidad(item: CatalogoItem) {
+    this.form.claveUnidad = item.code;
+    this.form.claveUnidadDesc = item.description;
+  }
+
+  get objetoImpuestoLabel(): string {
+    const o = this.objetoImpuestoOpts.find(x => x.code === this.form.objetoImpuesto);
+    return o ? `${o.code} - ${o.label}` : 'Selecciona';
+  }
+
+  get tasaIvaLabel(): string {
+    const t = this.tasaIvaOpts.find(x => x.value === this.form.tasaIva);
+    return t ? t.label : 'Selecciona';
   }
 }

@@ -1,0 +1,174 @@
+<div class="fn-backdrop" (click)="cerrarModal()">
+  <div class="fn-dialog" (click)="$event.stopPropagation()">
+    <div class="fn-header">
+      <div>
+        <h3>Emitir factura</h3>
+        <p *ngIf="saleId">Desde la venta #{{ saleId }}</p>
+        <p *ngIf="!saleId">Captura los conceptos o carga una venta</p>
+      </div>
+      <button class="fn-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="fn-body">
+      <!-- Cargar desde una venta (solo en modo libre) -->
+      <div class="fn-load-sale" *ngIf="modoLibre">
+        <div class="fn-load-input">
+          <label>Cargar desde una venta (opcional)</label>
+          <div class="fn-load-row">
+            <input type="number" [(ngModel)]="folioVenta" placeholder="Folio de venta, ej. 60"
+                   (keydown.enter)="cargarVenta()">
+            <button type="button" class="fn-btn ghost sm" (click)="cargarVenta()" [disabled]="cargandoVenta">
+              <i class="bi bi-download" *ngIf="!cargandoVenta"></i>
+              {{ cargandoVenta ? 'Cargando...' : 'Traer venta' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos del receptor -->
+      <div class="fn-section-head">
+        <h4>Datos del cliente (receptor)</h4>
+        <button type="button" class="fn-link" (click)="usarPublicoGeneral()">
+          <i class="bi bi-people"></i> Publico en general
+        </button>
+      </div>
+
+      <div class="fn-grid">
+        <div class="fn-field">
+          <label>RFC</label>
+          <input type="text" [(ngModel)]="receptor.rfc" maxlength="13" placeholder="XAXX010101000" style="text-transform:uppercase;">
+        </div>
+        <div class="fn-field">
+          <label>Codigo postal</label>
+          <input type="text" [(ngModel)]="receptor.zipCode" maxlength="5" placeholder="37000">
+        </div>
+      </div>
+
+      <div class="fn-field">
+        <label>Razon social / nombre</label>
+        <input type="text" [(ngModel)]="receptor.razonSocial" placeholder="Nombre o razon social del cliente">
+      </div>
+
+      <div class="fn-grid">
+        <div class="fn-field">
+          <label>Regimen fiscal</label>
+          <div class="fn-select" [class.open]="regimenAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!receptor.regimenFiscal"
+                    (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
+              <span>{{ regimenLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="regimenAbierto">
+              <button type="button" class="fn-opt" *ngFor="let r of regimenes"
+                      (click)="receptor.regimenFiscal = r.code; regimenAbierto = false">
+                <span class="fn-opt-code">{{ r.code }}</span><span>{{ r.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="fn-field">
+          <label>Uso de CFDI</label>
+          <div class="fn-select" [class.open]="usoAbierto">
+            <button type="button" class="fn-select-trigger" [class.ph]="!receptor.usoCfdi"
+                    (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
+              <span>{{ usoLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="usoAbierto">
+              <button type="button" class="fn-opt" *ngFor="let u of usosCfdi"
+                      (click)="receptor.usoCfdi = u.code; usoAbierto = false">
+                <span class="fn-opt-code">{{ u.code }}</span><span>{{ u.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fn-field">
+        <label>Correo (opcional)</label>
+        <input type="email" [(ngModel)]="receptor.email" placeholder="cliente@correo.com">
+      </div>
+
+      <!-- Pago -->
+      <h4>Pago</h4>
+      <div class="fn-grid">
+        <div class="fn-field">
+          <label>Forma de pago</label>
+          <div class="fn-select" [class.open]="formaPagoAbierta">
+            <button type="button" class="fn-select-trigger"
+                    (click)="formaPagoAbierta = !formaPagoAbierta; metodoPagoAbierto = false">
+              <span>{{ formaPagoLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="formaPagoAbierta">
+              <button type="button" class="fn-opt" *ngFor="let f of formasPago"
+                      (click)="formaPago = f.code; formaPagoAbierta = false">
+                <span class="fn-opt-code">{{ f.code }}</span><span>{{ f.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="fn-field">
+          <label>Metodo de pago</label>
+          <div class="fn-select" [class.open]="metodoPagoAbierto">
+            <button type="button" class="fn-select-trigger"
+                    (click)="metodoPagoAbierto = !metodoPagoAbierto; formaPagoAbierta = false">
+              <span>{{ metodoPagoLabel }}</span><i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="fn-select-menu" *ngIf="metodoPagoAbierto">
+              <button type="button" class="fn-opt" *ngFor="let m of metodosPago"
+                      (click)="metodoPago = m.code; metodoPagoAbierto = false">
+                <span class="fn-opt-code">{{ m.code }}</span><span>{{ m.description }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conceptos: editables -->
+      <div class="fn-section-head">
+        <h4>Conceptos</h4>
+        <button type="button" class="fn-link" (click)="agregarConcepto()">
+          <i class="bi bi-plus-lg"></i> Agregar concepto
+        </button>
+      </div>
+
+      <div class="fn-conceptos-edit">
+        <div class="fn-cpt-head">
+          <span class="c-desc">Descripcion</span>
+          <span class="c-qty">Cant.</span>
+          <span class="c-price">Precio (con IVA)</span>
+          <span class="c-sub">Importe</span>
+          <span class="c-del"></span>
+        </div>
+
+        <div class="fn-cpt-row" *ngFor="let c of conceptos; let i = index">
+          <input class="c-desc" type="text" [(ngModel)]="c.description" placeholder="Descripcion del producto o servicio">
+          <input class="c-qty" type="number" min="0.01" step="0.01" [(ngModel)]="c.quantity">
+          <input class="c-price" type="number" min="0" step="0.01" [(ngModel)]="c.unitPrice">
+          <span class="c-sub">{{ money(c.quantity * c.unitPrice) }}</span>
+          <button type="button" class="c-del" (click)="quitarConcepto(i)" title="Quitar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+
+        <div class="fn-empty" *ngIf="conceptos.length === 0">
+          Sin conceptos. Agrega uno o carga una venta.
+        </div>
+      </div>
+
+      <!-- Totales -->
+      <div class="fn-totales">
+        <div class="fn-t-row"><span>Subtotal (sin IVA)</span><span>{{ money(subtotal) }}</span></div>
+        <div class="fn-t-row"><span>IVA (incluido)</span><span>{{ money(ivaEstimado) }}</span></div>
+        <div class="fn-t-row total"><span>Total</span><span>{{ money(total) }}</span></div>
+      </div>
+    </div>
+
+    <div class="fn-footer">
+      <button class="fn-btn ghost" (click)="cerrarModal()" [disabled]="timbrando">Cancelar</button>
+      <button class="fn-btn primary" (click)="emitir()" [disabled]="timbrando">
+        <i class="bi bi-receipt" *ngIf="!timbrando"></i>
+        {{ timbrando ? 'Timbrando...' : 'Timbrar factura' }}
+      </button>
+    </div>
+  </div>
+</div>

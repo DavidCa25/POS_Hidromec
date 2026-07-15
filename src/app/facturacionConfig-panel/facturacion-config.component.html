@@ -1,0 +1,110 @@
+<div class="fc">
+  <div class="fc-head">
+    <div>
+      <h2>Datos fiscales del emisor</h2>
+      <p>Configura tu RFC y certificados para poder emitir facturas CFDI 4.0.</p>
+    </div>
+    <div class="fc-status" [class.ok]="config.csd_registrado">
+      <i class="bi" [ngClass]="config.csd_registrado ? 'bi-check-circle-fill' : 'bi-exclamation-circle'"></i>
+      <span>{{ config.csd_registrado ? 'Listo para facturar' : 'Falta registrar certificados' }}</span>
+    </div>
+  </div>
+
+  <!-- Datos fiscales -->
+  <div class="fc-card">
+    <h3>Informacion del contribuyente</h3>
+
+    <div class="fc-grid">
+      <div class="fc-field">
+        <label>RFC</label>
+        <input type="text" [(ngModel)]="config.rfc" maxlength="13" placeholder="XAXX010101000"
+               style="text-transform: uppercase;">
+      </div>
+      <div class="fc-field">
+        <label>Codigo postal (lugar de expedicion)</label>
+        <input type="text" [(ngModel)]="config.codigo_postal" maxlength="5" placeholder="37000">
+      </div>
+    </div>
+
+    <div class="fc-field">
+      <label>Razon social / nombre legal</label>
+      <input type="text" [(ngModel)]="config.razon_social" placeholder="Como aparece en tu constancia de situacion fiscal">
+      <small>Sin regimen societario (sin "SA de CV"). Debe coincidir con el SAT.</small>
+    </div>
+
+    <div class="fc-grid">
+      <div class="fc-field">
+        <label>Regimen fiscal</label>
+        <div class="fc-select" [class.open]="regimenAbierto">
+          <button type="button" class="fc-select-trigger"
+                  [class.placeholder]="!config.regimen_fiscal"
+                  (click)="regimenAbierto = !regimenAbierto">
+            <span>{{ cargandoRegimenes ? 'Cargando regimenes...' : regimenLabel }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="fc-select-menu" *ngIf="regimenAbierto && !cargandoRegimenes">
+            <button type="button" class="fc-select-option"
+                    *ngFor="let r of regimenes"
+                    [class.sel]="r.code === config.regimen_fiscal"
+                    (click)="seleccionarRegimen(r)">
+              <span class="fc-opt-code">{{ r.code }}</span>
+              <span class="fc-opt-desc">{{ r.description }}</span>
+              <i class="bi bi-check2" *ngIf="r.code === config.regimen_fiscal"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="fc-field">
+        <label>Serie de folios (opcional)</label>
+        <input type="text" [(ngModel)]="config.serie" maxlength="25" placeholder="Ej. F, A, FAC">
+      </div>
+    </div>
+
+    <div class="fc-actions">
+      <button class="fc-btn primary" (click)="guardar()" [disabled]="guardando">
+        <i class="bi bi-save"></i>
+        {{ guardando ? 'Guardando...' : 'Guardar datos' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Certificados CSD -->
+  <div class="fc-card">
+    <h3>Certificados de Sello Digital (CSD)</h3>
+    <p class="fc-note">
+      <i class="bi bi-shield-lock"></i>
+      Tus certificados se resguardan de forma segura con el timbrador. No se guardan en esta computadora.
+    </p>
+
+    <div class="fc-grid">
+      <div class="fc-field">
+        <label>Archivo .cer</label>
+        <label class="fc-file">
+          <i class="bi bi-file-earmark-lock"></i>
+          <span>{{ cerNombre || 'Seleccionar .cer' }}</span>
+          <input type="file" accept=".cer" (change)="onCerSelected($event)" hidden>
+        </label>
+      </div>
+      <div class="fc-field">
+        <label>Archivo .key</label>
+        <label class="fc-file">
+          <i class="bi bi-file-earmark-lock"></i>
+          <span>{{ keyNombre || 'Seleccionar .key' }}</span>
+          <input type="file" accept=".key" (change)="onKeySelected($event)" hidden>
+        </label>
+      </div>
+    </div>
+
+    <div class="fc-field">
+      <label>Contrasena de la clave privada</label>
+      <input type="password" [(ngModel)]="csdPassword" placeholder="Contrasena del CSD">
+    </div>
+
+    <div class="fc-actions">
+      <button class="fc-btn dark" (click)="registrarCertificados()" [disabled]="registrandoCsd">
+        <i class="bi bi-cloud-arrow-up"></i>
+        {{ registrandoCsd ? 'Registrando...' : 'Registrar certificados' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -5,6 +5,7 @@ import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angula
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
 import { RegisterService } from '../../services/register.service';
+import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 
 interface ProductRow {
   id: number;
@@ -15,6 +16,10 @@ interface ProductRow {
   stock: number;
   category_name: string;
   brand_name: string;
+  clave_prod_serv?: string | null;
+  clave_unidad?: string | null;
+  objeto_impuesto?: string | null;
+  tasa_iva?: number | null;
 }
 
 interface SaleItem {
@@ -22,6 +27,10 @@ interface SaleItem {
   productName: string;
   qty: number;
   unitPrice: number;
+  claveProdServ?: string | null;
+  claveUnidad?: string | null;
+  objetoImpuesto?: string | null;
+  tasaIva?: number | null;
   get subtotal(): number;
 }
 
@@ -58,6 +67,10 @@ interface SaleDetailRow {
   unitary_price: number;
   refunded_qty?: number;
   remaining_qty?: number;
+  clave_prod_serv?: string | null;
+  clave_unidad?: string | null;
+  objeto_impuesto?: string | null;
+  tasa_iva?: number | null;
 }
 
 interface RefundLine {
@@ -71,7 +84,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva],
   styleUrls: ['./venta.css']
 })
 export class Venta {
@@ -124,12 +137,31 @@ export class Venta {
   showCashOutModal = false;
   cashOutAmount: number | null = null;
   cashOutNote = '';
+  // Salida como pago a proveedor
+  cashOutIsSupplier = false;
+  cashOutSupplierId: number | null = null;
+  cashOutSuppliers: { id: number; nombre: string }[] = [];
+  cashOutSupAbierto = false;
 
   // Post-venta (acciones: PDF / WhatsApp)
   showPostSaleModal = false;
   lastSaleId: number | null = null;
   lastSaleIsCredito = false;
   lastSaleTotal = 0;
+
+  // =========================
+  // Facturacion
+  // =========================
+  showFacturaModal = false;
+  facturaConceptos: ConceptoFactura[] = [];
+  facturaSaleId: number | null = null;
+
+  lastCustomerId: number | null = null;
+
+  facturaReceptorRfc: string | null = null;
+  facturaReceptorNombre: string | null = null;
+  facturaReceptorRegimen: string | null = null;
+  facturaReceptorUso: string | null = null;
 
   // =========================
   // Turno (Abrir / estado)
@@ -166,6 +198,12 @@ export class Venta {
   refundKind: 'EFECTIVO' | 'CAMBIO' = 'EFECTIVO';
   refundNote = '';
   refundLoading = false;
+
+  showModalClientes = false;
+  clientesGenerales: any[] = [];
+  filtroClientes = '';
+  clienteSeleccionado: any | null = null;
+  lastClienteSeleccionado: any | null = null;
 
   constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService) {}
 
@@ -411,12 +449,17 @@ export class Venta {
 
   cerrarModalCobrar() { this.showModal = false; }
 
-  async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO') {
+ async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP') {
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
       await this.loadCreditCustomers();
+      
+      if (this.clienteSeleccionado && this.creditCustomers.length > 0) {
+        const match = this.creditCustomers.find(c => c.id === this.clienteSeleccionado.id);
+        if (match) this.customerId = match.id;
+      }
     } else {
       this.customerId = null;
       this.dueDate = null;
@@ -482,6 +525,12 @@ export class Venta {
 
     const isCredito = this.paymentMethod === 'CREDITO';
 
+    // 1. Identificamos el cliente correcto para la venta
+    const finalCustomerId = isCredito ? this.customerId : (this.clienteSeleccionado ? this.clienteSeleccionado.id : null);
+
+    // 2. Guardamos el cliente en memoria para facturar después de limpiar la vista
+    this.lastClienteSeleccionado = this.clienteSeleccionado;
+
     if (isCredito) {
       if (this.customerId == null) {
         this.showModal = false;
@@ -502,17 +551,24 @@ export class Venta {
       unitPrice: it.unitPrice
     }));
 
+    // Guarda copia de los items para una eventual factura
+    const itemsSnapshot = this.items.map(it => ({ ...it }));
+
     try {
       const resp = await (window as any).electronAPI.registerSale(
         this.currentUserId,
         this.paymentMethod,
         detalles,
-        isCredito ? this.customerId : null,
+        finalCustomerId, // Aquí enviamos el cliente (ya sea crédito o contado)
         isCredito ? this.dueDate : null,
         this.registerSvc.registerId
       );
 
       if (resp?.success) {
+        
+        // 3. Declaramos y sacamos el saleId PRIMERO
+        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
+
         if (!isCredito) {
           this.lastSalePaid = this.dineroRecibido ?? this.totalVenta;
           this.lastSaleChange = this.cambio;
@@ -526,11 +582,12 @@ export class Venta {
           }
         }
 
-        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
-
+        // 4. Asignamos a las variables post-venta (ya usando el saleId sin error)
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
+
+        this.prepararConceptosFactura(itemsSnapshot, saleId);
 
         if (!isCredito && this.autoPrintTicketOnSale && saleId) {
           try {
@@ -543,12 +600,12 @@ export class Venta {
           } catch { /* noop */ }
         }
 
-        // reset venta nueva
         this.items = [];
         this.totalVenta = 0;
         this.dineroRecibido = null;
         this.customerId = null;
         this.dueDate = null;
+        this.clienteSeleccionado = null; // Limpia el cliente asignado en la pantalla principal
 
         this.showModal = false;
         this.showPostSaleModal = true;
@@ -584,6 +641,39 @@ export class Venta {
   }
 
   // ==================
+  // FACTURACION
+  // ==================
+  private prepararConceptosFactura(items: SaleItem[], saleId: number | null) {
+    this.facturaSaleId = saleId;
+    this.facturaConceptos = items.map(it => ({
+      description: it.productName,
+      quantity: it.qty,
+      unitPrice: it.unitPrice,
+      claveProdServ: it.claveProdServ ?? null,
+      claveUnidad: it.claveUnidad ?? null,
+      taxObject: it.objetoImpuesto ?? '02',
+      taxRate: it.tasaIva != null ? it.tasaIva : 0.16
+    }));
+  }
+
+  async facturarFolioCargado() {
+    if (!this.editingSaleId || !this.items.length) {
+      await Swal.fire({ icon: 'info', title: 'Carga una venta', text: 'Primero carga un folio con productos.' });
+      return;
+    }
+    this.prepararConceptosFactura(this.items, this.editingSaleId);
+    this.showFacturaModal = true;
+  }
+
+  onFacturaCerrada() {
+    this.showFacturaModal = false;
+  }
+
+  onFacturaTimbrada(_out: any) {
+    // Aqui podrias marcar la venta como facturada si quieres
+  }
+
+  // ==================
   // PRODUCTOS
   // ==================
   async abrirModalProductos() {
@@ -615,7 +705,11 @@ export class Venta {
         price: Number(r.price ?? 0),
         stock: Number(r.stock ?? 0),
         category_name: r.category_name ?? '',
-        brand_name: r.brand_name ?? ''
+        brand_name: r.brand_name ?? '',
+        clave_prod_serv: r.clave_prod_serv ?? null,
+        clave_unidad: r.clave_unidad ?? null,
+        objeto_impuesto: r.objeto_impuesto ?? null,
+        tasa_iva: r.tasa_iva != null ? Number(r.tasa_iva) : null
       })) as ProductRow[];
     } catch {
       this.productos = [];
@@ -637,6 +731,10 @@ export class Venta {
       productName: `${p.product_name}`,
       qty: 1,
       unitPrice: p.price ?? 0,
+      claveProdServ: p.clave_prod_serv ?? null,
+      claveUnidad: p.clave_unidad ?? null,
+      objetoImpuesto: p.objeto_impuesto ?? null,
+      tasaIva: p.tasa_iva ?? null,
       get subtotal() { return this.qty * this.unitPrice; }
     };
 
@@ -669,10 +767,31 @@ export class Venta {
 
     this.cashOutAmount = null;
     this.cashOutNote = '';
+    this.cashOutIsSupplier = false;
+    this.cashOutSupplierId = null;
+    this.cashOutSupAbierto = false;
+    await this.cargarProveedoresCashOut();
     this.showCashOutModal = true;
   }
 
   cerrarSalidaEfectivo() { this.showCashOutModal = false; }
+
+  private async cargarProveedoresCashOut() {
+    try {
+      const api = (window as any).electronAPI;
+      const rs = await api?.getSuppliers?.();
+      const rows = Array.isArray(rs?.recordset) ? rs.recordset : (Array.isArray(rs) ? rs : []);
+      this.cashOutSuppliers = rows.map((x: any) => ({ id: Number(x.id), nombre: x.nombre ?? x.name ?? '' }));
+    } catch { this.cashOutSuppliers = []; }
+  }
+  get cashOutSupplierLabel(): string {
+    const s = this.cashOutSuppliers.find(x => x.id === this.cashOutSupplierId);
+    return s ? s.nombre : 'Selecciona proveedor';
+  }
+  seleccionarCashOutProveedor(s: { id: number; nombre: string }) {
+    this.cashOutSupplierId = s.id;
+    this.cashOutSupAbierto = false;
+  }
 
   async confirmarSalidaEfectivo() {
     const ok = await this.ensureShiftOpen('SALIDA');
@@ -687,6 +806,11 @@ export class Venta {
 
     if (!this.cashOutNote.trim()) {
       await Swal.fire({ icon: 'warning', title: 'Nota requerida', text: 'Describe brevemente para qué es la salida de efectivo.' });
+      return;
+    }
+
+    if (this.cashOutIsSupplier && !this.cashOutSupplierId) {
+      await Swal.fire({ icon: 'warning', title: 'Elige proveedor', text: 'Selecciona el proveedor al que le pagas.' });
       return;
     }
 
@@ -708,9 +832,24 @@ export class Venta {
       const resp = await api.registerCashMovement(payload);
 
       if (resp?.success) {
+        // Si la salida es pago a proveedor, registrarlo tambien
+        if (this.cashOutIsSupplier && this.cashOutSupplierId) {
+          try {
+            await api.paySupplier?.({
+              supplier_id: this.cashOutSupplierId,
+              amount,
+              user_id: this.currentUserId,
+              payment_method: 'EFECTIVO',
+              note: this.cashOutNote,
+              cash_movement_id: resp?.cash_movement_id ?? resp?.id ?? null
+            });
+          } catch { /* el movimiento de caja ya quedo; el pago es complementario */ }
+        }
         this.showCashOutModal = false;
         this.cashOutAmount = null;
         this.cashOutNote = '';
+        this.cashOutIsSupplier = false;
+        this.cashOutSupplierId = null;
         await Swal.fire({ icon: 'success', title: 'Salida registrada', text: 'La salida de efectivo se registró correctamente.' });
       } else {
         await Swal.fire({ icon: 'error', title: 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });
@@ -869,7 +1008,7 @@ export class Venta {
       return;
     }
 
-    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) {
+    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }
 
@@ -996,6 +1135,10 @@ export class Venta {
           productName: String(name || `Producto #${d.product_id}`),
           qty: Number(d.quantity ?? 1),
           unitPrice: Number(d.unitary_price ?? 0),
+          claveProdServ: d.clave_prod_serv ?? null,
+          claveUnidad: d.clave_unidad ?? null,
+          objetoImpuesto: d.objeto_impuesto ?? null,
+          tasaIva: d.tasa_iva != null ? Number(d.tasa_iva) : null,
           get subtotal() { return this.qty * this.unitPrice; }
         };
       });
@@ -1509,6 +1652,9 @@ private async registrarVentaTerminal(orderId: string) {
     unitPrice: it.unitPrice
   }));
 
+  // Guarda copia para una eventual factura
+  const itemsSnapshot = this.items.map(it => ({ ...it }));
+
   try {
     const resp = await (window as any).electronAPI.registerSale(
       this.currentUserId,
@@ -1537,6 +1683,8 @@ private async registrarVentaTerminal(orderId: string) {
     this.lastSaleId = saleId;
     this.lastSaleIsCredito = false;
     this.lastSaleTotal = this.totalVenta;
+
+    this.prepararConceptosFactura(itemsSnapshot, saleId);
 
     if (this.autoPrintTicketOnSale && saleId) {
       try {
@@ -1568,4 +1716,67 @@ private async registrarVentaTerminal(orderId: string) {
     });
   }
 }
+
+async facturarUltimaVenta() {
+    if (!this.facturaConceptos.length) {
+      await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay conceptos para facturar.' });
+      return;
+    }
+    if (this.lastClienteSeleccionado) {
+      this.facturaReceptorRfc = this.lastClienteSeleccionado.tax_id ?? null;
+      this.facturaReceptorNombre = this.lastClienteSeleccionado.razon_social || this.lastClienteSeleccionado.name;
+      this.facturaReceptorRegimen = this.lastClienteSeleccionado.regimen_fiscal ?? null;
+      this.facturaReceptorUso = this.lastClienteSeleccionado.uso_cfdi ?? null;
+    } else {
+      this.facturaReceptorRfc = null;
+      this.facturaReceptorNombre = null;
+      this.facturaReceptorRegimen = null;
+      this.facturaReceptorUso = null;
+    }
+
+    this.showPostSaleModal = false;
+    this.showFacturaModal = true;
+}
+
+async abrirModalClientes() {
+    const api = (window as any).electronAPI;
+    if (!api || !api.getCustomers) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'La búsqueda de clientes no está disponible.' });
+      return;
+    }
+
+    try {
+      this.filtroClientes = '';
+      const res = await api.getCustomers();
+      if (res?.success) {
+        this.clientesGenerales = (res.data || []).map((row: any) => ({
+          id: row.id,
+          name: row.customerName,
+          tax_id: row.tax_id,
+          razon_social: row.razon_social,
+          regimen_fiscal: row.regimen_fiscal,
+          uso_cfdi: row.uso_cfdi,
+          phone: row.phone,
+          email: row.email
+        }));
+        this.showModalClientes = true;
+      }
+    } catch (e: any) {
+      console.error(e);
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los clientes.' });
+    }
+  }
+
+  cerrarModalClientes() {
+    this.showModalClientes = false;
+  }
+
+  seleccionarCliente(cliente: any) {
+    this.clienteSeleccionado = cliente;
+    this.cerrarModalClientes();
+  }
+
+  quitarCliente() {
+    this.clienteSeleccionado = null;
+  }
 }

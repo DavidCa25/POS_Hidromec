@@ -1,1 +1,2 @@
-<router-outlet></router-outlet>
+<app-setup-inicial *ngIf="listo && necesitaSetup" (completado)="onSetupCompletado()"></app-setup-inicial>
+<router-outlet *ngIf="listo && !necesitaSetup"></router-outlet>

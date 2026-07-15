@@ -203,6 +203,77 @@
         </button>
       </div>
 
+      <!-- DESGLOSE DETALLADO (Estilo Eleventa) -->
+      <div class="desglose-section" *ngIf="!loading">
+        
+        <!-- Tarjeta Izquierda: Flujo de Efectivo -->
+        <div class="desglose-card">
+          <div class="desglose-header">
+            <h4><i class="bi bi-cash"></i> Dinero en Caja</h4>
+          </div>
+          <div class="desglose-body">
+            <div class="desglose-row text-muted">
+              <span>Fondo de caja inicial</span>
+              <span>{{ (mode === 'TURNO' ? openShiftOpeningCash : 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Ventas en Efectivo</span>
+              <span class="text-success fw-bold">+ {{ breakdown.ventasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Entradas / Abonos en efectivo</span>
+              <span class="text-success fw-bold">+ {{ breakdown.entradasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Salidas de efectivo</span>
+              <span class="text-danger fw-bold">- {{ breakdown.salidasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row pb-3" style="border-bottom: 2px dashed var(--border);">
+              <span>Devoluciones en efectivo</span>
+              <span class="text-danger fw-bold">- {{ breakdown.devolucionesEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row total-row">
+              <span>Total Efectivo Esperado</span>
+              <span>{{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta Derecha: Ventas Totales -->
+        <div class="desglose-card">
+          <div class="desglose-header">
+            <h4><i class="bi bi-cart-check"></i> Ventas Totales</h4>
+          </div>
+          <div class="desglose-body">
+            <div class="desglose-row">
+              <span>En Efectivo</span>
+              <span>{{ breakdown.ventasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Con Tarjeta de Crédito/Débito</span>
+              <span>{{ breakdown.ventasTarjeta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Con Terminal Mercado Pago</span>
+              <span>{{ breakdown.ventasMercadoPago | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row">
+              <span>Con Transferencia</span>
+              <span>{{ breakdown.ventasTransferencia | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row pb-3" style="border-bottom: 2px dashed var(--border);">
+              <span>A Crédito (Pendiente de cobro)</span>
+              <span>{{ breakdown.ventasCredito | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row total-row">
+              <span>Total Vendido</span>
+              <span class="text-primary">{{ totalVentasGenerales | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- KPIs MEJORADOS -->
       <div class="kpis-section">
         <div class="kpi-card entradas">

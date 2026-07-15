@@ -1,36 +1,73 @@
-.facturacion-container {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
-}
+.fac { padding: 4px; color: #0f2a3f; }
 
-.iframe-flpremium {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
+.fac-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.fac-head h2 { font-size: 22px; font-weight: 800; margin: 0; }
+.fac-head p { font-size: 13px; color: #64748b; margin: 4px 0 0; }
+.fac-head-actions { display: flex; gap: 10px; }
 
-.loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    z-index: 10;
+.fac-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none; border-radius: 11px; padding: 10px 16px;
+  font-weight: 700; font-size: 13.5px; cursor: pointer;
 }
+.fac-btn.primary { background: #2E3A8C; color: #fff; }
+.fac-btn.ghost { background: #fff; color: #0f2a3f; border: 1px solid #e2e8f0; }
+.fac-btn i { font-size: 15px; }
 
-.spinner {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #1976d2;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
+.fac-tabs { display: flex; gap: 6px; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; flex-wrap: wrap; }
+.fac-tab {
+  display: flex; align-items: center; gap: 7px;
+  border: none; background: transparent; cursor: pointer;
+  padding: 10px 14px; font-size: 13.5px; font-weight: 600; color: #64748b;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
 }
+.fac-tab:hover { color: #0f2a3f; }
+.fac-tab.on { color: #2E3A8C; border-bottom-color: #2E3A8C; }
+.fac-tab span {
+  font-size: 11px; font-weight: 800; background: #eef2f7; color: #475569;
+  border-radius: 999px; padding: 1px 8px; min-width: 20px; text-align: center;
+}
+.fac-tab.on span { background: #2E3A8C; color: #fff; }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.fac-search {
+  position: relative; margin-bottom: 16px;
 }
+.fac-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 15px; }
+.fac-search input {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 11px;
+  padding: 11px 13px 11px 38px; font-size: 14px; outline: none; background: #f8fafc;
+}
+.fac-search input:focus { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff; }
+
+.fac-loading, .fac-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #64748b; gap: 12px; }
+.fac-spinner { width: 36px; height: 36px; border: 4px solid #e2e8f0; border-top-color: #2E3A8C; border-radius: 50%; animation: fac-spin 1s linear infinite; }
+@keyframes fac-spin { to { transform: rotate(360deg); } }
+
+.fac-empty i { font-size: 46px; color: #cbd5e1; }
+.fac-empty h3 { font-size: 17px; font-weight: 800; color: #0f2a3f; margin: 4px 0 0; }
+.fac-empty p { font-size: 13.5px; margin: 0 0 8px; }
+
+.fac-table { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #fff; }
+.fac-row {
+  display: grid; grid-template-columns: 120px 1.6fr 1.4fr 110px 110px 44px;
+  align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9;
+}
+.fac-row:last-child { border-bottom: none; }
+.fac-row-head { background: #f8fafc; font-size: 11.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .03em; }
+.fac-row:not(.fac-row-head):hover { background: #f8fafc; }
+
+.c-fecha { font-size: 12.5px; color: #475569; }
+.c-receptor { display: flex; flex-direction: column; min-width: 0; }
+.rec-nombre { font-size: 13.5px; font-weight: 700; color: #0f2a3f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-rfc { font-size: 11.5px; color: #94a3b8; }
+.c-folio { font-size: 11px; color: #64748b; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-total { font-size: 14px; font-weight: 800; color: #0f2a3f; }
+
+.badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.badge-timbrada { background: #dcfce7; color: #059669; }
+.badge-borrador { background: #fef3c7; color: #b45309; }
+.badge-cancelada { background: #fee2e2; color: #dc2626; }
+.badge-error { background: #f1f5f9; color: #64748b; }
+
+.icon-btn { border: none; background: transparent; cursor: pointer; color: #64748b; font-size: 16px; padding: 4px; border-radius: 7px; }
+.icon-btn:hover { background: #eef2f7; color: #2E3A8C; }

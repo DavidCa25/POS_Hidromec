@@ -1,0 +1,115 @@
+.fn-backdrop {
+  position: fixed; inset: 0; background: rgba(15,42,63,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 12000; padding: 20px;
+}
+.fn-dialog {
+  background: #fff; border-radius: 18px; width: 100%; max-width: 640px;
+  max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,.3);
+}
+
+.fn-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px; background: #0F2A3F; color: #fff;
+}
+.fn-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.fn-header p { margin: 2px 0 0; font-size: 12.5px; color: #9fc3d4; }
+.fn-close { background: rgba(255,255,255,.1); border: none; color: #fff; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+
+.fn-body { padding: 20px 22px; overflow-y: auto; color: #0f2a3f; }
+.fn-body h4 { font-size: 13px; font-weight: 800; margin: 18px 0 12px; color: #2E3A8C; text-transform: uppercase; letter-spacing: .03em; }
+.fn-body h4:first-child { margin-top: 0; }
+
+.fn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .fn-grid { grid-template-columns: 1fr; } }
+
+.fn-field { margin-bottom: 12px; }
+.fn-field label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.fn-field input, .fn-field select {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
+  padding: 9px 11px; font-size: 14px; outline: none; background: #f8fafc; color: #0f2a3f;
+}
+.fn-field input:focus, .fn-field select:focus { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff; }
+
+.fn-select { position: relative; }
+.fn-select-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 11px;
+  font-size: 13.5px; background: #f8fafc; color: #0f2a3f; cursor: pointer; text-align: left;
+}
+.fn-select-trigger.ph { color: #94a3b8; }
+.fn-select-trigger span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fn-select-trigger i { font-size: 12px; color: #64748b; flex: 0 0 auto; }
+.fn-select.open .fn-select-trigger { border-color: #4F9BB8; background: #fff; }
+.fn-select-menu {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 11px;
+  box-shadow: 0 12px 34px rgba(15,42,63,.16); padding: 5px; max-height: 240px; overflow-y: auto;
+}
+.fn-opt {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  border: none; background: transparent; border-radius: 8px; padding: 8px 9px;
+  cursor: pointer; text-align: left; font-size: 12.5px; color: #334155;
+}
+.fn-opt:hover { background: #f1f5f9; }
+.fn-opt-code { flex: 0 0 auto; font-weight: 800; font-size: 11px; color: #4F9BB8; background: #eef6f9; border-radius: 5px; padding: 2px 7px; min-width: 40px; text-align: center; }
+
+.fn-conceptos { border: 1px solid #e2e8f0; border-radius: 11px; overflow: hidden; }
+.fn-concepto { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.fn-concepto:last-child { border-bottom: none; }
+.fn-c-desc { flex: 1; font-weight: 600; }
+.fn-c-qty { color: #64748b; font-size: 12px; }
+.fn-c-sub { font-weight: 800; min-width: 90px; text-align: right; }
+.fn-empty { padding: 16px; text-align: center; color: #94a3b8; font-size: 13px; }
+
+.fn-totales { margin-top: 14px; background: #f8fafc; border-radius: 11px; padding: 14px 16px; }
+.fn-t-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0; color: #475569; }
+.fn-t-row.total { font-size: 17px; font-weight: 800; color: #0f2a3f; border-top: 1px solid #e2e8f0; margin-top: 6px; padding-top: 10px; }
+
+.fn-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid #eef2f7; }
+.fn-btn { display: inline-flex; align-items: center; gap: 8px; border: none; border-radius: 11px; padding: 11px 20px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.fn-btn.primary { background: #2E3A8C; color: #fff; }
+.fn-btn.ghost { background: #fff; color: #0f2a3f; border: 1px solid #e2e8f0; }
+.fn-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---- Cargar desde venta ---- */
+.fn-load-sale { background: #f8fafc; border: 1px solid #e9eef4; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+.fn-load-input label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 7px; color: #0f2a3f; }
+.fn-load-row { display: flex; gap: 8px; }
+.fn-load-row input { flex: 1; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 11px; font-size: 14px; outline: none; background: #fff; }
+.fn-load-row input:focus { border-color: #4F9BB8; }
+
+/* ---- Encabezado de seccion con accion ---- */
+.fn-section-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 12px; }
+.fn-section-head h4 { margin: 0; }
+.fn-link {
+  display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent;
+  color: #2E3A8C; font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+}
+.fn-link:hover { background: #eef2f7; }
+
+.fn-btn.sm { padding: 9px 14px; font-size: 13px; }
+
+/* ---- Conceptos editables ---- */
+.fn-conceptos-edit { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.fn-cpt-head, .fn-cpt-row {
+  display: grid; grid-template-columns: 1fr 80px 110px 100px 36px;
+  gap: 8px; align-items: center; padding: 9px 12px;
+}
+.fn-cpt-head { background: #f8fafc; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .03em; }
+.fn-cpt-row { border-top: 1px solid #f1f5f9; }
+.fn-cpt-row input {
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 9px; font-size: 13px;
+  outline: none; background: #fff; width: 100%; color: #0f2a3f;
+}
+.fn-cpt-row input:focus { border-color: #4F9BB8; }
+.fn-cpt-row .c-sub { font-weight: 800; font-size: 13px; text-align: right; color: #0f2a3f; }
+.fn-cpt-row .c-del {
+  border: none; background: transparent; color: #94a3b8; cursor: pointer;
+  border-radius: 7px; padding: 5px; font-size: 14px;
+}
+.fn-cpt-row .c-del:hover { background: #fef2f2; color: #dc2626; }
+@media (max-width: 600px) {
+  .fn-cpt-head { display: none; }
+  .fn-cpt-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+}

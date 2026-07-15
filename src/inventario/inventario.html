@@ -20,6 +20,17 @@
       <button class="castrol-btn-color" type="button" (click)="abrirCategoryModal()">
         <i class="bi bi-folder-plus me-2"></i> Agregar Categoría
       </button>
+
+      <div style="position:relative;">
+        <button class="castrol-btn-color" type="button" (click)="expExportOpen = !expExportOpen">
+          <i class="bi bi-download me-2"></i> Exportar
+        </button>
+        <div *ngIf="expExportOpen" class="list-group shadow-sm"
+             style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -104,7 +115,7 @@
 
           <td class="acciones-cell">
             <div class="action-group">
-              <!-- ✅ botón proveedores -->
+              <!-- botón proveedores -->
               <button class="action-btn btn-suppliers"
                       aria-label="Proveedores"
                       data-tooltip="Proveedores"
@@ -112,10 +123,11 @@
                 <i class="bi bi-truck"></i>
               </button>
 
-              <button class="action-btn btn-edit" aria-label="Editar" data-tooltip="Editar">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.004 1.004 0 0 0 0-1.42l-2.34-2.34a1.004 1.004 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
-                </svg>
+              <button class="action-btn btn-editar"
+                      aria-label="Editar"
+                      data-tooltip="Editar"
+                      (click)="abrirEditarProducto(item)">
+                <i class="bi bi-pencil-square"></i>
               </button>
 
               <button class="action-btn btn-delete" aria-label="Eliminar" data-tooltip="Eliminar">
@@ -160,14 +172,17 @@
     </button>
   </div>
 
-  <!-- ========================= -->
-  <!-- Modal Agregar Producto (tu modal) -->
+
+  <!-- Modal Agregar / Editar Producto -->
   <!-- ========================= -->
   <div class="producto-modal" *ngIf="productoModalAbierto">
-    <h1 class="producto-modal-title"><b>Agregar producto</b></h1>
-    <form autocomplete="off" (ngSubmit)="addProduct()" #formRef="ngForm">
+    <h1 class="producto-modal-title">
+      <b>{{ editingProductId ? 'Editar producto' : 'Agregar producto' }}</b>
+    </h1>
+    <form autocomplete="off" (ngSubmit)="guardarProducto()" #formRef="ngForm">
       <div class="producto-form-grid">
-        <div class="grid-col-span">
+        <!-- Marca y categoria solo en ALTA (el SP de update no las modifica) -->
+        <div class="grid-col-span" *ngIf="!editingProductId">
           <label>Marca</label>
           <select name="brand" [(ngModel)]="form.brand" required class="my-1 mr-sm-2">
             <option [ngValue]="null" disabled>Selecciona una</option>
@@ -175,7 +190,7 @@
           </select>
         </div>
 
-        <div>
+        <div *ngIf="!editingProductId">
           <label>Categoría</label>
           <select name="category" [(ngModel)]="form.category" required class="my-1 mr-sm-2">
             <option [ngValue]="null" disabled>Selecciona una</option>
@@ -200,19 +215,106 @@
 
         <div>
           <label>Stock</label>
-          <input type="number" name="stock" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
+          <input type="number" step="0.01" name="stock" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
         </div>
+
+        <!-- Codigo de barras solo en EDICION (el SP de alta aun no lo recibe) -->
+        <div class="grid-col-span-3" *ngIf="editingProductId">
+          <label>Código de barras</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" name="barCode" [(ngModel)]="form.barCode"
+                  class="my-1 mr-sm-2" style="flex:1;"
+                  placeholder="Escanea o teclea el código"
+                  [style.outline]="capturandoCodigo ? '2px solid #2563eb' : ''">
+            <button type="button" class="producto-cancel-btn" (click)="escanearCodigo()" *ngIf="!capturandoCodigo">
+              Escanear
+            </button>
+            <button type="button" class="producto-cancel-btn" (click)="cancelarEscaneo()" *ngIf="capturandoCodigo">
+              Cancelar
+            </button>
+          </div>
+          <small *ngIf="capturandoCodigo" style="color:#2563eb;">Escanea ahora con la pistola...</small>
+        </div>
+
+        <ng-container *ngIf="facturacionActiva">
+ 
+          <!-- ClaveProdServ (buscador) -->
+          <div class="grid-col-span-3 sat-field">
+            <app-clave-sat-picker
+              catalog="SatProductCodes"
+              label="Clave de producto/servicio (SAT)"
+              placeholder="Busca por descripcion, ej. filtro, aceite..."
+              [valor]="form.claveProdServ"
+              [descripcion]="form.claveProdServDesc"
+              (seleccionado)="onClaveProdServ($event)">
+            </app-clave-sat-picker>
+          </div>
+        
+          <!-- ClaveUnidad (buscador) -->
+          <div class="grid-col-span-3 sat-field">
+            <app-clave-sat-picker
+              catalog="SatUnitMeasurements"
+              label="Clave de unidad (SAT)"
+              placeholder="Busca, ej. pieza, litro, kilogramo..."
+              [valor]="form.claveUnidad"
+              [descripcion]="form.claveUnidadDesc"
+              (seleccionado)="onClaveUnidad($event)">
+            </app-clave-sat-picker>
+          </div>
+        
+          <!-- Objeto de impuesto -->
+          <div class="sat-field">
+            <label>Objeto de impuesto</label>
+            <div class="sat-dd" [class.open]="objImpAbierto">
+              <button type="button" class="sat-dd-trigger" (click)="objImpAbierto = !objImpAbierto; tasaAbierta = false">
+                <span>{{ objetoImpuestoLabel }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <div class="sat-dd-menu" *ngIf="objImpAbierto">
+                <button type="button" class="sat-dd-opt" *ngFor="let o of objetoImpuestoOpts"
+                        [class.sel]="o.code === form.objetoImpuesto"
+                        (click)="form.objetoImpuesto = o.code; objImpAbierto = false">
+                  <span class="sat-dd-code">{{ o.code }}</span>
+                  <span>{{ o.label }}</span>
+                  <i class="bi bi-check2" *ngIf="o.code === form.objetoImpuesto"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tasa de IVA -->
+          <div class="sat-field">
+            <label>Tasa de IVA</label>
+            <div class="sat-dd" [class.open]="tasaAbierta">
+              <button type="button" class="sat-dd-trigger" (click)="tasaAbierta = !tasaAbierta; objImpAbierto = false">
+                <span>{{ tasaIvaLabel }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              <div class="sat-dd-menu" *ngIf="tasaAbierta">
+                <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
+                        [class.sel]="t.value === form.tasaIva"
+                        (click)="form.tasaIva = t.value; tasaAbierta = false">
+                  <span>{{ t.label }}</span>
+                  <i class="bi bi-check2" *ngIf="t.value === form.tasaIva"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        
+        </ng-container>
       </div>
 
       <div class="producto-modal-actions">
         <button type="button" class="producto-cancel-btn" (click)="cerrarProductoModal()">Cancelar</button>
-        <button type="submit" class="producto-save-btn" [disabled]="formRef.invalid">Guardar</button>
+        <button type="submit" class="producto-save-btn" [disabled]="formRef.invalid || guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
       </div>
     </form>
   </div>
 
   <!-- ========================= -->
-  <!-- ✅ Modal Proveedores -->
+  <!-- Modal Proveedores -->
   <!-- ========================= -->
   <div class="modal-backdrop-soft" *ngIf="proveedoresModalAbierto" (click)="cerrarProveedoresModal()"></div>
 

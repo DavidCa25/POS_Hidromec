@@ -18,6 +18,7 @@ interface CashMovementRow {
   reference: string | null;
   note: string | null;
   closure_id: number | null;
+  payment_method?: string | null;
 }
 
 interface Summary {
@@ -26,11 +27,28 @@ interface Summary {
   neto: number;
   opening_cash?: number;
   cash_expected?: number;
+
+  ventas_efectivo?: number;
+  ventas_tarjeta?: number;
+  ventas_transferencia?: number;
+  ventas_mp?: number;
+  ventas_credito?: number;
 }
 
 interface RegisterOption {
   id: number;
   name: string;
+}
+
+interface Breakdown {
+  ventasEfectivo: number;
+  ventasTarjeta: number;
+  ventasTransferencia: number;
+  ventasMercadoPago: number;
+  ventasCredito: number;
+  entradasEfectivo: number;
+  salidasEfectivo: number;
+  devolucionesEfectivo: number;
 }
 
 type Mode = 'TURNO' | 'DIA';
@@ -76,6 +94,12 @@ export class Corte {
 
   movimientos: CashMovementRow[] = [];
   summary: Summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+
+  breakdown: Breakdown = {
+    ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
+    ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+    salidasEfectivo: 0, devolucionesEfectivo: 0
+  };
 
   constructor(private auth: AuthService) {
     this.setPreset('HOY');
@@ -219,13 +243,10 @@ export class Corte {
     return true;
   }
 
-  async consultar(){
+  async consultar() {
     if (!this.selectedRegisterId) {
       await Swal.fire({
-        icon: 'warning',
-        title: 'Selecciona una caja',
-        text: 'Elige una caja para consultar.',
-        confirmButtonColor: '#10b981'
+        icon: 'warning', title: 'Selecciona una caja', text: 'Elige una caja para consultar.', confirmButtonColor: '#10b981'
       });
       return;
     }
@@ -238,10 +259,7 @@ export class Corte {
           this.movimientos = [];
           this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
           await Swal.fire({
-            icon: 'info',
-            title: 'Sin turno abierto',
-            text: 'Esta caja no tiene un turno abierto para cerrar.',
-            confirmButtonColor: '#10b981'
+            icon: 'info', title: 'Sin turno abierto', text: 'Esta caja no tiene un turno abierto para cerrar.', confirmButtonColor: '#10b981'
           });
           return;
         }
@@ -250,7 +268,7 @@ export class Corte {
       const payload = {
         start_date: this.mode === 'DIA' ? (this.desdeStr || null) : null,
         end_date:   this.mode === 'DIA' ? (this.hastaStr || null) : null,
-        register_id: this.selectedRegisterId, // <--- Búsqueda enfocada en la caja
+        register_id: this.selectedRegisterId,
         typee:      null,
         closure_id: this.mode === 'TURNO' ? this.openShiftId : null,
         only_open:  this.mode === 'TURNO' ? 1 : (this.onlyOpen ? 1 : 0),
@@ -258,20 +276,50 @@ export class Corte {
 
       const res = await (window as any).electronAPI.getCashMovements(payload);
 
+      this.breakdown = {
+        ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
+        ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+        salidasEfectivo: 0, devolucionesEfectivo: 0
+      };
+
       if (res?.success) {
         const rows: CashMovementRow[] = (res.data?.rows ?? []).map((r: any) => ({
           ...r,
           datee: new Date(r.datee)
         }));
+        
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
         this.showFilters = false;
+
+        this.breakdown.ventasEfectivo = Number(this.summary.ventas_efectivo || 0);
+        this.breakdown.ventasTarjeta = Number(this.summary.ventas_tarjeta || 0);
+        this.breakdown.ventasTransferencia = Number(this.summary.ventas_transferencia || 0);
+        this.breakdown.ventasMercadoPago = Number(this.summary.ventas_mp || 0);
+        this.breakdown.ventasCredito = Number(this.summary.ventas_credito || 0);
+        // --- CÁLCULO DEL DESGLOSE EN MEMORIA ---
+
+        console.log(this.movimientos);
+        this.movimientos.forEach(m => {
+          const amt = Number(m.amount);
+          
+          if (m.typee === 'DEPOSIT') {
+            this.breakdown.entradasEfectivo += amt;
+          } 
+          else if (m.typee === 'WITHDRAW') {
+            this.breakdown.salidasEfectivo += Math.abs(amt);
+          } 
+          else if (m.typee === 'REFUND') {
+            this.breakdown.devolucionesEfectivo += Math.abs(amt);
+          }
+        });
+
       } else {
         this.movimientos = [];
         this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
       }
     } catch (e) {
-      console.error('❌ getCashMovements:', e);
+      console.error('getCashMovements:', e);
       this.movimientos = [];
       this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
     } finally {
@@ -451,5 +499,13 @@ export class Corte {
   get selectedRegisterName(): string {
     const c = this.cajas.find(x => x.id === this.selectedRegisterId);
     return c ? c.name : '';
+  }
+
+  get totalVentasGenerales(): number {
+    return this.breakdown.ventasEfectivo + 
+           this.breakdown.ventasTarjeta + 
+           this.breakdown.ventasTransferencia + 
+           this.breakdown.ventasMercadoPago + 
+           this.breakdown.ventasCredito;
   }
 }

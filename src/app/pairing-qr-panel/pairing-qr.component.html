@@ -1,0 +1,29 @@
+<div class="pq">
+  <p class="pq-intro">
+    Conecta la app del dueño para ver las ventas desde el celular.
+    Descarga <b>Wybix</b> en el telefono y escanea este codigo.
+  </p>
+
+  <div class="pq-box" *ngIf="loading">
+    <div class="pq-spinner"></div>
+    <span>Preparando el codigo...</span>
+  </div>
+
+  <div class="pq-error" *ngIf="error && !loading">
+    <i class="bi bi-exclamation-triangle"></i>
+    <span>{{ error }}</span>
+    <button class="pq-btn" (click)="generar()">Reintentar</button>
+  </div>
+
+  <div class="pq-qr" *ngIf="qrDataUrl && !loading">
+    <img [src]="qrDataUrl" alt="Codigo de vinculacion" />
+    <div class="pq-steps">
+      <div class="pq-step"><span>1</span> Descarga la app Wybix en el celular</div>
+      <div class="pq-step"><span>2</span> Toca "Escanear codigo del negocio"</div>
+      <div class="pq-step"><span>3</span> Apunta la camara a este codigo</div>
+    </div>
+    <button class="pq-btn ghost" (click)="copiarDatos()">
+      <i class="bi bi-clipboard"></i> Copiar datos manualmente
+    </button>
+  </div>
+</div>

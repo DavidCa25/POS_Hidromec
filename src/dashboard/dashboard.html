@@ -5,8 +5,8 @@
   <!-- SIDEBAR -->
   <nav class="sidebar" [class.collapsed]="!menuOpen" [class.sidebar-mobile-closed]="!menuOpen && isMobile">
     <div class="sidebar-header text-center py-4">
-      <img src="assets/OcusCR_icon.png" alt="Logo" class="sidebar-logo" />
-      <div class="sidebar-title mt-2 fw-bold text-dark">Ocus CR</div>
+      <img src="assets/wybie_logo.png" alt="Logo" class="sidebar-logo" />
+      <div class="sidebar-title mt-2 fw-bold text-dark">Wybix POS</div>
     </div>
     <ul class="sidebar-menu list-unstyled">
       <li>
@@ -96,6 +96,13 @@
       </ul>
     </li>
       <li>
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/proveedores"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="bi bi-truck me-2"></i> <span>Proveedores</span>
+        </a>
+      </li>
+      <li>
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/clientes"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
@@ -116,6 +123,31 @@
           <i class="bi bi-gear"></i> <span>Configuracion</span>
         </a>
       </li>
+      <li class="nav-item" id="operaciones-dropdown" style="position: relative;" [class.is-open]="isDatosOpen">
+        <a class="sidebar-link d-flex align-items-center px-4 py-3"
+           (click)="toggleDatos()" [class.active]="isDatosOpen" style="cursor: pointer;"
+           [attr.aria-expanded]="isDatosOpen">
+          <i class="bi bi-database me-2"></i>
+          <span>Datos</span>
+          <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isDatosOpen"></i>
+        </a>
+        <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
+            style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
+          <li>
+            <a *ngIf="auth.esAdmin" routerLink="/dashboard/importador" routerLinkActive="active"
+               class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-arrow-up me-2"></i> Importar productos
+            </a>
+          </li>
+          <li>
+            <a *ngIf="auth.esAdmin" routerLink="/dashboard/migracion" routerLinkActive="active"
+               class="dropdown-item d-flex align-items-center">
+              <i class="bi bi-database-down me-2"></i> Migracion
+            </a>
+          </li>
+        </ul>
+      </li>
+
     </ul>
   </nav>
 

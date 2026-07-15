@@ -1,0 +1,150 @@
+.su-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #0F2A3F 0%, #0B2436 100%); padding: 24px;
+}
+.su-card {
+  background: #fff; border-radius: 22px; padding: 34px 32px; width: 100%; max-width: 520px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+
+.su-brand { text-align: center; margin-bottom: 24px; }
+.su-logo {
+  width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 17px;
+  background: #2E3A8C; color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800;
+}
+.su-brand h1 { font-size: 22px; font-weight: 800; color: #0F2A3F; margin: 0; }
+.su-brand p { font-size: 13px; color: #64748b; margin: 5px 0 0; }
+
+/* Pasos */
+.su-steps { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 26px; }
+.su-step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.su-step-num {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: #eef2f7; color: #94a3b8; font-weight: 800; font-size: 13px; transition: all .2s;
+}
+.su-step.on .su-step-num { background: #2E3A8C; color: #fff; }
+.su-step.done .su-step-num { background: #16a34a; color: #fff; }
+.su-step-label { font-size: 11px; font-weight: 600; color: #94a3b8; }
+.su-step.on .su-step-label { color: #0F2A3F; }
+.su-line { width: 44px; height: 2px; background: #eef2f7; margin-bottom: 18px; transition: background .2s; }
+.su-line.on { background: #16a34a; }
+
+/* Campos */
+.su-body { animation: su-fade .25s ease; }
+@keyframes su-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.su-field { margin-bottom: 15px; }
+.su-field label { display: block; font-size: 12.5px; font-weight: 700; color: #0f2a3f; margin-bottom: 6px; }
+.su-field input {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 11px; padding: 11px 13px;
+  font-size: 14.5px; outline: none; background: #f8fafc; color: #0f2a3f;
+}
+.su-field input:focus { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: #fff; }
+.su-field small { display: block; font-size: 11.5px; color: #94a3b8; margin-top: 5px; }
+.su-field small.su-ok { color: #16a34a; }
+.su-field small.su-err { color: #dc2626; }
+.su-key { font-family: monospace; letter-spacing: 2px; text-align: center; font-size: 16px !important; font-weight: 700; }
+
+.su-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .su-grid { grid-template-columns: 1fr; } }
+
+.su-pass { position: relative; }
+.su-pass input { padding-right: 44px; }
+.su-eye {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  border: none; background: transparent; color: #64748b; cursor: pointer; padding: 6px; border-radius: 8px;
+}
+.su-eye:hover { background: #eef2f7; }
+
+/* Botones */
+.su-btn {
+  width: 100%; border: none; border-radius: 12px; background: #2E3A8C; color: #fff;
+  padding: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+.su-btn.ghost { background: #fff; color: #0f2a3f; border: 1px solid #e2e8f0; }
+.su-btn:disabled { opacity: .6; cursor: not-allowed; }
+.su-actions { display: flex; gap: 10px; }
+.su-actions .su-btn { margin-top: 8px; }
+
+/* Avisos */
+.su-badge-plan {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  background: #dcfce7; color: #059669; border-radius: 11px; padding: 10px;
+  font-size: 13px; font-weight: 700; margin-bottom: 18px;
+}
+.su-note {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: #eef6f9; border: 1px solid rgba(79,155,184,.25); border-radius: 11px;
+  padding: 12px 14px; font-size: 12.5px; color: #245b6e; margin-bottom: 18px;
+}
+.su-note i { font-size: 15px; flex: 0 0 auto; }
+
+/* Planes */
+.su-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; padding-top: 20px; border-top: 1px solid #eef2f7; }
+.su-plan { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center; background: #f8fafc; }
+.su-plan.destacado { border-color: #4F9BB8; background: #eef6f9; }
+.su-plan-name { display: block; font-size: 12px; font-weight: 800; color: #0F2A3F; }
+.su-plan-price { display: block; font-size: 18px; font-weight: 800; color: #2E3A8C; margin: 2px 0; }
+.su-plan-desc { display: block; font-size: 10.5px; color: #64748b; }
+
+/* ===== Paso 4: onboarding ===== */
+.su-ob-head { text-align: center; margin-bottom: 18px; }
+.su-ob-head h2 { margin: 0 0 4px; font-size: 1.25rem; }
+.su-ob-head p { margin: 0; color: #6b7280; font-size: .9rem; }
+
+.su-ob-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px 18px 16px 54px;
+  margin-bottom: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.su-ob-card:hover { border-color: #2563eb; box-shadow: 0 4px 14px rgba(37,99,235,.10); }
+.su-ob-card > i {
+  position: absolute; left: 18px; top: 18px;
+  font-size: 1.3rem; color: #2563eb;
+}
+.su-ob-card .t { display: block; font-weight: 700; font-size: .98rem; }
+.su-ob-card .d { display: block; color: #6b7280; font-size: .85rem; margin-top: 2px; }
+
+.su-btn.full { width: 100%; justify-content: center; margin-top: 6px; }
+
+.su-back {
+  background: none; border: none; color: #2563eb;
+  font-weight: 600; cursor: pointer; padding: 4px 0; margin-bottom: 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+.su-giros {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.su-giro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.su-giro:hover { border-color: #2563eb; box-shadow: 0 4px 14px rgba(37,99,235,.10); }
+.su-giro:disabled { opacity: .6; cursor: default; }
+.su-giro > i { font-size: 1.6rem; color: #2563eb; }
+.su-giro .g-nombre { font-weight: 700; font-size: .95rem; }
+.su-giro .g-count { color: #6b7280; font-size: .8rem; }
+
+.su-card.su-card-wide { max-width: 920px; }

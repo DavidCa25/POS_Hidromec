@@ -1,0 +1,138 @@
+<div class="mig-wrap">
+  <div class="mig-head">
+    <h2>Migración</h2>
+    <p>Trae al sistema los datos de tu punto de venta anterior desde Excel.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="mig-tabs">
+    <button [class.on]="tab === 'productos'" (click)="cambiarTab('productos')">
+      <i class="bi bi-box-seam"></i> Productos
+    </button>
+    <button [class.on]="tab === 'clientes'" (click)="cambiarTab('clientes')">
+      <i class="bi bi-people"></i> Clientes
+    </button>
+    <button [class.on]="tab === 'proveedores'" (click)="cambiarTab('proveedores')">
+      <i class="bi bi-truck"></i> Proveedores
+    </button>
+    <button [class.on]="tab === 'ventas'" (click)="cambiarTab('ventas')">
+      <i class="bi bi-receipt"></i> Ventas
+    </button>
+  </div>
+
+  <!-- ===== PRODUCTOS ===== -->
+  <div *ngIf="tab === 'productos'">
+    <app-importador-productos></app-importador-productos>
+  </div>
+
+  <!-- ===== CLIENTES ===== -->
+  <div *ngIf="tab === 'clientes'" class="mig-panel">
+    <div class="mig-toolbar">
+      <button class="mig-btn ghost" (click)="plantillaClientes()"><i class="bi bi-download"></i> Plantilla</button>
+      <label class="mig-btn primary" [class.disabled]="cliCargando">
+        <i class="bi bi-file-earmark-excel"></i> {{ cliCargando ? 'Leyendo...' : 'Elegir archivo' }}
+        <input type="file" accept=".xlsx,.xls,.csv" (change)="onClientes($event)" hidden [disabled]="cliCargando">
+      </label>
+      <span class="mig-file" *ngIf="cliArchivo"><i class="bi bi-paperclip"></i> {{ cliArchivo }}</span>
+    </div>
+
+    <div *ngIf="cliListo">
+      <div class="mig-summary">
+        <div class="mig-card ok"><span class="n">{{ cliValidas }}</span><span class="l">Válidos</span></div>
+        <div class="mig-card warn" [class.mute]="cliError === 0"><span class="n">{{ cliError }}</span><span class="l">Con error</span></div>
+      </div>
+      <div class="mig-table-wrap">
+        <table class="mig-table">
+          <thead><tr><th></th><th>Código</th><th>Nombre</th><th>Teléfono</th><th>RFC</th><th class="r">Crédito</th><th>Problema</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let f of cliFilas" [class.err]="!f.valida">
+              <td class="st"><i class="bi" [class.bi-check-circle-fill]="f.valida" [class.ok]="f.valida" [class.bi-x-circle-fill]="!f.valida" [class.bad]="!f.valida"></i></td>
+              <td>{{ f.data.code }}</td><td>{{ f.data.name }}</td><td>{{ f.data.phone }}</td><td>{{ f.data.tax_id }}</td>
+              <td class="r">{{ f.data.credit_limit }}</td><td class="msg">{{ f.errores.join(' · ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mig-footer">
+        <button class="mig-btn primary" [disabled]="cliValidas === 0 || cliImportando" (click)="importarClientes()">
+          {{ cliImportando ? 'Importando...' : 'Importar ' + cliValidas + ' clientes' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROVEEDORES ===== -->
+  <div *ngIf="tab === 'proveedores'" class="mig-panel">
+    <div class="mig-nota"><i class="bi bi-info-circle"></i> Se importa nombre, telefono y correo del proveedor.</div>
+    <div class="mig-toolbar">
+      <button class="mig-btn ghost" (click)="plantillaProveedores()"><i class="bi bi-download"></i> Plantilla</button>
+      <label class="mig-btn primary" [class.disabled]="provCargando">
+        <i class="bi bi-file-earmark-excel"></i> {{ provCargando ? 'Leyendo...' : 'Elegir archivo' }}
+        <input type="file" accept=".xlsx,.xls,.csv" (change)="onProveedores($event)" hidden [disabled]="provCargando">
+      </label>
+      <span class="mig-file" *ngIf="provArchivo"><i class="bi bi-paperclip"></i> {{ provArchivo }}</span>
+    </div>
+
+    <div *ngIf="provListo">
+      <div class="mig-summary">
+        <div class="mig-card ok"><span class="n">{{ provValidas }}</span><span class="l">Válidos</span></div>
+        <div class="mig-card warn" [class.mute]="provError === 0"><span class="n">{{ provError }}</span><span class="l">Con error</span></div>
+      </div>
+      <div class="mig-table-wrap">
+        <table class="mig-table">
+          <thead><tr><th></th><th>Nombre</th><th>Problema</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let f of provFilas" [class.err]="!f.valida">
+              <td class="st"><i class="bi" [class.bi-check-circle-fill]="f.valida" [class.ok]="f.valida" [class.bi-x-circle-fill]="!f.valida" [class.bad]="!f.valida"></i></td>
+              <td>{{ f.data.name }}</td><td class="msg">{{ f.errores.join(' · ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mig-footer">
+        <button class="mig-btn primary" [disabled]="provValidas === 0 || provImportando" (click)="importarProveedores()">
+          {{ provImportando ? 'Importando...' : 'Importar ' + provValidas + ' proveedores' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VENTAS ===== -->
+  <div *ngIf="tab === 'ventas'" class="mig-panel">
+    <div class="mig-nota"><i class="bi bi-info-circle"></i> Ventas históricas (una fila por producto). No mueven inventario ni caja. Importa primero tus productos.</div>
+    <div class="mig-toolbar">
+      <button class="mig-btn ghost" (click)="plantillaVentas()"><i class="bi bi-download"></i> Plantilla</button>
+      <label class="mig-btn primary" [class.disabled]="venCargando">
+        <i class="bi bi-file-earmark-excel"></i> {{ venCargando ? 'Leyendo...' : 'Elegir archivo' }}
+        <input type="file" accept=".xlsx,.xls,.csv" (change)="onVentas($event)" hidden [disabled]="venCargando">
+      </label>
+      <span class="mig-file" *ngIf="venArchivo"><i class="bi bi-paperclip"></i> {{ venArchivo }}</span>
+    </div>
+
+    <div *ngIf="venListo">
+      <div class="mig-summary">
+        <div class="mig-card new"><span class="n">{{ venFolios }}</span><span class="l">Ventas</span></div>
+        <div class="mig-card ok"><span class="n">{{ venValidas }}</span><span class="l">Partidas válidas</span></div>
+        <div class="mig-card warn" [class.mute]="venSinProducto === 0"><span class="n">{{ venSinProducto }}</span><span class="l">Sin producto</span></div>
+        <div class="mig-card warn" [class.mute]="venError === 0"><span class="n">{{ venError }}</span><span class="l">Con error</span></div>
+      </div>
+
+      <div class="mig-errores" *ngIf="venErrores.length">
+        <h4><i class="bi bi-exclamation-triangle"></i> Partidas que no se importarán ({{ venErrores.length }})</h4>
+        <div class="mig-err-list">
+          <div class="mig-err" *ngFor="let f of venErrores">
+            <span class="fila">Fila {{ f.fila }}</span>
+            <span class="pn">{{ f.data.part_number || '—' }}</span>
+            <span class="msg">{{ f.errores.join(' · ') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mig-footer">
+        <button class="mig-btn primary" [disabled]="venValidas === 0 || venImportando" (click)="importarVentas()">
+          {{ venImportando ? 'Importando...' : 'Importar ' + venFolios + ' ventas' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
