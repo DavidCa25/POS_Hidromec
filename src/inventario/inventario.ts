@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe } from '@angular/common';
 import Swal from 'sweetalert2';
+import { ReportService, ReportConfig } from '../services/report.service';
 import { CatalogoItem } from '../services/catalogos.service';
 import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.component';
 
@@ -116,6 +117,7 @@ export class Inventario {
   ];
 
   filtro = '';
+  expExportOpen = false;
   page = 1;
   pageSizeOptions = [10, 20, 50, 100];
   pageSize = 10;
@@ -133,7 +135,7 @@ export class Inventario {
     { value: 0,    label: '0% / Exento' }
   ];
 
-  constructor() {}
+  constructor(private reports: ReportService) {}
 
   async ngOnInit() {
     await this.consultarInventario();
@@ -556,6 +558,52 @@ export class Inventario {
   }
 
   clearFilter() { this.filtro = ''; this.page = 1; }
+
+  // ---- Exportar ----
+  private cfgReporteInv(): ReportConfig {
+    const rows = this.inventarioFiltrado.map((p: any) => {
+      const precio = Number(p.price ?? 0);
+      const stock = Number(p.stock ?? 0);
+      return {
+        part_number: p.part_number ?? '-',
+        nombre: p.product_name ?? p.nombre ?? '-',
+        categoria: p.category_name ?? '-',
+        marca: p.brand_name ?? '-',
+        proveedor: p.default_supplier_name ?? '-',
+        precio, stock, valor: precio * stock
+      };
+    });
+    return {
+      titulo: 'Inventario',
+      subtitulo: 'Productos, stock y precios',
+      columns: [
+        { header: 'No. Parte', key: 'part_number', width: 16 },
+        { header: 'Producto', key: 'nombre', width: 30 },
+        { header: 'Categoria', key: 'categoria', width: 16 },
+        { header: 'Marca', key: 'marca', width: 16 },
+        { header: 'Proveedor', key: 'proveedor', width: 18 },
+        { header: 'Precio', key: 'precio', width: 14, align: 'right', money: true },
+        { header: 'Stock', key: 'stock', width: 10, align: 'right' },
+        { header: 'Valor', key: 'valor', width: 14, align: 'right', money: true }
+      ],
+      rows,
+      totals: {
+        stock: rows.reduce((a, r) => a + Number(r.stock || 0), 0),
+        valor: rows.reduce((a, r) => a + Number(r.valor || 0), 0)
+      },
+      filename: 'inventario'
+    };
+  }
+  async exportarInv(tipo: 'pdf' | 'excel') {
+    this.expExportOpen = false;
+    const cfg = this.cfgReporteInv();
+    try {
+      if (tipo === 'excel') await this.reports.exportExcel(cfg);
+      else await this.reports.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error al exportar', text: e?.message || 'No se pudo generar el archivo.' });
+    }
+  }
   onFilterChange() { this.page = 1; }
 
   onPageSizeChange(v: any) {

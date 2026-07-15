@@ -5,6 +5,14 @@
       <h2>Proveedores</h2>
       <div class="header-right">
         <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
+        <div style="position:relative;">
+          <button class="btn btn-ghost" (click)="expOpen = !expOpen"><i class="bi bi-download"></i> Exportar</button>
+          <div *ngIf="expOpen" class="list-group shadow-sm"
+               style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
+            <button class="list-group-item list-group-item-action" (click)="exportar('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
+            <button class="list-group-item list-group-item-action" (click)="exportar('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+          </div>
+        </div>
         <button class="btn btn-primary" (click)="nuevo()">+ Nuevo proveedor</button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { ReportService, ReportConfig } from '../../services/report.service';
 
 interface Prov { id: number; nombre: string; telefono: string | null; correo: string | null; rfc: string | null; total_paid: number; }
 interface Payment { id: number; purchase_id: number | null; datee: string; amount: number; payment_method: string; note: string; }
@@ -16,10 +17,13 @@ interface Payment { id: number; purchase_id: number | null; datee: string; amoun
 export class Proveedores implements OnInit {
   private get api() { return (window as any).electronAPI; }
 
+  constructor(private reports: ReportService) {}
+
   hoy = new Date();
   proveedores: Prov[] = [];
   cargando = false;
   search = '';
+  expOpen = false;
 
   // Alta / edicion
   showForm = false;
@@ -104,4 +108,35 @@ export class Proveedores implements OnInit {
     finally { this.cargandoHist = false; }
   }
   cerrarHist() { this.showHist = false; this.sel = null; }
+
+  private cfgReporte(): ReportConfig {
+    return {
+      titulo: 'Proveedores',
+      subtitulo: 'Directorio y pagos',
+      columns: [
+        { header: 'Proveedor', key: 'nombre', width: 30 },
+        { header: 'Telefono', key: 'telefono', width: 16 },
+        { header: 'Correo', key: 'correo', width: 28 },
+        { header: 'RFC', key: 'rfc', width: 16 },
+        { header: 'Total pagado', key: 'total_paid', width: 16, align: 'right', money: true }
+      ],
+      rows: this.view.map(p => ({
+        nombre: p.nombre, telefono: p.telefono || '-', correo: p.correo || '-',
+        rfc: p.rfc || '-', total_paid: p.total_paid
+      })),
+      totals: { total_paid: this.kpiTotalPagado },
+      filename: 'proveedores'
+    };
+  }
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    this.expOpen = false;
+    const cfg = this.cfgReporte();
+    try {
+      if (tipo === 'excel') await this.reports.exportExcel(cfg);
+      else await this.reports.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error al exportar', text: e?.message || 'No se pudo generar el archivo.' });
+    }
+  }
 }

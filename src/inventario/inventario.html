@@ -20,6 +20,17 @@
       <button class="castrol-btn-color" type="button" (click)="abrirCategoryModal()">
         <i class="bi bi-folder-plus me-2"></i> Agregar Categoría
       </button>
+
+      <div style="position:relative;">
+        <button class="castrol-btn-color" type="button" (click)="expExportOpen = !expExportOpen">
+          <i class="bi bi-download me-2"></i> Exportar
+        </button>
+        <div *ngIf="expExportOpen" class="list-group shadow-sm"
+             style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+        </div>
+      </div>
     </div>
   </div>
 

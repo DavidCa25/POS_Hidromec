@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import Swal from "sweetalert2";
+import { ReportService, ReportConfig } from "../../services/report.service";
 import { FormsModule } from "@angular/forms";
 import { RouterOutlet } from "@angular/router";
 import { NgIf, NgFor, DatePipe, CurrencyPipe, NgClass } from "@angular/common";
@@ -29,6 +30,7 @@ export class TablaVentaComponent {
   sales: SaleRow[] = [];
 
   filterText = "";
+  expExportOpen = false;
   pageSizeOptions: number[] = [10, 25, 50, 100];
   pageSize = 10;
   currentPage = 1;
@@ -38,6 +40,8 @@ export class TablaVentaComponent {
   exportDay: string | null = null;
   exportFrom: string | null = null;
   exportTo: string | null = null;
+
+  constructor(private reports: ReportService) {}
 
   async ngOnInit() {
     await this.loadSales();
@@ -86,6 +90,47 @@ export class TablaVentaComponent {
   }
   onFilterChange() {
     this.currentPage = 1;
+  }
+
+  private cfgReporteVentas(): ReportConfig {
+    const rows = this.filteredSales.map(s => ({
+      folio: s.id,
+      fecha: new Date(s.datee).toLocaleDateString('es-MX'),
+      usuario: s.user_name ?? '-',
+      cliente: s.customer_name ?? 'Publico General',
+      metodo: s.payment_method ?? '-',
+      total: Number(s.total ?? 0),
+      pagado: Number(s.paid_amount ?? 0)
+    }));
+    return {
+      titulo: 'Ventas',
+      subtitulo: 'Listado de ventas',
+      columns: [
+        { header: 'Folio', key: 'folio', width: 10 },
+        { header: 'Fecha', key: 'fecha', width: 14 },
+        { header: 'Usuario', key: 'usuario', width: 16 },
+        { header: 'Cliente', key: 'cliente', width: 24 },
+        { header: 'Metodo', key: 'metodo', width: 14 },
+        { header: 'Total', key: 'total', width: 14, align: 'right', money: true },
+        { header: 'Pagado', key: 'pagado', width: 14, align: 'right', money: true }
+      ],
+      rows,
+      totals: {
+        total: rows.reduce((a, r) => a + Number(r.total || 0), 0),
+        pagado: rows.reduce((a, r) => a + Number(r.pagado || 0), 0)
+      },
+      filename: 'ventas'
+    };
+  }
+  async exportarVentas(tipo: 'pdf' | 'excel') {
+    this.expExportOpen = false;
+    const cfg = this.cfgReporteVentas();
+    try {
+      if (tipo === 'excel') await this.reports.exportExcel(cfg);
+      else await this.reports.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire('Error', e?.message || 'No se pudo exportar.', 'error');
+    }
   }
 
   get filteredSales(): SaleRow[] {
