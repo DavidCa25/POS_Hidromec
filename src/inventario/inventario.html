@@ -81,6 +81,7 @@
         <tr>
           <th style="width:70px;">#</th>
           <th style="min-width:180px;">Número de parte</th>
+          <th style="min-width:150px;">Código de barras</th>
           <th style="min-width:260px;">Producto</th>
           <th style="width:140px;">Precio</th>
           <th style="width:110px;">Stock</th>
@@ -95,6 +96,7 @@
         <tr *ngFor="let item of inventarioPaginado; let i = index">
           <td class="fw-semibold">{{ pageStartIndex + i + 1 }}</td>
           <td>{{ item.part_number ?? '-' }}</td>
+          <td class="mono">{{ item.bar_code || '-' }}</td>
           <td>{{ item.product_name ?? item.nombre ?? '-' }}</td>
 
           <td class="fw-semibold">

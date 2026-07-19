@@ -9,8 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-add-user', { username, password, role }),
 
     consultarDetallesProducto: (CategoryID) => ipcRenderer.invoke('sp-Consultar-Detalle-Productos', CategoryID),
-    agregarProducto: (brand, category, partNumber, name, price, stock) =>
-        ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock),
+    agregarProducto: (brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode) =>
+        ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode),
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
@@ -61,7 +61,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
         ipcRenderer.invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
-    openCashDrawer: () => ipcRenderer.invoke('open-cash-drawer'),
+    openCashDrawer: (opts) => ipcRenderer.invoke('open-cash-drawer', opts),
     getDailySalesLast7Days: () => ipcRenderer.invoke('sp-get-daily-sales-last-7-days'),
     getDailySalesCurrentMonth: () =>
         ipcRenderer.invoke('sp-get-daily-sales-current-month'),
@@ -73,12 +73,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
+    alertsReorder: (p) => ipcRenderer.invoke('alerts:reorder', p),
+    alertsOutOfStock: () => ipcRenderer.invoke('alerts:out-of-stock'),
+    alertsZeroSales: (p) => ipcRenderer.invoke('alerts:zero-sales', p),
+    alertsCashClosures: (p) => ipcRenderer.invoke('alerts:cash-closures', p),
+    alertsRefundsByCashier: () => ipcRenderer.invoke('alerts:refunds-by-cashier'),
+    alertsOverdueCredit: () => ipcRenderer.invoke('alerts:overdue-credit'),
+    alertsLowStock: (p) => ipcRenderer.invoke('alerts:low-stock', p),
+    alertsCounts: (p) => ipcRenderer.invoke('alerts:counts', p),
+    inventoryApplyCount: (p) => ipcRenderer.invoke('inventory:apply-count', p),
+    usersList: () => ipcRenderer.invoke('users:list'),
+    usersCreate: (p) => ipcRenderer.invoke('users:create', p),
+    usersUpdateRole: (p) => ipcRenderer.invoke('users:update-role', p),
+    usersResetPassword: (p) => ipcRenderer.invoke('users:reset-password', p),
+    usersSetActive: (p) => ipcRenderer.invoke('users:set-active', p),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>
         ipcRenderer.invoke('sp-register-cash-out', payload),
     generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
     getConfig: () => ipcRenderer.invoke("getConfig"),
+    updateBusinessConfig: (p) => ipcRenderer.invoke('update-business-config', p),
+    paymentsGet: () => ipcRenderer.invoke('payments:get'),
+    paymentsSet: (c) => ipcRenderer.invoke('payments:set', c),
+    getAppVersion: () => ipcRenderer.invoke('app:get-version'),
 
     getSales: (payload) => ipcRenderer.invoke('sp-get-sales', payload),
     exportSalesPdf: (payload) => ipcRenderer.invoke('export-sales-pdf', payload),
@@ -201,7 +219,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     licenseGet:   () => ipcRenderer.invoke('license:get'),
     licenseSave:  (d) => ipcRenderer.invoke('license:save', d),
     licenseClear: () => ipcRenderer.invoke('license:clear'),
-    getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+    licenseActivate:  (d) => ipcRenderer.invoke('license:activate', d),
+    licenseStartTrial: (d) => ipcRenderer.invoke('license:start-trial', d),
+    licenseStatus: () => ipcRenderer.invoke('license:status'),
 
     setupStatus: () => ipcRenderer.invoke('setup-status'),
     setupInicial: (p) => ipcRenderer.invoke('setup-inicial', p),

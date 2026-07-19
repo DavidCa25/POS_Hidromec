@@ -1,2 +1,19 @@
-<app-setup-inicial *ngIf="listo && necesitaSetup" (completado)="onSetupCompletado()"></app-setup-inicial>
-<router-outlet *ngIf="listo && !necesitaSetup"></router-outlet>
+<ng-container *ngIf="listo">
+
+  <!-- Prueba vencida, o licencia manipulada: bloqueo -->
+  <app-licencia-vencida
+    *ngIf="license.estado.state === 'expired' || license.estado.state === 'tamper'"
+    [motivo]="license.estado.state === 'tamper' ? 'tamper' : 'vencida'"
+    (activado)="onLicenciaLista()"></app-licencia-vencida>
+
+  <!-- Sin licencia: iniciar prueba gratis (o activar clave) -->
+  <app-iniciar-prueba *ngIf="license.estado.state === 'none'" (listo)="onLicenciaLista()"></app-iniciar-prueba>
+
+  <!-- Con prueba activa o licencia de pago: usar el sistema -->
+  <ng-container *ngIf="license.estado.state === 'trial' || license.estado.state === 'active'">
+    <app-trial-banner *ngIf="license.estado.state === 'trial'"></app-trial-banner>
+    <app-setup-inicial *ngIf="necesitaSetup" (completado)="onSetupCompletado()"></app-setup-inicial>
+    <router-outlet *ngIf="!necesitaSetup"></router-outlet>
+  </ng-container>
+
+</ng-container>

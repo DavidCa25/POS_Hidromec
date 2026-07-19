@@ -216,3 +216,124 @@ select.ctl option {
     transform: none;
     box-shadow: none;
 }
+
+/* ==========================================================================
+   MODO OSCURO  (se activa con la clase .dark en <html>)
+   ========================================================================== */
+html.dark { color-scheme: dark; }
+html.dark body { background: #0b1220; color: #e2e8f0; }
+
+/* Variables del tema de inventario/conteo/etc. en oscuro */
+html.dark {
+    --inv-bg: #0f1826;
+    --inv-card: #16233a;
+    --inv-text: #e2e8f0;
+    --inv-muted: #94a3b8;
+    --inv-border: rgba(255,255,255,.09);
+}
+
+/* Superficies (tarjetas, paneles, modales, contenedores) */
+html.dark .card,
+html.dark .modal-content,
+html.dark .list-group,
+html.dark .list-group-item,
+html.dark .castrol-table-container,
+html.dark .panel-content,
+html.dark .al-card,
+html.dark .ct-card,
+html.dark .corte-card,
+html.dark .filter-card,
+html.dark .kpi-card,
+html.dark .cierre-dialog,
+html.dark .u-dialog {
+    background: #16233a !important;
+    color: #e2e8f0;
+    border-color: rgba(255,255,255,.09) !important;
+}
+
+html.dark .section-title { color: #e2e8f0; border-color: rgba(255,255,255,.09); }
+html.dark .lbl { color: #cbd5e1; }
+html.dark .hint, html.dark .ttext, html.dark .sub, html.dark .text-muted, html.dark .nota { color: #94a3b8 !important; }
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5 { color: #f1f5f9; }
+html.dark .strong, html.dark .fw-bold, html.dark .fw-semibold { color: #f1f5f9; }
+
+/* Inputs y buscadores */
+html.dark .ctl,
+html.dark .form-control,
+html.dark .ct-search,
+html.dark .lic-in,
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark input[type="password"],
+html.dark input[type="email"],
+html.dark input[type="search"],
+html.dark textarea {
+    background: #0f1826 !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.16) !important;
+}
+html.dark .ctl::placeholder,
+html.dark .form-control::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #64748b !important; }
+
+/* Tablas */
+html.dark table { color: #e2e8f0; }
+html.dark .table, html.dark .table-light,
+html.dark thead.table-light th,
+html.dark .tabla-corte thead th { background: #0f1826 !important; color: #cbd5e1 !important; }
+html.dark td, html.dark th { border-color: rgba(255,255,255,.08) !important; }
+html.dark tbody tr:hover { background: rgba(255,255,255,.03) !important; }
+
+/* Botones outline en oscuro */
+html.dark .btn-outline,
+html.dark .btn-outline-secondary,
+html.dark .btn-ghost,
+html.dark .al-btn,
+html.dark .al-sel {
+    color: #cbd5e1 !important;
+    border-color: rgba(255,255,255,.18) !important;
+    background: transparent !important;
+}
+html.dark .btn-outline:hover:not(:disabled),
+html.dark .btn-outline-secondary:hover:not(:disabled),
+html.dark .btn-ghost:hover { background: rgba(255,255,255,.06) !important; color: #fff !important; }
+
+/* Dropdowns / menús flotantes */
+html.dark .dropdown-menu,
+html.dark .custom-sel-menu,
+html.dark .al-menu,
+html.dark .u-menu { background: #16233a !important; border-color: rgba(255,255,255,.1) !important; }
+html.dark .dropdown-item,
+html.dark .custom-sel-option,
+html.dark .al-menu-opt,
+html.dark .u-menu-opt { color: #e2e8f0 !important; }
+html.dark .dropdown-item:hover,
+html.dark .custom-sel-option:hover,
+html.dark .al-menu-opt:hover,
+html.dark .u-menu-opt:hover { background: rgba(255,255,255,.06) !important; }
+
+/* Utilidades de Bootstrap */
+html.dark .bg-white, html.dark .bg-light { background: #16233a !important; }
+html.dark .bg-body-tertiary, html.dark .bg-body, html.dark .bg-body-secondary { background: #0b1220 !important; }
+html.dark .text-dark { color: #e2e8f0 !important; }
+html.dark .border, html.dark .border-top, html.dark .border-bottom { border-color: rgba(255,255,255,.1) !important; }
+
+/* Segmentos / pills genéricos que usan fondo claro */
+html.dark .est-seg, html.dark .est-toggle { background: #0f1826 !important; }
+html.dark .est-seg button.on { background: #1e2b44 !important; color: #60a5fa !important; box-shadow: none !important; }
+
+/* Gráficas ApexCharts en oscuro */
+html.dark .apexcharts-text,
+html.dark .apexcharts-text tspan,
+html.dark .apexcharts-xaxis-label,
+html.dark .apexcharts-yaxis-label,
+html.dark .apexcharts-datalabel,
+html.dark .apexcharts-legend-text { fill: #94a3b8 !important; color: #94a3b8 !important; }
+html.dark .apexcharts-gridline,
+html.dark .apexcharts-xaxis line,
+html.dark .apexcharts-yaxis line,
+html.dark .apexcharts-xaxis-tick { stroke: rgba(255,255,255,.08) !important; }
+html.dark .apexcharts-tooltip,
+html.dark .apexcharts-tooltip-title,
+html.dark .apexcharts-tooltip-series-group { background: #16233a !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.12) !important; }

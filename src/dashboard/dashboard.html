@@ -16,6 +16,14 @@
           <i class="bi bi-bar-chart-line"></i> <span>Estadisticas</span>
         </a>
       </li>
+      <li>
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/alertas"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="bi bi-bell"></i> <span>Alertas</span>
+          <span *ngIf="alertasCount > 0" class="badge rounded-pill bg-danger ms-auto">{{ alertasCount }}</span>
+        </a>
+      </li>
       <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
       [class.is-open]="isOperacionesOpen">
       <a 
@@ -58,13 +66,36 @@
         </li>
       </ul>
     </li>
-      <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-box me-2"></i> <span>Inventario</span>
-        </a>
-      </li>
+    <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
+      [class.is-open]="isInventarioOpen">
+      <a
+        class="sidebar-link d-flex align-items-center px-4 py-3"
+        (click)="toggleInventario()"
+        [class.active]="isInventarioOpen"
+        style="cursor: pointer;"
+        [attr.aria-expanded]="isInventarioOpen">
+        <i class="bi bi-box me-2"></i>
+        <span>Inventario</span>
+        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isInventarioOpen"></i>
+      </a>
+
+      <ul
+        class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
+        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
+        <li>
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-box-seam me-2"></i> Ver inventario
+          </a>
+        </li>
+        <li>
+          <a *ngIf="auth.esAdmin" routerLink="/dashboard/conteo" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="bi bi-clipboard-check me-2"></i> Conteo físico
+          </a>
+        </li>
+      </ul>
+    </li>
     <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
       [class.is-open]="isOperacionesCompraOpen">
       <a 
@@ -193,6 +224,12 @@
           <div class="small text-muted mt-2">Se guarda para la próxima vez.</div>
         </div>
       </div>
+      <!-- Modo oscuro -->
+      <button class="btn btn-light p-2 me-1 dark-toggle-btn" (click)="toggleDark()"
+              [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'">
+        <i class="bi fs-5" [ngClass]="isDark ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
+      </button>
+
       <!-- Icono de notificación -->
       <div class="position-relative" id="notif-wrapper">
         <button class="btn btn-light position-relative p-2 me-1" (click)="toggleNotif()">

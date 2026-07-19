@@ -49,6 +49,25 @@
     </div>
   </div>
 
+  <!-- ===== Cuentas en espera (varias ventas a la vez) ===== -->
+  <div class="pos-tabs mb-3" *ngIf="!isEditing">
+    <div class="pos-tab"
+         *ngFor="let t of saleTabs; let i = index"
+         [class.active]="t.id === activeTabId"
+         (click)="switchTab(t.id)">
+      <i class="bi bi-bag"></i>
+      <span class="pos-tab-label">{{ tabLabel(t, i) }}</span>
+      <span class="pos-tab-badge" *ngIf="tabItemCount(t) > 0">{{ tabItemCount(t) }}</span>
+      <button type="button" class="pos-tab-close" *ngIf="saleTabs.length > 1"
+              (click)="cerrarCuenta(t.id, $event)" title="Cerrar cuenta">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <button type="button" class="pos-tab-new" (click)="nuevaCuenta()">
+      <i class="bi bi-plus-lg"></i> Nueva cuenta
+    </button>
+  </div>
+
   <!-- ===== CARD PRINCIPAL: layout horizontal de 2 columnas ===== -->
   <div class="card shadow-lg border-0 venta-card">
     <div class="card-body pos-grid">
@@ -389,7 +408,7 @@
 <!-- MODAL PRODUCTOS -->
 <div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content rounded-4">
       <div class="modal-header border-0 py-2">
         <h5 class="modal-title fw-bold m-0">Seleccionar producto</h5>
@@ -403,42 +422,31 @@
   <i class="bi bi-hand-index"></i> Toca un producto para agregarlo a la venta
       </div>
       
-      <div class="table-responsive listado">
-        <table class="table align-middle compact-table prod-pick-table">
-          <thead class="table-light">
-            <tr>
-              <th style="width:140px;">No. Parte</th>
-              <th>Producto</th>
-              <th style="width:150px;">Marca</th>
-              <th style="width:160px;">Categoría</th>
-              <th style="width:120px;" class="text-end">Precio</th>
-              <th style="width:90px;" class="text-end">Stock</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="prod-pick-row" *ngFor="let p of productos; let i = index"
+      <div class="listado prod-grid">
+        <button type="button" class="prod-item" *ngFor="let p of productos"
                 (click)="seleccionarProducto(p)"
                 [hidden]="filtro && !(
                   (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
                   (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
+                  (p.bar_code || '').toLowerCase().includes(filtro.toLowerCase()) ||
                   (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
                   (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
                 )">
-              <td class="part text-monospace">{{ p.part_number }}</td>
-              <td class="prod-name">
-                {{ p.product_name }}
-                <i class="bi bi-plus-circle-fill prod-add-icon"></i>
-              </td>
-              <td class="nowrap">{{ p.brand_name }}</td>
-              <td class="nowrap">{{ p.category_name }}</td>
-              <td class="text-end fw-semibold">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-              <td class="text-end">{{ p.stock }}</td>
-            </tr>
-            <tr *ngIf="productos.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">No hay productos activos.</td>
-            </tr>
-          </tbody>
-        </table>
+          <div class="prod-item-main">
+            <div class="prod-item-name">{{ p.product_name }}</div>
+            <div class="prod-item-meta">
+              <span class="pi-part">{{ p.part_number }}</span>
+              <span class="pi-tag">{{ p.brand_name }}</span>
+              <span class="pi-tag">{{ p.category_name }}</span>
+            </div>
+          </div>
+          <div class="prod-item-right">
+            <div class="pi-price">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div class="pi-stock" [class.low]="p.stock <= 3">{{ p.stock }} pz</div>
+          </div>
+          <i class="bi bi-plus-circle-fill pi-add"></i>
+        </button>
+        <div *ngIf="productos.length === 0" class="text-center text-muted py-4">No hay productos activos.</div>
       </div>
         <div class="d-flex justify-content-end mt-2">
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalProductos()">Cerrar</button>

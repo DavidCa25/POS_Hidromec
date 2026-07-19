@@ -20,6 +20,7 @@ interface ProductRow {
   clave_unidad?: string | null;
   objeto_impuesto?: string | null;
   tasa_iva?: number | null;
+  barcode?: string;
 }
 
 interface SaleItem {
@@ -71,6 +72,7 @@ interface SaleDetailRow {
   clave_unidad?: string | null;
   objeto_impuesto?: string | null;
   tasa_iva?: number | null;
+  barcode?: string;
 }
 
 interface RefundLine {
@@ -205,10 +207,18 @@ export class Venta {
   clienteSeleccionado: any | null = null;
   lastClienteSeleccionado: any | null = null;
 
+  // =========================
+  // Cuentas en espera (multi-venta)
+  // =========================
+  saleTabs: { id: number; items: SaleItem[]; customerId: number | null; cliente: any | null }[] = [];
+  activeTabId = 0;
+  private tabSeq = 0;
+
   constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService) {}
 
   async ngOnInit() {
     await this.refreshFolioFromDb();
+    this.initTabsIfNeeded();
 
     if (!this.auth.usuarioActualId) {
       Swal.fire({
@@ -575,7 +585,7 @@ export class Venta {
 
           const api = (window as any).electronAPI;
           if (api && api.openCashDrawer) {
-            try { await api.openCashDrawer(); } catch { /* noop */ }
+            try { await api.openCashDrawer({ reason: 'payment' }); } catch { /* noop */ }
           } else {
             this.lastSalePaid = this.totalVenta;
             this.lastSaleChange = 0;
@@ -606,6 +616,8 @@ export class Venta {
         this.customerId = null;
         this.dueDate = null;
         this.clienteSeleccionado = null; // Limpia el cliente asignado en la pantalla principal
+
+        this.finishActiveTabAfterSale();
 
         this.showModal = false;
         this.showPostSaleModal = true;
@@ -1075,8 +1087,9 @@ export class Venta {
     this.editingHeader = null;
     this.editUnlocked = false;
 
-    this.items = [];
-    this.recalcularTotal();
+    // Restaurar la cuenta en espera activa (lo que se estaba vendiendo)
+    const t = this.saleTabs.find(x => x.id === this.activeTabId);
+    if (t) { this.loadTab(t); } else { this.items = []; this.recalcularTotal(); }
 
     this.folioInput = this.nextFolioSuggested;
   }
@@ -1099,7 +1112,7 @@ export class Venta {
     try {
       const resp = await api.getSaleByFolio(saleId);
 
-      if (!resp?.success) {
+      if (!resp?.success) { 
         await Swal.fire({ icon: 'error', title: 'No se encontró', text: resp?.error || 'No se encontró la venta.' });
         return;
       }
@@ -1111,6 +1124,9 @@ export class Venta {
         await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No se encontró la venta o no regresó header.' });
         return;
       }
+
+      // Preservar la cuenta en espera activa antes de cargar la venta a editar
+      if (!this.isEditing) this.snapshotActiveTab();
 
       this.editingSaleId = Number(header.sale_id);
       this.editingHeader = {
@@ -1705,6 +1721,8 @@ private async registrarVentaTerminal(orderId: string) {
     this.dueDate = null;
     this.paymentMethod = 'EFECTIVO';
 
+    this.finishActiveTabAfterSale();
+
     this.showPostSaleModal = true;
     await this.refreshFolioFromDb();
 
@@ -1778,5 +1796,106 @@ async abrirModalClientes() {
 
   quitarCliente() {
     this.clienteSeleccionado = null;
+  }
+
+  // =========================
+  // Cuentas en espera (multi-venta)
+  // =========================
+  private initTabsIfNeeded() {
+    if (this.saleTabs.length === 0) {
+      const id = ++this.tabSeq;
+      this.saleTabs = [{ id, items: this.items, customerId: this.customerId, cliente: this.clienteSeleccionado }];
+      this.activeTabId = id;
+    }
+  }
+
+  private snapshotActiveTab() {
+    const t = this.saleTabs.find(x => x.id === this.activeTabId);
+    if (!t) return;
+    t.items = this.items;
+    t.customerId = this.customerId;
+    t.cliente = this.clienteSeleccionado;
+  }
+
+  private loadTab(t: { id: number; items: SaleItem[]; customerId: number | null; cliente: any | null }) {
+    this.items = t.items || [];
+    this.customerId = t.customerId ?? null;
+    this.clienteSeleccionado = t.cliente ?? null;
+    this.dineroRecibido = null;
+    this.activeTabId = t.id;
+    this.recalcularTotal();
+  }
+
+  tabLabel(t: any, i: number): string {
+    const cli = (t.id === this.activeTabId) ? this.clienteSeleccionado : t.cliente;
+    const n = cli?.name ?? cli?.nombre ?? cli?.customerName ?? cli?.razon_social;
+    return n ? String(n) : `Cuenta ${i + 1}`;
+  }
+
+  tabItemCount(t: any): number {
+    return t.id === this.activeTabId ? this.items.length : (t.items?.length || 0);
+  }
+
+  switchTab(id: number) {
+    if (id === this.activeTabId || this.isEditing) return;
+    const target = this.saleTabs.find(x => x.id === id);
+    if (!target) return;
+    this.snapshotActiveTab();
+    this.loadTab(target);
+  }
+
+  nuevaCuenta() {
+    if (this.isEditing) return;
+    if (this.saleTabs.length >= 8) {
+      Swal.fire({ icon: 'info', title: 'Limite', text: 'Puedes tener hasta 8 cuentas abiertas a la vez.' });
+      return;
+    }
+    this.snapshotActiveTab();
+    const id = ++this.tabSeq;
+    const t = { id, items: [] as SaleItem[], customerId: null, cliente: null };
+    this.saleTabs.push(t);
+    this.loadTab(t);
+  }
+
+  async cerrarCuenta(id: number, ev?: Event) {
+    ev?.stopPropagation();
+    if (this.isEditing) return;
+    const idx = this.saleTabs.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    const count = (id === this.activeTabId) ? this.items.length : (this.saleTabs[idx].items?.length || 0);
+    if (count > 0) {
+      const r = await Swal.fire({
+        icon: 'warning', title: 'Cerrar cuenta',
+        text: 'Esta cuenta tiene productos. Se descartaran. Continuar?',
+        showCancelButton: true, confirmButtonText: 'Cerrar', cancelButtonText: 'Cancelar'
+      });
+      if (!r.isConfirmed) return;
+    }
+    const wasActive = (id === this.activeTabId);
+    this.saleTabs.splice(idx, 1);
+    if (this.saleTabs.length === 0) {
+      const nid = ++this.tabSeq;
+      const nt = { id: nid, items: [] as SaleItem[], customerId: null, cliente: null };
+      this.saleTabs.push(nt);
+      this.loadTab(nt);
+      return;
+    }
+    if (wasActive) {
+      const next = this.saleTabs[Math.max(0, idx - 1)];
+      this.loadTab(next);
+    }
+  }
+
+  // Tras cobrar: cerrar la cuenta activa y pasar a la siguiente (o dejar una vacia).
+  private finishActiveTabAfterSale() {
+    const idx = this.saleTabs.findIndex(x => x.id === this.activeTabId);
+    if (idx < 0) { this.initTabsIfNeeded(); return; }
+    if (this.saleTabs.length > 1) {
+      this.saleTabs.splice(idx, 1);
+      const next = this.saleTabs[Math.max(0, idx - 1)];
+      this.loadTab(next);
+    } else {
+      this.snapshotActiveTab();
+    }
   }
 }

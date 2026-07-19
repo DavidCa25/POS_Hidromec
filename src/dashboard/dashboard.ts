@@ -36,6 +36,7 @@ export class Dashboard {
   isOperacionesOpen = false;
   isUserDropdownOpen = false;
   isOperacionesCompraOpen = false;
+  isInventarioOpen = false;
   isDatosOpen = false;
   themeOpen = false;
 
@@ -53,6 +54,7 @@ export class Dashboard {
   notifOpen = false;
   notifications: AppNotification[] = [];
   unreadCount = 0;
+  alertasCount = 0;
 
   private sub?: Subscription;
 
@@ -86,12 +88,23 @@ export class Dashboard {
       this.handleUpdateNotification(status);
     });
 
+    this.cargarAlertas();
+  }
+
+  async cargarAlertas() {
+    try {
+      const r = await (window as any).electronAPI?.alertsCounts?.({ min: 3 });
+      if (r?.success) this.alertasCount = Number(r.data?.total || 0);
+    } catch { /* silencioso */ }
   }
 
   toggleTheme() {
     this.themeOpen = !this.themeOpen;
     this.notifOpen = false;
   }
+
+  get isDark(): boolean { return this.theme.isDark(); }
+  toggleDark() { this.theme.toggleDark(); }
 
   setInvTheme(color: string) {
     this.currentInvColor = color;
@@ -208,6 +221,10 @@ export class Dashboard {
 
   toggleOperacionesCompra() {
     this.isOperacionesCompraOpen = !this.isOperacionesCompraOpen;
+  }
+
+  toggleInventario() {
+    this.isInventarioOpen = !this.isInventarioOpen;
   }
 
   toggleDatos() {

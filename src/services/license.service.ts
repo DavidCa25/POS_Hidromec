@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 export interface LicenseInfo {
-  plan: 'mono' | 'multi';
+  plan: 'mono' | 'multi' | 'trial';
   maxRegisters: number;        // 0 = ilimitado
   customerName: string;
   machineId: string;
@@ -12,6 +12,18 @@ export interface LicenseInfo {
   token?: string;
 }
 
+export type LicenseState = 'none' | 'trial' | 'active' | 'expired' | 'tamper';
+
+export interface LicenseStatus {
+  state: LicenseState;
+  type?: 'trial' | 'paid';
+  daysRemaining?: number;
+  expiresAt?: string | null;
+  startedAt?: string | null;
+  customerName?: string;
+  plan?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LicenseService {
   readonly supabaseUrl = 'https://swlpspgmkwzlrowllvvj.supabase.co';
@@ -19,10 +31,93 @@ export class LicenseService {
 
   private info: LicenseInfo | null = null;
 
+  // Estado unificado que calcula Electron (none | trial | active | expired)
+  estado: LicenseStatus = { state: 'none' };
+
   private get api() { return (window as any).electronAPI; }
 
   // ---------- Estado ----------
   get licencia(): LicenseInfo | null { return this.info; }
+
+  get enPrueba(): boolean { return this.estado.state === 'trial'; }
+  get bloqueado(): boolean { return this.estado.state === 'expired' || this.estado.state === 'tamper'; }
+  get sinLicencia(): boolean { return this.estado.state === 'none'; }
+  get diasRestantesPrueba(): number { return this.estado.daysRemaining ?? 0; }
+
+  // Lee el estado unificado desde Electron (con protección de reloj)
+  async cargarEstado(): Promise<LicenseStatus> {
+    try {
+      const st = await this.api?.licenseStatus?.();
+      this.estado = st && st.state ? st : { state: 'none' };
+    } catch {
+      this.estado = { state: 'none' };
+    }
+    return this.estado;
+  }
+
+  // Inicia la prueba gratis de 30 días (valida en la nube: una por máquina)
+  async iniciarPrueba(datos: { businessName?: string; email?: string }): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await this.api?.licenseStartTrial?.(datos);
+      if (res?.ok) {
+        await this.cargarLocalPublic();
+        await this.cargarEstado();
+        return { ok: true };
+      }
+      return { ok: false, error: res?.error || 'No se pudo iniciar la prueba.' };
+    } catch {
+      return { ok: false, error: 'No hay conexión para iniciar la prueba.' };
+    }
+  }
+
+  // Activa una licencia de pago con su clave (desbloquea tras la prueba)
+  async activarClave(clave: string): Promise<{ ok: boolean; error?: string }> {
+    const key = (clave || '').trim().toUpperCase();
+    if (!key) return { ok: false, error: 'Escribe tu clave de licencia.' };
+    try {
+      const res = await this.api?.licenseActivate?.({ licenseKey: key });
+      if (res?.ok) {
+        await this.cargarLocalPublic();
+        await this.cargarEstado();
+        return { ok: true };
+      }
+      return { ok: false, error: res?.error || 'La clave no es válida o está en uso.' };
+    } catch {
+      return { ok: false, error: 'No hay conexión para validar la clave.' };
+    }
+  }
+
+  async cargarLocalPublic(): Promise<void> { await this.cargarLocal(); }
+
+  // Re-valida la PRUEBA contra la nube (la verdad real de la fecha de fin).
+  // Corrige el license.json local si alguien lo editó manualmente. Offline: respeta el local.
+  async revalidarPrueba(): Promise<void> {
+    // Revalida en prueba, y también si hay bloqueo/manipulación (para recuperar la verdad de la nube).
+    if (!['trial', 'tamper', 'expired'].includes(this.estado.state)) return;
+    try {
+      const machineId = await this.machineId();
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${this.supabaseUrl}/functions/v1/trial-license`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.anonKey}`,
+          'apikey': this.anonKey
+        },
+        body: JSON.stringify({ action: 'status', machineId }),
+        signal: controller.signal
+      });
+      clearTimeout(t);
+      const out = await res.json();
+      if (out?.success) {
+        await this.api?.licenseSave?.(out); // reescribe con la verdad de la nube
+        await this.cargarEstado();           // recalcula estado (puede pasar a 'expired')
+      }
+    } catch {
+      // Sin conexión: se respeta el estado local (gracia offline de la prueba)
+    }
+  }
 
   get activa(): boolean {
     if (!this.info) return false;
@@ -52,6 +147,7 @@ export class LicenseService {
   // y la revalida. Nunca bloquea por falta de red durante la gracia offline.
   async iniciar(): Promise<boolean> {
     await this.cargarLocal();
+    await this.cargarEstado();
     if (!this.info) return false;
 
     // Vencio la gracia offline: hay que revalidar contra el servidor

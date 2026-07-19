@@ -1,0 +1,28 @@
+<div class="da-wrap">
+  <div class="da-head">
+    <h3>Descarga la app del dueno</h3>
+    <p>Instala la app movil para ver tu negocio desde el celular.</p>
+  </div>
+
+  <div class="da-body">
+    <div class="da-qr">
+      <img *ngIf="qrDataUrl" [src]="qrDataUrl" alt="QR de descarga">
+      <div *ngIf="loading" class="da-loading">Generando codigo...</div>
+    </div>
+
+    <div class="da-info">
+      <ol class="da-steps">
+        <li>Con la camara del telefono, escanea este codigo (o abre el enlace de abajo).</li>
+        <li>Instala la app <b>Wybix</b>.</li>
+        <li>Abrela y escanea el <b>QR de Emparejamiento</b> para vincular este negocio.</li>
+      </ol>
+
+      <div class="da-link">
+        <input type="text" [value]="url" readonly>
+        <button type="button" (click)="copiar()"><i class="bi bi-clipboard"></i> Copiar enlace</button>
+      </div>
+
+      <p class="da-note"><i class="bi bi-info-circle"></i> La primera app va incluida. Cada app adicional para el mismo negocio tiene costo.</p>
+    </div>
+  </div>
+</div>

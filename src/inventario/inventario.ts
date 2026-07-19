@@ -223,7 +223,8 @@ export class Inventario {
         this.form.claveProdServ || null,
         this.form.claveUnidad || null,
         this.form.objetoImpuesto || '02',
-        this.form.tasaIva ?? 0.16
+        this.form.tasaIva ?? 0.16,
+        this.form.barCode || null
       );
 
       if (result?.success) {
@@ -566,6 +567,7 @@ export class Inventario {
       const stock = Number(p.stock ?? 0);
       return {
         part_number: p.part_number ?? '-',
+        bar_code: p.bar_code ?? '-',
         nombre: p.product_name ?? p.nombre ?? '-',
         categoria: p.category_name ?? '-',
         marca: p.brand_name ?? '-',
@@ -578,6 +580,7 @@ export class Inventario {
       subtitulo: 'Productos, stock y precios',
       columns: [
         { header: 'No. Parte', key: 'part_number', width: 16 },
+        { header: 'Codigo barras', key: 'bar_code', width: 18 },
         { header: 'Producto', key: 'nombre', width: 30 },
         { header: 'Categoria', key: 'categoria', width: 16 },
         { header: 'Marca', key: 'marca', width: 16 },

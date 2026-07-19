@@ -17,6 +17,8 @@ import { ConfigShell } from './config-shell/configShell';
 import { ImportadorProductos } from './importador-productos/importador-productos.component';
 import { Migracion } from './migracion/migracion.component';
 import { Proveedores } from './proveedores/proveedores.component';
+import { Alertas } from '../alertas/alertas';
+import { Conteo } from '../conteo/conteo';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -34,6 +36,8 @@ export const routes: Routes = [
       { path: 'tablaCompra', component: TablaCompra},
       { path: 'tablaVenta', component: TablaVentaComponent},
       { path: 'estadisticas', component: Estadisticas},
+      { path: 'alertas', component: Alertas},
+      { path: 'conteo', component: Conteo},
       { path: 'venta', component: Venta},
       { path: 'corte-dia', component: Corte},
       { path: 'abrir-cajon', component: Cajon},
