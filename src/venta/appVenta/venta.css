@@ -326,3 +326,55 @@
   cursor: pointer;
 }
 .pos-tab-new:hover { background: #dbeafe; }
+
+/* =========================================================
+   MODO OSCURO — Venta / Punto de Venta
+   ========================================================= */
+:host-context(html.dark) .venta-card { background: #16233a; }
+:host-context(html.dark) .pos-side { background: #0f1826 !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .pos-title { color: #f1f5f9; }
+:host-context(html.dark) .folio-box,
+:host-context(html.dark) .fecha-box { background: #16233a !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .fecha-box .fw-bold,
+:host-context(html.dark) .fecha-box .fw-semibold,
+:host-context(html.dark) .pos-side .form-label { color: #f1f5f9 !important; }
+:host-context(html.dark) .pos-side .text-muted,
+:host-context(html.dark) .pos-side label { color: #94a3b8 !important; }
+:host-context(html.dark) .productos-scroll { background: #16233a !important; }
+:host-context(html.dark) .pos-shortcut { background: #16233a !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .pos-label { color: #cbd5e1; }
+:host-context(html.dark) .pos-shift-chip { background: #16233a !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .pos-shift-chip .t1 { color: #f1f5f9; }
+:host-context(html.dark) .venta-table tbody tr:hover { background: rgba(255,255,255,.04) !important; }
+
+/* Modal seleccionar producto (tarjetas) en oscuro */
+:host-context(html.dark) .modal-productos .buscador { background: #0f1826 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.14) !important; }
+:host-context(html.dark) .prod-item { background: #16233a !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .prod-item:hover { border-color: #4F9BB8 !important; }
+:host-context(html.dark) .prod-item-name,
+:host-context(html.dark) .pi-price { color: #f1f5f9 !important; }
+:host-context(html.dark) .pi-part { background: #0f1826 !important; color: #cbd5e1 !important; }
+:host-context(html.dark) .pi-tag { background: #0f1826 !important; color: #94a3b8 !important; }
+
+/* =========================================================
+   MODO OSCURO — Modales, pills de pago y tabla de productos
+   ========================================================= */
+:host-context(html.dark) .modal .modal-title { color: #f1f5f9 !important; }
+:host-context(html.dark) .modal .modal-content { background: #16233a !important; }
+:host-context(html.dark) .modal .modal-header,
+:host-context(html.dark) .modal .modal-footer { border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .modal label,
+:host-context(html.dark) .modal .form-label { color: #cbd5e1 !important; }
+
+/* Pills de método de pago */
+:host-context(html.dark) .pay-pill { background: #0f1826 !important; border-color: rgba(255,255,255,.12) !important; color: #e2e8f0 !important; }
+:host-context(html.dark) .pay-pill:hover { background: #1c2b45 !important; }
+:host-context(html.dark) .pay-pill.active { background: #2563eb !important; border-color: #2563eb !important; color: #fff !important; }
+:host-context(html.dark) .pay-pill i { color: #94a3b8; }
+:host-context(html.dark) .pay-pill.active i { color: #fff; }
+
+/* Tabla de productos de la venta (celdas Bootstrap blancas) */
+:host-context(html.dark) .venta-table { --bs-table-bg: transparent; --bs-table-color: #e2e8f0; background: transparent !important; color: #e2e8f0; }
+:host-context(html.dark) .venta-table tbody tr,
+:host-context(html.dark) .venta-table tbody td { background: transparent !important; color: #e2e8f0; border-color: rgba(255,255,255,.06) !important; }
+:host-context(html.dark) .locked-cell { color: #cbd5e1 !important; }

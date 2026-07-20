@@ -50,6 +50,15 @@ interface Prod { id: number; product_name?: string; nombre?: string; part_number
     .pill.ok{ background:#dcfce7; color:#16a34a; }
     .pill.zero{ background:#f1f5f9; color:#64748b; }
     .ct-empty{ text-align:center; color:#94a3b8; padding:2rem; }
+
+    /* ===== Modo oscuro ===== */
+    :host-context(html.dark) .ct-scroll{ background:#16233a; box-shadow:none; }
+    :host-context(html.dark) .ct-table tbody td{ border-color:rgba(255,255,255,.08); }
+    :host-context(html.dark) .ct-table tbody tr:hover{ background:rgba(255,255,255,.03); }
+    :host-context(html.dark) .ct-name{ color:#f1f5f9; }
+    :host-context(html.dark) .mono{ color:#94a3b8; }
+    :host-context(html.dark) .ct-in{ background:#0f1826; color:#e2e8f0; border-color:rgba(255,255,255,.16); }
+    :host-context(html.dark) .ct-search{ background:#0f1826; color:#e2e8f0; border-color:rgba(255,255,255,.16); }
   `],
   template: `
   <div class="ct-wrap">

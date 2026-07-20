@@ -1044,3 +1044,5 @@
 :host-context(html.dark) .dashboard-user { color: #e2e8f0 !important; }
 :host-context(html.dark) .main-content,
 :host-context(html.dark) .main-content.bg-body-tertiary { background: #0b1220 !important; }
+:host-context(html.dark) .dashboard-content { background: #0b1220 !important; }
+:host-context(html.dark) .main-content { box-shadow: none !important; }

@@ -570,3 +570,15 @@
   }
 }
 
+
+/* =========================================================
+   MODO OSCURO — Tabla de compras (sobrescribe las variables :host)
+   ========================================================= */
+:host-context(html.dark){
+  --row-bg: #16233a;
+  --row-hover: #1c2b45;
+  --detail-bg: #0f1826;
+  --detail-border: rgba(255,255,255,.09);
+  --text: #e2e8f0;
+}
+:host-context(html.dark) .castrol-table-container{ background: #0f1826 !important; }
