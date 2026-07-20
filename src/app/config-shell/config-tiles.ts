@@ -8,6 +8,10 @@ import { DiagnosticoPanel } from '../diagnostico-panel/diagnostico-panel.compone
 import { RegistersPanel } from '../register-panel/register-panel.component';
 import { PairingQr } from '../pairing-qr-panel/pairing-qr.component';
 import { FacturacionConfig } from '../facturacionConfig-panel/facturacion-config.component';
+import { DescargaAppPanel } from '../descarga-app-panel/descarga-app.component';
+import { FormasPagoPanelComponent } from '../formas-pago-panel/formas-pago.component';
+import { ActualizacionesPanelComponent } from '../actualizaciones-panel/actualizaciones.component';
+import { UsuariosPanelComponent } from '../usuarios-panel/usuarios.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -52,7 +56,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 desc: 'Efectivo, tarjeta, transferencia, crédito',
                 icon: 'cash-coin',
                 color: 'green',
-                size: '1x1'
+                size: '1x1',
+                component: FormasPagoPanelComponent
             }
         ]
     },
@@ -64,7 +69,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'upc-scan', color: 'orange', size: '1x1', statusKey: 'scanner', component: DevicesPanelComponent },
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'safe2', color: 'blue', size: '1x1', statusKey: 'drawer', component: DevicesPanelComponent },
             { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'speedometer2', color: 'gray', size: '1x1', component: DevicesPanelComponent },
-            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code-scan', color: 'green', size: '1x1', component: PairingQr }
+            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code-scan', color: 'green', size: '1x1', component: PairingQr },
+            { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'phone', color: 'blue', size: '1x1', component: DescargaAppPanel }
         ]
     },
     {
@@ -86,8 +92,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'sistema',
         title: 'Sistema',
         tiles: [
-            { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'person-badge', color: 'gray', size: '1x1' },
-            { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrow-repeat', color: 'blue', size: '1x1' },
+            { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'person-badge', color: 'gray', size: '2x1', component: UsuariosPanelComponent },
+            { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrow-repeat', color: 'blue', size: '1x1', component: ActualizacionesPanelComponent },
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },
             { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'pc-display', color: 'blue', size: '2x1', component: RegistersPanel },
         ]

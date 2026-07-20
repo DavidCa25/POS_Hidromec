@@ -152,3 +152,12 @@
   max-width: none; border: none; box-shadow: none; border-radius: 0;
 }
 .cs-drawer-body ::ng-deep .wz-head { display: none; }
+/* =========================================================
+   MODO OSCURO — Configuración
+   ========================================================= */
+:host-context(html.dark) { --cs-ink: #e2e8f0; --cs-muted: #94a3b8; --cs-line: rgba(255,255,255,.1); }
+:host-context(html.dark) .cs-tile { background: #16233a; border-color: rgba(255,255,255,.1); }
+:host-context(html.dark) .cs-tile:hover { background: #1c2b45; }
+:host-context(html.dark) .cs-tile-title { color: #f1f5f9; }
+:host-context(html.dark) .cs-drawer { background: #131f31; }
+:host-context(html.dark) .cs-drawer-head { background: #0f1826; border-color: rgba(255,255,255,.1); }

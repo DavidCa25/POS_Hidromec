@@ -3,146 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <title>Ticket</title>
-
 <style>
+  @page { size: {{PAPER_W}}mm auto; margin: 0; }
+  html, body { margin: 0; padding: 0; }
   body {
-    font-family: Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 11px;
-    color: #333;
-    width: 270px;
-    margin: 0 auto;
+    color: #000;
+    width: {{PAPER_W}}mm;
+    box-sizing: border-box;
+    padding: 2mm 2.5mm 4mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #ddd;
-  }
-
-  .title-right {
-    text-align: right;
-    font-size: 14px;
-    font-weight: bold;
-    background: #f2f2f2;
-    padding: 6px 10px;
-    border-radius: 6px;
-  }
-
-  .info {
-    margin-top: 8px;
-    font-size: 12px;
-  }
-
-  h4 {
-    margin: 8px 0 3px 0;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 6px;
-  }
-
-  th {
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 4px;
-    font-size: 11px;
-  }
-
-  td {
-    padding: 6px 0;
-    border-bottom: 1px solid #f2f2f2;
-  }
-
-  .right {
-    text-align: right;
-  }
-
-  .total-block {
-    margin-top: 10px;
-    font-size: 12px;
-  }
-
-  .total-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 3px;
-  }
-
-  .total-strong {
-    font-weight: bold;
-    font-size: 13px;
-  }
-
-  .footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 10px;
-    color: #777;
-  }
+  .title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+  .info { margin-top: 6px; font-size: 11px; line-height: 1.35; }
+  h4 { margin: 8px 0 2px 0; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 3px; font-size: 10px; }
+  td { padding: 3px 0; border-bottom: 1px dotted #bbb; font-size: 10px; vertical-align: top; }
+  .right { text-align: right; }
+  .total-block { margin-top: 8px; font-size: 11px; }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .total-strong { font-weight: bold; font-size: 13px; }
+  .footer { text-align: center; margin-top: 12px; font-size: 10px; }
 </style>
 </head>
-
 <body>
 
-<div class="header">
+  <div class="title">Nota de venta</div>
 
-  <div class="title-right">
-    Nota de venta
-  </div>
-</div>
-
-<div class="info">
-  <strong>{{BUSINESS_NAME}}</strong><br>
-  {{ADDRESS}}<br>
-  Tel: {{PHONE}}<br>
-  RFC: {{RFC}}
-</div>
-
-<div class="info" style="margin-top: 10px;">
-  <strong>Ticket:</strong> {{FOLIO}}<br>
-  <strong>Fecha:</strong> {{DATE}}<br>
-  <strong>Método:</strong> {{METHOD}}
-</div>
-
-<h4>Productos</h4>
-<table>
-  <thead>
-    <tr>
-      <th>Producto</th>
-      <th class="right">Cant</th>
-      <th class="right">Precio</th>
-      <th class="right">Sub</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{ROWS}}
-  </tbody>
-</table>
-
-<div class="total-block">
-  <div class="total-row">
-    <span>Subtotal</span><span>${{SUBTOTAL}}</span>
-  </div>
-  <div class="total-row">
-    <span>IVA 16% incluido</span><span>${{IVA}}</span>
-  </div>
-  <div class="total-row total-strong">
-    <span>Total</span><span>${{TOTAL}}</span>
+  <div class="info">
+    <strong>{{BUSINESS_NAME}}</strong><br>
+    {{ADDRESS}}<br>
+    Tel: {{PHONE}}<br>
+    RFC: {{RFC}}
   </div>
 
-  <h4>Pago</h4>
-  <div class="total-row"><span>Método</span><span>{{METHOD}}</span></div>
-  <div class="total-row"><span>Pagado</span><span>${{PAGADO}}</span></div>
-  <div class="total-row"><span>Cambio</span><span>${{CAMBIO}}</span></div>
-</div>
+  <div class="info" style="margin-top: 8px;">
+    <strong>Ticket:</strong> {{FOLIO}}<br>
+    <strong>Fecha:</strong> {{DATE}}<br>
+    <strong>Método:</strong> {{METHOD}}
+  </div>
 
-<div class="footer">
-  {{FOOTER}}
-</div>
+  <h4>Productos</h4>
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th class="right">Cant</th>
+        <th class="right">Precio</th>
+        <th class="right">Sub</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ROWS}}
+    </tbody>
+  </table>
+
+  <div class="total-block">
+    <div class="total-row"><span>Subtotal</span><span>${{SUBTOTAL}}</span></div>
+    <div class="total-row"><span>IVA 16% incluido</span><span>${{IVA}}</span></div>
+    <div class="total-row total-strong"><span>Total</span><span>${{TOTAL}}</span></div>
+
+    <h4>Pago</h4>
+    <div class="total-row"><span>Método</span><span>{{METHOD}}</span></div>
+    <div class="total-row"><span>Pagado</span><span>${{PAGADO}}</span></div>
+    <div class="total-row"><span>Cambio</span><span>${{CAMBIO}}</span></div>
+  </div>
+
+  <div class="footer">{{FOOTER}}</div>
 
 </body>
 </html>

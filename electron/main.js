@@ -17,6 +17,7 @@ const db = require('./db');
 const DB_NAME = 'Wybix_POS';
 const setupServer = require('./setupServer');
 const cloudSync = require('./cloudSync');
+const licenseStore = require('./license');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 const os = require('os');
@@ -294,9 +295,12 @@ function loadDeviceConfig() {
     console.error('Error leyendo device-config.json:', e);
   }
   return {
-    scanner: { enabled: false, path: '', baudRate: 9600 },
-    printer: { ticketPrinterName: '' },
-    cashDrawer: { mode: 'printer', serialPath: '' } 
+    // conexion: 'teclado' (USB automatico) | 'usb' (serial COM) | 'bluetooth' (proximamente)
+    scanner: { conexion: 'teclado', enabled: false, path: '', baudRate: 9600 },
+    // conexion: 'sistema' (impresora del SO) | 'bluetooth' (proximamente)
+    printer: { conexion: 'sistema', name: '', ticketPrinterName: '' },
+    // conexion: 'impresora' (cajon conectado a la impresora, lo mas comun) | 'usb' (serial COM) | 'bluetooth' (proximamente)
+    drawer: { conexion: 'impresora', enabled: false, path: '', baudRate: 9600, pulseMs: 120, pin: 0, openOnPayment: false }
   };
 }
 
@@ -459,6 +463,52 @@ ipcMain.handle('getConfig', async () => {
   return cfg;
 });
 
+// Guardar datos del negocio (Configuracion > Datos del negocio)
+ipcMain.handle('update-business-config', async (_e, payload = {}) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('business_name', sql.NVarChar(200), payload.business_name ?? null)
+      .input('address',       sql.NVarChar(300), payload.address ?? null)
+      .input('phone',         sql.NVarChar(50),  payload.phone ?? null)
+      .input('rfc',           sql.NVarChar(50),  payload.rfc ?? null)
+      .input('ticket_footer', sql.NVarChar(300), payload.ticket_footer ?? null)
+      .execute('sp_update_business_config');
+    businessConfig = null; // invalida el cache para releer datos frescos
+    return { success: true };
+  } catch (e) {
+    console.error('update-business-config:', e);
+    return { success: false, error: e.message };
+  }
+});
+
+// Formas de pago (config local por caja)
+function paymentsConfigPath() { return path.join(app.getPath('userData'), 'payments-config.json'); }
+function defaultPayments() { return { efectivo: true, tarjeta: true, transferencia: true, credito: true, terminal_mp: true }; }
+function loadPaymentsConfig() {
+  try {
+    const pp = paymentsConfigPath();
+    if (fs.existsSync(pp)) return { ...defaultPayments(), ...JSON.parse(fs.readFileSync(pp, 'utf8')) };
+  } catch { /* usa default */ }
+  return defaultPayments();
+}
+ipcMain.handle('payments:get', async () => ({ success: true, data: loadPaymentsConfig() }));
+ipcMain.handle('payments:set', async (_e, cfg = {}) => {
+  try {
+    const merged = { ...loadPaymentsConfig(), ...cfg };
+    fs.writeFileSync(paymentsConfigPath(), JSON.stringify(merged, null, 2), 'utf8');
+    return { success: true, data: merged };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// Version de la app (Configuracion > Actualizaciones)
+ipcMain.handle('app:get-version', async () => {
+  try { return { success: true, version: app.getVersion() }; }
+  catch (e) { return { success: false, error: e.message }; }
+});
+
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   try {
     const pool = await poolPromise;
@@ -529,7 +579,7 @@ ipcMain.handle('sp-Consultar-Detalle-Productos', async (event, CategoryID) => {
 });
 
 ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock,
-                                        claveProdServ, claveUnidad, objetoImpuesto, tasaIva) => {
+                                        claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -539,7 +589,7 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
             .input('name', sql.NVarChar(100), name)
             .input('price', sql.Decimal(10, 2), price)
             .input('stock', sql.Int, stock)
-            .input('bar_code', sql.NVarChar(100), null)
+            .input('bar_code', sql.NVarChar(100), (barCode ?? null) === '' ? null : (barCode ?? null))
             .input('clave_prod_serv', sql.NVarChar(8), claveProdServ ?? null)
             .input('clave_unidad', sql.NVarChar(5), claveUnidad ?? null)
             .input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto ?? '02')
@@ -1040,34 +1090,114 @@ ipcMain.handle(
   }
 );
 
+// Envia bytes crudos (ESC/POS) directamente a una impresora de Windows via el spooler.
+// Se usa para el pulso de apertura del cajon conectado a la impresora de tickets (RJ11).
+// No requiere dependencias npm: usa PowerShell + Win32 (winspool.drv).
+function printRawToPrinter(printerName, buffer) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'win32') {
+      return reject(new Error('La impresion cruda solo esta disponible en Windows.'));
+    }
+    const { spawn } = require('child_process');
+    const stamp = Date.now() + '_' + Math.floor(Math.random() * 1e6);
+    const binFile = path.join(os.tmpdir(), `wybix_drawer_${stamp}.bin`);
+    const psFile  = path.join(os.tmpdir(), `wybix_drawer_${stamp}.ps1`);
+    const pName = String(printerName).replace(/'/g, "''");
+    const script = `
+$ErrorActionPreference='Stop'
+$src=[System.IO.File]::ReadAllBytes('${binFile.replace(/'/g, "''")}')
+$code=@"
+using System;
+using System.Runtime.InteropServices;
+public class WybixRaw {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  public struct DOCINFO { [MarshalAs(UnmanagedType.LPWStr)] public string pDocName; [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile; [MarshalAs(UnmanagedType.LPWStr)] public string pDataType; }
+  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool OpenPrinter(string s, out IntPtr h, IntPtr p);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr h);
+  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool StartDocPrinter(IntPtr h, int l, ref DOCINFO di);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr h, byte[] b, int c, out int w);
+  public static bool Send(string name, byte[] data){
+    IntPtr h; if(!OpenPrinter(name, out h, IntPtr.Zero)) return false;
+    DOCINFO di=new DOCINFO(); di.pDocName="Wybix Drawer"; di.pDataType="RAW"; bool ok=false;
+    if(StartDocPrinter(h,1,ref di)){ if(StartPagePrinter(h)){ int w; ok=WritePrinter(h,data,data.Length,out w); EndPagePrinter(h);} EndDocPrinter(h);}
+    ClosePrinter(h); return ok; }
+}
+"@
+Add-Type -TypeDefinition $code -Language CSharp
+if([WybixRaw]::Send('${pName}', $src)){ 'OK' } else { throw 'WritePrinter fallo' }
+`;
+    try {
+      fs.writeFileSync(binFile, buffer);
+      fs.writeFileSync(psFile, script, 'utf8');
+    } catch (e) { return reject(e); }
+    const cleanup = () => { try { fs.unlinkSync(binFile); } catch {} try { fs.unlinkSync(psFile); } catch {} };
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', psFile], { windowsHide: true });
+    let out = '', err = '';
+    child.stdout.on('data', (x) => out += x.toString());
+    child.stderr.on('data', (x) => err += x.toString());
+    child.on('error', (e) => { cleanup(); reject(e); });
+    child.on('close', (code) => {
+      cleanup();
+      if (code === 0 && /OK/.test(out)) resolve(true);
+      else reject(new Error((err || out || ('powershell salio con codigo ' + code)).trim()));
+    });
+  });
+}
+
 ipcMain.handle('open-cash-drawer', async (_event, payload = {}) => {
   try {
-    const portPath = String(payload?.portPath || payload?.path || '').trim();
-    const baudRate = Number(payload?.baudRate || 9600);
-    const pulseMs  = Number(payload?.pulseMs  || 120);
-    const pin      = Number(payload?.pin || 0); // 0 default, 1 alternativo
+    const dcfg = loadDeviceConfig();
+    const d = (dcfg && dcfg.drawer) || {};
+    const conexion = String(payload?.conexion || d.conexion || 'usb');
 
+    // Disparo automatico al cobrar: respetar "Habilitar" y "Abrir al cobrar".
+    if (payload?.reason === 'payment' && (!d.enabled || !d.openOnPayment)) {
+      return { success: true, skipped: true };
+    }
+
+    const pulseMs  = Number(payload?.pulseMs || d.pulseMs || 120);
+    const pin      = Number(payload?.pin ?? d.pin ?? 0); // 0 default, 1 alternativo
+    const cmd = buildDrawerKickCmd({ pulseMs, pin });
+
+    // --- Modo: cajon conectado a la impresora de tickets (lo mas comun) ---
+    if (conexion === 'impresora') {
+      const printerName = String(
+        payload?.printerName ||
+        (dcfg && dcfg.printer && (dcfg.printer.ticketPrinterName || dcfg.printer.name)) || ''
+      ).trim();
+      if (!printerName) {
+        return { success: false, error: 'Elige primero la impresora en Configuracion > Impresora de tickets.' };
+      }
+      try {
+        await printRawToPrinter(printerName, cmd);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: 'No se pudo enviar el pulso a la impresora: ' + (e?.message || String(e)) };
+      }
+    }
+
+    // --- Modo: cajon por cable / serial (COM) ---
+    const portPath = String(payload?.portPath || payload?.path || d.path || '').trim();
+    const baudRate = Number(payload?.baudRate || d.baudRate || 9600);
     if (!portPath) {
-      return { success: false, error: 'Falta portPath (ej. COM5).' };
+      return { success: false, error: 'Configura el puerto del cajon en Configuracion > Cajon de dinero.' };
     }
     if (!Number.isFinite(baudRate) || baudRate <= 0) {
-      return { success: false, error: 'baudRate inválido.' };
+      return { success: false, error: 'baudRate invalido.' };
     }
-
-    const cmd = buildDrawerKickCmd({ pulseMs, pin });
 
     const result = await new Promise((resolve) => {
       const sp = new SerialPort({ path: portPath, baudRate, autoOpen: false });
-
       sp.open((openErr) => {
         if (openErr) return resolve({ ok: false, error: openErr.message });
-
         sp.write(cmd, (writeErr) => {
           if (writeErr) {
             try { sp.close(); } catch {}
             return resolve({ ok: false, error: writeErr.message });
           }
-
           sp.drain(() => {
             try { sp.close(); } catch {}
             resolve({ ok: true });
@@ -1077,9 +1207,8 @@ ipcMain.handle('open-cash-drawer', async (_event, payload = {}) => {
     });
 
     if (!result.ok) {
-      return { success: false, error: result.error || 'No se pudo abrir el cajón.' };
+      return { success: false, error: result.error || 'No se pudo abrir el cajon.' };
     }
-
     return { success: true };
   } catch (err) {
     console.error('open-cash-drawer:', err);
@@ -1219,6 +1348,270 @@ ipcMain.handle('sp-get-active-users', async () => {
     console.error('Error sp-get-active-users:', err);
     return { success: false, error: err.message };
   }
+});
+
+// ===== Usuarios y permisos =====
+const ROLES_VALIDOS = ['admin', 'supervisor', 'cajero'];
+
+// ===== Alertas: productos agotados (stock 0) =====
+ipcMain.handle('alerts:out-of-stock', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT id, nombre, part_number, stock
+      FROM products
+      WHERE active = 1 AND stock <= 0
+      ORDER BY nombre
+    `);
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:out-of-stock:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: ventas en $0 (posible anomalia) =====
+ipcMain.handle('alerts:zero-sales', async (_e, p = {}) => {
+  try {
+    const dias = Number(p.dias) || 30;
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('dias', sql.Int, dias)
+      .query(`
+        SELECT TOP 200 s.id, s.datee, s.total, u.usuario
+        FROM sales s
+        LEFT JOIN users u ON u.id = s.useer_id
+        WHERE s.total = 0
+          AND s.datee >= DATEADD(DAY, -@dias, CAST(GETDATE() AS DATE))
+        ORDER BY s.datee DESC
+      `);
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:zero-sales:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: descuadre en corte de caja (robo hormiga) =====
+ipcMain.handle('alerts:cash-closures', async (_e, p = {}) => {
+  try {
+    const dias = Number(p.dias) || 30;
+    const start = new Date(Date.now() - dias * 86400000);
+    const end = new Date();
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('start_date', sql.Date, start)
+      .input('end_date', sql.Date, end)
+      .execute('sp_get_cash_closures');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:cash-closures:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: devoluciones por cajero (robo hormiga) =====
+ipcMain.handle('alerts:refunds-by-cashier', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT sr.user_id, u.usuario, COUNT(*) AS num_devoluciones, SUM(sr.refund_total) AS monto
+      FROM sale_refunds sr
+      LEFT JOIN users u ON u.id = sr.user_id
+      GROUP BY sr.user_id, u.usuario
+      ORDER BY num_devoluciones DESC
+    `);
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:refunds-by-cashier:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: credito vencido (cobranza) =====
+ipcMain.handle('alerts:overdue-credit', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT s.customer_id,
+             SUM(s.balance) AS deuda_vencida,
+             MIN(s.due_date) AS vence,
+             DATEDIFF(DAY, MIN(s.due_date), CAST(GETDATE() AS DATE)) AS dias_vencido,
+             COUNT(*) AS facturas
+      FROM sales s
+      WHERE UPPER(s.payment_method) = 'CREDITO'
+        AND s.balance > 0
+        AND s.due_date < CAST(GETDATE() AS DATE)
+        AND s.customer_id IS NOT NULL
+      GROUP BY s.customer_id
+      ORDER BY deuda_vencida DESC
+    `);
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:overdue-credit:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: stock bajo (punto de reorden fijo) =====
+ipcMain.handle('alerts:low-stock', async (_e, p = {}) => {
+  try {
+    const min = Number(p.min) || 3;
+    const pool = await poolPromise;
+    const r = await pool.request().input('min', sql.Int, min).query(`
+      SELECT id, nombre, part_number, stock
+      FROM products
+      WHERE active = 1 AND stock > 0 AND stock <= @min
+      ORDER BY stock ASC, nombre
+    `);
+    return { success: true, data: r.recordset || [] };
+  } catch (e) { console.error('alerts:low-stock:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: conteo total (para el badge del menu) =====
+ipcMain.handle('alerts:counts', async (_e, p = {}) => {
+  try {
+    const min = Number(p.min) || 3;
+    const pool = await poolPromise;
+    const one = async (text, inputs) => {
+      const req = pool.request();
+      (inputs || []).forEach(([n, t, v]) => req.input(n, t, v));
+      const r = await req.query(text);
+      return Number(r.recordset[0]?.c || 0);
+    };
+    const agotados   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND stock<=0`);
+    const lowstock   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND stock>0 AND stock<=@min`, [['min', sql.Int, min]]);
+    const cero       = await one(`SELECT COUNT(*) c FROM sales WHERE total=0 AND datee>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
+    const vencidos   = await one(`SELECT COUNT(DISTINCT customer_id) c FROM sales WHERE UPPER(payment_method)='CREDITO' AND balance>0 AND due_date<CAST(GETDATE() AS DATE) AND customer_id IS NOT NULL`);
+    const descuadres = await one(`SELECT COUNT(*) c FROM cash_closures WHERE difference<>0 AND CAST(create_date AS DATE)>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
+    let reorden = 0;
+    try {
+      const rr = await pool.request()
+        .input('dias_ventana', sql.Int, 30).input('dias_alerta', sql.Int, 7).input('dias_objetivo', sql.Int, 30)
+        .execute('sp_reorder_suggestions');
+      reorden = (rr.recordset || []).length;
+    } catch { /* si el SP no existe aun */ }
+    const total = agotados + lowstock + cero + vencidos + descuadres + reorden;
+    return { success: true, data: { agotados, lowstock, cero, vencidos, descuadres, reorden, total } };
+  } catch (e) { console.error('alerts:counts:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Conteo fisico: aplicar ajustes de inventario =====
+ipcMain.handle('inventory:apply-count', async (_e, p = {}) => {
+  try {
+    const items = Array.isArray(p.items) ? p.items : [];
+    if (!items.length) return { success: false, error: 'No hay conteos para aplicar.' };
+    const pool = await poolPromise;
+    let ajustados = 0;
+    for (const it of items) {
+      const pid = Number(it.product_id);
+      const fisico = Number(it.fisico);
+      if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(fisico) || fisico < 0) continue;
+      const cur = await pool.request().input('id', sql.Int, pid).query('SELECT stock FROM products WHERE id=@id');
+      const teorico = Number(cur.recordset[0]?.stock ?? 0);
+      const diff = fisico - teorico;
+      if (diff === 0) continue;
+      await pool.request().input('id', sql.Int, pid).input('s', sql.Decimal(12, 2), fisico)
+        .query('UPDATE products SET stock=@s WHERE id=@id');
+      await pool.request()
+        .input('pid', sql.Int, pid)
+        .input('t', sql.NVarChar(20), diff > 0 ? 'entrada' : 'salida')
+        .input('q', sql.Decimal(12, 2), Math.abs(diff))
+        .input('d', sql.NVarChar(200), 'Ajuste por conteo fisico (dif ' + diff + ')')
+        .query(`INSERT INTO inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
+                VALUES (@pid, @t, 'CONTEO', @q, GETDATE(), @d)`);
+      ajustados++;
+    }
+    return { success: true, ajustados };
+  } catch (e) { console.error('inventory:apply-count:', e); return { success: false, error: e.message }; }
+});
+
+// ===== Alertas: reorden inteligente =====
+ipcMain.handle('alerts:reorder', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('dias_ventana',  sql.Int, Number(p.dias_ventana)  || 30)
+      .input('dias_alerta',   sql.Int, Number(p.dias_alerta)   || 7)
+      .input('dias_objetivo', sql.Int, Number(p.dias_objetivo) || 30)
+      .execute('sp_reorder_suggestions');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) {
+    console.error('alerts:reorder:', e);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('users:list', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT id, usuario, rol, active, creation_date
+      FROM users
+      ORDER BY active DESC, usuario
+    `);
+    return { success: true, data: r.recordset };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('users:create', async (_e, p = {}) => {
+  try {
+    const usuario = String(p.usuario ?? '').trim();
+    const password = String(p.password ?? '');
+    const rol = String(p.rol ?? 'cajero').trim().toLowerCase();
+    if (usuario.length < 3) return { success: false, error: 'El usuario debe tener al menos 3 caracteres.' };
+    if (password.length < 6) return { success: false, error: 'La contrasena debe tener al menos 6 caracteres.' };
+    if (!ROLES_VALIDOS.includes(rol)) return { success: false, error: 'Rol invalido.' };
+
+    const pool = await poolPromise;
+    const dup = await pool.request().input('u', sql.NVarChar(50), usuario).query('SELECT 1 FROM users WHERE usuario = @u');
+    if (dup.recordset.length) return { success: false, error: 'Ese usuario ya existe.' };
+
+    await pool.request()
+      .input('usuario', sql.NVarChar(50), usuario)
+      .input('password', sql.NVarChar(255), password)
+      .input('rol', sql.NVarChar(20), rol)
+      .query(`INSERT INTO users (usuario, password_hash, rol, active, creation_date)
+              VALUES (@usuario, CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2), @rol, 1, GETDATE())`);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('users:update-role', async (_e, p = {}) => {
+  try {
+    const id = Number(p.id);
+    const rol = String(p.rol ?? '').trim().toLowerCase();
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
+    if (!ROLES_VALIDOS.includes(rol)) return { success: false, error: 'Rol invalido.' };
+    const pool = await poolPromise;
+    if (rol !== 'admin') {
+      const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
+      if (t.recordset[0]?.rol === 'admin') {
+        const c = await pool.request().query("SELECT COUNT(*) c FROM users WHERE active = 1 AND rol = 'admin'");
+        if (c.recordset[0].c <= 1) return { success: false, error: 'Debe quedar al menos un administrador.' };
+      }
+    }
+    await pool.request().input('id', sql.Int, id).input('rol', sql.NVarChar(20), rol)
+      .query('UPDATE users SET rol = @rol WHERE id = @id');
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('users:reset-password', async (_e, p = {}) => {
+  try {
+    const id = Number(p.id);
+    const password = String(p.password ?? '');
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
+    if (password.length < 6) return { success: false, error: 'La contrasena debe tener al menos 6 caracteres.' };
+    const pool = await poolPromise;
+    await pool.request().input('id', sql.Int, id).input('password', sql.NVarChar(255), password)
+      .query(`UPDATE users SET password_hash = CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2) WHERE id = @id`);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('users:set-active', async (_e, p = {}) => {
+  try {
+    const id = Number(p.id);
+    const active = p.active ? 1 : 0;
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
+    const pool = await poolPromise;
+    if (!active) {
+      const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
+      if (t.recordset[0]?.rol === 'admin') {
+        const c = await pool.request().query("SELECT COUNT(*) c FROM users WHERE active = 1 AND rol = 'admin'");
+        if (c.recordset[0].c <= 1) return { success: false, error: 'No puedes desactivar al unico administrador.' };
+      }
+    }
+    await pool.request().input('id', sql.Int, id).input('a', sql.Bit, active)
+      .query('UPDATE users SET active = @a WHERE id = @id');
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 // Pago a Proveedores
@@ -1681,6 +2074,8 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
   const templatePath = path.join(__dirname, "templates", "ticket.html");
   const template = fs.readFileSync(templatePath, "utf8");
 
+  const paperWidthMm = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 58;
+
   const rowsHtml = (details || []).map(l => {
     const qty  = Number(l.quantity ?? 0);
     const unit = Number(l.unitary_price ?? 0);
@@ -1720,6 +2115,7 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
   const logoPath = `file://${path.join(__dirname, "assets/LogoHidromec.jpg").replace(/\\/g, "/")}`;
 
   let filledHtml = template
+    .replace(/{{PAPER_W}}/g, String(paperWidthMm))
     .replace(/{{LOGO}}/g, logoPath)
 
     .replace(/{{BUSINESS_NAME}}/g, escHtmlTicket(businessConfig?.business_name || ""))
@@ -1756,16 +2152,29 @@ ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
 
     const { header, details } = await loadSaleByFolioFromDb(saleId);
 
+    // Ancho de papel (mm): payload > config de la impresora > 58 por defecto.
+    let paperWidthMm = Number(payload?.paperWidthMm) || 0;
+    if (!paperWidthMm) {
+      try {
+        const dc = loadDeviceConfig();
+        const ps = String(dc?.printer?.paperSize || '');
+        if (/80/.test(ps)) paperWidthMm = 80;
+        else if (/58/.test(ps)) paperWidthMm = 58;
+      } catch {}
+    }
+    if (!paperWidthMm) paperWidthMm = 58;
+
     const html = buildTicketHtmlFromTemplate(header, details, {
       pagado: payload?.pagado ?? payload?.paid ?? null,
       cambio: payload?.cambio ?? payload?.change ?? null,
-      payment_method: payload?.paymentMethod ?? payload?.payment_method ?? null
+      payment_method: payload?.paymentMethod ?? payload?.payment_method ?? null,
+      paperWidthMm
     });
 
     printWin = new BrowserWindow({
       show: false,
-      width: 380,
-      height: 700,
+      width: 420,
+      height: 800,
       webPreferences: {
         contextIsolation: true,
         sandbox: false
@@ -1774,16 +2183,26 @@ ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
 
     await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
 
-    await new Promise(r => setTimeout(r, 150));
+    // Esperar render y medir el alto real del contenido para no sacar papel en blanco de mas.
+    await new Promise(r => setTimeout(r, 200));
+    let heightPx = 0;
+    try { heightPx = Number(await printWin.webContents.executeJavaScript('document.body.scrollHeight')) || 0; } catch {}
+    if (!heightPx || heightPx < 40) heightPx = 500;
 
-    const silent = payload?.silent !== false; 
-    const deviceName = payload?.printerName || undefined; 
+    const MICRON_PER_PX = 25400 / 96; // 1px @96dpi = 264.58 micras
+    const widthMicrons  = Math.round(paperWidthMm * 1000);
+    const heightMicrons = Math.round((heightPx + 12) * MICRON_PER_PX);
+
+    const silent = payload?.silent !== false;
+    const deviceName = payload?.printerName || undefined;
     const ok = await new Promise((resolve) => {
       printWin.webContents.print(
         {
           silent,
           printBackground: true,
-          deviceName
+          deviceName,
+          margins: { marginType: 'none' },
+          pageSize: { width: widthMicrons, height: heightMicrons }
         },
         (success, failureReason) => {
           if (!success) console.error('Print failed:', failureReason);
@@ -1858,12 +2277,14 @@ ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
       ...partialCfg,
       scanner: { ...(current.scanner || {}), ...(partialCfg.scanner || {}) },
       printer: { ...(current.printer || {}), ...(partialCfg.printer || {}) },
-      cashDrawer: { ...(current.cashDrawer || {}), ...(partialCfg.cashDrawer || {}) }
+      drawer: { ...(current.drawer || {}), ...(partialCfg.drawer || {}) }
     };
 
     saveDeviceConfig(merged);
 
-    if (merged.scanner?.enabled && merged.scanner?.path) {
+    // Solo se arranca el lector serial cuando la conexion del scanner es 'usb' (serial COM)
+    const scannerSerial = merged.scanner?.conexion === 'usb' && merged.scanner?.path;
+    if (scannerSerial) {
       startSerialScanner(mainWindow, {
         path: merged.scanner.path,
         baudRate: merged.scanner.baudRate || 9600
@@ -2772,7 +3193,7 @@ ipcMain.handle('license:activate', async (_event, payload) => {
       return { ok: false, error: data?.error || 'La clave no es valida o esta en uso.', code: data?.code };
     }
 
-    fs.writeFileSync(getLicensePath(), JSON.stringify(data, null, 2), 'utf8');
+    licenseStore.saveLicense(cachedMachineId, data);
     return { ok: true, plan: data.plan, customerName: data.customerName };
   } catch (err) {
     console.error('license:activate:', err);
@@ -2783,11 +3204,8 @@ ipcMain.handle('license:activate', async (_event, payload) => {
 // 2. Leer la licencia (Para que Angular la consuma)
 ipcMain.handle('license:get', async () => {
   try {
-    const p = getLicensePath();
-    if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, 'utf8'));
-    }
-    return null;
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    return licenseStore.readLicense(cachedMachineId).data;
   } catch (err) {
     return null;
   }
@@ -2796,7 +3214,8 @@ ipcMain.handle('license:get', async () => {
 // 3. Escribir/Actualizar licencia (Para cuando Angular revalide en segundo plano)
 ipcMain.handle('license:save', async (event, licenseData) => {
   try {
-    fs.writeFileSync(getLicensePath(), JSON.stringify(licenseData, null, 2), 'utf8');
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    licenseStore.saveLicense(cachedMachineId, licenseData);
     return { ok: true };
   } catch (err) {
     return { ok: false };
@@ -2806,11 +3225,50 @@ ipcMain.handle('license:save', async (event, licenseData) => {
 // 4. Borrar licencia (Liberar máquina)
 ipcMain.handle('license:clear', async () => {
   try {
-    const p = getLicensePath();
-    if (fs.existsSync(p)) fs.unlinkSync(p);
+    licenseStore.clearLicense();
     return { ok: true };
   } catch (err) {
     return { ok: false };
+  }
+});
+
+// 5. Iniciar PRUEBA GRATIS de 30 dias (valida en la nube: una por maquina)
+ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
+  try {
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/trial-license`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'apikey': ANON_KEY
+      },
+      body: JSON.stringify({
+        action: 'start',
+        machineId: cachedMachineId,
+        businessName: payload?.businessName ?? null,
+        email: payload?.email ?? null
+      })
+    });
+    const data = await res.json();
+    if (!data?.success) return { ok: false, error: data?.error || 'No se pudo iniciar la prueba.' };
+
+    licenseStore.saveLicense(cachedMachineId, data);
+    return { ok: true, expiresAt: data.expiresAt, trialExpired: !!data.trialExpired };
+  } catch (err) {
+    console.error('license:start-trial:', err);
+    return { ok: false, error: 'Necesitas conexion a internet para iniciar tu prueba.' };
+  }
+});
+
+// 6. Estado unificado y blindado (none | trial | active | expired | tamper)
+ipcMain.handle('license:status', async () => {
+  try {
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    return licenseStore.computeStatus(cachedMachineId);
+  } catch (err) {
+    console.error('license:status:', err);
+    return { state: 'none' };
   }
 });
 

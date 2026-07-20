@@ -98,3 +98,24 @@ h2 {
 .modal-title-compra { color: #000080; }
 
 
+
+/* =========================================================
+   MODO OSCURO — Registrar compra
+   ========================================================= */
+:host-context(html.dark) .form-label,
+:host-context(html.dark) h2,
+:host-context(html.dark) .fecha-texto { color: #f1f5f9 !important; }
+:host-context(html.dark) .venta-table { background: #16233a !important; border-color: rgba(255,255,255,.09) !important; }
+:host-context(html.dark) .venta-table th { background: #1e2b44 !important; }
+:host-context(html.dark) .venta-table td,
+:host-context(html.dark) .venta-table th { border-bottom-color: rgba(255,255,255,.08) !important; color: #e2e8f0; }
+:host-context(html.dark) .modal-title-compra { color: #cbd5e1 !important; }
+/* Tablas Bootstrap: quitar el blanco forzado (--bs-table-bg) */
+:host-context(html.dark) .venta-table,
+:host-context(html.dark) .compact-table { --bs-table-bg: transparent; --bs-table-color: #e2e8f0; background: transparent !important; }
+:host-context(html.dark) .venta-table td,
+:host-context(html.dark) .compact-table td { background: transparent !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.06) !important; }
+:host-context(html.dark) .compact-table thead th,
+:host-context(html.dark) .compact-table thead.table-light th { background: #1e2b44 !important; color: #cbd5e1 !important; }
+:host-context(html.dark) .modal-productos .modal-content { background: #16233a !important; }
+:host-context(html.dark) .modal-productos .buscador { background: #0f1826 !important; color: #e2e8f0 !important; }

@@ -62,3 +62,28 @@
 .est-table th.r { text-align: right; }
 
 .est-empty { color: #94a3b8; font-size: .86rem; padding: 16px 4px; text-align: center; }
+
+/* =========================================================
+   MODO OSCURO — Estadísticas
+   ========================================================= */
+:host-context(html.dark) .est-head h2 { color: #f1f5f9; }
+:host-context(html.dark) .est-seg { background: #0f1826; }
+:host-context(html.dark) .est-seg button { color: #94a3b8; }
+:host-context(html.dark) .est-seg button.on { background: #1e2b44; color: #60a5fa; box-shadow: none; }
+:host-context(html.dark) .est-kpi,
+:host-context(html.dark) .est-card { background: #16233a; border-color: rgba(255,255,255,.09); box-shadow: none; }
+:host-context(html.dark) .est-kpi .v,
+:host-context(html.dark) .est-card-head h3,
+:host-context(html.dark) .est-bar-val { color: #f1f5f9; }
+:host-context(html.dark) .est-kpi .l,
+:host-context(html.dark) .est-sub,
+:host-context(html.dark) .est-bar-sub,
+:host-context(html.dark) .est-empty { color: #94a3b8; }
+:host-context(html.dark) .est-toggle { background: #0f1826; }
+:host-context(html.dark) .est-toggle button { color: #94a3b8; }
+:host-context(html.dark) .est-toggle button.on { background: #2563eb; color: #fff; }
+:host-context(html.dark) .est-bar-label { color: #cbd5e1; }
+:host-context(html.dark) .est-rank { background: #1e2b44; color: #cbd5e1; }
+:host-context(html.dark) .est-bar-track { background: #0f1826; }
+:host-context(html.dark) .est-table thead th { background: #0f1826; color: #cbd5e1; }
+:host-context(html.dark) .est-table td { border-color: rgba(255,255,255,.08); color: #e2e8f0; }

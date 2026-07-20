@@ -936,3 +936,17 @@
 .sat-dd-opt.sel .sat-dd-code { background: #4F9BB8; color: #fff; }
 .sat-dd-opt > span:not(.sat-dd-code) { flex: 1; }
 .sat-dd-opt i { color: #4F9BB8; font-size: 15px; flex: 0 0 auto; }
+
+/* =========================================================
+   MODO OSCURO — Inventario (el header conserva el color de tema)
+   ========================================================= */
+:host-context(html.dark) .castrol-table th,
+:host-context(html.dark) .castrol-table td { background: #16233a !important; color: #e2e8f0 !important; }
+:host-context(html.dark) .castrol-table thead th { background: var(--inv-main) !important; color: #fff !important; }
+:host-context(html.dark) .castrol-table tbody tr { background: #16233a !important; }
+:host-context(html.dark) .castrol-table tbody tr:hover td { background: #1c2b45 !important; }
+:host-context(html.dark) .ventas-stats-badge { background: #16233a !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,.1) !important; }
+:host-context(html.dark) .ventas-search { background: #0f1826 !important; border-color: rgba(255,255,255,.12) !important; }
+:host-context(html.dark) .ventas-search input { background: transparent !important; color: #e2e8f0 !important; }
+:host-context(html.dark) .action-btn { background: #1e2b44 !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,.1) !important; }
+:host-context(html.dark) .castrol-btn-color { background: #16233a !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.14) !important; }

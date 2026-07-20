@@ -1121,3 +1121,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   MODO OSCURO — Corte del día / Cierre de turno
+   ========================================================= */
+:host-context(html.dark){
+  --bg: #0f1826;
+  --card-bg: #16233a;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border: rgba(255,255,255,.09);
+}
+:host-context(html.dark) .corte-card,
+:host-context(html.dark) .wizard-panel,
+:host-context(html.dark) .user-card,
+:host-context(html.dark) .mode-card,
+:host-context(html.dark) .desglose-card,
+:host-context(html.dark) .movements-section,
+:host-context(html.dark) .kpi-card { background: #16233a !important; border-color: rgba(255,255,255,.09) !important; }
+:host-context(html.dark) .chip,
+:host-context(html.dark) .form-control { background: #0f1826 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.14) !important; }
+:host-context(html.dark) .wizard-header h1,
+:host-context(html.dark) .header-info h2,
+:host-context(html.dark) .section-label,
+:host-context(html.dark) .user-name,
+:host-context(html.dark) .kpi-value,
+:host-context(html.dark) .section-header h3,
+:host-context(html.dark) .mode-content h3 { color: #f1f5f9 !important; }
+:host-context(html.dark) .subtitle,
+:host-context(html.dark) .user-role,
+:host-context(html.dark) .kpi-label,
+:host-context(html.dark) .mode-content p { color: #94a3b8 !important; }
+:host-context(html.dark) .desglose-header,
+:host-context(html.dark) .movements-table thead th { background: #0f1826 !important; }
+:host-context(html.dark) .movements-table tbody tr:hover { background: rgba(255,255,255,.03) !important; }
+:host-context(html.dark) .section-header { background: #0f1826 !important; }
+:host-context(html.dark) .movements-table thead th { color: #94a3b8 !important; background: #0f1826 !important; }
+:host-context(html.dark) .movements-table td { color: #e2e8f0 !important; border-color: rgba(255,255,255,.06) !important; }

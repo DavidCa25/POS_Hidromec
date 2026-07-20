@@ -1,169 +1,151 @@
 <div class="panel-content">
-    
-    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-        <button class="btn btn-outline-secondary" type="button" (click)="refreshDevices()">
-            <i class="bi bi-usb-plug"></i> Detectar Puertos
-        </button>
-    </div>
 
-    <div class="section-title"><i class="bi bi-safe2"></i> Cajón de dinero</div>
-    
+  <div style="display:flex; justify-content:flex-end; margin-bottom: 1rem;">
+    <button class="btn btn-outline-secondary" type="button" (click)="refreshDevices()">
+      <i class="bi bi-usb-plug"></i> Detectar puertos
+    </button>
+  </div>
+
+  <!-- ================= SCANNER ================= -->
+  <div class="section-title"><i class="bi bi-upc-scan"></i> Lector de codigos</div>
+
+  <div class="row two">
+    <div>
+      <label class="lbl">Tipo de conexion</label>
+      <div class="custom-sel-wrap">
+        <div class="ctl custom-sel-box" (click)="toggle('scanConx')">
+          <span>{{ scanConxLabel }}</span><i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="custom-sel-menu" *ngIf="menu === 'scanConx'">
+          <div class="custom-sel-option" (click)="setScanConx('teclado')" [class.selected]="scannerConx==='teclado'">Automatico (USB / teclado)</div>
+          <div class="custom-sel-option" (click)="setScanConx('usb')" [class.selected]="scannerConx==='usb'">Puerto serial (COM)</div>
+          <div class="custom-sel-option disabled" (click)="setScanConx('bluetooth')">Bluetooth (proximamente)</div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="scannerConx==='usb'">
+      <label class="lbl">Puerto del lector</label>
+      <div class="custom-sel-wrap">
+        <div class="ctl custom-sel-box" (click)="toggle('scanPort')">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ nombrePuertoScanner }}</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="custom-sel-menu" *ngIf="menu === 'scanPort'">
+          <div class="custom-sel-option" *ngFor="let p of serialPorts" (click)="setScanPort(p.path)" [class.selected]="scannerPath===p.path">{{ portLabel(p) }}</div>
+          <div class="custom-sel-option disabled" *ngIf="serialPorts.length===0">Sin puertos. Pulsa "Detectar puertos".</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint" *ngIf="scannerConx==='teclado'" style="color:#64748b; font-size:.86rem; margin-top:.4rem;">
+    <i class="bi bi-info-circle"></i> La mayoria de lectores USB funcionan solos: conectalo y escanea, no necesitas configurar nada.
+  </p>
+
+  <div class="sep" style="margin: 1.6rem 0; border-top: 1px solid #eee;"></div>
+
+  <!-- ================= CAJON ================= -->
+  <div class="section-title"><i class="bi bi-safe2"></i> Cajon de dinero</div>
+
+  <div class="row two">
+    <div>
+      <label class="lbl">Habilitar</label>
+      <div class="toggle">
+        <label class="sw"><input type="checkbox" [(ngModel)]="drawerEnabled"><span class="sl"></span></label>
+        <span class="ttext">{{ drawerEnabled ? 'Activo' : 'Inactivo' }}</span>
+      </div>
+    </div>
+    <div>
+      <label class="lbl">Tipo de conexion</label>
+      <div class="custom-sel-wrap">
+        <div class="ctl custom-sel-box" [class.disabled]="!drawerEnabled" (click)="drawerEnabled && toggle('drawerConx')">
+          <span>{{ drawerConxLabel }}</span><i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="custom-sel-menu" *ngIf="menu === 'drawerConx'">
+          <div class="custom-sel-option" (click)="setDrawerConx('impresora')" [class.selected]="drawerConx==='impresora'">Conectado a la impresora</div>
+          <div class="custom-sel-option" (click)="setDrawerConx('usb')" [class.selected]="drawerConx==='usb'">Cable / Serial (COM)</div>
+          <div class="custom-sel-option disabled" (click)="setDrawerConx('bluetooth')">Bluetooth (proximamente)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modo IMPRESORA: se abre con el pulso enviado a la impresora de tickets -->
+  <ng-container *ngIf="drawerEnabled && drawerConx==='impresora'">
+    <p class="hint" style="color:#64748b; font-size:.86rem; margin:.2rem 0 .6rem;">
+      <i class="bi bi-info-circle"></i> El cajon se abre por la impresora de tickets:
+      <strong>{{ impresoraLabel }}</strong>. Cambiala en "Impresora de tickets".
+    </p>
     <div class="row two">
-        <div>
-            <label class="lbl">Habilitar</label>
-            <div class="toggle">
-                <label class="sw">
-                    <input type="checkbox" [(ngModel)]="drawerEnabled">
-                    <span class="sl"></span>
-                </label>
-                <span class="ttext">{{ drawerEnabled ? 'Activo' : 'Inactivo' }}</span>
-            </div>
+      <div>
+        <label class="lbl">Abrir al cobrar</label>
+        <div class="toggle">
+          <label class="sw"><input type="checkbox" [(ngModel)]="drawerOpenOnPayment"><span class="sl"></span></label>
+          <span class="ttext">Automatico</span>
         </div>
-        <div>
-            <label class="lbl">Pin</label>
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" 
-                     [class.disabled]="!drawerEnabled"
-                     (click)="toggleMenu('pin')">
-                    <span>{{ drawerPin }}</span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="custom-sel-menu" *ngIf="pinOpen">
-                    <div class="custom-sel-option" 
-                         *ngFor="let val of opcionesPin" 
-                         (click)="seleccionarPin(val)"
-                         [class.selected]="drawerPin === val">
-                        {{ val }}
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+  </ng-container>
 
+  <!-- Modo USB / SERIAL -->
+  <ng-container *ngIf="drawerEnabled && drawerConx==='usb'">
     <div class="row two">
-        <div>
-            <label class="lbl">Puerto del cajón (COM/USB)</label>
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" 
-                     [class.disabled]="!drawerEnabled"
-                     (click)="toggleMenu('drawerPort')">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ nombrePuertoCajon }}
-                    </span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="custom-sel-menu" *ngIf="drawerPortOpen">
-                    <div class="custom-sel-option" 
-                         (click)="seleccionarPuertoCajon('')"
-                         [class.selected]="drawerPath === ''">
-                        Auto (pendiente)
-                    </div>
-                    <div class="custom-sel-option" 
-                         *ngFor="let p of serialPorts" 
-                         (click)="seleccionarPuertoCajon(p.path)"
-                         [class.selected]="drawerPath === p.path">
-                        {{ portLabel(p) }}
-                    </div>
-                </div>
-            </div>
+      <div>
+        <label class="lbl">Puerto del cajon</label>
+        <div class="custom-sel-wrap">
+          <div class="ctl custom-sel-box" (click)="toggle('drawerPort')">
+            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ nombrePuertoCajon }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </div>
+          <div class="custom-sel-menu" *ngIf="menu === 'drawerPort'">
+            <div class="custom-sel-option" *ngFor="let p of serialPorts" (click)="setDrawerPort(p.path)" [class.selected]="drawerPath===p.path">{{ portLabel(p) }}</div>
+            <div class="custom-sel-option disabled" *ngIf="serialPorts.length===0">Sin puertos. Pulsa "Detectar puertos".</div>
+          </div>
         </div>
-        <div>
-            <label class="lbl">Baudrate</label>
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" 
-                     [class.disabled]="!drawerEnabled"
-                     (click)="toggleMenu('drawerBaud')">
-                    <span>{{ drawerBaudRate }}</span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="custom-sel-menu" *ngIf="drawerBaudOpen">
-                    <div class="custom-sel-option" 
-                         *ngFor="let val of opcionesBaudrate" 
-                         (click)="seleccionarBaudrateCajon(val)"
-                         [class.selected]="drawerBaudRate === val">
-                        {{ val }}
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div>
+        <label class="lbl">Baudrate</label>
+        <div class="custom-sel-wrap">
+          <div class="ctl custom-sel-box" (click)="toggle('drawerBaud')">
+            <span>{{ drawerBaudRate }}</span><i class="bi bi-chevron-down"></i>
+          </div>
+          <div class="custom-sel-menu" *ngIf="menu === 'drawerBaud'">
+            <div class="custom-sel-option" *ngFor="let v of opcionesBaudrate" (click)="setDrawerBaud(v)" [class.selected]="drawerBaudRate===v">{{ v }}</div>
+          </div>
         </div>
+      </div>
     </div>
-
     <div class="row two">
-        <div>
-            <label class="lbl">Abrir al cobrar</label>
-            <div class="toggle">
-                <label class="sw">
-                    <input type="checkbox" [(ngModel)]="drawerOpenOnPayment" [disabled]="!drawerEnabled">
-                    <span class="sl"></span>
-                </label>
-                <span class="ttext">Automático</span>
-            </div>
+      <div>
+        <label class="lbl">Pin</label>
+        <div class="custom-sel-wrap">
+          <div class="ctl custom-sel-box" (click)="toggle('pin')">
+            <span>{{ drawerPin }}</span><i class="bi bi-chevron-down"></i>
+          </div>
+          <div class="custom-sel-menu" *ngIf="menu === 'pin'">
+            <div class="custom-sel-option" *ngFor="let v of opcionesPin" (click)="setPin(v)" [class.selected]="drawerPin===v">{{ v }}</div>
+          </div>
         </div>
-    </div>
-
-    <div class="btn-row">
-        <button type="button" class="btn-outline" (click)="testDrawer()" [disabled]="!drawerEnabled || !drawerPath || busyTestDrawer">
-            <i class="bi bi-wrench-adjustable"></i> {{ busyTestDrawer ? 'Probando...' : 'Probar Cajón' }}
-        </button>
-    </div>
-
-    <div class="sep" style="margin: 2rem 0; border-top: 1px solid #eee;"></div>
-
-    <div class="section-title"><i class="bi bi-upc-scan"></i> Scanner / Lector</div>
-    
-    <div class="row two">
-        <div>
-            <label class="lbl">Habilitado</label>
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" (click)="toggleMenu('scannerEnabled')">
-                    <span>{{ scannerEnabled ? 'Sí (Serial COM)' : 'No' }}</span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="custom-sel-menu" *ngIf="scannerEnabledOpen">
-                    <div class="custom-sel-option" 
-                         (click)="seleccionarScannerHabilitado(false)"
-                         [class.selected]="!scannerEnabled">
-                        No
-                    </div>
-                    <div class="custom-sel-option" 
-                         (click)="seleccionarScannerHabilitado(true)"
-                         [class.selected]="scannerEnabled">
-                        Sí (Serial COM)
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div>
+        <label class="lbl">Abrir al cobrar</label>
+        <div class="toggle">
+          <label class="sw"><input type="checkbox" [(ngModel)]="drawerOpenOnPayment"><span class="sl"></span></label>
+          <span class="ttext">Automatico</span>
         </div>
-        <div>
-            <label class="lbl">Puerto scanner</label>
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" 
-                     [class.disabled]="!scannerEnabled"
-                     (click)="toggleMenu('scannerPort')">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ nombrePuertoScanner }}
-                    </span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="custom-sel-menu" *ngIf="scannerPortOpen">
-                    <div class="custom-sel-option" 
-                         (click)="seleccionarPuertoScanner('')"
-                         [class.selected]="scannerPath === ''">
-                        — Selecciona —
-                    </div>
-                    <div class="custom-sel-option" 
-                         *ngFor="let p of serialPorts" 
-                         (click)="seleccionarPuertoScanner(p.path)"
-                         [class.selected]="scannerPath === p.path">
-                        {{ portLabel(p) }}
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+  </ng-container>
 
-    <div class="btn-row" style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-        <button class="btn btn-primary" type="button" (click)="save()">
-            <i class="bi bi-check2-circle"></i> Guardar Dispositivos
-        </button>
-    </div>
+  <div class="btn-row" *ngIf="drawerEnabled && drawerConx!=='bluetooth'">
+    <button type="button" class="btn-outline" (click)="testDrawer()" [disabled]="!puedeProbar || busyTestDrawer">
+      <i class="bi bi-wrench-adjustable"></i> {{ busyTestDrawer ? 'Probando...' : 'Probar cajon' }}
+    </button>
+  </div>
+
+  <div class="btn-row" style="margin-top: 2rem; display:flex; justify-content:flex-end;">
+    <button class="btn btn-primary" type="button" (click)="save()">
+      <i class="bi bi-check2-circle"></i> Guardar dispositivos
+    </button>
+  </div>
 </div>

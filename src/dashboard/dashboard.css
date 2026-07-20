@@ -1023,3 +1023,26 @@
   }
 }
 
+
+/* =========================================================
+   MODO OSCURO — shell del dashboard
+   ========================================================= */
+:host-context(html.dark) .dashboard-wrapper { background: #0b1220; }
+:host-context(html.dark) .sidebar { background: #0f1826 !important; border-right: 1px solid rgba(255,255,255,.08); }
+:host-context(html.dark) .sidebar-title { color: #f1f5f9 !important; }
+:host-context(html.dark) .sidebar-link { color: #cbd5e1 !important; }
+:host-context(html.dark) .sidebar-link:hover,
+:host-context(html.dark) .sidebar-link.active { background: rgba(255,255,255,.08) !important; color: #fff !important; }
+:host-context(html.dark) .sidebar-link .chevron { color: #94a3b8; }
+:host-context(html.dark) .dashboard-header { background: #0f1826 !important; border-color: rgba(255,255,255,.08) !important; }
+:host-context(html.dark) .dropdown-venta { background: #16233a !important; }
+:host-context(html.dark) .dropdown-venta .dropdown-item { color: #e2e8f0 !important; }
+:host-context(html.dark) .dropdown-venta .dropdown-item:hover { background: rgba(255,255,255,.07) !important; }
+:host-context(html.dark) .btn-light { background: #1e2b44 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.1) !important; }
+:host-context(html.dark) .btn-light:hover { background: #26344f !important; }
+:host-context(html.dark) .dark-toggle-btn i { color: #fbbf24; }
+:host-context(html.dark) .dashboard-user { color: #e2e8f0 !important; }
+:host-context(html.dark) .main-content,
+:host-context(html.dark) .main-content.bg-body-tertiary { background: #0b1220 !important; }
+:host-context(html.dark) .dashboard-content { background: #0b1220 !important; }
+:host-context(html.dark) .main-content { box-shadow: none !important; }
