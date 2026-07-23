@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 
 const COMPRA_URL = 'https://wybix-landing.vercel.app';
+
 const UMBRALES = [15, 7, 3, 1]; 
 
 @Component({
