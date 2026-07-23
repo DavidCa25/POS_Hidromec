@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { CONFIG_SECTIONS, ConfigSection, ConfigTile } from './config-tiles';
 import { ConfigDrawerService } from '../config-drawer.service';
+import { LicenseService } from '../../services/license.service';
 
 type Status = 'ok' | 'pending' | 'off' | 'none';
 
@@ -20,7 +21,10 @@ export class ConfigShell implements OnInit, OnDestroy {
     private statuses: Record<string, Status> = {};
     private sub?: Subscription;
 
-    constructor(private drawer: ConfigDrawerService) {}
+    // Tiles que solo aplican con licencia MULTICAJA.
+    private readonly tilesMulticaja = new Set<string>(['cajas']);
+
+    constructor(private drawer: ConfigDrawerService, private license: LicenseService) {}
 
     get activeComponent(): Type<unknown> | null {
         return this.activeTile?.component ?? null;
@@ -28,7 +32,17 @@ export class ConfigShell implements OnInit, OnDestroy {
 
     async ngOnInit() {
         this.sub = this.drawer.close$.subscribe(() => this.cerrar());
+        await this.license.cargarEstado();
+        this.aplicarPlan();
         await this.cargarEstados();
+    }
+
+    // Si NO es multicaja, oculta los mosaicos de multicaja (y secciones vacías).
+    private aplicarPlan() {
+        if (this.license.permiteMulticaja) { this.sections = CONFIG_SECTIONS; return; }
+        this.sections = CONFIG_SECTIONS
+            .map(sec => ({ ...sec, tiles: sec.tiles.filter(t => !this.tilesMulticaja.has(t.id)) }))
+            .filter(sec => sec.tiles.length > 0);
     }
 
     ngOnDestroy() {

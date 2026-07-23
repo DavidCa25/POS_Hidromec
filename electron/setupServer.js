@@ -81,30 +81,33 @@ function runElevated(psScript, params) {
       }
     };
  
+    // Funcion auxiliar para inyectar strings en el script de PowerShell
+    const psString = (str) => `'${String(str).replace(/'/g, "''")}'`;
+ 
     try {
-      // 1) Los parametros viajan en JSON (nada que escapar)
       fs.writeFileSync(paramsFile, JSON.stringify(params), 'utf8');
  
-      // 2) El launcher eleva y le pasa SOLO dos rutas al script real.
-      //    Guarda el codigo de salida en un archivo, porque el ExitCode
-      //    del proceso elevado no siempre llega al proceso padre.
+      // EL TRUCO: Pasamos variables limpias y armamos $argsList como un 
+      // SOLO string con comillas dobles (`") para el ArgumentList.
       const content = `
         $ErrorActionPreference = "Stop"
+        
+        $scriptPath = ${psString(psScript)}
+        $jsonPath   = ${psString(paramsFile)}
+        $logPath    = ${psString(logFile)}
+        $exitPath   = ${psString(exitFile)}
+ 
+        $argsList = "-ExecutionPolicy Bypass -NoProfile -File \`"$scriptPath\`" -ParamsFile \`"$jsonPath\`" -LogFile \`"$logPath\`""
+ 
         try {
-          $p = Start-Process powershell -Verb RunAs -PassThru -Wait -ArgumentList @(
-            '-ExecutionPolicy','Bypass',
-            '-NoProfile',
-            '-File', ${psLiteral(psScript)},
-            '-ParamsFile', ${psLiteral(paramsFile)},
-            '-LogFile', ${psLiteral(logFile)}
-          )
-          Set-Content -Path ${psLiteral(exitFile)} -Value $p.ExitCode
+          $p = Start-Process powershell -Verb RunAs -PassThru -Wait -ArgumentList $argsList
+          Set-Content -Path $exitPath -Value $p.ExitCode
           exit $p.ExitCode
         } catch {
-          Set-Content -Path ${psLiteral(exitFile)} -Value 9999
+          Set-Content -Path $exitPath -Value 9999
           exit 9999
         }
-        `.trim();
+      `.trim();
  
       fs.writeFileSync(launcher, content, 'utf8');
     } catch (e) {
@@ -120,7 +123,6 @@ function runElevated(psScript, params) {
     child.stderr.on('data', d => { stderr += d.toString(); });
  
     child.on('close', (code) => {
-      // Prefiere el codigo escrito por el proceso elevado
       let realCode = code;
       try {
         if (fs.existsSync(exitFile)) {
@@ -128,7 +130,6 @@ function runElevated(psScript, params) {
         }
       } catch { /* noop */ }
  
-      // Rescata el log del script para poder diagnosticar
       let scriptLog = '';
       try {
         if (fs.existsSync(logFile)) scriptLog = fs.readFileSync(logFile, 'utf8');
@@ -136,7 +137,6 @@ function runElevated(psScript, params) {
  
       limpiar();
  
-      // 3010 = instalado, requiere reinicio. Se considera exito.
       if (realCode === 0 || realCode === 3010) {
         console.log(`[SETUP] Script PS ok. Log:\n${scriptLog}`);
         return resolve(true);
