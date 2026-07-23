@@ -27,7 +27,7 @@
   "build": {
     "appId": "com.wybix.pos",
     "productName": "Wybix POS",
-    "artifactName": "Wybix-Setup-${version}.${ext}",
+    "artifactName": "Wybix-Setup.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "electron/assets"
