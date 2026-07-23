@@ -41,8 +41,8 @@
     </button>
   </div>
 
-  <!-- Crear caja -->
-  <div class="rg-add">
+  <!-- Crear caja (solo con licencia MultiCaja) -->
+  <div class="rg-add" *ngIf="license.permiteMulticaja">
     <div class="rg-add-h">Agregar caja</div>
     <div class="rg-add-row">
       <input class="rg-ctl" type="text" [(ngModel)]="nuevoNombre" placeholder="Ej. Caja 2"
@@ -55,9 +55,15 @@
     <small class="rg-hint">El código de folio (C2, C3…) se genera automáticamente.</small>
   </div>
 
-  <div class="rg-note">
+  <div class="rg-note" *ngIf="license.permiteMulticaja">
     <i class="bi bi-info-circle"></i>
     <span>Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es la suya.</span>
+  </div>
+
+  <!-- Monocaja: sin creación de cajas -->
+  <div class="rg-note" *ngIf="!license.permiteMulticaja">
+    <i class="bi bi-info-circle"></i>
+    <span>Tu plan es <b>MonoCaja</b> (una sola caja). Para operar varias cajas en red, cambia al plan <b>MultiCaja</b>.</span>
   </div>
 
 </div>

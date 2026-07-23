@@ -380,3 +380,162 @@ html.dark .pos-title,
 html.dark .ct-title { color: #f1f5f9 !important; }
 html.dark .al-table td { color: #e2e8f0 !important; }
 html.dark .al-table th { color: #94a3b8 !important; }
+
+/* =========================================================
+   MODO OSCURO — Paneles de Configuración (drawer)
+   Los paneles se disenaron para modo claro; aqui se hacen legibles
+   sin tocar cada componente. Alcanza a todos via .cs-drawer-body.
+   ========================================================= */
+/* Cabecera del drawer */
+html.dark .cs-drawer-head h3 { color:#f1f5f9 !important; }
+html.dark .cs-drawer-head p { color:#9aa7bd !important; }
+
+/* Texto principal y titulos */
+html.dark .cs-drawer-body { color:#e5e9f0; }
+html.dark .cs-drawer-body h1,
+html.dark .cs-drawer-body h2,
+html.dark .cs-drawer-body h3,
+html.dark .cs-drawer-body h4,
+html.dark .cs-drawer-body h5,
+html.dark .cs-drawer-body p,
+html.dark .cs-drawer-body li,
+html.dark .cs-drawer-body label,
+html.dark .cs-drawer-body b,
+html.dark .cs-drawer-body strong,
+html.dark .cs-drawer-body .panel-content,
+html.dark .cs-drawer-body .section-title,
+html.dark .cs-drawer-body .lbl,
+html.dark .cs-drawer-body .bk,
+html.dark .cs-drawer-body .bk-section-h,
+html.dark .cs-drawer-body .pay-info,
+html.dark .cs-drawer-body .bk-item-name,
+html.dark .cs-drawer-body .wz-terminal-id,
+html.dark .cs-drawer-body .bk-fixed .path,
+html.dark .cs-drawer-body .da-head h3,
+html.dark .cs-drawer-body .wz-pane h3,
+html.dark .cs-drawer-body .wz-terminals-title { color:#e5e9f0 !important; }
+
+/* Texto atenuado: ayudas, subtitulos, metadatos */
+html.dark .cs-drawer-body small,
+html.dark .cs-drawer-body .hint,
+html.dark .cs-drawer-body .ttext,
+html.dark .cs-drawer-body .bk-intro,
+html.dark .cs-drawer-body .bk-help,
+html.dark .cs-drawer-body .bk-item-meta,
+html.dark .cs-drawer-body .bk-list-h,
+html.dark .cs-drawer-body .da-head p,
+html.dark .cs-drawer-body .da-steps,
+html.dark .cs-drawer-body .wz-lead,
+html.dark .cs-drawer-body .wz-hint { color:#9aa7bd !important; }
+
+/* Separadores */
+html.dark .cs-drawer-body .section-title { border-bottom-color:rgba(255,255,255,.1) !important; }
+
+/* Inputs / selects / textareas de cualquier panel */
+html.dark .cs-drawer-body input,
+html.dark .cs-drawer-body select,
+html.dark .cs-drawer-body textarea,
+html.dark .cs-drawer-body .ctl,
+html.dark .cs-drawer-body .bk-ctl,
+html.dark .cs-drawer-body .da-link input,
+html.dark .cs-drawer-body .wz-field input,
+html.dark .cs-drawer-body .custom-sel-box,
+html.dark .cs-drawer-body .form-control,
+html.dark .cs-drawer-body .form-select {
+  background:#0b1220 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important;
+}
+html.dark .cs-drawer-body input::placeholder,
+html.dark .cs-drawer-body textarea::placeholder { color:#64748b !important; }
+html.dark .cs-drawer-body select.ctl option { background:#0b1220 !important; color:#e5e9f0 !important; }
+
+/* Superficies claras -> oscuras (OJO: el img del QR se deja blanco a proposito) */
+html.dark .cs-drawer-body .bk-card,
+html.dark .cs-drawer-body .bk-toggle-row,
+html.dark .cs-drawer-body .bk-fixed,
+html.dark .cs-drawer-body .bk-status,
+html.dark .cs-drawer-body .bk-item,
+html.dark .cs-drawer-body .pay-row,
+html.dark .cs-drawer-body .wz-illus,
+html.dark .cs-drawer-body .wz-terminal,
+html.dark .cs-drawer-body .wz-mode-opt,
+html.dark .cs-drawer-body .custom-sel-menu {
+  background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important;
+}
+html.dark .cs-drawer-body .pay-row { border-bottom-color:rgba(255,255,255,.08) !important; }
+
+/* Menus simulados */
+html.dark .cs-drawer-body .custom-sel-option { color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .custom-sel-option:hover { background:#1c2b45 !important; color:#e5e9f0 !important; }
+
+/* Botones secundarios/ghost blancos -> superficie oscura */
+html.dark .cs-drawer-body .btn-outline,
+html.dark .cs-drawer-body .btn-outline-secondary,
+html.dark .cs-drawer-body .bk-btn.secondary,
+html.dark .cs-drawer-body .bk-iconbtn,
+html.dark .cs-drawer-body .wz-btn.ghost {
+  background:#0f1826 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important;
+}
+
+/* Asistente Mercado Pago: re-tematiza via sus variables */
+html.dark .cs-drawer-body .wz {
+  --wz-ink:#e5e9f0; --wz-muted:#9aa7bd; --wz-bg:#152238; --wz-line:rgba(255,255,255,.12);
+}
+html.dark .cs-drawer-body .wz-head { background:linear-gradient(135deg,#18233b,#152238) !important; }
+html.dark .cs-drawer-body .wz-howto-item { color:#cbd5e1 !important; }
+
+/* Avisos informativos: mantienen acento pero legibles */
+html.dark .cs-drawer-body .da-note { background:rgba(37,99,235,.14) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.35) !important; }
+html.dark .cs-drawer-body .bk-tip { background:rgba(37,99,235,.12) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.28) !important; }
+html.dark .cs-drawer-body .wz-note { color:#bfdbfe !important; }
+
+/* Panel de Facturacion (tarjetas propias .fc-*) */
+html.dark .cs-drawer-body .fc { color:#e5e9f0; }
+html.dark .cs-drawer-body .fc-card { background:#152238 !important; border-color:rgba(255,255,255,.1) !important; }
+html.dark .cs-drawer-body .fc-head p,
+html.dark .cs-drawer-body .fc-field small { color:#9aa7bd !important; }
+html.dark .cs-drawer-body .fc-field input,
+html.dark .cs-drawer-body .fc-field select,
+html.dark .cs-drawer-body .fc-select-trigger,
+html.dark .cs-drawer-body .fc-file { background:#0b1220 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important; }
+html.dark .cs-drawer-body .fc-select-trigger.placeholder { color:#64748b !important; }
+html.dark .cs-drawer-body .fc-select-menu { background:#152238 !important; border-color:rgba(255,255,255,.14) !important; }
+html.dark .cs-drawer-body .fc-select-option { color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .fc-select-option:hover,
+html.dark .cs-drawer-body .fc-select-option.sel { background:#1c2b45 !important; }
+html.dark .cs-drawer-body .fc-note { background:rgba(79,155,184,.14) !important; color:#bfe3ee !important; border-color:rgba(79,155,184,.3) !important; }
+
+/* Panel Usuarios y permisos (.u-*) */
+html.dark .cs-drawer-body .u-name { color:#e5e9f0 !important; }
+html.dark .cs-drawer-body .u-table th { color:#94a3b8 !important; border-bottom-color:rgba(255,255,255,.1) !important; }
+html.dark .cs-drawer-body .u-table td { border-bottom-color:rgba(255,255,255,.07) !important; }
+html.dark .cs-drawer-body .u-badge { background:#0f1826 !important; border-color:rgba(255,255,255,.14) !important; color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .u-badge.rol-admin { background:rgba(37,99,235,.20) !important; border-color:rgba(37,99,235,.45) !important; color:#93c5fd !important; }
+html.dark .cs-drawer-body .u-badge.rol-supervisor { background:rgba(124,58,237,.20) !important; border-color:rgba(124,58,237,.45) !important; color:#c4b5fd !important; }
+html.dark .cs-drawer-body .u-badge.rol-cajero { background:rgba(22,163,74,.20) !important; border-color:rgba(22,163,74,.45) !important; color:#86efac !important; }
+html.dark .cs-drawer-body .u-menu { background:#152238 !important; border-color:rgba(255,255,255,.14) !important; }
+html.dark .cs-drawer-body .u-menu-opt { color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .u-menu-opt:hover { background:#1c2b45 !important; }
+html.dark .cs-drawer-body .u-act { background:#1e2b44 !important; color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .u-act:hover { background:#26344f !important; color:#e5e9f0 !important; }
+html.dark .cs-drawer-body .u-estado.off { color:#94a3b8 !important; }
+html.dark .cs-drawer-body .u-dialog { background:#152238 !important; }
+html.dark .cs-drawer-body .u-dialog h3 { color:#f1f5f9 !important; }
+
+/* Panel de Licencia (.lic-*) */
+html.dark .cs-drawer-body .lic-status { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
+html.dark .cs-drawer-body .lic-status small { color:#9aa7bd !important; }
+
+/* Panel de Cajas (.rg-*) */
+html.dark .cs-drawer-body .rg-current { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
+html.dark .cs-drawer-body .rg-current.set { background:rgba(37,99,235,.14) !important; border-color:rgba(37,99,235,.4) !important; }
+html.dark .cs-drawer-body .rg-pick { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
+html.dark .cs-drawer-body .rg-pick:hover { background:#1c2b45 !important; }
+html.dark .cs-drawer-body .rg-item.sel .rg-pick { border-color:#3b82f6 !important; background:rgba(37,99,235,.16) !important; }
+html.dark .cs-drawer-body .rg-name { color:#e5e9f0 !important; }
+html.dark .cs-drawer-body .rg-code { background:rgba(255,255,255,.10) !important; color:#cbd5e1 !important; }
+html.dark .cs-drawer-body .rg-toggle { background:#1e2b44 !important; border-color:rgba(255,255,255,.14) !important; color:#94a3b8 !important; }
+html.dark .cs-drawer-body .rg-toggle:hover { background:#26344f !important; }
+html.dark .cs-drawer-body .rg-toggle .bi-toggle-on { color:#34d399 !important; }
+html.dark .cs-drawer-body .rg-add { border-top-color:rgba(255,255,255,.12) !important; }
+html.dark .cs-drawer-body .rg-note { background:rgba(37,99,235,.12) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.28) !important; }
+html.dark .cs-drawer-body .rg-empty i { color:#475569 !important; }

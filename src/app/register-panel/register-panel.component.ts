@@ -3,6 +3,7 @@ import { NgIf, NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { RegisterService } from '../../services/register.service';
+import { LicenseService } from '../../services/license.service';
 
 interface Register {
   id: number;
@@ -27,7 +28,7 @@ export class RegistersPanel implements OnInit {
   loading = false;
   busyAdd = false;
 
-  constructor(private registerSvc: RegisterService) {}
+  constructor(private registerSvc: RegisterService, public license: LicenseService) {}
 
   private get api() {
     return (window as any).electronAPI;

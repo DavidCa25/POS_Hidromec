@@ -12,6 +12,7 @@ import { DescargaAppPanel } from '../descarga-app-panel/descarga-app.component';
 import { FormasPagoPanelComponent } from '../formas-pago-panel/formas-pago.component';
 import { ActualizacionesPanelComponent } from '../actualizaciones-panel/actualizaciones.component';
 import { UsuariosPanelComponent } from '../usuarios-panel/usuarios.component';
+import { LicenciaPanelComponent } from '../licencia-panel/licencia.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -92,6 +93,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'sistema',
         title: 'Sistema',
         tiles: [
+            { id: 'licencia', title: 'Licencia', desc: 'Activa tu clave y revisa tu plan', icon: 'key-fill', color: 'green', size: '2x1', component: LicenciaPanelComponent },
             { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'person-badge', color: 'gray', size: '2x1', component: UsuariosPanelComponent },
             { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrow-repeat', color: 'blue', size: '1x1', component: ActualizacionesPanelComponent },
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },

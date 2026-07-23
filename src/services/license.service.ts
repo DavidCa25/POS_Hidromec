@@ -44,6 +44,10 @@ export class LicenseService {
   get sinLicencia(): boolean { return this.estado.state === 'none'; }
   get diasRestantesPrueba(): number { return this.estado.daysRemaining ?? 0; }
 
+  // Solo una licencia MULTICAJA de pago habilita varias cajas.
+  // En prueba o monocaja NO se muestra nada de multicaja.
+  get permiteMulticaja(): boolean { return this.estado.plan === 'multi'; }
+
   // Lee el estado unificado desde Electron (con protección de reloj)
   async cargarEstado(): Promise<LicenseStatus> {
     try {

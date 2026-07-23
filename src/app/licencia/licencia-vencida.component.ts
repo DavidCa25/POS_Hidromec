@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 
-const COMPRA_URL = 'https://wybix-landing.vercel.app/';
+const COMPRA_URL = 'https://wybix-landing.vercel.app';
 
 @Component({
   selector: 'app-licencia-vencida',
@@ -66,6 +66,8 @@ export class LicenciaVencidaComponent {
   constructor(private license: LicenseService) {}
 
   comprar() {
+    const api = (window as any).electronAPI;
+    if (api?.openExternal) { api.openExternal(COMPRA_URL); return; }
     try { window.open(COMPRA_URL, '_blank'); } catch { /* noop */ }
   }
 

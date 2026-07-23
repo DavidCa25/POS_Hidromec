@@ -213,6 +213,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     cancelInvoice: (p) => ipcRenderer.invoke('fiscal-cancel-invoice', p),
 
+    // Abrir URL en el navegador del sistema
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
     //Licencia
     getMachineId: () => ipcRenderer.invoke('get-machine-id'),
 

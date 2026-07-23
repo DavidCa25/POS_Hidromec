@@ -3128,6 +3128,18 @@ ipcMain.handle('get-machine-id', async () => {
   return cachedMachineId;
 });
 
+// Abre una URL en el NAVEGADOR del sistema (no en una ventana de Electron)
+ipcMain.handle('open-external', async (_event, url) => {
+  try {
+    const u = String(url || '');
+    if (!/^https?:\/\//i.test(u)) return { ok: false, error: 'URL no valida' };
+    await shell.openExternal(u);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
 //Setup
 
 ipcMain.handle('setup-status', async () => {
@@ -3172,32 +3184,48 @@ ipcMain.handle('license:activate', async (_event, payload) => {
 
     if (!cachedMachineId) cachedMachineId = generarMachineId();
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/license-check`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ANON_KEY}`,
-        'apikey': ANON_KEY
-      },
-      body: JSON.stringify({
-        action: 'activate',
-        licenseKey: String(licenseKey).trim().toUpperCase(),
-        machineId: cachedMachineId,
-        machineAlias
-      })
-    });
+    // Timeout para que la activacion nunca se quede colgada.
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 10000);
+    let res;
+    try {
+      res = await fetch(`${SUPABASE_URL}/functions/v1/license-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'apikey': ANON_KEY
+        },
+        body: JSON.stringify({
+          action: 'activate',
+          licenseKey: String(licenseKey).trim().toUpperCase(),
+          machineId: cachedMachineId,
+          machineAlias
+        }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(t);
+    }
 
-    const data = await res.json();
+    // Parseo seguro (si el servicio devuelve 404/HTML, no truena)
+    let data = null;
+    try { data = await res.json(); } catch { data = null; }
 
-    if (!data?.success) {
-      return { ok: false, error: data?.error || 'La clave no es valida o esta en uso.', code: data?.code };
+    if (!res.ok || !data?.success) {
+      const error = data?.error
+        || (res.status === 404 ? 'El servicio de licencias no responde. Intenta más tarde.' : 'La clave no es válida o ya está en uso.');
+      return { ok: false, error, code: data?.code };
     }
 
     licenseStore.saveLicense(cachedMachineId, data);
     return { ok: true, plan: data.plan, customerName: data.customerName };
   } catch (err) {
     console.error('license:activate:', err);
-    return { ok: false, error: 'No hay conexion para validar la licencia.' };
+    const error = err?.name === 'AbortError'
+      ? 'La validación tardó demasiado. Revisa tu internet e intenta de nuevo.'
+      : 'No hay conexión para validar la licencia.';
+    return { ok: false, error };
   }
 });
 

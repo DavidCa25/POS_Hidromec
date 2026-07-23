@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 
-const COMPRA_URL = 'https://wybix-landing.vercel.app/';
+const COMPRA_URL = 'https://wybix-landing.vercel.app';
+
 const UMBRALES = [15, 7, 3, 1]; 
 
 @Component({
@@ -42,6 +43,8 @@ export class TrialBannerComponent implements OnInit {
   ngOnInit() { this.avisarSiCorresponde(); }
 
   comprar() {
+    const api = (window as any).electronAPI;
+    if (api?.openExternal) { api.openExternal(COMPRA_URL); return; }
     try { window.open(COMPRA_URL, '_blank'); } catch { /* noop */ }
   }
 
