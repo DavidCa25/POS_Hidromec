@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 
-// URL de compra (landing). Cámbiala por tu dominio real cuando publiques.
-const COMPRA_URL = 'https://wybix.mx';
+const COMPRA_URL = 'https://wybix-landing.vercel.app/';
 
 @Component({
   selector: 'app-licencia-vencida',

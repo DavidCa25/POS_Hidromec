@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 
-const COMPRA_URL = 'https://wybix.mx';
-const UMBRALES = [15, 7, 3, 1]; // días restantes en que se avisa
+const COMPRA_URL = 'https://wybix-landing.vercel.app/';
+const UMBRALES = [15, 7, 3, 1]; 
 
 @Component({
   selector: 'app-trial-banner',
