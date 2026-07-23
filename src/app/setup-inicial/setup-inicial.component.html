@@ -91,7 +91,7 @@
     <div class="su-body" *ngIf="paso === 3">
       <div class="su-note">
         <i class="bi bi-shield-lock"></i>
-        <span>Esta cuenta tendra acceso total. Guarda bien la contrasena.</span>
+        <span>Esta cuenta tendra acceso total. Guarda bien la contraseña.</span>
       </div>
 
       <div class="su-field">
@@ -100,7 +100,7 @@
       </div>
 
       <div class="su-field">
-        <label>Contrasena</label>
+        <label>Contraseña</label>
         <div class="su-pass">
           <input [type]="verPassword ? 'text' : 'password'" [(ngModel)]="password"
                  placeholder="Minimo 6 caracteres" autocomplete="new-password">
@@ -114,11 +114,11 @@
       </div>
 
       <div class="su-field">
-        <label>Confirmar contrasena</label>
+        <label>Confirmar contraseña</label>
         <input [type]="verPassword ? 'text' : 'password'" [(ngModel)]="passwordConfirm"
                placeholder="Escribela de nuevo" autocomplete="new-password">
         <small *ngIf="passwordConfirm.length > 0" [class.su-ok]="passwordsCoinciden" [class.su-err]="!passwordsCoinciden">
-          {{ passwordsCoinciden ? 'Las contrasenas coinciden' : 'No coinciden' }}
+          {{ passwordsCoinciden ? 'Las contraseñas coinciden' : 'No coinciden' }}
         </small>
       </div>
 
