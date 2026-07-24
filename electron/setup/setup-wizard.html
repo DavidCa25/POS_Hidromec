@@ -146,17 +146,31 @@
     </div>
     <div class="body">
 
-      <!-- PASO 0: ACTIVACIÓN DE LICENCIA -->
+      <!-- PASO 0: ELEGIR (prueba gratis o licencia) -->
       <div class="step active" id="step0">
         <div class="field">
-          <label>Clave de Activación</label>
-          <<input type="text" id="licenseKey" placeholder="WYBX-M1-XXXX-XXXX" maxlength="17">
-          <div class="hint">Ingresa la licencia de Wybix POS. Se requiere conexión a internet temporalmente para validar este equipo.</div>
+          <label>Instala Wybix POS en este equipo</label>
+          <div class="hint">Empieza con 30 días gratis (sin tarjeta) o activa tu licencia si ya la compraste.</div>
         </div>
-        <div class="actions">
-          <button class="btn-primary" id="btnActivate" onclick="activateLicense()">Validar Licencia</button>
+        <div class="actions" style="flex-direction:column; gap:12px;">
+          <button class="btn-primary" style="width:100%" id="btnTrial" onclick="startTrial()">Iniciar prueba gratis (30 días)</button>
+          <button class="btn-ghost" style="width:100%" onclick="show('step0b')">Ya tengo una licencia</button>
         </div>
         <div class="err" id="err0"></div>
+      </div>
+
+      <!-- PASO 0b: ACTIVACIÓN DE LICENCIA -->
+      <div class="step" id="step0b">
+        <div class="field">
+          <label>Clave de Activación</label>
+          <input type="text" id="licenseKey" placeholder="WYBX-M1-XXXX-XXXX" maxlength="17">
+          <div class="hint">Ingresa la licencia de Wybix POS. Se requiere conexión a internet temporalmente para validar este equipo.</div>
+        </div>
+        <div class="actions between">
+          <button class="btn-ghost" onclick="show('step0')">Volver</button>
+          <button class="btn-primary" id="btnActivate" onclick="activateLicense()">Validar Licencia</button>
+        </div>
+        <div class="err" id="err0b"></div>
       </div>
 
       <!-- PASO 1: ROLES (Solo si es Multi) -->
@@ -266,22 +280,22 @@
     async function activateLicense() {
       const key = document.getElementById('licenseKey').value.trim();
       if (key.length < 17) {
-        showErr('err0', 'La clave de licencia esta incompleta.');
+        showErr('err0b', 'La clave de licencia esta incompleta.');
         return;
       }
 
       const btn = document.getElementById('btnActivate');
       btn.disabled = true;
       btn.textContent = 'Validando contra el servidor...';
-      document.getElementById('err0').style.display = 'none';
+      document.getElementById('err0b').style.display = 'none';
 
       const res = await api.activateLicense(key);
-      
+
       btn.disabled = false;
       btn.textContent = 'Validar Licencia';
 
       if(!res.ok) {
-        showErr('err0', res.error);
+        showErr('err0b', res.error);
         return;
       }
 
@@ -307,13 +321,32 @@
     function goStep2() { show(role === 'principal' ? 'step2p' : 'step2s'); }
     function back() { show('step1'); } // Solo accesible si es plan 'multi'
 
-    function genPass(targetId) {
+    function genRandom() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
       let out = '';
       const arr = new Uint32Array(16);
       crypto.getRandomValues(arr);
       for (let i = 0; i < 16; i++) out += chars[arr[i] % chars.length];
-      document.getElementById(targetId).value = out;
+      return out;
+    }
+    function genPass(targetId) { document.getElementById(targetId).value = genRandom(); }
+
+    // Prueba gratis: instala como caja unica en localhost, SIN licencia.
+    // El registro de los 30 dias lo hace Angular (pantalla "Comienza tu prueba gratis").
+    async function startTrial() {
+      const btn = document.getElementById('btnTrial');
+      btn.disabled = true;
+      btn.textContent = 'Preparando...';
+      show('step3');
+      document.getElementById('installMsg').textContent = 'Instalando motor SQL Server...';
+      document.getElementById('installSub').textContent = 'Preparando tu equipo para la prueba gratis. Puede tardar unos minutos.';
+      const res = await api.runSetup({ role: 'principal', server: 'localhost\\SQLEXPRESS', saPassword: genRandom() });
+      if (!res?.ok) {
+        show('step0');
+        btn.disabled = false;
+        btn.textContent = 'Iniciar prueba gratis (30 días)';
+        showErr('err0', res?.error || 'No se pudo preparar el equipo. Intenta de nuevo.');
+      }
     }
 
     async function finishPrincipal() {
