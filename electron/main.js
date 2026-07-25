@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
@@ -159,6 +159,9 @@ async function bootMainApp() {
   backup.startScheduler();
   cloudSync.startScheduler();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
+
+  // Abre la pantalla de cliente si quedo habilitada en la configuracion.
+  autoOpenCustomerDisplay();
 }
 
 app.whenReady().then(async () => {
@@ -300,7 +303,9 @@ function loadDeviceConfig() {
     // conexion: 'sistema' (impresora del SO) | 'bluetooth' (proximamente)
     printer: { conexion: 'sistema', name: '', ticketPrinterName: '' },
     // conexion: 'impresora' (cajon conectado a la impresora, lo mas comun) | 'usb' (serial COM) | 'bluetooth' (proximamente)
-    drawer: { conexion: 'impresora', enabled: false, path: '', baudRate: 9600, pulseMs: 120, pin: 0, openOnPayment: false }
+    drawer: { conexion: 'impresora', enabled: false, path: '', baudRate: 9600, pulseMs: 120, pin: 0, openOnPayment: false },
+    // Pantalla de cliente (segundo monitor)
+    customerDisplay: { enabled: false, displayId: null }
   };
 }
 
@@ -309,6 +314,119 @@ function saveDeviceConfig(cfg) {
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2), 'utf8');
   return cfg;
 }
+
+// ============================================================
+//  PANTALLA DE CLIENTE (segundo monitor)
+// ============================================================
+let customerWindow = null;
+let displayWatchOn = false;
+
+function listMonitors() {
+  try {
+    const primary = screen.getPrimaryDisplay();
+    return screen.getAllDisplays().map((d, i) => ({
+      id: d.id,
+      label: (d.id === primary.id ? 'Monitor principal' : 'Monitor ' + (i + 1)) +
+             ` (${d.size.width}x${d.size.height})`,
+      primary: d.id === primary.id,
+      bounds: d.bounds
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function pickDisplay(displayId) {
+  const all = screen.getAllDisplays();
+  if (displayId != null) {
+    const found = all.find(d => d.id === displayId);
+    if (found) return found;
+  }
+  // Por defecto: el primer monitor que NO sea el principal
+  const primary = screen.getPrimaryDisplay();
+  return all.find(d => d.id !== primary.id) || primary;
+}
+
+function pushCustomerState(state) {
+  try {
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      customerWindow.webContents.send('customer:state', state);
+    }
+  } catch { /* noop */ }
+}
+
+function watchDisplays() {
+  if (displayWatchOn) return;
+  displayWatchOn = true;
+  // Si se desconecta el monitor de la pantalla de cliente, avisa al POS.
+  screen.on('display-removed', () => {
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      try { mainWindow && mainWindow.webContents.send('customer-display:disconnected'); } catch { /* noop */ }
+    }
+  });
+}
+
+function openCustomerDisplay(displayId) {
+  try {
+    watchDisplays();
+    const disp = pickDisplay(displayId);
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      customerWindow.setBounds(disp.bounds);
+      customerWindow.show();
+      return { ok: true, displayId: disp.id };
+    }
+    customerWindow = new BrowserWindow({
+      x: disp.bounds.x, y: disp.bounds.y,
+      width: disp.bounds.width, height: disp.bounds.height,
+      frame: false, fullscreen: true, skipTaskbar: true,
+      backgroundColor: '#0b1620',
+      webPreferences: {
+        preload: path.join(__dirname, 'customer-display', 'customer-preload.js'),
+        contextIsolation: true, nodeIntegration: false, sandbox: false
+      }
+    });
+    customerWindow.loadFile(path.join(__dirname, 'customer-display', 'customer.html'));
+    customerWindow.webContents.on('did-finish-load', () => pushCustomerState({ mode: 'idle' }));
+    customerWindow.on('closed', () => { customerWindow = null; });
+    return { ok: true, displayId: disp.id };
+  } catch (e) {
+    console.error('openCustomerDisplay:', e);
+    return { ok: false, error: e.message };
+  }
+}
+
+function closeCustomerDisplay() {
+  try {
+    if (customerWindow && !customerWindow.isDestroyed()) customerWindow.close();
+    customerWindow = null;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Se llama al arrancar el POS: abre la pantalla si esta habilitada en la config.
+function autoOpenCustomerDisplay() {
+  try {
+    const cfg = loadDeviceConfig();
+    const cd = cfg.customerDisplay || {};
+    if (cd.enabled) openCustomerDisplay(cd.displayId ?? null);
+  } catch (e) { console.error('autoOpenCustomerDisplay:', e); }
+}
+
+ipcMain.handle('customer-display:list-monitors', async () => listMonitors());
+ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCustomerDisplay(displayId));
+ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
+ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
+ipcMain.handle('customer-display:status', async () => ({ open: !!(customerWindow && !customerWindow.isDestroyed()) }));
+ipcMain.handle('customer:get-business', async () => {
+  try {
+    const cfg = await ensureBusinessConfig();
+    return { name: cfg?.business_name || cfg?.businessName || '' };
+  } catch {
+    return { name: '' };
+  }
+});
 
 function setupAutoUpdater(win) {
   if (isDev) {
@@ -2277,7 +2395,8 @@ ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
       ...partialCfg,
       scanner: { ...(current.scanner || {}), ...(partialCfg.scanner || {}) },
       printer: { ...(current.printer || {}), ...(partialCfg.printer || {}) },
-      drawer: { ...(current.drawer || {}), ...(partialCfg.drawer || {}) }
+      drawer: { ...(current.drawer || {}), ...(partialCfg.drawer || {}) },
+      customerDisplay: { ...(current.customerDisplay || {}), ...(partialCfg.customerDisplay || {}) }
     };
 
     saveDeviceConfig(merged);

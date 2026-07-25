@@ -133,6 +133,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDeviceConfig: () => ipcRenderer.invoke('devices:get-config'),
     setDeviceConfig: (cfg) => ipcRenderer.invoke('devices:set-config', cfg),
 
+    // Pantalla de cliente (segundo monitor)
+    customerDisplayListMonitors: () => ipcRenderer.invoke('customer-display:list-monitors'),
+    customerDisplayOpen: (displayId) => ipcRenderer.invoke('customer-display:open', displayId),
+    customerDisplayClose: () => ipcRenderer.invoke('customer-display:close'),
+    customerDisplayState: (state) => ipcRenderer.invoke('customer-display:state', state),
+    customerDisplayStatus: () => ipcRenderer.invoke('customer-display:status'),
+    onCustomerDisplayDisconnected: (cb) => ipcRenderer.on('customer-display:disconnected', () => cb()),
+
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     importDatabase: () => ipcRenderer.invoke('import-database'),
 

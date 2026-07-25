@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pantalla de cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1620; --bg2:#0f1f2b; --card:#12212e; --line:#22384880;
+    --text:#eaf2f6; --muted:#8fa8b8; --brand:#45B3C3; --brand2:#7fd4e0;
+    --ok:#34d399; --accent:#f8fafc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Poppins',system-ui,sans-serif;
+    background:radial-gradient(1200px 800px at 70% -10%, #16303c 0%, var(--bg) 60%);
+    color:var(--text); height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  .screen{display:none; height:100vh; padding:4vh 5vw;}
+  .screen.on{display:flex;}
+
+  /* ===== ESPERA ===== */
+  #idle{flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:2.2vh;}
+  #idle .logo{
+    width:120px;height:120px;border-radius:28px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--brand),#2b7d8a); color:#04121a; font-size:56px; font-weight:800;
+    box-shadow:0 20px 60px rgba(69,179,195,.25);
+  }
+  #idle .biz{font-size:4.2vw; font-weight:800; letter-spacing:-.5px; line-height:1.05;}
+  #idle .welcome{font-size:1.9vw; color:var(--brand2); font-weight:600;}
+  #idle .clock{font-size:1.5vw; color:var(--muted); font-variant-numeric:tabular-nums;}
+  #idle .waiting{
+    margin-top:1vh; font-size:1.2vw; color:var(--muted); display:flex; align-items:center; gap:12px;
+  }
+  #idle .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.1);}}
+
+  /* ===== VENTA ===== */
+  #sale{flex-direction:column; gap:2vh;}
+  #sale .head{display:flex; justify-content:space-between; align-items:baseline;}
+  #sale .head .biz{font-size:2vw; font-weight:800;}
+  #sale .head .clock{font-size:1.1vw; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .list{flex:1; overflow:hidden; display:flex; flex-direction:column;}
+  .list .row.h{color:var(--muted); font-size:1vw; font-weight:600; border-bottom:1px solid var(--line); padding-bottom:1.2vh;}
+  .list .items{flex:1; overflow-y:auto;}
+  .row{display:grid; grid-template-columns: 1fr 90px 150px 190px; align-items:center; gap:12px; padding:1.4vh 0;}
+  .row.line{border-bottom:1px solid #1b2c3a; font-size:1.5vw;}
+  .row .name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row .qty{text-align:center; color:var(--muted);}
+  .row .pu{text-align:right; color:var(--muted); font-size:1.2vw;}
+  .row .imp{text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
+  .totals{border-top:2px solid var(--line); padding-top:2vh; display:flex; flex-direction:column; gap:1vh;}
+  .totline{display:flex; justify-content:space-between; font-size:1.4vw; color:var(--muted);}
+  .totline b{color:var(--text);}
+  .totline.grand{font-size:3vw; color:var(--text); font-weight:800; margin-top:.5vh;}
+  .totline.grand .amt{color:var(--brand2);}
+
+  /* ===== CIERRE ===== */
+  #checkout{flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1.8vh;}
+  #checkout .label{font-size:1.6vw; color:var(--muted); letter-spacing:2px; text-transform:uppercase;}
+  #checkout .total{font-size:7vw; font-weight:800; color:var(--brand2); line-height:1; font-variant-numeric:tabular-nums;}
+  #checkout .pays{display:flex; gap:5vw; margin-top:2vh;}
+  #checkout .pay .k{font-size:1.2vw; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
+  #checkout .pay .v{font-size:2.6vw; font-weight:700; font-variant-numeric:tabular-nums;}
+  #checkout .change .v{color:var(--ok);}
+  #checkout .thanks{
+    margin-top:3vh; font-size:2.6vw; font-weight:800;
+    background:linear-gradient(90deg,var(--brand),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #checkout .thanks-sub{font-size:1.2vw; color:var(--muted);}
+</style>
+</head>
+<body>
+
+  <!-- ESPERA -->
+  <section class="screen on" id="idle">
+    <div class="logo" id="idleInitial">W</div>
+    <div class="biz" id="idleBiz">Bienvenido</div>
+    <div class="welcome">Con gusto te atendemos</div>
+    <div class="clock" id="idleClock"></div>
+    <div class="waiting"><span class="dot"></span> Esperando la siguiente compra</div>
+  </section>
+
+  <!-- VENTA -->
+  <section class="screen" id="sale">
+    <div class="head">
+      <div class="biz" id="saleBiz">Tu compra</div>
+      <div class="clock" id="saleClock"></div>
+    </div>
+    <div class="list">
+      <div class="row h"><div>Producto</div><div style="text-align:center;">Cant.</div><div style="text-align:right;">P. unit.</div><div style="text-align:right;">Importe</div></div>
+      <div class="items" id="saleItems"></div>
+    </div>
+    <div class="totals">
+      <div class="totline" id="rowSubtotal"><span>Subtotal</span><b class="amt"></b></div>
+      <div class="totline" id="rowTax"><span>IVA</span><b class="amt"></b></div>
+      <div class="totline" id="rowDiscount" style="display:none;"><span>Descuento</span><b class="amt"></b></div>
+      <div class="totline grand"><span>TOTAL</span><span class="amt">$0.00</span></div>
+    </div>
+  </section>
+
+  <!-- CIERRE -->
+  <section class="screen" id="checkout">
+    <div class="label">Total a pagar</div>
+    <div class="total" id="coTotal">$0.00</div>
+    <div class="pays">
+      <div class="pay" id="coPaidBox">
+        <div class="k" id="coPaidLabel">Pago recibido</div>
+        <div class="v" id="coPaid">$0.00</div>
+      </div>
+      <div class="pay change" id="coChangeBox">
+        <div class="k">Cambio</div>
+        <div class="v" id="coChange">$0.00</div>
+      </div>
+    </div>
+    <div class="thanks">¡Gracias por su compra!</div>
+    <div class="thanks-sub">Vuelva pronto</div>
+  </section>
+
+<script>
+  const api = window.customerAPI;
+  let bizName = '';
+  let checkoutTimer = null;
+
+  function money(n){
+    const v = Number(n || 0);
+    return '$' + v.toLocaleString('es-MX', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    document.getElementById(id).classList.add('on');
+  }
+
+  // Reloj
+  function tick(){
+    const d = new Date();
+    const fecha = d.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+    const hora = d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+    const txt = fecha.charAt(0).toUpperCase() + fecha.slice(1) + ' · ' + hora;
+    const a = document.getElementById('idleClock'); if (a) a.textContent = txt;
+    const b = document.getElementById('saleClock'); if (b) b.textContent = hora;
+  }
+  setInterval(tick, 1000); tick();
+
+  // Nombre del negocio
+  async function loadBusiness(){
+    try {
+      const b = await api.getBusiness();
+      bizName = (b && b.name) ? b.name : '';
+      if (bizName) {
+        document.getElementById('idleBiz').textContent = bizName;
+        document.getElementById('saleBiz').textContent = bizName;
+        document.getElementById('idleInitial').textContent = bizName.trim().charAt(0).toUpperCase() || 'W';
+      }
+    } catch { /* noop */ }
+  }
+  loadBusiness();
+
+  function renderSale(s){
+    const cont = document.getElementById('saleItems');
+    cont.innerHTML = '';
+    (s.items || []).forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'row line';
+      row.innerHTML =
+        '<div class="name">' + escapeHtml(it.name) + '</div>' +
+        '<div class="qty">' + it.qty + '</div>' +
+        '<div class="pu">' + money(it.unitPrice) + '</div>' +
+        '<div class="imp">' + money(it.importe) + '</div>';
+      cont.appendChild(row);
+    });
+    cont.scrollTop = cont.scrollHeight;
+
+    document.querySelector('#rowSubtotal .amt').textContent = money(s.subtotal);
+    document.querySelector('#rowTax .amt').textContent = money(s.tax);
+    const disc = document.getElementById('rowDiscount');
+    if (Number(s.discount) > 0) { disc.style.display = 'flex'; disc.querySelector('.amt').textContent = '-' + money(s.discount); }
+    else { disc.style.display = 'none'; }
+    document.querySelector('.totline.grand .amt').textContent = money(s.total);
+  }
+
+  function renderCheckout(s){
+    document.getElementById('coTotal').textContent = money(s.total);
+    const paidBox = document.getElementById('coPaidBox');
+    const changeBox = document.getElementById('coChangeBox');
+    if (s.credito) {
+      document.getElementById('coPaidLabel').textContent = 'Venta a crédito';
+      document.getElementById('coPaid').textContent = 'Por cobrar';
+      changeBox.style.display = 'none';
+      paidBox.style.display = 'block';
+    } else {
+      const method = ({EFECTIVO:'Pago en efectivo',TARJETA:'Pago con tarjeta',TRANSFERENCIA:'Transferencia',TERMINAL_MP:'Terminal'})[s.method] || 'Pago recibido';
+      document.getElementById('coPaidLabel').textContent = method;
+      document.getElementById('coPaid').textContent = money(s.paid);
+      paidBox.style.display = 'block';
+      if (s.method === 'EFECTIVO' && Number(s.change) >= 0) {
+        changeBox.style.display = 'block';
+        document.getElementById('coChange').textContent = money(s.change);
+      } else {
+        changeBox.style.display = 'none';
+      }
+    }
+  }
+
+  function goIdle(){ show('idle'); }
+
+  // Recibe estado del punto de venta
+  api.onState((s) => {
+    if (!s || !s.mode) return;
+    if (s.mode === 'sale') {
+      if (checkoutTimer) { clearTimeout(checkoutTimer); checkoutTimer = null; }
+      if (!s.items || !s.items.length) { if (!checkoutTimer) goIdle(); return; }
+      renderSale(s);
+      show('sale');
+    } else if (s.mode === 'checkout') {
+      if (checkoutTimer) clearTimeout(checkoutTimer);
+      renderCheckout(s);
+      show('checkout');
+      checkoutTimer = setTimeout(() => { checkoutTimer = null; goIdle(); }, 8000);
+    } else if (s.mode === 'idle') {
+      if (checkoutTimer) return; // no interrumpir el "gracias"
+      goIdle();
+    }
+  });
+
+  function escapeHtml(str){
+    return String(str == null ? '' : str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

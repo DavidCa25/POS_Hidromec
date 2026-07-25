@@ -265,6 +265,42 @@ export class Venta {
 
   private recalcularTotal() {
     this.totalVenta = this.items.reduce((acc, it) => acc + it.subtotal, 0);
+    this.pushCustomerDisplay();
+  }
+
+  // ===== Pantalla de cliente (segundo monitor) =====
+  private pushCustomerDisplay() {
+    try {
+      const api = (window as any).electronAPI;
+      if (!api?.customerDisplayState) return;
+      if (!this.items.length) { api.customerDisplayState({ mode: 'idle' }); return; }
+      const items = this.items.map(it => ({
+        name: it.productName, qty: it.qty, unitPrice: it.unitPrice, importe: it.qty * it.unitPrice
+      }));
+      let tax = 0;
+      for (const it of this.items) {
+        const rate = it.tasaIva ?? 0.16;
+        const imp = it.qty * it.unitPrice;
+        tax += imp - (imp / (1 + rate));
+      }
+      const total = this.totalVenta;
+      api.customerDisplayState({ mode: 'sale', items, subtotal: total - tax, tax, discount: 0, total });
+    } catch { /* noop */ }
+  }
+
+  private pushCustomerCheckout(isCredito: boolean) {
+    try {
+      const api = (window as any).electronAPI;
+      if (!api?.customerDisplayState) return;
+      api.customerDisplayState({
+        mode: 'checkout',
+        total: this.lastSaleTotal,
+        paid: isCredito ? null : this.lastSalePaid,
+        change: isCredito ? null : this.lastSaleChange,
+        method: this.paymentMethod,
+        credito: isCredito
+      });
+    } catch { /* noop */ }
   }
 
   private adjustLastAddedQty(delta: number) {
@@ -596,6 +632,9 @@ export class Venta {
         this.lastSaleId = saleId;
         this.lastSaleIsCredito = isCredito;
         this.lastSaleTotal = this.totalVenta;
+
+        // Pantalla de cliente: muestra total pagado / cambio / gracias
+        this.pushCustomerCheckout(isCredito);
 
         this.prepararConceptosFactura(itemsSnapshot, saleId);
 
@@ -1699,6 +1738,9 @@ private async registrarVentaTerminal(orderId: string) {
     this.lastSaleId = saleId;
     this.lastSaleIsCredito = false;
     this.lastSaleTotal = this.totalVenta;
+
+    // Pantalla de cliente: cierre (pago con terminal)
+    this.pushCustomerCheckout(false);
 
     this.prepararConceptosFactura(itemsSnapshot, saleId);
 
