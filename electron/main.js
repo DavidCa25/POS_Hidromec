@@ -428,6 +428,90 @@ ipcMain.handle('customer:get-business', async () => {
   }
 });
 
+// ============================================================
+//  MODULOS OPCIONALES — Pago de servicios / recargas (TAECEL, etc.)
+// ============================================================
+function getServicesConfigPath() {
+  return path.join(app.getPath('userData'), 'services-config.json');
+}
+function loadServicesConfig() {
+  try {
+    const p = getServicesConfigPath();
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) { console.error('services-config.json:', e); }
+  return { provider: null, enabled: false, credentials: {} };
+}
+function saveServicesConfig(cfg) {
+  fs.writeFileSync(getServicesConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
+  return cfg;
+}
+
+// Estado del modulo (sin exponer las credenciales secretas al render)
+ipcMain.handle('services:get-config', async () => {
+  try {
+    const c = loadServicesConfig();
+    return {
+      success: true,
+      data: {
+        provider: c.provider || null,
+        enabled: !!c.enabled,
+        hasCredentials: !!(c.credentials && Object.keys(c.credentials).length)
+      }
+    };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+// Valida las credenciales contra el proveedor antes de habilitar el modulo.
+ipcMain.handle('services:validate', async (_e, payload = {}) => {
+  try {
+    const provider = payload.provider;
+    const credentials = payload.credentials || {};
+    if (provider !== 'taecel') return { ok: false, error: 'Proveedor no soportado por ahora.' };
+
+    // ============================================================
+    //  PUNTO DE INTEGRACION TAECEL
+    //  Aqui va la llamada real a TAECEL (p. ej. "consultar saldo")
+    //  para validar las credenciales del alta. Requiere los
+    //  endpoints/credenciales reales del portal de TAECEL.
+    //  Referencia: taecel.com (WebService).
+    // ============================================================
+    if (!credentials.key || !credentials.nip) {
+      return { ok: false, error: 'Faltan credenciales: Key y NIP de TAECEL.' };
+    }
+    // Validacion basica de formato hasta conectar el WebService real.
+    return { ok: true, saldo: null, pendingApi: true };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+ipcMain.handle('services:set-config', async (_e, cfg = {}) => {
+  try {
+    const current = loadServicesConfig();
+    const merged = {
+      ...current, ...cfg,
+      credentials: { ...(current.credentials || {}), ...(cfg.credentials || {}) }
+    };
+    saveServicesConfig(merged);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('services:clear', async () => {
+  try {
+    saveServicesConfig({ provider: null, enabled: false, credentials: {} });
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+// Ejecuta una operacion (recarga / pago de servicio). Pendiente de conectar TAECEL.
+ipcMain.handle('services:operate', async (_e, op = {}) => {
+  try {
+    const c = loadServicesConfig();
+    if (!c.enabled || c.provider !== 'taecel') return { ok: false, error: 'El modulo no esta configurado.' };
+    // === PUNTO DE INTEGRACION TAECEL: aqui va la recarga/pago real ===
+    return { ok: false, pendingApi: true, error: 'Conecta tu cuenta TAECEL para operar (falta la API real).' };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
 function setupAutoUpdater(win) {
   if (isDev) {
     console.log('🔧 Modo desarrollo: Auto-updater desactivado');

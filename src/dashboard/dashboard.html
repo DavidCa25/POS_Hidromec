@@ -140,6 +140,14 @@
           <i class="bi bi-credit-card-2-front me-2"></i> <span>Clientes</span>
         </a>
       </li>
+      <!-- Módulo opcional: aparece solo cuando está configurado -->
+      <li>
+        <a *ngIf="modulesState.pagoServicios" routerLink="/dashboard/servicios"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="bi bi-phone me-2"></i> <span>Pago de servicios</span>
+        </a>
+      </li>
       <li>
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/facturacion"
            routerLinkActive="active"

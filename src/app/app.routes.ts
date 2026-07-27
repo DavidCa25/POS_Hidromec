@@ -19,6 +19,7 @@ import { Migracion } from './migracion/migracion.component';
 import { Proveedores } from './proveedores/proveedores.component';
 import { Alertas } from '../alertas/alertas';
 import { Conteo } from '../conteo/conteo';
+import { Servicios } from '../servicios/servicios';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -42,6 +43,7 @@ export const routes: Routes = [
       { path: 'corte-dia', component: Corte},
       { path: 'abrir-cajon', component: Cajon},
       { path: 'clientes', component: Clientes },
+      { path: 'servicios', component: Servicios },
       { path: 'facturacion', component: Facturacion },
       { path: 'configuracion', component: ConfigShell },
     ]

@@ -141,6 +141,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customerDisplayStatus: () => ipcRenderer.invoke('customer-display:status'),
     onCustomerDisplayDisconnected: (cb) => ipcRenderer.on('customer-display:disconnected', () => cb()),
 
+    // Modulos opcionales: Pago de servicios / recargas
+    servicesGetConfig: () => ipcRenderer.invoke('services:get-config'),
+    servicesSetConfig: (cfg) => ipcRenderer.invoke('services:set-config', cfg),
+    servicesValidate: (payload) => ipcRenderer.invoke('services:validate', payload),
+    servicesClear: () => ipcRenderer.invoke('services:clear'),
+    servicesOperate: (op) => ipcRenderer.invoke('services:operate', op),
+
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     importDatabase: () => ipcRenderer.invoke('import-database'),
 

@@ -14,6 +14,7 @@ import { ActualizacionesPanelComponent } from '../actualizaciones-panel/actualiz
 import { UsuariosPanelComponent } from '../usuarios-panel/usuarios.component';
 import { LicenciaPanelComponent } from '../licencia-panel/licencia.component';
 import { CustomerDisplayPanelComponent } from '../customer-display-panel/customer-display.component';
+import { ServiciosPanelComponent } from '../servicios-panel/servicios-config.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -61,6 +62,13 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 size: '1x1',
                 component: FormasPagoPanelComponent
             }
+        ]
+    },
+    {
+        id: 'servicios',
+        title: 'Servicios',
+        tiles: [
+            { id: 'pago-servicios', title: 'Pago de servicios', desc: 'Recargas y pago de luz, agua, gas… (TAECEL)', icon: 'phone', color: 'green', size: '2x1', component: ServiciosPanelComponent }
         ]
     },
     {
