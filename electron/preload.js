@@ -133,6 +133,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDeviceConfig: () => ipcRenderer.invoke('devices:get-config'),
     setDeviceConfig: (cfg) => ipcRenderer.invoke('devices:set-config', cfg),
 
+    // Pantalla de cliente (segundo monitor)
+    customerDisplayListMonitors: () => ipcRenderer.invoke('customer-display:list-monitors'),
+    customerDisplayOpen: (displayId) => ipcRenderer.invoke('customer-display:open', displayId),
+    customerDisplayClose: () => ipcRenderer.invoke('customer-display:close'),
+    customerDisplayState: (state) => ipcRenderer.invoke('customer-display:state', state),
+    customerDisplayStatus: () => ipcRenderer.invoke('customer-display:status'),
+    onCustomerDisplayDisconnected: (cb) => ipcRenderer.on('customer-display:disconnected', () => cb()),
+
+    // Modulos opcionales: Pago de servicios / recargas
+    servicesGetConfig: () => ipcRenderer.invoke('services:get-config'),
+    servicesSetConfig: (cfg) => ipcRenderer.invoke('services:set-config', cfg),
+    servicesValidate: (payload) => ipcRenderer.invoke('services:validate', payload),
+    servicesClear: () => ipcRenderer.invoke('services:clear'),
+    servicesOperate: (op) => ipcRenderer.invoke('services:operate', op),
+
+    // Blindaje / seguridad (anti robo hormiga)
+    securityAuthorize: (creds) => ipcRenderer.invoke('security:authorize', creds),
+    securityLog: (evt) => ipcRenderer.invoke('security:log', evt),
+    securityByCashier: (r) => ipcRenderer.invoke('security:by-cashier', r),
+    securityRisk: (r) => ipcRenderer.invoke('security:risk', r),
+
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     importDatabase: () => ipcRenderer.invoke('import-database'),
 
@@ -198,6 +219,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cloudEnsureProvisioned: (nombre) => ipcRenderer.invoke('cloud-ensure-provisioned', nombre),
     cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
     cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
+    cloudDeleteAccount: () => ipcRenderer.invoke('cloud-delete-account'),
 
 
     //FACTURACION

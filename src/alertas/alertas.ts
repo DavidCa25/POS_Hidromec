@@ -50,6 +50,33 @@ interface Reorden { id: number; nombre: string; stock: number; vendido_ventana: 
     <h2 class="al-title">Alertas</h2>
     <p class="al-sub">Wybix vigila tu negocio y te avisa antes de que sea un problema.</p>
 
+    <!-- 0. BLINDAJE: RIESGO POR CAJERO -->
+    <div class="al-card" style="border-color:#fecaca;">
+      <div class="al-card-title"><i class="bi bi-shield-lock" style="color:#dc2626;"></i> Blindaje · Riesgo por cajero
+        <span class="al-count crit" *ngIf="riesgoAlto">{{ riesgoAlto }}</span>
+      </div>
+      <p class="al-sub" style="margin:.3rem 0 .8rem;">Semáforo por cajero según anulaciones, devoluciones, aperturas de cajón sin venta y descuentos (últimos 30 días).</p>
+      <div class="al-load" *ngIf="cargandoRiesgo">Calculando riesgo...</div>
+      <div *ngIf="!cargandoRiesgo">
+        <div class="al-empty" *ngIf="!riesgo.length"><i class="bi bi-check-circle-fill"></i> Sin actividad de riesgo registrada. Todo en orden.</div>
+        <div class="scroll" *ngIf="riesgo.length">
+          <table class="al-table">
+            <thead><tr><th>Cajero</th><th class="r">Anuladas</th><th class="r">Devol.</th><th class="r">Cajón s/venta</th><th class="r">Descuentos</th><th class="r">Riesgo</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let c of riesgo">
+                <td class="al-name">{{ c.cajero }}</td>
+                <td class="r">{{ c.anuladas }}</td>
+                <td class="r">{{ c.devoluciones }}</td>
+                <td class="r">{{ c.cajon_sin_venta }}</td>
+                <td class="r">{{ c.descuentos }}</td>
+                <td class="r"><span class="pill" [ngClass]="nivelClase(c.nivel)">{{ nivelTexto(c.nivel) }} · {{ c.score }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- 1. REORDEN INTELIGENTE -->
     <div class="al-card">
       <div class="al-card-head">
@@ -288,6 +315,7 @@ export class Alertas implements OnInit {
   descuadres: any[] = []; cargandoDescuadre = false;
   devoluciones: any[] = []; cargandoDevol = false;
   vencidos: any[] = []; cargandoVencidos = false;
+  riesgo: any[] = []; cargandoRiesgo = false;
   private clientesMap: Record<number, string> = {};
 
   constructor(private reports: ReportService) {}
@@ -295,7 +323,7 @@ export class Alertas implements OnInit {
   async ngOnInit() {
     await Promise.all([
       this.cargarReorden(), this.cargarLow(), this.cargarAgotados(), this.cargarMuertos(), this.cargarCero(),
-      this.cargarDescuadre(), this.cargarDevoluciones(), this.cargarVencidos()
+      this.cargarDescuadre(), this.cargarDevoluciones(), this.cargarVencidos(), this.cargarRiesgo()
     ]);
   }
 
@@ -328,6 +356,18 @@ export class Alertas implements OnInit {
       this.devoluciones = r?.success ? (r.data || []) : [];
     } catch { this.devoluciones = []; } finally { this.cargandoDevol = false; }
   }
+
+  // ---- Blindaje: riesgo por cajero ----
+  async cargarRiesgo() {
+    this.cargandoRiesgo = true;
+    try {
+      const r = await this.api?.securityRisk?.();
+      this.riesgo = (r?.success ? (r.data || []) : []).filter((c: any) => Number(c.score) > 0);
+    } catch { this.riesgo = []; } finally { this.cargandoRiesgo = false; }
+  }
+  get riesgoAlto(): number { return this.riesgo.filter(c => c.nivel === 'alto').length; }
+  nivelClase(n: string): string { return n === 'alto' ? 'crit' : n === 'medio' ? 'warn' : 'ok'; }
+  nivelTexto(n: string): string { return n === 'alto' ? 'Alto' : n === 'medio' ? 'Medio' : 'Bajo'; }
 
   async cargarVencidos() {
     this.cargandoVencidos = true;

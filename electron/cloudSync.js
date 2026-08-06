@@ -15,6 +15,11 @@ const { poolPromise, sql } = require('./db');
 
 function log(msg) { console.log(`[CLOUD] ${msg}`); }
 
+// machine_id de la LICENCIA (sha256), para ligar licencias↔negocio en el admin.
+let licenseMachineId = null;
+let stampedLicense = false;
+function setLicenseMachineId(id) { licenseMachineId = id ? String(id) : null; }
+
 // ---- Configuracion (cloud-config.json en userData) ----
 
 function getConfigPath() {
@@ -137,15 +142,45 @@ async function supabaseUpsert(table, rows, onConflict) {
 
 // ---- Aprovisionamiento (crear negocio/sucursal) + QR ----
 
+// Huella ESTABLE de la máquina: sobrevive a reinstalaciones del POS.
+// Así, al reinstalar, se reusa el mismo negocio/sucursal en vez de crear uno nuevo.
+function getStableDeviceKey() {
+  const cfg = loadConfig();
+  if (cfg.deviceKey) return cfg.deviceKey;
+  // Windows: MachineGuid del registro (constante por equipo)
+  try {
+    const out = require('child_process')
+      .execSync('reg query "HKLM\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid', { windowsHide: true })
+      .toString();
+    const m = out.match(/MachineGuid\s+REG_SZ\s+([\w-]+)/i);
+    if (m && m[1]) return 'win-' + m[1];
+  } catch { /* no disponible: cae al aleatorio */ }
+  return crypto.randomUUID();
+}
+
 async function ensureProvisioned(nombreNegocio) {
   const cfg = loadConfig();
-  // Idempotente: si ya hay negocio y sucursal, no recrea
+  // Idempotente local: si ya hay negocio y sucursal, no recrea
   if (cfg.sucursalId && cfg.negocioId) {
     return { success: true, sucursalId: cfg.sucursalId, negocioId: cfg.negocioId, already: true };
   }
 
   const nombre = (nombreNegocio && String(nombreNegocio).trim()) || (os.hostname() || 'Mi negocio');
-  const deviceKey = cfg.deviceKey || crypto.randomUUID();
+  const deviceKey = getStableDeviceKey();
+
+  // Idempotente en la nube: si esta máquina YA tiene sucursal, reusarla
+  // (evita duplicados cuando se reinstala y se pierde la config local).
+  try {
+    const existing = await supabaseRequest('GET',
+      `sucursales?select=id,negocio_id&device_key=eq.${encodeURIComponent(deviceKey)}&limit=1`);
+    if (Array.isArray(existing) && existing.length && existing[0].id && existing[0].negocio_id) {
+      cfg.negocioId = existing[0].negocio_id;
+      cfg.sucursalId = existing[0].id;
+      cfg.deviceKey = deviceKey;
+      writeConfig(cfg);
+      return { success: true, sucursalId: existing[0].id, negocioId: existing[0].negocio_id, reused: true };
+    }
+  } catch { /* si falla la búsqueda, se crea normalmente */ }
 
   // 1) Crear negocio (owner_id se llena cuando el dueno se registra)
   const negocio = await supabaseRequest('POST', 'negocios', [{ nombre }], { 'Prefer': 'return=representation' });
@@ -226,6 +261,20 @@ async function fetchShiftDetail(closureId) {
   return det.recordset ?? [];
 }
 
+// Blindaje: riesgo por cajero (anti robo hormiga)
+async function fetchRisk() {
+  const pool = await poolPromise;
+  const r = await pool.request().execute('sp_cashier_risk');
+  return r.recordset ?? [];
+}
+
+// Utilidad estimada del dia (ganancia = venta - costo)
+async function fetchDailyProfit() {
+  const pool = await poolPromise;
+  const r = await pool.request().execute('sp_cloud_daily_profit');
+  return r.recordset?.[0] ?? null;
+}
+
 // ---- Generacion de alertas ----
 
 async function alertaYaExiste(sucursalId, tipo, closureIdLocal) {
@@ -248,11 +297,54 @@ async function crearAlerta(sucursalId, tipo, titulo, mensaje) {
   }]);
 }
 
-async function evaluarAlertas(sucursalId, shifts, cfg) {
+// Empuja una alerta a la nube AL INSTANTE (para eventos críticos de robo hormiga).
+// El resto de la sincronización sigue en bloque cada 5 min; esto no espera.
+async function crearAlertaInmediata(tipo, titulo, mensaje) {
+  const cfg = loadConfig();
+  if (!cfg.enabled || !cfg.sucursalId) return { success: false, skipped: 'sync deshabilitada' };
+  try {
+    await crearAlerta(cfg.sucursalId, tipo, titulo, mensaje);
+    return { success: true };
+  } catch (e) {
+    log('alerta inmediata: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Evita repetir la alerta de riesgo del mismo cajero el mismo dia (marca [uID-fecha]).
+async function alertaRiesgoYaExiste(sucursalId, userId) {
+  const dia = new Date().toISOString().slice(0, 10);
+  const q = `alertas?select=id&sucursal_id=eq.${sucursalId}&tipo=eq.RIESGO_CAJERO&mensaje=like=*[u${userId}-${dia}]*&limit=1`;
+  try { const rows = await supabaseRequest('GET', q); return Array.isArray(rows) && rows.length > 0; }
+  catch { return false; }
+}
+
+// Genericos: evita repetir una alerta que lleva una marca unica en el mensaje (ej. [vc-fecha], [dev-uID-fecha]).
+async function alertaMarcaYaExiste(sucursalId, tipo, marca) {
+  const q = `alertas?select=id&sucursal_id=eq.${sucursalId}&tipo=eq.${tipo}&mensaje=like=*${marca}*&limit=1`;
+  try { const rows = await supabaseRequest('GET', q); return Array.isArray(rows) && rows.length > 0; }
+  catch { return false; }
+}
+
+async function evaluarAlertas(sucursalId, shifts, cfg, daily = null) {
   const ahora = new Date();
   const hora = ahora.getHours();
-  const fueraHorario = (hora < Number(cfg.horaApertura ?? 8) || hora >= Number(cfg.horaCierre ?? 21));
+  const dia = ahora.toISOString().slice(0, 10);
+  const horaApertura = Number(cfg.horaApertura ?? 8);
+  const fueraHorario = (hora < horaApertura || hora >= Number(cfg.horaCierre ?? 21));
   const umbral = Number(cfg.umbralDiferencia ?? 200);
+
+  // Robo hormiga: caja abierta hace rato pero sin ventas registradas hoy.
+  // Se dispara una vez al dia, pasadas >=3 h de la hora de apertura del negocio.
+  const totalHoy = Number(daily?.total ?? 0);
+  const ticketsHoy = Number(daily?.num_tickets ?? 0);
+  const hayCajaAbierta = shifts.some(s => Number(s.abierto) === 1);
+  if (hayCajaAbierta && totalHoy === 0 && ticketsHoy === 0 && hora >= horaApertura + 3) {
+    if (!(await alertaMarcaYaExiste(sucursalId, 'VENTAS_CERO', `[vc-${dia}]`))) {
+      await crearAlerta(sucursalId, 'VENTAS_CERO', 'Sin ventas registradas',
+        `Ya pasaron varias horas con la caja abierta y hoy no hay ninguna venta registrada. Verifica que se esten cobrando los tickets. [vc-${dia}]`);
+    }
+  }
 
   for (const s of shifts) {
     const cid = Number(s.closure_id_local);
@@ -294,6 +386,20 @@ async function pushOnce() {
   const hoy = (daily?.fecha ? new Date(daily.fecha) : new Date());
   const fechaStr = hoy.toISOString().slice(0, 10);
 
+  // Estampa (una vez por proceso) el machine_id de la licencia en la sucursal,
+  // para que el panel de admin pueda ligar licencias y prueba con este negocio.
+  if (licenseMachineId && !stampedLicense) {
+    try {
+      await supabaseRequest('PATCH', `sucursales?id=eq.${sucursalId}`, { license_machine_id: licenseMachineId });
+      stampedLicense = true;
+    } catch (e) { log('stamp licencia: ' + e.message); }
+  }
+
+  // Utilidad estimada del dia (si el SP no existe aun, no rompe el ciclo)
+  let profit = null;
+  try { profit = await fetchDailyProfit(); }
+  catch (e) { log('utilidad: ' + e.message); }
+
   if (daily) {
     await supabaseUpsert('resumen_ventas', [{
       sucursal_id: sucursalId,
@@ -304,6 +410,7 @@ async function pushOnce() {
       total_efectivo: Number(daily.total_efectivo || 0),
       total_tarjeta: Number(daily.total_tarjeta || 0),
       total_credito: Number(daily.total_credito || 0),
+      utilidad: Number(profit?.utilidad || 0),
       actualizado_at: new Date().toISOString()
     }], 'sucursal_id,fecha');
   }
@@ -339,7 +446,7 @@ async function pushOnce() {
       });
     }
     await supabaseUpsert('cortes_caja', rows, 'sucursal_id,closure_id_local');
-    await evaluarAlertas(sucursalId, shifts, cfg);
+    await evaluarAlertas(sucursalId, shifts, cfg, daily);
   }
 
   const trend = await fetchTrend();
@@ -367,10 +474,93 @@ async function pushOnce() {
       actualizado_at: new Date().toISOString()
     }));
     await supabaseUpsert('cortes_caja', rows, 'sucursal_id,closure_id_local');
-    await evaluarAlertas(sucursalId, shifts, cfg);
+    await evaluarAlertas(sucursalId, shifts, cfg, daily);
   }
 
+  // ---- Blindaje: riesgo por cajero (robo hormiga) ----
+  try {
+    const risk = await fetchRisk();
+    if (Array.isArray(risk) && risk.length) {
+      const riskRows = risk.map(c => ({
+        sucursal_id: sucursalId,
+        user_id: Number(c.user_id),
+        cajero: c.cajero ?? null,
+        anuladas: Number(c.anuladas || 0),
+        devoluciones: Number(c.devoluciones || 0),
+        cajon_sin_venta: Number(c.cajon_sin_venta || 0),
+        eliminados: Number(c.eliminados || 0),
+        descuentos: Number(c.descuentos || 0),
+        monto_riesgo: Number(c.monto_riesgo || 0),
+        score: Number(c.score || 0),
+        nivel: c.nivel ?? 'bajo',
+        actualizado_at: new Date().toISOString()
+      }));
+      await supabaseUpsert('seguridad_riesgo', riskRows, 'sucursal_id,user_id');
+
+      const dia = new Date().toISOString().slice(0, 10);
+      const umbralDev = Number(cfg.umbralDevoluciones ?? 3);
+      for (const c of risk) {
+        if (c.nivel === 'alto' && !(await alertaRiesgoYaExiste(sucursalId, c.user_id))) {
+          await crearAlerta(sucursalId, 'RIESGO_CAJERO', 'Riesgo alto en un cajero',
+            `${c.cajero} tiene riesgo ALTO (score ${c.score}). Revisa devoluciones, anulaciones y aperturas de cajón. [u${c.user_id}-${dia}]`);
+        }
+        // Alerta dedicada de robo hormiga: muchas devoluciones de un mismo cajero
+        if (Number(c.devoluciones) >= umbralDev &&
+            !(await alertaMarcaYaExiste(sucursalId, 'DEVOLUCIONES', `[dev-u${c.user_id}-${dia}]`))) {
+          await crearAlerta(sucursalId, 'DEVOLUCIONES', 'Muchas devoluciones de un cajero',
+            `${c.cajero} lleva ${c.devoluciones} devoluciones hoy. Confirma que sean legítimas y con ticket. [dev-u${c.user_id}-${dia}]`);
+        }
+      }
+    }
+  } catch (e) { log('riesgo: ' + e.message); }
+
   return { success: true, at: new Date().toISOString() };
+}
+
+// ---- Eliminar cuenta y datos en la nube (cumplimiento Google Play) ----
+
+async function supabaseAuthAdmin(method, path) {
+  const cfg = loadConfig();
+  const key = decryptSecret(cfg.serviceKeyEnc, cfg.serviceKeyMethod);
+  if (!cfg.url || !key) throw new Error('Falta url o service key.');
+  const res = await fetch(`${cfg.url}/auth/v1/${path}`, {
+    method, headers: { apikey: key, Authorization: `Bearer ${key}` }
+  });
+  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`auth ${path} ${res.status}: ${t}`); }
+  return true;
+}
+
+async function deleteAccount() {
+  const cfg = loadConfig();
+  const sid = cfg.sucursalId, nid = cfg.negocioId;
+  if (!sid || !nid) return { success: false, error: 'No hay una cuenta vinculada en este equipo.' };
+
+  // Dueño (para borrar su cuenta de acceso y sus tokens de push)
+  let ownerId = null;
+  try {
+    const r = await supabaseRequest('GET', `negocios?id=eq.${nid}&select=owner_id`);
+    ownerId = (Array.isArray(r) && r[0]) ? r[0].owner_id : null;
+  } catch (e) { log('owner lookup: ' + e.message); }
+
+  // 1) Datos espejo por sucursal
+  for (const t of ['resumen_ventas', 'top_productos', 'cortes_caja', 'tendencia_ventas', 'alertas', 'seguridad_riesgo']) {
+    try { await supabaseRequest('DELETE', `${t}?sucursal_id=eq.${sid}`); } catch (e) { log('del ' + t + ': ' + e.message); }
+  }
+  // 2) Apps del dueño y tokens de push
+  try { await supabaseRequest('DELETE', `owner_apps?negocio_id=eq.${nid}`); } catch (e) { log('del owner_apps: ' + e.message); }
+  if (ownerId) { try { await supabaseRequest('DELETE', `push_tokens?owner_id=eq.${ownerId}`); } catch (e) { log('del push_tokens: ' + e.message); } }
+  // 3) Sucursal y negocio
+  try { await supabaseRequest('DELETE', `sucursales?id=eq.${sid}`); } catch (e) { log('del sucursal: ' + e.message); }
+  try { await supabaseRequest('DELETE', `negocios?id=eq.${nid}`); } catch (e) { log('del negocio: ' + e.message); }
+  // 4) Cuenta de acceso (Auth)
+  if (ownerId) { try { await supabaseAuthAdmin('DELETE', `admin/users/${ownerId}`); } catch (e) { log('del owner auth: ' + e.message); } }
+
+  // 5) Limpiar config local: deja de sincronizar (no borra device_key para no reprovisionar solo)
+  cfg.enabled = false; cfg.sucursalId = ''; cfg.negocioId = '';
+  writeConfig(cfg);
+  stopScheduler();
+
+  return { success: true };
 }
 
 async function pushSafe() {
@@ -411,6 +601,9 @@ module.exports = {
   setAnonKey,
   ensureProvisioned,
   getPairingPayload,
+  crearAlertaInmediata,
+  setLicenseMachineId,
+  deleteAccount,
   pushNow: pushSafe,
   startScheduler,
   stopScheduler

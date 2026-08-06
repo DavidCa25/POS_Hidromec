@@ -8,6 +8,7 @@ import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
+import { ModulesService, ModulesState } from '../services/modules.service';
 
 type AppNotification = {
   id: string;
@@ -56,9 +57,13 @@ export class Dashboard {
   unreadCount = 0;
   alertasCount = 0;
 
-  private sub?: Subscription;
+  // Módulos opcionales activos (controlan qué se ve en el menú)
+  modulesState: ModulesState = { pagoServicios: false };
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService) {}
+  private sub?: Subscription;
+  private modSub?: Subscription;
+
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -89,6 +94,10 @@ export class Dashboard {
     });
 
     this.cargarAlertas();
+
+    // Módulos opcionales: refresca y escucha cambios (se actualiza al configurar).
+    this.modSub = this.modules.mods$.subscribe(m => this.modulesState = m);
+    this.modules.refresh();
   }
 
   async cargarAlertas() {
@@ -114,6 +123,7 @@ export class Dashboard {
 
   ngOnDestroy() {
     this.sub?.unsubscribe();
+    this.modSub?.unsubscribe();
   }
 
   private handleUpdateNotification(status: UpdateStatus) {

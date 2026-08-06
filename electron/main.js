@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
@@ -157,8 +157,14 @@ async function bootMainApp() {
   mainWindow = createWindow();
   backup.startScheduler();
   backup.startScheduler();
+  // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
+  if (!cachedMachineId) cachedMachineId = generarMachineId();
+  cloudSync.setLicenseMachineId(cachedMachineId);
   cloudSync.startScheduler();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
+
+  // Abre la pantalla de cliente si quedo habilitada en la configuracion.
+  autoOpenCustomerDisplay();
 }
 
 app.whenReady().then(async () => {
@@ -300,7 +306,9 @@ function loadDeviceConfig() {
     // conexion: 'sistema' (impresora del SO) | 'bluetooth' (proximamente)
     printer: { conexion: 'sistema', name: '', ticketPrinterName: '' },
     // conexion: 'impresora' (cajon conectado a la impresora, lo mas comun) | 'usb' (serial COM) | 'bluetooth' (proximamente)
-    drawer: { conexion: 'impresora', enabled: false, path: '', baudRate: 9600, pulseMs: 120, pin: 0, openOnPayment: false }
+    drawer: { conexion: 'impresora', enabled: false, path: '', baudRate: 9600, pulseMs: 120, pin: 0, openOnPayment: false },
+    // Pantalla de cliente (segundo monitor)
+    customerDisplay: { enabled: false, displayId: null }
   };
 }
 
@@ -309,6 +317,275 @@ function saveDeviceConfig(cfg) {
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2), 'utf8');
   return cfg;
 }
+
+// ============================================================
+//  PANTALLA DE CLIENTE (segundo monitor)
+// ============================================================
+let customerWindow = null;
+let displayWatchOn = false;
+
+function listMonitors() {
+  try {
+    const primary = screen.getPrimaryDisplay();
+    return screen.getAllDisplays().map((d, i) => ({
+      id: d.id,
+      label: (d.id === primary.id ? 'Monitor principal' : 'Monitor ' + (i + 1)) +
+             ` (${d.size.width}x${d.size.height})`,
+      primary: d.id === primary.id,
+      bounds: d.bounds
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function pickDisplay(displayId) {
+  const all = screen.getAllDisplays();
+  if (displayId != null) {
+    const found = all.find(d => d.id === displayId);
+    if (found) return found;
+  }
+  // Por defecto: el primer monitor que NO sea el principal
+  const primary = screen.getPrimaryDisplay();
+  return all.find(d => d.id !== primary.id) || primary;
+}
+
+function pushCustomerState(state) {
+  try {
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      customerWindow.webContents.send('customer:state', state);
+    }
+  } catch { /* noop */ }
+}
+
+function watchDisplays() {
+  if (displayWatchOn) return;
+  displayWatchOn = true;
+  // Si se desconecta el monitor de la pantalla de cliente, avisa al POS.
+  screen.on('display-removed', () => {
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      try { mainWindow && mainWindow.webContents.send('customer-display:disconnected'); } catch { /* noop */ }
+    }
+  });
+}
+
+function openCustomerDisplay(displayId) {
+  try {
+    watchDisplays();
+    const disp = pickDisplay(displayId);
+    if (customerWindow && !customerWindow.isDestroyed()) {
+      customerWindow.setBounds(disp.bounds);
+      customerWindow.show();
+      return { ok: true, displayId: disp.id };
+    }
+    customerWindow = new BrowserWindow({
+      x: disp.bounds.x, y: disp.bounds.y,
+      width: disp.bounds.width, height: disp.bounds.height,
+      frame: false, fullscreen: true, skipTaskbar: true,
+      backgroundColor: '#0b1620',
+      webPreferences: {
+        preload: path.join(__dirname, 'customer-display', 'customer-preload.js'),
+        contextIsolation: true, nodeIntegration: false, sandbox: false
+      }
+    });
+    customerWindow.loadFile(path.join(__dirname, 'customer-display', 'customer.html'));
+    customerWindow.webContents.on('did-finish-load', () => pushCustomerState({ mode: 'idle' }));
+    customerWindow.on('closed', () => { customerWindow = null; });
+    return { ok: true, displayId: disp.id };
+  } catch (e) {
+    console.error('openCustomerDisplay:', e);
+    return { ok: false, error: e.message };
+  }
+}
+
+function closeCustomerDisplay() {
+  try {
+    if (customerWindow && !customerWindow.isDestroyed()) customerWindow.close();
+    customerWindow = null;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Se llama al arrancar el POS: abre la pantalla si esta habilitada en la config.
+function autoOpenCustomerDisplay() {
+  try {
+    const cfg = loadDeviceConfig();
+    const cd = cfg.customerDisplay || {};
+    if (cd.enabled) openCustomerDisplay(cd.displayId ?? null);
+  } catch (e) { console.error('autoOpenCustomerDisplay:', e); }
+}
+
+ipcMain.handle('customer-display:list-monitors', async () => listMonitors());
+ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCustomerDisplay(displayId));
+ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
+ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
+ipcMain.handle('customer-display:status', async () => ({ open: !!(customerWindow && !customerWindow.isDestroyed()) }));
+ipcMain.handle('customer:get-business', async () => {
+  try {
+    const cfg = await ensureBusinessConfig();
+    return { name: cfg?.business_name || cfg?.businessName || '' };
+  } catch {
+    return { name: '' };
+  }
+});
+
+// ============================================================
+//  MODULOS OPCIONALES — Pago de servicios / recargas (TAECEL, etc.)
+// ============================================================
+function getServicesConfigPath() {
+  return path.join(app.getPath('userData'), 'services-config.json');
+}
+function loadServicesConfig() {
+  try {
+    const p = getServicesConfigPath();
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) { console.error('services-config.json:', e); }
+  return { provider: null, enabled: false, credentials: {} };
+}
+function saveServicesConfig(cfg) {
+  fs.writeFileSync(getServicesConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
+  return cfg;
+}
+
+// Estado del modulo (sin exponer las credenciales secretas al render)
+ipcMain.handle('services:get-config', async () => {
+  try {
+    const c = loadServicesConfig();
+    return {
+      success: true,
+      data: {
+        provider: c.provider || null,
+        enabled: !!c.enabled,
+        hasCredentials: !!(c.credentials && Object.keys(c.credentials).length)
+      }
+    };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+// Valida las credenciales contra el proveedor antes de habilitar el modulo.
+ipcMain.handle('services:validate', async (_e, payload = {}) => {
+  try {
+    const provider = payload.provider;
+    const credentials = payload.credentials || {};
+    if (provider !== 'taecel') return { ok: false, error: 'Proveedor no soportado por ahora.' };
+
+    // ============================================================
+    //  PUNTO DE INTEGRACION TAECEL
+    //  Aqui va la llamada real a TAECEL (p. ej. "consultar saldo")
+    //  para validar las credenciales del alta. Requiere los
+    //  endpoints/credenciales reales del portal de TAECEL.
+    //  Referencia: taecel.com (WebService).
+    // ============================================================
+    if (!credentials.key || !credentials.nip) {
+      return { ok: false, error: 'Faltan credenciales: Key y NIP de TAECEL.' };
+    }
+    // Validacion basica de formato hasta conectar el WebService real.
+    return { ok: true, saldo: null, pendingApi: true };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+ipcMain.handle('services:set-config', async (_e, cfg = {}) => {
+  try {
+    const current = loadServicesConfig();
+    const merged = {
+      ...current, ...cfg,
+      credentials: { ...(current.credentials || {}), ...(cfg.credentials || {}) }
+    };
+    saveServicesConfig(merged);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('services:clear', async () => {
+  try {
+    saveServicesConfig({ provider: null, enabled: false, credentials: {} });
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+// Ejecuta una operacion (recarga / pago de servicio). Pendiente de conectar TAECEL.
+ipcMain.handle('services:operate', async (_e, op = {}) => {
+  try {
+    const c = loadServicesConfig();
+    if (!c.enabled || c.provider !== 'taecel') return { ok: false, error: 'El modulo no esta configurado.' };
+    // === PUNTO DE INTEGRACION TAECEL: aqui va la recarga/pago real ===
+    return { ok: false, pendingApi: true, error: 'Conecta tu cuenta TAECEL para operar (falta la API real).' };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+// ============================================================
+//  BLINDAJE / SEGURIDAD (anti robo hormiga)
+// ============================================================
+ipcMain.handle('security:authorize', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('usuario', sql.NVarChar(50), String(p.usuario || '').trim())
+      .input('password', sql.NVarChar(255), String(p.password || ''))
+      .execute('sp_authorize_supervisor');
+    const row = r.recordset?.[0];
+    if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos, o sin permisos de supervisor.' };
+    return { ok: true, userId: row.id, name: row.usuario, rol: row.rol };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+// Eventos que disparan una alerta EN VIVO (además de quedar en la bitácora)
+const CRITICOS_ALERTA = {
+  REFUND: 'Devolución en caja',
+  DEVOLUCION: 'Devolución en caja',
+  VOID: 'Venta anulada',
+  ANULADA: 'Venta anulada',
+  DRAWER_NO_SALE: 'Cajón abierto sin venta',
+  DELETE: 'Producto eliminado del ticket',
+  ELIMINADO: 'Producto eliminado del ticket'
+};
+
+ipcMain.handle('security:log', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('user_id', sql.Int, p.userId ?? null)
+      .input('authorized_by', sql.Int, p.authorizedBy ?? null)
+      .input('register_id', sql.Int, p.registerId ?? null)
+      .input('event_type', sql.NVarChar(40), String(p.eventType || 'OTHER'))
+      .input('amount', sql.Decimal(18, 2), p.amount ?? null)
+      .input('detail', sql.NVarChar(400), p.detail ?? null)
+      .input('sale_id', sql.Int, p.saleId ?? null)
+      .execute('sp_log_security_event');
+
+    // Alerta en vivo para eventos críticos (robo hormiga): sin esperar los 5 min.
+    const et = String(p.eventType || '').toUpperCase();
+    const titulo = CRITICOS_ALERTA[et];
+    if (titulo) {
+      const monto = (p.amount != null) ? ` ($${Number(p.amount).toFixed(2)})` : '';
+      const quien = p.detail ? ` — ${p.detail}` : '';
+      cloudSync.crearAlertaInmediata(et, titulo, `${titulo}${monto}${quien}`).catch(() => {});
+    }
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('security:by-cashier', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('from', sql.Date, p.from ?? null).input('to', sql.Date, p.to ?? null)
+      .execute('sp_security_by_cashier');
+    return { success: true, data: r.recordset };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('security:risk', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('from', sql.Date, p.from ?? null).input('to', sql.Date, p.to ?? null)
+      .execute('sp_cashier_risk');
+    return { success: true, data: r.recordset };
+  } catch (e) { return { success: false, error: e.message }; }
+});
 
 function setupAutoUpdater(win) {
   if (isDev) {
@@ -2277,7 +2554,8 @@ ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
       ...partialCfg,
       scanner: { ...(current.scanner || {}), ...(partialCfg.scanner || {}) },
       printer: { ...(current.printer || {}), ...(partialCfg.printer || {}) },
-      drawer: { ...(current.drawer || {}), ...(partialCfg.drawer || {}) }
+      drawer: { ...(current.drawer || {}), ...(partialCfg.drawer || {}) },
+      customerDisplay: { ...(current.customerDisplay || {}), ...(partialCfg.customerDisplay || {}) }
     };
 
     saveDeviceConfig(merged);
@@ -3018,6 +3296,7 @@ ipcMain.handle('cloud-push-now', async () => cloudSync.pushNow());
 ipcMain.handle('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre));
 ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
 ipcMain.handle('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key));
+ipcMain.handle('cloud-delete-account', async () => cloudSync.deleteAccount());
 
 
 //FACTURACION

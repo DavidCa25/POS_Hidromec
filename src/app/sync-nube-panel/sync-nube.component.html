@@ -1,0 +1,85 @@
+<div class="sn">
+  <p class="sn-intro">
+    Envía las ventas, cortes y alertas del punto de venta a la nube para verlas en la
+    <b>app del dueño</b>. Sin esto, la app inicia sesión pero no muestra información.
+  </p>
+
+  <div class="sn-box" *ngIf="loading">
+    <div class="sn-spinner"></div>
+    <span>Cargando estado…</span>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Estado -->
+    <div class="sn-status">
+      <div class="sn-row">
+        <span class="sn-lbl">Sincronización</span>
+        <span class="sn-pill" [class.on]="activa" [class.off]="!activa">
+          {{ activa ? 'Activada' : 'Desactivada' }}
+        </span>
+      </div>
+      <div class="sn-row">
+        <span class="sn-lbl">Clave de servicio</span>
+        <span class="sn-pill" [class.on]="tieneKey" [class.off]="!tieneKey">
+          {{ tieneKey ? 'Configurada' : 'Falta' }}
+        </span>
+      </div>
+      <div class="sn-row">
+        <span class="sn-lbl">Sucursal destino</span>
+        <span class="sn-val">{{ sucursalCorta }}</span>
+      </div>
+      <div class="sn-row" *ngIf="activa">
+        <span class="sn-lbl">Frecuencia</span>
+        <span class="sn-val">cada {{ minutos }} min</span>
+      </div>
+    </div>
+
+    <!-- Falta la clave: permitir pegarla -->
+    <div class="sn-keybox" *ngIf="!tieneKey">
+      <label>Service Role Key de Supabase</label>
+      <input type="password" [(ngModel)]="serviceKeyInput" placeholder="Pega aquí la clave (service_role)" />
+      <button class="sn-btn" [disabled]="saving || !serviceKeyInput.trim()" (click)="guardarKey()">
+        Guardar clave
+      </button>
+      <small>La encuentras en Supabase → Project Settings → API → service_role. Se guarda cifrada en esta PC.</small>
+    </div>
+
+    <!-- Controles -->
+    <div class="sn-actions">
+      <button class="sn-btn" [class.danger]="activa" [disabled]="saving" (click)="toggle()">
+        {{ activa ? 'Desactivar sincronización' : 'Activar sincronización' }}
+      </button>
+      <button class="sn-btn ghost" [disabled]="syncing || !activa" (click)="sincronizarAhora()">
+        <span *ngIf="!syncing">Sincronizar ahora</span>
+        <span *ngIf="syncing">Sincronizando…</span>
+      </button>
+    </div>
+
+    <div class="sn-result" *ngIf="lastResult" [class.ok]="lastOk" [class.err]="lastOk === false">
+      <i class="bi" [class.bi-check-circle]="lastOk" [class.bi-exclamation-triangle]="lastOk === false"></i>
+      <span>{{ lastResult }}</span>
+    </div>
+
+    <p class="sn-note">
+      El tablero de la app muestra las ventas <b>de hoy</b>. Si hoy aún no hay ventas,
+      verás ceros aunque la sincronización funcione.
+    </p>
+
+    <!-- Avanzado: apuntar a una sucursal existente (si se crearon duplicadas) -->
+    <button class="sn-toggle" (click)="mostrarAvanzado = !mostrarAvanzado">
+      {{ mostrarAvanzado ? '▾' : '▸' }} Opciones avanzadas
+    </button>
+    <div class="sn-adv" *ngIf="mostrarAvanzado">
+      <p class="sn-note">
+        Usa esto solo si la app está leyendo otra sucursal. Copia desde Supabase
+        (tabla <b>sucursales</b>) el <b>id</b> de la sucursal que ve tu cuenta y su
+        <b>negocio_id</b>, y pégalos aquí para que el POS envíe ahí.
+      </p>
+      <label class="sn-mini">ID de negocio</label>
+      <input [(ngModel)]="negocioIdInput" placeholder="negocio_id (uuid)" />
+      <label class="sn-mini">ID de sucursal</label>
+      <input [(ngModel)]="sucursalIdInput" placeholder="sucursal id (uuid)" />
+      <button class="sn-btn" [disabled]="saving" (click)="guardarVinculo()">Guardar sucursal destino</button>
+    </div>
+  </ng-container>
+</div>
