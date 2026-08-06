@@ -1,0 +1,10 @@
+.ec { display: flex; flex-direction: column; gap: 14px; }
+.ec-intro { font-size: 13.5px; color: #475569; line-height: 1.5; margin: 0; }
+.ec-warn { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 12.5px; border-radius: 10px; padding: 10px 12px; }
+.ec-btn { border: none; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 700; cursor: pointer; background: #dc2626; color: #fff; transition: opacity 0.15s; }
+.ec-btn:hover { opacity: 0.92; }
+.ec-btn:disabled { opacity: 0.5; cursor: default; }
+.ec-note { font-size: 11.5px; color: #94a3b8; margin: 0; }
+
+:host-context(html.dark) .ec-intro { color: #94a3b8; }
+:host-context(html.dark) .ec-warn { background: rgba(220,38,38,0.12); border-color: rgba(220,38,38,0.35); color: #fca5a5; }

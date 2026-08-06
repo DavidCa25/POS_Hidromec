@@ -1,0 +1,18 @@
+<div class="ec">
+  <p class="ec-intro">
+    Elimina de forma permanente tu <b>cuenta del dueño</b> y los datos de tu negocio en la nube:
+    ventas, cortes, alertas, índice de riesgo y celulares vinculados. La información local de tu
+    punto de venta <b>no</b> se borra.
+  </p>
+  <div class="ec-warn">
+    <i class="bi bi-exclamation-triangle"></i>
+    Esta acción es permanente y no se puede deshacer.
+  </div>
+  <button class="ec-btn" [disabled]="borrando" (click)="eliminar()">
+    <span *ngIf="!borrando">Eliminar cuenta y datos</span>
+    <span *ngIf="borrando">Eliminando…</span>
+  </button>
+  <p class="ec-note">
+    También puedes solicitarlo desde wybixpos.com.mx/eliminar-cuenta.
+  </p>
+</div>

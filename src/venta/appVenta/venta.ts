@@ -5,6 +5,7 @@ import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angula
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
 import { RegisterService } from '../../services/register.service';
+import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 
 interface ProductRow {
@@ -214,7 +215,7 @@ export class Venta {
   activeTabId = 0;
   private tabSeq = 0;
 
-  constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService) {}
+  constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService, private supervisor: SupervisorAuthService) {}
 
   async ngOnInit() {
     await this.refreshFolioFromDb();
@@ -329,6 +330,8 @@ export class Venta {
     if (!it) return;
     if (it.unitPrice < 0) it.unitPrice = 0;
     this.recalcularTotal();
+    // Detección (robo hormiga): registra el cambio de precio en la venta.
+    this.supervisor.registrar('PRICE_CHANGE', { detail: (it.productName || 'Producto') + ' -> $' + Number(it.unitPrice).toFixed(2) });
   }
 
   quitarItem(i: number) {
@@ -1426,6 +1429,14 @@ export class Venta {
     });
 
     if (!confirm.isConfirmed) return;
+
+    // Candado anti robo hormiga: devoluciones/cambios requieren supervisor.
+    const autorizado = await this.supervisor.autorizarYregistrar(
+      'Las devoluciones y cambios requieren autorización de un supervisor.',
+      'REFUND',
+      { amount: totalPreview, saleId: this.editingSaleId,
+        detail: (this.refundKind === 'EFECTIVO' ? 'Reembolso efectivo' : 'Cambio') + ' folio #' + this.editingSaleId });
+    if (!autorizado) return;
 
     this.refundLoading = true;
     try {

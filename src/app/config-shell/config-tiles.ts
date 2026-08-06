@@ -15,6 +15,8 @@ import { UsuariosPanelComponent } from '../usuarios-panel/usuarios.component';
 import { LicenciaPanelComponent } from '../licencia-panel/licencia.component';
 import { CustomerDisplayPanelComponent } from '../customer-display-panel/customer-display.component';
 import { ServiciosPanelComponent } from '../servicios-panel/servicios-config.component';
+import { SyncNubePanelComponent } from '../sync-nube-panel/sync-nube.component';
+import { EliminarCuentaPanelComponent } from '../eliminar-cuenta-panel/eliminar-cuenta.component';
 
 
 export type TileSize = '1x1' | '2x1' | '1x2' | '2x2';
@@ -80,6 +82,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'safe2', color: 'blue', size: '1x1', statusKey: 'drawer', component: DevicesPanelComponent },
             { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'speedometer2', color: 'gray', size: '1x1', component: DevicesPanelComponent },
             { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'display', color: 'purple', size: '2x1', component: CustomerDisplayPanelComponent },
+            { id: 'sync-nube', title: 'Sincronización en la nube', desc: 'Activa el envío de datos a la app del dueño', icon: 'cloud-arrow-up', color: 'blue', size: '2x1', component: SyncNubePanelComponent },
             { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code-scan', color: 'green', size: '1x1', component: PairingQr },
             { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'phone', color: 'blue', size: '1x1', component: DescargaAppPanel }
         ]
@@ -89,7 +92,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         title: 'Personalización',
         tiles: [
             { id: 'ticket', title: 'Ticket', desc: 'Logo, pie de página y datos fiscales', icon: 'receipt', color: 'purple', size: '1x1', component: TicketPanelComponent },
-            { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'shop', color: 'green', size: '2x1', component: NegocioPanelComponent }
+            { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'shop', color: 'green', size: '2x1', component: NegocioPanelComponent },
+            { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'person-x', color: 'orange', size: '1x1', component: EliminarCuentaPanelComponent }
         ]
     },
     {

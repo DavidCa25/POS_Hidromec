@@ -157,6 +157,9 @@ async function bootMainApp() {
   mainWindow = createWindow();
   backup.startScheduler();
   backup.startScheduler();
+  // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
+  if (!cachedMachineId) cachedMachineId = generarMachineId();
+  cloudSync.setLicenseMachineId(cachedMachineId);
   cloudSync.startScheduler();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
 
@@ -510,6 +513,78 @@ ipcMain.handle('services:operate', async (_e, op = {}) => {
     // === PUNTO DE INTEGRACION TAECEL: aqui va la recarga/pago real ===
     return { ok: false, pendingApi: true, error: 'Conecta tu cuenta TAECEL para operar (falta la API real).' };
   } catch (e) { return { ok: false, error: e.message }; }
+});
+
+// ============================================================
+//  BLINDAJE / SEGURIDAD (anti robo hormiga)
+// ============================================================
+ipcMain.handle('security:authorize', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('usuario', sql.NVarChar(50), String(p.usuario || '').trim())
+      .input('password', sql.NVarChar(255), String(p.password || ''))
+      .execute('sp_authorize_supervisor');
+    const row = r.recordset?.[0];
+    if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos, o sin permisos de supervisor.' };
+    return { ok: true, userId: row.id, name: row.usuario, rol: row.rol };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+// Eventos que disparan una alerta EN VIVO (además de quedar en la bitácora)
+const CRITICOS_ALERTA = {
+  REFUND: 'Devolución en caja',
+  DEVOLUCION: 'Devolución en caja',
+  VOID: 'Venta anulada',
+  ANULADA: 'Venta anulada',
+  DRAWER_NO_SALE: 'Cajón abierto sin venta',
+  DELETE: 'Producto eliminado del ticket',
+  ELIMINADO: 'Producto eliminado del ticket'
+};
+
+ipcMain.handle('security:log', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('user_id', sql.Int, p.userId ?? null)
+      .input('authorized_by', sql.Int, p.authorizedBy ?? null)
+      .input('register_id', sql.Int, p.registerId ?? null)
+      .input('event_type', sql.NVarChar(40), String(p.eventType || 'OTHER'))
+      .input('amount', sql.Decimal(18, 2), p.amount ?? null)
+      .input('detail', sql.NVarChar(400), p.detail ?? null)
+      .input('sale_id', sql.Int, p.saleId ?? null)
+      .execute('sp_log_security_event');
+
+    // Alerta en vivo para eventos críticos (robo hormiga): sin esperar los 5 min.
+    const et = String(p.eventType || '').toUpperCase();
+    const titulo = CRITICOS_ALERTA[et];
+    if (titulo) {
+      const monto = (p.amount != null) ? ` ($${Number(p.amount).toFixed(2)})` : '';
+      const quien = p.detail ? ` — ${p.detail}` : '';
+      cloudSync.crearAlertaInmediata(et, titulo, `${titulo}${monto}${quien}`).catch(() => {});
+    }
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('security:by-cashier', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('from', sql.Date, p.from ?? null).input('to', sql.Date, p.to ?? null)
+      .execute('sp_security_by_cashier');
+    return { success: true, data: r.recordset };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('security:risk', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('from', sql.Date, p.from ?? null).input('to', sql.Date, p.to ?? null)
+      .execute('sp_cashier_risk');
+    return { success: true, data: r.recordset };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 function setupAutoUpdater(win) {
@@ -3221,6 +3296,7 @@ ipcMain.handle('cloud-push-now', async () => cloudSync.pushNow());
 ipcMain.handle('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre));
 ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
 ipcMain.handle('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key));
+ipcMain.handle('cloud-delete-account', async () => cloudSync.deleteAccount());
 
 
 //FACTURACION

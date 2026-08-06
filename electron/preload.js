@@ -148,6 +148,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     servicesClear: () => ipcRenderer.invoke('services:clear'),
     servicesOperate: (op) => ipcRenderer.invoke('services:operate', op),
 
+    // Blindaje / seguridad (anti robo hormiga)
+    securityAuthorize: (creds) => ipcRenderer.invoke('security:authorize', creds),
+    securityLog: (evt) => ipcRenderer.invoke('security:log', evt),
+    securityByCashier: (r) => ipcRenderer.invoke('security:by-cashier', r),
+    securityRisk: (r) => ipcRenderer.invoke('security:risk', r),
+
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     importDatabase: () => ipcRenderer.invoke('import-database'),
 
@@ -213,6 +219,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cloudEnsureProvisioned: (nombre) => ipcRenderer.invoke('cloud-ensure-provisioned', nombre),
     cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
     cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
+    cloudDeleteAccount: () => ipcRenderer.invoke('cloud-delete-account'),
 
 
     //FACTURACION
