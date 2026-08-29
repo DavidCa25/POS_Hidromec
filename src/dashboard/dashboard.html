@@ -13,18 +13,18 @@
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/estadisticas"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-bar-chart-line"></i> <span>Estadisticas</span>
+          <i class="ph ph-chart-line"></i> <span>Estadisticas</span>
         </a>
       </li>
       <li>
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/alertas"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-bell"></i> <span>Alertas</span>
+          <i class="ph ph-bell"></i> <span>Alertas</span>
           <span *ngIf="alertasCount > 0" class="badge rounded-pill bg-danger ms-auto">{{ alertasCount }}</span>
         </a>
       </li>
-      <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
+      <li class="wx-grp wx-grp--operacion nav-item" id="operaciones-dropdown" style="position: relative;"
       [class.is-open]="isOperacionesOpen">
       <a 
         class="sidebar-link d-flex align-items-center px-4 py-3"
@@ -32,9 +32,9 @@
         [class.active]="isOperacionesOpen"
         style="cursor: pointer;"
         [attr.aria-expanded]="isOperacionesOpen">
-        <i class="bi bi-cart-plus me-2"></i>
+        <i class="ph ph-storefront me-2"></i>
         <span>Venta</span>
-        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
+        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
       </a>
 
       <ul 
@@ -43,25 +43,25 @@
         <li>
           <a routerLink="/dashboard/venta" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-cash-stack me-2"></i> Hacer venta
+            <i class="ph ph-cash-register me-2"></i> Hacer venta
           </a>
         </li>
         <li>
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-box-arrow-up me-2"></i> Abrir cajón
+            <i class="ph ph-vault me-2"></i> Abrir cajón
           </a>
         </li>
         <li>
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/corte-dia" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-calendar2-check me-2"></i> Corte del día
+            <i class="ph ph-calendar-check me-2"></i> Corte del día
           </a>
         </li>
         <li>
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaVenta" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-calendar2-check me-2"></i> Tabla de Ventas
+            <i class="ph ph-receipt me-2"></i> Tabla de Ventas
           </a>
         </li>
       </ul>
@@ -74,9 +74,9 @@
         [class.active]="isInventarioOpen"
         style="cursor: pointer;"
         [attr.aria-expanded]="isInventarioOpen">
-        <i class="bi bi-box me-2"></i>
+        <i class="ph ph-package me-2"></i>
         <span>Inventario</span>
-        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isInventarioOpen"></i>
+        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isInventarioOpen"></i>
       </a>
 
       <ul
@@ -85,13 +85,13 @@
         <li>
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-box-seam me-2"></i> Ver inventario
+            <i class="ph ph-package me-2"></i> Ver inventario
           </a>
         </li>
         <li>
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/conteo" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-clipboard-check me-2"></i> Conteo físico
+            <i class="ph ph-clipboard-text me-2"></i> Conteo físico
           </a>
         </li>
       </ul>
@@ -104,9 +104,9 @@
         [class.active]="isOperacionesCompraOpen"
         style="cursor: pointer;"
         [attr.aria-expanded]="isOperacionesCompraOpen">
-        <i class="bi bi-bag-check me-2"></i>
+        <i class="ph ph-shopping-bag-open me-2"></i>
         <span>Compra</span>
-        <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isOperacionesCompraOpen"></i>
+        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isOperacionesCompraOpen"></i>
       </a>
       <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
         style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
@@ -114,30 +114,30 @@
           <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaCompra"
             routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-table me-2"></i> Tabla de compras
+            <i class="ph ph-table me-2"></i> Tabla de compras
           </a>
         </li>
         <li>
           <a routerLink="/dashboard/registrarCompra"
             routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
-            <i class="bi bi-bag-plus me-2"></i> Registrar compra
+            <i class="ph ph-bag me-2"></i> Registrar compra
           </a>
         </li>
       </ul>
     </li>
-      <li>
+      <li class="wx-grp wx-grp--gestion">
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/proveedores"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-truck me-2"></i> <span>Proveedores</span>
+          <i class="ph ph-truck me-2"></i> <span>Proveedores</span>
         </a>
       </li>
       <li>
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/clientes"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-credit-card-2-front me-2"></i> <span>Clientes</span>
+          <i class="ph ph-users me-2"></i> <span>Clientes</span>
         </a>
       </li>
       <!-- Módulo opcional: aparece solo cuando está configurado -->
@@ -145,103 +145,151 @@
         <a *ngIf="modulesState.pagoServicios" routerLink="/dashboard/servicios"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-phone me-2"></i> <span>Pago de servicios</span>
+          <i class="ph ph-device-mobile me-2"></i> <span>Pago de servicios</span>
         </a>
       </li>
       <li>
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/facturacion"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-envelope-paper"></i> <span>Facturación</span>
+          <i class="ph ph-seal-check"></i> <span>Facturación</span>
         </a>
       </li>
-      <li>
+      <li class="wx-grp wx-grp--sistema">
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/configuracion"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="bi bi-gear"></i> <span>Configuracion</span>
+          <i class="ph ph-gear"></i> <span>Configuracion</span>
         </a>
       </li>
       <li class="nav-item" id="operaciones-dropdown" style="position: relative;" [class.is-open]="isDatosOpen">
         <a class="sidebar-link d-flex align-items-center px-4 py-3"
            (click)="toggleDatos()" [class.active]="isDatosOpen" style="cursor: pointer;"
            [attr.aria-expanded]="isDatosOpen">
-          <i class="bi bi-database me-2"></i>
+          <i class="ph ph-database me-2"></i>
           <span>Datos</span>
-          <i class="bi bi-chevron-down ms-auto chevron" [class.rotate-180]="isDatosOpen"></i>
+          <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isDatosOpen"></i>
         </a>
         <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
             style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
           <li>
             <a *ngIf="auth.esAdmin" routerLink="/dashboard/importador" routerLinkActive="active"
                class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-file-earmark-arrow-up me-2"></i> Importar productos
+              <i class="ph ph-file-arrow-up me-2"></i> Importar productos
             </a>
           </li>
           <li>
             <a *ngIf="auth.esAdmin" routerLink="/dashboard/migracion" routerLinkActive="active"
                class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-database-down me-2"></i> Migracion
+              <i class="ph ph-database me-2"></i> Migracion
             </a>
           </li>
         </ul>
       </li>
 
     </ul>
+
+    <!-- Contexto del negocio. Ancla el pie de la columna y da referencia de
+         donde se esta trabajando. -->
+    <div class="sidebar-sucursal" *ngIf="menuOpen">
+      <span class="sidebar-sucursal__tile" aria-hidden="true">
+        <i class="ph-fill ph-storefront"></i>
+      </span>
+      <div class="sidebar-sucursal__txt">
+        <span class="sidebar-sucursal__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
+        <span class="sidebar-sucursal__meta">{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span></span>
+      </div>
+    </div>
+
+    <!-- Colapsada solo cabe la baldosa, con el nombre en el tooltip. -->
+    <div class="sidebar-sucursal sidebar-sucursal--min" *ngIf="!menuOpen" [title]="nombreNegocio">
+      <span class="sidebar-sucursal__tile" aria-hidden="true">
+        <i class="ph-fill ph-storefront"></i>
+      </span>
+    </div>
   </nav>
 
   <!-- CONTENIDO -->
  <div class="dashboard-content">
   <header class="dashboard-header d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-white shadow-sm">
     <div class="d-flex align-items-center">
-      <button class="menu-btn btn btn-light border shadow-sm me-3" (click)="toggleMenu()">
-        <i class="bi bi-list fs-4"></i>
+      <button class="wx-iconbtn menu-btn" type="button" (click)="toggleMenu()"
+              title="Menú" aria-label="Menú">
+        <i class="ph ph-list" aria-hidden="true"></i>
       </button>
     </div>
-    <div class="d-flex align-items-center gap-3">
-      <div class="input-group search-bar me-2" style="max-width: 250px;">
-        <span class="input-group-text bg-white border-end-0">
-          <i class="bi bi-search"></i>
-        </span>
-        <input type="text" class="form-control border-start-0" placeholder="Buscar..." />
-      </div>
+    <div class="topbar-acciones d-flex align-items-center">
       <div class="position-relative" id="theme-wrapper">
-        <button class="theme-swatch-btn" (click)="toggleTheme()"
-                title="Cambiar color del inventario" type="button">
-          <span class="swatch s1"></span>
-          <span class="swatch s2"></span>
-          <span class="swatch s3"></span>
-          <span class="swatch s4"></span>
+        <!-- El disparador muestra el color vigente, no cuatro cuadros fijos:
+             asi se sabe de un vistazo cual esta puesto. -->
+        <!-- El icono de paleta dice "esto cambia el aspecto" y va tenido con
+             el color vigente, asi que hace de muestra al mismo tiempo. La
+             etiqueta dice de que. Un icono solo no se entendia. -->
+        <button class="wx-iconbtn wx-iconbtn--etiqueta theme-swatch-btn" type="button"
+                popovertarget="paletaTablas"
+                [attr.aria-expanded]="themeOpen"
+                aria-haspopup="dialog"
+                title="Personalizar tablas">
+          <i class="ph-fill ph-palette theme-swatch-btn__ph" aria-hidden="true"></i>
+          <span class="wx-iconbtn__txt">Tablas</span>
         </button>
 
-        <div *ngIf="themeOpen"
-            class="position-absolute end-0 mt-2 bg-white border rounded shadow p-2"
-            style="width: 220px; z-index: 1050;">
-          <div class="fw-semibold mb-2">Color de Inventario</div>
+        <!-- Popover nativo: top layer, cierre por clic fuera y Escape, y
+             recolocacion automatica si no cabe. -->
+        <div id="paletaTablas" popover data-anclado
+             class="wx-pop wx-palette" role="dialog"
+             aria-label="Color de tablas"
+             (toggle)="onPaletaToggle($any($event))">
+          <p class="wx-palette__title">Color de las tablas</p>
 
-          <div class="d-grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
-            <button *ngFor="let c of invColors"
-                    class="theme-option"
+          <div class="wx-palette__grid" role="listbox" aria-label="Colores"
+               (keydown)="onPaletaKey($event)">
+            <button *ngFor="let c of presets; let i = index"
                     type="button"
-                    [style.background]="c.value"
-                    (click)="setInvTheme(c.value)"
-                    [class.active]="c.value === currentInvColor">
+                    role="option"
+                    class="wx-swatch"
+                    [class.is-on]="esColorActual(c.valor)"
+                    [attr.aria-selected]="esColorActual(c.valor)"
+                    [attr.tabindex]="i === indicePaleta ? 0 : -1"
+                    [style.background]="c.valor"
+                    [attr.title]="c.nombre"
+                    [attr.aria-label]="c.nombre"
+                    (focus)="indicePaleta = i"
+                    (click)="setInvTheme(c.valor)">
+              <i class="ph-fill ph-check" aria-hidden="true" *ngIf="esColorActual(c.valor)"></i>
             </button>
           </div>
 
-          <div class="small text-muted mt-2">Se guarda para la próxima vez.</div>
+          <!-- Personalizado. Usa el selector nativo del sistema: es el que ya
+               conoce el usuario y no anade dependencias. -->
+          <label class="wx-palette__custom" [class.is-on]="!esPreset()">
+            <span class="wx-palette__customdot" [style.background]="colorEnEdicion"></span>
+            <span class="wx-palette__customtxt">Personalizado</span>
+            <input type="color"
+                   [value]="colorEnEdicion"
+                   aria-label="Elegir un color personalizado"
+                   (input)="previewColor($any($event.target).value)"
+                   (change)="confirmarColor($any($event.target).value)" />
+          </label>
+
+          <div class="wx-palette__foot">
+            <span class="wx-palette__hex">{{ colorEnEdicion }}</span>
+            <span class="wx-palette__nombre">{{ nombreColorActual }}</span>
+          </div>
         </div>
       </div>
       <!-- Modo oscuro -->
-      <button class="btn btn-light p-2 me-1 dark-toggle-btn" (click)="toggleDark()"
-              [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'">
-        <i class="bi fs-5" [ngClass]="isDark ? 'bi-sun-fill' : 'bi-moon-stars-fill'"></i>
+      <button class="wx-iconbtn dark-toggle-btn" type="button" (click)="toggleDark()"
+              [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'"
+              [attr.aria-label]="isDark ? 'Modo claro' : 'Modo oscuro'">
+        <i [ngClass]="isDark ? 'ph-fill ph-sun' : 'ph-fill ph-moon'" aria-hidden="true"></i>
       </button>
 
       <!-- Icono de notificación -->
       <div class="position-relative" id="notif-wrapper">
-        <button class="btn btn-light position-relative p-2 me-1" (click)="toggleNotif()">
-          <i class="bi bi-bell fs-5"></i>
+        <button class="wx-iconbtn position-relative" type="button" (click)="toggleNotif()"
+                title="Notificaciones" aria-label="Notificaciones">
+          <i class="ph ph-bell" aria-hidden="true"></i>
 
           <span
             *ngIf="unreadCount > 0"
@@ -294,10 +342,6 @@
 
         </div>
       </div>
-      <!-- Icono de descarga -->
-      <button class="btn btn-light p-2 me-2" title="Descargar">
-        <i class="bi bi-download fs-5"></i>
-      </button>
       <div class="dashboard-user-wrapper" [class.is-open]="isUserDropdownOpen">
         <div 
           class="dashboard-user d-flex align-items-center user-trigger"
@@ -305,18 +349,18 @@
         >
           <img src="assets/user.png" alt="User" class="rounded-circle me-2">
           <span class="fw-semibold text-secondary">{{ userName }}</span>
-          <i class="bi bi-chevron-down ms-2 chevron" [class.rotate-180]="isUserDropdownOpen"></i>
+          <i class="ph ph-caret-down ms-2 chevron" [class.rotate-180]="isUserDropdownOpen"></i>
         </div>
 
         <ul class="user-dropdown shadow-sm border-0">
           <li>
             <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-box-arrow-left me-2"></i> Cerrar sesión
+              <i class="ph ph-sign-out me-2"></i> Cerrar sesión
             </a>
           </li>
           <li>
             <a (click)="crearUsuario()" class="dropdown-item d-flex align-items-center">
-              <i class="bi bi-box-arrow-right me-2"></i> Crear Usuario
+              <i class="ph ph-sign-in me-2"></i> Crear Usuario
             </a>
           </li>
         </ul>

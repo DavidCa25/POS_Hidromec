@@ -1,0 +1,82 @@
+/* ==========================================================================
+   DETALLES TRANSVERSALES
+   Scrollbars, foco, seleccion de texto y estados vacios.
+   Son cosas que casi nadie mira de frente y que se notan todas juntas.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. SCROLLBARS
+   --------------------------------------------------------------------------
+   Wybix corre en Electron, asi que se puede tematizar sin preocuparse por
+   otros navegadores.
+
+   Criterio: discreta pero AGARRABLE. Una barra de 2px queda preciosa en una
+   captura y es inservible con el raton, y este es un punto de venta que se usa
+   ocho horas al dia. 10px de ancho con el pulgar de 8px es el minimo con el
+   que se puede apuntar sin fallar.
+   -------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--wx-scroll-thumb) transparent;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--wx-scroll-thumb);
+  border-radius: 999px;
+  /* El borde transparente adelgaza visualmente el pulgar sin reducir el area
+     real que se puede agarrar. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--wx-scroll-thumb-hover); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* En el rail navy la barra por defecto se ve como una cicatriz clara. */
+.sidebar, .sidebar-menu {
+  scrollbar-color: rgb(255 255 255 / 0.20) transparent;
+}
+.sidebar ::-webkit-scrollbar-thumb,
+.sidebar-menu::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.20); background-clip: content-box; }
+.sidebar ::-webkit-scrollbar-thumb:hover,
+.sidebar-menu::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.32); background-clip: content-box; }
+
+/* --------------------------------------------------------------------------
+   2. FOCO
+   --------------------------------------------------------------------------
+   Un unico anillo para toda la aplicacion. Solo `:focus-visible`: con
+   `:focus` a secas el anillo salta tambien al hacer clic con el raton, que es
+   justo cuando estorba.
+   -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--wx-accent);
+  outline-offset: 2px;
+  border-radius: var(--wx-radius-xs);
+}
+
+/* Dentro de un menu el desplazamiento del anillo se sale de la caja: se pinta
+   hacia dentro. */
+.wx-pop :where(button, a, [tabindex]):focus-visible,
+.wx-opt:focus-visible { outline-offset: -2px; }
+
+/* --------------------------------------------------------------------------
+   3. SELECCION DE TEXTO
+   El azul del sistema no pertenece a la paleta y se ve prestado.
+   -------------------------------------------------------------------------- */
+::selection { background: var(--wx-accent-soft); color: var(--wx-text); }
+
+/* --------------------------------------------------------------------------
+   4. ARRASTRE DE VENTANA
+   Es una app de escritorio: la topbar deberia poder mover la ventana, pero sin
+   que los controles dejen de ser clicables.
+   -------------------------------------------------------------------------- */
+.topbar { -webkit-app-region: drag; }
+.topbar :is(button, a, input, select, .wx-pop) { -webkit-app-region: no-drag; }
+
+/* --------------------------------------------------------------------------
+   5. TIPOGRAFIA DE CIFRAS
+   Cualquier cifra que cambie en su sitio (totales, contadores, cronometros)
+   con numeros de ancho variable "baila" al actualizarse.
+   -------------------------------------------------------------------------- */
+:where(.wx-num, .total, .importe, [data-num]) { font-variant-numeric: tabular-nums; }

@@ -2,6 +2,7 @@ import { Component, OnInit, LOCALE_ID } from '@angular/core';
 import { NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 
 interface RawRow {
   purchase_id: number;
@@ -46,11 +47,16 @@ type PageToken = number | '...';
   standalone: true,
   templateUrl: './tablaCompra.html',
   styleUrls: ['./tablaCompra.css'],
-  imports: [NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class TablaCompra implements OnInit {
   loading = false;
+  /** Mismas opciones de siempre, en el formato del selector Wybix. */
+  get opcionesPagina(): WxOpcion[] {
+    return this.pageSizeOptions.map(n => ({ valor: n, etiqueta: String(n) }));
+  }
+
   expanded = new Set<number>();
 
   compras: PurchaseRow[] = [];

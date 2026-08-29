@@ -2,7 +2,7 @@
   <div class="inv-header-section">
     <div class="inv-header-content">
       <div class="inv-title-wrapper">
-        <i class="bi bi-box-seam inv-icon"></i>
+        <i class="ph ph-package inv-icon"></i>
         <h1 class="inv-main-title">Inventario</h1>
       </div>
       <p class="inv-subtitle">Administra productos, stock y precios</p>
@@ -10,25 +10,25 @@
 
     <div class="inv-actions-group">
       <button class="castrol-btn-add" type="button" (click)="abrirProductoModal()">
-        <i class="bi bi-plus-circle-dotted me-2"></i> Agregar Producto
+        <i class="ph ph-plus-circle me-2"></i> Agregar Producto
       </button>
 
       <button class="castrol-btn-color" type="button" (click)="abrirBrandModal()">
-        <i class="bi bi-tags me-2"></i> Agregar Marca
+        <i class="ph ph-tag me-2"></i> Agregar Marca
       </button>
 
       <button class="castrol-btn-color" type="button" (click)="abrirCategoryModal()">
-        <i class="bi bi-folder-plus me-2"></i> Agregar Categoría
+        <i class="ph ph-folder-plus me-2"></i> Agregar Categoría
       </button>
 
       <div style="position:relative;">
         <button class="castrol-btn-color" type="button" (click)="expExportOpen = !expExportOpen">
-          <i class="bi bi-download me-2"></i> Exportar
+          <i class="ph ph-download-simple me-2"></i> Exportar
         </button>
         <div *ngIf="expExportOpen" class="list-group shadow-sm"
              style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
-          <button class="list-group-item list-group-item-action" (click)="exportarInv('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
-          <button class="list-group-item list-group-item-action" (click)="exportarInv('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('pdf')"><i class="ph ph-file-pdf me-2"></i> PDF</button>
+          <button class="list-group-item list-group-item-action" (click)="exportarInv('excel')"><i class="ph ph-file-xls me-2"></i> Excel</button>
         </div>
       </div>
     </div>
@@ -36,13 +36,13 @@
 
   <div class="d-flex justify-content-between align-items-center mb-3" style="gap:14px; flex-wrap:wrap;">
     <div class="ventas-stats-badge">
-      <i class="bi bi-list-check"></i>
+      <i class="ph ph-list-checks"></i>
       <span>{{ totalItems }} productos</span>
     </div>
 
     <div class="ventas-tools">
       <div class="ventas-search">
-        <i class="bi bi-search"></i>
+        <i class="ph ph-magnifying-glass"></i>
         <input
           type="search"
           placeholder="Buscar por número de parte, producto, marca, categoría, proveedor..."
@@ -56,7 +56,7 @@
           (click)="clearFilter()"
           title="Limpiar"
         >
-          <i class="bi bi-x-lg"></i>
+          <i class="ph ph-x"></i>
         </button>
       </div>
 
@@ -67,9 +67,7 @@
 
         <div class="ventas-page-size">
           <span>Mostrar</span>
-          <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
-            <option *ngFor="let n of pageSizeOptions" [ngValue]="n">{{ n }}</option>
-          </select>
+          <wx-select class="wx-sel-compacto" [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)" [opciones]="opcionesPagina"></wx-select>
         </div>
       </div>
     </div>
@@ -83,8 +81,8 @@
           <th style="min-width:180px;">Número de parte</th>
           <th style="min-width:150px;">Código de barras</th>
           <th style="min-width:260px;">Producto</th>
-          <th style="width:140px;">Precio</th>
-          <th style="width:110px;">Stock</th>
+          <th class="money" style="width:140px;">Precio</th>
+          <th class="num" style="width:110px;">Stock</th>
           <th style="min-width:160px;">Categoría</th>
           <th style="min-width:160px;">Marca</th>
           <th style="min-width:200px;">Proveedor (Default)</th>
@@ -94,16 +92,16 @@
 
       <tbody>
         <tr *ngFor="let item of inventarioPaginado; let i = index">
-          <td class="fw-semibold">{{ pageStartIndex + i + 1 }}</td>
+          <td class="num text-muted">{{ pageStartIndex + i + 1 }}</td>
           <td>{{ item.part_number ?? '-' }}</td>
           <td class="mono">{{ item.bar_code || '-' }}</td>
           <td>{{ item.product_name ?? item.nombre ?? '-' }}</td>
 
-          <td class="fw-semibold">
+          <td class="money fw-semibold">
             {{ (item.price ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </td>
 
-          <td>{{ item.stock ?? '-' }}</td>
+          <td class="num">{{ item.stock ?? '-' }}</td>
           <td>{{ item.category_name ?? '-' }}</td>
           <td>{{ item.brand_name ?? '-' }}</td>
           <td>
@@ -122,20 +120,18 @@
                       aria-label="Proveedores"
                       data-tooltip="Proveedores"
                       (click)="abrirProveedoresModal(item)">
-                <i class="bi bi-truck"></i>
+                <i class="ph ph-truck"></i>
               </button>
 
               <button class="action-btn btn-editar"
                       aria-label="Editar"
                       data-tooltip="Editar"
                       (click)="abrirEditarProducto(item)">
-                <i class="bi bi-pencil-square"></i>
+                <i class="ph ph-pencil-simple-line"></i>
               </button>
 
               <button class="action-btn btn-delete" aria-label="Eliminar" data-tooltip="Eliminar">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 3h6l1 1h4v2H4V4h4l1-1zm1 7h2v8h-2v-8zm4 0h2v8h-2v-8zM6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7z"/>
-                </svg>
+                <i class="ph ph-trash" aria-hidden="true"></i>
               </button>
             </div>
           </td>
@@ -152,7 +148,7 @@
 
   <div class="ventas-pager" *ngIf="totalItems > 0">
     <button class="pager-btn" (click)="prevPage()" [disabled]="page <= 1">
-      <i class="bi bi-chevron-left"></i> Anterior
+      <i class="ph ph-caret-left"></i> Anterior
     </button>
 
     <div class="pager-pages">
@@ -170,7 +166,7 @@
     </div>
 
     <button class="pager-btn" (click)="nextPage()" [disabled]="page >= totalPages">
-      Siguiente <i class="bi bi-chevron-right"></i>
+      Siguiente <i class="ph ph-caret-right"></i>
     </button>
   </div>
 
@@ -186,18 +182,14 @@
         <!-- Marca y categoria solo en ALTA (el SP de update no las modifica) -->
         <div class="grid-col-span" *ngIf="!editingProductId">
           <label>Marca</label>
-          <select name="brand" [(ngModel)]="form.brand" required class="my-1 mr-sm-2">
-            <option [ngValue]="null" disabled>Selecciona una</option>
-            <option *ngFor="let brand of brands" [ngValue]="brand.id">{{brand.namee}}</option>
-          </select>
+          <wx-select name="brand" [(ngModel)]="form.brand" [opciones]="opcMarcas"
+                     [buscable]="brands.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div *ngIf="!editingProductId">
           <label>Categoría</label>
-          <select name="category" [(ngModel)]="form.category" required class="my-1 mr-sm-2">
-            <option [ngValue]="null" disabled>Selecciona una</option>
-            <option *ngFor="let cat of categorys" [ngValue]="cat.id">{{cat.namee}}</option>
-          </select>
+          <wx-select name="category" [(ngModel)]="form.category" [opciones]="opcCategorias"
+                     [buscable]="categorys.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div class="grid-col-span">
@@ -270,7 +262,7 @@
             <div class="sat-dd" [class.open]="objImpAbierto">
               <button type="button" class="sat-dd-trigger" (click)="objImpAbierto = !objImpAbierto; tasaAbierta = false">
                 <span>{{ objetoImpuestoLabel }}</span>
-                <i class="bi bi-chevron-down"></i>
+                <i class="ph ph-caret-down"></i>
               </button>
               <div class="sat-dd-menu" *ngIf="objImpAbierto">
                 <button type="button" class="sat-dd-opt" *ngFor="let o of objetoImpuestoOpts"
@@ -278,7 +270,7 @@
                         (click)="form.objetoImpuesto = o.code; objImpAbierto = false">
                   <span class="sat-dd-code">{{ o.code }}</span>
                   <span>{{ o.label }}</span>
-                  <i class="bi bi-check2" *ngIf="o.code === form.objetoImpuesto"></i>
+                  <i class="ph ph-check" *ngIf="o.code === form.objetoImpuesto"></i>
                 </button>
               </div>
             </div>
@@ -290,14 +282,14 @@
             <div class="sat-dd" [class.open]="tasaAbierta">
               <button type="button" class="sat-dd-trigger" (click)="tasaAbierta = !tasaAbierta; objImpAbierto = false">
                 <span>{{ tasaIvaLabel }}</span>
-                <i class="bi bi-chevron-down"></i>
+                <i class="ph ph-caret-down"></i>
               </button>
               <div class="sat-dd-menu" *ngIf="tasaAbierta">
                 <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
                         [class.sel]="t.value === form.tasaIva"
                         (click)="form.tasaIva = t.value; tasaAbierta = false">
                   <span>{{ t.label }}</span>
-                  <i class="bi bi-check2" *ngIf="t.value === form.tasaIva"></i>
+                  <i class="ph ph-check" *ngIf="t.value === form.tasaIva"></i>
                 </button>
               </div>
             </div>
@@ -331,7 +323,7 @@
       </div>
 
       <button class="suppliers-close" type="button" (click)="cerrarProveedoresModal()">
-        <i class="bi bi-x-lg"></i>
+        <i class="ph ph-x"></i>
       </button>
     </div>
 
@@ -347,7 +339,7 @@
                   type="button"
                   [disabled]="creatingSupplier"
                   (click)="crearProveedorCatalogoYSeleccionar()">
-            <i class="bi bi-plus-circle me-1"></i>
+            <i class="ph ph-plus-circle me-1"></i>
             {{ creatingSupplier ? 'Creando...' : 'Crear proveedor' }}
           </button>
         </div>
@@ -358,12 +350,8 @@
       <div class="row g-3 align-items-end">
         <div class="col-md-6">
           <label class="form-label">Proveedor</label>
-          <select class="form-select" [(ngModel)]="supplierToAdd" name="supplierToAdd">
-            <option [ngValue]="null" disabled>Selecciona un proveedor</option>
-            <option *ngFor="let s of suppliersCatalog" [ngValue]="s.id">
-              {{ s.nombre }}
-            </option>
-          </select>
+          <wx-select [(ngModel)]="supplierToAdd" name="supplierToAdd" [opciones]="opcProveedores"
+                     [buscable]="suppliersCatalog.length > 8" placeholder="Selecciona un proveedor"></wx-select>
         </div>
 
         <div class="col-md-3">
@@ -381,7 +369,7 @@
           </label>
 
           <button type="button" class="btn btn-primary" (click)="agregarProveedorAlProducto()">
-            <i class="bi bi-link-45deg me-1"></i> Vincular
+            <i class="ph ph-link-simple me-1"></i> Vincular
           </button>
         </div>
       </div>
@@ -449,10 +437,10 @@
 <div class="mini-modal" *ngIf="brandModalAbierto">
   <div class="mini-modal-header">
     <div class="mini-modal-title">
-      <i class="bi bi-tags me-2"></i> Agregar marca
+      <i class="ph ph-tag me-2"></i> Agregar marca
     </div>
     <button type="button" class="mini-close" (click)="cerrarBrandModal()">
-      <i class="bi bi-x-lg"></i>
+      <i class="ph ph-x"></i>
     </button>
   </div>
 
@@ -488,10 +476,10 @@
 <div class="mini-modal" *ngIf="categoryModalAbierto">
   <div class="mini-modal-header">
     <div class="mini-modal-title">
-      <i class="bi bi-folder-plus me-2"></i> Agregar categoría
+      <i class="ph ph-folder-plus me-2"></i> Agregar categoría
     </div>
     <button type="button" class="mini-close" (click)="cerrarCategoryModal()">
-      <i class="bi bi-x-lg"></i>
+      <i class="ph ph-x"></i>
     </button>
   </div>
 

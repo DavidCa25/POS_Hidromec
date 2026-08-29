@@ -6,14 +6,14 @@
     <span class="csp-code">{{ valor }}</span>
     <span class="csp-desc" *ngIf="descripcion">{{ descripcion }}</span>
     <button type="button" class="csp-clear" (click)="limpiar(); abrir()" title="Cambiar">
-      <i class="bi bi-pencil"></i>
+      <i class="ph ph-pencil-simple"></i>
     </button>
   </div>
 
   <!-- Buscador -->
   <div class="csp-search" *ngIf="!valor || abierto">
     <div class="csp-input">
-      <i class="bi bi-search"></i>
+      <i class="ph ph-magnifying-glass"></i>
       <input type="text" [ngModel]="termino" (ngModelChange)="onInput($event)"
              [placeholder]="placeholder" (focus)="abierto = true">
     </div>

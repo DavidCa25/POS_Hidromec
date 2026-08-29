@@ -1,0 +1,55 @@
+<!-- Disparador: se ve como cualquier campo del sistema, no como un control
+     del navegador. El ancla es el propio boton. -->
+<button type="button" class="wx-date__campo"
+        [id]="idPanel + '-btn'"
+        [attr.popovertarget]="idPanel"
+        [disabled]="deshabilitado"
+        [class.is-vacio]="!valor">
+  <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+  <span class="wx-date__txt">{{ etiqueta }}</span>
+  <span *ngIf="limpiable && valor" class="wx-date__x" role="button" tabindex="0"
+        aria-label="Quitar fecha"
+        (click)="limpiar($event)"
+        (keydown.enter)="limpiar($event)">
+    <i class="ph ph-x" aria-hidden="true"></i>
+  </span>
+</button>
+
+<div [id]="idPanel" popover data-anclado
+     class="wx-pop wx-date__panel"
+     role="dialog" aria-label="Calendario"
+     (toggle)="alAbrirCerrar($any($event))">
+
+  <div class="wx-date__head">
+    <button type="button" class="wx-date__nav" (click)="mesAnterior()" aria-label="Mes anterior">
+      <i class="ph ph-caret-left" aria-hidden="true"></i>
+    </button>
+    <span class="wx-date__mes" aria-live="polite">{{ tituloMes }}</span>
+    <button type="button" class="wx-date__nav" (click)="mesSiguiente()" aria-label="Mes siguiente">
+      <i class="ph ph-caret-right" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <div class="wx-date__sem" aria-hidden="true">
+    <span *ngFor="let d of diasSemana">{{ d }}</span>
+  </div>
+
+  <!-- Un solo tabstop en la rejilla: dentro se navega con flechas, que es lo
+       que espera cualquiera acostumbrado al control nativo. -->
+  <div class="wx-date__rejilla" role="grid" tabindex="0" (keydown)="alPulsar($event)">
+    <button *ngFor="let c of celdas" type="button" role="gridcell"
+            class="wx-date__dia"
+            [class.is-fuera]="c.fuera"
+            [class.is-hoy]="c.hoy"
+            [class.is-sel]="c.sel"
+            [class.is-focado]="esFocado(c.fecha)"
+            [disabled]="c.off"
+            [attr.aria-selected]="c.sel"
+            (click)="elegir(c.fecha)">{{ c.fecha.getDate() }}</button>
+  </div>
+
+  <div class="wx-date__pie">
+    <button type="button" class="wx-date__hoy" (click)="irHoy()">Hoy</button>
+    <button *ngIf="limpiable && valor" type="button" class="wx-date__hoy" (click)="limpiar($event)">Quitar</button>
+  </div>
+</div>

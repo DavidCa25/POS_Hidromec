@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../services/report.service';
 import { CatalogoItem } from '../services/catalogos.service';
 import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.component';
+import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 
 
 interface ProductRow {
@@ -64,7 +65,7 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker],
+  imports: [RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
@@ -120,6 +121,25 @@ export class Inventario {
   expExportOpen = false;
   page = 1;
   pageSizeOptions = [10, 20, 50, 100];
+  /** Mismas opciones de siempre, en el formato del selector Wybix. */
+  /**
+   * Listas de los selectores de los modales de Inventario. Son las mismas
+   * opciones que estaban en el marcado; aqui solo cambian de formato.
+   */
+  get opcMarcas(): WxOpcion[] {
+    return (this.brands || []).map((b: any) => ({ valor: b.id, etiqueta: b.namee }));
+  }
+  get opcCategorias(): WxOpcion[] {
+    return (this.categorys || []).map((c: any) => ({ valor: c.id, etiqueta: c.namee }));
+  }
+  get opcProveedores(): WxOpcion[] {
+    return (this.suppliersCatalog || []).map((s: any) => ({ valor: s.id, etiqueta: s.nombre }));
+  }
+
+  get opcionesPagina(): WxOpcion[] {
+    return this.pageSizeOptions.map(n => ({ valor: n, etiqueta: String(n) }));
+  }
+
   pageSize = 10;
 
   objetoImpuestoOpts = [

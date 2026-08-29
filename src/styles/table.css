@@ -1,0 +1,446 @@
+/* ==========================================================================
+   WYBIX POS - TABLAS
+   --------------------------------------------------------------------------
+   Las tablas son la superficie de trabajo real del producto y se CONSERVAN
+   como tablas: no se convierten en listas ni en tarjetas. Lo que sube es la
+   calidad.
+
+   Que se refina:
+   - Cabecera pegajosa. En una tabla larga, perder los encabezados al bajar
+     es perder el sentido de los datos.
+   - El dinero y las cantidades van a la DERECHA y en mono tabular. Antes
+     todo iba centrado, asi que las columnas de importes no se podian
+     comparar de un vistazo y bailaban al cambiar de valor.
+   - El hover era amarillo (#fff7cc), un color sin relacion con la marca ni
+     con ningun estado. Ahora usa el acento elegido, muy tenue.
+   - Se anaden estados que no existian: fila seleccionada, foco de teclado y
+     orden de columna.
+
+   COLOR PERSONALIZABLE (--wx-user-accent)
+   El color que elige el usuario deja de "pintar solo la cabecera": recorre
+   cabecera, fila seleccionada, controles activos, foco, paginacion y
+   realces. La tinta sobre ese color la calcula ThemeService por luminancia,
+   asi que nunca queda texto ilegible aunque se elija un color muy claro.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CONTENEDOR: LA TABLA ES **UN** OBJETO
+   --------------------------------------------------------------------------
+   El problema que habia: la cabecera de color era un rectangulo con esquinas
+   rectas metido dentro de una superficie redondeada. Se leia como dos piezas
+   pegadas, no como una tabla.
+
+   La solucion son tres cosas a la vez, porque una sola no basta:
+
+   1. El contenedor recorta (`overflow: auto` + radio). `auto` y no `hidden`
+      porque las tablas anchas tienen que poder desplazarse en horizontal, y
+      `hidden` mataria ese scroll.
+   2. El propio `th` redondea sus esquinas exteriores. Es cinturon y
+      tirantes: cuando la cabecera es `position: sticky`, algunos motores la
+      pintan por encima del recorte del contenedor al desplazarse, y sin esto
+      se ve una esquina cuadrada asomando sobre la curva.
+   3. La ultima fila redondea las suyas, para que el objeto cierre abajo
+      igual que abre arriba.
+
+   `isolation: isolate` crea un contexto de apilamiento propio: sin el, la
+   cabecera pegajosa puede pintarse por encima del borde del contenedor.
+   -------------------------------------------------------------------------- */
+.castrol-table-container,
+.tabla-wrap,
+.wx-table-shell {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  overflow: auto;
+  /* Contexto de apilamiento propio: sin el, la cabecera pegajosa puede
+     pintarse por encima del borde del contenedor. No se usa `transform`
+     para crearlo porque puede interferir con `position: sticky`. */
+  isolation: isolate;
+}
+
+/* Esquinas de la cabecera. */
+.castrol-table thead th:first-child,
+.ct-table thead th:first-child,
+.tabla-corte thead th:first-child { border-top-left-radius: var(--wx-radius-md); }
+
+.castrol-table thead th:last-child,
+.ct-table thead th:last-child,
+.tabla-corte thead th:last-child { border-top-right-radius: var(--wx-radius-md); }
+
+/* Esquinas inferiores del objeto. */
+.castrol-table tbody tr:last-child td:first-child,
+.ct-table tbody tr:last-child td:first-child,
+.tabla-corte tbody tr:last-child td:first-child { border-bottom-left-radius: var(--wx-radius-md); }
+
+.castrol-table tbody tr:last-child td:last-child,
+.ct-table tbody tr:last-child td:last-child,
+.tabla-corte tbody tr:last-child td:last-child { border-bottom-right-radius: var(--wx-radius-md); }
+
+/* Las tablas que van dentro de una card ya redondeada no vuelven a dibujar
+   marco: seria una caja dentro de otra. */
+.corte-card > .tabla-wrap,
+.card > .castrol-table-container {
+  border: 0;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+   CABECERA
+   -------------------------------------------------------------------------- */
+.castrol-table,
+.ct-table,
+.tabla-corte,
+.al-table,
+.est-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  color: var(--wx-text);
+  background: transparent;
+}
+
+.castrol-table thead th,
+.ct-table thead th,
+.tabla-corte thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--wx-z-sticky);
+  height: 44px;
+  padding: 0 16px !important;
+  background: var(--wx-user-accent) !important;
+  color: var(--wx-user-accent-fg) !important;
+  font-family: var(--wx-font) !important;
+  font-size: var(--wx-text-sm) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  text-align: left;
+  white-space: nowrap;
+  border: 0 !important;
+  vertical-align: middle;
+}
+/* La linea inferior de 3px negra se sustituye por una separacion de luz. */
+.castrol-table thead th { box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.14); }
+
+/* Columna ordenable: la flecha vive en la cabecera, no en un menu. */
+.castrol-table th.is-sortable,
+.castrol-table th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+.castrol-table th.is-sortable:hover,
+.castrol-table th[data-sort]:hover {
+  background: color-mix(in srgb, var(--wx-user-accent) 88%, #fff 12%) !important;
+}
+.castrol-table th [class*="ph-caret"],
+.castrol-table th [class*="ph-arrows"] {
+  margin-left: 5px;
+  opacity: 0.5;
+  transition: opacity var(--wx-dur-micro) ease;
+}
+.castrol-table th[aria-sort] [class*="ph-caret"] { opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   FILAS
+   Se conserva la altura comoda de Wybix: es una tabla de trabajo, no una
+   hoja de calculo comprimida.
+   -------------------------------------------------------------------------- */
+.castrol-table tbody td,
+.ct-table tbody td,
+.tabla-corte tbody td {
+  height: var(--wx-row-h);
+  padding: 0 16px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--wx-edge-soft) !important;
+  color: var(--wx-text) !important;
+  vertical-align: middle;
+  text-align: left;
+}
+.castrol-table tbody tr:last-child td { border-bottom: 0 !important; }
+
+.castrol-table tbody tr,
+.ct-table tbody tr,
+.tabla-corte tbody tr {
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+
+/* Hover con el acento elegido, muy tenue. Solo con puntero fino: en tactil
+   el tap deja la fila "pegada" (Emil). */
+@media (hover: hover) and (pointer: fine) {
+  .castrol-table tbody tr:hover td,
+  .ct-table tbody tr:hover td,
+  .tabla-corte tbody tr:hover td {
+    background: var(--wx-user-accent-soft) !important;
+  }
+}
+
+/* Seleccion: barra de acento a la izquierda + fondo tenue. Dos senales, para
+   que no dependa solo del color de fondo. */
+.castrol-table tbody tr.is-selected td,
+.castrol-table tbody tr.selected td {
+  background: var(--wx-user-accent-soft) !important;
+}
+.castrol-table tbody tr.is-selected td:first-child,
+.castrol-table tbody tr.selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--wx-user-accent);
+}
+
+/* El POS se opera sin raton: la fila enfocada tiene que verse. */
+.castrol-table tbody tr:focus-visible {
+  outline: 2px solid var(--wx-accent);
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------------------
+   CIFRAS
+   Dinero y cantidades a la derecha, en mono tabular.
+   -------------------------------------------------------------------------- */
+.castrol-table td.money, .castrol-table th.money,
+.castrol-table td.num,   .castrol-table th.num,
+.castrol-table td.wx-num, .castrol-table th.wx-num,
+.tabla-corte td.money,   .tabla-corte th.money,
+.est-table .r, .est-table th.r {
+  text-align: right;
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   ACCIONES DE FILA
+   Editar y ver se usan todo el dia: se quedan visibles. Solo bajan de
+   contraste hasta que el puntero entra en la fila.
+   -------------------------------------------------------------------------- */
+.acciones-cell { width: 1%; white-space: nowrap; }
+.action-group { display: inline-flex; align-items: center; gap: 4px; }
+
+.action-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wx-radius-xs);
+  background: transparent;
+  color: var(--wx-text-dim);
+  cursor: pointer;
+  box-shadow: none;
+  position: relative;
+  transition: background-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .castrol-table tbody tr:hover .action-btn { color: var(--wx-text-muted); }
+}
+.action-btn:hover { background: var(--wx-sunken); color: var(--wx-text); transform: none; }
+.action-btn:active { transform: scale(0.92); }
+.action-btn:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; box-shadow: none; }
+.action-btn svg { width: 17px; height: 17px; fill: currentColor; transition: none; }
+.action-btn > i { font-size: 17px; }
+
+/* Editar usa el acento; borrar es el unico rojo, y solo al apuntarlo:
+   el peligro se anuncia sin pintar toda la fila. */
+.btn-edit:hover   { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.btn-view:hover   { background: var(--wx-sunken); color: var(--wx-text); }
+.btn-delete:hover { background: var(--wx-danger-soft); color: var(--wx-danger); }
+.btn-edit:hover svg, .btn-view:hover svg, .btn-delete:hover svg { fill: currentColor; }
+.btn-delete:focus-visible { outline-color: var(--wx-danger); }
+
+/* Tooltip de accion: aparece rapido y sin desplazamiento largo. */
+.action-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  padding: 5px 8px;
+  background: var(--wx-navy-700);
+  color: #fff;
+  border-radius: var(--wx-radius-xs);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-xs);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--wx-shadow-menu);
+  transition: opacity var(--wx-dur-micro) ease, transform var(--wx-dur-micro) var(--wx-ease-out);
+  z-index: var(--wx-z-menu);
+}
+.action-btn:hover::after,
+.action-btn:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --------------------------------------------------------------------------
+   PIE / TOTALES
+   -------------------------------------------------------------------------- */
+.castrol-table tfoot td {
+  height: 44px;
+  padding: 0 14px;
+  background: var(--wx-raised);
+  border-top: 1px solid var(--wx-edge-strong);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   PAGINACION - tambien adopta el acento elegido
+   -------------------------------------------------------------------------- */
+.page-btn, .pager-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease;
+}
+.page-btn:hover:not(:disabled), .pager-btn:hover:not(:disabled) {
+  background: var(--wx-raised);
+  border-color: var(--wx-edge-strong);
+  color: var(--wx-text);
+}
+.page-btn.active, .page-btn[aria-current="page"] {
+  background: var(--wx-user-accent);
+  border-color: var(--wx-user-accent);
+  color: var(--wx-user-accent-fg);
+  font-weight: 600;
+}
+.page-btn:disabled, .pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* --------------------------------------------------------------------------
+   ESTADO VACIO DENTRO DE TABLA
+   -------------------------------------------------------------------------- */
+.castrol-table tbody td.wx-empty-cell,
+.est-empty {
+  padding: 34px 14px !important;
+  text-align: center;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+}
+
+/* ==========================================================================
+   TABLAS DE FILAS SEPARADAS (Clientes, Proveedores)
+   --------------------------------------------------------------------------
+   Usaban `border-spacing: 0 6px`: cada fila era una tarjeta suelta con su
+   propia sombra. Eso impide que la tabla se lea como un objeto -la cabecera
+   nunca toca la primera fila- y multiplica las sombras por fila.
+
+   Se conservan como tabla; lo que cambia es que las filas se separan con un
+   hairline en vez de con un hueco y una sombra cada una.
+   ========================================================================== */
+.tabla-corte {
+  border-spacing: 0 !important;
+  border-collapse: separate;
+}
+.tabla-corte tbody tr {
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+.tabla-corte tbody td {
+  border-bottom: 1px solid var(--wx-edge-soft) !important;
+}
+.tabla-corte tbody tr:last-child td { border-bottom: 0 !important; }
+
+@media (hover: hover) and (pointer: fine) {
+  .tabla-corte tbody tr:hover td { background: var(--wx-user-accent-soft) !important; }
+}
+
+/* ==========================================================================
+   SEPARACION ENTRE BARRA DE HERRAMIENTAS Y TABLA
+   La barra y la tabla son dos cosas distintas: necesitan aire entre ellas,
+   no un borde.
+   ========================================================================== */
+.castrol-table-container,
+.tabla-wrap,
+.wx-table-shell { margin-top: 14px; }
+
+
+/* ==========================================================================
+   SHELL DE PAGINA DE TABLA
+   --------------------------------------------------------------------------
+   Cada modulo traia su propio margen exterior: Inventario 1.35rem/1.5rem,
+   Ventas 2.5rem/2rem y Compras 2rem/1.5rem. La tabla parecia empezar en un
+   sitio distinto en cada pantalla.
+
+   Una sola medida para los cuatro, y un ancho maximo para que en monitores
+   anchos las filas no se estiren hasta perder la relacion entre columnas.
+   ========================================================================== */
+.ventas-container,
+.inventario-container,
+.compras-container,
+.ct-wrap {
+  padding: 1.5rem 1.75rem 2.5rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* La caja de la tabla es la misma en los cuatro modulos. */
+.castrol-table-container,
+.ct-card {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   ACCION DE FILA
+   --------------------------------------------------------------------------
+   El boton de PDF de Ventas usaba `.castrol-btn-color`, la MISMA clase que los
+   botones de cabecera: 12px de radio, `font-weight: bold` y padding en `em`.
+   Dentro de una celda de 46px eso queda enorme y el icono se parte a otra
+   linea. Una accion de fila necesita su propia escala.
+   -------------------------------------------------------------------------- */
+.wx-rowbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface);
+  color: var(--wx-text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--wx-dur-press) ease,
+              color var(--wx-dur-press) ease,
+              border-color var(--wx-dur-press) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.wx-rowbtn > i { font-size: 15px; line-height: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .wx-rowbtn:hover {
+    background: var(--wx-user-accent-soft);
+    border-color: var(--wx-user-accent-line);
+    color: var(--wx-user-accent-text);
+  }
+}
+.wx-rowbtn:active { transform: scale(0.96); }
+.wx-rowbtn:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.wx-rowbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) { .wx-rowbtn:active { transform: none; } }

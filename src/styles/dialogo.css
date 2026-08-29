@@ -1,0 +1,161 @@
+/* ==========================================================================
+   DIALOGOS
+   --------------------------------------------------------------------------
+   Los modales de Clientes y Proveedores salian BLANCOS en modo oscuro, y la
+   causa no estaba en el CSS: el panel llevaba el fondo escrito en un atributo
+   `style` en la plantilla.
+
+       <div class="cierre-dialog modal-content" style="background:#fff; ...">
+
+   Un estilo en linea gana a cualquier regla, incluidas las de tema. Por eso
+   ninguna correccion anterior los alcanzo: no habia nada que corregir en la
+   hoja de estilos.
+
+   Aqui viven los tokens y la primitiva que los sustituyen, para que ningun
+   dialogo vuelva a decidir sus propios colores.
+   ========================================================================== */
+
+:root {
+  --wx-dialogo-velo:     rgb(8 14 24 / 0.42);
+  --wx-dialogo-bg:       var(--wx-surface);
+  --wx-dialogo-elevado:  var(--wx-raised);
+  --wx-dialogo-borde:    var(--wx-edge);
+  --wx-dialogo-texto:    var(--wx-text);
+  --wx-dialogo-tenue:    var(--wx-text-muted);
+  --wx-dialogo-campo:    var(--wx-surface);
+  --wx-dialogo-cabecera: var(--wx-text);
+}
+
+html.dark {
+  /* Mas velo en oscuro: sobre un fondo ya oscuro, un velo claro no separa
+     planos y el dialogo parece pegado a la pagina. */
+  --wx-dialogo-velo:    rgb(2 6 12 / 0.62);
+  --wx-dialogo-bg:      var(--wx-raised);
+  --wx-dialogo-elevado: var(--wx-surface);
+  --wx-dialogo-campo:   var(--wx-sunken);
+}
+
+/* --------------------------------------------------------------------------
+   VELO
+   -------------------------------------------------------------------------- */
+.cierre-modal,
+.wx-dialogo-velo {
+  background: var(--wx-dialogo-velo) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* --------------------------------------------------------------------------
+   PANEL
+   El `!important` del fondo es deliberado: existe para ganarle a los estilos
+   en linea que quedan en plantillas que no se han migrado todavia. Es una red
+   de seguridad, no la via normal.
+   -------------------------------------------------------------------------- */
+.wx-dialogo,
+.cierre-modal > .modal-content,
+.cierre-modal > .cierre-dialog {
+  background: var(--wx-dialogo-bg) !important;
+  color: var(--wx-dialogo-texto);
+  border: 1px solid var(--wx-dialogo-borde);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+}
+
+/* El titulo iba a 1.4rem/800: pesaba mas que el contenido y, en oscuro, la
+   plantilla no le daba color, asi que heredaba el del panel blanco. */
+.cierre-modal h3,
+.wx-dialogo h3 {
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: var(--wx-dialogo-cabecera);
+}
+.cierre-modal .form-label,
+.wx-dialogo .form-label { color: var(--wx-dialogo-tenue); }
+.cierre-modal .hint,
+.wx-dialogo .hint { color: var(--wx-text-dim); }
+
+/* Los campos dentro del dialogo estaban un escalon por encima de su panel en
+   oscuro: se veian como recuadros claros dentro de una caja oscura. */
+.cierre-modal :is(.form-control, .form-select, .ctl),
+.wx-dialogo :is(.form-control, .form-select, .ctl) {
+  background: var(--wx-dialogo-campo);
+  border-color: var(--wx-edge-strong);
+  color: var(--wx-text);
+}
+
+/* --------------------------------------------------------------------------
+   TABLA DENTRO DE UN DIALOGO
+   --------------------------------------------------------------------------
+   Las tablas pequenas de un dialogo heredaban la cabecera de acento de las
+   tablas principales. Dentro de un panel de 780px esa banda de color pesa mas
+   que el propio dialogo y compite con su titulo.
+
+   La variante baja el volumen: cabecera en superficie hundida con texto
+   atenuado, filas mas juntas y sin sombra propia.
+   -------------------------------------------------------------------------- */
+.cierre-modal :is(.tabla-corte, .castrol-table, .ct-table),
+.wx-dialogo :is(.tabla-corte, .castrol-table, .ct-table),
+.wx-tabla--dialogo {
+  font-size: 12.8px;
+}
+
+.cierre-modal :is(.tabla-corte, .castrol-table, .ct-table) thead th,
+.wx-dialogo :is(.tabla-corte, .castrol-table, .ct-table) thead th,
+.wx-tabla--dialogo thead th {
+  background: var(--wx-sunken) !important;
+  color: var(--wx-text-muted) !important;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 7px 10px !important;
+  border-bottom: 1px solid var(--wx-edge) !important;
+}
+
+.cierre-modal :is(.tabla-corte, .castrol-table, .ct-table) tbody td,
+.wx-dialogo :is(.tabla-corte, .castrol-table, .ct-table) tbody td,
+.wx-tabla--dialogo tbody td {
+  padding: 7px 10px !important;
+  border-bottom: 1px solid var(--wx-edge-soft);
+}
+
+/* El contenedor de la tabla dentro de un dialogo no repite sombra ni borde:
+   ya esta dentro de una superficie elevada. */
+.cierre-modal :is(.tabla-wrap, .castrol-table-container),
+.wx-dialogo :is(.tabla-wrap, .castrol-table-container) {
+  box-shadow: none;
+  border: 1px solid var(--wx-edge);
+  max-height: 320px;
+}
+
+/* --------------------------------------------------------------------------
+   MOTION
+   Entrar 200ms, salir mas rapido. Los dialogos se abren desde el centro: no
+   estan anclados a un disparador concreto, asi que crecer desde una esquina
+   apuntaria a un sitio que no significa nada.
+   -------------------------------------------------------------------------- */
+.cierre-modal > .modal-content,
+.cierre-modal > .cierre-dialog,
+.wx-dialogo {
+  animation: wx-dialogo-entra var(--wx-dur-dialog) var(--wx-ease-out) both;
+  transform-origin: center;
+}
+@keyframes wx-dialogo-entra {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cierre-modal > .modal-content,
+  .cierre-modal > .cierre-dialog,
+  .wx-dialogo { animation: none; }
+}
+
+/* Panel informativo tenue: sustituye a un `#f8f9fa` con borde `#e9ecef` que
+   iba escrito en linea en la pantalla de venta. */
+.wx-panel-tenue {
+  background: var(--wx-raised);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  padding: 1rem;
+}

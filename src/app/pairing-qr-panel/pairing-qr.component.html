@@ -10,7 +10,7 @@
   </div>
 
   <div class="pq-error" *ngIf="error && !loading">
-    <i class="bi bi-exclamation-triangle"></i>
+    <i class="ph ph-warning"></i>
     <span>{{ error }}</span>
     <button class="pq-btn" (click)="generar()">Reintentar</button>
   </div>
@@ -23,7 +23,7 @@
       <div class="pq-step"><span>3</span> Apunta la camara a este codigo</div>
     </div>
     <button class="pq-btn ghost" (click)="copiarDatos()">
-      <i class="bi bi-clipboard"></i> Copiar datos manualmente
+      <i class="ph ph-clipboard"></i> Copiar datos manualmente
     </button>
   </div>
 </div>

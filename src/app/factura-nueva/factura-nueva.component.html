@@ -6,7 +6,7 @@
         <p *ngIf="saleId">Desde la venta #{{ saleId }}</p>
         <p *ngIf="!saleId">Captura los conceptos o carga una venta</p>
       </div>
-      <button class="fn-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+      <button class="fn-close" (click)="cerrarModal()"><i class="ph ph-x"></i></button>
     </div>
 
     <div class="fn-body">
@@ -18,7 +18,7 @@
             <input type="number" [(ngModel)]="folioVenta" placeholder="Folio de venta, ej. 60"
                    (keydown.enter)="cargarVenta()">
             <button type="button" class="fn-btn ghost sm" (click)="cargarVenta()" [disabled]="cargandoVenta">
-              <i class="bi bi-download" *ngIf="!cargandoVenta"></i>
+              <i class="ph ph-download-simple" *ngIf="!cargandoVenta"></i>
               {{ cargandoVenta ? 'Cargando...' : 'Traer venta' }}
             </button>
           </div>
@@ -29,7 +29,7 @@
       <div class="fn-section-head">
         <h4>Datos del cliente (receptor)</h4>
         <button type="button" class="fn-link" (click)="usarPublicoGeneral()">
-          <i class="bi bi-people"></i> Publico en general
+          <i class="ph ph-users"></i> Publico en general
         </button>
       </div>
 
@@ -55,7 +55,7 @@
           <div class="fn-select" [class.open]="regimenAbierto">
             <button type="button" class="fn-select-trigger" [class.ph]="!receptor.regimenFiscal"
                     (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
-              <span>{{ regimenLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ regimenLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="regimenAbierto">
               <button type="button" class="fn-opt" *ngFor="let r of regimenes"
@@ -71,7 +71,7 @@
           <div class="fn-select" [class.open]="usoAbierto">
             <button type="button" class="fn-select-trigger" [class.ph]="!receptor.usoCfdi"
                     (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
-              <span>{{ usoLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ usoLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="usoAbierto">
               <button type="button" class="fn-opt" *ngFor="let u of usosCfdi"
@@ -96,7 +96,7 @@
           <div class="fn-select" [class.open]="formaPagoAbierta">
             <button type="button" class="fn-select-trigger"
                     (click)="formaPagoAbierta = !formaPagoAbierta; metodoPagoAbierto = false">
-              <span>{{ formaPagoLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ formaPagoLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="formaPagoAbierta">
               <button type="button" class="fn-opt" *ngFor="let f of formasPago"
@@ -111,7 +111,7 @@
           <div class="fn-select" [class.open]="metodoPagoAbierto">
             <button type="button" class="fn-select-trigger"
                     (click)="metodoPagoAbierto = !metodoPagoAbierto; formaPagoAbierta = false">
-              <span>{{ metodoPagoLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ metodoPagoLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="metodoPagoAbierto">
               <button type="button" class="fn-opt" *ngFor="let m of metodosPago"
@@ -127,7 +127,7 @@
       <div class="fn-section-head">
         <h4>Conceptos</h4>
         <button type="button" class="fn-link" (click)="agregarConcepto()">
-          <i class="bi bi-plus-lg"></i> Agregar concepto
+          <i class="ph ph-plus"></i> Agregar concepto
         </button>
       </div>
 
@@ -146,7 +146,7 @@
           <input class="c-price" type="number" min="0" step="0.01" [(ngModel)]="c.unitPrice">
           <span class="c-sub">{{ money(c.quantity * c.unitPrice) }}</span>
           <button type="button" class="c-del" (click)="quitarConcepto(i)" title="Quitar">
-            <i class="bi bi-trash"></i>
+            <i class="ph ph-trash"></i>
           </button>
         </div>
 
@@ -166,7 +166,7 @@
     <div class="fn-footer">
       <button class="fn-btn ghost" (click)="cerrarModal()" [disabled]="timbrando">Cancelar</button>
       <button class="fn-btn primary" (click)="emitir()" [disabled]="timbrando">
-        <i class="bi bi-receipt" *ngIf="!timbrando"></i>
+        <i class="ph ph-receipt" *ngIf="!timbrando"></i>
         {{ timbrando ? 'Timbrando...' : 'Timbrar factura' }}
       </button>
     </div>

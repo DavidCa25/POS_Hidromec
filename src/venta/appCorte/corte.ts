@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import Swal from 'sweetalert2';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
@@ -57,7 +58,7 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
@@ -430,26 +431,26 @@ export class Corte {
         icon: 'success',
         title: '¡Corte registrado exitosamente!',
         html: `
-          <div style="text-align:left; background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
+          <div style="text-align:left; background: var(--wx-raised); padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Caja:</span>
-              <span style="font-weight: 700;">${this.selectedRegisterName}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Caja:</span>
+              <span style="font-weight: 600;">${this.selectedRegisterName}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Turno ID:</span>
-              <span style="font-weight: 700;">#${this.openShiftId}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Turno ID:</span>
+              <span style="font-weight: 600;">#${this.openShiftId}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Efectivo esperado:</span>
-              <span style="font-weight: 700;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo esperado:</span>
+              <span style="font-weight: 600;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Efectivo entregado:</span>
-              <span style="font-weight: 700;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo entregado:</span>
+              <span style="font-weight: 600;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid #e2e8f0;">
-              <span style="font-weight: 700; color: #0f172a;">Diferencia:</span>
-              <span style="font-weight: 800; font-size: 1.2rem; color: ${(data.difference ?? this.cashDiff) >= 0 ? '#16a34a' : '#dc2626'};">
+            <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid var(--wx-edge);">
+              <span style="font-weight: 600; color: var(--wx-text);">Diferencia:</span>
+              <span style="font-weight: 600; font-size: 1.2rem; color: ${(data.difference ?? this.cashDiff) >= 0 ? '#16a34a' : '#dc2626'};">
                 $${(data.difference ?? this.cashDiff).toFixed(2)}
               </span>
             </div>

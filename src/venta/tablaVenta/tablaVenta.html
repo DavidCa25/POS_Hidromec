@@ -2,7 +2,7 @@
   <div class="ventas-header-section">
     <div class="ventas-header-content">
       <div class="ventas-title-wrapper">
-        <i class="bi bi-receipt-cutoff ventas-icon"></i>
+        <i class="ph ph-receipt ventas-icon"></i>
         <h1 class="ventas-main-title">Ventas</h1>
       </div>
       <p class="ventas-subtitle">Gestiona y visualiza todas tus ventas registradas</p>
@@ -10,22 +10,25 @@
 
     <div class="ventas-actions-group">
       <button type="button" class="castrol-btn-color" (click)="abrirExportModal()">
-        <i class="bi bi-download"></i> Descargar PDFs
+        <i class="ph ph-download-simple"></i> Descargar PDFs
       </button>
 
       <div style="position:relative;">
         <button type="button" class="castrol-btn-color" (click)="expExportOpen = !expExportOpen">
-          <i class="bi bi-file-earmark-spreadsheet"></i> Exportar lista
+          <i class="ph ph-file-xls"></i> Exportar lista
         </button>
-        <div *ngIf="expExportOpen" class="list-group shadow-sm"
-             style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
-          <button class="list-group-item list-group-item-action" (click)="exportarVentas('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
-          <button class="list-group-item list-group-item-action" (click)="exportarVentas('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+        <div *ngIf="expExportOpen" class="wx-pop wx-menu-exportar" role="menu">
+          <button class="wx-opt" role="menuitem" (click)="exportarVentas('pdf'); expExportOpen = false">
+            <i class="ph ph-file-pdf" aria-hidden="true"></i><span>PDF</span>
+          </button>
+          <button class="wx-opt" role="menuitem" (click)="exportarVentas('excel'); expExportOpen = false">
+            <i class="ph ph-file-xls" aria-hidden="true"></i><span>Excel</span>
+          </button>
         </div>
       </div>
 
       <button type="button" class="castrol-btn-add" (click)="loadSales()">
-        <i class="bi bi-arrow-clockwise"></i> Recargar
+        <i class="ph ph-arrow-clockwise"></i> Recargar
       </button>
     </div>
   </div>
@@ -34,13 +37,13 @@
     <!-- TOP BAR: conteo + buscador + rango + pageSize -->
     <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
       <div class="ventas-stats-badge">
-        <i class="bi bi-list-check"></i>
+        <i class="ph ph-list-checks"></i>
         <span>{{ totalItems }} ventas registradas</span>
       </div>
 
       <div class="ventas-tools">
         <div class="ventas-search">
-          <i class="bi bi-search"></i>
+          <i class="ph ph-magnifying-glass"></i>
           <input
             type="text"
             placeholder="Buscar por ticket, cliente, cajero, método…"
@@ -53,7 +56,7 @@
             type="button"
             (click)="filterText=''; onFilterChange()"
             title="Limpiar">
-            <i class="bi bi-x"></i>
+            <i class="ph ph-x"></i>
           </button>
         </div>
 
@@ -62,9 +65,9 @@
 
           <div class="ventas-page-size">
             <span>Mostrar</span>
-            <select [(ngModel)]="pageSize" (ngModelChange)="setPageSize($event)">
-              <option *ngFor="let s of pageSizeOptions" [ngValue]="s">{{ s }}</option>
-            </select>
+            <wx-select class="wx-sel-compacto"
+                       [ngModel]="pageSize" (ngModelChange)="setPageSize($event)"
+                       [opciones]="opcionesPagina"></wx-select>
           </div>
         </div>
       </div>
@@ -103,8 +106,9 @@
             <td>{{ s.due_date ? (s.due_date | date:'shortDate':'':'es-MX') : '—' }}</td>
 
             <td>
-              <button type="button" class="castrol-btn-color btn-sm" (click)="verPdfVenta(s.id)">
-                <i class="bi bi-file-earmark-pdf"></i> PDF
+              <button type="button" class="wx-rowbtn" (click)="verPdfVenta(s.id)"
+                      [attr.aria-label]="'Ver PDF del ticket ' + s.id">
+                <i class="ph ph-file-pdf" aria-hidden="true"></i> PDF
               </button>
             </td>
           </tr>
@@ -125,7 +129,7 @@
         class="pager-btn"
         [disabled]="currentPage === 1"
         (click)="prevPage()">
-        <i class="bi bi-chevron-left"></i> Anterior
+        <i class="ph ph-caret-left"></i> Anterior
       </button>
 
       <div class="pager-pages">
@@ -146,7 +150,7 @@
         class="pager-btn"
         [disabled]="currentPage === totalPages"
         (click)="nextPage()">
-        Siguiente <i class="bi bi-chevron-right"></i>
+        Siguiente <i class="ph ph-caret-right"></i>
       </button>
     </div>
   </div>
@@ -178,17 +182,17 @@
 
         <div *ngIf="exportMode === 'DIA'" class="mb-3">
           <label class="form-label">Día</label>
-          <input type="date" class="form-control" [(ngModel)]="exportDay" name="exportDay">
+          <wx-date [(ngModel)]="exportDay" name="exportDay" placeholder="Elegir día"></wx-date>
         </div>
 
         <div *ngIf="exportMode === 'RANGO'" class="row g-3 mb-3">
           <div class="col-md-6">
             <label class="form-label">Desde</label>
-            <input type="date" class="form-control" [(ngModel)]="exportFrom" name="exportFrom">
+            <wx-date [(ngModel)]="exportFrom" name="exportFrom" placeholder="Desde"></wx-date>
           </div>
           <div class="col-md-6">
             <label class="form-label">Hasta</label>
-            <input type="date" class="form-control" [(ngModel)]="exportTo" name="exportTo">
+            <wx-date [(ngModel)]="exportTo" name="exportTo" placeholder="Hasta"></wx-date>
           </div>
         </div>
 

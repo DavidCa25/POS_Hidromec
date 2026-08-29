@@ -6,7 +6,7 @@
 
   <!-- Caja actual de esta máquina -->
   <div class="rg-current" [class.set]="currentId">
-    <span class="rg-current-ic"><i class="bi" [class.bi-pc-display]="currentId" [class.bi-question-circle]="!currentId"></i></span>
+    <span class="rg-current-ic"><i class="ph" [class.ph-desktop-tower]="currentId" [class.ph-question]="!currentId"></i></span>
     <div>
       <small>Esta máquina es</small>
       <b *ngIf="currentId">{{ (registers && registers.length) ? (nombreDe(currentId)) : 'Caja asignada' }}</b>
@@ -18,7 +18,7 @@
   <div class="rg-list-h">Cajas disponibles</div>
 
   <div class="rg-empty" *ngIf="!loading && !registers.length">
-    <i class="bi bi-inbox"></i>
+    <i class="ph ph-tray"></i>
     <p>No hay cajas. Crea la primera abajo.</p>
   </div>
 
@@ -26,7 +26,7 @@
        [class.sel]="esActual(r)" [class.off]="!r.is_active">
     <button type="button" class="rg-pick" (click)="elegirCaja(r)">
       <span class="rg-radio">
-        <i class="bi" [class.bi-check-circle-fill]="esActual(r)" [class.bi-circle]="!esActual(r)"></i>
+        <i class="ph" [class.ph-fill ph-check-circle]="esActual(r)" [class.ph-circle]="!esActual(r)"></i>
       </span>
       <span class="rg-info">
         <span class="rg-name">{{ r.name }} <span class="rg-code">{{ r.code }}</span></span>
@@ -37,7 +37,7 @@
 
     <button type="button" class="rg-toggle" (click)="toggleActiva(r)"
             [title]="r.is_active ? 'Desactivar' : 'Activar'">
-      <i class="bi" [class.bi-toggle-on]="r.is_active" [class.bi-toggle-off]="!r.is_active"></i>
+      <i class="ph" [class.ph-toggle-right]="r.is_active" [class.ph-toggle-left]="!r.is_active"></i>
     </button>
   </div>
 
@@ -48,7 +48,7 @@
       <input class="rg-ctl" type="text" [(ngModel)]="nuevoNombre" placeholder="Ej. Caja 2"
              (keyup.enter)="crearCaja()">
       <button class="rg-btn primary" type="button" (click)="crearCaja()" [disabled]="busyAdd">
-        <i class="bi bi-plus-lg"></i>
+        <i class="ph ph-plus"></i>
         {{ busyAdd ? 'Creando...' : 'Crear' }}
       </button>
     </div>
@@ -56,13 +56,13 @@
   </div>
 
   <div class="rg-note" *ngIf="license.permiteMulticaja">
-    <i class="bi bi-info-circle"></i>
+    <i class="ph ph-info"></i>
     <span>Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es la suya.</span>
   </div>
 
   <!-- Monocaja: sin creación de cajas -->
   <div class="rg-note" *ngIf="!license.permiteMulticaja">
-    <i class="bi bi-info-circle"></i>
+    <i class="ph ph-info"></i>
     <span>Tu plan es <b>MonoCaja</b> (una sola caja). Para operar varias cajas en red, cambia al plan <b>MultiCaja</b>.</span>
   </div>
 

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import Swal from 'sweetalert2';
 import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
+import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 
 type Cliente = {
   id: number;
@@ -44,11 +45,36 @@ type ClienteVenta = {
     FormsModule,
     CommonModule,
     DatePipe,
-    DecimalPipe
+    DecimalPipe,
+    WxSelectComponent
   ],
   styleUrls: ['./clientes.css']
 })
 export class Clientes implements OnInit {
+
+
+  // Listas de los selectores. Son las mismas opciones que habia en el marcado,
+  // movidas aqui para que las consuma la primitiva. No cambia ningun valor.
+  readonly opcEstado: WxOpcion[] = [
+    { valor: 'todos', etiqueta: 'Todos' },
+    { valor: 'activos', etiqueta: 'Activos' },
+    { valor: 'inactivos', etiqueta: 'Inactivos' },
+  ];
+  readonly opcActivo: WxOpcion[] = [
+    { valor: true, etiqueta: 'Sí' },
+    { valor: false, etiqueta: 'No' },
+  ];
+  readonly opcRiesgo: WxOpcion[] = [
+    { valor: 0, etiqueta: '0 - Normal' },
+    { valor: 1, etiqueta: '1 - Bajo Riesgo' },
+    { valor: 2, etiqueta: '2 - Medio Riesgo' },
+    { valor: 3, etiqueta: '3 - Alto Riesgo' },
+  ];
+  readonly opcMetodoAbono: WxOpcion[] = [
+    { valor: 'EFECTIVO', etiqueta: 'Efectivo' },
+    { valor: 'TARJETA', etiqueta: 'Tarjeta' },
+    { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia' },
+  ];
 
   clientes: Cliente[] = [];
   loading = false;

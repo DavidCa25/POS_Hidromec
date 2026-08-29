@@ -15,9 +15,9 @@
 
 /* ==================== CONTENEDOR ==================== */
 .castrol-table-container{
-  background: #f7faf7;
+  background: var(--wx-canvas);
   border-radius: 20px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  box-shadow: var(--wx-shadow-raised);
   padding: 2rem 1.5rem;
 }
 
@@ -31,7 +31,7 @@
   border-radius: 24px;
   padding: 2.2rem 2rem;
   margin-bottom: 1rem;
-  box-shadow: 0 8px 24px rgba(11,42,122,0.16);
+  box-shadow: var(--wx-shadow-raised);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -67,11 +67,11 @@
 
 .compras-main-title{
   font-size: 2.6rem;
-  font-weight: 900;
+  font-weight: 600;
   color: #fff;
   margin: 0;
   letter-spacing: -0.5px;
-  font-family: 'Raleway', sans-serif;
+  font-family: var(--wx-font);
 }
 
 .compras-subtitle{
@@ -80,7 +80,7 @@
   margin: 0;
   margin-left: 3.2rem;
   font-weight: 400;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 /* ==================== TOOLBAR ==================== */
@@ -100,7 +100,7 @@
   border-radius: 12px;
   font-size: .95rem;
   padding: 0 .8rem;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 .castrol-btn-add{
@@ -109,18 +109,18 @@
   border: 0;
   border-radius: 12px;
   padding: .55rem 1.15rem;
-  font-weight: 800;
+  font-weight: 600;
   font-size: .9rem;
   box-shadow: 0 3px 10px rgba(0,0,0,.10);
-  transition: transform .15s, box-shadow .15s, filter .15s;
+  transition: transform var(--wx-dur-micro), box-shadow var(--wx-dur-micro), filter var(--wx-dur-micro);
   cursor: pointer;
   text-decoration: none;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 .castrol-btn-add:hover{
   background: var(--inv-main-dark, #008c3c);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  
+  box-shadow: var(--wx-shadow-raised);
   filter: brightness(1.02);
 }
 
@@ -130,7 +130,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
   margin-top: .6rem;
 }
 
@@ -144,7 +144,7 @@
   background: var(--inv-main, #00662f);
   border-bottom: 3px solid var(--inv-main-dark, #008c3c);
   color: #fff !important;
-  font-weight: 800;
+  font-weight: 600;
   font-size: .94rem;
   padding: .75rem .7rem;
   vertical-align: middle;
@@ -156,13 +156,13 @@
 
 /* Filas como tarjetas */
 .castrol-table tbody .parent-row td{
-  background: var(--row-bg, #fff) !important;
+  background: var(--row-bg, var(--wx-surface)) !important;
   color: var(--text, #1b1f23);
   border: 0 !important;
   padding: .7rem .7rem !important;
   vertical-align: middle;
   font-size: .93rem;
-  box-shadow: 0 4px 14px rgba(0,0,0,.06);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .castrol-table tbody .parent-row:hover td{
@@ -179,9 +179,9 @@
 }
 
 .nowrap{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mono{ font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; }
-.fw-semibold{ font-weight: 800; }
-.empty{ text-align:center; color:#7a7a7a; padding: 18px 0; }
+.mono{ font-family: var(--wx-font-mono); }
+.fw-semibold{ font-weight: 600; }
+.empty{ text-align:center; color: var(--wx-text-muted); padding: 18px 0; }
 
 /* ==================== Acciones ==================== */
 .acciones-cell{ padding: .5rem .6rem !important; }
@@ -189,22 +189,22 @@
 
 .action-btn{
   border:0;
-  background:#f3f4f6;
+  background: var(--wx-sunken);
   border-radius:12px;
   padding:7px;
   display:inline-grid;
   place-items:center;
   cursor:pointer;
-  transition: transform .15s, box-shadow .15s, background-color .15s;
+  transition: transform var(--wx-dur-micro), box-shadow var(--wx-dur-micro), background-color var(--wx-dur-micro);
   box-shadow:0 1px 2px rgba(0,0,0,.06);
   position: relative;
 }
 .action-btn:hover{
-  background:#e7eaf3;
-  transform: translateY(-1px);
-  box-shadow:0 8px 18px rgba(0,0,0,.10);
+  background: #e7eaf3;
+  
+  box-shadow: var(--wx-shadow-raised);
 }
-.action-btn svg{ width:17px; height:17px; fill:#1f2937; }
+.action-btn svg{ width:17px; height:17px; fill: var(--wx-text); }
 
 .action-btn::after{
   content: attr(data-tooltip);
@@ -220,8 +220,8 @@
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .15s ease, transform .15s ease;
-  box-shadow: 0 8px 20px rgba(0,0,0,.15);
+  transition: opacity var(--wx-dur-micro) ease, transform var(--wx-dur-micro) ease;
+  box-shadow: var(--wx-shadow-raised);
 }
 .action-btn:hover::after{ opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -233,17 +233,17 @@
   cursor:pointer;
   padding:6px;
   border-radius:10px;
-  transition: background .15s ease, transform .15s ease;
+  transition: background var(--wx-dur-micro) ease, transform var(--wx-dur-micro) ease;
 }
-.caret-btn:hover{ background:#eef2ff; }
+.caret-btn:hover{ background: #eef2ff; }
 .caret-btn .chev{
   width:18px; height:18px; display:block;
   transform: rotate(0deg);
-  transition: transform .2s ease;
+  transition: transform var(--wx-dur-state) ease;
 }
 .caret-btn .chev path{
   fill:none;
-  stroke:#111827;
+  stroke: var(--wx-text);
   stroke-width:2.4;
   stroke-linecap:round;
   stroke-linejoin:round;
@@ -262,7 +262,7 @@
   border: 1px solid var(--detail-border, #e6eefb);
   border-radius: 14px;
   padding: .4rem;
-  box-shadow: 0 4px 14px rgba(0,0,0,.05);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .detail-anim{
@@ -270,7 +270,7 @@
   overflow: hidden;
   opacity: 0;
   transform: translateY(-2px);
-  transition: max-height .28s ease, opacity .22s ease, transform .22s ease;
+  transition: max-height var(--wx-dur-layout) ease, opacity var(--wx-dur-dialog) ease, transform var(--wx-dur-dialog) ease;
 }
 .detail-row .detail-wrap .detail-anim{
   max-height: 1200px;
@@ -283,7 +283,7 @@
   gap:16px;
   flex-wrap:wrap;
   align-items:center;
-  color:#333;
+  color: var(--wx-text);
   font-size:.9rem;
   margin:.45rem .35rem .2rem;
 }
@@ -293,7 +293,7 @@
   border: 1px solid #e6eefb;
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--wx-surface);
   box-shadow: 0 4px 12px rgba(0,0,0,.05);
 }
 
@@ -310,7 +310,7 @@
 .inner-card .castrol-table thead th{
   background: transparent !important;
   color: #fff !important;
-  font-weight: 800;
+  font-weight: 600;
   font-size: .88rem;
   padding: .6rem .6rem !important;
   border-bottom: 2px solid var(--castrol-accent, #104E8B);
@@ -318,20 +318,18 @@
 }
 
 .inner-card .castrol-table tbody td{
-  background: #fff !important;
+  background: var(--wx-surface) !important;
   border-bottom: 1px solid #eef1f5 !important;
   padding: .55rem .6rem !important;
   font-size: .9rem;
 }
 .inner-card .castrol-table tbody tr:last-child td{ border-bottom: 0 !important; }
-.inner-card .castrol-table tbody tr:hover td{ background: #f7faff !important; }
-
 /* ==================== Responsive ==================== */
 @media (max-width: 900px){
   .toolbar{ flex-direction: column; align-items: stretch; }
   .search{ max-width: 100%; }
   .castrol-table{ border-spacing: 0 10px; }
-  .castrol-table thead th{ font-size:.88rem; }
+  
   .castrol-table tbody .parent-row td{
     font-size:.9rem;
     padding:.6rem .55rem !important;
@@ -363,7 +361,7 @@
   border-radius: 14px;
   background: #f1f6ff;
   border: 1px solid rgba(31,46,134,0.15);
-  color: #0b1b4d;
+  color: var(--wx-text);
   font-weight: 600;
 }
 
@@ -379,11 +377,11 @@
   min-width: 360px;
   max-width: 520px;
   flex: 1 1 420px;
-  background: #fff;
+  background: var(--wx-surface);
   border: 1px solid rgba(0,0,0,0.10);
   border-radius: 16px;
   padding: 10px 12px;
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .ventas-search i{
@@ -397,7 +395,7 @@
   border: none;
   outline: none;
   font-size: 0.95rem;
-  color: #0b1b4d;
+  color: var(--wx-text);
   background: transparent;
 }
 
@@ -446,9 +444,9 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--wx-surface);
   border: 1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .ventas-page-size span{
@@ -461,8 +459,8 @@
   border: none;
   outline: none;
   background: transparent;
-  font-weight: 700;
-  color: #0b1b4d;
+  font-weight: 600;
+  color: var(--wx-text);
   cursor: pointer;
 }
 
@@ -474,9 +472,9 @@
   gap: 12px;
   padding: 14px 12px;
   border-radius: 18px;
-  background: #fff;
+  background: var(--wx-surface);
   border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 14px 34px rgba(17, 24, 39, 0.07);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .pager-btn{
@@ -487,15 +485,15 @@
   border-radius: 14px;
   border: 1px solid rgba(11,27,77,0.14);
   background: rgba(241,246,255,0.75);
-  color: #0b1b4d;
-  font-weight: 800;
+  color: var(--wx-text);
+  font-weight: 600;
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  transition: transform var(--wx-dur-press) ease, box-shadow var(--wx-dur-press) ease, background var(--wx-dur-press) ease;
 }
 
 .pager-btn:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(11,27,77,0.12);
+  
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .pager-btn:disabled{
@@ -519,16 +517,16 @@
   padding: 0 12px;
   border-radius: 14px;
   border: 1px solid rgba(11,27,77,0.12);
-  background: #fff;
-  color: #0b1b4d;
-  font-weight: 900;
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  font-weight: 600;
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  transition: transform var(--wx-dur-press) ease, box-shadow var(--wx-dur-press) ease, background var(--wx-dur-press) ease;
 }
 
 .page-btn:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(11,27,77,0.10);
+  
+  box-shadow: var(--wx-shadow-raised);
   background: rgba(241,246,255,0.65);
 }
 
@@ -536,7 +534,7 @@
   background: #0b1b4d;
   color: #fff;
   border-color: #0b1b4d;
-  box-shadow: 0 10px 22px rgba(11,27,77,0.20);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .page-btn.dots{
@@ -578,7 +576,71 @@
   --row-bg: #16233a;
   --row-hover: #1c2b45;
   --detail-bg: #0f1826;
-  --detail-border: rgba(255,255,255,.09);
+  --detail-border: var(--wx-edge);
   --text: #e2e8f0;
 }
-:host-context(html.dark) .castrol-table-container{ background: #0f1826 !important; }
+
+/* ==========================================================================
+   DETALLE DE COMPRA
+   --------------------------------------------------------------------------
+   El panel solo existe cuando hay una compra seleccionada (`*ngIf` en la fila
+   de detalle), que es el comportamiento que ya funcionaba. Lo que faltaba era
+   que se leyera como parte de la misma tabla y no como un bloque pegado.
+
+   Se resuelve como superficie hundida: al abrirse, la fila parece "abrirse
+   hacia dentro" en vez de apoyar otra tarjeta encima.
+   ========================================================================== */
+.detail-row > td { padding: 0 !important; background: var(--wx-sunken); }
+
+.detail-wrap {
+  padding: 14px 16px 16px;
+  border-left: 3px solid var(--wx-user-accent);
+}
+
+.detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--wx-text-muted);
+}
+.detail-header b { color: var(--wx-text); font-weight: 600; margin-right: 4px; }
+
+/* La tabla interior no repite la cabecera de acento de la tabla principal:
+   dentro de una fila ya seleccionada, esa banda compite con la propia fila. */
+.inner-card {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  overflow: hidden;
+}
+.inner-card .castrol-table thead th {
+  background: var(--wx-raised) !important;
+  color: var(--wx-text-muted) !important;
+  height: 34px;
+  font-size: 11px !important;
+  letter-spacing: .04em;
+  box-shadow: inset 0 -1px 0 var(--wx-edge);
+}
+.inner-card .castrol-table tbody td {
+  height: 38px;
+  border-bottom: 1px solid var(--wx-edge-soft) !important;
+}
+
+/* El chevron gira en su sitio: la fila no se mueve. */
+.caret-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border: 0; background: transparent; cursor: pointer;
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text-dim); font-size: 15px;
+  transition: background var(--wx-dur-press) ease, color var(--wx-dur-press) ease;
+}
+.caret-btn:hover { background: var(--wx-hover); color: var(--wx-text); }
+.caret-btn:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; }
+.caret-btn .chev { transition: transform var(--wx-dur-state) var(--wx-ease-out); }
+.caret-btn.open .chev { transform: rotate(90deg); }
+.caret-btn.open { color: var(--wx-user-accent-text); }
+
+@media (prefers-reduced-motion: reduce) { .caret-btn .chev { transition: none; } }

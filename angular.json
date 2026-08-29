@@ -26,6 +26,10 @@
               }
             ],
             "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/@fontsource-variable/geist/index.css",
+              "node_modules/@fontsource-variable/geist-mono/index.css",
+              "src/styles/phosphor.css",
               "src/styles.css"
             ]
           },

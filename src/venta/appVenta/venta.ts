@@ -7,6 +7,8 @@ import { AuthService } from '../../services/auth.service';
 import { RegisterService } from '../../services/register.service';
 import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
+import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 interface ProductRow {
   id: number;
@@ -87,7 +89,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent],
   styleUrls: ['./venta.css']
 })
 export class Venta {
@@ -264,8 +266,31 @@ export class Venta {
     return c > 0 ? c : 0;
   }
 
+  /**
+   * Marca de "el total acaba de cambiar".
+   *
+   * La plantilla la usa para reproducir un cruce muy corto sobre la cifra:
+   * es el acuse de recibo de que el producto entro a la venta. Angular no
+   * recrea el nodo del total al cambiar el valor, asi que sin este
+   * interruptor la animacion no se dispararia nunca.
+   *
+   * NO cambia el calculo: el total se sigue obteniendo igual.
+   */
+  totalPulso = 0;
+  private pulsoTimer: any;
+
   private recalcularTotal() {
+    const antes = this.totalVenta;
     this.totalVenta = this.items.reduce((acc, it) => acc + it.subtotal, 0);
+
+    if (this.totalVenta !== antes) {
+      // Alternar entre dos valores reinicia la animacion aunque lleguen dos
+      // cambios seguidos (escaneo rapido de varios productos).
+      clearTimeout(this.pulsoTimer);
+      this.totalPulso = this.totalPulso === 1 ? 2 : 1;
+      this.pulsoTimer = setTimeout(() => { this.totalPulso = 0; }, 220);
+    }
+
     this.pushCustomerDisplay();
   }
 
@@ -551,7 +576,40 @@ export class Venta {
     }
   }
 
+  /**
+   * Estados visibles del cobro: reposo -> procesando -> confirmado.
+   *
+   * Cobrar es la accion central de Wybix y hasta ahora no daba ninguna senal
+   * mientras registraba la venta: el boton se quedaba igual durante la
+   * escritura en base y la apertura del cajon.
+   *
+   * `cobrando` tambien deshabilita el boton, asi que de paso evita el doble
+   * envio por doble clic. Es una salvaguarda de interfaz: NO cambia ninguna
+   * regla de negocio ni el calculo de la venta.
+   */
+  cobrando = false;
+  cobroConfirmado = false;
+  private exitoTimer: any;
+
+  /**
+   * Envoltorio de `confirmarCobro`. Se mantiene aparte para que la logica de
+   * la venta no se toque: aqui solo se enciende y apaga el estado visual.
+   */
   async confirmarCobro() {
+    if (this.cobrando) return;
+    this.cobrando = true;
+    try {
+      await this.confirmarCobroInterno();
+      // Acuse corto de que la venta quedo registrada.
+      this.cobroConfirmado = true;
+      clearTimeout(this.exitoTimer);
+      this.exitoTimer = setTimeout(() => { this.cobroConfirmado = false; }, 900);
+    } finally {
+      this.cobrando = false;
+    }
+  }
+
+  private async confirmarCobroInterno() {
     const ok = await this.ensureShiftOpen('COBRO');
     if (!ok) return;
 
@@ -1951,4 +2009,19 @@ async abrirModalClientes() {
       this.snapshotActiveTab();
     }
   }
+  /**
+   * Adapta la lista de clientes con credito al formato del selector.
+   * Es solo presentacion: no cambia como se cargan ni que se hace con ellos.
+   * `busca` deja filtrar por telefono y correo sin mostrarlos en la fila.
+   */
+  get opcionesCredito(): WxOpcion[] {
+    return this.creditCustomers.map(c => ({
+      valor: c.id,
+      etiqueta: c.customerName,
+      nota: 'Disp.: ' + c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+      busca: [c.phone, c.email].filter(Boolean).join(' '),
+    }));
+  }
+
+
 }

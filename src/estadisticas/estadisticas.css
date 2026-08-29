@@ -1,16 +1,16 @@
-.est-wrap { padding: 24px 20px 60px; max-width: 1500px; margin: 0 auto; font-family: 'Inter','Segoe UI',Arial,sans-serif; }
+.est-wrap { padding: 24px 20px 60px; max-width: 1500px; margin: 0 auto; font-family: var(--wx-font); }
 
 .est-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
-.est-head h2 { margin: 0; font-size: 1.7rem; font-weight: 800; color: #0f172a; }
+.est-head h2 { margin: 0; font-size: 1.7rem; font-weight: 600; color: var(--wx-text); }
 
 /* Segmentos */
-.est-seg { display: inline-flex; background: #eef2f7; border-radius: 12px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+.est-seg { display: inline-flex; background: var(--wx-sunken); border-radius: 12px; padding: 4px; gap: 2px; flex-wrap: wrap; }
 .est-seg button {
   display: inline-flex; align-items: center; gap: 7px;
-  border: none; background: transparent; color: #475569;
-  padding: 9px 16px; border-radius: 9px; font-weight: 700; font-size: .9rem; cursor: pointer;
+  border: none; background: transparent; color: var(--wx-text-muted);
+  padding: 9px 16px; border-radius: 9px; font-weight: 600; font-size: .9rem; cursor: pointer;
 }
-.est-seg button.on { background: #fff; color: #2563eb; box-shadow: 0 2px 8px rgba(15,23,42,.08); }
+.est-seg button.on { background: var(--wx-surface); color: var(--wx-accent-text); box-shadow: 0 2px 8px rgba(15,23,42,.08); }
 
 /* KPIs */
 .est-kpis { display: grid; gap: 14px; margin-bottom: 16px; }
@@ -18,13 +18,13 @@
 .est-kpis.three { grid-template-columns: repeat(3, 1fr); }
 .est-kpis.four { grid-template-columns: repeat(4, 1fr); }
 .est-kpi {
-  background: #fff; border: 1px solid #eef2f7; border-radius: 16px; padding: 16px 18px;
-  box-shadow: 0 6px 18px rgba(15,23,42,.05); display: flex; flex-direction: column; gap: 4px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 16px; padding: 16px 18px;
+  box-shadow: var(--wx-shadow-raised); display: flex; flex-direction: column; gap: 4px;
 }
-.est-kpi .l { font-size: .82rem; color: #64748b; font-weight: 600; }
-.est-kpi .v { font-size: 1.6rem; font-weight: 800; color: #0f172a; line-height: 1.1; }
+.est-kpi .l { font-size: .82rem; color: var(--wx-text-muted); font-weight: 600; }
+.est-kpi .v { font-size: 1.6rem; font-weight: 600; color: var(--wx-text); line-height: 1.1; }
 .est-kpi .v.vsmall { font-size: 1.15rem; }
-.est-sub { font-size: .78rem; color: #94a3b8; }
+.est-sub { font-size: .78rem; color: var(--wx-text-dim); }
 
 /* Grid de 2 cards */
 .est-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -32,58 +32,211 @@
 @media (max-width: 640px) { .est-kpis.two, .est-kpis.three, .est-kpis.four { grid-template-columns: 1fr; } }
 
 /* Cards */
-.est-card { background: #fff; border: 1px solid #eef2f7; border-radius: 18px; padding: 18px 20px; box-shadow: 0 6px 18px rgba(15,23,42,.05); margin-bottom: 16px; }
+.est-card { background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 18px; padding: 18px 20px; box-shadow: var(--wx-shadow-raised); margin-bottom: 16px; }
 .est-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.est-card-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+.est-card-head h3 { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--wx-text); }
 
 /* Toggle semana/mes */
-.est-toggle { display: inline-flex; background: #f1f5f9; border-radius: 9px; padding: 3px; }
-.est-toggle button { border: none; background: transparent; color: #64748b; padding: 5px 12px; border-radius: 7px; font-weight: 700; font-size: .82rem; cursor: pointer; }
+.est-toggle { display: inline-flex; background: var(--wx-sunken); border-radius: 9px; padding: 3px; }
+.est-toggle button { border: none; background: transparent; color: var(--wx-text-muted); padding: 5px 12px; border-radius: 7px; font-weight: 600; font-size: .82rem; cursor: pointer; }
 .est-toggle button.on { background: #2563eb; color: #fff; }
 
 /* Barras horizontales */
 .est-bars { display: flex; flex-direction: column; gap: 12px; }
 .est-bar-row { display: grid; grid-template-columns: minmax(140px, 1.3fr) 2fr auto; gap: 12px; align-items: center; }
-.est-bar-label { font-size: .88rem; color: #334155; font-weight: 600; }
-.est-bar-sub { color: #94a3b8; font-weight: 500; font-size: .78rem; }
-.est-rank { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center; background: #eef2f7; color: #475569; border-radius: 6px; font-size: .72rem; font-weight: 800; margin-right: 4px; }
-.est-bar-track { background: #f1f5f9; border-radius: 999px; height: 12px; overflow: hidden; }
-.est-bar-fill { height: 100%; background: #10b981; border-radius: 999px; transition: width .3s ease; }
+.est-bar-label { font-size: .88rem; color: var(--wx-text-muted); font-weight: 600; }
+.est-bar-sub { color: var(--wx-text-dim); font-weight: 500; font-size: .78rem; }
+.est-rank { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center; background: var(--wx-sunken); color: var(--wx-text-muted); border-radius: 6px; font-size: .72rem; font-weight: 600; margin-right: 4px; }
+.est-bar-track { background: var(--wx-sunken); border-radius: 999px; height: 12px; overflow: hidden; }
+.est-bar-fill { height: 100%; background: #10b981; border-radius: 999px; transition: width var(--wx-dur-layout) ease; }
 .est-bar-fill.blue { background: #2563eb; }
 .est-bar-fill.green { background: #10b981; }
-.est-bar-val { font-size: .88rem; font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap; }
+.est-bar-val { font-size: .88rem; font-weight: 600; color: var(--wx-text); text-align: right; white-space: nowrap; }
 
 /* Tabla */
 .est-table-wrap { max-height: 340px; overflow: auto; }
 .est-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.est-table thead th { position: sticky; top: 0; background: #f6f8fa; text-align: left; padding: 8px 10px; font-weight: 700; color: #334155; }
-.est-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+.est-table thead th { position: sticky; top: 0; background: var(--wx-raised); text-align: left; padding: 8px 10px; font-weight: 600; color: var(--wx-text-muted); }
+.est-table td { padding: 8px 10px; border-bottom: 1px solid var(--wx-edge-soft); }
 .est-table .r, .est-bar-row .r { text-align: right; }
 .est-table th.r { text-align: right; }
 
-.est-empty { color: #94a3b8; font-size: .86rem; padding: 16px 4px; text-align: center; }
+.est-empty { color: var(--wx-text-dim); font-size: .86rem; padding: 16px 4px; text-align: center; }
 
 /* =========================================================
    MODO OSCURO — Estadísticas
    ========================================================= */
-:host-context(html.dark) .est-head h2 { color: #f1f5f9; }
-:host-context(html.dark) .est-seg { background: #0f1826; }
-:host-context(html.dark) .est-seg button { color: #94a3b8; }
-:host-context(html.dark) .est-seg button.on { background: #1e2b44; color: #60a5fa; box-shadow: none; }
+:host-context(html.dark) .est-head h2 { color: var(--wx-text); }
+:host-context(html.dark) .est-seg { background: var(--wx-sunken); }
+:host-context(html.dark) .est-seg button { color: var(--wx-text-dim); }
+:host-context(html.dark) .est-seg button.on { background: var(--wx-raised); color: var(--wx-accent-text); box-shadow: none; }
 :host-context(html.dark) .est-kpi,
-:host-context(html.dark) .est-card { background: #16233a; border-color: rgba(255,255,255,.09); box-shadow: none; }
+:host-context(html.dark) .est-card { background: var(--wx-surface); border-color: var(--wx-edge); box-shadow: none; }
 :host-context(html.dark) .est-kpi .v,
 :host-context(html.dark) .est-card-head h3,
-:host-context(html.dark) .est-bar-val { color: #f1f5f9; }
+:host-context(html.dark) .est-bar-val { color: var(--wx-text); }
 :host-context(html.dark) .est-kpi .l,
 :host-context(html.dark) .est-sub,
 :host-context(html.dark) .est-bar-sub,
-:host-context(html.dark) .est-empty { color: #94a3b8; }
-:host-context(html.dark) .est-toggle { background: #0f1826; }
-:host-context(html.dark) .est-toggle button { color: #94a3b8; }
-:host-context(html.dark) .est-toggle button.on { background: #2563eb; color: #fff; }
-:host-context(html.dark) .est-bar-label { color: #cbd5e1; }
-:host-context(html.dark) .est-rank { background: #1e2b44; color: #cbd5e1; }
-:host-context(html.dark) .est-bar-track { background: #0f1826; }
-:host-context(html.dark) .est-table thead th { background: #0f1826; color: #cbd5e1; }
-:host-context(html.dark) .est-table td { border-color: rgba(255,255,255,.08); color: #e2e8f0; }
+:host-context(html.dark) .est-empty { color: var(--wx-text-dim); }
+:host-context(html.dark) .est-toggle { background: var(--wx-sunken); }
+:host-context(html.dark) .est-toggle button { color: var(--wx-text-dim); }
+:host-context(html.dark) .est-toggle button.on { background: var(--wx-accent); color: var(--wx-accent-ink); }
+:host-context(html.dark) .est-bar-label { color: var(--wx-text-muted); }
+:host-context(html.dark) .est-rank { background: var(--wx-raised); color: var(--wx-text-muted); }
+:host-context(html.dark) .est-bar-track { background: var(--wx-sunken); }
+:host-context(html.dark) .est-table thead th { background: var(--wx-sunken); color: var(--wx-text-muted); }
+:host-context(html.dark) .est-table td { border-color: var(--wx-edge-soft); color: var(--wx-text); }
+
+/* ==========================================================================
+   REFINAMIENTO
+   No se reorganiza la pantalla: mismos segmentos, mismos KPIs, mismas
+   graficas, mismo orden. Lo que cambia es el acabado y la jerarquia.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   SEGMENTOS
+   Eran pastillas con sombra azul. Ahora son un segmentado limpio: el activo
+   se comunica con superficie elevada, no con color saturado.
+   -------------------------------------------------------------------------- */
+.est-seg {
+  background: var(--wx-sunken);
+  border-radius: var(--wx-radius-sm);
+  padding: 3px;
+  gap: 2px;
+}
+.est-seg button {
+  padding: 7px 14px;
+  border-radius: var(--wx-radius-xs);
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  color: var(--wx-text-muted);
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.est-seg button:hover { color: var(--wx-text); }
+.est-seg button.on {
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  box-shadow: var(--wx-shadow-card);
+}
+.est-seg button > i { font-size: 16px; }
+
+/* --------------------------------------------------------------------------
+   KPIs
+   Se CONSERVAN como tarjetas. Lo que cambia es que dejan de pesar todas
+   igual: la primera de cada bloque es la que responde a la pregunta con la
+   que se abre la pantalla, asi que lleva la cifra mas grande y una linea de
+   acento. Las demas acompanan.
+   -------------------------------------------------------------------------- */
+.est-kpi {
+  position: relative;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  padding: 14px 16px;
+  gap: 3px;
+}
+.est-kpi .l {
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  color: var(--wx-text-muted);
+}
+.est-kpi .v {
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--wx-text);
+  line-height: 1.1;
+}
+.est-kpi .v.vsmall {
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-md);
+  letter-spacing: -0.01em;
+}
+
+/* La metrica principal del bloque. */
+.est-kpis > .est-kpi:first-child { border-left: 3px solid var(--wx-accent); }
+.est-kpis > .est-kpi:first-child .v { font-size: 32px; }
+
+/* --------------------------------------------------------------------------
+   TARJETAS DE CONTENIDO
+   -------------------------------------------------------------------------- */
+.est-card {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  padding: 16px 18px;
+}
+.est-card-head h3 { font-size: var(--wx-text-md); font-weight: 600; color: var(--wx-text); }
+.est-sub { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+
+.est-toggle { background: var(--wx-sunken); border-radius: var(--wx-radius-sm); padding: 3px; }
+.est-toggle button {
+  border-radius: var(--wx-radius-xs);
+  font-size: var(--wx-text-xs);
+  font-weight: 500;
+  color: var(--wx-text-muted);
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.est-toggle button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+
+/* --------------------------------------------------------------------------
+   BARRAS
+   La pista era de 12px, mas gruesa que el propio texto. La barra ES el dato;
+   la pista solo insinua el maximo.
+   -------------------------------------------------------------------------- */
+.est-bar-track { height: 6px; background: var(--wx-sunken); }
+.est-bar-fill { transition: width var(--wx-dur-layout) var(--wx-ease-out); }
+.est-bar-label { font-size: var(--wx-text-base); font-weight: 400; color: var(--wx-text); }
+.est-bar-sub { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+.est-bar-val {
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  color: var(--wx-text);
+}
+.est-rank {
+  min-width: 20px; height: 20px; line-height: 20px;
+  border-radius: var(--wx-radius-xs);
+  background: var(--wx-sunken);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.est-bar-row {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--wx-edge-soft);
+  gap: 14px;
+}
+.est-bar-row:last-child { border-bottom: 0; }
+
+/* --------------------------------------------------------------------------
+   TABLA INTERNA Y VACIOS
+   -------------------------------------------------------------------------- */
+.est-table thead th {
+  background: var(--wx-raised);
+  border-bottom: 1px solid var(--wx-edge);
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  height: 34px;
+  padding: 0 12px;
+}
+.est-table td { padding: 0 12px; height: 38px; border-bottom: 1px solid var(--wx-edge-soft); }
+.est-table .r {
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Un vacio dice que pasa y que se puede hacer, no solo que no hay nada. */
+.est-empty {
+  padding: 30px 12px;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+}

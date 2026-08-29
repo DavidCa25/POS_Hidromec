@@ -1,0 +1,75 @@
+:host { display: block; position: relative; }
+
+/* El campo replica la caja de `.form-control` / `.ctl` para que en una fila de
+   formulario alinee al pixel con los campos vecinos. */
+.wx-sel__campo {
+  anchor-name: --wx-ancla-sel;
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; min-height: 40px;
+  padding: 9px 12px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text);
+  font: inherit; font-size: 13.5px; text-align: left;
+  cursor: pointer;
+  transition: border-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.wx-sel__campo:hover:not(:disabled) { border-color: var(--wx-text-dim); }
+.wx-sel__campo:active:not(:disabled) { transform: scale(0.995); }
+.wx-sel__campo:disabled { opacity: .55; cursor: not-allowed; }
+.wx-sel__campo.is-vacio .wx-sel__txt { color: var(--wx-text-dim); }
+
+.wx-sel__txt { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-sel__nota {
+  flex: 0 0 auto; font-size: 12.5px; color: var(--wx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.wx-sel__flecha {
+  flex: 0 0 auto; font-size: 14px; color: var(--wx-text-muted);
+  transition: transform var(--wx-dur-micro) var(--wx-ease-out);
+}
+/* La flecha gira mientras el panel esta abierto: dice de un vistazo que ese
+   campo es el que tiene el menu desplegado. */
+:host:has(.wx-sel__panel:popover-open) .wx-sel__flecha { transform: rotate(180deg); }
+
+.wx-sel__panel {
+  --wx-anchor: --wx-ancla-sel;
+  --wx-pop-area: bottom span-right;
+  --wx-pop-origin: top left;
+  /* Al menos tan ancho como el campo: un menu mas estrecho que su disparador
+     se lee como otro control distinto. */
+  min-width: anchor-size(width);
+  padding: 5px;
+}
+
+.wx-sel__buscar {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.wx-sel__buscar > i { font-size: 15px; color: var(--wx-text-dim); flex: 0 0 auto; }
+.wx-sel__buscar input {
+  flex: 1 1 auto; min-width: 0;
+  border: 0; background: transparent; outline: none;
+  color: var(--wx-text); font: inherit; font-size: 13.5px;
+}
+.wx-sel__buscar input::placeholder { color: var(--wx-text-dim); }
+
+.wx-opt__txt { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-opt__nota {
+  flex: 0 0 auto; font-size: 12.5px; color: var(--wx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.wx-opt[aria-selected="true"] .wx-opt__nota { color: inherit; opacity: .8; }
+
+.wx-sel__vacio {
+  padding: 14px 10px; text-align: center;
+  font-size: 13px; color: var(--wx-text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-sel__campo:active:not(:disabled) { transform: none; }
+  .wx-sel__flecha { transition: none; }
+}

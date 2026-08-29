@@ -18,13 +18,13 @@
   display: flex; align-items: center; justify-content: center;
   background: rgba(37,99,235,.10); color: var(--cs-blue); font-size: 20px;
 }
-.cs-head h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.02em; color: var(--cs-ink); }
+.cs-head h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; color: var(--cs-ink); }
 .cs-head p { margin: 2px 0 0; font-size: 13px; color: var(--cs-muted); }
 
 /* Secciones */
 .cs-section { margin-bottom: 22px; }
 .cs-section-h {
-  font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
   color: var(--cs-muted); margin: 0 2px 10px;
 }
 
@@ -56,15 +56,15 @@
   position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   text-align: left; cursor: pointer;
-  background: #fff; border: 1px solid var(--cs-line);
+  background: var(--wx-surface); border: 1px solid var(--cs-line);
   border-radius: 18px; padding: 16px;
-  box-shadow: 0 8px 24px rgba(15,23,42,.05);
-  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  box-shadow: var(--wx-shadow-raised);
+  transition: transform var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
   overflow: hidden;
 }
 .cs-tile:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 38px rgba(15,23,42,.12);
+  
+  box-shadow: var(--wx-shadow-raised);
   border-color: rgba(37,99,235,.35);
 }
 .cs-tile:focus-visible { outline: 3px solid rgba(37,99,235,.35); outline-offset: 2px; }
@@ -74,18 +74,18 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 19px; flex: 0 0 auto;
 }
-.cs-tile-chip[data-c="blue"]   { background: rgba(37,99,235,.12);  color: #2563eb; }
-.cs-tile-chip[data-c="green"]  { background: rgba(16,185,129,.12); color: #10b981; }
-.cs-tile-chip[data-c="purple"] { background: rgba(139,92,246,.12); color: #7c3aed; }
-.cs-tile-chip[data-c="orange"] { background: rgba(245,158,11,.14); color: #f59e0b; }
-.cs-tile-chip[data-c="gray"]   { background: rgba(148,163,184,.18);color: #334155; }
+.cs-tile-chip[data-c="blue"]   { background: rgba(37,99,235,.12);  color: var(--wx-accent-text); }
+.cs-tile-chip[data-c="green"]  { background: rgba(16,185,129,.12); color: var(--wx-success); }
+.cs-tile-chip[data-c="purple"] { background: rgba(139,92,246,.12); color: var(--wx-accent-text); }
+.cs-tile-chip[data-c="orange"] { background: rgba(245,158,11,.14); color: var(--wx-warning); }
+.cs-tile-chip[data-c="gray"]   { background: rgba(148,163,184,.18);color: var(--wx-text-muted); }
 
-.cs-tile-title { font-size: 14.5px; font-weight: 900; color: var(--cs-ink); margin-top: 2px; }
+.cs-tile-title { font-size: 14.5px; font-weight: 600; color: var(--cs-ink); margin-top: 2px; }
 .cs-tile-desc { font-size: 12.3px; color: var(--cs-muted); line-height: 1.4; }
 
 .cs-tile-foot {
   margin-top: auto; display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11.5px; font-weight: 800; color: var(--cs-muted);
+  font-size: 11.5px; font-weight: 600; color: var(--cs-muted);
 }
 .cs-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
 .cs-dot.ok { background: #10b981; }
@@ -94,7 +94,7 @@
 
 .cs-tile-go {
   position: absolute; top: 14px; right: 14px;
-  font-size: 20px; color: #cbd5e1; transition: transform .14s, color .14s;
+  font-size: 20px; color: #cbd5e1; transition: transform var(--wx-dur-micro), color var(--wx-dur-micro);
 }
 .cs-tile:hover .cs-tile-go { color: var(--cs-blue); transform: translateX(2px); }
 
@@ -108,28 +108,28 @@
 .cs-backdrop {
   position: absolute; inset: 0;
   background: rgba(15,23,42,.5);
-  opacity: 0; transition: opacity .25s ease;
+  opacity: 0; transition: opacity var(--wx-dur-layout) ease;
 }
 .cs-drawer-wrap.open .cs-backdrop { opacity: 1; }
 
 .cs-drawer {
   position: absolute; top: 0; right: 0; height: 100%;
   width: min(540px, 100%);
-  background: #fff;
+  background: var(--wx-surface);
   display: flex; flex-direction: column;
   transform: translateX(100%);
-  transition: transform .3s cubic-bezier(.4,0,.2,1);
-  box-shadow: -24px 0 60px rgba(15,23,42,.22);
+  transition: transform var(--wx-dur-layout) cubic-bezier(.4,0,.2,1);
+  box-shadow: var(--wx-shadow-raised);
 }
 .cs-drawer-wrap.open .cs-drawer { transform: translateX(0); }
 
 .cs-drawer-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 18px 20px; border-bottom: 1px solid var(--cs-line);
-  background: linear-gradient(135deg, #eff4ff, #fff);
+  background: var(--wx-surface);
 }
 .cs-drawer-title { display: flex; gap: 12px; align-items: center; }
-.cs-drawer-title h3 { margin: 0; font-size: 16px; font-weight: 900; color: var(--cs-ink); }
+.cs-drawer-title h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--cs-ink); }
 .cs-drawer-title p { margin: 2px 0 0; font-size: 12px; color: var(--cs-muted); }
 .cs-x {
   border: none; background: transparent; color: var(--cs-muted);
@@ -156,8 +156,167 @@
    MODO OSCURO — Configuración
    ========================================================= */
 :host-context(html.dark) { --cs-ink: #e2e8f0; --cs-muted: #94a3b8; --cs-line: rgba(255,255,255,.1); }
-:host-context(html.dark) .cs-tile { background: #16233a; border-color: rgba(255,255,255,.1); }
-:host-context(html.dark) .cs-tile:hover { background: #1c2b45; }
-:host-context(html.dark) .cs-tile-title { color: #f1f5f9; }
-:host-context(html.dark) .cs-drawer { background: #131f31; }
-:host-context(html.dark) .cs-drawer-head { background: #0f1826; border-color: rgba(255,255,255,.1); }
+:host-context(html.dark) .cs-tile { background: var(--wx-surface); border-color: var(--wx-edge); }
+:host-context(html.dark) .cs-tile:hover { background: var(--wx-raised); }
+:host-context(html.dark) .cs-tile-title { color: var(--wx-text); }
+:host-context(html.dark) .cs-drawer { background: var(--wx-surface); }
+:host-context(html.dark) .cs-drawer-head { background: var(--wx-sunken); border-color: var(--wx-edge); }
+
+/* ==========================================================================
+   REFINAMIENTO
+   Se CONSERVA el mosaico y la navegacion: mismos grupos, mismos mosaicos,
+   mismo drawer lateral. Lo que se ataca es lo generico.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CABECERA
+   El icono de 44px en una caja azul era el patron "feature card" aplicado al
+   titulo de la pantalla. Se retira; la jerarquia la da la tipografia.
+   -------------------------------------------------------------------------- */
+.cs-head { padding: 4px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--wx-edge); }
+.cs-head-ic { display: none; }
+.cs-head h1 {
+  font-size: var(--wx-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--wx-text);
+}
+.cs-head p { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+
+.cs-section-h {
+  font-family: var(--wx-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--wx-text-dim);
+  margin: 0 2px 10px;
+}
+
+/* --------------------------------------------------------------------------
+   MOSAICO
+   Se conserva la retícula bento. Lo que cambia:
+
+   - El hover levantaba la tarjeta 3px y le crecía la sombra a 38px. Es el
+     gesto de una landing: desplaza el objetivo justo cuando se va a hacer
+     clic. Ahora responde con superficie y borde, sin moverse (Emil).
+   - La sombra base pasa a la del sistema.
+   -------------------------------------------------------------------------- */
+.cs-tile {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  padding: 15px;
+  gap: 7px;
+  transition: background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cs-tile:hover {
+    transform: none;
+    background: var(--wx-raised);
+    border-color: var(--wx-accent-line);
+    box-shadow: var(--wx-shadow-card);
+  }
+}
+.cs-tile:active { transform: scale(0.99); }
+.cs-tile:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   ICONO DEL MOSAICO
+   Aqui estaba el arcoiris: cinco colores (azul, verde, morado, naranja,
+   gris) asignados a mano por mosaico, sin que el color significara nada.
+
+   Se unifica a un chip neutro que toma el acento al apuntarlo. El color
+   queda reservado al ESTADO real de cada modulo, que si comunica algo.
+   -------------------------------------------------------------------------- */
+.cs-tile-chip,
+.cs-tile-chip[data-c="blue"],
+.cs-tile-chip[data-c="green"],
+.cs-tile-chip[data-c="purple"],
+.cs-tile-chip[data-c="orange"],
+.cs-tile-chip[data-c="gray"] {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-sunken);
+  color: var(--wx-text-muted);
+  font-size: 19px;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.cs-tile:hover .cs-tile-chip {
+  background: var(--wx-accent-soft);
+  color: var(--wx-accent-text);
+}
+
+.cs-tile-title {
+  font-size: var(--wx-text-base);
+  font-weight: 600;
+  color: var(--wx-text);
+  margin-top: 3px;
+}
+.cs-tile-desc {
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+  line-height: 1.45;
+}
+
+/* El pie del mosaico es el unico sitio con color, porque es estado real. */
+.cs-tile-foot {
+  font-size: var(--wx-text-xs);
+  font-weight: 500;
+  color: var(--wx-text-muted);
+}
+.cs-dot { width: 7px; height: 7px; background: var(--wx-text-dim); }
+.cs-dot.ok { background: var(--wx-success); }
+.cs-dot.pending { background: var(--wx-warning); }
+.cs-dot.off { background: var(--wx-text-dim); }
+
+.cs-tile-go {
+  top: 13px; right: 13px;
+  font-size: 15px;
+  color: var(--wx-text-dim);
+  transition: transform var(--wx-dur-micro) var(--wx-ease-out), color var(--wx-dur-micro) ease;
+}
+.cs-tile:hover .cs-tile-go { color: var(--wx-accent-text); transform: translateX(2px); }
+
+/* --------------------------------------------------------------------------
+   PANEL LATERAL
+   Mismo comportamiento. Se retira el degradado azul de la cabecera y la
+   sombra de 60px.
+   -------------------------------------------------------------------------- */
+.cs-drawer {
+  background: var(--wx-workspace);
+  border-left: 1px solid var(--wx-edge);
+  box-shadow: var(--wx-shadow-dialog);
+  /* Entra por el mismo borde por el que sale: la trayectoria de entrada y la
+     de salida coinciden, asi se entiende de donde viene (Emil). */
+  transition: transform var(--wx-dur-dialog) var(--wx-ease-out);
+}
+.cs-backdrop { background: var(--wx-scrim); transition: opacity var(--wx-dur-dialog) var(--wx-ease-out); }
+.cs-drawer-head {
+  background: var(--wx-surface);
+  border-bottom: 1px solid var(--wx-edge);
+  padding: 15px 18px;
+}
+.cs-drawer-title h3 { font-size: var(--wx-text-md); font-weight: 600; color: var(--wx-text); }
+.cs-drawer-title p { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.cs-x {
+  width: var(--wx-control-h);
+  height: var(--wx-control-h);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted);
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.cs-x:hover { background: var(--wx-raised); color: var(--wx-text); }
+.cs-drawer-body { padding: 18px; }
+
+.cs-soon { color: var(--wx-text-muted); padding: 48px 20px; }
+.cs-soon i { font-size: 28px; color: var(--wx-text-dim); }
+.cs-soon p { font-size: var(--wx-text-sm); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-drawer, .cs-backdrop { transition: none; }
+}

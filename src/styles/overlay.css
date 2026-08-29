@@ -1,0 +1,262 @@
+/* ==========================================================================
+   SISTEMA DE OVERLAYS WYBIX
+   --------------------------------------------------------------------------
+   Una sola superficie para: dropdown, popover, select, combobox, calendario,
+   selector de color, menus contextuales y tooltips.
+
+   Antes cada uno se veia distinto: unos heredaban de Bootstrap, otros eran
+   controles nativos del navegador y otros estaban escritos a mano. Esto los
+   unifica en surface / radius / border / shadow / padding / motion / z-index
+   / transform-origin.
+
+   POR QUE SIN LIBRERIA
+   Wybix corre en Electron sobre un unico Chromium, asi que la plataforma ya
+   trae todo lo que se necesitaria de una dependencia de overlays:
+
+     - `popover`            -> render en top layer: se acabaron las guerras de
+                               z-index, y ningun overlay queda por debajo de
+                               un modal o una cabecera pegajosa.
+     - light dismiss + Esc  -> nativos, con restauracion de foco al disparador.
+     - `anchor-name` /
+       `position-anchor`    -> anclaje real al trigger sin medir nada en JS.
+     - `position-try-*`     -> deteccion de colision nativa: si no cabe abajo
+                               se voltea arriba, y si no cabe a la derecha se
+                               alinea a la izquierda. Sin listeners de scroll.
+     - `@starting-style`    -> animacion de entrada de un elemento que estaba
+                               en `display: none`, sin trucos de montaje.
+
+   El equivalente en dependencia serian ~15-40 kB por control. Aqui es 0 kB y
+   el comportamiento lo mantiene el navegador, no nosotros.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. SUPERFICIE COMPARTIDA
+   -------------------------------------------------------------------------- */
+.wx-pop {
+  /* Reset del popover nativo: trae borde y padding de agente de usuario. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+
+  background: var(--wx-raised);
+  color: var(--wx-text);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-menu);
+
+  /* El popover vive en el top layer, asi que no compite por z-index. */
+  min-width: max-content;
+  max-width: min(92vw, 420px);
+}
+
+/* Escala tonal propia en oscuro: el elevado debe separarse del fondo por luz
+   propia, no por sombra, porque una sombra sobre negro no se ve. */
+html.dark .wx-pop {
+  background: var(--wx-raised);
+  border-color: var(--wx-edge-strong);
+  box-shadow: var(--wx-shadow-menu), inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+/* --------------------------------------------------------------------------
+   2. ANCLAJE Y COLISION
+   --------------------------------------------------------------------------
+   `position-area` coloca el panel respecto del ancla; `position-try-fallbacks`
+   define el orden de reintento cuando no cabe. El navegador elige la primera
+   opcion que entra completa en el viewport.
+   -------------------------------------------------------------------------- */
+.wx-pop[data-anclado] {
+  position: fixed;
+  position-anchor: var(--wx-anchor);
+  position-area: var(--wx-pop-area, bottom span-left);
+  position-try-fallbacks:
+    flip-block,            /* no cabe abajo -> arriba */
+    flip-inline,           /* no cabe a un lado -> al otro */
+    flip-block flip-inline;
+  /* Si aun asi no cabe, que encoja y haga scroll en vez de desbordar. */
+  max-height: calc(100vh - 24px);
+  margin-block: 6px;
+}
+
+/* Origen de la transformacion segun el lado en que el navegador acabo
+   colocando el panel: debe crecer DESDE el disparador, no desde su centro. */
+.wx-pop[data-anclado] { transform-origin: top center; }
+.wx-pop[data-anclado]:is(:popover-open) { transform-origin: var(--wx-pop-origin, top center); }
+
+/* --------------------------------------------------------------------------
+   3. MOTION
+   --------------------------------------------------------------------------
+   Entrar 170ms / salir 130ms. Al cerrar el usuario ya decidio: esperar a que
+   el panel se desvanezca solo estorba (Emil: la salida mas rapida que la
+   entrada). Nunca desde `scale(0)`: nada aparece de la nada.
+   -------------------------------------------------------------------------- */
+.wx-pop {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity var(--wx-dur-menu) var(--wx-ease-out),
+    transform var(--wx-dur-menu) var(--wx-ease-out),
+    overlay var(--wx-dur-menu) allow-discrete,
+    display var(--wx-dur-menu) allow-discrete;
+}
+
+/* Estado de salida. */
+.wx-pop:not(:popover-open) {
+  opacity: 0;
+  transform: scale(0.97) translateY(-2px);
+  transition-duration: var(--wx-dur-press);
+}
+
+/* Estado de entrada. */
+@starting-style {
+  .wx-pop:popover-open {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-pop,
+  .wx-pop:not(:popover-open) { transform: none; }
+  @starting-style { .wx-pop:popover-open { transform: none; } }
+}
+
+/* --------------------------------------------------------------------------
+   4. BACKDROP
+   --------------------------------------------------------------------------
+   Sutil y con un desenfoque minimo. No es glassmorphism: el desenfoque solo
+   separa el plano del dialogo del contenido, no decora.
+   -------------------------------------------------------------------------- */
+.wx-pop::backdrop { background: transparent; }
+
+dialog.wx-dialog::backdrop,
+.wx-scrim {
+  background: rgb(8 14 24 / 0.42);
+  backdrop-filter: blur(2px);
+  transition: opacity var(--wx-dur-dialog) var(--wx-ease-out), overlay var(--wx-dur-dialog) allow-discrete;
+}
+html.dark dialog.wx-dialog::backdrop,
+html.dark .wx-scrim { background: rgb(2 6 12 / 0.58); }
+
+dialog.wx-dialog:not([open])::backdrop { opacity: 0; }
+@starting-style { dialog.wx-dialog[open]::backdrop { opacity: 0; } }
+
+/* --------------------------------------------------------------------------
+   5. INTERIOR ESTANDAR
+   --------------------------------------------------------------------------
+   Para que un menu, un select y el calendario compartan ritmo interno.
+   -------------------------------------------------------------------------- */
+.wx-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wx-edge);
+  font: var(--wx-text-xs-semibold, 600 11.5px/1.2 var(--wx-font));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wx-text-dim);
+}
+.wx-pop__body { padding: 6px; }
+.wx-pop__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--wx-edge);
+}
+
+/* Lista de opciones: la base de select, combobox y menus. */
+.wx-pop__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 288px;      /* ~8 filas: suficiente para ver que hay scroll */
+  overflow-y: auto;
+  overscroll-behavior: contain;  /* no arrastra el scroll de la pagina */
+}
+
+.wx-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--wx-text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  border-radius: var(--wx-radius-sm);
+  cursor: pointer;
+  /* Solo color: mover una fila de menu al pasar el raton marea. */
+  transition: background var(--wx-dur-press) ease, color var(--wx-dur-press) ease;
+}
+.wx-opt:hover,
+.wx-opt[data-activo="true"] { background: var(--wx-hover); }
+.wx-opt[aria-selected="true"] {
+  background: var(--wx-user-accent-soft);
+  color: var(--wx-user-accent-text);
+  font-weight: 600;
+}
+.wx-opt:disabled,
+.wx-opt[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.wx-opt__check { margin-left: auto; opacity: 0; font-size: 15px; }
+.wx-opt[aria-selected="true"] .wx-opt__check { opacity: 1; }
+
+.wx-pop__sep { height: 1px; margin: 5px 6px; background: var(--wx-edge); border: 0; }
+
+/* --------------------------------------------------------------------------
+   6. TOOLTIP
+   --------------------------------------------------------------------------
+   Misma familia que el resto de overlays, pero mas compacto y sin borde: un
+   tooltip con la misma caja que un menu parece un menu.
+   -------------------------------------------------------------------------- */
+.wx-tip {
+  position: fixed;
+  z-index: var(--wx-z-tooltip, 900);
+  padding: 5px 9px;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-tooltip-bg);
+  color: var(--wx-tooltip-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--wx-shadow-menu);
+  opacity: 0;
+  transform: scale(0.97);
+  transform-origin: var(--wx-pop-origin, top center);
+  transition: opacity var(--wx-dur-micro) var(--wx-ease-out),
+              transform var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wx-tip[data-visible="true"] { opacity: 1; transform: scale(1); }
+/* Tras el primero, los siguientes aparecen sin animacion: al recorrer una
+   barra de iconos, esperar la animacion en cada uno hace lenta toda la barra. */
+.wx-tip[data-instantaneo="true"] { transition-duration: 0ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-tip, .wx-tip[data-visible="true"] { transform: none; }
+}
+
+/* --------------------------------------------------------------------------
+   7. UTILIDAD: TEXTO SOLO PARA LECTOR DE PANTALLA
+   --------------------------------------------------------------------------
+   Esta clase se usaba en la topbar pero nunca llego a definirse, asi que la
+   etiqueta del boton de color se pintaba como texto normal y se partia en
+   varias lineas dentro de la barra. Se oculta a la vista conservandola para
+   tecnologia asistiva: `display: none` la borraria tambien para el lector.
+   -------------------------------------------------------------------------- */
+.wx-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

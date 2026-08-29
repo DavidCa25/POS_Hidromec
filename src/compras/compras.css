@@ -1,7 +1,7 @@
 .castrol-table-container {
-  background: #f7faf7;
+  background: var(--wx-canvas);
   border-radius: 20px;
-  box-shadow: 0 6px 24px 0 rgba(0,0,0,0.08);
+  box-shadow: var(--wx-shadow-raised);
   padding: 2rem 1.5rem;
 }
 
@@ -17,14 +17,16 @@
   border-radius: 12px;
   padding: 0.6em 1.5em;
   box-shadow: 0 3px 10px 0 rgba(0,102,47,0.10);
-  transition: background 0.2s;
+  transition: background var(--wx-dur-state);
 }
 .castrol-btn-add:hover {
    background: #008c3c;
 }
 
 .castrol-table {
-  background: var(--castrol-main, #00662f);
+  /* Mismo fallo que en la tabla de ventas: el fondo de la tabla no es un
+     color de acento. Con las filas transparentes, este color se veia entero. */
+  background: var(--wx-surface);
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -48,7 +50,7 @@
 
 /* Estilos generales */
 .castrol-table th, .castrol-table td {
-  background: #fff;
+  background: var(--wx-surface);
   border: none;
   padding: 1rem 0.8rem;
   text-align: center;
@@ -58,7 +60,7 @@
 
 .castrol-table thead th {
   background: var(--castrol-main);
-  color: #fff;
+  color: var(--wx-user-accent-fg, #fff);
   font-size: 1.08rem;
   font-weight: bold;
   letter-spacing: 0.5px;
@@ -66,12 +68,12 @@
 }
 
 .castrol-table tr {
-  transition: background 0.15s;
+  transition: background var(--wx-dur-micro);
 }
 
 
 .castrol-table tbody tr:hover {
-  background: #e9fbe3;
+  background: var(--wx-user-accent-soft);
 }
 
 .castrol-table td {
@@ -82,12 +84,15 @@
   border-bottom: none;
 }
 
+/* Este bloque declaraba `--castrol-main: #00662f` en `:root` desde la hoja de
+   un componente, asi que el verde del tema anterior se escapaba al resto de la
+   aplicacion. Ahora apunta al acento elegido por el usuario. */
 :root {
-  --castrol-main: #00662f;
+  --castrol-main: var(--wx-user-accent, #1F2E86);
 }
 
 .castrol-btn-color {
-  background: #e9fbe3;
+  background: var(--wx-user-accent-soft);
   border: 1.5px solid var(--castrol-main);
   color: var(--castrol-main);
   font-weight: bold;
@@ -95,11 +100,11 @@
   margin-left: 16px;
   padding: 0.45em 1em;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--wx-dur-state), color var(--wx-dur-state);
 }
 .castrol-btn-color:hover {
   background: var(--castrol-main);
-  color: #fff;
+  color: var(--wx-user-accent-fg, #fff);
 }
 .color-modal-backdrop {
   position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
@@ -108,10 +113,10 @@
 }
 .color-modal {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  background: #fff;
+  background: var(--wx-surface);
   padding: 2em;
   border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
+  box-shadow: var(--wx-shadow-raised);
   z-index: 999;
   min-width: 250px;
   text-align: center;
@@ -126,13 +131,13 @@
 }
 
 .color-options button {
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--wx-edge);
   outline: none;
   width: 44px; height: 44px;
   border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 2px 8px 0 rgba(0,0,0,0.09);
-  transition: border 0.15s, transform 0.12s;
+  transition: border var(--wx-dur-micro), transform var(--wx-dur-press);
   margin: 0; /* Importante para grid */
 }
 .color-options button:hover {
@@ -148,9 +153,9 @@
   transform: translate(-50%, -50%);
   min-width: 550px;
   max-width: 96vw;
-  background: #fff;
+  background: var(--wx-surface);
   border-radius: 22px;
-  box-shadow: 0 10px 36px 0 rgba(0,0,0,0.17);
+  box-shadow: var(--wx-shadow-raised);
   padding: 2.5em 2em 1.5em 2em;
   z-index: 2000;
 }
@@ -177,13 +182,13 @@
 .producto-form-grid label {
   display: block;
   font-weight: 600;
-  color: #444;
+  color: var(--wx-text-muted);
   margin-bottom: 3px;
 }
 
 .producto-form-grid input,
 .producto-form-grid select {
-  color: #222 !important;   
+  color: var(--wx-text) !important;   
   background: #f9fbf9;
   width: 100%;
   padding: 0.5em 0.9em;
@@ -192,7 +197,7 @@
   background: #f9fbf9;
   font-size: 1em;
   margin-bottom: 2px;
-  transition: border-color 0.17s;
+  transition: border-color var(--wx-dur-state);
 }
 .producto-form-grid input:focus,
 .producto-form-grid select:focus {
@@ -219,41 +224,41 @@
 
 .producto-save-btn {
   background: var(--castrol-main, #00662f);
-  color: #fff;
+  color: var(--wx-user-accent-fg, #fff);
   font-weight: bold;
   border: none;
   border-radius: 9px;
   padding: 0.65em 2em;
   box-shadow: 0 2px 8px 0 rgba(0,102,47,0.09);
-  transition: background 0.17s;
+  transition: background var(--wx-dur-state);
 }
 .producto-save-btn:hover {
   background: #0070cc;
 }
 .producto-cancel-btn {
   background: #efefef;
-  color: #444;
+  color: var(--wx-text-muted);
   border: none;
   border-radius: 9px;
   padding: 0.65em 2em;
   font-weight: bold;
-  transition: background 0.17s;
+  transition: background var(--wx-dur-state);
 }
 .producto-cancel-btn:hover {
   background: #e0e0e0;
 }
 
 body {
-  background: #f4f6fa;
+  background: var(--wx-canvas);
   min-height: 100vh;
-  font-family: 'Inter', 'Segoe UI', 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 .card {
   border-radius: 2.5rem !important;
   max-width: 920px;
   margin: 48px auto;
-  box-shadow: 0 12px 48px 0 rgba(60,72,88,.08), 0 1.5px 8px 0 rgba(80,80,120,.04);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .card-body {
@@ -262,17 +267,17 @@ body {
 
 .form-label {
   font-weight: 500;
-  color: #272a2e;
+  color: var(--wx-text);
   font-size: 1.12rem;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 h2 {
   font-size: 2.4rem;
-  font-weight: 800;
+  font-weight: 600;
   margin-bottom: 2.2rem;
   letter-spacing: -1px;
-  color: #272a2e;
+  color: var(--wx-text);
 }
 
 .table {
@@ -283,7 +288,7 @@ h2 {
 }
 
 .table th {
-  font-weight: 700;
+  font-weight: 600;
   background: #000080;
   color: #fff;
 }
@@ -297,7 +302,7 @@ input, select {
   height: rem !important;
   font-size: 1.12rem !important;
   border-radius: 0.75rem !important;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 
 }
 
@@ -312,13 +317,13 @@ input, select:focus {
   font-weight: 600;
   border-radius: 1.6rem !important;
   padding: 0.95rem 2.5rem !important;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 .btn-success {
   background: #10b981;
   border: none;
-  transition: background 0.25s;
+  transition: background var(--wx-dur-layout);
 }
 .btn-success:hover {
   background: #059669;
@@ -326,7 +331,7 @@ input, select:focus {
 
 .btn-outline-primary {
   border-color: #B8860B !important;
-  color: #B8860B !important;
+  color: var(--wx-warning) !important;
   background: transparent !important;
 }
 .btn-outline-primary:hover {
@@ -343,18 +348,18 @@ input, select:focus {
 }
 
 #total-venta {
-  color: #10b981;
-  font-family: 'Poppins', sans-serif;
+  color: var(--wx-success);
+  font-family: var(--wx-font);
 }
 
 #subtotal {
-  color: #8B1A1A;
-  font-family: 'Poppins', sans-serif;
+  color: var(--wx-danger);
+  font-family: var(--wx-font);
 }
 
 #subtotal-iva {
   color: #FFC125;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 @media (max-width: 1000px) {
@@ -387,13 +392,13 @@ input, select:focus {
 /* Tabla compacta y tipografía pequeña */
 .compact-table{
   font-size: .86rem;
-  font-family: 'Poppins', sans-serif;                /* más chico */
+  font-family: var(--wx-font);                /* más chico */
 }
 .compact-table th, .compact-table td{
   padding: .45rem .6rem;            /* menos padding */
   vertical-align: middle;
   line-height: 1.2;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 /* Columnas con recorte elegante */
@@ -455,17 +460,17 @@ input, select:focus {
   border-radius: 1rem;
 }
 .venta-table th {
-  font-weight: 700;
+  font-weight: 600;
   background: #000080;
   font-size: .9rem;
-  font-family: 'Raleway', sans-serif;
+  font-family: var(--wx-font);
   color: #fff;
 }
 .venta-table td,
 .venta-table th {
   padding: .45rem .6rem;         /* menos padding  */
   line-height: 1.25;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 /* Columna producto: corta y con elipsis si es muy largo */
@@ -500,7 +505,7 @@ input, select:focus {
   padding: .4rem .8rem !important;
   font-size: .9rem !important;
   border-radius: .8rem !important;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
 }
 
 #button-close {

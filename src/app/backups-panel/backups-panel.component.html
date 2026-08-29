@@ -5,7 +5,7 @@
   <!-- Exportar / Importar manual -->
   <div class="bk-cards">
     <button type="button" class="bk-card green" (click)="exportDb()" [disabled]="busyExport">
-      <span class="bk-card-ic"><i class="bi bi-cloud-download"></i></span>
+      <span class="bk-card-ic"><i class="ph ph-cloud-arrow-down"></i></span>
       <span class="bk-card-txt">
         <b>{{ busyExport ? 'Exportando...' : 'Exportar BD' }}</b>
         <small>Crea un archivo de respaldo con tu info actual</small>
@@ -13,7 +13,7 @@
     </button>
 
     <button type="button" class="bk-card blue" (click)="importDb()" [disabled]="busyImport">
-      <span class="bk-card-ic"><i class="bi bi-cloud-upload"></i></span>
+      <span class="bk-card-ic"><i class="ph ph-cloud-arrow-up"></i></span>
       <span class="bk-card-txt">
         <b>{{ busyImport ? 'Importando...' : 'Importar BD' }}</b>
         <small>Restaura el sistema desde un archivo guardado</small>
@@ -22,7 +22,7 @@
   </div>
 
   <div class="bk-tip">
-    <i class="bi bi-shield-check"></i>
+    <i class="ph ph-shield-check"></i>
     <span>Es recomendable exportar al finalizar cada turno o semana de ventas.</span>
   </div>
 
@@ -31,10 +31,10 @@
 
   <!-- Estado del último respaldo -->
   <div class="bk-status" [class.ok]="lastStatus==='ok'" [class.err]="lastStatus==='error'">
-    <i class="bi"
-       [class.bi-shield-check]="lastStatus==='ok'"
-       [class.bi-shield-exclamation]="lastStatus==='error'"
-       [class.bi-shield]="!lastStatus"></i>
+    <i class="ph"
+       [class.ph-shield-check]="lastStatus==='ok'"
+       [class.ph-shield-warning]="lastStatus==='error'"
+       [class.ph-shield]="!lastStatus"></i>
     <div>
       <b *ngIf="lastStatus==='ok'">Último respaldo correcto</b>
       <b *ngIf="lastStatus==='error'">El último respaldo falló</b>
@@ -74,10 +74,10 @@
   <div class="bk-field">
     <label>Carpeta de respaldos</label>
     <div class="bk-fixed">
-      <i class="bi bi-lock-fill lock"></i>
+      <i class="ph-fill ph-lock lock"></i>
       <span class="path">C:\POS_Backups</span>
       <button class="bk-iconbtn" type="button" (click)="abrirCarpeta()" title="Abrir carpeta">
-        <i class="bi bi-folder2-open"></i>
+        <i class="ph ph-folder-open"></i>
       </button>
     </div>
     <small class="bk-help">Siempre se guarda aquí. El sistema crea la carpeta solo si no existe.</small>
@@ -95,11 +95,11 @@
 
   <div class="bk-actions">
     <button class="bk-btn secondary" type="button" (click)="respaldarAhora()" [disabled]="busyRun">
-      <i class="bi bi-arrow-repeat"></i>
+      <i class="ph ph-arrows-clockwise"></i>
       {{ busyRun ? 'Respaldando...' : 'Respaldar ahora' }}
     </button>
     <button class="bk-btn primary" type="button" (click)="guardarBackup()" [disabled]="busySave">
-      <i class="bi bi-check2-circle"></i>
+      <i class="ph ph-check-circle"></i>
       {{ busySave ? 'Guardando...' : 'Guardar' }}
     </button>
   </div>
@@ -108,7 +108,7 @@
   <div *ngIf="backups.length">
     <div class="bk-list-h">Respaldos guardados ({{ backups.length }})</div>
     <div class="bk-item" *ngFor="let b of backups">
-      <i class="bi bi-file-earmark-zip"></i>
+      <i class="ph ph-file-zip"></i>
       <div>
         <span class="bk-item-name">{{ b.name }}</span>
         <span class="bk-item-meta">{{ b.modified | date:'d MMM, h:mm a' }} · {{ b.sizeMB }} MB</span>

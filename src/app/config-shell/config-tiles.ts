@@ -49,7 +49,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 id: 'mp',
                 title: 'Terminal Mercado Pago',
                 desc: 'Configura tu Point y déjala lista para cobrar',
-                icon: 'credit-card-2-back-fill',
+                icon: 'credit-card',
                 color: 'blue',
                 size: '2x1',
                 component: MpWizard,
@@ -59,7 +59,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 id: 'formas-pago',
                 title: 'Formas de pago',
                 desc: 'Efectivo, tarjeta, transferencia, crédito',
-                icon: 'cash-coin',
+                icon: 'coins',
                 color: 'green',
                 size: '1x1',
                 component: FormasPagoPanelComponent
@@ -70,7 +70,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'servicios',
         title: 'Servicios',
         tiles: [
-            { id: 'pago-servicios', title: 'Pago de servicios', desc: 'Recargas y pago de luz, agua, gas… (TAECEL)', icon: 'phone', color: 'green', size: '2x1', component: ServiciosPanelComponent }
+            { id: 'pago-servicios', title: 'Pago de servicios', desc: 'Recargas y pago de luz, agua, gas… (TAECEL)', icon: 'device-mobile', color: 'green', size: '2x1', component: ServiciosPanelComponent }
         ]
     },
     {
@@ -78,13 +78,13 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         title: 'Dispositivos',
         tiles: [
             { id: 'impresora', title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', component: TicketPanelComponent },
-            { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'upc-scan', color: 'orange', size: '1x1', statusKey: 'scanner', component: DevicesPanelComponent },
-            { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'safe2', color: 'blue', size: '1x1', statusKey: 'drawer', component: DevicesPanelComponent },
-            { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'speedometer2', color: 'gray', size: '1x1', component: DevicesPanelComponent },
-            { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'display', color: 'purple', size: '2x1', component: CustomerDisplayPanelComponent },
+            { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'barcode', color: 'orange', size: '1x1', statusKey: 'scanner', component: DevicesPanelComponent },
+            { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', component: DevicesPanelComponent },
+            { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', component: DevicesPanelComponent },
+            { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'monitor', color: 'purple', size: '2x1', component: CustomerDisplayPanelComponent },
             { id: 'sync-nube', title: 'Sincronización en la nube', desc: 'Activa el envío de datos a la app del dueño', icon: 'cloud-arrow-up', color: 'blue', size: '2x1', component: SyncNubePanelComponent },
-            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code-scan', color: 'green', size: '1x1', component: PairingQr },
-            { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'phone', color: 'blue', size: '1x1', component: DescargaAppPanel }
+            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code', color: 'green', size: '1x1', component: PairingQr },
+            { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'device-mobile', color: 'blue', size: '1x1', component: DescargaAppPanel }
         ]
     },
     {
@@ -92,33 +92,33 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         title: 'Personalización',
         tiles: [
             { id: 'ticket', title: 'Ticket', desc: 'Logo, pie de página y datos fiscales', icon: 'receipt', color: 'purple', size: '1x1', component: TicketPanelComponent },
-            { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'shop', color: 'green', size: '2x1', component: NegocioPanelComponent },
-            { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'person-x', color: 'orange', size: '1x1', component: EliminarCuentaPanelComponent }
+            { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'storefront', color: 'green', size: '2x1', component: NegocioPanelComponent },
+            { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1', component: EliminarCuentaPanelComponent }
         ]
     },
     {
         id: 'datos',
         title: 'Datos y respaldos',
         tiles: [
-            { id: 'backups', title: 'Respaldos', desc: 'Exporta e importa tu base de datos', icon: 'database-fill', color: 'green', size: '2x1', statusKey: 'backup', component: BackupsPanelComponent }
+            { id: 'backups', title: 'Respaldos', desc: 'Exporta e importa tu base de datos', icon: 'database', color: 'green', size: '2x1', statusKey: 'backup', component: BackupsPanelComponent }
         ]
     },
     {
         id: 'sistema',
         title: 'Sistema',
         tiles: [
-            { id: 'licencia', title: 'Licencia', desc: 'Activa tu clave y revisa tu plan', icon: 'key-fill', color: 'green', size: '2x1', component: LicenciaPanelComponent },
-            { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'person-badge', color: 'gray', size: '2x1', component: UsuariosPanelComponent },
-            { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrow-repeat', color: 'blue', size: '1x1', component: ActualizacionesPanelComponent },
-            { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'activity', color: 'gray', size: '1x1', component: DiagnosticoPanel },
-            { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'pc-display', color: 'blue', size: '2x1', component: RegistersPanel },
+            { id: 'licencia', title: 'Licencia', desc: 'Activa tu clave y revisa tu plan', icon: 'key', color: 'green', size: '2x1', component: LicenciaPanelComponent },
+            { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'identification-badge', color: 'gray', size: '2x1', component: UsuariosPanelComponent },
+            { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrows-clockwise', color: 'blue', size: '1x1', component: ActualizacionesPanelComponent },
+            { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'pulse', color: 'gray', size: '1x1', component: DiagnosticoPanel },
+            { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'desktop-tower', color: 'blue', size: '2x1', component: RegistersPanel },
         ]
     },
     {
         id: 'facturacion',
         title: 'Facturación',
         tiles: [
-            { id: 'facturacion', title: 'Facturación', desc: 'Configura tu facturación electrónica', icon: 'file-earmark-text', color: 'purple', size: '2x1', component: FacturacionConfig } 
+            { id: 'facturacion', title: 'Facturación', desc: 'Configura tu facturación electrónica', icon: 'file-text', color: 'purple', size: '2x1', component: FacturacionConfig } 
         ]
 
     }

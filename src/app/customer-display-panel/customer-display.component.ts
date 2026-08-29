@@ -13,14 +13,14 @@ interface Monitor { id: number; label: string; primary: boolean; }
   styles: [`
     .cd-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.9rem 0;border-bottom:1px solid rgba(148,163,184,.2);}
     .cd-row .info{font-weight:600;}
-    .cd-row .info small{display:block;font-weight:400;color:#64748b;font-size:.8rem;margin-top:2px;}
-    .cd-status{font-size:.8rem;font-weight:700;padding:.25rem .7rem;border-radius:999px;white-space:nowrap;}
-    .cd-status.on{background:rgba(16,185,129,.14);color:#059669;}
-    .cd-status.off{background:rgba(148,163,184,.18);color:#64748b;}
+    .cd-row .info small{display:block;font-weight:400;color: var(--wx-text-muted);font-size:.8rem;margin-top:2px;}
+    .cd-status{font-size:.8rem;font-weight: 600;padding:.25rem .7rem;border-radius:999px;white-space:nowrap;}
+    .cd-status.on{background:rgba(16,185,129,.14);color: var(--wx-success);}
+    .cd-status.off{background:rgba(148,163,184,.18);color: var(--wx-text-muted);}
   `],
   template: `
   <div class="panel-content">
-    <div class="section-title"><i class="bi bi-display"></i> Pantalla de cliente</div>
+    <div class="section-title"><i class="ph ph-monitor"></i> Pantalla de cliente</div>
     <p class="hint" style="margin-bottom:1rem;">Muestra la venta en tiempo real en un segundo monitor, de cara al cliente.</p>
 
     <div class="cd-row">
@@ -42,8 +42,8 @@ interface Monitor { id: number; label: string; primary: boolean; }
       <small class="hint">Si solo tienes un monitor, la pantalla se abre encima; conecta un segundo monitor para el cliente.</small>
 
       <div class="btn-row" style="margin-top:1.2rem; align-items:center; gap:12px;">
-        <button class="btn-primary" type="button" (click)="abrir()"><i class="bi bi-box-arrow-up-right"></i> Abrir ahora</button>
-        <button class="btn-outline" type="button" (click)="cerrar()"><i class="bi bi-x-circle"></i> Cerrar</button>
+        <button class="btn-primary" type="button" (click)="abrir()"><i class="ph ph-arrow-square-out"></i> Abrir ahora</button>
+        <button class="btn-outline" type="button" (click)="cerrar()"><i class="ph ph-x-circle"></i> Cerrar</button>
         <span class="cd-status" [class.on]="isOpen" [class.off]="!isOpen">{{ isOpen ? 'Abierta' : 'Cerrada' }}</span>
       </div>
     </div>

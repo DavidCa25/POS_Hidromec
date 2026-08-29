@@ -33,12 +33,34 @@ export class ReportService {
     right: { style: 'thin', color: { rgb: 'E5E7EB' } }
   };
 
+  private static readonly MARCA_POR_DEFECTO = 'Wybix';
+
+  /**
+   * Nombre del negocio para encabezado, pie y nombre de archivo.
+   *
+   * Se lee de la configuracion real (la que edita Configuracion > Negocio).
+   * Antes usaba `??`, que no cubre la cadena vacia: un negocio con el campo en
+   * blanco producia una cabecera vacia en vez de caer al valor por defecto.
+   * Ahora se descarta cualquier valor que quede vacio al recortarlo.
+   */
   private async negocio(): Promise<string> {
     try {
       const cfg = await this.api?.getConfig?.();
       const c = cfg?.data ?? cfg ?? {};
-      return c.business_name ?? c.businessName ?? c.nombre ?? c.name ?? 'Wybix POS';
-    } catch { return 'Wybix POS'; }
+      for (const v of [c.business_name, c.businessName, c.nombre, c.name]) {
+        const t = String(v ?? '').trim();
+        if (t) return t;
+      }
+    } catch { /* sin configuracion accesible */ }
+    return ReportService.MARCA_POR_DEFECTO;
+  }
+
+  /** Texto a fragmento seguro para nombre de archivo. */
+  private aSlug(t: string): string {
+    return t.toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
   }
   private fmtMoney(n: any): string {
     return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,11 +68,13 @@ export class ReportService {
   private hoyStr(): string {
     return new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
   }
-  private baseName(cfg: ReportConfig): string {
-    const t = (cfg.filename || cfg.titulo || 'reporte')
-      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    return `${t}_${new Date().toISOString().slice(0, 10)}`;
+  private baseName(cfg: ReportConfig, negocio?: string): string {
+    const t = this.aSlug(cfg.filename || cfg.titulo || 'reporte');
+    const n = negocio ? this.aSlug(negocio) : '';
+    const fecha = new Date().toISOString().slice(0, 10);
+    // El negocio va delante: al juntar exportaciones de varias sucursales en
+    // una carpeta, el archivo dice de quien es sin abrirlo.
+    return [n, t, fecha].filter(Boolean).join('_');
   }
 
   // ================= EXCEL =================
@@ -126,7 +150,7 @@ export class ReportService {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
-    XLSX.writeFile(wb, this.baseName(cfg) + '.xlsx');
+    XLSX.writeFile(wb, this.baseName(cfg, negocio) + '.xlsx');
   }
 
   // ================= PDF =================
@@ -181,6 +205,6 @@ export class ReportService {
       doc.text(`Pagina ${i} de ${pages}`, W - M, H - 18, { align: 'right' });
     }
 
-    doc.save(this.baseName(cfg) + '.pdf');
+    doc.save(this.baseName(cfg, negocio) + '.pdf');
   }
 }

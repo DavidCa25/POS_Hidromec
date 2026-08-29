@@ -1,0 +1,104 @@
+/* ==========================================================================
+   GRUPO DE CONFIGURACION
+   --------------------------------------------------------------------------
+   Antes, un panel de Configuracion era una pila de:
+
+       titulo con borde inferior duro
+       fila de controles a todo el ancho
+       titulo con borde inferior duro
+       fila de controles a todo el ancho
+
+   Eso es lo que se leia como rectangulos oscuros pegados unos contra otros:
+   el borde inferior del titulo actuaba de tapa y los controles rellenaban el
+   ancho completo, asi que cada grupo terminaba siendo un bloque recto sin
+   forma propia.
+
+   DECISION: superficie tonal HUNDIDA, no card flotante.
+
+   Se probaron las dos opciones que pedia el encargo. La seccion abierta con
+   header + divisor es exactamente lo que ya habia, y es la que produce el
+   problema. La card flotante lo arregla pero convierte cada ajuste en un
+   objeto que compite con los demas, y en un panel con tres grupos eso es
+   ruido.
+
+   La superficie hundida da forma al grupo (radio, limites claros) sin
+   elevarlo: se lee como una zona del panel, no como una tarjeta encima. Sin
+   sombra, borde de un pixel y fondo apenas separado del panel.
+   ========================================================================== */
+
+.wx-set {
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-set-bg);
+  border: 1px solid var(--wx-edge-soft);
+  padding: 14px 16px 16px;
+  margin: 0 0 12px;
+}
+
+/* Cabecera: icono + titulo. Sin borde inferior, que era justo lo que hacia
+   de tapa; la separacion la da el propio limite de la superficie. */
+.wx-set__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+}
+.wx-set__head > i {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--wx-accent-text);
+  flex: 0 0 auto;
+}
+.wx-set__head > h3,
+.wx-set__title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--wx-text);
+}
+
+/* Separador interno para cuando un grupo tiene dos bloques distintos. */
+.wx-set__sep {
+  height: 1px;
+  margin: 14px 0;
+  background: var(--wx-edge-soft);
+  border: 0;
+}
+
+/* La ultima fila de un grupo no arrastra su margen inferior: producia un
+   hueco muerto entre el ultimo control y el borde del grupo. */
+.wx-set > .wx-set__body > .row:last-child,
+.wx-set > .row:last-child { margin-bottom: 0; }
+
+/* Un grupo cuyo contenido queda vacio (por permisos o modulos apagados) no
+   debe dejar una caja vacia flotando en el panel. */
+.wx-set:not(:has(.row, .ctl, .toggle, input, select, button)) { display: none; }
+
+/* --------------------------------------------------------------------------
+   ACCIONES PEGAJOSAS
+   --------------------------------------------------------------------------
+   En paneles largos, Guardar quedaba al fondo del scroll: habia que bajar,
+   guardar y volver a subir. Se queda a la vista, pero como una franja de la
+   propia superficie, no como una barra pesada: sin sombra y con una sola
+   linea superior.
+   -------------------------------------------------------------------------- */
+.panel-content > .btn-row:last-child,
+.wx-set-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 18px 0 0;
+  padding: 12px 0 2px;
+  background: var(--wx-surface);
+  border-top: 1px solid var(--wx-edge);
+}
+
+/* Jerarquia de las dos acciones: Guardar es la decision, Vista previa es una
+   comprobacion. Se distinguen por peso, no por tamano, para que la fila no
+   quede descompensada. */
+.panel-content > .btn-row:last-child .btn-outline { font-weight: 500; }
+.panel-content > .btn-row:last-child .btn-primary { font-weight: 600; }

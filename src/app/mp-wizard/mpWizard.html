@@ -3,14 +3,14 @@
   <!-- Encabezado con progreso -->
   <div class="wz-head">
     <div class="wz-head-left">
-      <span class="wz-logo"><i class="bi bi-credit-card-2-back-fill"></i></span>
+      <span class="wz-logo"><i class="ph-fill ph-credit-card"></i></span>
       <div>
         <h2>Configurar terminal Mercado Pago</h2>
         <p>Te guío paso a paso para dejar tu terminal lista para cobrar.</p>
       </div>
     </div>
     <button class="wz-x" type="button" (click)="cerrar()" aria-label="Cerrar">
-      <i class="bi bi-x-lg"></i>
+      <i class="ph ph-x"></i>
     </button>
   </div>
 
@@ -43,7 +43,7 @@
       </div>
 
       <div class="wz-note" *ngIf="hasToken">
-        <i class="bi bi-info-circle"></i>
+        <i class="ph ph-info"></i>
         Ya tienes un token guardado. Pulsa "Verificar y continuar" para confirmarlo, o pega uno nuevo para reemplazarlo.
       </div>
 
@@ -61,7 +61,7 @@
       <p class="wz-lead">Es la dirección física donde está tu negocio. Mercado Pago la usa para identificar tu punto de venta.</p>
 
       <div class="wz-note ok" *ngIf="storeId">
-        <i class="bi bi-check-circle"></i>
+        <i class="ph ph-check-circle"></i>
         Ya tienes una sucursal creada (ID {{ storeId }}). Puedes continuar con ella.
       </div>
 
@@ -130,7 +130,7 @@
       <p class="wz-lead">La caja es el punto de cobro dentro de la sucursal. Cada terminal va asociada a una caja.</p>
 
       <div class="wz-note ok" *ngIf="posId">
-        <i class="bi bi-check-circle"></i>
+        <i class="ph ph-check-circle"></i>
         Ya tienes una caja creada (ID {{ posId }}). Puedes continuar con ella.
       </div>
 
@@ -169,7 +169,7 @@
         <svg viewBox="0 0 360 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Celular escaneando el QR de la terminal">
           <!-- Terminal -->
           <rect x="22" y="34" width="74" height="96" rx="10" fill="#e8eefc" stroke="#2563eb" stroke-width="2"/>
-          <rect x="32" y="44" width="54" height="40" rx="4" fill="#fff" stroke="#9db8f0"/>
+          <rect x="32" y="44" width="54" height="40" rx="4" fill="var(--wx-surface)" stroke="#9db8f0"/>
           <!-- QR en la terminal -->
           <g fill="#1e3a8a">
             <rect x="40" y="52" width="8" height="8"/><rect x="52" y="52" width="6" height="6"/><rect x="64" y="52" width="8" height="8"/>
@@ -184,8 +184,8 @@
           <path d="M162 78 L170 84 L162 90" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 
           <!-- Celular -->
-          <rect x="196" y="20" width="90" height="120" rx="14" fill="#0f172a"/>
-          <rect x="204" y="32" width="74" height="96" rx="6" fill="#fff"/>
+          <rect x="196" y="20" width="90" height="120" rx="14" fill="var(--wx-text)"/>
+          <rect x="204" y="32" width="74" height="96" rx="6" fill="var(--wx-surface)"/>
           <circle cx="241" cy="135" r="3.5" fill="#334155"/>
           <!-- Marco de cámara sobre el QR -->
           <g stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round">
@@ -205,28 +205,28 @@
       <!-- Pasos ilustrados -->
       <div class="wz-howto">
         <div class="wz-howto-item">
-          <span class="wz-badge"><i class="bi bi-phone"></i></span>
+          <span class="wz-badge"><i class="ph ph-device-mobile"></i></span>
           <div>
             <b>1. Abre la app de Mercado Pago</b> en tu celular e inicia sesión con la cuenta que va a recibir los pagos
             (en modo prueba, con tu usuario de prueba).
           </div>
         </div>
         <div class="wz-howto-item">
-          <span class="wz-badge"><i class="bi bi-power"></i></span>
+          <span class="wz-badge"><i class="ph ph-power"></i></span>
           <div>
             <b>2. Enciende la terminal.</b> Mostrará "Inicia sesión en este dispositivo" y luego un código QR.
             Elige la opción "Soy responsable del negocio".
           </div>
         </div>
         <div class="wz-howto-item">
-          <span class="wz-badge"><i class="bi bi-qr-code-scan"></i></span>
+          <span class="wz-badge"><i class="ph ph-qr-code"></i></span>
           <div>
             <b>3. Escanea el QR</b> con el ícono de QR de la app y elige <b>{{ storeName }}</b> y <b>{{ posName }}</b>
             cuando te lo pida.
           </div>
         </div>
         <div class="wz-howto-item">
-          <span class="wz-badge"><i class="bi bi-check2-circle"></i></span>
+          <span class="wz-badge"><i class="ph ph-check-circle"></i></span>
           <div>
             <b>4. Termina en la terminal:</b> confirma la dirección y pon una contraseña. Verás "Ya puedes cobrar con tu Point".
           </div>
@@ -236,7 +236,7 @@
       <!-- Buscar y elegir terminal -->
       <div class="wz-find">
         <button class="wz-btn primary" type="button" (click)="buscarTerminales()" [disabled]="loadingTerminals">
-          <i class="bi bi-search"></i>
+          <i class="ph ph-magnifying-glass"></i>
           {{ loadingTerminals ? 'Buscando...' : 'Ya la asocié — Buscar terminal' }}
         </button>
 
@@ -245,7 +245,7 @@
           <button *ngFor="let t of terminals" type="button"
                   class="wz-terminal" [class.sel]="selectedTerminalId===t.id"
                   (click)="seleccionarTerminal(t.id)">
-            <span class="wz-terminal-radio"><i class="bi" [class.bi-check-circle-fill]="selectedTerminalId===t.id" [class.bi-circle]="selectedTerminalId!==t.id"></i></span>
+            <span class="wz-terminal-radio"><i class="ph" [class.ph-fill ph-check-circle]="selectedTerminalId===t.id" [class.ph-circle]="selectedTerminalId!==t.id"></i></span>
             <span class="wz-terminal-id">{{ t.id }}</span>
             <span class="wz-terminal-mode" [class.warn]="t.operating_mode!=='PDV'" [class.ok]="t.operating_mode==='PDV'">
               {{ t.operating_mode || 'SIN MODO' }}
@@ -276,7 +276,7 @@
       </div>
 
       <div class="wz-note">
-        <i class="bi bi-info-circle"></i>
+        <i class="ph ph-info"></i>
         Solo las terminales Point Smart (PAX A910 o Newland N950) soportan modo PDV. Tras activarlo, <b>reinicia la terminal</b>.
       </div>
 
@@ -291,19 +291,19 @@
     <!-- ============ PASO 6: LISTO ============ -->
     <section *ngIf="step===6" class="wz-pane">
       <div class="wz-done">
-        <span class="wz-done-ic"><i class="bi bi-check-lg"></i></span>
+        <span class="wz-done-ic"><i class="ph ph-check"></i></span>
         <h3>Tu terminal quedó configurada</h3>
         <p class="wz-lead">Ya puedes cobrar con la terminal desde el punto de venta. Define cómo quieres dejarla:</p>
       </div>
 
       <div class="wz-mode">
         <button type="button" class="wz-mode-opt" [class.sel]="testMode" (click)="testMode=true">
-          <i class="bi bi-cone-striped"></i>
+          <i class="ph ph-traffic-cone"></i>
           <b>Modo prueba</b>
           <small>Las ventas con terminal se aprueban solas. Úsalo para validar sin cobrar.</small>
         </button>
         <button type="button" class="wz-mode-opt" [class.sel]="!testMode" (click)="testMode=false">
-          <i class="bi bi-check-circle"></i>
+          <i class="ph ph-check-circle"></i>
           <b>Producción</b>
           <small>Cobros reales con tarjeta en la terminal. Actívalo al abrir al público.</small>
         </button>

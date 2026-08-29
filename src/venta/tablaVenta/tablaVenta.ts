@@ -4,6 +4,8 @@ import { ReportService, ReportConfig } from "../../services/report.service";
 import { FormsModule } from "@angular/forms";
 import { RouterOutlet } from "@angular/router";
 import { NgIf, NgFor, DatePipe, CurrencyPipe, NgClass } from "@angular/common";
+import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 interface SaleRow {
   id: number;
@@ -23,9 +25,14 @@ type PageToken = number | "...";
   templateUrl: "./tablaVenta.html",
   styleUrls: ["./tablaVenta.css"],
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet],
+  imports: [NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet, WxSelectComponent, WxDateComponent],
 })
 export class TablaVentaComponent {
+  /** Mismas opciones de siempre, en el formato del selector Wybix. */
+  get opcionesPagina(): WxOpcion[] {
+    return this.pageSizeOptions.map(n => ({ valor: n, etiqueta: String(n) }));
+  }
+
   loading = false;
   sales: SaleRow[] = [];
 

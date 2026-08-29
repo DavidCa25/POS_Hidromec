@@ -8,31 +8,31 @@ import Swal from 'sweetalert2';
   imports: [CommonModule],
   styleUrls: ['../panel-controls.css'],
   styles: [`
-    .ver-box{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1px solid #eef2f6;border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem;}
-    .ver-box .lbl2{font-size:.8rem;color:#64748b;text-transform:uppercase;letter-spacing:.03em;}
-    .ver-box .val{font-size:1.4rem;font-weight:800;color:#0f172a;}
-    .estado-ok{display:flex;align-items:center;gap:.5rem;color:#16a34a;font-weight:600;margin-top:.4rem;}
+    .ver-box{display:flex;align-items:center;justify-content:space-between;background: var(--wx-raised);border: 1px solid #eef2f6;border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem;}
+    .ver-box .lbl2{font-size:.8rem;color: var(--wx-text-muted);text-transform:uppercase;letter-spacing:.03em;}
+    .ver-box .val{font-size:1.4rem;font-weight: 600;color: var(--wx-text);}
+    .estado-ok{display:flex;align-items:center;gap:.5rem;color: var(--wx-success);font-weight:600;margin-top:.4rem;}
   `],
   template: `
   <div class="panel-content">
-    <div class="section-title"><i class="bi bi-arrow-repeat"></i> Actualizaciones</div>
+    <div class="section-title"><i class="ph ph-arrows-clockwise"></i> Actualizaciones</div>
 
     <div class="ver-box">
       <div>
         <div class="lbl2">Versión instalada</div>
         <div class="val">Wybix POS {{ version ? 'v' + version : '—' }}</div>
         <div class="estado-ok" *ngIf="alDia">
-          <i class="bi bi-check-circle-fill"></i> Estás en la última versión
+          <i class="ph-fill ph-check-circle"></i> Estás en la última versión
         </div>
       </div>
-      <i class="bi bi-box-seam" style="font-size:2.4rem;color:#2563EB;opacity:.35;"></i>
+      <i class="ph ph-package" style="font-size:2.4rem;color: var(--wx-accent-text);opacity:.35;"></i>
     </div>
 
     <p class="hint">Wybix busca actualizaciones automáticamente. También puedes revisar manualmente.</p>
 
     <div class="btn-row" style="margin-top:1.5rem;">
       <button class="btn-outline" type="button" (click)="buscar()" [disabled]="buscando">
-        <i class="bi bi-arrow-repeat"></i> {{ buscando ? 'Buscando...' : 'Buscar actualizaciones' }}
+        <i class="ph ph-arrows-clockwise"></i> {{ buscando ? 'Buscando...' : 'Buscar actualizaciones' }}
       </button>
     </div>
   </div>

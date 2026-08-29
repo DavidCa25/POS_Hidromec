@@ -12,21 +12,21 @@ const COMPRA_URL = 'https://wybix-landing.vercel.app';
   imports: [CommonModule, FormsModule],
   styleUrls: ['../panel-controls.css'],
   styles: [`
-    .lic-status{display:flex;gap:12px;align-items:flex-start;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:18px;background:#f8fafc;}
+    .lic-status{display:flex;gap:12px;align-items:flex-start;border: 1px solid var(--wx-edge);border-radius:14px;padding:14px 16px;margin-bottom:18px;background: var(--wx-raised);}
     .lic-status .ic{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:20px;}
-    .lic-status.trial .ic{background:rgba(37,99,235,.12);color:#2563eb;}
-    .lic-status.active .ic{background:rgba(16,185,129,.12);color:#10b981;}
-    .lic-status.warn .ic{background:rgba(239,68,68,.12);color:#ef4444;}
-    .lic-status b{display:block;font-size:14px;font-weight:800;}
-    .lic-status small{display:block;font-size:12px;color:#64748b;margin-top:2px;line-height:1.4;}
-    .lic-key{letter-spacing:2px;text-transform:uppercase;font-family:ui-monospace,monospace;}
+    .lic-status.trial .ic{background:rgba(37,99,235,.12);color: var(--wx-accent-text);}
+    .lic-status.active .ic{background:rgba(16,185,129,.12);color: var(--wx-success);}
+    .lic-status.warn .ic{background:rgba(239,68,68,.12);color: var(--wx-danger);}
+    .lic-status b{display:block;font-size:14px;font-weight: 600;}
+    .lic-status small{display:block;font-size:12px;color: var(--wx-text-muted);margin-top:2px;line-height:1.4;}
+    .lic-key{letter-spacing:2px;text-transform:uppercase;font-family: var(--wx-font-mono);}
   `],
   template: `
   <div class="panel-content">
-    <div class="section-title"><i class="bi bi-key-fill"></i> Licencia</div>
+    <div class="section-title"><i class="ph-fill ph-key"></i> Licencia</div>
 
     <div class="lic-status" [ngClass]="claseEstado">
-      <span class="ic"><i class="bi" [ngClass]="iconoEstado"></i></span>
+      <span class="ic"><i class="ph" [ngClass]="iconoEstado"></i></span>
       <div>
         <b>{{ tituloEstado }}</b>
         <small>{{ detalleEstado }}</small>
@@ -41,10 +41,10 @@ const COMPRA_URL = 'https://wybix-landing.vercel.app';
 
       <div class="btn-row">
         <button class="btn-primary" type="button" (click)="activar()" [disabled]="cargando || !clave">
-          <i class="bi bi-check2-circle"></i> {{ cargando ? 'Activando...' : 'Activar licencia' }}
+          <i class="ph ph-check-circle"></i> {{ cargando ? 'Activando...' : 'Activar licencia' }}
         </button>
         <button class="btn-outline" type="button" (click)="comprar()">
-          <i class="bi bi-bag-check"></i> Comprar
+          <i class="ph ph-bag"></i> Comprar
         </button>
       </div>
     </ng-container>
@@ -52,7 +52,7 @@ const COMPRA_URL = 'https://wybix-landing.vercel.app';
     <ng-container *ngIf="esActiva">
       <div class="btn-row">
         <button class="btn-outline" type="button" (click)="liberar()" [disabled]="cargando">
-          <i class="bi bi-pc-display-horizontal"></i> Liberar esta computadora
+          <i class="ph ph-monitor"></i> Liberar esta computadora
         </button>
       </div>
       <small class="hint">Usa "Liberar" solo si vas a mover tu licencia a otra computadora.</small>
@@ -80,9 +80,9 @@ export class LicenciaPanelComponent implements OnInit {
   }
   get iconoEstado(): string {
     switch (this.estado.state) {
-      case 'active': return 'bi-patch-check-fill';
-      case 'trial':  return 'bi-hourglass-split';
-      default:       return 'bi-exclamation-triangle-fill';
+      case 'active': return 'ph-fill ph-seal-check';
+      case 'trial':  return 'ph-hourglass';
+      default:       return 'ph-fill ph-warning';
     }
   }
   get tituloEstado(): string {

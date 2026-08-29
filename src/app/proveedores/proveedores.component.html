@@ -6,11 +6,11 @@
       <div class="header-right">
         <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
         <div style="position:relative;">
-          <button class="btn btn-ghost" (click)="expOpen = !expOpen"><i class="bi bi-download"></i> Exportar</button>
+          <button class="btn btn-ghost" (click)="expOpen = !expOpen"><i class="ph ph-download-simple"></i> Exportar</button>
           <div *ngIf="expOpen" class="list-group shadow-sm"
                style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
-            <button class="list-group-item list-group-item-action" (click)="exportar('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
-            <button class="list-group-item list-group-item-action" (click)="exportar('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+            <button class="list-group-item list-group-item-action" (click)="exportar('pdf')"><i class="ph ph-file-pdf me-2"></i> PDF</button>
+            <button class="list-group-item list-group-item-action" (click)="exportar('excel')"><i class="ph ph-file-xls me-2"></i> Excel</button>
           </div>
         </div>
         <button class="btn btn-primary" (click)="nuevo()">+ Nuevo proveedor</button>
@@ -70,9 +70,9 @@
 
   <!-- Modal nuevo / editar -->
   <div class="cierre-modal" *ngIf="showForm"
-       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:520px;">
+         style="padding:1.2rem 1.4rem 1.4rem; width:96%; max-width:520px;">
       <h3 style="margin:0 0 .9rem; font-size:1.4rem; font-weight:800;">{{ form.id ? 'Editar proveedor' : 'Nuevo proveedor' }}</h3>
       <div class="filter-row" style="grid-template-columns:1fr 1fr;">
         <div class="filter-group"><label>Nombre</label><input class="form-control" [(ngModel)]="form.nombre"></div>
@@ -89,9 +89,9 @@
 
   <!-- Modal historial de pagos -->
   <div class="cierre-modal" *ngIf="showHist"
-       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:640px;">
+         style="padding:1.2rem 1.4rem 1.4rem; width:96%; max-width:640px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem;">
         <h3 style="margin:0; font-size:1.3rem; font-weight:800;">Pagos a {{ sel?.nombre }}</h3>
         <button class="btn btn-ghost" (click)="cerrarHist()">X</button>

@@ -2,13 +2,13 @@
 .ventas-header-section{
   background: linear-gradient(
     135deg,
-    var(--inv-main) 0%,
-    color-mix(in srgb, var(--inv-main) 97%, white 3%) 100%
+    var(--wx-user-accent) 0%,
+    color-mix(in srgb, var(--wx-user-accent) 97%, white 3%) 100%
   );
   border-radius: 24px;
   padding: 2.5rem 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  box-shadow: var(--wx-shadow-raised);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -47,7 +47,7 @@
 
 .ventas-main-title {
   font-size: 2.8rem;
-  font-weight: 900;
+  font-weight: 600;
   color: #fff;
   margin: 0;
   letter-spacing: -0.5px;
@@ -72,8 +72,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: #eef2ff;             
-  color: var(--inv-main, #00662f);
+  background: var(--wx-user-accent-soft);             
+  color: var(--wx-user-accent);
   padding: 0.6rem 1.2rem;
   border-radius: 12px;
   font-weight: 600;
@@ -87,55 +87,58 @@
 
 /* Contenedor principal de la tabla */
 .castrol-table-container {
-  background: #f7faf7;
+  background: var(--wx-canvas);
   border-radius: 20px;
-  box-shadow: 0 6px 24px 0 rgba(0,0,0,0.08);
+  box-shadow: var(--wx-shadow-raised);
   padding: 2rem 1.5rem;
 }
 
 /* Título de la tabla */
 .castrol-table-title {
-  color: var(--castrol-main);
+  color: var(--wx-user-accent-text);
   font-size: 2rem;
-  font-weight: 900;
+  font-weight: 600;
   margin: 0;
 }
 
 /* Botón verde principal (Recargar) */
 .castrol-btn-add {
-  background: var(--inv-main, #00662f);
+  background: var(--wx-user-accent);
   border: none;
-  color: #fff;
+  color: var(--wx-user-accent-fg);
   font-weight: bold;
   border-radius: 12px;
   padding: 0.6em 1.5em;
-  box-shadow: 0 3px 10px 0 rgba(0,102,47,0.10);
-  transition: background 0.2s;
+  box-shadow: 0 3px 10px 0 rgb(0 0 0 / 0.10);
+  transition: background var(--wx-dur-state);
   cursor: pointer;
 }
 .castrol-btn-add:hover { 
-  background: var(--inv-main-dark, #008c3c);
+  background: var(--wx-user-accent-strong, var(--wx-user-accent));
 }
 
 /* Botón secundario (outline verde - Descargar PDFs) */
 .castrol-btn-color {
-  background: #e9fbe3;
-  border: 1.5px solid var(--inv-main, #00662f);
-  color: var(--inv-main, #00662f);
+  background: var(--wx-user-accent-soft);
+  border: 1.5px solid var(--wx-user-accent);
+  color: var(--wx-user-accent);
   font-weight: bold;
   border-radius: 12px;
   padding: 0.6em 1.2em;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--wx-dur-state), color var(--wx-dur-state);
 }
 .castrol-btn-color:hover {
-  background: var(--inv-main, #00662f);
-  color: #fff;
+  background: var(--wx-user-accent);
+  color: var(--wx-user-accent-fg);
 }
 
 /* Tabla principal */
 .castrol-table {
-  background: var(--castrol-main, #00662f);
+  /* Era `var(--castrol-main, #00662f)`. Esa variable no existe fuera de
+     Compras, asi que aqui se aplicaba el respaldo verde y pintaba el cuerpo
+     entero. El fondo de una tabla es la superficie, no un acento. */
+  background: var(--wx-surface);
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -161,7 +164,7 @@
 /* Estilos generales de celdas */
 .castrol-table th, 
 .castrol-table td {
-  background: #fff;
+  background: var(--wx-surface);
   border: none;
   padding: 1rem 0.8rem;
   text-align: center;
@@ -171,9 +174,9 @@
 
 /* Header de la tabla - FONDO VERDE */
 .castrol-table thead th {
-  background: var(--inv-main, #00662f);
-  border-bottom: 3px solid var(--inv-main-dark, #008c3c);
-  color: #fff;
+  background: var(--wx-user-accent);
+  border-bottom: 3px solid var(--wx-user-accent-strong, var(--wx-user-accent));
+  color: var(--wx-user-accent-fg);
   font-size: 1.08rem;
   font-weight: bold;
   letter-spacing: 0.5px;
@@ -181,13 +184,13 @@
 
 /* Filas del body - FONDO BLANCO */
 .castrol-table tbody tr {
-  background: #fff;
-  transition: background 0.15s;
+  background: var(--wx-surface);
+  transition: background var(--wx-dur-micro);
 }
 
 /* Hover en filas */
 .castrol-table tbody tr:hover { 
-  background: #e9fbe3; 
+  background: var(--wx-user-accent-soft); 
 }
 
 /* Bordes sutiles entre filas */
@@ -281,9 +284,9 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #fff;
+  background: var(--wx-surface);
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--wx-shadow-raised);
   z-index: 11000;
   max-width: 600px;
   width: 90vw;
@@ -308,7 +311,7 @@
 }
 
 .ventas-modal-header {
-  background: linear-gradient(135deg, var(--castrol-main) 0%, var(--castrol-hover) 100%);
+  background: linear-gradient(135deg, var(--wx-user-accent) 0%, color-mix(in srgb, var(--wx-user-accent) 82%, #000 18%) 100%);
   padding: 2rem;
   display: flex;
   justify-content: space-between;
@@ -352,7 +355,7 @@
 .ventas-modal-title {
   color: #fff;
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 600;
   margin: 0;
   margin-bottom: 0.3rem;
 }
@@ -375,7 +378,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
   position: relative;
   z-index: 1;
 }
@@ -398,13 +401,13 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--wx-text);
   font-size: 0.95rem;
   margin-bottom: 1rem;
 }
 
 .ventas-modal-label i {
-  color: var(--castrol-main);
+  color: var(--wx-user-accent-text);
   font-size: 1.1rem;
 }
 
@@ -422,12 +425,12 @@
   border: 2px solid #e0e7ed;
   border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
   position: relative;
 }
 
 .ventas-radio-option:hover {
-  border-color: var(--castrol-main);
+  border-color: var(--wx-user-accent-text);
   background: #f8fcf9;
 }
 
@@ -444,12 +447,12 @@
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
 }
 
 .ventas-radio-option input:checked ~ .ventas-radio-custom {
-  border-color: var(--castrol-main);
-  background: var(--castrol-main);
+  border-color: var(--wx-user-accent-text);
+  background: var(--wx-user-accent);
 }
 
 .ventas-radio-option input:checked ~ .ventas-radio-custom::after {
@@ -460,7 +463,7 @@
   transform: translate(-50%, -50%);
   width: 8px;
   height: 8px;
-  background: #fff;
+  background: var(--wx-surface);
   border-radius: 50%;
 }
 
@@ -471,12 +474,12 @@
 }
 
 .ventas-radio-text strong {
-  color: #2c3e50;
+  color: var(--wx-text);
   font-size: 1rem;
 }
 
 .ventas-radio-text small {
-  color: #64748b;
+  color: var(--wx-text-muted);
   font-size: 0.85rem;
 }
 
@@ -486,13 +489,13 @@
   border: 2px solid #e0e7ed;
   border-radius: 12px;
   font-size: 0.95rem;
-  transition: all 0.2s;
-  font-family: inherit;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
+  font-family: var(--wx-font);
 }
 
 .ventas-modal-input:focus {
   outline: none;
-  border-color: var(--castrol-main);
+  border-color: var(--wx-user-accent-text);
   background: #f8fcf9;
 }
 
@@ -509,13 +512,13 @@
 .ventas-date-label {
   display: block;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--wx-text-muted);
   margin-bottom: 0.4rem;
   font-weight: 500;
 }
 
 .ventas-date-separator {
-  color: var(--castrol-main);
+  color: var(--wx-user-accent-text);
   font-size: 1.2rem;
   margin-top: 1.5rem;
 }
@@ -537,7 +540,7 @@
   font-size: 0.95rem;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -545,7 +548,7 @@
 
 .ventas-btn-secondary {
   background: #e0e7ed;
-  color: #475569;
+  color: var(--wx-text-muted);
 }
 
 .ventas-btn-secondary:hover {
@@ -553,14 +556,14 @@
 }
 
 .ventas-btn-primary {
-  background: linear-gradient(135deg, var(--castrol-main) 0%, var(--castrol-hover) 100%);
+  background: linear-gradient(135deg, var(--wx-user-accent) 0%, color-mix(in srgb, var(--wx-user-accent) 82%, #000 18%) 100%);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 102, 47, 0.2);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.10);
 }
 
 .ventas-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(0, 102, 47, 0.3);
-  transform: translateY(-2px);
+  box-shadow: var(--wx-shadow-raised);
+  
 }
 
 .ventas-tools{
@@ -576,12 +579,12 @@
   display:flex;
   align-items:center;
   gap:8px;
-  background:#fff;
+  background: var(--wx-surface);
   border:1px solid rgba(0,0,0,.08);
   border-radius:14px;
   padding:10px 12px;
   min-width:320px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.05);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .ventas-search i{ opacity:.65; }
@@ -617,11 +620,11 @@
   display:flex;
   align-items:center;
   gap:8px;
-  background:#fff;
+  background: var(--wx-surface);
   border:1px solid rgba(0,0,0,.08);
   border-radius:14px;
   padding:8px 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.05);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .ventas-page-size select{
@@ -642,11 +645,11 @@
 
 .pager-btn{
   border:1px solid rgba(0,0,0,.10);
-  background:#fff;
+  background: var(--wx-surface);
   border-radius:14px;
   padding:10px 14px;
   font-weight:600;
-  box-shadow: 0 10px 26px rgba(0,0,0,.06);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .pager-btn:disabled{
@@ -668,20 +671,91 @@
   height:40px;
   border-radius:14px;
   border:1px solid rgba(0,0,0,.10);
-  background:#fff;
-  font-weight:700;
-  box-shadow: 0 10px 26px rgba(0,0,0,.06);
+  background: var(--wx-surface);
+  font-weight: 600;
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .page-btn.active{
   border-color: rgba(31,46,134,.55);
-  box-shadow: 0 12px 30px rgba(31,46,134,.20);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .page-btn.dots{
   width:auto;
   padding:0 12px;
-  font-weight:800;
+  font-weight: 600;
   opacity:.7;
   box-shadow:none;
+}
+
+/* ==========================================================================
+   ACCIONES DE LA CABECERA
+   --------------------------------------------------------------------------
+   Los tres botones viven SOBRE el hero, que va pintado con el acento. El
+   secundario usaba fondo y texto derivados del mismo acento, asi que sobre esa
+   superficie quedaba practicamente invisible: era el caso de "Exportar lista".
+
+   Sobre una superficie de color, el contraste tiene que venir del blanco, no
+   del propio color.
+   ========================================================================== */
+.castrol-btn-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgb(255 255 255 / 0.14);
+  border: 1px solid rgb(255 255 255 / 0.30);
+  color: #fff;
+  font-weight: 600;
+  font-size: .9rem;
+  border-radius: var(--wx-radius-md);
+  padding: .6rem 1rem;
+  cursor: pointer;
+  transition: background var(--wx-dur-press) ease,
+              border-color var(--wx-dur-press) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.castrol-btn-color:hover { background: rgb(255 255 255 / 0.22); border-color: rgb(255 255 255 / 0.45); color: #fff; }
+.castrol-btn-color:active { transform: scale(.97); }
+.castrol-btn-color:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* La accion principal se distingue por relleno solido, no por tamano. */
+.castrol-btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #fff;
+  border: 1px solid #fff;
+  color: var(--wx-user-accent-text);
+  font-weight: 600;
+  font-size: .9rem;
+  border-radius: var(--wx-radius-md);
+  padding: .6rem 1.1rem;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background var(--wx-dur-press) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.castrol-btn-add:hover { background: rgb(255 255 255 / 0.9); }
+.castrol-btn-add:active { transform: scale(.97); }
+.castrol-btn-add:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.ventas-actions-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Menu de exportacion: misma superficie que el resto de overlays. */
+.wx-menu-exportar {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: var(--wx-z-menu);
+  min-width: 168px;
+  padding: 5px;
+}
+.wx-menu-exportar .wx-opt > i { font-size: 16px; }
+
+/* El selector de filas por pagina no necesita el ancho de un campo. */
+.wx-sel-compacto { display: inline-block; min-width: 84px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .castrol-btn-color:active, .castrol-btn-add:active { transform: none; }
 }

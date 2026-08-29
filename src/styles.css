@@ -1,238 +1,217 @@
-
 /* ==========================================================================
-   ESTILOS DE FORMULARIOS PARA LOS PANELES (Cajón, Ticket, Scanner, etc.)
+   WYBIX POS - HOJA GLOBAL
+   --------------------------------------------------------------------------
+   Orden de capas (el orden importa):
+     1. tokens        color, superficie, tipografia, motion
+     2. refinamiento  reescribe el lenguaje visual de Bootstrap con los tokens
+     3. table         el sistema de tablas
+     4. este archivo  controles de los paneles de configuracion
+
+   Esta pasada es REFINAMIENTO, no rediseno: no se cambia la arquitectura, la
+   navegacion ni los flujos. Se cambian los valores.
+
+   Lo que ANTES vivia en este archivo y ya no hace falta:
+   - Un bloque de ~320 lineas de `html.dark .clase { ... !important }` que
+     enumeraba a mano cada componente de la aplicacion. Cada pantalla nueva
+     obligaba a anadir otra linea, y por eso el modo oscuro se sentia de
+     segunda. Ahora el tema se resuelve reasignando tokens una sola vez en
+     tokens.css, y al final de este archivo queda solo un puente corto para
+     los componentes que todavia escriben color a mano.
+   - Un `.btn` con `transition: all`, `translateY(-2px)` en hover y sombra
+     azul de 20px: justo el aspecto de plantilla que hay que quitar.
    ========================================================================== */
 
-/* Layout general del panel */
-.panel-content {
-    color: #0f172a;
-}
+@import "./styles/tokens.css";
+@import "./styles/refinamiento.css";
+@import "./styles/table.css";
+@import "./styles/overlay.css";
+@import "./styles/settings.css";
+@import "./styles/detalles.css";
+@import "./styles/dialogo.css";
+
+/* ==========================================================================
+   CONTROLES DE LOS PANELES DE CONFIGURACION
+   (cajon, ticket, scanner, backups, facturacion, usuarios, licencia...)
+   Se conservan las clases porque las usan ~20 paneles: cambia el aspecto,
+   no el marcado.
+   ========================================================================== */
+
+.panel-content { color: var(--wx-text); }
 
 .section-title {
-    font-size: 15px;
-    font-weight: 900;
-    color: #0f172a;
-    margin: 24px 0 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 24px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--wx-edge);
+  color: var(--wx-text);
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
+.section-title:first-child { margin-top: 0; }
 
 .row.two {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
 }
+@media (max-width: 620px) { .row.two { grid-template-columns: 1fr; } }
 
 .lbl {
-    display: block;
-    font-size: 13px;
-    font-weight: 800;
-    color: #334155;
-    margin-bottom: 6px;
+  display: block;
+  margin-bottom: 6px;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
 }
 
 .hint {
-    display: block;
-    font-size: 11.5px;
-    color: #64748b;
-    margin-top: 6px;
-    line-height: 1.4;
+  display: block;
+  margin-top: 6px;
+  color: var(--wx-text-dim);
+  font-size: var(--wx-text-xs);
+  line-height: 1.45;
 }
 
-/* ==========================================================================
-   CONTROLES (Inputs y Selects)
-   ========================================================================== */
+/* --------------------------------------------------------------------------
+   INPUTS Y SELECTS DE PANEL
+   -------------------------------------------------------------------------- */
 .ctl {
-    width: 100%;
-    padding: 10px 14px;
-    font-size: 14px;
-    color: #0f172a;
-    background-color: #fff;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-sizing: border-box;
+  width: 100%;
+  min-height: var(--wx-control-h);
+  padding: 7px 12px;
+  box-sizing: border-box;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  outline: none;
+  transition: border-color var(--wx-dur-micro) ease,
+              box-shadow var(--wx-dur-micro) ease;
 }
-
+.ctl::placeholder { color: var(--wx-text-dim); }
+.ctl:hover:not(:disabled):not(:focus) { border-color: var(--wx-text-dim); }
 .ctl:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--wx-accent);
+  box-shadow: 0 0 0 3px var(--wx-accent-soft);
 }
-
 .ctl:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    cursor: not-allowed;
-    border-color: #e2e8f0;
+  background: var(--wx-sunken);
+  color: var(--wx-text-dim);
+  border-color: var(--wx-edge);
+  cursor: not-allowed;
 }
 
-/* Magia para que el Select se vea moderno */
+/* La flecha del select se dibuja con currentColor: asi sigue al tema en vez
+   de quedarse gris fija sobre fondo oscuro. */
 select.ctl {
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 16px;
-    padding-right: 36px;
-    cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 16px center, right 11px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: var(--wx-text);
 }
+select.ctl:disabled { opacity: 0.7; }
+select.ctl option { background: var(--wx-surface); color: var(--wx-text); }
 
-select.ctl:disabled {
-    opacity: 0.7;
-}
+/* --------------------------------------------------------------------------
+   TOGGLE
+   -------------------------------------------------------------------------- */
+.toggle { display: flex; align-items: center; gap: 11px; margin-top: 4px; }
 
-/* Lo máximo que permite el motor del navegador para los Options */
-select.ctl option {
-    background-color: #ffffff;
-    color: #0f172a;
-    font-size: 14px;
-    padding: 10px; /* Chrome/Edge ignoran el padding, pero Firefox lo respeta */
-}
+.sw { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+.sw input { opacity: 0; width: 0; height: 0; }
 
-/* ==========================================================================
-   TOGGLES (Interruptores estilo iOS para los checkboxes)
-   ========================================================================== */
-.toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 4px;
-}
-
-.sw {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-.sw input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-/* El fondo del switch */
 .sl {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #cbd5e1;
-    transition: .3s ease;
-    border-radius: 24px;
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: var(--wx-edge-strong);
+  border-radius: 999px;
+  transition: background-color var(--wx-dur-state) var(--wx-ease-out);
 }
-
-/* La bolita del switch */
 .sl:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  content: "";
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  height: 18px;
+  width: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.22);
+  /* Sin rebote: es un interruptor, no un juguete (Emil). */
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
 }
+.sw input:checked + .sl { background: var(--wx-accent); }
+.sw input:checked + .sl:before { transform: translateX(18px); }
+.sw input:focus-visible + .sl { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.sw input:disabled + .sl { opacity: 0.5; cursor: not-allowed; }
 
-.sw input:checked + .sl {
-    background-color: #2563eb;
-}
+.ttext { font-size: var(--wx-text-base); font-weight: 500; color: var(--wx-text); }
 
-.sw input:checked + .sl:before {
-    transform: translateX(20px);
-}
+/* --------------------------------------------------------------------------
+   BOTONES DE PANEL
+   `.btn-outline` y `.btn-ghost` son de esta app, no de Bootstrap.
+   El resto del lenguaje lo define styles/refinamiento.css.
+   -------------------------------------------------------------------------- */
+.btn-row { display: flex; gap: 9px; margin-top: 20px; flex-wrap: wrap; }
 
-.sw input:disabled + .sl {
-    opacity: 0.5;
-    cursor: not-allowed;
+.btn-outline,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--wx-control-h);
+  padding: 0 15px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out),
+              background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease;
 }
-
-.ttext {
-    font-size: 13.5px;
-    color: #475569;
-    font-weight: 700;
-}
+.btn-ghost { background: transparent; border-color: transparent; color: var(--wx-text-muted); }
+.btn-outline:hover:not(:disabled) { background: var(--wx-raised); border-color: var(--wx-text-dim); }
+.btn-ghost:hover:not(:disabled) { background: var(--wx-raised); color: var(--wx-text); }
+.btn-outline:active:not(:disabled), .btn-ghost:active:not(:disabled) { transform: scale(0.975); }
+.btn-outline:disabled, .btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ==========================================================================
-   BOTONES
+   PUENTE DE MODO OSCURO
+   --------------------------------------------------------------------------
+   Sustituye al bloque de ~320 lineas que habia antes.
+
+   Solo queda lo imprescindible: los componentes que todavia escriben color
+   a mano en su propio CSS. Cada pantalla que se pase a tokens puede salir de
+   estas listas, y este bloque deberia encoger hasta desaparecer.
    ========================================================================== */
-.btn-row {
-    margin-top: 20px;
-    display: flex;
-    gap: 12px;
-}
-
-.btn, .btn-outline, .btn-primary, .btn-outline-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 18px;
-    font-size: 13.5px;
-    font-weight: 800;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-    outline: none;
-}
-
-.btn-primary {
-    background-color: #2563eb;
-    color: white;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: #1d4ed8;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
-}
-
-.btn-outline, .btn-outline-secondary {
-    background-color: transparent;
-    color: #334155;
-    border: 1px solid #cbd5e1;
-}
-
-.btn-outline:hover:not(:disabled), .btn-outline-secondary:hover:not(:disabled) {
-    background-color: #f8fafc;
-    border-color: #94a3b8;
-    color: #0f172a;
-}
-
-.btn:disabled, .btn-outline:disabled, .btn-primary:disabled, .btn-outline-secondary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-/* ==========================================================================
-   MODO OSCURO  (se activa con la clase .dark en <html>)
-   ========================================================================== */
-html.dark { color-scheme: dark; background: #0b1220; }
-html.dark body { background: #0b1220; color: #e2e8f0; }
-
-/* Variables del tema de inventario/conteo/etc. en oscuro */
 html.dark {
-    --inv-bg: #0f1826;
-    --inv-card: #16233a;
-    --inv-text: #e2e8f0;
-    --inv-muted: #94a3b8;
-    --inv-border: rgba(255,255,255,.09);
+  --inv-bg: var(--wx-workspace);
+  --inv-card: var(--wx-surface);
+  --inv-text: var(--wx-text);
+  --inv-muted: var(--wx-text-muted);
+  --inv-border: var(--wx-edge);
 }
 
-/* Superficies (tarjetas, paneles, modales, contenedores) */
+/* Superficies escritas a mano en los componentes. */
 html.dark .card,
 html.dark .modal-content,
 html.dark .list-group,
@@ -244,298 +223,108 @@ html.dark .ct-card,
 html.dark .corte-card,
 html.dark .filter-card,
 html.dark .kpi-card,
+html.dark .est-card,
+html.dark .est-kpi,
+html.dark .cs-tile,
 html.dark .cierre-dialog,
 html.dark .u-dialog {
-    background: #16233a !important;
-    color: #e2e8f0;
-    border-color: rgba(255,255,255,.09) !important;
+  background: var(--wx-surface);
+  border-color: var(--wx-edge);
+  color: var(--wx-text);
 }
 
-html.dark .section-title { color: #e2e8f0; border-color: rgba(255,255,255,.09); }
-html.dark .lbl { color: #cbd5e1; }
-html.dark .hint, html.dark .ttext, html.dark .sub, html.dark .text-muted, html.dark .nota { color: #94a3b8 !important; }
-html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5 { color: #f1f5f9; }
-html.dark .strong, html.dark .fw-bold, html.dark .fw-semibold { color: #f1f5f9; }
+/* Texto. */
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5 { color: var(--wx-text); }
+html.dark .hint,
+html.dark .ttext,
+html.dark .sub,
+html.dark .nota,
+html.dark .est-sub,
+html.dark .est-empty { color: var(--wx-text-muted); }
 
-/* Inputs y buscadores */
+/* Campos escritos a mano. */
 html.dark .ctl,
 html.dark .form-control,
+html.dark .form-select,
 html.dark .ct-search,
 html.dark .lic-in,
+html.dark .ventas-search,
 html.dark input[type="text"],
 html.dark input[type="number"],
 html.dark input[type="password"],
 html.dark input[type="email"],
 html.dark input[type="search"],
-html.dark textarea {
-    background: #0f1826 !important;
-    color: #e2e8f0 !important;
-    border-color: rgba(255,255,255,.16) !important;
+html.dark input[type="date"],
+html.dark textarea,
+html.dark select {
+  background: var(--wx-workspace);
+  color: var(--wx-text);
+  border-color: var(--wx-edge-strong);
 }
 html.dark .ctl::placeholder,
 html.dark .form-control::placeholder,
 html.dark input::placeholder,
-html.dark textarea::placeholder { color: #64748b !important; }
+html.dark textarea::placeholder { color: var(--wx-text-dim); }
 
-/* Tablas */
-html.dark table { color: #e2e8f0; }
-html.dark .table, html.dark .table-light,
-html.dark thead.table-light th,
-html.dark .tabla-corte thead th { background: #0f1826 !important; color: #cbd5e1 !important; }
-html.dark td, html.dark th { border-color: rgba(255,255,255,.08) !important; }
-html.dark tbody tr:hover { background: rgba(255,255,255,.03) !important; }
-
-/* Botones outline en oscuro */
-html.dark .btn-outline,
-html.dark .btn-outline-secondary,
-html.dark .btn-ghost,
-html.dark .al-btn,
-html.dark .al-sel {
-    color: #cbd5e1 !important;
-    border-color: rgba(255,255,255,.18) !important;
-    background: transparent !important;
-}
-html.dark .btn-outline:hover:not(:disabled),
-html.dark .btn-outline-secondary:hover:not(:disabled),
-html.dark .btn-ghost:hover { background: rgba(255,255,255,.06) !important; color: #fff !important; }
-
-/* Dropdowns / menús flotantes */
+/* Menus flotantes escritos a mano. */
 html.dark .dropdown-menu,
 html.dark .custom-sel-menu,
 html.dark .al-menu,
-html.dark .u-menu { background: #16233a !important; border-color: rgba(255,255,255,.1) !important; }
+html.dark .u-menu,
+html.dark .sat-dd-menu {
+  background: var(--wx-surface);
+  border-color: var(--wx-edge);
+}
 html.dark .dropdown-item,
 html.dark .custom-sel-option,
 html.dark .al-menu-opt,
-html.dark .u-menu-opt { color: #e2e8f0 !important; }
+html.dark .u-menu-opt { color: var(--wx-text); }
 html.dark .dropdown-item:hover,
 html.dark .custom-sel-option:hover,
 html.dark .al-menu-opt:hover,
-html.dark .u-menu-opt:hover { background: rgba(255,255,255,.06) !important; }
+html.dark .u-menu-opt:hover { background: var(--wx-raised); }
 
-/* Utilidades de Bootstrap */
-html.dark .bg-white, html.dark .bg-light { background: #16233a !important; }
-html.dark .bg-body-tertiary, html.dark .bg-body, html.dark .bg-body-secondary { background: #0b1220 !important; }
-html.dark .text-dark { color: #e2e8f0 !important; }
-html.dark .border, html.dark .border-top, html.dark .border-bottom { border-color: rgba(255,255,255,.1) !important; }
+/* Controles sueltos. */
+html.dark .btn-outline,
+html.dark .btn-ghost,
+html.dark .al-btn,
+html.dark .al-sel {
+  color: var(--wx-text);
+  border-color: var(--wx-edge-strong);
+  background: transparent;
+}
+html.dark .btn-outline:hover:not(:disabled),
+html.dark .btn-ghost:hover,
+html.dark .al-btn:hover { background: var(--wx-raised); color: var(--wx-text); }
 
-/* Segmentos / pills genéricos que usan fondo claro */
-html.dark .est-seg, html.dark .est-toggle { background: #0f1826 !important; }
-html.dark .est-seg button.on { background: #1e2b44 !important; color: #60a5fa !important; box-shadow: none !important; }
+html.dark .preset { background: var(--wx-sunken); color: var(--wx-text-muted); }
+html.dark .preset.active { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+html.dark .est-seg,
+html.dark .est-toggle { background: var(--wx-sunken); }
+html.dark .est-seg button.on { background: var(--wx-raised); color: var(--wx-text); }
+html.dark .est-rank { background: var(--wx-raised); color: var(--wx-text-muted); }
+html.dark .est-bar-track { background: var(--wx-sunken); }
 
-/* Gráficas ApexCharts en oscuro */
-html.dark .apexcharts-text,
-html.dark .apexcharts-text tspan,
-html.dark .apexcharts-xaxis-label,
-html.dark .apexcharts-yaxis-label,
-html.dark .apexcharts-datalabel,
-html.dark .apexcharts-legend-text { fill: #94a3b8 !important; color: #94a3b8 !important; }
-html.dark .apexcharts-gridline,
-html.dark .apexcharts-xaxis line,
-html.dark .apexcharts-yaxis line,
-html.dark .apexcharts-xaxis-tick { stroke: rgba(255,255,255,.08) !important; }
-html.dark .apexcharts-tooltip,
-html.dark .apexcharts-tooltip-title,
-html.dark .apexcharts-tooltip-series-group { background: #16233a !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.12) !important; }
+/* Tablas escritas a mano. */
+html.dark .tabla-corte tbody tr,
+html.dark .castrol-table tbody tr { background: transparent; }
+html.dark .al-table th { color: var(--wx-text-muted); }
+html.dark .al-table td { color: var(--wx-text); }
+html.dark .est-table thead th { background: var(--wx-sunken); color: var(--wx-text-muted); }
+html.dark .est-table td { border-color: var(--wx-edge-soft); color: var(--wx-text); }
 
-/* Clientes / Proveedores / Corte (clases compartidas corte-*, kpi-*, tabla-corte) */
-html.dark .corte-container { background: transparent !important; }
-html.dark .kpi-title { color: #cbd5e1 !important; }
-html.dark .kpi-value { color: #f1f5f9 !important; }
-html.dark .kpi-card.total { background: #16233a !important; }
-html.dark .tabla-corte tbody tr { background: #16233a !important; box-shadow: none !important; }
-html.dark .tabla-corte tbody tr:hover { background: #1c2b45 !important; }
-html.dark .tabla-corte td { color: #e2e8f0 !important; }
-html.dark .tabla-corte td.strong, html.dark .strong, html.dark .mono { color: #f1f5f9 !important; }
-html.dark .filter-group label, html.dark .hoy { color: #94a3b8 !important; }
-html.dark .preset { background: #0f1826 !important; color: #cbd5e1 !important; }
-html.dark .preset.active { background: #2563eb !important; color: #fff !important; }
-html.dark .btn-ghost { background: #1e2b44 !important; color: #cbd5e1 !important; }
-html.dark .btn-ghost:hover { background: #26344f !important; }
-
-/* Inventario / Compras (clase compartida .castrol-table; el header conserva su color de tema) */
-html.dark .castrol-table-container { background: #0f1826 !important; }
-html.dark .castrol-table th,
-html.dark .castrol-table td { background: #16233a !important; color: #e2e8f0 !important; }
-html.dark .castrol-table tbody tr { background: #16233a !important; }
-html.dark .castrol-table tbody tr:hover td { background: #1c2b45 !important; }
-html.dark .ventas-stats-badge { background: #16233a !important; color: #cbd5e1 !important; border-color: rgba(255,255,255,.1) !important; }
-html.dark .ventas-search { background: #0f1826 !important; border-color: rgba(255,255,255,.12) !important; }
-html.dark .ventas-search input { background: transparent !important; color: #e2e8f0 !important; }
-html.dark .action-btn { background: #1e2b44 !important; color: #cbd5e1 !important; }
-html.dark .castrol-btn-color { background: #16233a !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.14) !important; }
-
-/* Mosaicos de Configuración (.cs-tile) */
-html.dark .cs-tile { background: #16233a !important; }
-html.dark .cs-tile:hover { background: #1c2b45 !important; }
-html.dark .cs-tile-title { color: #f1f5f9 !important; }
-/* Títulos de pantalla y textos que quedaban oscuros sobre oscuro */
-html.dark .al-title,
-html.dark .al-card-title,
-html.dark .al-name,
-html.dark .corte-header h2,
-html.dark .est-head h2,
-html.dark .cs-head h1,
-html.dark .pos-title,
-html.dark .ct-title { color: #f1f5f9 !important; }
-html.dark .al-table td { color: #e2e8f0 !important; }
-html.dark .al-table th { color: #94a3b8 !important; }
-
-/* =========================================================
-   MODO OSCURO — Paneles de Configuración (drawer)
-   Los paneles se disenaron para modo claro; aqui se hacen legibles
-   sin tocar cada componente. Alcanza a todos via .cs-drawer-body.
-   ========================================================= */
-/* Cabecera del drawer */
-html.dark .cs-drawer-head h3 { color:#f1f5f9 !important; }
-html.dark .cs-drawer-head p { color:#9aa7bd !important; }
-
-/* Texto principal y titulos */
-html.dark .cs-drawer-body { color:#e5e9f0; }
+/* Cuerpo del drawer de Configuracion: alcanza a los ~20 paneles de una vez. */
+html.dark .cs-drawer,
+html.dark .cs-drawer-body { background: var(--wx-workspace); color: var(--wx-text); }
+html.dark .cs-drawer-head { background: var(--wx-surface); border-color: var(--wx-edge); }
 html.dark .cs-drawer-body h1,
 html.dark .cs-drawer-body h2,
 html.dark .cs-drawer-body h3,
 html.dark .cs-drawer-body h4,
-html.dark .cs-drawer-body h5,
 html.dark .cs-drawer-body p,
 html.dark .cs-drawer-body li,
 html.dark .cs-drawer-body label,
 html.dark .cs-drawer-body b,
-html.dark .cs-drawer-body strong,
-html.dark .cs-drawer-body .panel-content,
-html.dark .cs-drawer-body .section-title,
-html.dark .cs-drawer-body .lbl,
-html.dark .cs-drawer-body .bk,
-html.dark .cs-drawer-body .bk-section-h,
-html.dark .cs-drawer-body .pay-info,
-html.dark .cs-drawer-body .bk-item-name,
-html.dark .cs-drawer-body .wz-terminal-id,
-html.dark .cs-drawer-body .bk-fixed .path,
-html.dark .cs-drawer-body .da-head h3,
-html.dark .cs-drawer-body .wz-pane h3,
-html.dark .cs-drawer-body .wz-terminals-title { color:#e5e9f0 !important; }
-
-/* Texto atenuado: ayudas, subtitulos, metadatos */
+html.dark .cs-drawer-body strong { color: var(--wx-text); }
 html.dark .cs-drawer-body small,
-html.dark .cs-drawer-body .hint,
-html.dark .cs-drawer-body .ttext,
-html.dark .cs-drawer-body .bk-intro,
-html.dark .cs-drawer-body .bk-help,
-html.dark .cs-drawer-body .bk-item-meta,
-html.dark .cs-drawer-body .bk-list-h,
-html.dark .cs-drawer-body .da-head p,
-html.dark .cs-drawer-body .da-steps,
-html.dark .cs-drawer-body .wz-lead,
-html.dark .cs-drawer-body .wz-hint { color:#9aa7bd !important; }
-
-/* Separadores */
-html.dark .cs-drawer-body .section-title { border-bottom-color:rgba(255,255,255,.1) !important; }
-
-/* Inputs / selects / textareas de cualquier panel */
-html.dark .cs-drawer-body input,
-html.dark .cs-drawer-body select,
-html.dark .cs-drawer-body textarea,
-html.dark .cs-drawer-body .ctl,
-html.dark .cs-drawer-body .bk-ctl,
-html.dark .cs-drawer-body .da-link input,
-html.dark .cs-drawer-body .wz-field input,
-html.dark .cs-drawer-body .custom-sel-box,
-html.dark .cs-drawer-body .form-control,
-html.dark .cs-drawer-body .form-select {
-  background:#0b1220 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important;
-}
-html.dark .cs-drawer-body input::placeholder,
-html.dark .cs-drawer-body textarea::placeholder { color:#64748b !important; }
-html.dark .cs-drawer-body select.ctl option { background:#0b1220 !important; color:#e5e9f0 !important; }
-
-/* Superficies claras -> oscuras (OJO: el img del QR se deja blanco a proposito) */
-html.dark .cs-drawer-body .bk-card,
-html.dark .cs-drawer-body .bk-toggle-row,
-html.dark .cs-drawer-body .bk-fixed,
-html.dark .cs-drawer-body .bk-status,
-html.dark .cs-drawer-body .bk-item,
-html.dark .cs-drawer-body .pay-row,
-html.dark .cs-drawer-body .wz-illus,
-html.dark .cs-drawer-body .wz-terminal,
-html.dark .cs-drawer-body .wz-mode-opt,
-html.dark .cs-drawer-body .custom-sel-menu {
-  background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important;
-}
-html.dark .cs-drawer-body .pay-row { border-bottom-color:rgba(255,255,255,.08) !important; }
-
-/* Menus simulados */
-html.dark .cs-drawer-body .custom-sel-option { color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .custom-sel-option:hover { background:#1c2b45 !important; color:#e5e9f0 !important; }
-
-/* Botones secundarios/ghost blancos -> superficie oscura */
-html.dark .cs-drawer-body .btn-outline,
-html.dark .cs-drawer-body .btn-outline-secondary,
-html.dark .cs-drawer-body .bk-btn.secondary,
-html.dark .cs-drawer-body .bk-iconbtn,
-html.dark .cs-drawer-body .wz-btn.ghost {
-  background:#0f1826 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important;
-}
-
-/* Asistente Mercado Pago: re-tematiza via sus variables */
-html.dark .cs-drawer-body .wz {
-  --wz-ink:#e5e9f0; --wz-muted:#9aa7bd; --wz-bg:#152238; --wz-line:rgba(255,255,255,.12);
-}
-html.dark .cs-drawer-body .wz-head { background:linear-gradient(135deg,#18233b,#152238) !important; }
-html.dark .cs-drawer-body .wz-howto-item { color:#cbd5e1 !important; }
-
-/* Avisos informativos: mantienen acento pero legibles */
-html.dark .cs-drawer-body .da-note { background:rgba(37,99,235,.14) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.35) !important; }
-html.dark .cs-drawer-body .bk-tip { background:rgba(37,99,235,.12) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.28) !important; }
-html.dark .cs-drawer-body .wz-note { color:#bfdbfe !important; }
-
-/* Panel de Facturacion (tarjetas propias .fc-*) */
-html.dark .cs-drawer-body .fc { color:#e5e9f0; }
-html.dark .cs-drawer-body .fc-card { background:#152238 !important; border-color:rgba(255,255,255,.1) !important; }
-html.dark .cs-drawer-body .fc-head p,
-html.dark .cs-drawer-body .fc-field small { color:#9aa7bd !important; }
-html.dark .cs-drawer-body .fc-field input,
-html.dark .cs-drawer-body .fc-field select,
-html.dark .cs-drawer-body .fc-select-trigger,
-html.dark .cs-drawer-body .fc-file { background:#0b1220 !important; color:#e5e9f0 !important; border-color:rgba(255,255,255,.14) !important; }
-html.dark .cs-drawer-body .fc-select-trigger.placeholder { color:#64748b !important; }
-html.dark .cs-drawer-body .fc-select-menu { background:#152238 !important; border-color:rgba(255,255,255,.14) !important; }
-html.dark .cs-drawer-body .fc-select-option { color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .fc-select-option:hover,
-html.dark .cs-drawer-body .fc-select-option.sel { background:#1c2b45 !important; }
-html.dark .cs-drawer-body .fc-note { background:rgba(79,155,184,.14) !important; color:#bfe3ee !important; border-color:rgba(79,155,184,.3) !important; }
-
-/* Panel Usuarios y permisos (.u-*) */
-html.dark .cs-drawer-body .u-name { color:#e5e9f0 !important; }
-html.dark .cs-drawer-body .u-table th { color:#94a3b8 !important; border-bottom-color:rgba(255,255,255,.1) !important; }
-html.dark .cs-drawer-body .u-table td { border-bottom-color:rgba(255,255,255,.07) !important; }
-html.dark .cs-drawer-body .u-badge { background:#0f1826 !important; border-color:rgba(255,255,255,.14) !important; color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .u-badge.rol-admin { background:rgba(37,99,235,.20) !important; border-color:rgba(37,99,235,.45) !important; color:#93c5fd !important; }
-html.dark .cs-drawer-body .u-badge.rol-supervisor { background:rgba(124,58,237,.20) !important; border-color:rgba(124,58,237,.45) !important; color:#c4b5fd !important; }
-html.dark .cs-drawer-body .u-badge.rol-cajero { background:rgba(22,163,74,.20) !important; border-color:rgba(22,163,74,.45) !important; color:#86efac !important; }
-html.dark .cs-drawer-body .u-menu { background:#152238 !important; border-color:rgba(255,255,255,.14) !important; }
-html.dark .cs-drawer-body .u-menu-opt { color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .u-menu-opt:hover { background:#1c2b45 !important; }
-html.dark .cs-drawer-body .u-act { background:#1e2b44 !important; color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .u-act:hover { background:#26344f !important; color:#e5e9f0 !important; }
-html.dark .cs-drawer-body .u-estado.off { color:#94a3b8 !important; }
-html.dark .cs-drawer-body .u-dialog { background:#152238 !important; }
-html.dark .cs-drawer-body .u-dialog h3 { color:#f1f5f9 !important; }
-
-/* Panel de Licencia (.lic-*) */
-html.dark .cs-drawer-body .lic-status { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
-html.dark .cs-drawer-body .lic-status small { color:#9aa7bd !important; }
-
-/* Panel de Cajas (.rg-*) */
-html.dark .cs-drawer-body .rg-current { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
-html.dark .cs-drawer-body .rg-current.set { background:rgba(37,99,235,.14) !important; border-color:rgba(37,99,235,.4) !important; }
-html.dark .cs-drawer-body .rg-pick { background:#0f1826 !important; border-color:rgba(255,255,255,.12) !important; }
-html.dark .cs-drawer-body .rg-pick:hover { background:#1c2b45 !important; }
-html.dark .cs-drawer-body .rg-item.sel .rg-pick { border-color:#3b82f6 !important; background:rgba(37,99,235,.16) !important; }
-html.dark .cs-drawer-body .rg-name { color:#e5e9f0 !important; }
-html.dark .cs-drawer-body .rg-code { background:rgba(255,255,255,.10) !important; color:#cbd5e1 !important; }
-html.dark .cs-drawer-body .rg-toggle { background:#1e2b44 !important; border-color:rgba(255,255,255,.14) !important; color:#94a3b8 !important; }
-html.dark .cs-drawer-body .rg-toggle:hover { background:#26344f !important; }
-html.dark .cs-drawer-body .rg-toggle .bi-toggle-on { color:#34d399 !important; }
-html.dark .cs-drawer-body .rg-add { border-top-color:rgba(255,255,255,.12) !important; }
-html.dark .cs-drawer-body .rg-note { background:rgba(37,99,235,.12) !important; color:#bfdbfe !important; border-color:rgba(37,99,235,.28) !important; }
-html.dark .cs-drawer-body .rg-empty i { color:#475569 !important; }
+html.dark .cs-drawer-body .hint { color: var(--wx-text-muted); }

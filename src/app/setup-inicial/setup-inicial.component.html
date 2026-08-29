@@ -10,12 +10,12 @@
     <!-- Indicador de pasos -->
     <div class="su-steps" *ngIf="paso <= 3">
       <div class="su-step" [class.on]="paso >= 1" [class.done]="paso > 1">
-        <span class="su-step-num"><i class="bi bi-check" *ngIf="paso > 1"></i><span *ngIf="paso <= 1">1</span></span>
+        <span class="su-step-num"><i class="ph ph-check" *ngIf="paso > 1"></i><span *ngIf="paso <= 1">1</span></span>
         <span class="su-step-label">Licencia</span>
       </div>
       <div class="su-line" [class.on]="paso > 1"></div>
       <div class="su-step" [class.on]="paso >= 2" [class.done]="paso > 2">
-        <span class="su-step-num"><i class="bi bi-check" *ngIf="paso > 2"></i><span *ngIf="paso <= 2">2</span></span>
+        <span class="su-step-num"><i class="ph ph-check" *ngIf="paso > 2"></i><span *ngIf="paso <= 2">2</span></span>
         <span class="su-step-label">Tu negocio</span>
       </div>
       <div class="su-line" [class.on]="paso > 2"></div>
@@ -56,7 +56,7 @@
     <!-- ===== PASO 2: NEGOCIO ===== -->
     <div class="su-body" *ngIf="paso === 2">
       <div class="su-badge-plan">
-        <i class="bi bi-patch-check-fill"></i>
+        <i class="ph-fill ph-seal-check"></i>
         Licencia {{ planTexto }} activada
       </div>
 
@@ -83,14 +83,14 @@
       </div>
 
       <button class="su-btn" (click)="siguienteNegocio()">
-        Continuar <i class="bi bi-arrow-right"></i>
+        Continuar <i class="ph ph-arrow-right"></i>
       </button>
     </div>
 
     <!-- ===== PASO 3: ADMINISTRADOR ===== -->
     <div class="su-body" *ngIf="paso === 3">
       <div class="su-note">
-        <i class="bi bi-shield-lock"></i>
+        <i class="ph ph-shield"></i>
         <span>Esta cuenta tendra acceso total. Guarda bien la contraseña.</span>
       </div>
 
@@ -105,7 +105,7 @@
           <input [type]="verPassword ? 'text' : 'password'" [(ngModel)]="password"
                  placeholder="Minimo 6 caracteres" autocomplete="new-password">
           <button type="button" class="su-eye" (click)="verPassword = !verPassword">
-            <i class="bi" [class.bi-eye]="!verPassword" [class.bi-eye-slash]="verPassword"></i>
+            <i class="ph" [class.ph-eye]="!verPassword" [class.ph-eye-slash]="verPassword"></i>
           </button>
         </div>
         <small [class.su-ok]="passwordValida">
@@ -124,10 +124,10 @@
 
       <div class="su-actions">
         <button class="su-btn ghost" (click)="paso = 2" [disabled]="procesando">
-          <i class="bi bi-arrow-left"></i> Regresar
+          <i class="ph ph-arrow-left"></i> Regresar
         </button>
         <button class="su-btn" (click)="finalizar()" [disabled]="procesando">
-          <i class="bi bi-check2-circle" *ngIf="!procesando"></i>
+          <i class="ph ph-check-circle" *ngIf="!procesando"></i>
           {{ procesando ? 'Configurando...' : 'Finalizar' }}
         </button>
       </div>
@@ -144,34 +144,34 @@
         </div>
 
         <button class="su-ob-card" (click)="elegirImportar()">
-          <i class="bi bi-upload"></i>
+          <i class="ph ph-upload-simple"></i>
           <span class="t">Ya tengo productos en otro sistema</span>
           <span class="d">Importa tu inventario desde un Excel.</span>
         </button>
 
         <button class="su-ob-card" (click)="elegirGiro()">
-          <i class="bi bi-magic"></i>
+          <i class="ph ph-sparkle"></i>
           <span class="t">Empezar de cero</span>
           <span class="d">Te llenamos productos segun tu giro para vender de inmediato.</span>
         </button>
 
         <button class="su-btn ghost full" (click)="terminar()">
-          Omitir por ahora <i class="bi bi-arrow-right"></i>
+          Omitir por ahora <i class="ph ph-arrow-right"></i>
         </button>
       </div>
 
       <!-- Importar (migracion) -->
       <div *ngIf="obVista === 'importar'">
-        <button class="su-back" (click)="volverPregunta()"><i class="bi bi-arrow-left"></i> Regresar</button>
+        <button class="su-back" (click)="volverPregunta()"><i class="ph ph-arrow-left"></i> Regresar</button>
         <app-importador-productos></app-importador-productos>
         <div class="su-actions">
-          <button class="su-btn" (click)="terminar()">Terminar <i class="bi bi-check2-circle"></i></button>
+          <button class="su-btn" (click)="terminar()">Terminar <i class="ph ph-check-circle"></i></button>
         </div>
       </div>
 
       <!-- Catalogo por giro -->
       <div *ngIf="obVista === 'giro'">
-        <button class="su-back" (click)="volverPregunta()"><i class="bi bi-arrow-left"></i> Regresar</button>
+        <button class="su-back" (click)="volverPregunta()"><i class="ph ph-arrow-left"></i> Regresar</button>
         <div class="su-ob-head">
           <h2>Elige tu giro</h2>
           <p>Cargaremos productos base (sin precio) que podras editar despues.</p>
@@ -180,7 +180,7 @@
         <div class="su-giros">
           <button class="su-giro" *ngFor="let g of giros"
                   [disabled]="giroCargando" (click)="cargarGiro(g)">
-            <i class="bi" [ngClass]="g.icono"></i>
+            <i class="ph" [ngClass]="g.icono"></i>
             <span class="g-nombre">{{ g.nombre }}</span>
             <span class="g-count" *ngIf="giroCargando !== g.id">{{ g.productos.length }} productos</span>
             <span class="g-count" *ngIf="giroCargando === g.id">Cargando...</span>
@@ -188,7 +188,7 @@
         </div>
 
         <div class="su-actions">
-          <button class="su-btn" (click)="terminar()">Terminar <i class="bi bi-check2-circle"></i></button>
+          <button class="su-btn" (click)="terminar()">Terminar <i class="ph ph-check-circle"></i></button>
         </div>
       </div>
 

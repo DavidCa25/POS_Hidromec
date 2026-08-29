@@ -26,7 +26,7 @@ export class SupervisorAuthService {
     if (this.auth.esAdmin) return { ok: true, authorizedBy: this.auth.usuarioActualId ?? undefined };
     const res = await Swal.fire({
       title: 'Autorización de supervisor',
-      html: `<p style="font-size:14px;color:#475569;margin:0 0 10px;">${motivo}</p>
+      html: `<p style="font-size:14px;color: var(--wx-text-muted);margin:0 0 10px;">${motivo}</p>
              <input id="sup-user" class="swal2-input" placeholder="Usuario supervisor" autocomplete="off">
              <input id="sup-pass" type="password" class="swal2-input" placeholder="Contraseña">`,
       focusConfirm: false, showCancelButton: true,
