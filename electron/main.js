@@ -10,6 +10,7 @@ const { autoUpdater } = require('electron-updater');
 const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
+const { verificarObjetosCriticos } = require('./verificarObjetos');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
 const logger = require('./logger');
@@ -153,6 +154,33 @@ async function bootMainApp() {
 
   const mig = await runMigrations({ pool, sql, migrationsDir });
   console.log('Migraciones:', mig);
+
+  // Comprobacion de presencia de los objetos SQL criticos, DESPUES de aplicar
+  // las migraciones. Antes de esto, a una instalacion podia faltarle un
+  // procedure durante meses: cada pantalla fallaba por su cuenta y parecia un
+  // problema de datos. Ahora se detecta al arrancar y se dice cual falta.
+  try {
+    const chequeo = await verificarObjetosCriticos(pool);
+    if (chequeo.sinLista) {
+      console.warn('[OBJETOS] Sin lista de objetos criticos: no se verifico nada.');
+    } else if (!chequeo.ok) {
+      const detalle = chequeo.faltantes.join(', ');
+      console.error(`[OBJETOS] Faltan ${chequeo.faltantes.length} objetos criticos: ${detalle}`);
+      dialog.showErrorBox(
+        'Instalacion incompleta',
+        'A esta base de datos le faltan objetos que Wybix necesita para operar:\n\n' +
+        chequeo.faltantes.map(n => `  · ${n}`).join('\n') +
+        '\n\nNo se puede continuar de forma segura. Contacta a soporte con este mensaje.',
+      );
+      app.quit();
+      return;
+    } else {
+      console.log(`[OBJETOS] ${chequeo.comprobados} objetos criticos presentes.`);
+    }
+  } catch (e) {
+    // Un fallo de la propia comprobacion no debe impedir vender.
+    console.error('[OBJETOS] No se pudo verificar:', e.message);
+  }
 
   mainWindow = createWindow();
   backup.startScheduler();

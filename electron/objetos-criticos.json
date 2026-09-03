@@ -1,0 +1,66 @@
+{
+  "generado": "2026-09-03T05:42:01.304Z",
+  "nota": "Generado por scripts/db/extraer.mjs. No editar a mano.",
+  "objetos": [
+    {
+      "nombre": "sp_close_shift",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_get_active_products",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_get_actual_folio",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_get_open_shift",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_get_registers",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_login_user",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_open_shift",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_refund_sale",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_register_cash_out",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_register_customer_payment",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_register_purchase",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_register_sale",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_register_supplier_payment",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "PurchaseDetailType",
+      "tipo": "tipo"
+    },
+    {
+      "nombre": "SaleDetailType",
+      "tipo": "tipo"
+    }
+  ]
+}

@@ -11,7 +11,14 @@
     "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\"",
     "pack": "electron-builder --dir",
     "dist": "npm run build && electron-builder",
-    "publish": "npm run build && electron-builder --publish always"
+    "publish": "npm run build && electron-builder --publish always",
+    "db:extract": "node scripts/db/extraer.mjs",
+    "db:extract-schema": "node scripts/db/extraer-esquema.mjs",
+    "db:verify": "node scripts/db/verificar.mjs",
+    "db:migration": "node scripts/db/generar-migracion.mjs",
+    "db:test-migration": "node scripts/db/probar-migracion.mjs",
+    "db:compare-schema": "node scripts/db/comparar-esquema.mjs",
+    "db:test-rebuild": "node scripts/db/probar-reconstruccion.mjs"
   },
   "prettier": {
     "overrides": [
