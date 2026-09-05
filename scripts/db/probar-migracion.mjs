@@ -23,7 +23,10 @@ import { checksum, desenvolver } from './lib/canonico.mjs';
 
 const CONSERVAR = process.argv.includes('--conservar');
 const TEMP_DB = 'Wybix_MigTest';
-const BAK = resolve('installer/template.bak');
+// Por defecto el baseline: es el punto de partida real de una instalacion
+// nueva. Con --bak se puede apuntar a otro respaldo.
+const iBak = process.argv.indexOf('--bak');
+const BAK = resolve(iBak > 0 ? process.argv[iBak + 1] : 'installer/template.bak');
 const SERVIDOR = process.env.WYBIX_DB_SERVER || 'localhost';
 
 if (!existsSync(BAK)) { console.error('No existe', BAK); process.exit(1); }
@@ -154,19 +157,27 @@ try {
   if (tiposBase.has('ProductImportType')) bien('ProductImportType creado');
   else mal('ProductImportType no se creo');
 
-  // Los 20 objetos de la migracion 0007 deben coincidir con Git.
-  const mig = readFileSync(join(dir, '0007_completar-procedures-desde-template.sql'), 'utf8');
-  const enMig = [...mig.matchAll(/^\/\* -+ (\S+) \(/gm)].map(m => m[1]);
+  // Todo objeto que toque una migracion debe quedar igual que en Git: una
+  // migracion que deja la base en un estado que el repositorio no describe es
+  // deriva recien creada. Con el historial productivo en cero no hay ninguna,
+  // y la comprobacion queda vacia hasta que exista la primera.
+  const tocados = [];
+  for (const f of archivos) {
+    const texto = readFileSync(join(dir, f), 'utf8');
+    for (const m of texto.matchAll(/^\/\* -+ (\S+) \(/gm)) tocados.push(m[1]);
+  }
   let iguales = 0;
-  for (const n of enMig) {
+  for (const n of [...new Set(tocados)]) {
     const o = manifiesto.objetos.find(x => x.nombre === n);
     if (!o || o.tipo === 'USER_TABLE_TYPE') continue;
     const enBase = modsBase.get(n);
     const git = desenvolver(readFileSync(o.archivo, 'utf8'));
     if (enBase && git && checksum(enBase) === checksum(git)) iguales++;
-    else mal(`0007 no dejo ${n} igual que Git`);
+    else mal(`la migracion no dejo ${n} igual que Git`);
   }
-  bien(`${iguales} objetos de 0007 coinciden con su definicion canonica`);
+  bien(tocados.length
+    ? `${iguales} objetos tocados por migraciones coinciden con su definicion canonica`
+    : 'ninguna migracion pendiente que comprobar: el baseline ya trae todo');
 
   // Datos intactos.
   paso('5. Datos conservados');

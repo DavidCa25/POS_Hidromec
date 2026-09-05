@@ -17,19 +17,14 @@
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { leerEsquema, ddlTabla, huellaTabla } from './lib/esquema.mjs';
+import { leerEsquema, ddlTabla, huellaTabla, TABLAS_INFRAESTRUCTURA } from './lib/esquema.mjs';
 
 const DRY = process.argv.includes('--dry');
 const iBase = process.argv.indexOf('--base');
 const BASE = iBase > 0 ? process.argv[iBase + 1] : 'Wybix_Production';
 const DESTINO = join('sql', 'schema', 'tables');
 
-/**
- * Tablas que NO forman parte del producto y no deben versionarse como esquema
- * propio. `schema_migrations` la crea la migracion 0001: versionarla aqui
- * duplicaria su definicion en dos sitios.
- */
-const EXCLUIDAS = new Set(['schema_migrations']);
+const EXCLUIDAS = TABLAS_INFRAESTRUCTURA;
 
 const esquema = leerEsquema(BASE).filter(t => !EXCLUIDAS.has(t.nombre));
 const excluidas = leerEsquema(BASE).filter(t => EXCLUIDAS.has(t.nombre)).map(t => t.nombre);

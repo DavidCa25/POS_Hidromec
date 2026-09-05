@@ -15,6 +15,8 @@
  *   EXTRA      esta en la base y no en Git. Sin fuente: hay que rescatarlo.
  *   PENDIENTE  esta en Git y se sabe que aun no se ha desplegado
  *              (`ausenteEnBase`). No es un error.
+ *   EXCLUIDO   esta en Git pero el baseline no lo despliega a proposito
+ *              (clase `legacy`). Su ausencia es lo correcto.
  *
  * Sobre el checksum: se calcula sobre la forma canonica descrita en
  * lib/canonico.mjs, que unifica CREATE/ALTER y el espacio final de linea.
@@ -23,7 +25,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { consultar } from './lib/sql.mjs';
 import { checksum, desenvolver, normalizar } from './lib/canonico.mjs';
-import { leerEsquema, huellaTabla } from './lib/esquema.mjs';
+import { leerEsquema, huellaTabla, TABLAS_INFRAESTRUCTURA } from './lib/esquema.mjs';
+import { clasificacionDe } from './lib/catalogo.mjs';
 import { createHash } from 'node:crypto';
 
 const args = process.argv.slice(2).filter(a => !a.startsWith('--'));
@@ -51,7 +54,7 @@ const tiposBase = new Set(
 );
 
 // ---------------------------------------------------------------- comparacion
-const res = { ok: [], falta: [], derivado: [], pendiente: [], sinArchivo: [] };
+const res = { ok: [], falta: [], derivado: [], pendiente: [], excluido: [], sinArchivo: [] };
 
 for (const o of manifiesto.objetos) {
   const esTipo = o.tipo === 'USER_TABLE_TYPE';
@@ -66,7 +69,13 @@ for (const o of manifiesto.objetos) {
 
   const enBase = modsBase.get(o.nombre);
   if (!enBase) {
-    (o.ausenteEnBase ? res.pendiente : res.falta).push(o);
+    // Un objeto `legacy` ausente no es un hueco: el baseline lo deja fuera a
+    // proposito. Contarlo como FALTA obligaria a mirar el detalle en cada
+    // verificacion para descartar lo mismo una y otra vez.
+    const clase = clasificacionDe(o.nombre);
+    if (clase === 'legacy') res.excluido.push(o);
+    else if (clase === 'futuro' || o.ausenteEnBase) res.pendiente.push(o);
+    else res.falta.push(o);
     continue;
   }
 
@@ -85,7 +94,7 @@ const extra = [...modsBase.keys()].filter(n => !enManifiesto.has(n)).sort();
 const esq = { ok: [], falta: [], derivada: [], extra: [] };
 if (manifiesto.esquema) {
   const enBase = new Map(leerEsquema(DB).map(t => [t.nombre, t]));
-  const excluidas = new Set(manifiesto.esquema.excluidas || []);
+  const excluidas = new Set([...(manifiesto.esquema.excluidas || []), ...TABLAS_INFRAESTRUCTURA]);
   const enGit = new Map(manifiesto.esquema.objetos.map(o => [o.nombre, o]));
 
   for (const o of manifiesto.esquema.objetos) {
@@ -122,6 +131,7 @@ console.log(`    OK         ${String(res.ok.length).padStart(3)} / ${total}`);
 console.log(`    FALTA      ${String(res.falta.length).padStart(3)}`);
 console.log(`    DERIVADO   ${String(res.derivado.length).padStart(3)}`);
 console.log(`    PENDIENTE  ${String(res.pendiente.length).padStart(3)}   (aun no desplegado, esperado)`);
+console.log(`    EXCLUIDO   ${String(res.excluido.length).padStart(3)}   (legacy: el baseline no lo despliega)`);
 console.log(`    EXTRA      ${String(extra.length).padStart(3)}   (en la base, sin fuente en Git)`);
 if (res.sinArchivo.length) console.log(`    SIN ARCHIVO ${res.sinArchivo.length}`);
 

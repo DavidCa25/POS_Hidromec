@@ -15,7 +15,9 @@ sql/
   schema/tables/         una tabla por archivo, con sus claves e índices
   procedures/<dominio>/  una definición canónica por procedure
   types/                 tipos de tabla (SaleDetailType, PurchaseDetailType…)
+  baseline/v1/           infraestructura de versionado y seed estructural
   _heredado/             archivos sueltos anteriores. Ver su LEEME.md
+  _historial-preproduccion/  migraciones anteriores al baseline. No se aplican
 ```
 
 Los dominios (`sales`, `cash`, `inventory`, `suppliers`, `billing`, `security`,
@@ -23,8 +25,10 @@ Los dominios (`sales`, `cash`, `inventory`, `suppliers`, `billing`, `security`,
 `scripts/db/lib/catalogo.mjs`. Un objeto que no esté catalogado se extrae a
 `sin-clasificar/` y el extractor lo reporta: nada entra al árbol sin decisión.
 
-**El historial incremental sigue en `electron/migrations/`.** Este árbol dice
-*cómo debe quedar* cada objeto; las migraciones dicen *cómo se llega*.
+**El historial incremental vive en `electron/migrations/`, hoy vacío.** Este
+árbol dice *cómo debe quedar* cada objeto; las migraciones dicen *cómo se
+llega* desde una instalación ya entregada. Desde Baseline V1 no hay ninguna:
+una base nueva nace completa. Ver «El baseline» más abajo.
 
 ---
 
@@ -41,14 +45,18 @@ npm run db:migration -- 0008 nombre sp_x sp_y     # compone una migración
 npm run db:test-migration              # instalación limpia + migraciones, en BD temporal
 npm run db:test-rebuild                # levanta una base entera SOLO desde Git
 npm run db:compare-schema -- BaseA BaseB          # diferencias de esquema entre dos bases
+
+npm run db:baseline                    # construye template.bak V1 desde Git
+npm run db:test-install                # abre ese .bak como lo abriría una caja nueva
 ```
 
 `db:verify`, `db:extract`, `db:extract-schema` y `db:compare-schema` son de
 **solo lectura**: `scripts/db/lib/sql.mjs` rechaza cualquier consulta que
 contenga una sentencia de escritura.
 
-`db:test-migration` y `db:test-rebuild` son los únicos que escriben, y solo
-sobre una base temporal que ellos mismos crean y borran.
+`db:test-migration`, `db:test-rebuild`, `db:baseline` y `db:test-install` son
+los únicos que escriben, y solo sobre una base temporal que ellos mismos crean
+y borran.
 `scripts/db/lib/temporal.mjs` rechaza cualquier nombre de base que no encaje
 con el patrón temporal, así que no puede tocar una base de trabajo por error.
 
@@ -81,10 +89,15 @@ actualización.
 
 ### Numeración
 
-**Los números `003`, `004`, `005` y `006` están quemados.** Existen como
-archivos vacíos y están registrados como aplicados en `schema_migrations` de
-instalaciones reales; el runner nunca los volvería a ejecutar. La siguiente
-migración válida es la que siga a la última usada (`0007`).
+**El historial productivo arranca de cero en Baseline V1.** La primera
+migración real se llamará `0001_<primer_cambio_real>.sql`.
+
+Los números `0001`, `0002`, `003`–`006` y `0007` que se usaron antes **no
+cuentan**: pertenecen al periodo de desarrollo, están archivados en
+`sql/_historial-preproduccion/` y ninguna instalación productiva depende de
+ellos. No hay riesgo de colisión porque no existe ninguna base productiva con
+esos nombres registrados; las que los tienen son máquinas de prueba, y la ruta
+para ellas es reinstalar desde el `.bak` del baseline.
 
 ---
 
@@ -208,22 +221,96 @@ Es la comprobación de que el árbol canónico está completo.
 
 ---
 
-## Actualizar el baseline (`template.bak`)
+## El baseline
 
-Todavía **no** se ha hecho, a propósito. Primero había que demostrar que
+`installer/template.bak` es **WYBIX DATABASE BASELINE V1**: el punto de partida
+de toda instalación nueva, y el **único** template oficial. Es el archivo que
+`electron/setupServer.js` restaura y el único que `package.json` empaqueta en
+`extraResources`. No debe existir un segundo `.bak` en `installer/`: dos
+artefactos equivalentes solo sirven para divergir.
+
+Lo importante es de dónde sale. No es una copia de `Wybix_Production` ni de
+ninguna otra base viva: `npm run db:baseline` crea una base temporal **vacía** y
+la llena solo con lo que hay en este árbol, en este orden:
 
 ```
-template.bak  +  migraciones  =  estado CURRENT
+base temporal vacía
+  ↓  sql/schema/tables/          tablas → CHECK → FK → índices
+  ↓  sql/types/                  tipos de tabla
+  ↓  sql/procedures/             procedures desplegables
+  ↓  sql/baseline/v1/00_*.sql    schema_migrations + database_metadata
+  ↓  sql/baseline/v1/01_seed.sql seed estructural
+  ↓  verificación
+  ↓  BACKUP DATABASE             solo si todo pasó
+installer/template.bak
 ```
 
-lo cual `npm run db:test-migration` ya confirma. Cuando se decida cortar un
-baseline nuevo, el orden razonable sería:
+El `BACKUP` es el último paso y solo se ejecuta si la verificación pasó, así que
+un fallo nunca deja el template a medias.
 
-1. Restaurar `template.bak` en una base limpia.
-2. Aplicar todas las migraciones.
-3. Verificar con `db:verify` que da `0 FALTA` y `0 DERIVADO`.
-4. Respaldar esa base como el nuevo `template.bak`.
-5. **Conservar las migraciones**: las instalaciones existentes siguen
-   necesitándolas para llegar al mismo punto.
+Eso invierte la relación que había antes: **Git es la fuente de verdad y el
+`.bak` es un artefacto derivado**, reproducible en cualquier momento. Si el
+archivo se pierde, se regenera con un comando.
 
-Mientras tanto, `template.bak` es el baseline y las migraciones son el camino.
+### Qué se despliega y qué no
+
+`scripts/db/lib/catalogo.mjs` clasifica cada objeto:
+
+| Clase | Cuántos | Se despliega | Qué es |
+|---|---|---|---|
+| `current` | 98 | sí | producto |
+| `incierto` | 7 | sí | los `sp_WA_*`: existen, compilan y hoy ya viajan dentro del template, pero ningún punto del código los invoca |
+| `futuro` | 2 | **no** | `sp_import_sales` y `sp_cloud_daily_profit`: escritos, nunca desplegados, y hoy no compilan contra el esquema real |
+| `legacy` | 1 | **no** | `sp_mig_test` |
+
+**Total desplegado: 105 de 108.** `repartirPorClase()` en
+`scripts/db/lib/catalogo.mjs` es la única definición de ese conjunto:
+`db:baseline`, `db:test-rebuild`, `db:test-install` y `db:verify` la consumen,
+ninguno vuelve a filtrar por su cuenta. Cuando `db:test-rebuild` decidía solo,
+desplegaba los 108 del manifiesto y metía `sp_mig_test` en la base — reportaba
+106 donde el baseline reportaba 105.
+
+Los `futuro` se quedan en Git a propósito: perderlos sería perder trabajo hecho.
+El baseline comprueba explícitamente que ninguno de los dos grupos de abajo se
+haya colado en la base.
+
+### Seed estructural
+
+Solo tres filas, y ninguna es dato de negocio:
+
+| Tabla | Fila | Por qué es obligatoria |
+|---|---|---|
+| `registers` | `C1` / Caja 1 | `sp_register_sale` resuelve la caja contra esta tabla |
+| `WA_Configuracion` | singleton, `Activo = 0` | `sp_WA_UpdateConfiguracion` hace `UPDATE` sin upsert: sin la fila el módulo queda inerte sin avisar |
+| `database_metadata` | `baseline_version = 1` | de qué punto de partida nació la base |
+
+**Cero usuarios y cero `business_config`**: el alta del primer administrador es
+de `sp_setup_inicial`, ya en manos del cliente. No se entrega ninguna credencial
+por defecto.
+
+### La tabla `database_metadata`
+
+Responde a lo que `schema_migrations` no puede responder tras un reseteo de
+historial: *¿desde qué punto de partida nació esta base?* Sin ella, una base
+recién instalada y una base vieja a la que alguien le vaciara la tabla de
+migraciones serían indistinguibles.
+
+Junto con `schema_migrations`, es infraestructura del mecanismo de versionado,
+no esquema de producto. Por eso vive en `sql/baseline/v1/` y por eso
+`db:extract-schema` la excluye: versionarla junto al producto duplicaría su
+definición y haría que el contenido de sus filas —distinto en cada
+instalación— apareciera como deriva.
+
+### Cortar un baseline nuevo (V2)
+
+Cuando el árbol canónico se aleje lo suficiente del `.bak` actual:
+
+1. `npm run db:baseline` — construye, verifica y sustituye `installer/template.bak`.
+2. `npm run db:test-install` — lo abre como lo abriría una caja nueva.
+3. **Conservar las migraciones productivas**: las instalaciones ya entregadas
+   siguen necesitándolas para llegar al mismo punto. Un baseline nuevo solo
+   cambia el punto de partida de las instalaciones futuras.
+
+El paso 3 es la diferencia con lo que se hizo en V1. Allí se pudo vaciar el
+historial porque **ninguna instalación productiva dependía de él**. Eso deja de
+ser cierto en cuanto haya un cliente real con una migración aplicada.

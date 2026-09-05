@@ -32,6 +32,15 @@ export function tipoSql(c) {
 }
 
 /** Inventario completo del esquema de una base. */
+/**
+ * Tablas que usa el mecanismo de versionado, no el negocio.
+ *
+ * No se versionan como esquema de producto (su definicion canonica esta en
+ * `sql/baseline/v1/00_infraestructura.sql`) y no cuentan como EXTRA al
+ * verificar: el contenido de sus filas es distinto en cada instalacion.
+ */
+export const TABLAS_INFRAESTRUCTURA = new Set(['schema_migrations', 'database_metadata']);
+
 export function leerEsquema(db) {
   const tablas = consultar(db, `
     SELECT t.object_id AS oid, t.name

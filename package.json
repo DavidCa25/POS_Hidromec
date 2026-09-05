@@ -18,7 +18,9 @@
     "db:migration": "node scripts/db/generar-migracion.mjs",
     "db:test-migration": "node scripts/db/probar-migracion.mjs",
     "db:compare-schema": "node scripts/db/comparar-esquema.mjs",
-    "db:test-rebuild": "node scripts/db/probar-reconstruccion.mjs"
+    "db:test-rebuild": "node scripts/db/probar-reconstruccion.mjs",
+    "db:baseline": "node scripts/db/construir-baseline.mjs",
+    "db:test-install": "node scripts/db/probar-instalacion.mjs"
   },
   "prettier": {
     "overrides": [

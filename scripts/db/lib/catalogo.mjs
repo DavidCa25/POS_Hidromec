@@ -138,3 +138,72 @@ export function dominioDe(nombre) {
 export function esCritico(nombre) {
   return CRITICOS.includes(nombre);
 }
+
+/* ------------------------------------------------------------------------ *
+ * Clasificacion para WYBIX DATABASE BASELINE V1
+ *
+ * Decide QUE se despliega en una instalacion nueva. Es distinta de
+ * `NO_INVOCADOS`, que solo dice si el codigo actual llama al objeto:
+ *
+ *   current   Forma parte del producto. Se despliega en el baseline.
+ *   incierto  Existe, compila y HOY viaja dentro de template.bak, pero ningun
+ *             punto del codigo lo invoca. Se sigue desplegando para no alterar
+ *             lo que las instalaciones ya reciben; queda marcado para decidir.
+ *   futuro    Escrito pero nunca desplegado, y hoy NO compila contra el
+ *             esquema real. Se versiona, no se despliega.
+ *   legacy    Resto de una etapa anterior. Se conserva en cuarentena y queda
+ *             fuera del baseline productivo.
+ * ------------------------------------------------------------------------ */
+
+/** Escrito pero nunca desplegado. No compila contra el esquema actual. */
+export const FUTUROS = {
+  sp_import_sales: 'Importador de ventas. Nunca aplicado; su primer parametro no existe en el esquema.',
+  sp_cloud_daily_profit: 'cloudSync lo llama en try/catch tolerando su ausencia. Referencia products.last_cost, columna inexistente.',
+};
+
+export function clasificacionDe(nombre) {
+  if (FUTUROS[nombre]) return 'futuro';
+  const n = NO_INVOCADOS[nombre];
+  if (n === 'legacy') return 'legacy';
+  if (n === 'incierto') return 'incierto';
+  return 'current';
+}
+
+/** ¿Entra este objeto en una instalacion nueva? */
+export function esDesplegable(nombre) {
+  const c = clasificacionDe(nombre);
+  return c === 'current' || c === 'incierto';
+}
+
+/**
+ * Reparte los objetos de un manifiesto por clase de despliegue.
+ *
+ * Esta es la UNICA definicion de "que entra en una instalacion". Antes cada
+ * script decidia por su cuenta y no coincidian: `db:test-rebuild` desplegaba
+ * los 108 del manifiesto sin mirar la clasificacion, asi que metia
+ * `sp_mig_test` —legacy— en la base y reportaba 106 donde el baseline
+ * reportaba 105. Cualquier herramienta que necesite el conjunto desplegable
+ * debe llamar aqui, no filtrar por su cuenta.
+ *
+ * `desplegables` conserva el orden del manifiesto a proposito: no se
+ * reconstruye concatenando grupos.
+ */
+export function repartirPorClase(objetos) {
+  const grupos = { current: [], incierto: [], futuro: [], legacy: [] };
+  for (const o of objetos) grupos[clasificacionDe(o.nombre)].push(o);
+  return {
+    ...grupos,
+    desplegables: objetos.filter(o => esDesplegable(o.nombre)),
+    noDesplegables: objetos.filter(o => !esDesplegable(o.nombre)),
+  };
+}
+
+/** Resumen de una linea por clase, para que los informes digan lo mismo. */
+export function lineasDeClase(r) {
+  return [
+    `   CURRENT   ${String(r.current.length).padStart(3)}  desplegados`,
+    `   UNCERTAIN ${String(r.incierto.length).padStart(3)}  desplegados (hoy ya viajan dentro del template)`,
+    `   FUTURE    ${String(r.futuro.length).padStart(3)}  NO desplegados: ${r.futuro.map(o => o.nombre).join(', ') || '-'}`,
+    `   LEGACY    ${String(r.legacy.length).padStart(3)}  NO desplegados: ${r.legacy.map(o => o.nombre).join(', ') || '-'}`,
+  ].join('\n');
+}

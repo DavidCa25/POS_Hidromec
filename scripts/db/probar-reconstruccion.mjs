@@ -21,10 +21,16 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { crearVacia, eliminar, ejecutar } from './lib/temporal.mjs';
+import { crearVacia, eliminar, ejecutarVarios } from './lib/temporal.mjs';
 import { consultar } from './lib/sql.mjs';
 import { leerEsquema, huellaTabla } from './lib/esquema.mjs';
 import { checksum, desenvolver } from './lib/canonico.mjs';
+import { fases, ORDEN } from './lib/fases.mjs';
+import { repartirPorClase, lineasDeClase } from './lib/catalogo.mjs';
+
+/** Parte un archivo `.sql` en los lotes que separa GO. */
+const lotesDe = (texto) =>
+  texto.replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n?/gi).map(x => x.trim()).filter(Boolean);
 
 const CONSERVAR = process.argv.includes('--conservar');
 const TMP = 'Wybix_RebuildTest';
@@ -33,31 +39,6 @@ let fallos = 0;
 const mal = (t) => { console.log(`   FALLA  ${t}`); fallos++; };
 const bien = (t) => console.log(`   ok     ${t}`);
 const paso = (t) => console.log(`\n── ${t}`);
-
-/**
- * Reparte las sentencias de un archivo de tabla en fases.
- *
- * Hace falta porque una FK no puede crearse antes que la tabla a la que
- * apunta, y los archivos estan organizados por tabla, no por dependencia. Los
- * marcadores los pone el propio generador, asi que la clasificacion es exacta.
- */
-function fases(sql) {
-  const bloques = sql.replace(/\r\n/g, '\n').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  const r = { tabla: [], check: [], fk: [], indice: [] };
-  for (const b of bloques) {
-    const codigo = b.replace(/\/\*[\s\S]*?\*\//g, '').trim();
-    if (!codigo) continue;                                   // solo comentario
-    // Se clasifica por lo que HACE la sentencia, no por el marcador que la
-    // envuelve: las constraints que en origen no tenian nombre se emiten sin
-    // guarda `IF OBJECT_ID`, y clasificarlas por la guarda las mandaba a la
-    // fase de tablas — creando una FK antes que la tabla referenciada.
-    if (/\bFOREIGN\s+KEY\b/i.test(codigo)) r.fk.push(b);
-    else if (/^\s*(IF[\s\S]*?)?ALTER\s+TABLE[\s\S]*\bCHECK\b/i.test(codigo) && !/\bFOREIGN\s+KEY\b/i.test(codigo)) r.check.push(b);
-    else if (/\bCREATE\s+(UNIQUE\s+)?(NON)?CLUSTERED\s+INDEX\b/i.test(codigo)) r.indice.push(b);
-    else r.tabla.push(b);
-  }
-  return r;
-}
 
 try {
   paso('1. Crear base temporal vacia');
@@ -73,14 +54,13 @@ try {
     const p = fases(readFileSync(join(dirT, f), 'utf8'));
     for (const k of Object.keys(todo)) todo[k].push(...p[k]);
   }
-  for (const fase of ['tabla', 'check', 'fk', 'indice']) {
-    let err = 0;
-    for (const s of todo[fase]) {
-      const r = ejecutar(TMP, s, { permitirFallo: true });
-      if (!r.ok) { err++; if (err === 1) console.log(`          ${r.error.split('\n')[0].slice(0, 130)}`); }
-    }
-    if (err) mal(`fase ${fase}: ${err} de ${todo[fase].length} sentencias fallaron`);
-    else bien(`fase ${fase}: ${todo[fase].length} sentencias`);
+  for (const fase of ORDEN) {
+    const r = ejecutarVarios(TMP, todo[fase]);
+    const err = r.filter(x => !x.ok);
+    if (err.length) {
+      mal(`fase ${fase}: ${err.length} de ${todo[fase].length} sentencias fallaron`);
+      console.log(`          ${err[0].error.split('\n')[0].slice(0, 130)}`);
+    } else bien(`fase ${fase}: ${todo[fase].length} sentencias`);
   }
 
   // --------------------------------------------------------------- tipos
@@ -88,40 +68,58 @@ try {
   const dirTy = join('sql', 'types');
   let errT = 0;
   for (const f of readdirSync(dirTy).filter(f => f.endsWith('.sql')).sort()) {
-    const r = ejecutar(TMP, readFileSync(join(dirTy, f), 'utf8'), { permitirFallo: true });
-    if (!r.ok) { errT++; console.log(`          ${f}: ${r.error.split('\n')[0].slice(0, 120)}`); }
+    const r = ejecutarVarios(TMP, lotesDe(readFileSync(join(dirTy, f), 'utf8'))).find(x => !x.ok);
+    if (r) { errT++; console.log(`          ${f}: ${r.error.split('\n')[0].slice(0, 120)}`); }
   }
   errT ? mal(`${errT} tipos fallaron`) : bien('3 tipos creados');
 
   // ---------------------------------------------------------- procedures
   paso('4. Procedures desde sql/procedures/');
   const manifiesto = JSON.parse(readFileSync('sql/manifest.json', 'utf8'));
-  const procs = manifiesto.objetos.filter(o => o.tipo === 'SQL_STORED_PROCEDURE');
+  const todosProcs = manifiesto.objetos.filter(o => o.tipo === 'SQL_STORED_PROCEDURE');
+  // El conjunto desplegable lo decide `lib/catalogo.mjs`, no este script. Antes
+  // aqui se desplegaban los 108 del manifiesto sin mirar la clasificacion, y
+  // por eso `sp_mig_test` —legacy— acababa dentro de la base reconstruida.
+  const clases = repartirPorClase(todosProcs);
+  const procs = clases.desplegables;
+  console.log(lineasDeClase(clases));
   const fallidos = [];
   const enMaster = [];
+  const plan = [];
   for (const o of procs) {
     if (!existsSync(o.archivo)) { fallidos.push([o.nombre, 'sin archivo']); continue; }
-    const texto = readFileSync(o.archivo, 'utf8').replace(/\r\n/g, '\n');
     // El archivo trae SET ... GO cuerpo GO: se aplica lote a lote.
-    const lotes = texto.split(/\n\s*GO\s*\n?/gi).map(s => s.trim()).filter(Boolean);
-    for (const l of lotes) {
-      let r = ejecutar(TMP, l, { permitirFallo: true });
-      // Ocho procedures de Wybix estan creados por error en la base `master`.
-      // Por la resolucion especial de nombres `sp_`, un CREATE OR ALTER sobre
-      // una base donde aun no existen resuelve contra la copia de master y
-      // falla con el error 208. `CREATE` a secas no sufre esa resolucion.
-      if (!r.ok && /Invalid object name .dbo\.sp_/i.test(r.error)) {
-        r = ejecutar(TMP, l.replace(/CREATE OR ALTER(\s+)PROCEDURE/i, 'CREATE$1PROCEDURE'),
-          { permitirFallo: true });
-        if (r.ok) enMaster.push(o.nombre);
-      }
-      if (!r.ok) { fallidos.push([o.nombre, r.error.split('\n')[0].slice(0, 120)]); break; }
-    }
+    for (const l of lotesDe(readFileSync(o.archivo, 'utf8'))) plan.push({ nombre: o.nombre, sql: l });
   }
+  const res = ejecutarVarios(TMP, plan.map(x => x.sql));
+
+  // Ocho procedures de Wybix estan creados por error en la base `master`. Por
+  // la resolucion especial de nombres `sp_`, un CREATE OR ALTER sobre una base
+  // donde aun no existen resuelve contra la copia de master y falla con el
+  // error 208. `CREATE` a secas no sufre esa resolucion. Se reintenta el
+  // archivo entero: las opciones SET del primer lote son las que quedan
+  // grabadas con el procedure.
+  const porMaster = new Set();
+  const rotos = new Map();
+  res.forEach((r, i) => {
+    if (r.ok) return;
+    const { nombre, sql } = plan[i];
+    if (/Invalid object name .dbo\.sp_/i.test(r.error) && /CREATE OR ALTER\s+PROCEDURE/i.test(sql)) porMaster.add(nombre);
+    else if (!rotos.has(nombre)) rotos.set(nombre, r.error.split('\n')[0].slice(0, 120));
+  });
+  for (const nombre of porMaster) {
+    const o = procs.find(x => x.nombre === nombre);
+    const lotes = lotesDe(readFileSync(o.archivo, 'utf8'))
+      .map(l => l.replace(/CREATE OR ALTER(\s+)PROCEDURE/i, 'CREATE$1PROCEDURE'));
+    const f2 = ejecutarVarios(TMP, lotes).find(x => !x.ok);
+    if (f2) rotos.set(nombre, f2.error.split('\n')[0].slice(0, 120));
+    else enMaster.push(nombre);
+  }
+  for (const [n, e] of rotos) fallidos.push([n, e]);
   if (fallidos.length) {
     mal(`${fallidos.length} de ${procs.length} procedures no compilaron`);
     for (const [n, e] of fallidos) console.log(`          ${n}: ${e}`);
-  } else bien(`${procs.length} procedures creados`);
+  } else bien(`${procs.length} de ${todosProcs.length} procedures desplegados`);
   if (enMaster.length) {
     console.log(`          AVISO: ${enMaster.length} exigieron CREATE en vez de CREATE OR ALTER`);
     console.log(`          porque tambien existen en master: ${enMaster.join(', ')}`);
@@ -149,7 +147,7 @@ try {
   let pOk = 0, pDif = [];
   for (const o of procs) {
     const b = mods.get(o.nombre);
-    if (!b) continue;
+    if (!b) continue;   // no compilo: ya se reporto arriba
     const g = desenvolver(readFileSync(o.archivo, 'utf8'));
     if (g && checksum(g) === checksum(b)) pOk++; else pDif.push(o.nombre);
   }
@@ -158,6 +156,10 @@ try {
 
   const tipos = consultar(TMP, `SELECT name FROM sys.table_types WHERE schema_id = SCHEMA_ID('dbo');`);
   console.log(`   tipos de tabla: ${tipos.length}`);
+
+  const noDeben = clases.noDesplegables.filter(o => mods.has(o.nombre)).map(o => o.nombre);
+  noDeben.length ? mal(`objetos no desplegables presentes en la base: ${noDeben.join(', ')}`)
+                 : bien(`FUTURE (${clases.futuro.length}) y LEGACY (${clases.legacy.length}) correctamente excluidos`);
 
   const criticos = [
     ...manifiesto.objetos.filter(o => o.critico).map(o => o.nombre),
