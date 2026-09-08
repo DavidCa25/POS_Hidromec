@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe } from '@angular/common';
@@ -7,6 +7,7 @@ import { ReportService, ReportConfig } from '../services/report.service';
 import { CatalogoItem } from '../services/catalogos.service';
 import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.component';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
+import { CapabilityService, HospitalityService, InventoryMode, Uom } from '../core';
 
 
 interface ProductRow {
@@ -27,6 +28,11 @@ interface ProductRow {
   objeto_impuesto?: string;
   tasa_iva?: number;
   default_supplier_name?: string;
+  inventory_mode?: InventoryMode;
+  sellable?: boolean | number;
+  base_uom?: string;
+  allow_decimal_qty?: boolean | number;
+  image_version?: number;
 }
 
 interface ProductForm {
@@ -43,7 +49,34 @@ interface ProductForm {
   claveUnidadDesc: string;   
   objetoImpuesto: string;   
   tasaIva: number;           
+  /**
+   * Como se controla el producto. Ya existia en products y en los procedures
+   * desde el dominio Hospitality; lo que faltaba era poder decirlo desde aqui,
+   * asi que todo nacia DIRECT / vendible / pza aunque fuera un ingrediente.
+   *
+   * Los dos ejes son independientes a proposito: un producto DIRECT puede
+   * venderse en caja Y usarse como ingrediente de una receta.
+   */
+  inventoryMode: InventoryMode;
+  sellable: boolean;
+  baseUom: string;
+  allowDecimalQty: boolean;
+  /**
+   * Si el producto lleva codigo de barras. No es una columna: `bar_code` ya
+   * admite NULL. Es solo la forma de decir "este no tiene" sin dejar un campo
+   * de texto vacio pidiendo atencion en cada alta.
+   */
+  tieneCodigoBarras: boolean;
 }
+
+/** Valores con los que nace un producto Retail: identicos a los de antes. */
+const CONTROL_RETAIL = {
+  inventoryMode: 'DIRECT' as InventoryMode,
+  sellable: true,
+  baseUom: 'pza',
+  allowDecimalQty: false,
+  tieneCodigoBarras: false,
+};
 
 interface CategoryRow { id: number; namee: string; }
 interface BrandRow { id: number; namee: string; }
@@ -72,8 +105,360 @@ export class Inventario {
   form: ProductForm = {
     brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
     claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-    objetoImpuesto: '02', tasaIva: 0.16
+    objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL
   };
+
+  // ----------------------------------------------------- presentaciones
+  /**
+   * Como se COMPRA este producto, cuando no se compra de uno en uno.
+   *
+   * `product_presentations` y la conversion en `sp_register_purchase` existian
+   * desde el dominio Hospitality, pero no habia forma de definir ninguna: la
+   * tabla, sus tres procedimientos y el canal estaban completos y sin una sola
+   * pantalla que los alcanzara.
+   *
+   * `factor_to_base` es cuantas unidades base trae la presentacion: una caja
+   * de 1 L de leche son 1000 ml. Comprar 5 cajas sube el inventario 5000.
+   */
+  presentaciones: { id: number | null; name: string; factorToBase: number | null }[] = [];
+  /** Las que habia al abrir: al guardar, lo que ya no este se da de baja. */
+  private presentacionesOriginales: number[] = [];
+
+  get gestionaPresentaciones(): boolean {
+    return this.caps.hospitality && this.capturaStock;
+  }
+
+  agregarPresentacion() {
+    this.presentaciones.push({ id: null, name: '', factorToBase: null });
+  }
+
+  quitarPresentacion(i: number) {
+    this.presentaciones.splice(i, 1);
+  }
+
+  /** Cuantas unidades base son, para enseñarlo mientras se escribe. */
+  equivalencia(p: { factorToBase: number | null }): string {
+    const f = Number(p.factorToBase ?? 0);
+    if (!f || f <= 0) return '';
+    return `= ${f} ${this.form.baseUom}`;
+  }
+
+  private async cargarPresentaciones(productId: number) {
+    this.presentaciones = [];
+    this.presentacionesOriginales = [];
+    if (!productId || !this.caps.hospitality) return;
+    try {
+      const lista = await this.hosp.presentations(productId);
+      this.presentaciones = lista.map(p => ({
+        id: Number(p.id), name: String(p.name ?? ''), factorToBase: Number(p.factor_to_base ?? 0),
+      }));
+      this.presentacionesOriginales = this.presentaciones.map(p => Number(p.id));
+      this.cdr.detectChanges();
+    } catch {
+      // Sin presentaciones el alta sigue funcionando: son opcionales.
+    }
+  }
+
+  /**
+   * Guarda las presentaciones. Como la imagen, necesita el id del producto,
+   * asi que corre DESPUES de crearlo o actualizarlo. Un fallo aqui no invalida
+   * el producto: ya quedo guardado.
+   */
+  private async guardarPresentaciones(productId: number) {
+    if (!productId || !this.caps.hospitality) return;
+    const validas = this.presentaciones.filter(p => p.name.trim() && Number(p.factorToBase) > 0);
+    try {
+      for (const p of validas) {
+        await this.hosp.savePresentation({
+          id: p.id, productId, name: p.name.trim(), factorToBase: Number(p.factorToBase),
+        });
+      }
+      const quedan = new Set(validas.map(p => p.id).filter((x): x is number => x != null));
+      for (const id of this.presentacionesOriginales) {
+        if (!quedan.has(id)) await this.hosp.deletePresentation(id);
+      }
+    } catch (e: any) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'El producto se guardó, las presentaciones no',
+        text: e?.message || 'Puedes volver a intentarlo editándolo.',
+      });
+    }
+  }
+
+  // ------------------------------------------------------------- imagen
+  /** Lo que se ve en el modal: la miniatura actual o la recien elegida. */
+  imagenPrevia: string | null = null;
+  /** Solo se manda al guardar si el usuario la toco: elegir, cambiar o quitar. */
+  private imagenTocada = false;
+  notaImagen = '';
+
+  /**
+   * Lee el archivo y lo deja en vista previa. NO se guarda todavia: un
+   * producto que aun no existe no tiene id al que colgarle una imagen, y una
+   * edicion que el usuario cancele no debe haber cambiado nada.
+   */
+  elegirImagen(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    if (!archivo.type.startsWith('image/')) {
+      this.notaImagen = 'Ese archivo no es una imagen.';
+      return;
+    }
+
+    const lector = new FileReader();
+    lector.onload = () => {
+      this.imagenPrevia = String(lector.result || '') || null;
+      this.imagenTocada = true;
+      // El tamano real lo decide el proceso principal al guardar: reduce a
+      // 192px y baja calidad hasta caber en 64 KB. Aqui no se rechaza nada
+      // por peso, se avisa de lo que va a pasar.
+      this.notaImagen = 'Se guardará reducida a 192 px.';
+    };
+    lector.onerror = () => { this.notaImagen = 'No se pudo leer la imagen.'; };
+    lector.readAsDataURL(archivo);
+  }
+
+  quitarImagen() {
+    this.imagenPrevia = null;
+    this.imagenTocada = true;
+    this.notaImagen = 'Se quitará al guardar.';
+  }
+
+  private limpiarImagen() {
+    this.imagenPrevia = null;
+    this.imagenTocada = false;
+    this.notaImagen = '';
+  }
+
+  /** Trae la miniatura ya guardada para poder verla y cambiarla al editar. */
+  private async cargarImagen(item: ProductRow) {
+    const version = Number(item?.image_version ?? 0);
+    if (!version) return;
+    try {
+      const api = (window as any).wybix;
+      const r = await api?.images?.sync?.({ versions: { [Number(item.id)]: version } });
+      // El canal devuelve { rutas, descargadas }, igual que lee MenuCatalog.
+      // La miniatura puede no estar: si se quito, la version sigue subiendo
+      // pero ya no hay fila en product_images. Eso no es un error.
+      const url = r?.data?.rutas?.[Number(item.id)] ?? r?.data?.rutas?.[String(item.id)];
+      if (!url) return;
+      this.imagenPrevia = url;
+      // La respuesta llega por `ipcRenderer.invoke`, cuya promesa nace en el
+      // preload: fuera de la zona de Angular. Nadie programa deteccion de
+      // cambios al resolverse, asi que la vista previa se quedaba en la
+      // propiedad sin llegar a pintarse. Por eso el resto del Core usa
+      // signals; aqui, que es una pantalla de zona, se avisa a mano.
+      if (this.productoModalAbierto) this.cdr.detectChanges();
+    } catch {
+      // Sin miniatura el modal sigue sirviendo: se puede elegir otra.
+      this.notaImagen = 'No se pudo cargar la imagen guardada.';
+    }
+  }
+
+  /**
+   * Guarda la imagen del producto. Se llama DESPUES de crear o actualizar,
+   * porque `images:set` necesita el id.
+   *
+   * Un fallo aqui no invalida el producto: ya quedo guardado. Se avisa y se
+   * sigue, en vez de dejar creer que no se guardo nada.
+   */
+  private async guardarImagen(productId: number) {
+    if (!this.imagenTocada || !productId) return;
+    try {
+      const api = (window as any).wybix;
+      const r = await api?.images?.set?.({ productId, dataUrl: this.imagenPrevia });
+      if (!r?.success) throw new Error(r?.error || 'No se pudo guardar la imagen.');
+    } catch (e: any) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'El producto se guardó, la imagen no',
+        text: e?.message || 'Puedes volver a intentarlo editándolo.',
+      });
+    }
+  }
+
+  /** El campo solo aparece si hay codigo; al desmarcar, se limpia. */
+  alternarCodigoBarras(v: boolean) {
+    this.form.tieneCodigoBarras = v;
+    if (!v) {
+      this.form.barCode = '';
+      this.capturandoCodigo = false;
+    }
+  }
+
+  // ---------------------------------------------------- control del producto
+  /** Unidades BASE del dominio (pza, g, ml, cm). No se inventan aqui. */
+  unidadesBase: Uom[] = [];
+  /** Stock que tenia el producto antes de convertirlo a receta. */
+  private stockAntesDeEditar = 0;
+  private modoAntesDeEditar: InventoryMode = 'DIRECT';
+
+  readonly modosInventario: { valor: InventoryMode; titulo: string; desc: string; icono: string }[] = [
+    { valor: 'DIRECT', titulo: 'Inventario directo', icono: 'ph-package',
+      desc: 'Se cuenta por unidades. Sirve para vender y también como ingrediente.' },
+    { valor: 'RECIPE', titulo: 'Se prepara por receta', icono: 'ph-cooking-pot',
+      desc: 'Su disponibilidad sale de los ingredientes de la receta.' },
+    { valor: 'NONE', titulo: 'Sin inventario', icono: 'ph-hand-heart',
+      desc: 'Servicios y cargos: no descuenta existencias.' },
+  ];
+
+  get opcUnidades(): WxOpcion[] {
+    return this.unidadesBase.map(u => ({ valor: u.code, etiqueta: u.name, nota: u.code }));
+  }
+
+  /** El stock fisico solo tiene sentido cuando el producto se cuenta. */
+  get capturaStock(): boolean { return this.form.inventoryMode === 'DIRECT'; }
+
+  /**
+   * Nombre de la unidad en la que se guarda el stock.
+   *
+   * Se guarda SIEMPRE en la unidad base -es lo que consumen las recetas-, y
+   * el formulario no lo decia: quien escribia "12" en un producto medido en
+   * mililitros creia estar guardando 12 envases y guardaba 12 ml. Con esa
+   * cifra, una receta que pide 40 ml da cero unidades disponibles y el
+   * producto sale "Agotado" sin que nadie entienda por que.
+   */
+  get unidadDeStock(): string {
+    if (!this.caps.hospitality) return '';
+    const u = this.unidadesBase.find(x => x.code === this.form.baseUom);
+    return u ? `${u.name.toLowerCase()} (${u.code})` : this.form.baseUom;
+  }
+
+  /**
+   * Presentacion elegida para CAPTURAR el stock. `null` = unidad base.
+   *
+   * Es la respuesta a "tengo 12 cajas de un litro": se escribe 12, se elige
+   * "Caja 1 L" y se guardan 12000 ml. El stock en la base sigue siendo
+   * siempre en unidad base, que es lo que consumen las recetas; lo unico que
+   * cambia es en que piensa quien lo captura.
+   */
+  presentacionStock: number | null = null;
+
+  get opcPresentacionesStock(): WxOpcion[] {
+    const base = this.unidadesBase.find(u => u.code === this.form.baseUom);
+    return [
+      { valor: null, etiqueta: base ? base.name : this.form.baseUom, nota: this.form.baseUom },
+      ...this.presentaciones
+        .filter(p => p.name.trim() && Number(p.factorToBase) > 0)
+        .map(p => ({ valor: p.id ?? p.name, etiqueta: p.name, nota: `x${p.factorToBase}` })),
+    ];
+  }
+
+  private get factorDeCaptura(): number {
+    if (this.presentacionStock == null) return 1;
+    const p = this.presentaciones.find(x => (x.id ?? x.name) === this.presentacionStock);
+    return Number(p?.factorToBase) > 0 ? Number(p!.factorToBase) : 1;
+  }
+
+  /** Lo que se guardara de verdad, en unidad base. */
+  get stockEnUnidadBase(): number {
+    return Number(this.form.stock ?? 0) * this.factorDeCaptura;
+  }
+
+  /** Se ensena solo cuando el numero escrito y el guardado no coinciden. */
+  get equivalenciaStock(): string {
+    if (this.presentacionStock == null) return '';
+    return `Se guardarán ${this.stockEnUnidadBase} ${this.form.baseUom}`;
+  }
+
+  /** Ejemplo concreto para la unidad elegida. Vale mas que una explicacion. */
+  get ayudaDeStock(): string {
+    if (!this.caps.hospitality) return '';
+    switch (this.form.baseUom) {
+      case 'ml': return 'En mililitros: 12 cajas de 1 L son 12000.';
+      case 'g':  return 'En gramos: 3 bolsas de 1 kg son 3000.';
+      case 'cm': return 'En centimetros: un rollo de 5 m son 500.';
+      default:   return '';
+    }
+  }
+
+  /** Aviso corto bajo el selector de tipo. Sin jerga. */
+  get notaDelModo(): string {
+    if (this.form.inventoryMode === 'RECIPE')
+      return 'La disponibilidad se calcula a partir de los ingredientes de la receta.';
+    if (this.form.inventoryMode === 'NONE')
+      return 'No descuenta existencias al venderse.';
+    return '';
+  }
+
+  /**
+   * Al cambiar de tipo solo se mueve lo que deja de tener sentido.
+   *
+   * Los decimales siguen a la unidad -gramos y mililitros se miden partidos,
+   * las piezas no-, pero es una SUGERENCIA: el usuario puede cambiarla, porque
+   * el modelo admite las dos combinaciones.
+   */
+  cambiarModo(m: InventoryMode) {
+    this.form.inventoryMode = m;
+    if (m === 'RECIPE') {
+      this.form.baseUom = 'pza';
+      this.form.allowDecimalQty = false;
+    }
+  }
+
+  cambiarUnidad(code: string) {
+    this.form.baseUom = code;
+    this.form.allowDecimalQty = code !== 'pza';
+  }
+
+  /**
+   * Lo que se manda al canal. En Retail se devuelve `null`: sin este objeto el
+   * procedimiento aplica sus propios defaults, que son exactamente los de
+   * antes. Asi el formulario Retail no adquiere responsabilidades nuevas.
+   */
+  private controlDelProducto(forma: 'camel' | 'snake' = 'camel'): any {
+    if (!this.caps.hospitality) return forma === 'snake' ? {} : null;
+    return forma === 'snake'
+      ? {
+          inventory_mode: this.form.inventoryMode,
+          sellable: this.form.sellable,
+          base_uom: this.form.baseUom,
+          allow_decimal_qty: this.form.allowDecimalQty,
+        }
+      : {
+          inventory_mode: this.form.inventoryMode,
+          sellable: this.form.sellable,
+          base_uom: this.form.baseUom,
+          allow_decimal_qty: this.form.allowDecimalQty,
+        };
+  }
+
+  /**
+   * Convertir un producto que YA tiene existencias en una receta las pone a
+   * cero: una receta no las tiene propias. Eso no se hace en silencio -son
+   * unidades que alguien contó- asi que se dice y se pide confirmacion.
+   *
+   * No se inventa un movimiento de inventario aqui: registrar un ajuste es
+   * una decision de negocio, no un efecto colateral de editar un producto.
+   */
+  private async confirmarPerdidaDeStock(): Promise<boolean> {
+    const seVuelveReceta = this.modoAntesDeEditar !== 'RECIPE' && this.form.inventoryMode === 'RECIPE';
+    if (!seVuelveReceta || this.stockAntesDeEditar <= 0) return true;
+    const r = await Swal.fire({
+      icon: 'warning',
+      title: 'Este producto tiene existencias',
+      html: `Tiene <b>${this.stockAntesDeEditar}</b> en inventario. Al pasarlo a receta, su disponibilidad`
+          + ' pasa a depender de los ingredientes y esas existencias quedan en 0.',
+      showCancelButton: true,
+      confirmButtonText: 'Convertir en receta',
+      cancelButtonText: 'Cancelar',
+    });
+    return r.isConfirmed;
+  }
+
+  private async cargarUnidades() {
+    try {
+      const todas = await this.hosp.loadUoms();
+      this.unidadesBase = todas.filter(u => u.is_base);
+    } catch {
+      // Sin unidades el selector queda vacio y el producto nace en 'pza',
+      // que es lo que hacia antes: no se bloquea el alta por esto.
+      this.unidadesBase = [];
+    }
+  }
 
   inventario: any[] = [];
   colorModalAbierto = false;
@@ -155,7 +540,12 @@ export class Inventario {
     { value: 0,    label: '0% / Exento' }
   ];
 
-  constructor(private reports: ReportService) {}
+  constructor(
+    private reports: ReportService,
+    public caps: CapabilityService,
+    private hosp: HospitalityService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   async ngOnInit() {
     await this.consultarInventario();
@@ -239,20 +629,33 @@ export class Inventario {
       }
 
       const result = await (window as any).electronAPI.agregarProducto(
-        brand, category, partNumber, name, price, stock,
+        brand, category, partNumber, name, price,
+        // Una receta no tiene existencias propias: las tienen sus
+        // ingredientes. El procedimiento tambien lo fuerza, pero mandarlo
+        // desde aqui evita que el formulario prometa algo que no ocurre.
+        // Lo que viaja es SIEMPRE unidad base: si se capturo en cajas, aqui
+        // ya viene multiplicado por el factor de la presentacion.
+        this.capturaStock ? this.stockEnUnidadBase : 0,
         this.form.claveProdServ || null,
         this.form.claveUnidad || null,
         this.form.objetoImpuesto || '02',
         this.form.tasaIva ?? 0.16,
-        this.form.barCode || null
+        // Sin la casilla marcada se manda NULL: el contrato de `bar_code`
+        // ya admite ausencia, no hace falta nada nuevo.
+        this.form.tieneCodigoBarras ? (this.form.barCode || null) : null,
+        this.controlDelProducto()
       );
 
       if (result?.success) {
+        // La imagen necesita el id que acaba de devolver el alta.
+        const nuevoId = Number(result?.data?.[0]?.id ?? 0);
+        await this.guardarPresentaciones(nuevoId);
+        await this.guardarImagen(nuevoId);
         await this.consultarInventario();
         this.cerrarProductoModal();
         this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0, barCode: '',
           claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-          objetoImpuesto: '02', tasaIva: 0.16 };
+          objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL };
         await Swal.fire({
           icon: 'success',
           title: '¡Producto agregado!',
@@ -267,6 +670,52 @@ export class Inventario {
     } catch (e) {
       console.error('❌ Error al agregar el producto:', e);
       await Swal.fire({ icon: 'error', title: 'Ups...', text: 'Error inesperado al agregar el producto.' });
+    }
+  }
+
+  /** Producto cuya baja se esta procesando, para no repetir el clic. */
+  dandoDeBaja: number | null = null;
+
+  /**
+   * Baja logica de un producto.
+   *
+   * Quien decide si se puede es el procedimiento, no esta pantalla: si el
+   * producto sigue siendo ingrediente de una receta viva o lo usa un
+   * modificador activo, devuelve el motivo con los nombres. Aqui solo se
+   * pregunta, se espera el resultado y se refresca la tabla.
+   */
+  async darDeBajaProducto(item: ProductRow) {
+    const id = Number(item?.id ?? 0);
+    if (!id || this.dandoDeBaja) return;
+    const nombre = String(item?.product_name ?? item?.nombre ?? item?.name ?? '').trim();
+
+    const conf = await Swal.fire({
+      icon: 'warning',
+      title: 'Dar de baja producto',
+      html: `<b>${nombre}</b><br>El producto dejará de estar disponible para nuevas ventas,`
+          + ' pero conservará su historial.',
+      showCancelButton: true,
+      confirmButtonText: 'Dar de baja',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!conf.isConfirmed) return;
+
+    this.dandoDeBaja = id;
+    try {
+      const res = await (window as any).electronAPI.darDeBajaProducto(id);
+      if (!res?.success) {
+        // El mensaje ya nombra las recetas o los modificadores que lo usan.
+        await Swal.fire({ icon: 'error', title: 'No se puede dar de baja', text: res?.error || 'No se pudo completar.' });
+        return;
+      }
+      // La tabla se rehace desde SQL: nada de quitar la fila a mano y esperar
+      // que coincida con lo que quedo guardado.
+      await this.consultarInventario();
+      await Swal.fire({ icon: 'success', title: 'Producto dado de baja', timer: 1400, showConfirmButton: false });
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error inesperado.' });
+    } finally {
+      this.dandoDeBaja = null;
     }
   }
 
@@ -286,6 +735,8 @@ export class Inventario {
       return;
     }
 
+    if (!(await this.confirmarPerdidaDeStock())) return;
+
     try {
       this.guardando = true;
       const api = (window as any).electronAPI;
@@ -293,13 +744,16 @@ export class Inventario {
         product_id: this.editingProductId,
         nombre: name,
         precio: price,
-        stock: stock,
+        stock: this.capturaStock ? this.stockEnUnidadBase : 0,
         numero_parte: partNumber,
-        bar_code: (barCode ?? ''),
+        // Cadena vacia = limpiar; NULL = conservar. Al desmarcar la casilla
+        // se manda vacia, que es como el procedimiento borra el codigo.
+        bar_code: this.form.tieneCodigoBarras ? (barCode ?? '') : '',
         clave_prod_serv: this.form.claveProdServ || null,
         clave_unidad: this.form.claveUnidad || null,
         objeto_impuesto: this.form.objetoImpuesto || '02',
-        tasa_iva: this.form.tasaIva ?? 0.16
+        tasa_iva: this.form.tasaIva ?? 0.16,
+        ...this.controlDelProducto('snake'),
       };
 
       const res = await api.actualizarProducto(payload);
@@ -308,6 +762,8 @@ export class Inventario {
         return;
       }
 
+      await this.guardarPresentaciones(Number(this.editingProductId));
+      await this.guardarImagen(Number(this.editingProductId));
       await this.consultarInventario();
       this.cerrarProductoModal();
       await Swal.fire({ icon: 'success', title: 'Producto actualizado', timer: 1400, showConfirmButton: false });
@@ -323,11 +779,18 @@ export class Inventario {
     this.editingProductId = null;
     this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
       claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-      objetoImpuesto: '02', tasaIva: 0.16 };
+      objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL };
+    this.stockAntesDeEditar = 0;
+    this.modoAntesDeEditar = 'DIRECT';
+    this.limpiarImagen();
+    this.presentaciones = [];
+    this.presentacionesOriginales = [];
+    this.presentacionStock = null;
     this.capturandoCodigo = false;
     this.productoModalAbierto = true;
     this.cargarCategorias();
     this.cargarMarcas();
+    if (this.caps.hospitality) this.cargarUnidades();
   }
 
   abrirEditarProducto(item: ProductRow) {
@@ -345,12 +808,27 @@ export class Inventario {
       claveUnidad: String(item?.clave_unidad ?? ''),
       claveUnidadDesc: '',
       objetoImpuesto: String(item?.objeto_impuesto ?? '02'),
-      tasaIva: item?.tasa_iva != null ? Number(item.tasa_iva) : 0.16
+      tasaIva: item?.tasa_iva != null ? Number(item.tasa_iva) : 0.16,
+      // Lo que el producto ya es. Un producto anterior a Hospitality no trae
+      // estos campos y cae en los mismos valores con los que se creo.
+      inventoryMode: (item?.inventory_mode ?? 'DIRECT') as InventoryMode,
+      sellable: item?.sellable != null ? !!item.sellable : true,
+      baseUom: String(item?.base_uom ?? 'pza'),
+      allowDecimalQty: !!item?.allow_decimal_qty,
+      // Si ya tiene codigo, la casilla nace marcada y el campo visible.
+      tieneCodigoBarras: !!String(item?.bar_code ?? '').trim(),
     };
+    this.limpiarImagen();
+    this.presentacionStock = null;
+    this.cargarPresentaciones(Number(item?.id ?? 0));
+    this.cargarImagen(item);
+    this.stockAntesDeEditar = Number(item?.stock ?? 0) || 0;
+    this.modoAntesDeEditar = this.form.inventoryMode;
     this.capturandoCodigo = false;
     this.productoModalAbierto = true;
     this.cargarCategorias();
     this.cargarMarcas();
+    if (this.caps.hospitality) this.cargarUnidades();
   }
 
   cerrarProductoModal() { this.productoModalAbierto = false; }
@@ -449,13 +927,7 @@ export class Inventario {
 
     try {
       this.creatingSupplier = true;
-      const api = (window as any).electronAPI;
-      if (!api?.addSupplier) {
-        await Swal.fire('No disponible', 'electronAPI.addSupplier no existe.', 'error');
-        return;
-      }
-
-      const res = await api.addSupplier(nombre);
+      const res = await (window as any).electronAPI.addSupplier(nombre);
       if (!res?.success) throw new Error(res?.error || 'No se pudo crear proveedor');
 
       const newId = Number(res?.data?.id ?? 0);
@@ -699,13 +1171,7 @@ export class Inventario {
     try {
       this.creatingBrand = true;
 
-      const api = (window as any).electronAPI;
-      if (!api?.createBrand) {
-        await Swal.fire('No disponible', 'electronAPI.createBrand no existe aún.', 'info');
-        return;
-      }
-
-      const res = await (window as any).electronAPI.createBrand({ name: this.newBrandName });
+      const res = await (window as any).electronAPI.createBrand({ name });
       if (!res?.success) throw new Error(res?.error || 'No se pudo crear la marca');
 
       await this.cargarMarcas();
@@ -738,13 +1204,7 @@ export class Inventario {
     try {
       this.creatingCategory = true;
 
-      const api = (window as any).electronAPI;
-      if (!api?.addCategories) {
-        await Swal.fire('No disponible', 'electronAPI.addCategories no existe aún.', 'info');
-        return;
-      }
-
-      const res = await (window as any).electronAPI.createCategory({ name: this.newCategoryName });
+      const res = await (window as any).electronAPI.createCategory({ name });
       if (!res?.success) throw new Error(res?.error || 'No se pudo crear la categoría');
 
       await this.cargarCategorias();

@@ -94,6 +94,13 @@
             <i class="ph ph-clipboard-text me-2"></i> Conteo físico
           </a>
         </li>
+        <!-- Solo en negocios de alimentos y bebidas (business_profile). -->
+        <li>
+          <a *ngIf="auth.esAdmin && caps.hospitality" routerLink="/dashboard/recetas" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="ph ph-cooking-pot me-2"></i> Recetas y modificadores
+          </a>
+        </li>
       </ul>
     </li>
     <li class="nav-item" id="operaciones-dropdown" style="position: relative;"

@@ -1,19 +1,38 @@
-<ng-container *ngIf="listo">
+@if (listo) {
 
-  <!-- Prueba vencida, o licencia manipulada: bloqueo -->
-  <app-licencia-vencida
-    *ngIf="license.estado.state === 'expired' || license.estado.state === 'tamper'"
-    [motivo]="license.estado.state === 'tamper' ? 'tamper' : 'vencida'"
-    (activado)="onLicenciaLista()"></app-licencia-vencida>
+  <!-- Prueba vencida, o licencia manipulada: bloqueo.
+       Estas pantallas y el asistente inicial se cargan con @defer: son casos
+       excepcionales (primer arranque, licencia caducada) y arrastran
+       sweetalert2 y el importador. Una caja que ya opera nunca los paga. -->
+  @if (license.estado.state === 'expired' || license.estado.state === 'tamper') {
+    @defer (on immediate) {
+      <app-licencia-vencida
+        [motivo]="license.estado.state === 'tamper' ? 'tamper' : 'vencida'"
+        (activado)="onLicenciaLista()"></app-licencia-vencida>
+    }
+  }
 
   <!-- Sin licencia: iniciar prueba gratis (o activar clave) -->
-  <app-iniciar-prueba *ngIf="license.estado.state === 'none'" (listo)="onLicenciaLista()"></app-iniciar-prueba>
+  @if (license.estado.state === 'none') {
+    @defer (on immediate) {
+      <app-iniciar-prueba (listo)="onLicenciaLista()"></app-iniciar-prueba>
+    }
+  }
 
   <!-- Con prueba activa o licencia de pago: usar el sistema -->
-  <ng-container *ngIf="license.estado.state === 'trial' || license.estado.state === 'active'">
-    <app-trial-banner *ngIf="license.estado.state === 'trial'"></app-trial-banner>
-    <app-setup-inicial *ngIf="necesitaSetup" (completado)="onSetupCompletado()"></app-setup-inicial>
-    <router-outlet *ngIf="!necesitaSetup"></router-outlet>
-  </ng-container>
+  @if (license.estado.state === 'trial' || license.estado.state === 'active') {
+    @if (license.estado.state === 'trial') {
+      @defer (on immediate) {
+        <app-trial-banner></app-trial-banner>
+      }
+    }
+    @if (necesitaSetup) {
+      @defer (on immediate) {
+        <app-setup-inicial (completado)="onSetupCompletado()"></app-setup-inicial>
+      }
+    } @else {
+      <router-outlet></router-outlet>
+    }
+  }
 
-</ng-container>
+}

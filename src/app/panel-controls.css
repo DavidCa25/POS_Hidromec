@@ -309,3 +309,27 @@ select.ctl option {
     from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+/* --------------------------------------------------------------------------
+   LISTA DE OPCIONES EXCLUYENTES (tipo de negocio, experiencia de la caja)
+   Tarjetas grandes con radio oculto: el area de toque es toda la tarjeta.
+   -------------------------------------------------------------------------- */
+.wx-choice-list { display: grid; gap: 10px; }
+.wx-choice {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; cursor: pointer;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-md); color: var(--wx-text);
+  transition: border-color var(--wx-dur-micro) ease, background-color var(--wx-dur-micro) ease;
+}
+.wx-choice:hover { border-color: var(--wx-text-dim); background: var(--wx-raised); }
+.wx-choice.is-on { border-color: var(--wx-accent); background: var(--wx-accent-soft); }
+.wx-choice input { position: absolute; opacity: 0; width: 0; height: 0; }
+.wx-choice:has(input:focus-visible) { box-shadow: var(--wx-focus-ring); }
+.wx-choice__ic {
+  flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-accent-text); font-size: 20px;
+}
+.wx-choice.is-on .wx-choice__ic { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.wx-choice__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wx-choice__txt b { font-size: var(--wx-text-base); font-weight: 600; }
+.wx-choice__txt small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.4; }

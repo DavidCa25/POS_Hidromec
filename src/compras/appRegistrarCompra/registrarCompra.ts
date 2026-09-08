@@ -6,6 +6,8 @@ import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
 import { AuthService } from '../../services/auth.service';
 import Swal from 'sweetalert2';
+import { CapabilityService, HospitalityService } from '../../core';
+import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -32,7 +34,16 @@ class PurchaseItem {
     public qty: number,
     public unitPrice: number,
     public purchasePrice: number,
-    public profitPercent: number = 0
+    public profitPercent: number = 0,
+    /**
+     * Presentacion en la que se compra esta linea. `null` = unidad base.
+     * `sp_register_purchase` la convierte: 5 cajas de 1 L suben 5000 ml.
+     */
+    public presentationId: number | null = null,
+    /** Presentaciones del producto, para el selector de la fila. */
+    public presentaciones: WxOpcion[] = [],
+    /** Unidad base, para escribirla junto a la cantidad. */
+    public baseUom: string = 'pza',
   ) {}
 
   get subtotal() {
@@ -53,7 +64,7 @@ class PurchaseItem {
   standalone: true,
   templateUrl: './registrarCompra.html',
   styleUrls: ['./registrarCompra.css'],
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class RegistrarCompra implements OnInit {
@@ -72,7 +83,11 @@ export class RegistrarCompra implements OnInit {
 
   ivaTasa = 0.16;
 
-  constructor(private authService: AuthService) {
+  constructor(
+    private authService: AuthService,
+    public caps: CapabilityService,
+    private hosp: HospitalityService,
+  ) {
     this.cargarProveedores();
   }
 
@@ -175,16 +190,55 @@ export class RegistrarCompra implements OnInit {
     const purchasePrice = Number(p.purchasePrice) || 0;
     const profit = Number(p.profitPercent) || 0;
 
-    this.items.push(new PurchaseItem(
+    const item = new PurchaseItem(
       p.id,
       p.product_name,
       1,
       p.price ?? 0,
       purchasePrice,
-      profit
-    ));
+      profit,
+      null,
+      [],
+      String((p as any).base_uom ?? 'pza'),
+    );
+    this.items.push(item);
+    this.cargarPresentaciones(item);
 
     this.showModalProductos = false;
+  }
+
+  /**
+   * Trae las presentaciones del producto para el selector de la fila.
+   *
+   * Solo en negocios de alimentos y bebidas: en Retail nadie compra "cajas de
+   * 1 L", y una columna vacia en cada linea seria ruido.
+   */
+  private async cargarPresentaciones(item: PurchaseItem) {
+    if (!this.caps.hospitality) return;
+    try {
+      const lista = await this.hosp.presentations(item.productId);
+      if (!lista.length) return;
+      item.presentaciones = [
+        { valor: null, etiqueta: `Por ${item.baseUom}`, nota: item.baseUom },
+        ...lista.map(p => ({
+          valor: Number(p.id),
+          etiqueta: String(p.name),
+          nota: `x${Number(p.factor_to_base)}`,
+        })),
+      ];
+      const porDefecto = lista.find((p: any) => p.is_default);
+      if (porDefecto) item.presentationId = Number(porDefecto.id);
+    } catch {
+      // Sin presentaciones la linea se compra en unidad base, como siempre.
+    }
+  }
+
+  /** Lo que subira el inventario con esta linea, ya convertido. */
+  entraAlInventario(it: PurchaseItem): string {
+    const p = it.presentaciones.find(x => x.valor === it.presentationId);
+    const factor = p?.nota?.startsWith('x') ? Number(p.nota.slice(1)) : 1;
+    if (!factor || factor === 1) return '';
+    return `${(Number(it.qty) || 0) * factor} ${it.baseUom}`;
   }
 
   onQtyChange(i: number) {
@@ -239,7 +293,9 @@ export class RegistrarCompra implements OnInit {
         product_id: it.productId,
         quantity: it.qty,
         unit_price: it.purchasePrice,
-        profit_percent: it.profitPercent ?? 0
+        profit_percent: it.profitPercent ?? 0,
+        // Sin presentacion viaja NULL y la compra se comporta como siempre.
+        presentation_id: it.presentationId
       }))
     };
 

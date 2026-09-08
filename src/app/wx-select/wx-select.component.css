@@ -3,7 +3,6 @@
 /* El campo replica la caja de `.form-control` / `.ctl` para que en una fila de
    formulario alinee al pixel con los campos vecinos. */
 .wx-sel__campo {
-  anchor-name: --wx-ancla-sel;
   display: flex; align-items: center; gap: 8px;
   width: 100%; min-height: 40px;
   padding: 9px 12px;
@@ -35,7 +34,6 @@
 :host:has(.wx-sel__panel:popover-open) .wx-sel__flecha { transform: rotate(180deg); }
 
 .wx-sel__panel {
-  --wx-anchor: --wx-ancla-sel;
   --wx-pop-area: bottom span-right;
   --wx-pop-origin: top left;
   /* Al menos tan ancho como el campo: un menu mas estrecho que su disparador

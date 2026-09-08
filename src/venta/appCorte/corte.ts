@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { ShiftService } from '../../core';
 import Swal from 'sweetalert2';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
@@ -102,7 +103,7 @@ export class Corte {
     salidasEfectivo: 0, devolucionesEfectivo: 0
   };
 
-  constructor(private auth: AuthService) {
+  constructor(private auth: AuthService, private shift: ShiftService) {
     this.setPreset('HOY');
   }
 
@@ -464,6 +465,13 @@ export class Corte {
       this.openShiftOpenedAt = null;
       this.openShiftOpeningCash = 0;
 
+      // El turno vive tambien en ShiftService, que es de donde leen las
+      // pantallas de venta. Esta pantalla limpiaba solo SUS campos, asi que el
+      // servicio seguia diciendo "abierto" el resto de la sesion y Retail
+      // entraba a vender sin pedir turno. Se relee de SQL en vez de asumir:
+      // aqui se puede haber cerrado el turno de OTRA caja.
+      await this.shift.refresh();
+
       await this.consultar();
     } catch (e: any) {
       console.error('closeShift:', e);
@@ -479,21 +487,18 @@ export class Corte {
   }
 
   private async cargarCajas() {
+    // Las cajas son las que el negocio dio de alta. Inventar "Caja 1"/"Caja 2"
+    // cuando la consulta falla no es un respaldo: es cerrar un turno contra una
+    // caja que no existe. Si no se pueden leer, se dice y la lista queda vacia.
     try {
-      const res = await (window as any).electronAPI.getRegisters();
-      if (res?.success) {
-        this.cajas = res.data || [];
-      } else {
-        // Fallback temporal si el API no está listo
-        this.cajas = [
-          { id: 1, name: 'Caja 1' },
-          { id: 2, name: 'Caja 2' }
-        ];
-      }
-    } catch (e) {
-      console.error('Error getRegisters:', e);
-      // Fallback temporal por si truena la llamada
-      this.cajas = [{ id: 1, name: 'Caja 1' }];
+      const res = await (window as any).electronAPI.registersList(true);
+      if (!res?.success) throw new Error(res?.error || 'No se pudieron leer las cajas.');
+      this.cajas = res.data || [];
+    } catch (e: any) {
+      console.error('registers-list:', e);
+      this.cajas = [];
+      await Swal.fire('No se pudieron cargar las cajas',
+        e?.message || 'Revisa la conexión con el servidor.', 'error');
     }
   }
 

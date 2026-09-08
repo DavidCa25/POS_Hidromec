@@ -112,7 +112,15 @@
   z-index: 900;
 }
 .color-modal {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+/* Centrado SIN transform.
+   Un `transform` crea bloque contenedor, y entonces todo `position: fixed` que
+   viva dentro -incluido un popover del top layer- resuelve sus coordenadas
+   contra el modal ya desplazado: el translate se aplica dos veces. Eso mandaba
+   los menus de los desplegables 348px abajo y 381px a la derecha, siempre al
+   mismo punto, porque el desfase era el del modal y no el del campo.
+   `inset: 0` + `margin: auto` centra igual y no crea bloque contenedor. */
+  position: fixed; inset: 0; margin: auto;
+  width: fit-content; height: fit-content;
   background: var(--wx-surface);
   padding: 2em;
   border-radius: 16px;
@@ -148,9 +156,18 @@
 
 .producto-modal {
   background: var(--castrol-main);
+/* Centrado SIN transform.
+   Un `transform` crea bloque contenedor, y entonces todo `position: fixed` que
+   viva dentro -incluido un popover del top layer- resuelve sus coordenadas
+   contra el modal ya desplazado: el translate se aplica dos veces. Eso mandaba
+   los menus de los desplegables 348px abajo y 381px a la derecha, siempre al
+   mismo punto, porque el desfase era el del modal y no el del campo.
+   `inset: 0` + `margin: auto` centra igual y no crea bloque contenedor. */
   position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
   min-width: 550px;
   max-width: 96vw;
   background: var(--wx-surface);

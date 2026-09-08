@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService, RolUsuario } from '../services/auth.service';
+import { CapabilityService } from '../core';
 
 @Component({
   selector: 'app-login',
@@ -21,6 +22,7 @@ export class Login {
   constructor(
     private router: Router,
     private authService: AuthService,
+    private caps: CapabilityService,
   ) {}
 
   async onLogin(event: Event) {
@@ -77,10 +79,17 @@ export class Login {
             .then((r: any) => console.log('checkForUpdates() ->', r))
             .catch((err: any) => console.log('checkForUpdates() error ->', err));
         }
-        if (usuarioLS.rol == 'cajero') {
-          this.router.navigate(['/dashboard/venta']);
-        }
-        else {
+        // A donde entra depende del perfil de ESTE dispositivo, no solo del
+        // rol: una caja configurada como Touch abre Touch aunque entre un
+        // administrador. Si no hay perfil (instalaciones existentes) es
+        // RETAIL_POS y el comportamiento es el de siempre.
+        await this.caps.load(true);
+        if (this.caps.deviceProfile() === 'TOUCH_POS' || usuarioLS.rol == 'cajero') {
+          // Una sola definicion de donde vende esta caja, la misma que usa el
+          // guard de las rutas de venta. Antes esta era la UNICA linea que
+          // miraba el perfil, y por eso cambiarlo exigia volver a entrar.
+          this.router.navigate([this.caps.rutaDeVenta]);
+        } else {
           this.router.navigate(['/dashboard/estadisticas']);
         }
       } else {

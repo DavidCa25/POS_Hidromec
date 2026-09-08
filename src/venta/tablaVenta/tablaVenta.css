@@ -280,10 +280,17 @@
 }
 
 .ventas-export-modal {
+/* Centrado SIN transform.
+   Un `transform` crea bloque contenedor, y entonces todo `position: fixed` que
+   viva dentro -incluido un popover del top layer- resuelve sus coordenadas
+   contra el modal ya desplazado: el translate se aplica dos veces. Eso mandaba
+   los menus de los desplegables 348px abajo y 381px a la derecha, siempre al
+   mismo punto, porque el desfase era el del modal y no el del campo.
+   `inset: 0` + `margin: auto` centra igual y no crea bloque contenedor. */
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
+  height: fit-content;
   background: var(--wx-surface);
   border-radius: 24px;
   box-shadow: var(--wx-shadow-raised);
@@ -299,15 +306,12 @@
   to { opacity: 1; }
 }
 
+/* Solo opacidad: mover el modal con `transform` volveria a crear un bloque
+   contenedor y a descolocar cualquier menu que se abra dentro mientras dura
+   la animacion. */
 @keyframes slideUp {
-  from { 
-    transform: translate(-50%, -45%);
-    opacity: 0;
-  }
-  to { 
-    transform: translate(-50%, -50%);
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .ventas-modal-header {

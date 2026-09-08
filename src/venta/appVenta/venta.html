@@ -251,11 +251,19 @@
                       (click)="abrirReembolso()">
                 <i class="ph ph-arrow-counter-clockwise"></i> Reembolso / Cambio
               </button>
-              <button *ngIf="!editUnlocked" type="button"
+              <!-- Una venta con recetas o modificadores no se modifica: se
+                   corrige con Reembolso / Cambio, que repone lo que consumio
+                   de verdad. El boton no se muestra para no ofrecer un
+                   camino que el procedure va a rechazar. -->
+              <button *ngIf="!editUnlocked && ventaEditable" type="button"
                       class="btn btn-outline-secondary d-flex align-items-center gap-2"
                       (click)="habilitarEdicion()">
                 <i class="ph ph-pencil-simple"></i> Modificar
               </button>
+              <span *ngIf="!editUnlocked && !ventaEditable" class="venta-no-editable">
+                <i class="ph ph-info"></i>
+                Esta venta lleva recetas o modificadores: corrígela con Reembolso / Cambio.
+              </span>
               <ng-container *ngIf="editUnlocked">
                 <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
                         (click)="guardarCambiosVenta()">
@@ -708,17 +716,21 @@
   </div>
 </div>
 
-<!-- ===== MODAL FACTURA (emitir CFDI) ===== -->
-<app-factura-nueva
-  *ngIf="showFacturaModal"
-  [saleId]="facturaSaleId"
-  [conceptos]="facturaConceptos"
-  
-  [receptorRfc]="facturaReceptorRfc"
-  [receptorNombre]="facturaReceptorNombre"
-  [receptorRegimen]="facturaReceptorRegimen"
-  [receptorUsoCfdi]="facturaReceptorUso"
-  
-  (cerrar)="onFacturaCerrada()"
-  (timbrada)="onFacturaTimbrada($event)">
-</app-factura-nueva>
+<!-- ===== MODAL FACTURA (emitir CFDI) =====
+     Se difiere: el timbrado (catalogos SAT, selector de claves) solo se paga
+     cuando alguien factura, no al abrir el punto de venta. -->
+@if (showFacturaModal) {
+  @defer (on immediate) {
+    <app-factura-nueva
+      [saleId]="facturaSaleId"
+      [conceptos]="facturaConceptos"
+
+      [receptorRfc]="facturaReceptorRfc"
+      [receptorNombre]="facturaReceptorNombre"
+      [receptorRegimen]="facturaReceptorRegimen"
+      [receptorUsoCfdi]="facturaReceptorUso"
+
+      (cerrar)="onFacturaCerrada()"
+      (timbrada)="onFacturaTimbrada($event)"></app-factura-nueva>
+  }
+}

@@ -1,5 +1,6 @@
 <button type="button" class="wx-sel__campo"
         [attr.popovertarget]="idPanel"
+        [style.anchor-name]="ancla"
         [disabled]="deshabilitado"
         [class.is-vacio]="!seleccionada"
         role="combobox" [attr.aria-expanded]="false" aria-haspopup="listbox">
@@ -10,6 +11,7 @@
 
 <div [id]="idPanel" popover data-anclado
      class="wx-pop wx-sel__panel"
+     [style.--wx-anchor]="ancla"
      role="dialog"
      (toggle)="alAbrirCerrar($any($event))"
      (keydown)="alPulsar($event)">
@@ -28,7 +30,8 @@
               [attr.aria-selected]="esSeleccionada(o)"
               [attr.data-activo]="i === indice"
               [disabled]="o.desactivada"
-              (click)="elegir(o)"
+              (pointerdown)="elegirPuntero($event, o)"
+              (click)="elegirClick($event, o)"
               (mouseenter)="indice = i">
         <span class="wx-opt__txt">{{ o.etiqueta }}</span>
         <span class="wx-opt__nota" *ngIf="o.nota">{{ o.nota }}</span>

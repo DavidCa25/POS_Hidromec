@@ -84,6 +84,17 @@
                            [(ngModel)]="it.qty"
                            name="qty-{{i}}"
                            (ngModelChange)="onQtyChange(i)" />
+                    <!-- En que se compra esta linea. El procedimiento convierte
+                         a unidad base: 5 cajas de 1 L suben 5000 ml. Solo
+                         aparece si el producto tiene presentaciones. -->
+                    <wx-select *ngIf="it.presentaciones.length > 1"
+                               class="wx-sel-compacto mt-1"
+                               [(ngModel)]="it.presentationId"
+                               name="pres-{{i}}"
+                               [opciones]="it.presentaciones"></wx-select>
+                    <div class="small text-muted mt-1" *ngIf="entraAlInventario(it)">
+                      Entran {{ entraAlInventario(it) }}
+                    </div>
                   </td>
 
                   <!-- Precio compra SIN IVA -->

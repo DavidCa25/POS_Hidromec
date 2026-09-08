@@ -193,6 +193,18 @@
   --wx-z-toast: 100;
   --wx-z-tooltip: 120;
 
+  /* TECHO DE AVISOS.
+     Un aviso de error tiene que verse SIEMPRE, tambien cuando lo dispara un
+     modal que ya esta abierto. Los modales de pantalla completa de la app no
+     usan esta escala -llevan numeros propios de 2000 a 12500, heredados-, asi
+     que el aviso se queda por encima de todos ellos con margen.
+
+     Este numero no se sube "un poco mas" cada vez que algo queda tapado: la
+     franja a partir de 13000 esta RESERVADA, y el guardian de capas
+     (scripts/pruebas/capas.mjs) falla si un componente entra en ella.
+     Por eso deja de ser una guerra de z-index y pasa a ser un contrato. */
+  --wx-z-alerta: 20000;
+
   /* Estados de superficie compartidos por menus, filas y opciones. Antes cada
      componente inventaba su propio gris de hover y no coincidian entre si. */
   /* Fondo del grupo de configuracion: hundido respecto del panel, no elevado.

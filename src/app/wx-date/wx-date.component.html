@@ -2,6 +2,7 @@
      del navegador. El ancla es el propio boton. -->
 <button type="button" class="wx-date__campo"
         [id]="idPanel + '-btn'"
+        [style.anchor-name]="ancla"
         [attr.popovertarget]="idPanel"
         [disabled]="deshabilitado"
         [class.is-vacio]="!valor">
@@ -17,6 +18,7 @@
 
 <div [id]="idPanel" popover data-anclado
      class="wx-pop wx-date__panel"
+     [style.--wx-anchor]="ancla"
      role="dialog" aria-label="Calendario"
      (toggle)="alAbrirCerrar($any($event))">
 

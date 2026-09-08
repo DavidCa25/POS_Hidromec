@@ -168,7 +168,8 @@ select.ctl option { background: var(--wx-surface); color: var(--wx-text); }
 .btn-row { display: flex; gap: 9px; margin-top: 20px; flex-wrap: wrap; }
 
 .btn-outline,
-.btn-ghost {
+.btn-ghost,
+.btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,11 +189,27 @@ select.ctl option { background: var(--wx-surface); color: var(--wx-text); }
               border-color var(--wx-dur-micro) ease,
               color var(--wx-dur-micro) ease;
 }
+/* La accion principal de una pantalla. NO existia en el sistema global: las
+   pantallas que escribian `.btn-primary` sin definirla en su propio CSS caian
+   en la de Bootstrap, que no comparte ni el alto, ni el radio, ni el tipo, ni
+   el acento de Wybix. Por eso "Guardar receta" se veia como un boton suelto.
+   Mismo acento que ya usan el interruptor y el foco: sin colores nuevos. */
+.btn-primary {
+  background: var(--wx-accent);
+  border-color: var(--wx-accent);
+  color: var(--wx-accent-ink);
+  box-shadow: none;
+}
+.btn-primary:hover:not(:disabled) { background: var(--wx-accent-hover); border-color: var(--wx-accent-hover); }
+.btn-primary:active:not(:disabled) { background: var(--wx-accent-press); border-color: var(--wx-accent-press); }
+
 .btn-ghost { background: transparent; border-color: transparent; color: var(--wx-text-muted); }
 .btn-outline:hover:not(:disabled) { background: var(--wx-raised); border-color: var(--wx-text-dim); }
 .btn-ghost:hover:not(:disabled) { background: var(--wx-raised); color: var(--wx-text); }
-.btn-outline:active:not(:disabled), .btn-ghost:active:not(:disabled) { transform: scale(0.975); }
-.btn-outline:disabled, .btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-outline:active:not(:disabled), .btn-ghost:active:not(:disabled),
+.btn-primary:active:not(:disabled) { transform: scale(0.975); }
+.btn-outline:disabled, .btn-ghost:disabled, .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-sm { min-height: 32px; padding: 0 11px; font-size: var(--wx-text-sm); }
 
 /* ==========================================================================
    PUENTE DE MODO OSCURO

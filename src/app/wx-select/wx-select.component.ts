@@ -48,6 +48,15 @@ export class WxSelectComponent implements ControlValueAccessor {
   @ViewChild('busqueda') campoBusqueda?: ElementRef<HTMLInputElement>;
 
   readonly idPanel = 'wxsel-' + Math.random().toString(36).slice(2, 9);
+  /** Nombre de ancla propio de ESTA instancia.
+   *
+   * Vivia en el CSS del componente, y por tanto era el mismo para todas las
+   * instancias. Cuando un formulario tenia varios, el nombre repetido resolvia
+   * -por especificacion- al ULTIMO del arbol, asi que todos los paneles se
+   * abrian sobre el mismo campo. En el modal de producto eso mandaba el menu a
+   * otro punto de la pantalla. El anclaje es una relacion entre dos elementos
+   * concretos, no un estilo compartido: el nombre tiene que ser unico. */
+  readonly ancla = '--ancla-' + this.idPanel;
 
   valor: any = null;
   deshabilitado = false;
@@ -82,6 +91,21 @@ export class WxSelectComponent implements ControlValueAccessor {
   }
 
   esSeleccionada(o: WxOpcion) { return this.mismoValor(o.valor, this.valor); }
+
+  elegirPuntero(e: PointerEvent, o: WxOpcion) {
+    if (e.button !== 0 || o.desactivada) return;
+
+    // En Electron/Chromium el popover puede consumir el click posterior.
+    // Seleccionamos en pointerdown, que sí llega de forma consistente.
+    e.preventDefault();
+    this.elegir(o);
+  }
+
+  elegirClick(e: MouseEvent, o: WxOpcion) {
+    // Conserva activación por teclado / accesibilidad.
+    // Un click físico ya fue procesado en pointerdown.
+    if (e.detail === 0) this.elegir(o);
+  }
 
   // ---------------------------------------------------------- interaccion
   elegir(o: WxOpcion) {

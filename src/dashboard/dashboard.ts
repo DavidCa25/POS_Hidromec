@@ -9,6 +9,7 @@ import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
+import { CapabilityService } from '../core';
 
 type AppNotification = {
   id: string;
@@ -64,7 +65,7 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService) {}
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -93,12 +94,17 @@ export class Dashboard {
       if (n) this.nombreNegocio = n;
     } catch { /* silencioso: es contexto, no bloquea nada */ }
     try {
+      // El handler devuelve { success, version }, no { data }: sin leer
+      // `version` el pie del rail mostraba "v[object Object]".
       const v = await (window as any).electronAPI?.getAppVersion?.();
-      this.appVersion = String(v?.data ?? v ?? '').replace(/^v/, '');
+      const texto = v?.version ?? v?.data ?? (typeof v === 'string' ? v : '');
+      this.appVersion = String(texto ?? '').replace(/^v/, '');
     } catch { /* silencioso */ }
   }
 
-  ngOnInit() { this.onResize(); this.cargarContexto();if (this.auth.usuarioActual?.nombre) {
+  ngOnInit() { this.onResize(); this.cargarContexto();
+    // Perfil de negocio y de dispositivo: deciden que se ve en el menu.
+    this.caps.load();if (this.auth.usuarioActual?.nombre) {
       this.registerService.load();
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();

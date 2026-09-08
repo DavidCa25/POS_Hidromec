@@ -476,7 +476,14 @@ html.dark .btn-close { filter: invert(1) grayscale(1) brightness(2); }
    Lo usa toda la app para confirmar y avisar: debe pertenecer al tema en vez
    de parecer un dialogo de otra aplicacion.
    ========================================================================== */
-.swal2-container { background: var(--wx-scrim) !important; }
+/* Por encima de cualquier modal de la app: un error que aparece detras del
+   dialogo que lo provoco deja al usuario esperando una respuesta que ya
+   estaba dada. SweetAlert2 trae 1060 de fabrica y los modales de la app van
+   de 2000 a 12500, asi que de fabrica siempre quedaba debajo. */
+.swal2-container {
+  background: var(--wx-scrim) !important;
+  z-index: var(--wx-z-alerta, 20000) !important;
+}
 .swal2-popup {
   background: var(--wx-surface) !important;
   border: 1px solid var(--wx-edge) !important;

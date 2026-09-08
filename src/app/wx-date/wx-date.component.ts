@@ -45,6 +45,15 @@ export class WxDateComponent implements ControlValueAccessor {
 
   /** Identificador propio: el popover se enlaza por id y puede haber varios. */
   readonly idPanel = 'wxcal-' + Math.random().toString(36).slice(2, 9);
+  /** Nombre de ancla propio de ESTA instancia.
+   *
+   * Vivia en el CSS del componente, y por tanto era el mismo para todas las
+   * instancias. Cuando un formulario tenia varios, el nombre repetido resolvia
+   * -por especificacion- al ULTIMO del arbol, asi que todos los paneles se
+   * abrian sobre el mismo campo. En el modal de producto eso mandaba el menu a
+   * otro punto de la pantalla. El anclaje es una relacion entre dos elementos
+   * concretos, no un estilo compartido: el nombre tiene que ser unico. */
+  readonly ancla = '--ancla-' + this.idPanel;
 
   valor: string | null = null;          // 'YYYY-MM-DD'
   deshabilitado = false;

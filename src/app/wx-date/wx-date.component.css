@@ -6,7 +6,6 @@
    alinear con los campos vecinos al pixel.
    -------------------------------------------------------------------------- */
 .wx-date__campo {
-  anchor-name: --wx-ancla-cal;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -47,7 +46,6 @@
    La caja, la sombra, el anclaje y el motion vienen de `.wx-pop`.
    -------------------------------------------------------------------------- */
 .wx-date__panel {
-  --wx-anchor: --wx-ancla-cal;
   --wx-pop-area: bottom span-right;
   --wx-pop-origin: top left;
   width: 268px;

@@ -1,42 +1,30 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angular/common';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../services/auth.service';
-import { RegisterService } from '../../services/register.service';
 import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import {
+  Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
+  Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService, ShiftService, SoldLine,
+} from '../../core';
 
-interface ProductRow {
-  id: number;
-  part_number: string;
-  bar_code: string;
-  product_name: string;
-  price: number;
-  stock: number;
-  category_name: string;
-  brand_name: string;
-  clave_prod_serv?: string | null;
-  clave_unidad?: string | null;
-  objeto_impuesto?: string | null;
-  tasa_iva?: number | null;
-  barcode?: string;
-}
-
-interface SaleItem {
-  productId: number;
-  productName: string;
-  qty: number;
-  unitPrice: number;
-  claveProdServ?: string | null;
-  claveUnidad?: string | null;
-  objetoImpuesto?: string | null;
-  tasaIva?: number | null;
-  get subtotal(): number;
-}
+/*
+ * RETAIL POS — capa de presentacion.
+ *
+ * Esta pantalla ya no es duena del carrito ni registra ventas por su cuenta:
+ *   - el carrito (lineas, cantidades, totales, cuentas en espera) vive en
+ *     CartService;
+ *   - la venta se registra UNICAMENTE con SaleService.checkout();
+ *   - el catalogo se lee de CatalogService;
+ *   - el turno y las salidas de efectivo pasan por ShiftService;
+ *   - la pantalla de cliente se alimenta sola desde el carrito.
+ * Lo que queda aqui es interaccion: modales, atajos, scanner, mensajes.
+ */
 
 interface CreditCustomer {
   id: number;
@@ -46,36 +34,6 @@ interface CreditCustomer {
   creditLimit: number;
   currentBalance: number;
   availableCredit: number;
-}
-
-interface SaleHeader {
-  sale_id: number;
-  datee: string | Date;
-  user_id: number;
-  total: number;
-  payment_method: string;
-  customer_id: number | null;
-  paid_amount: number;
-  balance: number;
-  due_date: string | null;
-  refund_total: number;
-}
-
-interface SaleDetailRow {
-  sale_id: number;
-  product_id: number;
-  product_name?: string;
-  productName?: string;
-  name?: string;
-  quantity: number;
-  unitary_price: number;
-  refunded_qty?: number;
-  remaining_qty?: number;
-  clave_prod_serv?: string | null;
-  clave_unidad?: string | null;
-  objeto_impuesto?: string | null;
-  tasa_iva?: number | null;
-  barcode?: string;
 }
 
 interface RefundLine {
@@ -92,7 +50,12 @@ interface RefundLine {
   imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent],
   styleUrls: ['./venta.css']
 })
-export class Venta {
+export class Venta implements OnInit, OnDestroy {
+  private readonly cart = inject(CartService);
+  private readonly catalog = inject(CatalogService);
+  private readonly shift = inject(ShiftService);
+  private readonly sale = inject(SaleService);
+
   today = new Date();
 
   nextFolioSuggested = 1;
@@ -105,12 +68,13 @@ export class Venta {
   private scanTimer: any = null;
   private lastKeyTs = 0;
   private isScannerLike = false;
+  private offBarcode: (() => void) | null = null;
 
-  private readonly SCAN_GAP_MS = 35;     
+  private readonly SCAN_GAP_MS = 35;
   private readonly IDLE_CLEAR_MS = 600;
-  private readonly MAX_BUFFER_LEN = 32;  
-  private readonly PART_MAX_LEN = 3;    
-  private readonly BARCODE_MIN_LEN = 6; 
+  private readonly MAX_BUFFER_LEN = 32;
+  private readonly PART_MAX_LEN = 3;
+  private readonly BARCODE_MIN_LEN = 6;
 
   printingTicket = false;
 
@@ -120,9 +84,8 @@ export class Venta {
 
   showModal = false;
   dineroRecibido: number | null = null;
-  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP' = 'EFECTIVO';
+  paymentMethod: PaymentMethod = 'EFECTIVO';
 
-  customerId: number | null = null;
   dueDate: string | null = null;
 
   creditCustomers: CreditCustomer[] = [];
@@ -132,17 +95,12 @@ export class Venta {
   lastSaleChange: number = 0;
 
   showModalProductos = false;
-  productos: ProductRow[] = [];
   filtro = '';
-
-  items: SaleItem[] = [];
-  totalVenta = 0;
 
   // Salida de efectivo (F10)
   showCashOutModal = false;
   cashOutAmount: number | null = null;
   cashOutNote = '';
-  // Salida como pago a proveedor
   cashOutIsSupplier = false;
   cashOutSupplierId: number | null = null;
   cashOutSuppliers: { id: number; nombre: string }[] = [];
@@ -161,7 +119,7 @@ export class Venta {
   facturaConceptos: ConceptoFactura[] = [];
   facturaSaleId: number | null = null;
 
-  lastCustomerId: number | null = null;
+  lastClienteSeleccionado: CartCustomer | null = null;
 
   facturaReceptorRfc: string | null = null;
   facturaReceptorNombre: string | null = null;
@@ -171,11 +129,6 @@ export class Venta {
   // =========================
   // Turno (Abrir / estado)
   // =========================
-  shiftOpen = false;
-  shiftId: number | null = null;
-  shiftOpenedAt: Date | null = null;
-  shiftOpeningCash = 0;
-
   showOpenShiftModal = false;
   openShiftRequired = false;
   openingShiftLoading = false;
@@ -192,7 +145,7 @@ export class Venta {
   editingHeader: SaleHeader | null = null;
   editingLoading = false;
 
-  // Nuevo: solo lectura por default, “Modificar” desbloquea
+  // Solo lectura por default, “Modificar” desbloquea
   editUnlocked = false;
 
   // =========================
@@ -205,23 +158,24 @@ export class Venta {
   refundLoading = false;
 
   showModalClientes = false;
-  clientesGenerales: any[] = [];
+  clientesGenerales: CartCustomer[] = [];
   filtroClientes = '';
-  clienteSeleccionado: any | null = null;
-  lastClienteSeleccionado: any | null = null;
 
-  // =========================
-  // Cuentas en espera (multi-venta)
-  // =========================
-  saleTabs: { id: number; items: SaleItem[]; customerId: number | null; cliente: any | null }[] = [];
-  activeTabId = 0;
-  private tabSeq = 0;
-
-  constructor(private auth: AuthService, private router: Router, private registerSvc: RegisterService, private supervisor: SupervisorAuthService) {}
+  constructor(private auth: AuthService, private router: Router, private supervisor: SupervisorAuthService) {
+    // Acuse visual de que el total cambio (ver `totalPulso`).
+    effect(() => {
+      const total = this.cart.total();
+      if (this.totalAnterior !== null && total !== this.totalAnterior) {
+        clearTimeout(this.pulsoTimer);
+        this.totalPulso = this.totalPulso === 1 ? 2 : 1;
+        this.pulsoTimer = setTimeout(() => { this.totalPulso = 0; }, 220);
+      }
+      this.totalAnterior = total;
+    });
+  }
 
   async ngOnInit() {
     await this.refreshFolioFromDb();
-    this.initTabsIfNeeded();
 
     if (!this.auth.usuarioActualId) {
       Swal.fire({
@@ -236,7 +190,7 @@ export class Venta {
 
     const api = (window as any).electronAPI;
     if (api?.onBarcodeScan) {
-      api.onBarcodeScan(async (_payload: any) => {
+      const off = api.onBarcodeScan(async (_payload: any) => {
         const code = String(_payload?.code || '').trim();
         if (!code) return;
 
@@ -244,13 +198,46 @@ export class Venta {
         if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) return;
         if (this.isEditing && !this.editUnlocked) return;
 
-        await this.addByBarcode(code); 
+        await this.addByBarcode(code);
       });
+      this.offBarcode = typeof off === 'function' ? off : null;
     }
 
+    // Se relee de SQL al entrar, no se confia en lo que quedo en memoria: el
+    // turno pudo cerrarse desde el Corte, desde otra ventana o desde otra caja
+    // de la red. `ensureShiftOpen` corta en seco si el signal dice "abierto",
+    // asi que sin este refresco un turno ya cerrado dejaba entrar a vender.
+    await this.shift.refresh();
     await this.ensureShiftOpen('VENTA');
   }
 
+  ngOnDestroy() {
+    // Antes cada visita a Ventas apilaba un listener mas del scanner.
+    try { this.offBarcode?.(); } catch { /* noop */ }
+    this.offBarcode = null;
+    clearTimeout(this.pulsoTimer);
+    clearTimeout(this.exitoTimer);
+    this.clearScanBuffer();
+  }
+
+  // =========================
+  // Vistas sobre el Core (la plantilla sigue usando los mismos nombres)
+  // =========================
+  get items(): CartLine[] { return this.cart.lines(); }
+  get totalVenta(): number { return this.cart.total(); }
+  get saleTabs(): Cart[] { return this.cart.carts(); }
+  get activeTabId(): number { return this.cart.activeCartId(); }
+  get clienteSeleccionado(): CartCustomer | null { return this.cart.activeCart().customer; }
+  get productos(): CatalogProduct[] { return this.catalog.products(); }
+
+  /** Cliente de credito elegido en el cobro. */
+  get customerId(): number | null { return this.cart.activeCart().creditCustomerId; }
+  set customerId(v: number | null) { this.cart.setCreditCustomer(v); }
+
+  get shiftOpen(): boolean { return this.shift.isOpen; }
+  get shiftId(): number | null { return this.shift.shift().id; }
+  get shiftOpenedAt(): Date | null { return this.shift.shift().openedAt; }
+  get shiftOpeningCash(): number { return this.shift.shift().openingCash; }
 
   private get currentUserId(): number {
     return this.auth.usuarioActualId as number;
@@ -258,6 +245,23 @@ export class Venta {
 
   get isEditing(): boolean {
     return this.editingSaleId != null;
+  }
+
+  /**
+   * ¿La venta cargada se puede modificar?
+   *
+   * `sp_update_sale` recalcula el stock por PRODUCTO vendido, y eso solo es
+   * correcto para lineas DIRECT sin modificadores: una receta consume
+   * ingredientes, no el producto. El procedure lo rechaza, asi que la
+   * pantalla no debe ofrecer un boton que siempre va a fallar. El camino
+   * oficial para corregir esas ventas es Reembolso / Cambio, que repone lo
+   * que la venta consumio de verdad.
+   */
+  ventaEditable = true;
+
+  private evaluarEditable(details: SaleDetailRow[]): void {
+    this.ventaEditable = !(details || []).some((d: any) =>
+      d.inventory_mode === 'RECIPE' || !!d.modifiers);
   }
 
   get cambio(): number {
@@ -270,157 +274,66 @@ export class Venta {
    * Marca de "el total acaba de cambiar".
    *
    * La plantilla la usa para reproducir un cruce muy corto sobre la cifra:
-   * es el acuse de recibo de que el producto entro a la venta. Angular no
-   * recrea el nodo del total al cambiar el valor, asi que sin este
-   * interruptor la animacion no se dispararia nunca.
-   *
-   * NO cambia el calculo: el total se sigue obteniendo igual.
+   * es el acuse de recibo de que el producto entro a la venta. Alternar entre
+   * dos valores reinicia la animacion aunque lleguen dos cambios seguidos.
    */
   totalPulso = 0;
   private pulsoTimer: any;
-
-  private recalcularTotal() {
-    const antes = this.totalVenta;
-    this.totalVenta = this.items.reduce((acc, it) => acc + it.subtotal, 0);
-
-    if (this.totalVenta !== antes) {
-      // Alternar entre dos valores reinicia la animacion aunque lleguen dos
-      // cambios seguidos (escaneo rapido de varios productos).
-      clearTimeout(this.pulsoTimer);
-      this.totalPulso = this.totalPulso === 1 ? 2 : 1;
-      this.pulsoTimer = setTimeout(() => { this.totalPulso = 0; }, 220);
-    }
-
-    this.pushCustomerDisplay();
-  }
-
-  // ===== Pantalla de cliente (segundo monitor) =====
-  private pushCustomerDisplay() {
-    try {
-      const api = (window as any).electronAPI;
-      if (!api?.customerDisplayState) return;
-      if (!this.items.length) { api.customerDisplayState({ mode: 'idle' }); return; }
-      const items = this.items.map(it => ({
-        name: it.productName, qty: it.qty, unitPrice: it.unitPrice, importe: it.qty * it.unitPrice
-      }));
-      let tax = 0;
-      for (const it of this.items) {
-        const rate = it.tasaIva ?? 0.16;
-        const imp = it.qty * it.unitPrice;
-        tax += imp - (imp / (1 + rate));
-      }
-      const total = this.totalVenta;
-      api.customerDisplayState({ mode: 'sale', items, subtotal: total - tax, tax, discount: 0, total });
-    } catch { /* noop */ }
-  }
-
-  private pushCustomerCheckout(isCredito: boolean) {
-    try {
-      const api = (window as any).electronAPI;
-      if (!api?.customerDisplayState) return;
-      api.customerDisplayState({
-        mode: 'checkout',
-        total: this.lastSaleTotal,
-        paid: isCredito ? null : this.lastSalePaid,
-        change: isCredito ? null : this.lastSaleChange,
-        method: this.paymentMethod,
-        credito: isCredito
-      });
-    } catch { /* noop */ }
-  }
+  private totalAnterior: number | null = null;
 
   private adjustLastAddedQty(delta: number) {
-    if (!this.items.length) return;
+    const lines = this.items;
+    if (!lines.length) return;
 
-    const fallback = this.items[this.items.length - 1];
+    const fallback = lines[lines.length - 1];
     const target = this.lastAddedProductId != null
-      ? this.items.find(it => it.productId === this.lastAddedProductId) ?? fallback
+      ? lines.find(it => it.productId === this.lastAddedProductId) ?? fallback
       : fallback;
 
     if (!target) return;
-
-    target.qty = Math.max(1, Number(target.qty || 0) + delta);
-    this.recalcularTotal();
+    this.cart.adjustQty(target, delta);
   }
 
   onQtyChange(i: number) {
     const it = this.items[i];
     if (!it) return;
-    if (it.qty < 1) it.qty = 1;
-    this.recalcularTotal();
+    this.cart.setQty(it, it.qty);
   }
 
   onPriceChange(i: number) {
     const it = this.items[i];
     if (!it) return;
-    if (it.unitPrice < 0) it.unitPrice = 0;
-    this.recalcularTotal();
+    this.cart.setPrice(it, it.unitPrice);
     // Detección (robo hormiga): registra el cambio de precio en la venta.
     this.supervisor.registrar('PRICE_CHANGE', { detail: (it.productName || 'Producto') + ' -> $' + Number(it.unitPrice).toFixed(2) });
   }
 
   quitarItem(i: number) {
     const removed = this.items[i];
-    this.items.splice(i, 1);
+    if (!removed) return;
+    this.cart.removeLine(removed);
 
-    if (removed && removed.productId === this.lastAddedProductId) {
-      this.lastAddedProductId = this.items.length ? this.items[this.items.length - 1].productId : null;
+    if (removed.productId === this.lastAddedProductId) {
+      const last = this.cart.lastLine();
+      this.lastAddedProductId = last ? last.productId : null;
     }
-
-    this.recalcularTotal();
   }
 
   // =========================
   // Turno helpers
   // =========================
-  private setShiftFromRow(row: any) {
-    this.shiftOpen = true;
-    this.shiftId = row?.id ?? row?.shift_id ?? row?.closure_id ?? null;
-    this.shiftOpenedAt = row?.opened_at ? new Date(row.opened_at) : null;
-    this.shiftOpeningCash = Number(row?.opening_cash ?? row?.openingCash ?? 0);
-  }
-
-  private clearShift() {
-    this.shiftOpen = false;
-    this.shiftId = null;
-    this.shiftOpenedAt = null;
-    this.shiftOpeningCash = 0;
-  }
-
-  private async fetchOpenShift(): Promise<boolean> {
-    const api = (window as any).electronAPI;
-    if (!api || !api.getOpenShift) {
-      // En modo ng serve puede no existir: no bloqueo.
-      return true;
-    }
-
-    try {
-      const resp = await api.getOpenShift({ user_id: this.currentUserId, register_id: this.registerSvc.registerId });
-      if (!resp?.success) return false;
-
-      const row = resp.data;
-      const isOpen = !!row?.id && (row.closed_at == null);
-
-      if (isOpen) {
-        this.setShiftFromRow(row);
-        return true;
-      }
-
-      this.clearShift();
-      return false;
-    } catch {
-      this.clearShift();
-      return false;
-    }
-  }
-
   private async ensureShiftOpen(source: 'VENTA' | 'COBRO' | 'SALIDA'): Promise<boolean> {
-    if (this.shiftOpen) return true;
+    // Agregar al carrito se fia del estado en memoria: es el camino del
+    // escaner y consultar en cada lectura seria una consulta por producto.
+    // Cobrar y sacar efectivo NO se fian: ahi se mueve dinero, y el turno pudo
+    // cerrarse desde el Corte o desde otra caja mientras esta pantalla seguia
+    // abierta. La comprobacion cuesta una consulta por operacion.
+    if (source === 'VENTA' && this.shift.isOpen) return true;
     if (this.shiftCheckInProgress) return false;
 
     this.shiftCheckInProgress = true;
     try {
-      const ok = await this.fetchOpenShift();
+      const ok = await this.shift.ensureOpen();
       if (ok) return true;
 
       this.abrirModalAbrirTurno(true);
@@ -435,7 +348,7 @@ export class Venta {
   }
 
   abrirModalAbrirTurno(required: boolean) {
-    if (this.shiftOpen) return;
+    if (this.shift.isOpen) return;
     this.openShiftRequired = required;
     this.openingCash = 0;
     this.openingNote = '';
@@ -448,12 +361,6 @@ export class Venta {
   }
 
   async confirmarAbrirTurno() {
-    const api = (window as any).electronAPI;
-    if (!api || !api.openShift) {
-      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se pudo abrir turno (API no disponible).' });
-      return;
-    }
-
     const opening_cash = Number(this.openingCash ?? 0);
     if (opening_cash < 0) {
       await Swal.fire({ icon: 'warning', title: 'Monto inválido', text: 'El fondo inicial no puede ser negativo.' });
@@ -462,28 +369,11 @@ export class Venta {
 
     try {
       this.openingShiftLoading = true;
-
-      const payload = {
-        user_id: this.currentUserId,
-        opening_cash,
-        opening_note: (this.openingNote || '').trim() || null,
-        opening_user_id: this.currentUserId,
-        register_id: this.registerSvc.registerId
-      };
-
-      const resp = await api.openShift(payload);
-
-      if (!resp?.success) {
-        await Swal.fire({ icon: 'error', title: 'No se pudo abrir el turno', text: resp?.error || 'Ocurrió un error al abrir el turno.' });
+      const r = await this.shift.open(opening_cash, this.openingNote);
+      if (!r.ok) {
+        const sinApi = /API no disponible/.test(r.error || '');
+        await Swal.fire({ icon: 'error', title: sinApi ? 'No disponible' : 'No se pudo abrir el turno', text: r.error });
         return;
-      }
-
-      const row = resp.data ?? resp.recordset?.[0] ?? null;
-      if (row) {
-        this.setShiftFromRow(row);
-        if (row?.closure_id && !this.shiftId) this.shiftId = Number(row.closure_id);
-      } else {
-        await this.fetchOpenShift();
       }
 
       this.showOpenShiftModal = false;
@@ -523,15 +413,16 @@ export class Venta {
 
   cerrarModalCobrar() { this.showModal = false; }
 
- async onPaymentMethodChange(method: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP') {
+  async onPaymentMethodChange(method: PaymentMethod) {
     this.paymentMethod = method;
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
       await this.loadCreditCustomers();
-      
-      if (this.clienteSeleccionado && this.creditCustomers.length > 0) {
-        const match = this.creditCustomers.find(c => c.id === this.clienteSeleccionado.id);
+
+      const cli = this.clienteSeleccionado;
+      if (cli && this.creditCustomers.length > 0) {
+        const match = this.creditCustomers.find(c => c.id === cli.id);
         if (match) this.customerId = match.id;
       }
     } else {
@@ -578,29 +469,17 @@ export class Venta {
 
   /**
    * Estados visibles del cobro: reposo -> procesando -> confirmado.
-   *
-   * Cobrar es la accion central de Wybix y hasta ahora no daba ninguna senal
-   * mientras registraba la venta: el boton se quedaba igual durante la
-   * escritura en base y la apertura del cajon.
-   *
-   * `cobrando` tambien deshabilita el boton, asi que de paso evita el doble
-   * envio por doble clic. Es una salvaguarda de interfaz: NO cambia ninguna
-   * regla de negocio ni el calculo de la venta.
+   * `cobrando` deshabilita el boton y evita el doble envio.
    */
   cobrando = false;
   cobroConfirmado = false;
   private exitoTimer: any;
 
-  /**
-   * Envoltorio de `confirmarCobro`. Se mantiene aparte para que la logica de
-   * la venta no se toque: aqui solo se enciende y apaga el estado visual.
-   */
   async confirmarCobro() {
     if (this.cobrando) return;
     this.cobrando = true;
     try {
       await this.confirmarCobroInterno();
-      // Acuse corto de que la venta quedo registrada.
       this.cobroConfirmado = true;
       clearTimeout(this.exitoTimer);
       this.exitoTimer = setTimeout(() => { this.cobroConfirmado = false; }, 900);
@@ -613,149 +492,78 @@ export class Venta {
     const ok = await this.ensureShiftOpen('COBRO');
     if (!ok) return;
 
-    if (this.items.length === 0) {
-      this.showModal = false;
-      await Swal.fire({ icon: "error", title: "Oops...", text: "Agrega productos a la venta" });
-      return;
-    }
-    if (this.totalVenta <= 0) {
-      this.showModal = false;
-      await Swal.fire({ icon: "error", title: "Oops...", text: "El total de la venta debe ser mayor a cero" });
-      return;
-    }
-
     if (this.paymentMethod === 'TERMINAL_MP') {
+      // Las validaciones basicas se hacen antes de mandar a la terminal.
+      const err = this.sale.validate(this.cart.activeCart(), { method: 'TERMINAL_MP' });
+      if (err) { this.showModal = false; await Swal.fire({ icon: 'error', title: 'Oops...', text: err }); return; }
       this.showModal = false;
       await this.cobrarConTerminalMP();
       return;
     }
 
     const isCredito = this.paymentMethod === 'CREDITO';
+    const payment: Payment = {
+      method: this.paymentMethod,
+      received: isCredito ? null : this.dineroRecibido,
+      creditCustomerId: isCredito ? this.customerId : null,
+      dueDate: isCredito ? this.dueDate : null,
+    };
 
-    // 1. Identificamos el cliente correcto para la venta
-    const finalCustomerId = isCredito ? this.customerId : (this.clienteSeleccionado ? this.clienteSeleccionado.id : null);
-
-    // 2. Guardamos el cliente en memoria para facturar después de limpiar la vista
-    this.lastClienteSeleccionado = this.clienteSeleccionado;
-
-    if (isCredito) {
-      if (this.customerId == null) {
-        this.showModal = false;
-        await Swal.fire({ icon: 'error', title: 'Cliente requerido', text: 'Selecciona el cliente para la venta a crédito.' });
-        return;
-      }
-    } else {
-      if (this.dineroRecibido == null || this.dineroRecibido < this.totalVenta) {
-        this.showModal = false;
-        await Swal.fire({ icon: "error", title: "Oops...", text: "El dinero recibido debe ser mayor o igual al total de la venta" });
-        return;
-      }
-    }
-
-    const detalles = this.items.map(it => ({
-      productId: it.productId,
-      qty: it.qty,
-      unitPrice: it.unitPrice
-    }));
-
-    // Guarda copia de los items para una eventual factura
-    const itemsSnapshot = this.items.map(it => ({ ...it }));
-
-    try {
-      const resp = await (window as any).electronAPI.registerSale(
-        this.currentUserId,
-        this.paymentMethod,
-        detalles,
-        finalCustomerId, // Aquí enviamos el cliente (ya sea crédito o contado)
-        isCredito ? this.dueDate : null,
-        this.registerSvc.registerId
-      );
-
-      if (resp?.success) {
-        
-        // 3. Declaramos y sacamos el saleId PRIMERO
-        const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
-
-        if (!isCredito) {
-          this.lastSalePaid = this.dineroRecibido ?? this.totalVenta;
-          this.lastSaleChange = this.cambio;
-
-          const api = (window as any).electronAPI;
-          if (api && api.openCashDrawer) {
-            try { await api.openCashDrawer({ reason: 'payment' }); } catch { /* noop */ }
-          } else {
-            this.lastSalePaid = this.totalVenta;
-            this.lastSaleChange = 0;
-          }
-        }
-
-        // 4. Asignamos a las variables post-venta (ya usando el saleId sin error)
-        this.lastSaleId = saleId;
-        this.lastSaleIsCredito = isCredito;
-        this.lastSaleTotal = this.totalVenta;
-
-        // Pantalla de cliente: muestra total pagado / cambio / gracias
-        this.pushCustomerCheckout(isCredito);
-
-        this.prepararConceptosFactura(itemsSnapshot, saleId);
-
-        if (!isCredito && this.autoPrintTicketOnSale && saleId) {
-          try {
-            await this.printTicketBySaleId(saleId, {
-              pagado: this.lastSalePaid,
-              cambio: this.lastSaleChange,
-              silent: true,
-              paymentMethod: this.paymentMethod
-            });
-          } catch { /* noop */ }
-        }
-
-        this.items = [];
-        this.totalVenta = 0;
-        this.dineroRecibido = null;
-        this.customerId = null;
-        this.dueDate = null;
-        this.clienteSeleccionado = null; // Limpia el cliente asignado en la pantalla principal
-
-        this.finishActiveTabAfterSale();
-
-        this.showModal = false;
-        this.showPostSaleModal = true;
-
-        await this.refreshFolioFromDb();
-      } else {
-        this.showModal = false;
-        await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: resp?.error || 'No se pudo registrar la venta.' });
-      }
-    } catch (e: any) {
+    // Mismos mensajes que antes: el Core valida, la pantalla los muestra.
+    const err = this.sale.validate(this.cart.activeCart(), payment);
+    if (err) {
       this.showModal = false;
-      await Swal.fire({ icon: 'error', title: 'Error al registrar la venta', text: e.message || 'Ocurrió un error inesperado.' });
+      const esCliente = /cliente/i.test(err);
+      await Swal.fire({ icon: 'error', title: esCliente ? 'Cliente requerido' : 'Oops...', text: err });
+      return;
     }
+
+    const res = await this.sale.checkout(payment, {
+      openDrawer: !isCredito,
+      autoPrint: this.autoPrintTicketOnSale,
+    });
+
+    if (!res.ok) {
+      this.showModal = false;
+      await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: res.error || 'No se pudo registrar la venta.' });
+      return;
+    }
+
+    this.afterSale(res.saleId ?? null, res, isCredito);
+    this.showModal = false;
+    this.showPostSaleModal = true;
+
+    await this.refreshFolioFromDb();
+  }
+
+  /** Estado posventa comun a efectivo/tarjeta/credito/terminal. */
+  private afterSale(saleId: number | null, res: { total?: number; paid?: number; change?: number; lines?: SoldLine[]; customer?: CartCustomer | null }, isCredito: boolean) {
+    this.lastSaleId = saleId;
+    this.lastSaleIsCredito = isCredito;
+    this.lastSaleTotal = res.total ?? 0;
+    if (!isCredito) {
+      this.lastSalePaid = res.paid ?? this.lastSaleTotal;
+      this.lastSaleChange = res.change ?? 0;
+    }
+    // Cliente en memoria para facturar despues de limpiar la vista.
+    this.lastClienteSeleccionado = res.customer ?? null;
+    this.prepararConceptosFactura(res.lines ?? [], saleId);
+
+    this.dineroRecibido = null;
+    this.customerId = null;
+    this.dueDate = null;
   }
 
   private async refreshFolioFromDb() {
-    const api = (window as any).electronAPI;
-    if (!api?.getActualFolio) return;
-
-    try {
-      const resp = await api.getActualFolio();
-      const next = Number(resp?.data?.next_folio ?? 1);
-      this.nextFolioSuggested = Number.isFinite(next) && next > 0 ? next : 1;
-
-      // Si NO está editando, deja el input listo con el sugerido
-      if (!this.isEditing) {
-        this.folioInput = this.nextFolioSuggested;
-      }
-    } catch {
-      this.nextFolioSuggested = 1;
-      if (!this.isEditing) this.folioInput = 1;
-    }
+    this.nextFolioSuggested = await this.sale.nextFolio();
+    // Si NO está editando, deja el input listo con el sugerido
+    if (!this.isEditing) this.folioInput = this.nextFolioSuggested;
   }
 
   // ==================
   // FACTURACION
   // ==================
-  private prepararConceptosFactura(items: SaleItem[], saleId: number | null) {
+  private prepararConceptosFactura(items: Pick<SoldLine, 'productName' | 'qty' | 'unitPrice' | 'claveProdServ' | 'claveUnidad' | 'objetoImpuesto' | 'tasaIva'>[], saleId: number | null) {
     this.facturaSaleId = saleId;
     this.facturaConceptos = items.map(it => ({
       description: it.productName,
@@ -773,7 +581,10 @@ export class Venta {
       await Swal.fire({ icon: 'info', title: 'Carga una venta', text: 'Primero carga un folio con productos.' });
       return;
     }
-    this.prepararConceptosFactura(this.items, this.editingSaleId);
+    this.prepararConceptosFactura(this.items.map(l => ({
+      productName: l.productName, qty: l.qty, unitPrice: l.effectiveUnitPrice,
+      claveProdServ: l.claveProdServ, claveUnidad: l.claveUnidad, objetoImpuesto: l.objetoImpuesto, tasaIva: l.tasaIva,
+    })), this.editingSaleId);
     this.showFacturaModal = true;
   }
 
@@ -805,54 +616,14 @@ export class Venta {
 
   cerrarModalProductos() { this.showModalProductos = false; }
 
+  /** Relee el catalogo (stock fresco al abrir el buscador). */
   async cargarProductosActivos() {
-    try {
-      const rs = await (window as any).electronAPI.getActiveProducts();
-      const rows = Array.isArray(rs?.recordset) ? rs.recordset : Array.isArray(rs) ? rs : [];
-      this.productos = rows.map((r: any) => ({
-        id: r.id,
-        part_number: r.part_number ?? '',
-        bar_code: r.bar_code ?? r.barcode ?? r.barCode ?? '',
-        product_name: r.product_name ?? r.nombre ?? r.name ?? '',
-        price: Number(r.price ?? 0),
-        stock: Number(r.stock ?? 0),
-        category_name: r.category_name ?? '',
-        brand_name: r.brand_name ?? '',
-        clave_prod_serv: r.clave_prod_serv ?? null,
-        clave_unidad: r.clave_unidad ?? null,
-        objeto_impuesto: r.objeto_impuesto ?? null,
-        tasa_iva: r.tasa_iva != null ? Number(r.tasa_iva) : null
-      })) as ProductRow[];
-    } catch {
-      this.productos = [];
-    }
+    await this.catalog.load(true);
   }
 
-  seleccionarProducto(p: ProductRow) {
-    const existing = this.items.find(it => it.productId === p.id);
-    if (existing) {
-      existing.qty += 1;
-      this.lastAddedProductId = p.id;
-      this.recalcularTotal();
-      this.showModalProductos = false;
-      return;
-    }
-
-    const item: SaleItem = {
-      productId: p.id,
-      productName: `${p.product_name}`,
-      qty: 1,
-      unitPrice: p.price ?? 0,
-      claveProdServ: p.clave_prod_serv ?? null,
-      claveUnidad: p.clave_unidad ?? null,
-      objetoImpuesto: p.objeto_impuesto ?? null,
-      tasaIva: p.tasa_iva ?? null,
-      get subtotal() { return this.qty * this.unitPrice; }
-    };
-
-    this.items.push(item);
+  seleccionarProducto(p: CatalogProduct) {
+    this.cart.addProduct(CatalogService.toLineSource(p), 1);
     this.lastAddedProductId = p.id;
-    this.recalcularTotal();
     this.showModalProductos = false;
   }
 
@@ -860,14 +631,11 @@ export class Venta {
   // CAJÓN MANUAL & SALIDA EFECTIVO
   // ==================
   async abrirCajonManual() {
-    const api = (window as any).electronAPI;
-    if (!api || !api.openCashDrawer) {
-      await Swal.fire({ icon: 'info', title: 'No disponible', text: 'La apertura del cajón no está disponible en este entorno.' });
-      return;
-    }
-
     try {
-      await api.openCashDrawer();
+      const ok = await this.sale.openDrawer();
+      if (!ok) {
+        await Swal.fire({ icon: 'info', title: 'No disponible', text: 'La apertura del cajón no está disponible en este entorno.' });
+      }
     } catch {
       await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo abrir el cajón. Revisa la configuración.' });
     }
@@ -926,32 +694,16 @@ export class Venta {
       return;
     }
 
-    const api = (window as any).electronAPI;
-    if (!api || !api.registerCashMovement) {
-      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se pudo registrar la salida de efectivo (API no disponible).' });
-      return;
-    }
-
-    const payload = {
-      user_id: this.currentUserId,
-      typee: 'WITHDRAW',
-      amount,
-      note: this.cashOutNote,
-      register_id: this.registerSvc.registerId
-    };
-
     try {
-      const resp = await api.registerCashMovement(payload);
+      const resp = await this.shift.registerCashOut(amount, this.cashOutNote);
 
       if (resp?.success) {
         // Si la salida es pago a proveedor, registrarlo tambien
         if (this.cashOutIsSupplier && this.cashOutSupplierId) {
           try {
-            await api.paySupplier?.({
+            await this.shift.paySupplier({
               supplier_id: this.cashOutSupplierId,
               amount,
-              user_id: this.currentUserId,
-              payment_method: 'EFECTIVO',
               note: this.cashOutNote,
               cash_movement_id: resp?.cash_movement_id ?? resp?.id ?? null
             });
@@ -964,7 +716,8 @@ export class Venta {
         this.cashOutSupplierId = null;
         await Swal.fire({ icon: 'success', title: 'Salida registrada', text: 'La salida de efectivo se registró correctamente.' });
       } else {
-        await Swal.fire({ icon: 'error', title: 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });
+        const sinApi = /API no disponible/.test(resp?.error || '');
+        await Swal.fire({ icon: 'error', title: sinApi ? 'No disponible' : 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });
       }
     } catch (e: any) {
       await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al registrar la salida.' });
@@ -986,8 +739,7 @@ export class Venta {
     }
 
     try {
-      const payload = { saleId: this.lastSaleId, pagado: this.lastSalePaid, cambio: this.lastSaleChange };
-      const resp = await api.generateSalePdf(payload);
+      const resp = await this.sale.generatePdf({ saleId: this.lastSaleId, pagado: this.lastSalePaid, cambio: this.lastSaleChange });
 
       if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'Error al generar PDF', text: resp?.error || 'No se pudo generar el PDF.' });
@@ -1010,7 +762,7 @@ export class Venta {
     }
 
     try {
-      const resp = await api.sendSaleTicketWhatsApp(this.lastSaleId);
+      const resp = await this.sale.sendTicketWhatsApp(this.lastSaleId);
       if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'Error al enviar ticket', text: resp?.error || 'No se pudo enviar el ticket.' });
         return;
@@ -1025,44 +777,31 @@ export class Venta {
   private async printTicketBySaleId(saleId: number, opts?: {
     pagado?: number | null;
     cambio?: number | null;
-    silent?: boolean;     
+    silent?: boolean;
     printerName?: string | null;
     paymentMethod?: string | null;
   }) {
-    const api = (window as any).electronAPI;
-
-    if (!api?.printSaleTicket) {
-      await Swal.fire({
-        icon: 'info',
-        title: 'No disponible',
-        text: 'Falta electronAPI.printSaleTicket en preload.'
-      });
-      return;
-    }
-
     this.printingTicket = true;
     try {
-      const payload = {
-        saleId,
+      const resp = await this.sale.printTicket(saleId, {
         pagado: opts?.pagado ?? null,
         cambio: opts?.cambio ?? null,
         silent: opts?.silent ?? true,
         printerName: opts?.printerName ?? undefined,
         paymentMethod: opts?.paymentMethod ?? undefined,
-      };
-
-      const resp = await api.printSaleTicket(payload);
+      });
 
       if (!resp?.success) {
+        const sinApi = /preload/.test(resp?.error || '');
         await Swal.fire({
-          icon: 'error',
-          title: 'No se pudo imprimir',
+          icon: sinApi ? 'info' : 'error',
+          title: sinApi ? 'No disponible' : 'No se pudo imprimir',
           text: resp?.error || 'Error al imprimir el ticket.'
         });
         return;
       }
 
-      if (payload.silent === false) {
+      if ((opts?.silent ?? true) === false) {
         await Swal.fire({ icon: 'success', title: 'Impresión enviada', timer: 900, showConfirmButton: false });
       }
     } catch (e: any) {
@@ -1187,9 +926,8 @@ export class Venta {
     this.editingHeader = null;
     this.editUnlocked = false;
 
-    // Restaurar la cuenta en espera activa (lo que se estaba vendiendo)
-    const t = this.saleTabs.find(x => x.id === this.activeTabId);
-    if (t) { this.loadTab(t); } else { this.items = []; this.recalcularTotal(); }
+    // Cierra la venta cargada: vuelve la cuenta en espera que estaba activa.
+    this.cart.closeTransient();
 
     this.folioInput = this.nextFolioSuggested;
   }
@@ -1210,9 +948,9 @@ export class Venta {
 
     this.editingLoading = true;
     try {
-      const resp = await api.getSaleByFolio(saleId);
+      const resp = await this.sale.getSaleByFolio(saleId);
 
-      if (!resp?.success) { 
+      if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'No se encontró', text: resp?.error || 'No se encontró la venta.' });
         return;
       }
@@ -1225,9 +963,6 @@ export class Venta {
         return;
       }
 
-      // Preservar la cuenta en espera activa antes de cargar la venta a editar
-      if (!this.isEditing) this.snapshotActiveTab();
-
       this.editingSaleId = Number(header.sale_id);
       this.editingHeader = {
         ...header,
@@ -1236,30 +971,24 @@ export class Venta {
         refund_total: Number(header.refund_total ?? 0),
       };
       this.editUnlocked = false;
+      this.evaluarEditable(details);
 
-      this.items = (details || []).map((d: any) => {
-        const name =
-          d.product_name ??
-          d.productName ??
-          d.nombre ??
-          d.nombre_producto ??
-          d.name ??
-          '';
-
-        return {
+      const lines = (details || []).map((d: any) => {
+        const name = d.product_name ?? d.productName ?? d.nombre ?? d.nombre_producto ?? d.name ?? '';
+        return this.cart.makeLine({
           productId: Number(d.product_id),
           productName: String(name || `Producto #${d.product_id}`),
-          qty: Number(d.quantity ?? 1),
           unitPrice: Number(d.unitary_price ?? 0),
           claveProdServ: d.clave_prod_serv ?? null,
           claveUnidad: d.clave_unidad ?? null,
           objetoImpuesto: d.objeto_impuesto ?? null,
           tasaIva: d.tasa_iva != null ? Number(d.tasa_iva) : null,
-          get subtotal() { return this.qty * this.unitPrice; }
-        };
+        }, Number(d.quantity ?? 1));
       });
 
-      this.recalcularTotal();
+      // La cuenta en espera activa queda intacta: la venta cargada vive en un
+      // carrito transitorio aparte.
+      this.cart.openTransient(lines, { saleId: this.editingSaleId });
 
       await Swal.fire({
         icon: 'success',
@@ -1348,12 +1077,12 @@ export class Venta {
         items: this.items.map(it => ({
           productId: it.productId,
           qty: it.qty,
-          unitPrice: it.unitPrice
+          unitPrice: it.effectiveUnitPrice
         })),
         note: 'Edición de venta desde POS'
       };
 
-      const resp = await api.updateSale(payload);
+      const resp = await this.sale.updateSale(payload);
 
       if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: resp?.error || 'Error al actualizar.' });
@@ -1391,7 +1120,7 @@ export class Venta {
     }
 
     try {
-      const resp = await api.getSaleByFolio(this.editingSaleId);
+      const resp = await this.sale.getSaleByFolio(this.editingSaleId);
       if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'Error', text: resp?.error || 'No se pudo cargar la venta.' });
         return;
@@ -1402,12 +1131,7 @@ export class Venta {
       this.refundLines = (details || [])
         .filter(d => Number(d.remaining_qty ?? 0) > 0)
         .map(d => {
-          const name =
-            (d as any).product_name ??
-            (d as any).productName ??
-            (d as any).name ??
-            '';
-
+          const name = (d as any).product_name ?? (d as any).productName ?? (d as any).name ?? '';
           return {
             productId: Number(d.product_id),
             productName: String(name || `Producto #${d.product_id}`),
@@ -1518,7 +1242,7 @@ export class Venta {
         apply_net_update: 1
       };
 
-      const resp = await api.refundSale(payload);
+      const resp = await this.sale.refundSale(payload);
 
       if (!resp?.success) {
         await Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: resp?.error || 'Error en reembolso/cambio.' });
@@ -1561,7 +1285,7 @@ export class Venta {
 
     if (this.lastKeyTs) {
       const gap = now - this.lastKeyTs;
-      if (gap <= this.SCAN_GAP_MS) this.isScannerLike = true; 
+      if (gap <= this.SCAN_GAP_MS) this.isScannerLike = true;
     }
     this.lastKeyTs = now;
 
@@ -1572,7 +1296,6 @@ export class Venta {
     if (this.scanTimer) clearTimeout(this.scanTimer);
     this.scanTimer = setTimeout(() => this.clearScanBuffer(), this.IDLE_CLEAR_MS);
   }
-
 
   private async commitScanBuffer() {
     const code = (this.scanBuffer || '').trim();
@@ -1588,7 +1311,6 @@ export class Venta {
     }
   }
 
-
   private async addByPartNumber(code: string) {
     const key = (code || '').trim().toLowerCase();
     if (!key) return;
@@ -1598,11 +1320,9 @@ export class Venta {
       return;
     }
 
-    if (!this.productos.length) {
-      await this.cargarProductosActivos();
-    }
+    await this.catalog.load();
 
-    const p = this.productos.find(x => (x.part_number || '').toLowerCase() === key);
+    const p = this.catalog.findByPartNumber(key);
     if (!p) {
       await Swal.fire({ icon:'warning', title:'No encontrado', text:`No existe No. Parte: ${code}`, timer: 1000, showConfirmButton:false });
       return;
@@ -1612,250 +1332,204 @@ export class Venta {
   }
 
   private async addByBarcode(code: string) {
-  const key = (code || '').trim().toLowerCase();
-  if (!key) return;
+    const key = (code || '').trim().toLowerCase();
+    if (!key) return;
 
-  if (!this.productos.length) await this.cargarProductosActivos();
+    await this.catalog.load();
 
-  const p = this.productos.find(x => (x.bar_code || '').trim().toLowerCase() === key);
+    const p = this.catalog.findByBarcode(key);
 
-  if (!p) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'No encontrado',
-      text: `No existe código de barras: ${code}`,
-      timer: 1000,
-      showConfirmButton: false
-    });
-    return;
-  }
-
-  this.seleccionarProducto(p);
-}
-
-private sleep(ms: number) {
-  return new Promise(res => setTimeout(res, ms));
-}
-
-async cobrarConTerminalMP() {
-  const api = (window as any).electronAPI;
-  if (!api?.mpCreateOrder || !api?.mpGetOrder) {
-    await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta la integración de Mercado Pago en preload.' });
-    return;
-  }
-
-  if (!(this.totalVenta > 0)) {
-    await Swal.fire({ icon: 'error', title: 'Total inválido', text: 'El total debe ser mayor a cero.' });
-    return;
-  }
-
-  let orderId: string | null = null;
-  try {
-    const createResp = await api.mpCreateOrder({
-      amount: this.totalVenta,
-      externalReference: `POS-${Date.now()}-${Math.floor(Math.random() * 100000)}`
-    });
-
-    if (!createResp?.success || !createResp.orderId) {
-      await Swal.fire({ icon: 'error', title: 'No se pudo iniciar el cobro', text: createResp?.error || 'Error al crear la orden en la terminal.' });
-      return;
-    }
-    orderId = createResp.orderId;
-    console.log('MP orderId =>', orderId);
-  } catch (e: any) {
-    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al crear la orden.' });
-    return;
-  }
-
-  if (!orderId) return;
-  let canceledByUser = false;
-  Swal.fire({
-    title: 'Esperando pago en terminal',
-    html: 'Pide al cliente que acerque o inserte la tarjeta en la terminal.',
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    showConfirmButton: false,
-    showCancelButton: true,
-    cancelButtonText: 'Cancelar',
-    didOpen: () => Swal.showLoading()
-  }).then(res => {
-    if (res.dismiss === Swal.DismissReason.cancel) canceledByUser = true;
-  });
-
-  try {
-    const cfgRs = await api.mpGetConfig?.();
-    if (cfgRs?.data?.testMode && api.mpSimulateOrder) {
-      setTimeout(() => {
-        api.mpSimulateOrder(orderId, 'processed').catch(() => { /* noop */ });
-      }, 2500);
-    }
-  } catch { /* noop */ }
-
-  const intervalMs = 2500;
-  const maxMs = 180000; 
-  const startedAt = Date.now();
-
-  let finalState: 'approved' | 'failed' | 'canceled' | 'verify' | 'timeout' = 'timeout';
-
-  while (Date.now() - startedAt < maxMs) {
-    if (canceledByUser) {
-      Swal.close();
-      const cancelResp = await api.mpCancelOrder(orderId).catch(() => null);
-      finalState = cancelResp?.success ? 'canceled' : 'verify';
-      break;
-    }
-
-    await this.sleep(intervalMs);
-
-    let statusResp: any;
-    try {
-      statusResp = await api.mpGetOrder(orderId);
-    } catch {
-      continue;
-    }
-    if (!statusResp?.success) continue;
-
-    if (statusResp.state === 'approved') { finalState = 'approved'; break; }
-    if (statusResp.state === 'failed') { finalState = 'failed'; break; }
-    if (statusResp.state === 'action_required') { finalState = 'verify'; break; }
-  }
-
-  Swal.close();
-
-  if (finalState === 'approved') {
-    await this.registrarVentaTerminal(orderId);
-    return;
-  }
-  if (finalState === 'canceled') {
-    await Swal.fire({ icon: 'info', title: 'Cobro cancelado', text: 'No se registró la venta.' });
-    return;
-  }
-  if (finalState === 'failed') {
-    await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'La terminal no aprobó el pago. No se registró la venta.' });
-    return;
-  }
-
-  await this.verificarEstadoTerminal(orderId, finalState === 'timeout');
-}
-
-private async verificarEstadoTerminal(orderId: string, wasTimeout = false) {
-  const api = (window as any).electronAPI;
-
-  const choice = await Swal.fire({
-    icon: 'warning',
-    title: wasTimeout ? 'No se confirmó el pago a tiempo' : 'Verifica la terminal',
-    text: 'Revisa la pantalla de la terminal. Si el pago quedó aprobado, vuelve a consultar para registrar la venta.',
-    showCancelButton: true,
-    confirmButtonText: 'Volver a consultar',
-    cancelButtonText: 'Descartar'
-  });
-
-  if (!choice.isConfirmed) return; // descarta sin registrar
-
-  try {
-    const resp = await api.mpGetOrder(orderId);
-    if (resp?.success && resp.state === 'approved') {
-      await this.registrarVentaTerminal(orderId);
-      return;
-    }
-    if (resp?.success && resp.state === 'failed') {
-      await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'No se registró la venta.' });
-      return;
-    }
-    // sigue pendiente / action_required => vuelve a ofrecer consultar
-    await this.verificarEstadoTerminal(orderId, false);
-  } catch (e: any) {
-    await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo consultar el estado.' });
-  }
-}
-
-private async registrarVentaTerminal(orderId: string) {
-  const detalles = this.items.map(it => ({
-    productId: it.productId,
-    qty: it.qty,
-    unitPrice: it.unitPrice
-  }));
-
-  // Guarda copia para una eventual factura
-  const itemsSnapshot = this.items.map(it => ({ ...it }));
-
-  try {
-    const resp = await (window as any).electronAPI.registerSale(
-      this.currentUserId,
-      'TERMINAL_MP',
-      detalles,
-      null,
-      null
-    );
-
-    // El pago YA se cobró en la terminal. Si la venta no se registra, hay que conciliar manual:
-    // por eso mostramos el orderId en el error en lugar de reintentar a ciegas.
-    if (!resp?.success) {
+    if (!p) {
       await Swal.fire({
-        icon: 'error',
-        title: 'Pago aprobado, pero no se registró la venta',
-        text: `${resp?.error || 'Revisa la conexión a la base de datos.'} Orden MP: ${orderId}`
+        icon: 'warning',
+        title: 'No encontrado',
+        text: `No existe código de barras: ${code}`,
+        timer: 1000,
+        showConfirmButton: false
       });
       return;
     }
 
-    const saleId: number | null = resp.saleId ?? resp.id ?? null;
+    this.seleccionarProducto(p);
+  }
 
-    // Pago con tarjeta: no se abre el cajón
-    this.lastSalePaid = this.totalVenta;
-    this.lastSaleChange = 0;
-    this.lastSaleId = saleId;
-    this.lastSaleIsCredito = false;
-    this.lastSaleTotal = this.totalVenta;
+  private sleep(ms: number) {
+    return new Promise(res => setTimeout(res, ms));
+  }
 
-    // Pantalla de cliente: cierre (pago con terminal)
-    this.pushCustomerCheckout(false);
-
-    this.prepararConceptosFactura(itemsSnapshot, saleId);
-
-    if (this.autoPrintTicketOnSale && saleId) {
-      try {
-        await this.printTicketBySaleId(saleId, {
-          pagado: this.lastSalePaid,
-          cambio: 0,
-          silent: true,
-          paymentMethod: 'TERMINAL_MP'
-        });
-      } catch { /* noop */ }
+  // ==================
+  // TERMINAL MERCADO PAGO
+  // ==================
+  async cobrarConTerminalMP() {
+    const api = (window as any).electronAPI;
+    if (!api?.mpCreateOrder || !api?.mpGetOrder) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'Falta la integración de Mercado Pago en preload.' });
+      return;
     }
 
-    // Reset para nueva venta
-    this.items = [];
-    this.totalVenta = 0;
-    this.dineroRecibido = null;
-    this.customerId = null;
-    this.dueDate = null;
-    this.paymentMethod = 'EFECTIVO';
+    if (!(this.totalVenta > 0)) {
+      await Swal.fire({ icon: 'error', title: 'Total inválido', text: 'El total debe ser mayor a cero.' });
+      return;
+    }
 
-    this.finishActiveTabAfterSale();
+    let orderId: string | null = null;
+    try {
+      const createResp = await api.mpCreateOrder({
+        amount: this.totalVenta,
+        externalReference: `POS-${Date.now()}-${Math.floor(Math.random() * 100000)}`
+      });
+
+      if (!createResp?.success || !createResp.orderId) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo iniciar el cobro', text: createResp?.error || 'Error al crear la orden en la terminal.' });
+        return;
+      }
+      orderId = createResp.orderId;
+      console.log('MP orderId =>', orderId);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Error al crear la orden.' });
+      return;
+    }
+
+    if (!orderId) return;
+    let canceledByUser = false;
+    Swal.fire({
+      title: 'Esperando pago en terminal',
+      html: 'Pide al cliente que acerque o inserte la tarjeta en la terminal.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      showCancelButton: true,
+      cancelButtonText: 'Cancelar',
+      didOpen: () => Swal.showLoading()
+    }).then(res => {
+      if (res.dismiss === Swal.DismissReason.cancel) canceledByUser = true;
+    });
+
+    try {
+      const cfgRs = await api.mpGetConfig?.();
+      if (cfgRs?.data?.testMode && api.mpSimulateOrder) {
+        setTimeout(() => {
+          api.mpSimulateOrder(orderId, 'processed').catch(() => { /* noop */ });
+        }, 2500);
+      }
+    } catch { /* noop */ }
+
+    const intervalMs = 2500;
+    const maxMs = 180000;
+    const startedAt = Date.now();
+
+    let finalState: 'approved' | 'failed' | 'canceled' | 'verify' | 'timeout' = 'timeout';
+
+    while (Date.now() - startedAt < maxMs) {
+      if (canceledByUser) {
+        Swal.close();
+        const cancelResp = await api.mpCancelOrder(orderId).catch(() => null);
+        finalState = cancelResp?.success ? 'canceled' : 'verify';
+        break;
+      }
+
+      await this.sleep(intervalMs);
+
+      let statusResp: any;
+      try {
+        statusResp = await api.mpGetOrder(orderId);
+      } catch {
+        continue;
+      }
+      if (!statusResp?.success) continue;
+
+      if (statusResp.state === 'approved') { finalState = 'approved'; break; }
+      if (statusResp.state === 'failed') { finalState = 'failed'; break; }
+      if (statusResp.state === 'action_required') { finalState = 'verify'; break; }
+    }
+
+    Swal.close();
+
+    if (finalState === 'approved') {
+      await this.registrarVentaTerminal(orderId);
+      return;
+    }
+    if (finalState === 'canceled') {
+      await Swal.fire({ icon: 'info', title: 'Cobro cancelado', text: 'No se registró la venta.' });
+      return;
+    }
+    if (finalState === 'failed') {
+      await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'La terminal no aprobó el pago. No se registró la venta.' });
+      return;
+    }
+
+    await this.verificarEstadoTerminal(orderId, finalState === 'timeout');
+  }
+
+  private async verificarEstadoTerminal(orderId: string, wasTimeout = false) {
+    const api = (window as any).electronAPI;
+
+    const choice = await Swal.fire({
+      icon: 'warning',
+      title: wasTimeout ? 'No se confirmó el pago a tiempo' : 'Verifica la terminal',
+      text: 'Revisa la pantalla de la terminal. Si el pago quedó aprobado, vuelve a consultar para registrar la venta.',
+      showCancelButton: true,
+      confirmButtonText: 'Volver a consultar',
+      cancelButtonText: 'Descartar'
+    });
+
+    if (!choice.isConfirmed) return; // descarta sin registrar
+
+    try {
+      const resp = await api.mpGetOrder(orderId);
+      if (resp?.success && resp.state === 'approved') {
+        await this.registrarVentaTerminal(orderId);
+        return;
+      }
+      if (resp?.success && resp.state === 'failed') {
+        await Swal.fire({ icon: 'error', title: 'Pago rechazado', text: 'No se registró la venta.' });
+        return;
+      }
+      // sigue pendiente / action_required => vuelve a ofrecer consultar
+      await this.verificarEstadoTerminal(orderId, false);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo consultar el estado.' });
+    }
+  }
+
+  /**
+   * El pago YA se cobro en la terminal. Si la venta no se registra, hay que
+   * conciliar a mano: por eso se muestra el orderId en el error en lugar de
+   * reintentar a ciegas. Misma ruta de registro que el resto: SaleService.
+   */
+  private async registrarVentaTerminal(orderId: string) {
+    const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
+      openDrawer: false, // pago con tarjeta: no se abre el cajon
+      autoPrint: this.autoPrintTicketOnSale,
+    });
+
+    if (!res.ok) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Pago aprobado, pero no se registró la venta',
+        text: `${res.error || 'Revisa la conexión a la base de datos.'} Orden MP: ${orderId}`
+      });
+      return;
+    }
+
+    this.afterSale(res.saleId ?? null, res, false);
+    this.paymentMethod = 'EFECTIVO';
 
     this.showPostSaleModal = true;
     await this.refreshFolioFromDb();
-
-  } catch (e: any) {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al registrar la venta',
-      text: `${e?.message || 'Error inesperado.'} Orden MP: ${orderId}`
-    });
   }
-}
 
-async facturarUltimaVenta() {
+  async facturarUltimaVenta() {
     if (!this.facturaConceptos.length) {
       await Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay conceptos para facturar.' });
       return;
     }
-    if (this.lastClienteSeleccionado) {
-      this.facturaReceptorRfc = this.lastClienteSeleccionado.tax_id ?? null;
-      this.facturaReceptorNombre = this.lastClienteSeleccionado.razon_social || this.lastClienteSeleccionado.name;
-      this.facturaReceptorRegimen = this.lastClienteSeleccionado.regimen_fiscal ?? null;
-      this.facturaReceptorUso = this.lastClienteSeleccionado.uso_cfdi ?? null;
+    const cli = this.lastClienteSeleccionado;
+    if (cli) {
+      this.facturaReceptorRfc = cli.tax_id ?? null;
+      this.facturaReceptorNombre = cli.razon_social || cli.name;
+      this.facturaReceptorRegimen = cli.regimen_fiscal ?? null;
+      this.facturaReceptorUso = cli.uso_cfdi ?? null;
     } else {
       this.facturaReceptorRfc = null;
       this.facturaReceptorNombre = null;
@@ -1865,9 +1539,12 @@ async facturarUltimaVenta() {
 
     this.showPostSaleModal = false;
     this.showFacturaModal = true;
-}
+  }
 
-async abrirModalClientes() {
+  // ==================
+  // CLIENTES
+  // ==================
+  async abrirModalClientes() {
     const api = (window as any).electronAPI;
     if (!api || !api.getCustomers) {
       await Swal.fire({ icon: 'error', title: 'No disponible', text: 'La búsqueda de clientes no está disponible.' });
@@ -1900,81 +1577,46 @@ async abrirModalClientes() {
     this.showModalClientes = false;
   }
 
-  seleccionarCliente(cliente: any) {
-    this.clienteSeleccionado = cliente;
+  seleccionarCliente(cliente: CartCustomer) {
+    this.cart.setCustomer(cliente);
     this.cerrarModalClientes();
   }
 
   quitarCliente() {
-    this.clienteSeleccionado = null;
+    this.cart.setCustomer(null);
   }
 
   // =========================
   // Cuentas en espera (multi-venta)
   // =========================
-  private initTabsIfNeeded() {
-    if (this.saleTabs.length === 0) {
-      const id = ++this.tabSeq;
-      this.saleTabs = [{ id, items: this.items, customerId: this.customerId, cliente: this.clienteSeleccionado }];
-      this.activeTabId = id;
-    }
-  }
-
-  private snapshotActiveTab() {
-    const t = this.saleTabs.find(x => x.id === this.activeTabId);
-    if (!t) return;
-    t.items = this.items;
-    t.customerId = this.customerId;
-    t.cliente = this.clienteSeleccionado;
-  }
-
-  private loadTab(t: { id: number; items: SaleItem[]; customerId: number | null; cliente: any | null }) {
-    this.items = t.items || [];
-    this.customerId = t.customerId ?? null;
-    this.clienteSeleccionado = t.cliente ?? null;
-    this.dineroRecibido = null;
-    this.activeTabId = t.id;
-    this.recalcularTotal();
-  }
-
-  tabLabel(t: any, i: number): string {
-    const cli = (t.id === this.activeTabId) ? this.clienteSeleccionado : t.cliente;
+  tabLabel(t: Cart, i: number): string {
+    const cli: any = t.customer;
     const n = cli?.name ?? cli?.nombre ?? cli?.customerName ?? cli?.razon_social;
     return n ? String(n) : `Cuenta ${i + 1}`;
   }
 
-  tabItemCount(t: any): number {
-    return t.id === this.activeTabId ? this.items.length : (t.items?.length || 0);
+  tabItemCount(t: Cart): number {
+    return t.lines?.length || 0;
   }
 
   switchTab(id: number) {
     if (id === this.activeTabId || this.isEditing) return;
-    const target = this.saleTabs.find(x => x.id === id);
-    if (!target) return;
-    this.snapshotActiveTab();
-    this.loadTab(target);
+    this.cart.switchTo(id);
   }
 
   nuevaCuenta() {
     if (this.isEditing) return;
-    if (this.saleTabs.length >= 8) {
-      Swal.fire({ icon: 'info', title: 'Limite', text: 'Puedes tener hasta 8 cuentas abiertas a la vez.' });
-      return;
+    if (!this.cart.createCart()) {
+      Swal.fire({ icon: 'info', title: 'Limite', text: `Puedes tener hasta ${CartService.MAX_CARTS} cuentas abiertas a la vez.` });
     }
-    this.snapshotActiveTab();
-    const id = ++this.tabSeq;
-    const t = { id, items: [] as SaleItem[], customerId: null, cliente: null };
-    this.saleTabs.push(t);
-    this.loadTab(t);
   }
 
   async cerrarCuenta(id: number, ev?: Event) {
     ev?.stopPropagation();
     if (this.isEditing) return;
-    const idx = this.saleTabs.findIndex(x => x.id === id);
-    if (idx < 0) return;
-    const count = (id === this.activeTabId) ? this.items.length : (this.saleTabs[idx].items?.length || 0);
-    if (count > 0) {
+    const t = this.saleTabs.find(x => x.id === id);
+    if (!t) return;
+    if (t.lines.length > 0) {
       const r = await Swal.fire({
         icon: 'warning', title: 'Cerrar cuenta',
         text: 'Esta cuenta tiene productos. Se descartaran. Continuar?',
@@ -1982,37 +1624,12 @@ async abrirModalClientes() {
       });
       if (!r.isConfirmed) return;
     }
-    const wasActive = (id === this.activeTabId);
-    this.saleTabs.splice(idx, 1);
-    if (this.saleTabs.length === 0) {
-      const nid = ++this.tabSeq;
-      const nt = { id: nid, items: [] as SaleItem[], customerId: null, cliente: null };
-      this.saleTabs.push(nt);
-      this.loadTab(nt);
-      return;
-    }
-    if (wasActive) {
-      const next = this.saleTabs[Math.max(0, idx - 1)];
-      this.loadTab(next);
-    }
+    this.cart.closeCart(id);
   }
 
-  // Tras cobrar: cerrar la cuenta activa y pasar a la siguiente (o dejar una vacia).
-  private finishActiveTabAfterSale() {
-    const idx = this.saleTabs.findIndex(x => x.id === this.activeTabId);
-    if (idx < 0) { this.initTabsIfNeeded(); return; }
-    if (this.saleTabs.length > 1) {
-      this.saleTabs.splice(idx, 1);
-      const next = this.saleTabs[Math.max(0, idx - 1)];
-      this.loadTab(next);
-    } else {
-      this.snapshotActiveTab();
-    }
-  }
   /**
    * Adapta la lista de clientes con credito al formato del selector.
    * Es solo presentacion: no cambia como se cargan ni que se hace con ellos.
-   * `busca` deja filtrar por telefono y correo sin mostrarlos en la fila.
    */
   get opcionesCredito(): WxOpcion[] {
     return this.creditCustomers.map(c => ({
@@ -2022,6 +1639,4 @@ async abrirModalClientes() {
       busca: [c.phone, c.email].filter(Boolean).join(' '),
     }));
   }
-
-
 }

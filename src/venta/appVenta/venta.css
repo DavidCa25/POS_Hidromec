@@ -646,3 +646,20 @@
 @media (prefers-reduced-motion: reduce) {
   .pay-pill:active:not(.active) { transform: none; }
 }
+
+/* Aviso en lugar del boton Modificar cuando la venta lleva recetas o
+   modificadores: sp_update_sale recalcula stock por producto y no puede
+   deshacer el consumo de una receta. El camino correcto es Reembolso. */
+.venta-no-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 42ch;
+  padding: 8px 12px;
+  background: var(--wx-info-soft);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs);
+  line-height: 1.4;
+}
+.venta-no-editable i { color: var(--wx-info); font-size: 16px; }
