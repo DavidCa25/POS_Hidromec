@@ -1,0 +1,85 @@
+{
+  "_comentario": [
+    "Contrato del motor SQL Server que Wybix instala y exige.",
+    "",
+    "Hay DOS preguntas distintas y no se mezclan:",
+    "",
+    "  COMPATIBILIDAD  que version mayor esta probada con este release.",
+    "                  Es un contrato cerrado, no un minimo.",
+    "",
+    "  SEGURIDAD       que build hace falta para tener los parches actuales.",
+    "                  Depende de la RAMA en la que este esa instancia: los",
+    "                  numeros de GDR y CU no forman una sola secuencia.",
+    "",
+    "Este archivo es la unica fuente de estos datos: lo leen el guion de",
+    "instalacion, la guarda de empaquetado y la verificacion de arranque.",
+    "Cambiar de parche en un release futuro se hace aqui, sin tocar codigo.",
+    "",
+    "Los binarios NO estan en Git: son dependencias externas de release.",
+    "Ver installer/LEEME.md."
+  ],
+
+  "compatibilidad": {
+    "_que_es": "La version mayor con la que este release esta probado. major distinto = no certificado, ni mejor ni peor.",
+    "producto": "Microsoft SQL Server 2019",
+    "major": "15.0",
+    "enDesarrollo": "avisar",
+    "enProduccion": "bloquear"
+  },
+
+  "medioBase": {
+    "_que_es": "El medio de instalacion offline. No se cambia sin repetir la instalacion limpia completa.",
+    "producto": "Microsoft SQL Server 2019 Express",
+    "nivel": "RTM",
+    "build": "15.0.2000.5",
+    "carpeta": "installer/sqlexpress",
+    "layout": "Core",
+    "idioma": "ENU",
+    "arquitectura": "x64"
+  },
+
+  "ramaQueInstalaWybix": "GDR",
+
+  "seguridad": {
+    "_que_es": "Nivel de seguridad exigido, POR RAMA. Una instancia se compara contra el objetivo de SU rama, nunca contra el de otra.",
+    "_por_que_por_rama": [
+      "Los builds de GDR y CU no son comparables como una secuencia.",
+      "15.0.4430.1 (CU32 de antes de julio de 2026) es numericamente mayor",
+      "que 15.0.2180.2 (GDR de julio de 2026), pero NO tiene esas",
+      "correcciones: en la rama CU hacen falta 15.0.4480.2. Compararlo contra",
+      "el numero del GDR lo daria por seguro sin serlo."
+    ],
+    "fecha": "2026-07-14",
+
+    "ramas": {
+      "GDR": {
+        "_que_es": "La rama que Wybix distribuye e instala: solo seguridad, sin cambios de comportamiento.",
+        "kb": "KB5102336",
+        "buildMinimo": "15.0.2180.2",
+        "fileVersion": "2019.150.2180.2",
+        "viajaEnElInstalador": true,
+        "paquete": "SQLServer2019-KB5102336-x64.exe",
+        "carpeta": "installer/sqlupdates",
+        "arquitectura": "x64",
+        "sha256": "576BF5BE2953BEF7B8C718906BCE9D8CB6B38632019B0B57C881161B6FAF438F",
+        "fuente": "https://support.microsoft.com/en-us/servicing/sql/sql-server-2019/general-distribution-release/kb5102336-july"
+      },
+
+      "CU": {
+        "_que_es": "La rama acumulativa. Wybix NO la instala ni migra a nadie a ella: solo la reconoce para no dar por segura una instancia que no lo esta.",
+        "kb": "KB5102335",
+        "buildMinimo": "15.0.4480.2",
+        "viajaEnElInstalador": false,
+        "_por_que_no_viaja": "Wybix no instala la rama CU. Este dato existe unicamente para evaluar correctamente una instancia CU preexistente.",
+        "fuente": "https://support.microsoft.com/en-us/servicing/sql/sql-server-2019/general-distribution-release/kb5102335-july"
+      }
+    },
+
+    "problemasConocidos": [
+      "Consultas de linked server con el proveedor MSDASQL y cadena de proveedor fallan con error 7416. Wybix no usa linked servers.",
+      "Fuga de memoria al usar sys.dm_exec_input_buffer o DBCC INPUTBUFFER. Wybix no los usa."
+    ]
+  },
+
+  "verificadoEl": "2026-09-05"
+}
