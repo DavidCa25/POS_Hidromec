@@ -1,0 +1,345 @@
+<div class="hosp">
+
+  <header class="hosp-head">
+    <div class="hosp-head__ic"><i class="ph ph-cooking-pot"></i></div>
+    <div class="hosp-head__txt">
+      <h1>Recetas y modificadores</h1>
+      <p>Define qué consume cada producto al venderse. El inventario se descuenta solo.</p>
+    </div>
+    <nav class="hosp-tabs">
+      <button type="button" [class.on]="tab === 'recetas'" (click)="tab = 'recetas'">
+        <i class="ph ph-list-checks"></i> Recetas
+      </button>
+      <button type="button" [class.on]="tab === 'modificadores'" (click)="tab = 'modificadores'">
+        <i class="ph ph-sliders"></i> Modificadores
+      </button>
+    </nav>
+  </header>
+
+  <!-- Negocio en modo Retail: no hay nada que administrar aqui -->
+  <div class="hosp-empty" *ngIf="caps.businessProfile() !== 'HOSPITALITY'">
+    <i class="ph ph-storefront"></i>
+    <h3>Este negocio está configurado como Comercio</h3>
+    <p>Las recetas y los modificadores son para negocios de alimentos y bebidas.
+       Cámbialo en Configuración › Datos del negocio › Tipo de negocio.</p>
+  </div>
+
+  <ng-container *ngIf="caps.businessProfile() === 'HOSPITALITY'">
+
+    <!-- ==================================================== RECETAS ==== -->
+    <section class="hosp-grid" *ngIf="tab === 'recetas'">
+
+      <aside class="hosp-col">
+        <div class="hosp-col__head">
+          <h2>Productos con receta</h2>
+          <span class="hosp-count">{{ recetables().length }}</span>
+        </div>
+        <input class="ctl" type="search" placeholder="Buscar producto…" [(ngModel)]="filtroProducto">
+
+        <div class="hosp-list">
+          <button type="button" class="hosp-item" *ngFor="let p of recetablesFiltrados()"
+                  [class.on]="productoSel()?.id === p.id" (click)="elegirProducto(p)">
+            <span class="hosp-item__name">{{ p.product_name }}</span>
+            <span class="hosp-item__meta">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          </button>
+          <p class="hosp-hint" *ngIf="!recetablesFiltrados().length">
+            No hay productos de tipo receta. Crea uno en Inventario y elige "Receta" como tipo de inventario.
+          </p>
+        </div>
+      </aside>
+
+      <div class="hosp-main" *ngIf="productoSel() as p; else sinProducto">
+
+        <div class="hosp-main__head">
+          <div>
+            <h2>{{ p.product_name }}</h2>
+            <p class="hosp-sub">Precio de venta {{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
+          </div>
+          <button class="btn-outline" type="button" (click)="abrirAsignacion()">
+            <i class="ph ph-sliders"></i> Modificadores del producto
+          </button>
+        </div>
+
+        <!-- Receta base o por tamaño -->
+        <div class="hosp-variants" *ngIf="variantes().length">
+          <span class="lbl">Receta para</span>
+          <div class="hosp-chips">
+            <button type="button" class="hosp-chip" [class.on]="varianteSel() === null" (click)="cambiarVariante(null)">
+              Base (todos los tamaños)
+            </button>
+            <button type="button" class="hosp-chip" *ngFor="let v of variantes()"
+                    [class.on]="varianteSel() === v.id" (click)="cambiarVariante(v.id)">
+              {{ v.name }}
+            </button>
+          </div>
+          <p class="hosp-hint" *ngIf="recetaHeader()?.is_fallback">
+            Este tamaño todavía usa la receta base. Ajusta las cantidades y guarda para darle receta propia.
+          </p>
+        </div>
+
+        <!-- Ingredientes -->
+        <section class="wx-set">
+          <header class="wx-set__head"><i class="ph ph-list-bullets"></i><h3>Ingredientes de una unidad</h3></header>
+          <div class="wx-set__body">
+
+            <table class="hosp-table" *ngIf="draftLines().length">
+              <thead>
+                <tr>
+                  <th>Ingrediente</th>
+                  <th style="width:110px;">Cantidad</th>
+                  <th style="width:110px;">Unidad</th>
+                  <th style="width:100px;">Merma %</th>
+                  <th style="width:120px;" class="r">Costo</th>
+                  <th style="width:44px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let l of draftLines(); let i = index">
+                  <td>
+                    <span class="hosp-ing">{{ l.ingredientName }}</span>
+                    <small class="hosp-ing__base">base: {{ l.baseUom }}</small>
+                  </td>
+                  <td><input class="ctl ctl-sm" type="number" min="0" step="0.001" [(ngModel)]="l.inputQty" [name]="'q'+i"></td>
+                  <td>
+                    <wx-select class="wx-sel-compacto" [(ngModel)]="l.inputUom" [name]="'u'+i"
+                               [opciones]="opcUoms(l.baseUom)"></wx-select>
+                  </td>
+                  <td><input class="ctl ctl-sm" type="number" min="0" max="100" step="1" [(ngModel)]="l.wastePct" [name]="'w'+i"></td>
+                  <td class="r mono">{{ costoLinea(l) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                  <td>
+                    <button class="hosp-x" type="button" (click)="quitarLinea(i)" title="Quitar">
+                      <i class="ph ph-x"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p class="hosp-hint" *ngIf="!draftLines().length">
+              Todavía sin ingredientes. Agrégalos desde la lista de la derecha.
+            </p>
+
+            <div class="hosp-cost">
+              <div>
+                <span class="lbl">Costo por unidad</span>
+                <b class="mono">{{ costoReceta() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              </div>
+              <div *ngIf="margen() !== null">
+                <span class="lbl">Margen</span>
+                <b class="mono" [class.neg]="(margen() ?? 0) < 0">{{ margen() | number:'1.0-1' }}%</b>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn-primary" type="button" (click)="guardarReceta()" [disabled]="guardando()">
+                <i class="ph ph-check-circle"></i> {{ guardando() ? 'Guardando…' : 'Guardar receta' }}
+              </button>
+              <button class="btn-outline" type="button" (click)="eliminarReceta()"
+                      *ngIf="recetaHeader() && !recetaHeader()?.is_fallback">
+                <i class="ph ph-trash"></i> Eliminar
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <ng-template #sinProducto>
+        <div class="hosp-main hosp-empty">
+          <i class="ph ph-hand-pointing"></i>
+          <h3>Elige un producto</h3>
+          <p>Selecciona a la izquierda el producto cuya receta quieres definir.</p>
+        </div>
+      </ng-template>
+
+      <!-- Ingredientes disponibles -->
+      <aside class="hosp-col" *ngIf="productoSel()">
+        <div class="hosp-col__head">
+          <h2>Agregar ingrediente</h2>
+        </div>
+        <input class="ctl" type="search" placeholder="Buscar ingrediente…" [(ngModel)]="filtroIngrediente">
+        <div class="hosp-list">
+          <button type="button" class="hosp-item" *ngFor="let i of ingredientesFiltrados()" (click)="agregarIngrediente(i)">
+            <span class="hosp-item__name">{{ i.product_name }}</span>
+            <span class="hosp-item__meta">{{ i.stock | number:'1.0-2' }} {{ i.base_uom }}</span>
+            <i class="ph ph-plus-circle"></i>
+          </button>
+          <p class="hosp-hint" *ngIf="!ingredientesFiltrados().length">
+            Sin ingredientes disponibles. Los ingredientes son productos con inventario directo.
+          </p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- =============================================== MODIFICADORES ==== -->
+    <section class="hosp-grid hosp-grid--mods" *ngIf="tab === 'modificadores'">
+
+      <aside class="hosp-col">
+        <div class="hosp-col__head">
+          <h2>Grupos</h2>
+          <button class="btn-primary btn-sm" type="button" (click)="nuevoGrupo()">
+            <i class="ph ph-plus"></i> Nuevo
+          </button>
+        </div>
+        <div class="hosp-list">
+          <button type="button" class="hosp-item" *ngFor="let g of grupos()"
+                  [class.on]="draftGrupo()?.id === g.id" [class.off]="!g.active" (click)="editarGrupo(g)">
+            <span class="hosp-item__name">
+              {{ g.name }}
+              <small class="hosp-role" [attr.data-r]="g.role">{{ g.role }}</small>
+            </span>
+            <span class="hosp-item__meta">{{ g.products_count }} productos</span>
+          </button>
+          <p class="hosp-hint" *ngIf="!grupos().length">
+            Sin grupos todavía. "Tamaño" y "Extras" son los dos más habituales.
+          </p>
+        </div>
+      </aside>
+
+      <div class="hosp-main" *ngIf="draftGrupo() as g; else sinGrupo">
+        <div class="hosp-main__head">
+          <h2>{{ g.id ? 'Editar grupo' : 'Nuevo grupo' }}</h2>
+          <button class="btn-ghost" type="button" (click)="cerrarGrupo()"><i class="ph ph-x"></i></button>
+        </div>
+
+        <section class="wx-set">
+          <header class="wx-set__head"><i class="ph ph-info"></i><h3>Datos del grupo</h3></header>
+          <div class="wx-set__body">
+            <div class="row two">
+              <div>
+                <label class="lbl">Nombre</label>
+                <input class="ctl" type="text" [(ngModel)]="g.name" name="gname" placeholder="Ej. Tamaño">
+              </div>
+              <div>
+                <label class="lbl">Tipo</label>
+                <wx-select [(ngModel)]="g.role" name="grole" [opciones]="opcRoles"></wx-select>
+                <small class="hint">
+                  <ng-container *ngFor="let r of roles">
+                    <span *ngIf="r.valor === g.role">{{ r.desc }}</span>
+                  </ng-container>
+                </small>
+              </div>
+            </div>
+            <div class="row two">
+              <div>
+                <label class="lbl">Mínimo a elegir</label>
+                <input class="ctl" type="number" min="0" [(ngModel)]="g.minSelect" name="gmin">
+              </div>
+              <div>
+                <label class="lbl">Máximo a elegir</label>
+                <input class="ctl" type="number" min="1" [(ngModel)]="g.maxSelect" name="gmax">
+              </div>
+            </div>
+            <div class="toggle">
+              <label class="sw">
+                <input type="checkbox" [(ngModel)]="g.required" name="greq">
+                <span class="sl"></span>
+              </label>
+              <span class="ttext">Obligatorio: no se puede cobrar sin elegir</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="wx-set">
+          <header class="wx-set__head"><i class="ph ph-list-plus"></i><h3>Opciones</h3></header>
+          <div class="wx-set__body">
+
+            <div class="hosp-opt" *ngFor="let o of draftOptions(); let i = index">
+              <div class="hosp-opt__row">
+                <div class="grow">
+                  <label class="lbl">Nombre</label>
+                  <input class="ctl" type="text" [(ngModel)]="o.name" [name]="'on'+i" placeholder="Ej. Grande">
+                </div>
+                <div style="width:140px;">
+                  <label class="lbl">Precio extra</label>
+                  <input class="ctl" type="number" step="0.5" [(ngModel)]="o.priceDelta" [name]="'op'+i">
+                </div>
+                <button class="hosp-x" type="button" (click)="quitarOpcion(i)" title="Quitar opción">
+                  <i class="ph ph-trash"></i>
+                </button>
+              </div>
+
+              <div class="hosp-opt__row">
+                <div class="grow">
+                  <label class="lbl">Efecto en inventario</label>
+                  <wx-select [(ngModel)]="o.effect" [name]="'oe'+i" [opciones]="opcEfectos"></wx-select>
+                </div>
+
+                <div class="grow" *ngIf="o.effect === 'ADD' || o.effect === 'SUBSTITUTE'">
+                  <label class="lbl">Ingrediente que agrega</label>
+                  <wx-select [(ngModel)]="o.ingredientProductId" [name]="'oi'+i"
+                             [opciones]="opcIngredientes()" [buscable]="ingredientes().length > 8"
+                             placeholder="Selecciona…"></wx-select>
+                </div>
+
+                <div style="width:150px;" *ngIf="o.effect === 'ADD'">
+                  <label class="lbl">Cantidad ({{ uomDeIngrediente(o.ingredientProductId) }})</label>
+                  <input class="ctl" type="number" min="0" step="0.01" [(ngModel)]="o.qtyBase" [name]="'oq'+i">
+                </div>
+
+                <div class="grow" *ngIf="o.effect === 'SUBSTITUTE' || o.effect === 'REMOVE'">
+                  <label class="lbl">Ingrediente que {{ o.effect === 'REMOVE' ? 'quita' : 'reemplaza' }}</label>
+                  <wx-select [(ngModel)]="o.replacesProductId" [name]="'or'+i"
+                             [opciones]="opcIngredientes()" [buscable]="ingredientes().length > 8"
+                             placeholder="Selecciona…"></wx-select>
+                </div>
+
+                <div style="width:150px;" *ngIf="o.effect === 'SCALE'">
+                  <label class="lbl">Multiplica por</label>
+                  <input class="ctl" type="number" min="0.1" step="0.1" [(ngModel)]="o.qtyFactor" [name]="'of'+i">
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-outline" type="button" (click)="agregarOpcion()">
+              <i class="ph ph-plus"></i> Agregar opción
+            </button>
+
+            <div class="btn-row">
+              <button class="btn-primary" type="button" (click)="guardarGrupo()" [disabled]="guardando()">
+                <i class="ph ph-check-circle"></i> {{ guardando() ? 'Guardando…' : 'Guardar grupo' }}
+              </button>
+              <button class="btn-outline" type="button" *ngIf="grupoSel() as gs" (click)="eliminarGrupo(gs)">
+                <i class="ph ph-trash"></i> Eliminar
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <ng-template #sinGrupo>
+        <div class="hosp-main hosp-empty">
+          <i class="ph ph-sliders"></i>
+          <h3>Modificadores</h3>
+          <p>Un grupo agrupa opciones: "Tamaño" con chico y grande, "Extras" con shot adicional.
+             Cada opción dice qué le pasa al inventario.</p>
+        </div>
+      </ng-template>
+    </section>
+  </ng-container>
+
+  <!-- Asignar grupos a un producto -->
+  <div class="hosp-modal" *ngIf="asignando()" (click)="asignando.set(false)">
+    <div class="hosp-modal__box" (click)="$event.stopPropagation()">
+      <header>
+        <h3>Modificadores de {{ productoSel()?.product_name }}</h3>
+        <button class="btn-ghost" type="button" (click)="asignando.set(false)"><i class="ph ph-x"></i></button>
+      </header>
+      <div class="hosp-modal__body">
+        <label class="wx-choice" *ngFor="let g of grupos()" [class.is-on]="gruposDelProducto().has(g.id)">
+          <input type="checkbox" [checked]="gruposDelProducto().has(g.id)" (change)="alternarGrupo(g.id)">
+          <span class="wx-choice__ic"><i class="ph ph-sliders"></i></span>
+          <span class="wx-choice__txt">
+            <b>{{ g.name }}</b>
+            <small>{{ g.role }} · {{ opcionesDe(g.id).length }} opciones{{ g.required ? ' · obligatorio' : '' }}</small>
+          </span>
+        </label>
+        <p class="hosp-hint" *ngIf="!grupos().length">Todavía no hay grupos. Créalos en la pestaña Modificadores.</p>
+      </div>
+      <footer>
+        <button class="btn-outline" type="button" (click)="asignando.set(false)">Cancelar</button>
+        <button class="btn-primary" type="button" (click)="confirmarAsignacion()">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+</div>
