@@ -40,11 +40,20 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+docs/evidencias/
 
 # System files
 .DS_Store
 Thumbs.db
 
-/installer
+# De installer/ solo se versiona lo que es FUENTE. Fuera quedan el binario de
+# SQL Express (314 MB, dependencia externa) y template.bak, que es un artefacto
+# derivado: se genera con `npm run db:prepare-release` a partir del arbol de
+# Git, nunca al reves.
+/installer/*
+!/installer/ConfigurationFile.ini
+!/installer/setup-sqlserver.ps1
+!/installer/LEEME.md
+!/installer/sql-servicing.json
 
 .env
