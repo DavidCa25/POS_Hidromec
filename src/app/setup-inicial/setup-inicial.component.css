@@ -1,17 +1,25 @@
 .su-wrap {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(160deg, #0F2A3F 0%, #0B2436 100%); padding: 24px;
+  min-height: 100vh; max-height: 100vh; overflow-y: auto;
+  display: flex; justify-content: center;
+  background: linear-gradient(160deg, var(--wx-navy-700) 0%, var(--wx-navy-900) 100%); padding: 24px;
 }
 .su-card {
+  /* Centrar con margen automatico da el mismo resultado que align-items:
+     center, pero cuando el paso es mas alto que la pantalla deja recorrerlo
+     en vez de recortarlo por arriba y por abajo. */
+  margin: auto;
   background: var(--wx-surface); border-radius: 22px; padding: 34px 32px; width: 100%; max-width: 520px;
   box-shadow: var(--wx-shadow-raised);
 }
 
 .su-brand { text-align: center; margin-bottom: 24px; }
+/* Isotipo oficial. La marca solo existe en su version oscura, asi que va
+   sobre placa clara, igual que en el sidebar del dashboard. */
 .su-logo {
   width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 17px;
-  background: #2E3A8C; color: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 28px; font-weight: 600;
+  display: block; object-fit: contain;
+  background: #fff; padding: 7px;
+  box-shadow: 0 1px 3px rgb(9 16 24 / 0.10);
 }
 .su-brand h1 { font-size: 22px; font-weight: 600; color: var(--wx-text); margin: 0; }
 .su-brand p { font-size: 13px; color: var(--wx-text-muted); margin: 5px 0 0; }
@@ -23,16 +31,21 @@
   width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   background: var(--wx-sunken); color: var(--wx-text-muted); font-weight: 600; font-size: 13px; transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
 }
-.su-step.on .su-step-num { background: #2E3A8C; color: #fff; }
-.su-step.done .su-step-num { background: #16a34a; color: var(--wx-accent-ink); }
+.su-step.on .su-step-num { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.su-step.done .su-step-num { background: var(--wx-success); color: var(--wx-accent-ink); }
 .su-step-label { font-size: 11px; font-weight: 600; color: var(--wx-text-dim); }
 .su-step.on .su-step-label { color: var(--wx-text); }
 .su-line { width: 44px; height: 2px; background: var(--wx-sunken); margin-bottom: 18px; transition: background var(--wx-dur-state); }
-.su-line.on { background: #16a34a; }
+.su-line.on { background: var(--wx-success); }
 
 /* Campos */
-.su-body { animation: su-fade .25s ease; }
-@keyframes su-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Solo se anima el desplazamiento. Con opacidad, una transicion congelada
+   -ventana en segundo plano- dejaria el paso invisible para siempre. */
+.su-body {
+  transform: none;
+  transition: transform .25s var(--wx-ease-out);
+}
+@starting-style { .su-body { transform: translateY(6px); } }
 
 .su-field { margin-bottom: 15px; }
 .su-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--wx-text); margin-bottom: 6px; }
@@ -40,7 +53,7 @@
   width: 100%; border: 1px solid var(--wx-edge-strong); border-radius: 11px; padding: 11px 13px;
   font-size: 14.5px; outline: none; background: var(--wx-raised); color: var(--wx-text);
 }
-.su-field input:focus { border-color: #4F9BB8; box-shadow: 0 0 0 3px rgba(79,155,184,.12); background: var(--wx-surface); }
+.su-field input:focus { border-color: var(--wx-accent); box-shadow: var(--wx-focus-ring); background: var(--wx-surface); }
 .su-field small { display: block; font-size: 11.5px; color: var(--wx-text-dim); margin-top: 5px; }
 .su-field small.su-ok { color: var(--wx-success); }
 .su-field small.su-err { color: var(--wx-danger); }
@@ -59,7 +72,7 @@
 
 /* Botones */
 .su-btn {
-  width: 100%; border: none; border-radius: 12px; background: #2E3A8C; color: #fff;
+  width: 100%; border: none; border-radius: 12px; background: var(--wx-accent); color: var(--wx-accent-ink);
   padding: 13px; font-size: 14.5px; font-weight: 600; cursor: pointer; margin-top: 8px;
   display: flex; align-items: center; justify-content: center; gap: 9px;
 }
@@ -74,6 +87,10 @@
   background: var(--wx-success-soft); color: var(--wx-success); border-radius: 11px; padding: 10px;
   font-size: 13px; font-weight: 600; margin-bottom: 18px;
 }
+/* La prueba no es un logro conseguido: es una cuenta atras. Verde de exito
+   sobre "quedan 12 dias" le quita al aviso lo unico que tenia que decir. */
+.su-badge-plan.es-prueba { background: var(--wx-sunken); color: var(--wx-accent-text); }
+
 .su-note {
   display: flex; gap: 10px; align-items: flex-start;
   background: var(--wx-sunken); border: 1px solid rgba(79,155,184,.25); border-radius: 11px;
@@ -84,7 +101,7 @@
 /* Planes */
 .su-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--wx-edge); }
 .su-plan { border: 1px solid var(--wx-edge); border-radius: 12px; padding: 12px; text-align: center; background: var(--wx-raised); }
-.su-plan.destacado { border-color: #4F9BB8; background: var(--wx-sunken); }
+.su-plan.destacado { border-color: var(--wx-accent); background: var(--wx-sunken); }
 .su-plan-name { display: block; font-size: 12px; font-weight: 600; color: var(--wx-text); }
 .su-plan-price { display: block; font-size: 18px; font-weight: 600; color: var(--wx-accent-text); margin: 2px 0; }
 .su-plan-desc { display: block; font-size: 10.5px; color: var(--wx-text-muted); }
@@ -148,3 +165,64 @@
 .su-giro .g-count { color: var(--wx-text-muted); font-size: .8rem; }
 
 .su-card.su-card-wide { max-width: 920px; }
+
+/* ==========================================================================
+   TIPO DE NEGOCIO Y USO DE ESTA COMPUTADORA
+   Dos preguntas distintas y deliberadamente separadas: la primera define el
+   producto (business_profile, va a SQL), la segunda define esta maquina
+   (deviceProfile, vive en su configuracion local).
+   ========================================================================== */
+
+.su-tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+@media (max-width: 560px) { .su-tipos { grid-template-columns: 1fr; } }
+
+.su-tipo {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 16px;
+  background: var(--wx-sunken); border: 0;
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text); text-align: left; cursor: pointer;
+  transition: border-color var(--wx-dur-micro) ease,
+              background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.su-tipo:active { transform: scale(0.985); }
+.su-tipo.on { background: var(--wx-accent-soft); box-shadow: inset 0 0 0 2px var(--wx-accent); }
+.su-tipo__ic {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-sm);
+  color: var(--wx-accent-text); font-size: 20px;
+}
+.su-tipo.on .su-tipo__ic { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.su-tipo__t { font-size: var(--wx-text-base); font-weight: 600; }
+.su-tipo__d { color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.45; }
+
+.su-usos { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.su-uso {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: var(--wx-sunken); border: 0;
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text); text-align: left; cursor: pointer;
+  transition: border-color var(--wx-dur-micro) ease,
+              background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.su-uso:active { transform: scale(0.99); }
+.su-uso.on { background: var(--wx-accent-soft); box-shadow: inset 0 0 0 2px var(--wx-accent); }
+.su-uso__ic {
+  flex: 0 0 40px; width: 40px; height: 40px;
+  display: grid; place-items: center;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-sm);
+  color: var(--wx-accent-text); font-size: 20px;
+}
+.su-uso.on .su-uso__ic { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.su-uso__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.su-uso__txt b { display: flex; align-items: center; gap: 8px; font-size: var(--wx-text-base); font-weight: 600; }
+.su-uso__txt small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.45; }
+/* Sugerencia derivada del tipo de negocio. No bloquea la otra opcion. */
+.su-uso__rec {
+  padding: 1px 8px; border-radius: 999px;
+  background: var(--wx-accent); color: var(--wx-accent-ink);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+}

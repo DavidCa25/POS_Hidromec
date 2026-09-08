@@ -58,12 +58,14 @@
       </header>
 
       <div class="cs-drawer-body">
-        <ng-container *ngIf="activeComponent; else soon">
+        <ng-container *ngIf="activeComponent; else pendiente">
           <ng-container *ngComponentOutlet="activeComponent"></ng-container>
         </ng-container>
 
-        <ng-template #soon>
-          <div class="cs-soon">
+        <ng-template #pendiente>
+          <!-- Mientras baja el chunk del panel no se muestra nada: tarda
+               milisegundos y un mensaje intermitente distraeria mas. -->
+          <div class="cs-soon" *ngIf="!cargandoPanel">
             <i class="ph ph-wrench"></i>
             <p>Este módulo estará disponible pronto.</p>
           </div>

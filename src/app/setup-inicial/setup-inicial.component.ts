@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
 import { ImportadorProductos } from '../importador-productos/importador-productos.component';
 import { CATALOGOS_GIRO, GiroCatalogo } from './catalogos-giro';
+import { BusinessProfile, CapabilityService, DeviceProfile } from '../../core';
 
 @Component({
   selector: 'app-setup-inicial',
@@ -30,6 +31,36 @@ export class SetupInicial implements OnInit {
   phone = '';
   rfc = '';
 
+  /**
+   * Que vende el negocio. Va a business_config y decide si existen recetas,
+   * ingredientes y modificadores. Se pregunta en la primera pantalla para que
+   * nadie tenga que descubrir despues donde se activa Hospitality.
+   */
+  businessProfile: BusinessProfile = 'RETAIL';
+
+  readonly tiposNegocio: { valor: BusinessProfile; titulo: string; icono: string; ejemplos: string }[] = [
+    { valor: 'RETAIL', titulo: 'Tienda o comercio', icono: 'ph-storefront',
+      ejemplos: 'Abarrotes · Ferreterías · Refaccionarias · Papelerías' },
+    { valor: 'HOSPITALITY', titulo: 'Alimentos y bebidas', icono: 'ph-coffee',
+      ejemplos: 'Cafeterías · Panaderías · Heladerías · Comida rápida' },
+  ];
+
+  /**
+   * Como se usara ESTA computadora. Vive en device-config.json, no en la
+   * base: dos cajas de la misma sucursal pueden ser una Retail y otra Touch.
+   * Se cambia despues en Configuracion sin reinstalar nada.
+   */
+  deviceProfile: DeviceProfile = 'RETAIL_POS';
+
+  readonly usosDispositivo: { valor: DeviceProfile; titulo: string; icono: string; desc: string }[] = [
+    { valor: 'RETAIL_POS', titulo: 'Punto de venta', icono: 'ph-barcode',
+      desc: 'Teclado, lector de códigos y folio. La pantalla de venta clásica.' },
+    { valor: 'TOUCH_POS', titulo: 'Punto de venta táctil', icono: 'ph-hand-tap',
+      desc: 'Pantalla táctil con categorías, fotos y modificadores. Para mostrador.' },
+    { valor: 'BACKOFFICE', titulo: 'Solo administración', icono: 'ph-desktop',
+      desc: 'Esta computadora no cobra: inventario, compras y reportes.' },
+  ];
+
   // Paso 3: administrador
   usuario = '';
   password = '';
@@ -41,7 +72,19 @@ export class SetupInicial implements OnInit {
   giros: GiroCatalogo[] = CATALOGOS_GIRO;
   giroCargando: string | null = null;
 
-  constructor(private license: LicenseService) {}
+  constructor(private license: LicenseService, private caps: CapabilityService) {}
+
+  elegirTipoNegocio(v: BusinessProfile) {
+    this.businessProfile = v;
+    // Sugerencia, no imposicion: el usuario puede cambiarla en el paso
+    // siguiente y despues en Configuracion.
+    this.deviceProfile = v === 'HOSPITALITY' ? 'TOUCH_POS' : 'RETAIL_POS';
+  }
+
+  get esRecomendado(): (v: DeviceProfile) => boolean {
+    const sugerido: DeviceProfile = this.businessProfile === 'HOSPITALITY' ? 'TOUCH_POS' : 'RETAIL_POS';
+    return (v: DeviceProfile) => v === sugerido;
+  }
 
   private get api() { return (window as any).electronAPI; }
 
@@ -51,8 +94,29 @@ export class SetupInicial implements OnInit {
     if (ok) this.paso = 2;
   }
 
-  get planTexto(): string {
-    return this.license.esMulticaja ? 'MultiCaja' : 'MonoCaja';
+  /**
+   * Insignia del paso 2.
+   *
+   * Decia siempre "Licencia MonoCaja activada", con sello de verificacion,
+   * tambien en una instalacion de prueba. Dos motivos, y los dos importan:
+   * leia `esMulticaja` -un getter binario, sin idea de que existe la prueba- y
+   * ademas lo derivaba de `licencia`, el objeto heredado, en vez de `estado`,
+   * que es lo que calcula Electron y lo que usa el resto de la aplicacion.
+   *
+   * El icono cambia con el texto: un sello de verificacion sobre una prueba es
+   * la misma afirmacion falsa, dibujada.
+   */
+  get insignia(): { icono: string; texto: string; prueba: boolean } {
+    const s = this.license.estado;
+    if (s.state === 'trial') {
+      return { icono: 'ph ph-hourglass', prueba: true,
+               texto: `Prueba gratuita · ${this.license.textoDiasPrueba}` };
+    }
+    if (s.state === 'active') {
+      return { icono: 'ph-fill ph-seal-check', prueba: false,
+               texto: `Licencia ${this.license.planTexto} activada` };
+    }
+    return { icono: 'ph ph-warning', prueba: true, texto: 'Sin licencia activa' };
   }
 
   // Formatea la clave mientras escribe
@@ -105,13 +169,22 @@ export class SetupInicial implements OnInit {
         business_name: this.businessName.trim(),
         address: this.address.trim() || null,
         phone: this.phone.trim() || null,
-        rfc: this.rfc.trim().toUpperCase() || null
+        rfc: this.rfc.trim().toUpperCase() || null,
+        // Lo elegido en el paso 2. Decide si el negocio tiene recetas,
+        // ingredientes y modificadores: no es una preferencia visual.
+        business_profile: this.businessProfile
       });
 
       if (!res?.success) {
         await Swal.fire({ icon: 'error', title: 'No se pudo configurar', text: res?.error || 'Error al crear el usuario.' });
         return;
       }
+
+      // El giro que se acaba de guardar decide si el negocio tiene recetas,
+      // ingredientes y modificadores. Las capacidades en memoria se cargaron
+      // ANTES de existir la configuracion, asi que aqui quedan obsoletas: se
+      // releen ahora, no en el proximo arranque.
+      await this.caps.load(true);
 
       await Swal.fire({
         icon: 'success',
@@ -130,6 +203,21 @@ export class SetupInicial implements OnInit {
 
   // ---------- Paso 4: onboarding ----------
   elegirImportar() { this.obVista = 'importar'; }
+  /** Guarda como se usara esta computadora y sigue al ultimo paso. */
+  async confirmarDispositivo() {
+    this.procesando = true;
+    try {
+      // Por el servicio, no por la API directa: asi el perfil queda guardado
+      // Y ademas actualizado en memoria. Escribir el JSON a mano dejaba a la
+      // aplicacion creyendo que la caja seguia siendo la de antes.
+      await this.caps.setDeviceProfile(this.deviceProfile);
+    } catch { /* se puede ajustar despues en Configuracion */ }
+    finally {
+      this.procesando = false;
+      this.paso = 4;
+    }
+  }
+
   elegirGiro() { this.obVista = 'giro'; }
   volverPregunta() { this.obVista = 'pregunta'; }
 

@@ -30,6 +30,23 @@
 </section>
 
 <section class="wx-set">
+    <header class="wx-set__head"><i class="ph ph-squares-four"></i><h3>Tipo de negocio</h3></header>
+    <div class="wx-set__body">
+  <div class="wx-choice-list" role="radiogroup" aria-label="Tipo de negocio">
+    <label class="wx-choice" *ngFor="let p of perfiles" [class.is-on]="form.business_profile === p.valor">
+      <input type="radio" name="business_profile" [value]="p.valor" [(ngModel)]="form.business_profile" [disabled]="cargando">
+      <span class="wx-choice__ic"><i class="ph ph-{{ p.icono }}"></i></span>
+      <span class="wx-choice__txt">
+        <b>{{ p.titulo }}</b>
+        <small>{{ p.desc }}</small>
+      </span>
+    </label>
+  </div>
+  <div class="hint">Aplica a todas las cajas de esta sucursal. "Alimentos y bebidas" habilita recetas, ingredientes, modificadores y presentaciones de compra en Inventario; lo demás sigue igual.</div>
+    </div>
+</section>
+
+<section class="wx-set">
     <header class="wx-set__head"><i class="ph ph-receipt"></i><h3>Ticket</h3></header>
     <div class="wx-set__body">
   <div class="row">

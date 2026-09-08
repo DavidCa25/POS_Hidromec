@@ -60,10 +60,11 @@
     <span>Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es la suya.</span>
   </div>
 
-  <!-- Monocaja: sin creación de cajas -->
+  <!-- Sin multicaja: durante la prueba todavia no hay plan que nombrar. -->
   <div class="rg-note" *ngIf="!license.permiteMulticaja">
     <i class="ph ph-info"></i>
-    <span>Tu plan es <b>MonoCaja</b> (una sola caja). Para operar varias cajas en red, cambia al plan <b>MultiCaja</b>.</span>
+    <span *ngIf="license.enPrueba">Estás en la <b>prueba gratuita</b>, que opera una sola caja. Para varias cajas en red, activa una licencia <b>MultiCaja</b>.</span>
+    <span *ngIf="!license.enPrueba">Tu plan es <b>MonoCaja</b> (una sola caja). Para operar varias cajas en red, cambia al plan <b>MultiCaja</b>.</span>
   </div>
 
 </div>

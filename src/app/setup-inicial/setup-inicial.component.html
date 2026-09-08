@@ -2,7 +2,7 @@
   <div class="su-card" [class.su-card-wide]="paso === 4">
     <!-- Marca -->
     <div class="su-brand">
-      <div class="su-logo">W</div>
+      <img class="su-logo" src="assets/wybie_logo.png" alt="Wybix" />
       <h1>Bienvenido a Wybix</h1>
       <p>Configuremos tu punto de venta en 3 pasos</p>
     </div>
@@ -55,15 +55,30 @@
 
     <!-- ===== PASO 2: NEGOCIO ===== -->
     <div class="su-body" *ngIf="paso === 2">
-      <div class="su-badge-plan">
-        <i class="ph-fill ph-seal-check"></i>
-        Licencia {{ planTexto }} activada
+      <div class="su-badge-plan" [class.es-prueba]="insignia.prueba">
+        <i [class]="insignia.icono"></i>
+        {{ insignia.texto }}
       </div>
 
       <div class="su-field">
         <label>Nombre de tu negocio</label>
         <input type="text" [(ngModel)]="businessName" placeholder="Ej. Abarrotes Don Chuy" maxlength="200">
         <small>Aparecera en los tickets.</small>
+      </div>
+
+      <!-- Qué vende el negocio. Decide si existen recetas e ingredientes;
+           se pregunta aquí para que nadie tenga que buscarlo después. -->
+      <div class="su-field">
+        <label>¿Qué tipo de negocio tienes?</label>
+        <div class="su-tipos">
+          <button type="button" class="su-tipo" *ngFor="let t of tiposNegocio"
+                  [class.on]="businessProfile === t.valor" (click)="elegirTipoNegocio(t.valor)">
+            <span class="su-tipo__ic"><i class="ph {{ t.icono }}"></i></span>
+            <span class="su-tipo__t">{{ t.titulo }}</span>
+            <span class="su-tipo__d">{{ t.ejemplos }}</span>
+          </button>
+        </div>
+        <small>Puedes cambiarlo después en Configuración › Datos del negocio.</small>
       </div>
 
       <div class="su-field">
@@ -131,6 +146,38 @@
           {{ procesando ? 'Configurando...' : 'Finalizar' }}
         </button>
       </div>
+    </div>
+
+    <!-- ===== PASO 3.5: ESTA COMPUTADORA =====
+         El perfil del NEGOCIO ya quedó guardado en la base. Esto es otra cosa:
+         cómo se usa ESTE equipo, y vive en su configuración local. Dos cajas
+         de la misma sucursal pueden tener perfiles distintos. -->
+    <div class="su-body" *ngIf="paso === 35">
+      <div class="su-note">
+        <i class="ph ph-devices"></i>
+        <span>Esto solo aplica a esta computadora. Puedes cambiarlo cuando quieras, sin reinstalar.</span>
+      </div>
+
+      <div class="su-field">
+        <label>¿Cómo se usará esta computadora?</label>
+        <div class="su-usos">
+          <button type="button" class="su-uso" *ngFor="let u of usosDispositivo"
+                  [class.on]="deviceProfile === u.valor" (click)="deviceProfile = u.valor">
+            <span class="su-uso__ic"><i class="ph {{ u.icono }}"></i></span>
+            <span class="su-uso__txt">
+              <b>
+                {{ u.titulo }}
+                <span class="su-uso__rec" *ngIf="esRecomendado(u.valor)">Recomendado</span>
+              </b>
+              <small>{{ u.desc }}</small>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <button class="su-btn" [disabled]="procesando" (click)="confirmarDispositivo()">
+        {{ procesando ? 'Guardando…' : 'Continuar' }} <i class="ph ph-arrow-right" *ngIf="!procesando"></i>
+      </button>
     </div>
 
     <!-- ===== PASO 4: DATOS INICIALES (onboarding) ===== -->
