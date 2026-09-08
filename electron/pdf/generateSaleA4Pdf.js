@@ -1,7 +1,7 @@
 const { app } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const puppeteer = require("puppeteer");
+const { htmlToPdf } = require("./printToPdfElectron");
 
 function ensureSalesA4Dir() {
   const dir = path.join(app.getPath("documents"), "TicketsPOS", "VentasA4");
@@ -60,24 +60,13 @@ async function generateSaleA4Pdf(header, lines, extras = {}) {
     .replace(/{{CAMBIO}}/g,        money(cambio))
     .replace(/{{ROWS}}/g,          rowsHtml);
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox"],
-  });
-
-  const page = await browser.newPage();
-  await page.setContent(filledHtml, { waitUntil: "networkidle0" });
-
   const pdfPath = path.join(ensureSalesA4Dir(), `venta_${header.id}_A4.pdf`);
-
-  await page.pdf({
-    path: pdfPath,
-    format: "A4",
+  await htmlToPdf(filledHtml, {
+    outPath: pdfPath,
+    pageSize: "A4",
     printBackground: true,
-    margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" },
+    marginsMm: { top: 10, right: 10, bottom: 10, left: 10 },
   });
-
-  await browser.close();
   return pdfPath;
 }
 

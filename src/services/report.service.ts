@@ -1,7 +1,11 @@
 import { Injectable } from '@angular/core';
-import * as XLSX from 'xlsx-js-style';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
+/*
+ * xlsx-js-style y jsPDF pesan ~600 kB juntos y solo hacen falta al pulsar
+ * "Exportar". Se importan dentro del metodo que los usa, asi que viven en su
+ * propio chunk y ninguna pantalla los paga por el simple hecho de inyectar
+ * este servicio.
+ */
 
 export interface ReportColumn {
   header: string;
@@ -79,6 +83,7 @@ export class ReportService {
 
   // ================= EXCEL =================
   async exportExcel(cfg: ReportConfig) {
+    const XLSX = await import('xlsx-js-style');
     const negocio = await this.negocio();
     const cols = cfg.columns;
     const ncol = cols.length;
@@ -155,6 +160,10 @@ export class ReportService {
 
   // ================= PDF =================
   async exportPdf(cfg: ReportConfig) {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const negocio = await this.negocio();
     const cols = cfg.columns;
     const landscape = cols.length > 5;
