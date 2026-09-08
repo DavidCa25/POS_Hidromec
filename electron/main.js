@@ -1,15 +1,14 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
-const puppeteer = require("puppeteer");
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { autoUpdater } = require('electron-updater');
-const { start } = require('repl');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
+const ipcHospitality = require('./ipc/hospitality');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
@@ -19,6 +18,7 @@ const DB_NAME = 'Wybix_POS';
 const setupServer = require('./setupServer');
 const cloudSync = require('./cloudSync');
 const licenseStore = require('./license');
+const { sellarComoPrueba } = require('./lib/licencia-prueba');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 const os = require('os');
@@ -26,6 +26,11 @@ const os = require('os');
 //Casillas_2512_19
 
 logger.setupLogging({ retentionDays: 14 });
+
+// IPC del dominio Hospitality (recetas, modificadores, presentaciones,
+// catalogo Touch e imagenes). Vive en su propio modulo: main.js ya tiene
+// 158 handlers y no debe crecer sin orden.
+ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -184,7 +189,6 @@ async function bootMainApp() {
 
   mainWindow = createWindow();
   backup.startScheduler();
-  backup.startScheduler();
   // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
   if (!cachedMachineId) cachedMachineId = generarMachineId();
   cloudSync.setLicenseMachineId(cachedMachineId);
@@ -206,20 +210,47 @@ app.whenReady().then(async () => {
     }
 
     // Ya configurado: prepara servidor (rapido si ya esta listo) y arranca
+    // Arranque de una instalacion que ya existe: la version del motor se
+    // reporta, no bloquea. Quien ya opera no puede quedarse sin vender por
+    // algo que no puede resolver en ese momento.
     await setupServer.ensureServerReady({
       role: install.role,
       server: install.server,
-      dbName: install.dbName || DB_NAME
+      dbName: install.dbName || DB_NAME,
+      altaDeHost: false
     });
     await bootMainApp();
   } catch (err) {
     console.error(err);
+    // Si la actualizacion de SQL dejo un reinicio pendiente, se dice con
+    // claridad en vez de dejar la ventana sin abrir.
+    if (err?.reinicioPendiente) {
+      dialog.showMessageBoxSync({
+        type: 'info',
+        title: 'Falta reiniciar el equipo',
+        message: 'Actualizacion de SQL Server aplicada',
+        detail: err.message,
+        buttons: ['Entendido'],
+      });
+      app.quit();
+    }
   }
 });
 
 ipcMain.handle('export-database', async () => {
   try {
     const dbName = await getCurrentDbName();
+
+    // Exportar la base es respaldarla: solo el host, y con la conexion de
+    // Windows, igual que el respaldo automatico. Ver backupManager.js.
+    if (!(await backup.esHost())) {
+      return {
+        success: false,
+        error: 'Esta caja se conecta al SQL Server de otra computadora. La exportacion de la ' +
+               'base se hace desde la computadora principal.'
+      };
+    }
+
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
 
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
@@ -235,15 +266,19 @@ ipcMain.handle('export-database', async () => {
 
     const tmpBak = path.join(sqlDir, `${dbName}_${stamp()}_${Math.random().toString(16).slice(2)}.bak`);
 
-    const pool = await poolPromise;
-
-    const query = `
-      DECLARE @p NVARCHAR(4000) = N'${escSqlString(tmpBak)}';
-      BACKUP DATABASE [${dbName}]
-      TO DISK = @p
-      WITH INIT, STATS = 5;
-    `;
-    await pool.request().query(query);
+    const { server } = await backup.conexionDeLaApp();
+    const pool = await backup.conexionPrivilegiadaLocal(server);
+    try {
+      const query = `
+        DECLARE @p NVARCHAR(4000) = N'${escSqlString(tmpBak)}';
+        BACKUP DATABASE [${dbName}]
+        TO DISK = @p
+        WITH INIT, STATS = 5;
+      `;
+      await pool.request().query(query);
+    } finally {
+      try { await pool.close(); } catch { /* noop */ }
+    }
 
     fs.copyFileSync(tmpBak, filePath);
 
@@ -329,6 +364,10 @@ function loadDeviceConfig() {
     console.error('Error leyendo device-config.json:', e);
   }
   return {
+    // Perfil del DISPOSITIVO: BACKOFFICE | RETAIL_POS | TOUCH_POS.
+    // Cambiarlo no reinstala ni toca la base: solo cambia la experiencia
+    // que carga esta caja. Las instalaciones sin la clave son RETAIL_POS.
+    deviceProfile: 'RETAIL_POS',
     // conexion: 'teclado' (USB automatico) | 'usb' (serial COM) | 'bluetooth' (proximamente)
     scanner: { conexion: 'teclado', enabled: false, path: '', baudRate: 9600 },
     // conexion: 'sistema' (impresora del SO) | 'bluetooth' (proximamente)
@@ -778,6 +817,8 @@ ipcMain.handle('update-business-config', async (_e, payload = {}) => {
       .input('phone',         sql.NVarChar(50),  payload.phone ?? null)
       .input('rfc',           sql.NVarChar(50),  payload.rfc ?? null)
       .input('ticket_footer', sql.NVarChar(300), payload.ticket_footer ?? null)
+      // Perfil del negocio (RETAIL | HOSPITALITY). NULL conserva el actual.
+      .input('business_profile', sql.NVarChar(20), payload.business_profile ?? null)
       .execute('sp_update_business_config');
     businessConfig = null; // invalida el cache para releer datos frescos
     return { success: true };
@@ -884,7 +925,8 @@ ipcMain.handle('sp-Consultar-Detalle-Productos', async (event, CategoryID) => {
 });
 
 ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock,
-                                        claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode) => {
+                                        claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode,
+                                        control = null) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -893,12 +935,20 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
             .input('part_number', sql.NVarChar(100), partNumber)
             .input('name', sql.NVarChar(100), name)
             .input('price', sql.Decimal(10, 2), price)
-            .input('stock', sql.Int, stock)
+            // Decimal, no entero: un ingrediente se mide en gramos o mililitros.
+            .input('stock', sql.Decimal(12, 2), stock)
             .input('bar_code', sql.NVarChar(100), (barCode ?? null) === '' ? null : (barCode ?? null))
             .input('clave_prod_serv', sql.NVarChar(8), claveProdServ ?? null)
             .input('clave_unidad', sql.NVarChar(5), claveUnidad ?? null)
             .input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto ?? '02')
             .input('tasa_iva', sql.Decimal(5, 4), tasaIva ?? 0.16)
+            // Sin `control` van en NULL y el procedimiento aplica sus defaults
+            // (DIRECT / vendible / pza / sin decimales): el Retail de siempre.
+            .input('inventory_mode', sql.NVarChar(10), control?.inventory_mode ?? null)
+            .input('sellable', sql.Bit, control?.sellable == null ? null : (control.sellable ? 1 : 0))
+            .input('base_uom', sql.NVarChar(10), control?.base_uom ?? null)
+            .input('allow_decimal_qty', sql.Bit, control?.allow_decimal_qty == null ? null : (control.allow_decimal_qty ? 1 : 0))
+            .input('cost', sql.Decimal(14, 4), control?.cost ?? null)
             .execute('sp_add_product');
  
         return {
@@ -915,6 +965,25 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
  
 });
  
+ipcMain.handle('sp-delete-product', async (_event, productId) => {
+  try {
+    const id = Number(productId);
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'product_id invalido.' };
+
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('product_id', sql.Int, id)
+      .execute('sp_delete_product');
+
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (err) {
+    // El mensaje del procedimiento nombra las recetas o los modificadores que
+    // bloquean la baja: se pasa tal cual, es lo unico util para el usuario.
+    console.error('sp-delete-product:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('sp-update-product', async (event, payload = {}) => {
   try {
     const productId = Number(payload?.product_id ?? payload?.productId ?? 0);
@@ -948,7 +1017,16 @@ ipcMain.handle('sp-update-product', async (event, payload = {}) => {
     req.input('clave_unidad', sql.NVarChar(5), claveUnidad);
     req.input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto);
     req.input('tasa_iva', sql.Decimal(5, 4), tasaIva);
- 
+
+    // NULL = no lo tocan. El procedimiento resuelve cada campo con ISNULL
+    // contra su valor actual, asi que un formulario Retail que no envie nada
+    // de esto deja el producto exactamente como estaba.
+    req.input('inventory_mode', sql.NVarChar(10), payload?.inventory_mode ?? null);
+    req.input('sellable', sql.Bit, payload?.sellable == null ? null : (payload.sellable ? 1 : 0));
+    req.input('base_uom', sql.NVarChar(10), payload?.base_uom ?? null);
+    req.input('allow_decimal_qty', sql.Bit, payload?.allow_decimal_qty == null ? null : (payload.allow_decimal_qty ? 1 : 0));
+    req.input('cost', sql.Decimal(14, 4), payload?.cost ?? null);
+
     await req.execute('sp_update_product');
     return { success: true };
   } catch (err) {
@@ -999,46 +1077,114 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
     }
 });
 
-ipcMain.handle('sp-register-sale', async (event, userId, paymentMethod, items, customerId, dueDate, registerId) => {
-  try {
-    if (!Array.isArray(items) || items.length === 0) {
-      throw new Error('La venta no tiene partidas.');
+/**
+ * Registro de venta. UNICA ruta: Retail y Touch entran por aqui.
+ *
+ * Acepta las dos formas de llamada, para no romper a ningun consumidor:
+ *   antigua  (userId, paymentMethod, items, customerId, dueDate, registerId)
+ *   nueva    ({ userId, paymentMethod, lines, customerId, dueDate,
+ *               registerId, serviceMode })
+ * donde cada linea puede traer `options` (modificadores) y `note`.
+ *
+ * La APP declara la intencion; sp_register_sale decide el inventario.
+ */
+function construirTvpsVenta(lines) {
+  // v1 vacio: el procedure une los dos tipos. Se sigue enviando para que la
+  // firma no cambie y una instalacion a medio migrar no falle.
+  const d1 = new sql.Table('dbo.SaleDetailType');
+  d1.columns.add('product_id', sql.Int, { nullable: true });
+  d1.columns.add('quantity',   sql.Decimal(12, 2), { nullable: true });
+  d1.columns.add('unit_price', sql.Decimal(10, 2), { nullable: true });
+
+  const d2 = new sql.Table('dbo.SaleDetailType2');
+  d2.columns.add('line_no',    sql.Int, { nullable: false });
+  d2.columns.add('product_id', sql.Int, { nullable: false });
+  d2.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
+  d2.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+  d2.columns.add('note',       sql.NVarChar(200), { nullable: true });
+
+  const mo = new sql.Table('dbo.SaleModifierType');
+  mo.columns.add('line_no',            sql.Int, { nullable: false });
+  mo.columns.add('modifier_option_id', sql.Int, { nullable: false });
+  mo.columns.add('quantity',           sql.Int, { nullable: false });
+
+  lines.forEach((l, i) => {
+    const lineNo = i + 1;
+    d2.rows.add(lineNo, l.productId, l.qty, l.unitPrice, l.note ?? null);
+    for (const o of (l.options || [])) {
+      mo.rows.add(lineNo, o.optionId ?? o.modifierOptionId, Number(o.quantity ?? 1));
     }
+  });
 
-    const pool = await poolPromise;
+  return { d1, d2, mo };
+}
 
-    const tvp = new sql.Table('dbo.SaleDetailType');
-    tvp.columns.add('product_id', sql.Int, { nullable: false });
-    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
-    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+/** ¿Es un aborto por deadlock? El SP re-lanza el 1205 con su marca. */
+function esDeadlock(err) {
+  return err && (err.number === 1205 || /\[1205\]|deadlock|interbloqueo/i.test(String(err.message || '')));
+}
 
-    for (const it of items) {
-      tvp.rows.add(it.productId, it.qty, it.unitPrice);
+ipcMain.handle('sp-register-sale', async (event, a, b, c, d, e, f) => {
+  // Normaliza las dos formas de llamada.
+  const p = (a && typeof a === 'object' && !Array.isArray(a))
+    ? a
+    : { userId: a, paymentMethod: b, lines: c, customerId: d, dueDate: e, registerId: f };
+
+  const lines = (p.lines || []).map(l => ({
+    productId: l.productId ?? l.product_id,
+    qty: l.qty ?? l.quantity,
+    unitPrice: l.unitPrice ?? l.unit_price,
+    note: l.note ?? null,
+    options: l.options || [],
+  }));
+
+  if (!lines.length) return { success: false, error: 'La venta no tiene partidas.' };
+
+  /**
+   * Reintento SOLO ante deadlock (1205).
+   *
+   * Es seguro porque un 1205 aborta la transaccion entera: no quedo venta,
+   * ni inventario, ni movimiento de caja, asi que reenviar la MISMA intencion
+   * no puede duplicar nada. Cualquier otro error (falta stock, no hay turno)
+   * se devuelve tal cual: no se reintenta a ciegas. El cobro externo
+   * (terminal) queda fuera de esto por completo.
+   */
+  const MAX_INTENTOS = 3;
+  for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+    try {
+      const pool = await poolPromise;
+      const { d1, d2, mo } = construirTvpsVenta(lines);
+
+      const request = pool.request()
+        .input('user_id',        sql.Int,           p.userId)
+        .input('payment_method', sql.NVarChar(50),  p.paymentMethod)
+        .input('SaleDetails',    d1)
+        .input('customer_id',    sql.Int,           p.customerId ?? null)
+        .input('due_date',       sql.Date,          p.dueDate ? new Date(p.dueDate) : null)
+        .input('register_id',    sql.Int,           p.registerId ?? null)
+        .input('SaleDetails2',   d2)
+        .input('SaleModifiers',  mo)
+        .input('service_mode',   sql.NVarChar(10),  p.serviceMode ?? null);
+
+      const result = await request.execute('sp_register_sale');
+
+      const fila = result.recordset?.[0] ?? null;
+      return {
+        success: true,
+        saleId: fila?.sale_id ?? fila?.id ?? null,
+        total: fila?.total ?? null,
+        data: result.recordset ?? [],
+      };
+    } catch (err) {
+      if (esDeadlock(err) && intento < MAX_INTENTOS) {
+        // Espera creciente y corta: deja que la otra transaccion termine.
+        await new Promise(r => setTimeout(r, 60 * intento));
+        console.warn(`[VENTA] deadlock, reintento ${intento + 1}/${MAX_INTENTOS}`);
+        continue;
+      }
+      console.error('❌ Error en sp_register_sale:', err);
+      return { success: false, error: err.message };
     }
-
-    const request = pool.request()
-      .input('user_id',        sql.Int,           userId)
-      .input('payment_method', sql.NVarChar(50),  paymentMethod)
-      .input('SaleDetails',    tvp)
-      .input('customer_id',    sql.Int,           customerId ?? null)
-      .input('due_date',       sql.Date,          dueDate ? new Date(dueDate) : null)
-      .input('register_id',    sql.Int,           registerId ?? null);
-
-    const result = await request.execute('sp_register_sale');
-
-    const newSaleId =
-      result.recordset?.[0]?.sale_id ??
-      result.recordset?.[0]?.id ??
-      null;
-
-    return {
-      success: true,
-      saleId: newSaleId,
-      data: result.recordset ?? []
-    };
-  } catch (err) {
-    console.error('❌ Error en sp_register_sale:', err);
-    return { success: false, error: err.message };
   }
 });
 
@@ -1082,17 +1228,30 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax
     tvp.columns.add('unit_price',     sql.Decimal(10, 2), { nullable: false });
     tvp.columns.add('profit_percent', sql.Decimal(5, 2),  { nullable: true  });
 
+    // Version 2: la misma linea mas la PRESENTACION en que se compro. El
+    // procedimiento la usa para convertir a unidad base -5 cajas de 1 L suben
+    // 5000 ml-, y lo hacia desde el principio: lo que faltaba era mandarsela.
+    // Sin presentacion el comportamiento es identico al de siempre.
+    //
+    // La v1 se declara vacia porque el parametro es obligatorio, no porque
+    // sobre: el procedimiento une las dos tablas y llenar ambas duplicaria.
+    const tvp2 = new sql.Table('dbo.PurchaseDetailType2');
+    tvp2.columns.add('product_id',      sql.Int,            { nullable: false });
+    tvp2.columns.add('quantity',        sql.Decimal(12, 2), { nullable: false });
+    tvp2.columns.add('unit_price',      sql.Decimal(10, 2), { nullable: false });
+    tvp2.columns.add('profit_percent',  sql.Decimal(5, 2),  { nullable: true  });
+    tvp2.columns.add('presentation_id', sql.Int,            { nullable: true  });
+
     detalles.forEach(d => {
       const qty = d.cantidad ?? d.quantity ?? 0;
       const unitPrice = d.precio_unitario ?? d.unit_price ?? 0;
       const profit = d.profit_percent ?? d.profitPercent ?? 0;
+      const presentacion = d.presentation_id ?? d.presentationId ?? null;
 
-      tvp.rows.add(
-        d.product_id,
-        qty,
-        unitPrice,
-        profit
-      );
+      // SOLO la v2. El procedimiento hace UNION ALL de las dos tablas, asi
+      // que mandar la misma linea en ambas duplicaria la compra entera.
+      // Es "una u otra", igual que @SaleDetails / @SaleDetails2 en la venta.
+      tvp2.rows.add(d.product_id, qty, unitPrice, profit, presentacion);
     });
 
     const request = pool.request();
@@ -1104,6 +1263,7 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax
     request.input('total', sql.Decimal(10, 2), total);
 
     request.input('PurchaseDetails', tvp);
+    request.input('PurchaseDetails2', tvp2);
 
     const result = await request.execute('sp_register_purchase');
 
@@ -1663,9 +1823,14 @@ ipcMain.handle('alerts:out-of-stock', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().query(`
+      -- Solo los que SE CUENTAN. Un producto por receta tiene stock 0 por
+      -- diseno -su disponibilidad sale de los ingredientes- y uno sin
+      -- inventario no tiene existencias: los dos aparecian aqui como
+      -- "agotados" para siempre, y una alerta que siempre esta encendida deja
+      -- de leerse.
       SELECT id, nombre, part_number, stock
       FROM products
-      WHERE active = 1 AND stock <= 0
+      WHERE active = 1 AND inventory_mode = 'DIRECT' AND stock <= 0
       ORDER BY nombre
     `);
     return { success: true, data: r.recordset || [] };
@@ -1751,7 +1916,7 @@ ipcMain.handle('alerts:low-stock', async (_e, p = {}) => {
     const r = await pool.request().input('min', sql.Int, min).query(`
       SELECT id, nombre, part_number, stock
       FROM products
-      WHERE active = 1 AND stock > 0 AND stock <= @min
+      WHERE active = 1 AND inventory_mode = 'DIRECT' AND stock > 0 AND stock <= @min
       ORDER BY stock ASC, nombre
     `);
     return { success: true, data: r.recordset || [] };
@@ -1769,8 +1934,10 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
       const r = await req.query(text);
       return Number(r.recordset[0]?.c || 0);
     };
-    const agotados   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND stock<=0`);
-    const lowstock   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND stock>0 AND stock<=@min`, [['min', sql.Int, min]]);
+    // Mismo criterio que las listas: si el contador y la lista no cuentan lo
+    // mismo, la cabecera dice 3 y el detalle ensena 1.
+    const agotados   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock<=0`);
+    const lowstock   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock>0 AND stock<=@min`, [['min', sql.Int, min]]);
     const cero       = await one(`SELECT COUNT(*) c FROM sales WHERE total=0 AND datee>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
     const vencidos   = await one(`SELECT COUNT(DISTINCT customer_id) c FROM sales WHERE UPPER(payment_method)='CREDITO' AND balance>0 AND due_date<CAST(GETDATE() AS DATE) AND customer_id IS NOT NULL`);
     const descuadres = await one(`SELECT COUNT(*) c FROM cash_closures WHERE difference<>0 AND CAST(create_date AS DATE)>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
@@ -2081,23 +2248,14 @@ async function generateSaleTicketPdf(header, lines, extras = {}) {
 
     .replace(/{{ROWS}}/g, rowsHtml);
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox"],
-  });
-
-  const page = await browser.newPage();
-  await page.setContent(filledHtml, { waitUntil: "networkidle0" });
-
+  // Mismo tamano que antes con Puppeteer: 80 mm de ancho y alto carta (era el
+  // alto por defecto cuando solo se indicaba el ancho).
   const pdfPath = path.join(ensureTicketsDir(), `ticket_${header.id}.pdf`);
-
-  await page.pdf({
-    path: pdfPath,
-    width: "80mm",
+  await htmlToPdf(filledHtml, {
+    outPath: pdfPath,
+    pageSize: { widthMm: 80, heightMm: 279.4 },
     printBackground: true,
   });
-
-  await browser.close();
   return pdfPath;
 }
 
@@ -2202,7 +2360,10 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
     const result = await pool.request()
       .input('user_id', sql.Int, payload.user_id)
       .input('opening_cash', sql.Decimal(12,2), Number(payload.opening_cash ?? 0))
-      .input('opening_note', sql.NVarChar(255), payload.note || null)
+      // El servicio manda `opening_note`, con el mismo nombre que el
+      // parametro del procedimiento. Este handler solo leia `note`, asi que la
+      // nota que escribe el cajero al abrir el turno se perdia en silencio.
+      .input('opening_note', sql.NVarChar(255), payload.opening_note ?? payload.note ?? null)
       .input('opening_user_id', sql.Int, payload.opening_user_id ?? payload.user_id)
       .input('register_id', sql.Int, payload.register_id ?? null)
       .execute('sp_open_shift');
@@ -2228,7 +2389,10 @@ ipcMain.handle('sp-update-sale', async (event, payload) => {
     const pool = await poolPromise;
 
     // TVP (mismo tipo que usas en register sale)
-    const tvp = new sql.Table();
+    // El nombre del tipo es OBLIGATORIO para msnodesqlv8: sin el, la llamada
+    // falla con "Catalog or schema name of XML schema collection...", un
+    // mensaje que no menciona el problema real.
+    const tvp = new sql.Table('dbo.SaleDetailType');
     tvp.columns.add('product_id', sql.Int, { nullable: false });
     tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
@@ -2309,9 +2473,12 @@ ipcMain.handle('sp-refund-sale', async (event, payload) => {
 
     const pool = await poolPromise;
 
-    const tvp = new sql.Table();
+    // El nombre del tipo es OBLIGATORIO para msnodesqlv8: sin el, la llamada
+    // falla con "Catalog or schema name of XML schema collection...", un
+    // mensaje que no menciona el problema real.
+    const tvp = new sql.Table('dbo.SaleDetailType');
     tvp.columns.add('product_id', sql.Int, { nullable: false });
-    tvp.columns.add('quantity',   sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
     tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
 
     for (const it of items) {
@@ -3280,8 +3447,11 @@ ipcMain.handle('sp-customers-kpis', async () => {
     );
 
     // 2) Prepara el servidor (instala SQL en principal / valida en secundaria)
+    // Alta de un host nuevo: se exige el contrato completo del motor. Aqui se
+    // esta estrenando la base de un negocio, no arrancando una que ya opera.
     const setupRes = await setupServer.ensureServerReady({
-      role, server, dbName: DB_NAME, saPassword, ocusPassword
+      role, server, dbName: DB_NAME, saPassword, ocusPassword,
+      altaDeHost: role === 'principal'
     });
 
     if (!setupRes?.ok) {
@@ -3475,7 +3645,13 @@ ipcMain.handle('setup-inicial', async (_e, p) => {
       .input('address', sql.NVarChar(300), p.address ?? null)
       .input('phone', sql.NVarChar(50), p.phone ?? null)
       .input('rfc', sql.NVarChar(50), p.rfc ?? null)
+      .input('business_profile', sql.NVarChar(20), p.business_profile ?? null)
       .execute('sp_setup_inicial');
+    // El alta ESCRIBE business_config. Sin invalidar aqui, `getConfig` seguiria
+    // sirviendo lo que hubiera memorizado antes del alta, y el renderer no
+    // puede ganarle a un cache que vive en el proceso principal: recargar a la
+    // fuerza desde la pantalla devolveria igualmente el valor viejo.
+    businessConfig = null;
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) {
     return { success: false, error: e.message };
@@ -3588,7 +3764,10 @@ ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
     const data = await res.json();
     if (!data?.success) return { ok: false, error: data?.error || 'No se pudo iniciar la prueba.' };
 
-    licenseStore.saveLicense(cachedMachineId, data);
+    // Sellada como prueba antes de guardarse: sin `type`, computeStatus la
+    // clasificaria como licencia de pago y la caja anunciaria un plan que
+    // nadie compro. Los demas campos remotos se conservan intactos.
+    licenseStore.saveLicense(cachedMachineId, sellarComoPrueba(data));
     return { ok: true, expiresAt: data.expiresAt, trialExpired: !!data.trialExpired };
   } catch (err) {
     console.error('license:start-trial:', err);

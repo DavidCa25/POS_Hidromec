@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-03T05:42:01.304Z",
+  "generado": "2026-09-04T05:12:50.147Z",
   "nota": "Generado por scripts/db/extraer.mjs. No editar a mano.",
   "objetos": [
     {
@@ -59,7 +59,19 @@
       "tipo": "tipo"
     },
     {
+      "nombre": "PurchaseDetailType2",
+      "tipo": "tipo"
+    },
+    {
       "nombre": "SaleDetailType",
+      "tipo": "tipo"
+    },
+    {
+      "nombre": "SaleDetailType2",
+      "tipo": "tipo"
+    },
+    {
+      "nombre": "SaleModifierType",
       "tipo": "tipo"
     }
   ]

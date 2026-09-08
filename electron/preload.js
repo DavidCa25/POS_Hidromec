@@ -1,5 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
-const { ref } = require('pdfkit');
+﻿const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
@@ -9,8 +8,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-add-user', { username, password, role }),
 
     consultarDetallesProducto: (CategoryID) => ipcRenderer.invoke('sp-Consultar-Detalle-Productos', CategoryID),
-    agregarProducto: (brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode) =>
-        ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode),
+    // `control` es opcional y va al final: inventory_mode, sellable, base_uom,
+    // allow_decimal_qty y cost. El procedimiento ya los aceptaba desde el
+    // dominio Hospitality, pero este canal no los pasaba, asi que todo producto
+    // nacia DIRECT/vendible/pza. Omitirlo deja exactamente el Retail de antes.
+    agregarProducto: (brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode, control) =>
+        ipcRenderer.invoke('sp-add-product', brand, category, partNumber, name, price, stock, claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode, control),
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
@@ -27,8 +30,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deadProducts: (payload) => ipcRenderer.invoke('sp-dead-products', payload),
     cashSummary: (payload) => ipcRenderer.invoke('sp-cash-summary', payload),
     customersKpis: () => ipcRenderer.invoke('sp-customers-kpis'),
+    // Acepta la forma antigua (posicional) y la nueva (un objeto con lineas,
+    // modificadores y service_mode). Ver 'sp-register-sale' en main.js.
     registerSale: (userId, paymentMethod, items, customerId, dueDate, registerId) =>
         ipcRenderer.invoke('sp-register-sale', userId, paymentMethod, items, customerId, dueDate, registerId),
+    registerSaleV2: (intent) => ipcRenderer.invoke('sp-register-sale', intent),
 
     getSuppliers: () => ipcRenderer.invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => ipcRenderer.invoke('get-next-purchase-folio'),
@@ -45,7 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCustomers: () => ipcRenderer.invoke('sp-get-customers'),
     getCreditCustomers: () => ipcRenderer.invoke('sp-get-credit-customers'),
     getCustomersSummary: () => ipcRenderer.invoke('sp-get-customers-summary'),
-    ccreateCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
+    createCustomer: (code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => 
     ipcRenderer.invoke(
       'sp-create-customer', 
       code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel
@@ -68,7 +74,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getProfitOverview: (fromDate, toDate) =>
         ipcRenderer.invoke('sp-get-profit-overview', { fromDate, toDate }),
     closeShift: (payload) => {
-        console.log('🧾 preload closeShift payload:', payload);
+        console.log('ðŸ§¾ preload closeShift payload:', payload);
         return ipcRenderer.invoke('sp-close-shift', payload);
     },
 
@@ -177,6 +183,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-add-supplier', { nombre }),
 
     actualizarProducto: (payload) => ipcRenderer.invoke('sp-update-product', payload),
+    // Baja LOGICA. El procedimiento decide si se puede: si el producto sigue
+    // siendo ingrediente de una receta viva o lo usa un modificador activo,
+    // devuelve el motivo con los nombres, no un fallo generico.
+    darDeBajaProducto: (productId) => ipcRenderer.invoke('sp-delete-product', productId),
 
     createBrand: (payload) => ipcRenderer.invoke('sp-add-brand', payload),
     createCategory: (payload) => ipcRenderer.invoke('sp-add-category', payload),
@@ -208,7 +218,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registersAdd: (payload) => ipcRenderer.invoke('registers-add', payload),
     registersSetActive: (payload) => ipcRenderer.invoke('registers-set-active', payload),
 
-    // Identidad de esta máquina
+    // Identidad de esta mÃ¡quina
     registerGetCurrent: () => ipcRenderer.invoke('register-get-current'),
     registerSetCurrent: (payload) => ipcRenderer.invoke('register-set-current', payload),
 
@@ -251,4 +261,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setupStatus: () => ipcRenderer.invoke('setup-status'),
     setupInicial: (p) => ipcRenderer.invoke('setup-inicial', p),
 });
+
+/**
+ * API de Hospitality, agrupada por dominio.
+ *
+ * Se expone aparte de `electronAPI` a proposito: los 158 metodos de esa
+ * superficie crecieron sin orden, y lo nuevo no repite ese camino. Cada
+ * grupo corresponde a un dominio y a un modulo de electron/ipc/.
+ */
+contextBridge.exposeInMainWorld('wybix', {
+    catalog: {
+        menu: () => ipcRenderer.invoke('catalog:menu'),
+        uoms: () => ipcRenderer.invoke('catalog:uoms'),
+        ingredients: (p) => ipcRenderer.invoke('catalog:ingredients', p),
+    },
+    recipes: {
+        get: (p) => ipcRenderer.invoke('recipes:get', p),
+        save: (p) => ipcRenderer.invoke('recipes:save', p),
+        remove: (p) => ipcRenderer.invoke('recipes:delete', p),
+    },
+    modifiers: {
+        list: (p) => ipcRenderer.invoke('modifiers:list', p),
+        save: (p) => ipcRenderer.invoke('modifiers:save', p),
+        remove: (p) => ipcRenderer.invoke('modifiers:delete', p),
+        setProductGroups: (p) => ipcRenderer.invoke('modifiers:set-product-groups', p),
+    },
+    presentations: {
+        list: (p) => ipcRenderer.invoke('presentations:list', p),
+        save: (p) => ipcRenderer.invoke('presentations:save', p),
+        remove: (p) => ipcRenderer.invoke('presentations:delete', p),
+    },
+    images: {
+        set: (p) => ipcRenderer.invoke('images:set', p),
+        sync: (p) => ipcRenderer.invoke('images:sync', p),
+    },
+});
+
 
