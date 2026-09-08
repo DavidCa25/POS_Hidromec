@@ -18,6 +18,11 @@ CREATE TABLE dbo.business_config (
     fiscal_regime NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NULL,
     invoicing_enabled BIT NOT NULL CONSTRAINT DF_business_config_invoicing_enabled DEFAULT ((0)),
     invoicing_provider NVARCHAR(30) COLLATE Modern_Spanish_CI_AS NULL,
+    ticket_footer NVARCHAR(300) COLLATE Modern_Spanish_CI_AS NULL,
+    business_profile NVARCHAR(20) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_business_config_business_profile DEFAULT ('RETAIL'),
     PRIMARY KEY CLUSTERED (id)
 );
 END;
+
+IF OBJECT_ID(N'dbo.CK_business_config_business_profile', 'C') IS NULL
+ALTER TABLE dbo.business_config WITH CHECK ADD CONSTRAINT CK_business_config_business_profile CHECK ([business_profile]='HOSPITALITY' OR [business_profile]='RETAIL');

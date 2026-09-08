@@ -1,0 +1,15 @@
+/* SaleDetailType2
+ * Tipo de tabla. SQL Server no conserva el texto original de un tipo, asi
+ * que este DDL se reconstruye desde sys.columns. Es equivalente, no literal.
+ * Un tipo NO admite CREATE OR ALTER: se comprueba antes de crearlo.
+ */
+IF TYPE_ID(N'dbo.SaleDetailType2') IS NULL
+BEGIN
+  CREATE TYPE dbo.SaleDetailType2 AS TABLE (
+    line_no INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity DECIMAL(12, 2) NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    note NVARCHAR(200) NULL
+  );
+END;

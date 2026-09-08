@@ -1,11 +1,28 @@
 /**
- * Prueba de instalacion limpia y de actualizacion, sobre una base TEMPORAL.
+ * Aplica TODAS las migraciones sobre un respaldo, en una base TEMPORAL.
  *
- *     node scripts/db/probar-migracion.mjs [--conservar]
+ *     node scripts/db/probar-migracion.mjs [--bak <ruta.bak>] [--conservar]
+ *
+ * QUE PRUEBA, SEGUN DE DONDE PARTA
+ * --------------------------------
+ * Este script no decide el camino: lo decide el `.bak` que se le pase.
+ *
+ *   --bak <baseline anterior>   ACTUALIZACION. Parte de un esquema previo y
+ *                               comprueba que las migraciones lo llevan al
+ *                               estado actual. Es el camino de una instalacion
+ *                               que ya existia.
+ *
+ *   (sin --bak)                 IDEMPOTENCIA. Parte de installer/template.bak,
+ *                               que YA trae las migraciones aplicadas y
+ *                               registradas, y comprueba que reaplicarlas no
+ *                               rompe ni cambia nada.
+ *
+ * Para la INSTALACION LIMPIA, que es otra pregunta -que trae el template y que
+ * queda pendiente al restaurarlo-, el script es `probar-instalacion.mjs`.
  *
  * QUE HACE
- *   1. Restaura installer/template.bak en una base nueva (Wybix_MigTest).
- *      Es una base que no existia: no toca ninguna de las de trabajo.
+ *   1. Restaura el .bak en una base nueva (Wybix_MigTest). Es una base que no
+ *      existia: no toca ninguna de las de trabajo.
  *   2. Fotografia el estado inicial (objetos y filas de las tablas con datos).
  *   3. Aplica en orden todas las migraciones de electron/migrations.
  *   4. Compara contra el manifiesto canonico y contra la foto inicial.
@@ -68,7 +85,13 @@ const bien = (t) => console.log(`   ok     ${t}`);
 
 try {
   // ------------------------------------------------------------ 1. restaurar
-  paso('1. Restaurar template.bak en una base temporal');
+  // Lo que se prueba depende del punto de partida, asi que se dice en voz alta.
+  const partidaConocida = BAK.endsWith(join('installer', 'template.bak'));
+  console.log(partidaConocida
+    ? '\nCAMINO: IDEMPOTENCIA — se parte del template actual, que ya trae las migraciones aplicadas.'
+    : `\nCAMINO: ACTUALIZACION — se parte de un respaldo anterior:\n        ${BAK}`);
+
+  paso('1. Restaurar el respaldo en una base temporal');
   ejecutar('master', `
     IF DB_ID('${TEMP_DB}') IS NOT NULL
     BEGIN
@@ -104,10 +127,10 @@ try {
 
   ejecutar('master',
     `RESTORE DATABASE [${TEMP_DB}] FROM DISK = N'${bakTemporal}' WITH ${mueve}, REPLACE, RECOVERY;`);
-  bien(`base temporal ${TEMP_DB} creada desde template.bak`);
+  bien(`base temporal ${TEMP_DB} creada desde ${BAK}`);
 
   // ------------------------------------------------------ 2. estado inicial
-  paso('2. Estado inicial (template puro)');
+  paso('2. Estado del que se parte');
   const contar = (db) => consultar(db, `SELECT COUNT(*) AS n FROM sys.procedures;`)[0].n;
   const antes = contar(TEMP_DB);
   const tablasAntes = consultar(TEMP_DB, `

@@ -14,6 +14,9 @@ CREATE TABLE dbo.purchase_detail (
     supplier_id INT NULL,
     profit_percent DECIMAL(5, 2) NULL,
     subtotal AS ([quantity]*[unitary_price]),
+    presentation_id INT NULL,
+    factor_to_base DECIMAL(14, 4) NOT NULL CONSTRAINT DF_purchase_detail_factor_to_base DEFAULT ((1)),
+    base_quantity AS ([quantity]*[factor_to_base]),
     PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -21,3 +24,6 @@ END;
 ALTER TABLE dbo.purchase_detail WITH CHECK ADD FOREIGN KEY (product_id) REFERENCES dbo.products (id);
 
 ALTER TABLE dbo.purchase_detail WITH CHECK ADD FOREIGN KEY (puchase_id) REFERENCES dbo.purchase (id);
+
+IF OBJECT_ID(N'dbo.FK_purchase_detail_presentation', 'F') IS NULL
+ALTER TABLE dbo.purchase_detail WITH CHECK ADD CONSTRAINT FK_purchase_detail_presentation FOREIGN KEY (presentation_id) REFERENCES dbo.product_presentations (id);

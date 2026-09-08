@@ -28,7 +28,7 @@ export const CRITICOS = [
 ];
 
 /** Tipos de tabla que reciben los procedures transaccionales. */
-export const TIPOS_CRITICOS = ['SaleDetailType', 'PurchaseDetailType'];
+export const TIPOS_CRITICOS = ['SaleDetailType', 'SaleDetailType2', 'SaleModifierType', 'PurchaseDetailType', 'PurchaseDetailType2'];
 
 /**
  * Clasificacion de lo que NO invoca el codigo actual.
@@ -127,6 +127,16 @@ asignar('whatsapp', [
   'sp_WA_AddHistorial', 'sp_WA_DeletePlantilla', 'sp_WA_GetConfiguracion',
   'sp_WA_GetHistorial', 'sp_WA_GetPlantillas', 'sp_WA_UpdateConfiguracion',
   'sp_WA_UpsertPlantilla',
+]);
+
+asignar('hospitality', [
+  'sp_get_uoms', 'sp_get_ingredients',
+  'sp_get_recipe', 'sp_save_recipe', 'sp_delete_recipe',
+  'sp_get_modifier_groups', 'sp_save_modifier_group', 'sp_delete_modifier_group',
+  'sp_set_product_modifier_groups',
+  'sp_get_product_presentations', 'sp_save_product_presentation', 'sp_delete_product_presentation',
+  'sp_set_product_image', 'sp_get_product_thumbs',
+  'sp_get_menu_catalog',
 ]);
 
 asignar('_cuarentena', ['sp_mig_test']);

@@ -28,7 +28,9 @@ BEGIN
     s.balance,
     s.due_date,
     s.invoice_status,
-    ISNULL(r.refund_total,0) AS refund_total
+    ISNULL(r.refund_total,0) AS refund_total,
+    s.service_mode,
+    s.register_id
   FROM dbo.sales s
   OUTER APPLY (
     SELECT SUM(sr.refund_total) AS refund_total
@@ -54,11 +56,26 @@ BEGIN
     d.unitary_price,
     (d.quantity * d.unitary_price) AS line_total,
     ISNULL(r.refunded_qty,0) AS refunded_qty,
-    (d.quantity - ISNULL(r.refunded_qty,0)) AS remaining_qty
+    (d.quantity - ISNULL(r.refunded_qty,0)) AS remaining_qty,
+    d.id AS sale_detail_id,
+    d.unit_cost,
+    d.inventory_mode,
+    d.note,
+    p.clave_prod_serv,
+    p.clave_unidad,
+    p.objeto_impuesto,
+    p.tasa_iva,
+    mods.modifiers
   FROM dbo.sale_detail d
   JOIN dbo.products p ON p.id = d.product_id
   LEFT JOIN refunded r ON r.product_id = d.product_id
+  OUTER APPLY (
+    SELECT STRING_AGG(CONCAT(CASE WHEN m.quantity > 1 THEN CONCAT(m.quantity, 'x ') ELSE '' END, m.option_name), ', ')
+           WITHIN GROUP (ORDER BY m.id) AS modifiers
+    FROM dbo.sale_detail_modifiers m
+    WHERE m.sale_detail_id = d.id
+  ) mods
   WHERE d.sale_id = @sale_id
-  ORDER BY d.product_id;
+  ORDER BY d.product_id, d.id;
 END
 GO

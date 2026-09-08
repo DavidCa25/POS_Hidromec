@@ -11,7 +11,11 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_setup_inicial]
     @business_name  NVARCHAR(200),
     @address        NVARCHAR(300) = NULL,
     @phone          NVARCHAR(50)  = NULL,
-    @rfc            NVARCHAR(50)  = NULL
+    @rfc            NVARCHAR(50)  = NULL,
+    -- Que vende el negocio. Decide si existen recetas, ingredientes y
+    -- modificadores, asi que forma parte de la configuracion inicial: si se
+    -- deja fuera, el alta nace en RETAIL y el giro elegido se pierde.
+    @business_profile NVARCHAR(20) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -35,6 +39,18 @@ BEGIN
         RETURN;
     END
 
+    -- Mismo contrato que sp_update_business_config: se valida aqui para que el
+    -- error diga que valor se esperaba, en vez de dejarlo al CHECK de la tabla.
+    IF @business_profile IS NOT NULL
+    BEGIN
+        SET @business_profile = UPPER(LTRIM(RTRIM(@business_profile)));
+        IF @business_profile NOT IN ('RETAIL', 'HOSPITALITY')
+        BEGIN
+            RAISERROR('business_profile invalido: use RETAIL o HOSPITALITY.', 16, 1);
+            RETURN;
+        END
+    END
+
     BEGIN TRY
         BEGIN TRAN;
 
@@ -53,9 +69,10 @@ BEGIN
         IF NOT EXISTS (SELECT 1 FROM dbo.business_config)
         BEGIN
             INSERT INTO dbo.business_config
-                (business_name, address, phone, rfc, invoicing_enabled, updated_at)
+                (business_name, address, phone, rfc, business_profile, invoicing_enabled, updated_at)
             VALUES
-                (@business_name, @address, @phone, @rfc, 0, GETDATE());
+                (@business_name, @address, @phone, @rfc,
+                 ISNULL(@business_profile, 'RETAIL'), 0, GETDATE());
         END
 
         COMMIT TRAN;

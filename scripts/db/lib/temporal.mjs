@@ -110,7 +110,7 @@ export function ejecutarVarios(db, sentencias) {
 }
 
 /** Se niega a tocar una base que no sea claramente temporal. */
-function exigirTemporal(nombre) {
+export function exigirTemporal(nombre) {
   if (!/^Wybix_(MigTest|SchemaTest|RebuildTest|Tmp[A-Za-z0-9]*)$/.test(nombre)) {
     throw new Error(`"${nombre}" no parece una base temporal. Se rechaza por seguridad.`);
   }

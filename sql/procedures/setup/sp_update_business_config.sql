@@ -6,9 +6,10 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 -- =============================================
--- Author:		<Author,,Name>
--- Create date: <Create Date,,>
--- Description:	<Description,,>
+-- Description: Guarda los datos del negocio (Configuracion > Negocio).
+--   + ticket_footer: pie del ticket. La app lo enviaba desde hace tiempo y
+--     el procedure lo rechazaba ("no es un parametro").
+--   + business_profile: RETAIL | HOSPITALITY. NULL conserva el valor actual.
 -- =============================================
 CREATE OR ALTER PROCEDURE dbo.sp_update_business_config
   @business_name      nvarchar(200),
@@ -21,7 +22,10 @@ CREATE OR ALTER PROCEDURE dbo.sp_update_business_config
   @fiscal_regime      nvarchar(10)  = NULL,
 
   @invoicing_enabled  bit = 0,
-  @invoicing_provider nvarchar(30) = NULL
+  @invoicing_provider nvarchar(30) = NULL,
+
+  @ticket_footer      nvarchar(300) = NULL,
+  @business_profile   nvarchar(20)  = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
@@ -30,6 +34,16 @@ BEGIN
   BEGIN
     RAISERROR('business_name requerido.', 16, 1);
     RETURN;
+  END
+
+  IF @business_profile IS NOT NULL
+  BEGIN
+    SET @business_profile = UPPER(LTRIM(RTRIM(@business_profile)));
+    IF @business_profile NOT IN ('RETAIL', 'HOSPITALITY')
+    BEGIN
+      RAISERROR('business_profile invalido: use RETAIL o HOSPITALITY.', 16, 1);
+      RETURN;
+    END
   END
 
   DECLARE @id int;
@@ -45,12 +59,14 @@ BEGIN
       business_name, address, phone, rfc,
       fiscal_name, fiscal_zip, fiscal_regime,
       invoicing_enabled, invoicing_provider,
+      ticket_footer, business_profile,
       updated_at
     )
     VALUES (
       @business_name, @address, @phone, @rfc,
       @fiscal_name, @fiscal_zip, @fiscal_regime,
       @invoicing_enabled, @invoicing_provider,
+      @ticket_footer, ISNULL(@business_profile, 'RETAIL'),
       GETDATE()
     );
 
@@ -68,6 +84,8 @@ BEGIN
         fiscal_regime = @fiscal_regime,
         invoicing_enabled = @invoicing_enabled,
         invoicing_provider = @invoicing_provider,
+        ticket_footer = @ticket_footer,
+        business_profile = ISNULL(@business_profile, business_profile),
         updated_at = GETDATE()
     WHERE id = @id;
   END

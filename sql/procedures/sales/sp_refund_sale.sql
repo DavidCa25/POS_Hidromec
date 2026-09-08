@@ -5,7 +5,14 @@
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
-/* -------------------- sp_refund_sale -------------------- */
+/* -------------------- sp_refund_sale --------------------
+   Devolucion / cambio. Lo que se repone al inventario es lo que ESA venta
+   consumio realmente (inventory_movements ligados al producto vendido), por
+   unidad devuelta: quantity / units. Un Latte devuelto repone cafe, leche,
+   vaso y tapa segun la receta y modificadores DE ESE DIA, no la receta de
+   hoy. Un producto DIRECT repone el propio producto (como siempre). Ventas
+   anteriores a Wybix Core (sin movimientos ligados) reponen el producto.
+   -------------------------------------------------------- */
 CREATE OR ALTER PROCEDURE [dbo].[sp_refund_sale]
   @sale_id INT,
   @user_id INT,
@@ -41,8 +48,6 @@ BEGIN
     IF @sale_total IS NULL
     BEGIN
       RAISERROR('La venta no existe.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
     END
 
     ;WITH r AS (
@@ -74,8 +79,6 @@ BEGIN
     )
     BEGIN
       RAISERROR('Reembolso inválido: excede lo vendido/disponible para devolver.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
     END
 
     DECLARE @refund_total DECIMAL(12,2);
@@ -86,8 +89,6 @@ BEGIN
     IF @refund_total <= 0
     BEGIN
       RAISERROR('El total del reembolso debe ser mayor a cero.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
     END
 
     DECLARE @closure_id_open INT = NULL;
@@ -101,8 +102,6 @@ BEGIN
       IF @closure_id_open IS NULL
       BEGIN
         RAISERROR('No hay turno abierto para registrar el reembolso en efectivo.',16,1);
-        ROLLBACK TRAN;
-        RETURN;
       END
     END
 
@@ -121,20 +120,54 @@ BEGIN
     FROM #req q
     JOIN #sold s ON s.product_id = q.product_id;
 
-    UPDATE p
-    SET p.stock = p.stock + q.qty
-    FROM dbo.products p
-    JOIN #req q ON q.product_id = p.id;
+    /* ---- Que repone cada producto devuelto: consumo REAL de esta venta ---- */
+    SELECT q.product_id AS sold_product_id, m.product_id, SUM(m.quantity) AS consumed, SUM(m.units) AS units
+    INTO #consumo
+    FROM #req q
+    JOIN dbo.inventory_movements m
+      ON m.reference = CAST(@sale_id AS NVARCHAR(50))
+     AND m.sold_product_id = q.product_id
+     AND m.typee = 'salida'
+     AND m.source IN ('SALE', 'RECIPE')
+    GROUP BY q.product_id, m.product_id
+    HAVING SUM(m.units) > 0;
 
-    INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
+    /* Ventas sin movimientos ligados (anteriores a Wybix Core): el propio producto. */
+    INSERT INTO #consumo (sold_product_id, product_id, consumed, units)
+    SELECT q.product_id, q.product_id, 1, 1
+    FROM #req q
+    JOIN dbo.products p ON p.id = q.product_id
+    WHERE p.inventory_mode = 'DIRECT'
+      AND NOT EXISTS (SELECT 1 FROM #consumo c WHERE c.sold_product_id = q.product_id);
+
+    SELECT c.product_id,
+           c.sold_product_id,
+           CAST(q.qty * c.consumed / c.units AS DECIMAL(14,4)) AS qty,
+           q.qty AS units
+    INTO #restore
+    FROM #consumo c
+    JOIN #req q ON q.product_id = c.sold_product_id;
+
+    UPDATE p
+    SET p.stock = p.stock + r.qty
+    FROM dbo.products p
+    JOIN (SELECT product_id, SUM(qty) AS qty FROM #restore GROUP BY product_id) r ON r.product_id = p.id;
+
+    INSERT INTO dbo.inventory_movements
+      (product_id, typee, reference, quantity, datee, descriptionn, source, sold_product_id, units, unit_cost)
     SELECT
-      q.product_id,
+      r.product_id,
       'entrada',
       CAST(@sale_id AS NVARCHAR(50)),
-      q.qty,
+      r.qty,
       GETDATE(),
-      CONCAT('Reembolso venta ', @sale_id, ' (refund_id ', @refund_id, ')', COALESCE(CONCAT(' - ', @note), ''))
-    FROM #req q;
+      CONCAT('Reembolso venta ', @sale_id, ' (refund_id ', @refund_id, ')', COALESCE(CONCAT(' - ', @note), '')),
+      'REFUND',
+      r.sold_product_id,
+      r.units,
+      p.cost
+    FROM #restore r
+    JOIN dbo.products p ON p.id = r.product_id;
 
     IF UPPER(@payment_method)='EFECTIVO'
     BEGIN

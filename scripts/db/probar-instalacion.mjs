@@ -126,7 +126,14 @@ try {
      WHERE t.schema_id = SCHEMA_ID('dbo')
      GROUP BY t.name HAVING SUM(p.rows) > 0 ORDER BY t.name;`);
   for (const f of filas) console.log(`          ${String(f.filas).padStart(3)}  ${f.tabla}`);
-  const SEMBRADAS = { registers: 1, WA_Configuracion: 1, database_metadata: 1 };
+  // Seed estructural: lo que el producto necesita para arrancar, nunca datos
+  // de un negocio. Las unidades de medida son estructura -sin ellas no se
+  // puede escribir una receta- y schema_migrations declara lo que el template
+  // ya trae aplicado.
+  const SEMBRADAS = {
+    registers: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    schema_migrations: archivos.length,
+  };
   const sobra = filas.filter(f => SEMBRADAS[f.tabla] !== Number(f.filas));
   if (sobra.length) mal(`datos que no deberian viajar: ${sobra.map(f => `${f.tabla}(${f.filas})`).join(', ')}`);
   else bien('solo seed estructural');

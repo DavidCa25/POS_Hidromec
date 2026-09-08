@@ -12,6 +12,10 @@ CREATE TABLE dbo.sale_detail (
     quantity DECIMAL(12, 2) NOT NULL,
     unitary_price DECIMAL(10, 2) NOT NULL,
     subtotal AS ([quantity]*[unitary_price]),
+    unit_cost DECIMAL(14, 4) NULL,
+    line_cost AS ([quantity]*[unit_cost]),
+    inventory_mode NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NULL,
+    note NVARCHAR(200) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

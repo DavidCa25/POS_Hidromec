@@ -29,7 +29,8 @@ BEGIN
         s.customer_id,
         s.due_date,
         u.usuario AS cashier,
-        c.customerName AS customer_name
+        c.customerName AS customer_name,
+        s.service_mode
     FROM dbo.sales s
     INNER JOIN dbo.users u ON u.id = s.useer_id
     LEFT JOIN dbo.customers c ON c.id = s.customer_id
@@ -39,9 +40,17 @@ BEGIN
         p.nombre,
         d.quantity,
         d.unitary_price,
-        d.subtotal AS line_total
+        d.subtotal AS line_total,
+        d.note,
+        mods.modifiers
     FROM dbo.sale_detail d
     INNER JOIN dbo.products p ON p.id = d.product_id
+    OUTER APPLY (
+        SELECT STRING_AGG(CONCAT(CASE WHEN m.quantity > 1 THEN CONCAT(m.quantity, 'x ') ELSE '' END, m.option_name), ', ')
+               WITHIN GROUP (ORDER BY m.id) AS modifiers
+        FROM dbo.sale_detail_modifiers m
+        WHERE m.sale_detail_id = d.id
+    ) mods
     WHERE d.sale_id = @sale_id
     ORDER BY d.id;
 END;

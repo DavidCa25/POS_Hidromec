@@ -44,6 +44,7 @@ const iSal = process.argv.indexOf('--salida');
 // la verificacion paso, asi que un fallo nunca deja el template a medias.
 const SALIDA = iSal > 0 ? process.argv[iSal + 1] : join('installer', 'template.bak');
 const DIR_BASELINE = join('sql', 'baseline', `v${VERSION}`);
+const DIR_MIGRACIONES = join('electron', 'migrations');
 
 let fallos = 0;
 const mal = (t) => { console.log(`   FALLA  ${t}`); fallos++; };
@@ -156,7 +157,29 @@ try {
   const rs = aplicarArchivo(join(DIR_BASELINE, '01_seed.sql'));
   if (rs.ok) bien('01_seed.sql'); else mal(`01_seed.sql: ${rs.error}`);
 
-  paso('7. Verificacion');
+  // El baseline se construye desde el arbol canonico, asi que su esquema YA
+  // incluye todo lo que aportan las migraciones existentes. Registrarlas evita
+  // dos cosas: que una instalacion nueva reejecute 89 lotes que no cambian
+  // nada, y -sobre todo- que `schema_migrations` mienta. Un tecnico que abra
+  // esa tabla tiene que ver el estado real del esquema que tiene delante.
+  //
+  // Las migraciones siguen en Git y se aplican igual sobre instalaciones
+  // anteriores: esto solo declara lo que el template ya trae puesto.
+  paso('7. Migraciones que este baseline ya incluye');
+  const migraciones = readdirSync(DIR_MIGRACIONES).filter(f => f.endsWith('.sql')).sort();
+  if (!migraciones.length) {
+    bien('no hay migraciones que registrar');
+  } else {
+    const valores = migraciones.map(f => `(N'${f.replace(/'/g, "''")}')`).join(', ');
+    const r = ejecutarVarios(TMP, [`
+      INSERT INTO dbo.schema_migrations (filename)
+      SELECT v.filename FROM (VALUES ${valores}) AS v(filename)
+      WHERE NOT EXISTS (SELECT 1 FROM dbo.schema_migrations m WHERE m.filename = v.filename);`]);
+    if (r[0].ok) bien(`${migraciones.length} migraciones registradas: ${migraciones.join(', ')}`);
+    else mal(`no se pudieron registrar las migraciones: ${corto(r[0].error)}`);
+  }
+
+  paso('8. Verificacion');
   const esqBase = new Map(leerEsquema(TMP).map(t => [t.nombre, t]));
   let tOk = 0;
   const tDif = [];
@@ -202,21 +225,35 @@ try {
       FROM sys.tables t JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0,1)
      WHERE t.schema_id = SCHEMA_ID('dbo')
      GROUP BY t.name HAVING SUM(p.rows) > 0 ORDER BY t.name;`);
-  const SEMBRADAS = { registers: 1, WA_Configuracion: 1, database_metadata: 1 };
+  // Lo unico que puede traer filas es el seed estructural: cosas sin las que
+  // el producto no arranca, nunca datos de un negocio.
+  //   registers          la caja 1, que sp_register_sale necesita resolver
+  //   WA_Configuracion   la fila unica de configuracion de WhatsApp
+  //   database_metadata  version del baseline
+  //   uoms               catalogo de unidades (pieza, gramo, litro, metro...).
+  //                      Es estructura: sin el no se puede escribir una receta.
+  //   schema_migrations  las migraciones que este baseline ya trae aplicadas
+  const SEMBRADAS = {
+    registers: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    schema_migrations: migraciones.length,
+  };
   for (const f of conFilas) console.log(`          ${String(f.filas).padStart(3)}  ${f.tabla}`);
   const sobra = conFilas.filter(f => SEMBRADAS[f.tabla] !== Number(f.filas));
   if (sobra.length) mal(`filas inesperadas: ${sobra.map(f => `${f.tabla}(${f.filas})`).join(', ')}`);
   else bien('solo hay seed estructural: 0 datos de demo, 0 datos de usuario');
 
-  const mig = consultar(TMP, `SELECT COUNT(*) AS n FROM dbo.schema_migrations;`)[0].n;
-  if (Number(mig) === 0) bien('schema_migrations vacia: el historial productivo arranca en cero');
-  else mal(`schema_migrations trae ${mig} filas`);
+  // La tabla tiene que describir el esquema que se esta entregando: ni una
+  // migracion de menos (el runner la reaplicaria sin necesidad) ni una de mas
+  // (declararia un cambio que este .bak no trae).
+  const mig = Number(consultar(TMP, `SELECT COUNT(*) AS n FROM dbo.schema_migrations;`)[0].n);
+  if (mig === migraciones.length) bien(`schema_migrations declara las ${mig} migraciones que este baseline ya trae puestas`);
+  else mal(`schema_migrations trae ${mig} filas, se esperaban ${migraciones.length}`);
 
   const bv = consultar(TMP, `SELECT valor FROM dbo.database_metadata WHERE clave = 'baseline_version';`);
   if (bv[0] && bv[0].valor === String(VERSION)) bien(`database_metadata.baseline_version = ${VERSION}`);
   else mal(`baseline_version = ${bv[0] ? bv[0].valor : '(ausente)'}`);
 
-  paso('8. Respaldo');
+  paso('9. Respaldo');
   if (fallos) {
     console.log('   omitido: la verificacion no paso, no se genera .bak');
   } else {

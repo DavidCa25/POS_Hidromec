@@ -8,7 +8,11 @@ GO
 -- =============================================
 -- Author:		<Daniela Luna>
 -- Create date: <04/08/2025>
--- Description:	<SP para agregar usuarios>
+-- Description:	<Productos activos para venta, inventario y compras>
+-- Update:      + inventory_mode, sellable, base_uom, allow_decimal_qty,
+--                image_version, has_modifiers, cost, category_id (Core).
+--              Devuelve TODOS los activos, ingredientes incluidos; las
+--              pantallas de venta filtran sellable = 1.
 -- =============================================
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_get_active_products]
@@ -23,7 +27,23 @@ BEGIN
         c.namee AS category_name,
         m.namee AS brand_name,
         p.bar_code AS bar_code,
-        ds.supplier_name AS default_supplier_name
+        ds.supplier_name AS default_supplier_name,
+        p.category_id,
+        p.brand_id,
+        p.cost,
+        p.clave_prod_serv,
+        p.clave_unidad,
+        p.objeto_impuesto,
+        p.tasa_iva,
+        p.inventory_mode,
+        p.sellable,
+        p.base_uom,
+        p.allow_decimal_qty,
+        p.image_version,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM dbo.product_modifier_groups pmg
+            JOIN dbo.modifier_groups g ON g.id = pmg.group_id AND g.active = 1
+            WHERE pmg.product_id = p.id) THEN 1 ELSE 0 END AS has_modifiers
     FROM products p
     INNER JOIN CAT_categories c ON p.category_id = c.id
     INNER JOIN CAT_brands m ON p.brand_id = m.id

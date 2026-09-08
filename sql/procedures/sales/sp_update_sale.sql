@@ -32,6 +32,18 @@ BEGIN
       RETURN;
     END
 
+    /* La edicion recalcula stock por PRODUCTO vendido: solo vale para lineas
+       DIRECT sin modificadores. Una venta con recetas se corrige con
+       Reembolso / Cambio, que repone lo que realmente se consumio. */
+    IF EXISTS (SELECT 1 FROM dbo.sale_detail d WHERE d.sale_id = @sale_id AND d.inventory_mode = 'RECIPE')
+       OR EXISTS (SELECT 1 FROM dbo.sale_detail d JOIN dbo.sale_detail_modifiers m ON m.sale_detail_id = d.id WHERE d.sale_id = @sale_id)
+       OR EXISTS (SELECT 1 FROM @SaleDetails n JOIN dbo.products p ON p.id = n.product_id WHERE p.inventory_mode = 'RECIPE')
+    BEGIN
+      RAISERROR('Esta venta contiene recetas o modificadores: usa Reembolso / Cambio en lugar de modificarla.',16,1);
+      ROLLBACK TRAN;
+      RETURN;
+    END
+
     DECLARE @old_total DECIMAL(12,2);
     DECLARE @payment_method NVARCHAR(50);
     DECLARE @customer_id INT;
@@ -72,20 +84,23 @@ BEGIN
     SELECT
       d.product_id,
       SUM(d.quantity) AS qty,
-      MAX(d.unitary_price) AS unit_price
+      MAX(d.unitary_price) AS unit_price,
+      MAX(d.unit_cost) AS unit_cost
     INTO #old
     FROM dbo.sale_detail d
     WHERE d.sale_id = @sale_id
     GROUP BY d.product_id;
 
+    /* Solo los productos con inventario directo mueven stock; NONE no. */
     ;WITH delta AS (
       SELECT
         COALESCE(o.product_id, n.product_id) AS product_id,
         ISNULL(o.qty,0) AS old_qty,
         ISNULL(n.qty,0) AS new_qty,
-        (ISNULL(o.qty,0) - ISNULL(n.qty,0)) AS stock_change
+        CASE WHEN p.inventory_mode = 'DIRECT' THEN (ISNULL(o.qty,0) - ISNULL(n.qty,0)) ELSE 0 END AS stock_change
       FROM #old o
       FULL JOIN #new n ON n.product_id = o.product_id
+      JOIN dbo.products p ON p.id = COALESCE(o.product_id, n.product_id)
     )
     SELECT * INTO #delta FROM delta;
 
@@ -112,19 +127,28 @@ BEGIN
 
     DELETE FROM dbo.sale_detail WHERE sale_id = @sale_id;
 
-    INSERT INTO dbo.sale_detail (sale_id, product_id, quantity, unitary_price)
-    SELECT @sale_id, product_id, qty, unit_price
-    FROM #new;
+    /* Se conserva el costo congelado de la linea original; una linea nueva
+       toma el costo actual del producto. */
+    INSERT INTO dbo.sale_detail (sale_id, product_id, quantity, unitary_price, unit_cost, inventory_mode)
+    SELECT @sale_id, n.product_id, n.qty, n.unit_price, ISNULL(o.unit_cost, p.cost), p.inventory_mode
+    FROM #new n
+    JOIN dbo.products p ON p.id = n.product_id
+    LEFT JOIN #old o ON o.product_id = n.product_id;
 
-    INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
+    INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn, source, sold_product_id, units, unit_cost)
     SELECT
       d.product_id,
       CASE WHEN d.stock_change < 0 THEN 'salida' ELSE 'entrada' END,
       CAST(@sale_id AS NVARCHAR(50)),
       ABS(d.stock_change),
       GETDATE(),
-      CONCAT('Ajuste venta ', @sale_id, COALESCE(CONCAT(' - ', @note), ''))
+      CONCAT('Ajuste venta ', @sale_id, COALESCE(CONCAT(' - ', @note), '')),
+      'EDIT',
+      d.product_id,
+      ABS(d.stock_change),
+      p.cost
     FROM #delta d
+    JOIN dbo.products p ON p.id = d.product_id
     WHERE d.stock_change <> 0;
 
     UPDATE dbo.sales
