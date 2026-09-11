@@ -118,6 +118,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
               load: () => import('../diagnostico-panel/diagnostico-panel.component').then(m => m.DiagnosticoPanel) },
             { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'desktop-tower', color: 'blue', size: '2x1',
               load: () => import('../register-panel/register-panel.component').then(m => m.RegistersPanel) },
+            { id: 'red-multicaja', title: 'Red MultiCaja', desc: 'Prepara esta máquina para que otras cajas se conecten', icon: 'wifi-high', color: 'blue', size: '2x1',
+              load: () => import('../red-multicaja-panel/red-multicaja.component').then(m => m.RedMulticajaPanel) },
             { id: 'experiencia', title: 'Experiencia de esta caja', desc: 'Retail, Touch o solo administración', icon: 'devices', color: 'purple', size: '1x1',
               load: () => import('../device-profile-panel/device-profile.component').then(m => m.DeviceProfilePanelComponent) },
         ]

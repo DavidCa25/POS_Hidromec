@@ -5,6 +5,8 @@ const { poolPromise, sql } = require('./db');
 const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
+const { construirTicketHtml } = require('./lib/ticket');
+const { construirHuella } = require('./lib/huella');
 const { autoUpdater } = require('electron-updater');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
@@ -18,6 +20,10 @@ const DB_NAME = 'Wybix_POS';
 const setupServer = require('./setupServer');
 const cloudSync = require('./cloudSync');
 const licenseStore = require('./license');
+const cajaArrendada = require('./cajaArrendada');
+const { normalizarServidor } = require('./lib/servidor-sql');
+const arranque = require('./arranque');
+const redMulticaja = require('./redMulticaja');
 const { sellarComoPrueba } = require('./lib/licencia-prueba');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
@@ -26,6 +32,24 @@ const os = require('os');
 //Casillas_2512_19
 
 logger.setupLogging({ retentionDays: 14 });
+
+/**
+ * Una promesa rechazada que nadie esperaba NO puede tumbar la caja.
+ *
+ * En Node 20 -el que trae Electron 37- una unhandled rejection termina el
+ * proceso. Durante la instalacion de una caja secundaria eso significaba que
+ * un intento de conexion fallido, que ni siquiera formaba parte del flujo del
+ * asistente, cerraba Wybix entera delante del cliente.
+ *
+ * La causa concreta ya no existe (ver `poolPromise` en db.js), pero esta red
+ * queda puesta: un fallo suelto se anota y se sigue. Cerrar el punto de venta
+ * porque una promesa quedo suelta nunca es la respuesta correcta; lo que hay
+ * que poder hacer es leer el registro y arreglarlo.
+ */
+process.on('unhandledRejection', (motivo) => {
+  const detalle = motivo instanceof Error ? (motivo.stack || motivo.message) : String(motivo);
+  console.error('[PROCESO] Promesa rechazada sin manejar:', detalle);
+});
 
 // IPC del dominio Hospitality (recetas, modificadores, presentaciones,
 // catalogo Touch e imagenes). Vive en su propio modulo: main.js ya tiene
@@ -117,6 +141,67 @@ function obtenerUuidPlaca() {
   }
 }
  
+/**
+ * TODOS los seriales de disco, no solo el primero.
+ *
+ * `wmic diskdrive` no garantiza el orden: agregar un disco podia cambiar cual
+ * salia primero y, con el, la huella entera.
+ */
+function obtenerSerialesDisco() {
+  try {
+    const out = execSync('wmic diskdrive get serialnumber', { encoding: 'utf8', timeout: 4000 });
+    return out.split(/\r?\n/).map(l => l.trim()).filter(l => l && l !== 'SerialNumber');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Direcciones MAC fisicas.
+ *
+ * Es la unica senal de identidad que NO pasa por WMI, y por eso es la que
+ * sostiene el caso "wmic no respondio al arrancar". No se filtran las de
+ * adaptadores virtuales: en una caja con VPN o con una maquina virtual
+ * instalada seguirian siendo estables, y descartarlas dejaria sin senal a los
+ * equipos donde son las unicas.
+ */
+function obtenerMacs() {
+  try {
+    const ifaces = os.networkInterfaces() || {};
+    const macs = [];
+    for (const nombre of Object.keys(ifaces)) {
+      for (const dir of ifaces[nombre] || []) {
+        if (dir.internal) continue;
+        const m = String(dir.mac || '').trim();
+        if (m && m !== '00:00:00:00:00:00') macs.push(m);
+      }
+    }
+    return macs;
+  } catch {
+    return [];
+  }
+}
+
+/** Senales crudas del equipo, para construir la huella. */
+function senalesDeEquipo() {
+  return {
+    uuid: obtenerUuidPlaca(),
+    discos: obtenerSerialesDisco(),
+    macs: obtenerMacs(),
+    host: os.hostname(),
+    plat: os.platform(),
+    arch: os.arch(),
+  };
+}
+
+/**
+ * machineId v1: el identificador HISTORICO, el que ya conoce el servidor de
+ * activacion de los clientes dados de alta. No se cambia su formula: cambiarla
+ * dejaria a esos clientes sin poder revalidar.
+ *
+ * Se conserva como identificador REPORTADO. Lo que dejo de hacer es decidir si
+ * la licencia se puede leer: de eso se encarga ahora la huella.
+ */
 function generarMachineId() {
   const partes = [
     obtenerUuidPlaca(),
@@ -127,6 +212,66 @@ function generarMachineId() {
   ].filter(Boolean).join('|');
  
   return crypto.createHash('sha256').update(partes).digest('hex').slice(0, 32);
+}
+
+/**
+ * Las variantes ENUMERABLES del machineId v1 cuando WMI viene incompleto.
+ *
+ * `.filter(Boolean)` descartaba las partes vacias, asi que un `wmic` caido
+ * producia un hash distinto en silencio y la licencia ya no abria. Las
+ * combinaciones posibles son pocas -con o sin uuid, con o sin disco- y
+ * probarlas recupera exactamente ese caso sin debilitar nada: si ninguna
+ * abre el archivo, la licencia sigue sin leerse.
+ *
+ * El hostname NO se puede enumerar: no hay forma de saber cual era. Ese caso
+ * -equipo renombrado ANTES de esta version- se resuelve reactivando.
+ */
+function candidatosMachineIdV1() {
+  const uuid = obtenerUuidPlaca();
+  const disco = obtenerSerialDisco();
+  const host = os.hostname();
+  const fijo = [os.platform(), os.arch()];
+  const combinaciones = [
+    [uuid, disco, host, ...fijo],
+    [disco, host, ...fijo],
+    [uuid, host, ...fijo],
+    [host, ...fijo],
+  ];
+  return [...new Set(combinaciones.map(partes =>
+    crypto.createHash('sha256').update(partes.filter(Boolean).join('|')).digest('hex').slice(0, 32)
+  ))];
+}
+
+/** Contexto que espera electron/license.js. */
+function contextoLicencia() {
+  if (!cachedMachineId) cachedMachineId = generarMachineId();
+  return {
+    machineIdV1: cachedMachineId,
+    candidatosV1: candidatosMachineIdV1(),
+    huella: construirHuella(senalesDeEquipo()),
+  };
+}
+
+/**
+ * La identidad de ESTA maquina, estable.
+ *
+ * Es la misma que reporta la licencia: el identificador que quedo SELLADO la
+ * primera vez, no uno recalculado en cada arranque. Renombrar el equipo, o un
+ * fallo temporal de WMI, no deben cambiarlo -ese fue justo el defecto que
+ * dejaba licencias ilegibles-, y aqui importa por la misma razon: una caja no
+ * puede perderse porque alguien renombro la PC.
+ *
+ * Si la licencia todavia no existe -durante la prueba, antes de activar- cae
+ * al machineId v1 calculado, que es lo que habia antes y sirve igual para
+ * distinguir dos equipos entre si.
+ */
+function machineIdDeEsteEquipo() {
+  try {
+    const id = licenseStore.machineIdEstable(contextoLicencia());
+    if (id) return id;
+  } catch { /* sin licencia todavia */ }
+  if (!cachedMachineId) cachedMachineId = generarMachineId();
+  return cachedMachineId;
 }
 
 function getLicensePath() {
@@ -151,8 +296,11 @@ function createSetupWindow() {
   return win;
 }
 
-async function bootMainApp() {
-  const pool = await poolPromise;
+async function bootMainApp(poolYaAbierto) {
+  // El pool llega del paso "conectar" del arranque. Se acepta tambien sin
+  // argumento porque `setup-run` llama aqui despues de dar de alta la
+  // instalacion, y ahi la conexion ya quedo establecida igualmente.
+  const pool = poolYaAbierto || await poolPromise;
   const migrationsDir = isDev
     ? path.join(__dirname, 'migrations')
     : path.join(process.resourcesPath, 'migrations');
@@ -188,6 +336,32 @@ async function bootMainApp() {
   }
 
   mainWindow = createWindow();
+
+  /* ARRIENDO DE CAJA
+     ----------------
+     Esta maquina reclama la caja que tiene guardada y empieza a latir. En una
+     instalacion que ya existia, la caja guardada es la que ya tenia y nadie
+     mas la tiene: la toma sin conflicto y nada cambia para el usuario. En una
+     de una sola caja esto es invisible.
+
+     La identidad es la MISMA que usa la licencia -la huella sellada-, no el
+     hostname: renombrar un equipo no puede costarle su caja. */
+  try {
+    cajaArrendada.configurar({
+      machineId: machineIdDeEsteEquipo(),
+      machineName: os.hostname(),
+      leerCaja: () => loadDeviceConfig()?.register ?? null,
+    });
+    await cajaArrendada.iniciar();
+    const c = cajaArrendada.instantanea();
+    if (c.registerId) {
+      console.log(`[CAJA] ${c.registerName ?? c.registerId}: ${c.ultimo ?? c.error ?? 'sin respuesta'}`);
+    }
+  } catch (e) {
+    // Sin arriendo se opera como siempre. No es motivo para no abrir.
+    console.error('[CAJA] No se pudo iniciar el arriendo:', e.message);
+  }
+
   backup.startScheduler();
   // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
   if (!cachedMachineId) cachedMachineId = generarMachineId();
@@ -199,41 +373,90 @@ async function bootMainApp() {
   autoOpenCustomerDisplay();
 }
 
-app.whenReady().then(async () => {
-  try {
-    const install = loadInstallConfig();
+app.whenReady().then(() => arranque.arrancar({
+  cargarInstalacion: () => loadInstallConfig(),
 
-    if (!install) {
-      // Primera vez: abre el asistente, no arranca la app todavia
-      setupWindow = createSetupWindow();
-      return;
-    }
+  // Se responde leyendo el disco, sin abrir ninguna conexion.
+  hayConfiguracion: () => db.hayConfiguracion(),
 
-    // Ya configurado: prepara servidor (rapido si ya esta listo) y arranca
-    // Arranque de una instalacion que ya existe: la version del motor se
-    // reporta, no bloquea. Quien ya opera no puede quedarse sin vender por
-    // algo que no puede resolver en ese momento.
-    await setupServer.ensureServerReady({
-      role: install.role,
-      server: install.server,
-      dbName: install.dbName || DB_NAME,
-      altaDeHost: false
-    });
-    await bootMainApp();
-  } catch (err) {
-    console.error(err);
-    // Si la actualizacion de SQL dejo un reinicio pendiente, se dice con
-    // claridad en vez de dejar la ventana sin abrir.
-    if (err?.reinicioPendiente) {
+  // Arranque de una instalacion que ya existe: la version del motor se
+  // reporta, no bloquea. Quien ya opera no puede quedarse sin vender por algo
+  // que no puede resolver en ese momento.
+  prepararServidor: (install) => setupServer.ensureServerReady({
+    role: install.role,
+    server: install.server,
+    dbName: install.dbName || DB_NAME,
+    altaDeHost: false,
+  }),
+
+  conectar: () => poolPromise,
+
+  arrancarApp: (pool) => bootMainApp(pool),
+
+  abrirAsistente: () => { setupWindow = createSetupWindow(); },
+
+  /* Un fallo antes de la ventana NO puede quedarse solo en el registro: el
+     usuario ve una aplicacion que no abre y no tiene donde mirar. */
+  avisarFallo: ({ paso, error }) => {
+    if (error?.reinicioPendiente) {
       dialog.showMessageBoxSync({
         type: 'info',
         title: 'Falta reiniciar el equipo',
         message: 'Actualizacion de SQL Server aplicada',
-        detail: err.message,
+        detail: error.message,
         buttons: ['Entendido'],
       });
       app.quit();
+      return;
     }
+    dialog.showErrorBox(
+      'Wybix no pudo iniciar',
+      `Se detuvo en el paso "${paso}".\n\n${error?.message || error}\n\n` +
+      'El detalle completo esta en el registro (Configuracion > Diagnostico).');
+  },
+
+  log: (m) => console.log(m),
+  logError: (m) => console.error(m),
+}));
+
+/**
+ * Guarda bytes generados en el renderer como un archivo de verdad.
+ *
+ * POR QUE EXISTE
+ * --------------
+ * jsPDF y xlsx-js-style "guardan" creando un Blob y disparando un
+ * <a download>. Eso es del navegador: en la aplicacion empaquetada la pagina
+ * se sirve por `file://` y esa descarga no llega a ninguna parte -no hay
+ * carpeta de descargas ni gestor que la recoja-, asi que el usuario pulsa
+ * Exportar y no pasa nada. Con esto el renderer solo produce los bytes y el
+ * proceso principal hace lo unico que sabe hacer bien: preguntar donde y
+ * escribir el archivo.
+ */
+ipcMain.handle('files:save-bytes', async (_e, payload = {}) => {
+  try {
+    const nombre = String(payload?.suggestedName || 'wybix').replace(/[\\/:*?"<>|]/g, '_');
+    const b64 = String(payload?.base64 || '');
+    if (!b64) return { success: false, error: 'No se recibio contenido para guardar.' };
+
+    const ext = String(payload?.extension || '').replace(/^\./, '') || 'bin';
+    const filtros = Array.isArray(payload?.filters) && payload.filters.length
+      ? payload.filters
+      : [{ name: ext.toUpperCase(), extensions: [ext] }];
+
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: payload?.title || 'Guardar archivo',
+      defaultPath: `${nombre}.${ext}`,
+      filters: filtros,
+    });
+    // Cancelar no es un error: no se avisa de nada al usuario.
+    if (canceled || !filePath) return { success: true, canceled: true };
+
+    fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+    return { success: true, path: filePath };
+  } catch (err) {
+    console.error('files:save-bytes:', err);
+    return { success: false, error: err.message };
   }
 });
 
@@ -802,6 +1025,35 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+/**
+ * Soltar la caja al cerrar Wybix limpiamente.
+ *
+ * El arriendo caduca solo en cinco minutos, asi que esto no es lo que evita
+ * que una caja quede bloqueada -de eso se encarga la caducidad-. Es lo que
+ * hace que CAMBIAR de equipo sea inmediato en el caso normal: apago la caja
+ * vieja, enciendo la nueva y la caja ya esta libre.
+ *
+ * `preventDefault` + `app.exit()` porque soltar es una llamada a SQL y
+ * `before-quit` no espera promesas. El tiempo maximo se acota: nadie puede
+ * quedarse con la ventana cerrada y el proceso vivo porque el servidor no
+ * conteste.
+ */
+let soltandoCaja = false;
+app.on('before-quit', (e) => {
+  if (soltandoCaja) return;
+  const caja = cajaArrendada.instantanea();
+  if (!caja.registerId || !caja.vigente) return;
+
+  soltandoCaja = true;
+  e.preventDefault();
+  cajaArrendada.detener();
+
+  const aTiempo = new Promise(r => setTimeout(r, 3000));
+  Promise.race([cajaArrendada.soltar('EQUIPO'), aTiempo])
+    .catch(() => { /* cerrar no puede fallar por esto */ })
+    .finally(() => app.exit(0));
+});
+
 ipcMain.handle('getConfig', async () => {
   const cfg = await ensureBusinessConfig();
   return cfg;
@@ -977,9 +1229,43 @@ ipcMain.handle('sp-delete-product', async (_event, productId) => {
 
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (err) {
-    // El mensaje del procedimiento nombra las recetas o los modificadores que
-    // bloquean la baja: se pasa tal cual, es lo unico util para el usuario.
     console.error('sp-delete-product:', err);
+
+    // El procedimiento ya nombra lo que bloquea, pero por el canal de ERRORES:
+    // el driver degrada ese texto a un byte por caracter y "QA Frappe" con
+    // acento llegaba como "QA Frapp?". Las filas de datos NO se degradan, asi
+    // que los nombres se vuelven a pedir por una consulta normal y el mensaje
+    // se arma aqui. Si esa consulta fallara, se conserva el mensaje del
+    // procedimiento: peor acentuado, pero nunca vacio.
+    try {
+      const pool = await poolPromise;
+      const dep = await pool.request()
+        .input('product_id', sql.Int, Number(productId))
+        .execute('sp_get_product_dependencies');
+      const filas = dep.recordset || [];
+      const recetas = filas.filter(f => f.tipo === 'RECIPE').map(f => f.nombre);
+      const mods    = filas.filter(f => f.tipo === 'MODIFIER').map(f => f.nombre);
+
+      if (recetas.length || mods.length) {
+        const partes = [];
+        if (recetas.length) {
+          partes.push(`se usa como ingrediente en: ${recetas.join(', ')}. ` +
+                      'Quitalo de esas recetas antes de darlo de baja.');
+        }
+        if (mods.length) {
+          partes.push(`se usa en los modificadores: ${mods.join(', ')}. ` +
+                      'Cambialos antes de darlo de baja.');
+        }
+        return {
+          success: false,
+          error: partes.join(' '),
+          bloqueos: { recetas, modificadores: mods },
+        };
+      }
+    } catch (e2) {
+      console.error('sp-delete-product (dependencias):', e2);
+    }
+
     return { success: false, error: err.message };
   }
 });
@@ -1154,6 +1440,7 @@ ipcMain.handle('sp-register-sale', async (event, a, b, c, d, e, f) => {
     try {
       const pool = await poolPromise;
       const { d1, d2, mo } = construirTvpsVenta(lines);
+      const ident = cajaArrendada.identidad();
 
       const request = pool.request()
         .input('user_id',        sql.Int,           p.userId)
@@ -1164,7 +1451,13 @@ ipcMain.handle('sp-register-sale', async (event, a, b, c, d, e, f) => {
         .input('register_id',    sql.Int,           p.registerId ?? null)
         .input('SaleDetails2',   d2)
         .input('SaleModifiers',  mo)
-        .input('service_mode',   sql.NVarChar(10),  p.serviceMode ?? null);
+        .input('service_mode',   sql.NVarChar(10),  p.serviceMode ?? null)
+        // Quien es esta maquina. El procedimiento rechaza la venta si la caja
+        // la tiene otro equipo -dos equipos en la misma caja comparten turno y
+        // corte- y de paso RENUEVA el arriendo: vender es la senal de vida mas
+        // fuerte que hay, y no puede depender de un temporizador de interfaz.
+        .input('machine_id',     sql.NVarChar(64),  ident.machineId)
+        .input('machine_name',   sql.NVarChar(120), ident.machineName);
 
       const result = await request.execute('sp_register_sale');
 
@@ -1215,7 +1508,7 @@ ipcMain.handle('get-next-purchase-folio', async () => {
   }
 });
 
-ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles }) => {
+ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id }) => {
   try {
     const pool = await poolPromise;
 
@@ -1265,9 +1558,23 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax
     request.input('PurchaseDetails', tvp);
     request.input('PurchaseDetails2', tvp2);
 
-    const result = await request.execute('sp_register_purchase');
+    // Como se pago. A credito -el valor de siempre- la compra no toca la
+    // caja; en efectivo el procedimiento exige turno abierto y cuelga la
+    // salida de ese turno para que salga en el corte.
+    request.input('payment_method', sql.NVarChar(20), payment_method || 'CREDITO');
+    request.input('register_id', sql.Int, Number(register_id) || null);
 
-    return { success: true, purchase_id: result.recordset[0].purchase_id };
+    const result = await request.execute('sp_register_purchase');
+    const fila = result.recordset?.[0] ?? {};
+
+    return {
+      success: true,
+      purchase_id: fila.purchase_id,
+      payment_method: fila.payment_method ?? null,
+      balance: fila.balance ?? null,
+      cash_movement_id: fila.cash_movement_id ?? null,
+      closure_id: fila.closure_id ?? null,
+    };
   } catch (err) {
     console.error('❌ Error sp_register_purchase:', err);
     return { success: false, error: err.message };
@@ -1751,7 +2058,13 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
     const userId = parseInt(payload?.user_id ?? payload?.userId, 10);
     const cashDelivered = Number(payload?.cash_delivered ?? payload?.cashDelivered);
     const closureId = Number(payload?.closure_id ?? payload?.closureId);
-    const registerId = payload?.register_id ?? payload?.registerId ?? null;
+    /* La caja de ESTE equipo como respaldo, nunca `null`.
+       Un `null` aqui hacia que el procedimiento cayera a "la primera caja de
+       la tabla" -la Caja 1- y validara el arriendo de una caja ajena. La
+       identidad de caja de esta maquina vive en un solo sitio: su
+       `device-config`, que es el mismo que se usa al abrir turno y al vender. */
+    const registerId = payload?.register_id ?? payload?.registerId
+      ?? loadDeviceConfig()?.register?.id ?? null;
 
 
     console.log('parsed:', { userId, cashDelivered });
@@ -1764,10 +2077,14 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
     }
 
     const pool = await poolPromise;
+    const identCorte = cajaArrendada.identidad();
     const req = pool.request()
       .input('user_id', sql.Int, userId)
       .input('cash_delivered', sql.Decimal(12, 2), cashDelivered)
-      .input('register_id', sql.Int, registerId);
+      .input('register_id', sql.Int, registerId)
+      // Nadie cierra el corte de la caja de otro equipo por detras.
+      .input('machine_id', sql.NVarChar(64), identCorte.machineId)
+      .input('machine_name', sql.NVarChar(120), identCorte.machineName);
 
     if (Number.isFinite(closureId) && closureId > 0) {
       req.input('closure_id', sql.Int, closureId);
@@ -2098,6 +2415,7 @@ ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
       .input('amount',         sql.Decimal(10,2),payload.amount)
       .input('payment_method', sql.NVarChar(50), payload.payment_method)
       .input('note',           sql.NVarChar(255),payload.note || null)
+      .input('register_id',    sql.Int,          Number(payload.register_id) || null)
       .execute('sp_register_supplier_payment');
 
     return { success: true, data: result.recordset[0] ?? null };
@@ -2176,90 +2494,30 @@ function money(value) {
 
 async function generateSaleTicketPdf(header, lines, extras = {}) {
   await ensureBusinessConfig();
-  const template = fs.readFileSync(
-    path.join(__dirname, "templates/ticket.html"),
-    "utf8"
-  );
 
-  const rowsHtml = (lines || []).map(l => {
-    const qty  = Number(l.quantity ?? l.qty ?? 0);
-    const unit = Number(l.unitary_price ?? l.price ?? 0);
+  // MISMO constructor que la impresion. Antes habia dos copias con el mismo
+  // error de IVA y el mismo logo ajeno: arreglar una dejaba la otra rota.
+  const paperWidthMm = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 80;
+  const fecha = (typeof formatDateTimeEsMX === "function")
+    ? formatDateTimeEsMX(header?.datee) : String(header?.datee ?? "");
 
-    const nombre = (l.nombre ?? l.product_name ?? l.product ?? "").toString() || "—";
+  const filledHtml = construirTicketHtml(header, lines, {
+    ...ticketExtrasComunes(paperWidthMm),
+    fecha,
+    pagado: extras.pagado,
+    cambio: extras.cambio,
+    payment_method: extras.payment_method,
+  });
 
-    const sub = Number(
-      l.subtotal ?? (Number.isFinite(qty * unit) ? qty * unit : 0)
-    );
-
-    return `
-      <tr>
-        <td>${nombre}</td>
-        <td class="right">${qty}</td>
-        <td class="right">$${unit.toFixed(2)}</td>
-        <td class="right">$${sub.toFixed(2)}</td>
-      </tr>`;
-  }).join("");
-
-  // --- Totales ---
-  const total = (lines || []).reduce((a, l) => {
-    const qty  = Number(l.quantity ?? l.qty ?? 0);
-    const unit = Number(l.unitary_price ?? l.price ?? 0);
-    const sub  = Number(l.subtotal ?? (Number.isFinite(qty * unit) ? qty * unit : 0));
-    return a + sub;
-  }, 0);
-
-  const IVA_RATE = 0.16;
-  const subtotal = total / (1 + IVA_RATE);   
-  const iva      = total - subtotal;
-
-  // si me mandas pagado/cambio desde el front, tienen prioridad
-  const pagado = extras.pagado != null
-    ? Number(extras.pagado)
-    : Number(header.paid_amount ?? total);
-
-  const cambio = extras.cambio != null
-    ? Number(extras.cambio)
-    : pagado - total;
-
-  // helper dinero
-  const money = (n) => Number(n || 0).toFixed(2);
-
-  // --- rellenar template ---
-  let filledHtml = template
-    .replace(/{{LOGO}}/g, `file://${path
-      .join(__dirname, "assets/LogoHidromec.jpg")
-      .replace(/\\/g, "/")}`)
-
-    .replace(/{{BUSINESS_NAME}}/g, businessConfig.business_name || "")
-    .replace(/{{ADDRESS}}/g,       businessConfig.address || "")
-    .replace(/{{PHONE}}/g,         businessConfig.phone || "")
-    .replace(/{{RFC}}/g,           businessConfig.rfc || "")
-    .replace(/{{FOOTER}}/g,        businessConfig.ticket_footer || "")
-
-    .replace(/{{FOLIO}}/g,   String(header.id ?? header.sale_id ?? ""))
-    .replace(/{{DATE}}/g,    String(header.datee ?? header.date ?? header.created_at ?? ""))
-    .replace(/{{METHOD}}/g,  String(header.payment_method ?? ""))
-
-    .replace(/{{SUBTOTAL}}/g, money(subtotal))
-    .replace(/{{IVA}}/g,       money(iva))
-    .replace(/{{TOTAL}}/g,     money(total))
-    .replace(/{{PAGADO}}/g,    money(pagado))
-    .replace(/{{CAMBIO}}/g,    money(cambio))
-
-    .replace(/{{ROWS}}/g, rowsHtml);
-
-  // Mismo tamano que antes con Puppeteer: 80 mm de ancho y alto carta (era el
-  // alto por defecto cuando solo se indicaba el ancho).
   const pdfPath = path.join(ensureTicketsDir(), `ticket_${header.id}.pdf`);
   await htmlToPdf(filledHtml, {
     outPath: pdfPath,
-    pageSize: { widthMm: 80, heightMm: 279.4 },
+    // El alto lo decide el contenido; el ancho, el papel configurado.
+    pageSize: { widthMm: paperWidthMm, heightMm: 279.4 },
     printBackground: true,
   });
   return pdfPath;
 }
-
-
 
 ipcMain.handle("generate-sale-pdf", async (event, payload) => {
   try {
@@ -2366,6 +2624,10 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
       .input('opening_note', sql.NVarChar(255), payload.opening_note ?? payload.note ?? null)
       .input('opening_user_id', sql.Int, payload.opening_user_id ?? payload.user_id)
       .input('register_id', sql.Int, payload.register_id ?? null)
+      // Abrir turno en una caja ajena crearia un turno compartido entre dos
+      // equipos. Lo rechaza el procedimiento, no la pantalla.
+      .input('machine_id', sql.NVarChar(64), cajaArrendada.identidad().machineId)
+      .input('machine_name', sql.NVarChar(120), cajaArrendada.identidad().machineName)
       .execute('sp_open_shift');
 
     return { success: true, data: result.recordset?.[0] ?? null };
@@ -2542,73 +2804,52 @@ function moneyTicket(value) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+/**
+ * Ruta de la imagen del ticket, si el negocio configuro una.
+ *
+ * Antes iba fija `assets/LogoHidromec.jpg`: CUALQUIER negocio imprimia la
+ * marca de otro cliente en su ticket. Ahora se busca un archivo que el
+ * negocio pone en su propia carpeta de datos; si no hay, el ticket se
+ * encabeza con el nombre del negocio, que es lo correcto.
+ */
+function ticketLogoUrl() {
+  try {
+    const base = app.getPath('userData');
+    for (const nombre of ['ticket-logo.png', 'ticket-logo.jpg', 'ticket-logo.jpeg']) {
+      const p = path.join(base, nombre);
+      if (fs.existsSync(p)) return 'file://' + p.split(path.sep).join('/');
+    }
+  } catch { /* sin carpeta de datos accesible */ }
+  return null;
+}
+
+/** Plantilla + datos del negocio, comunes al PDF y a la impresion. */
+function ticketExtrasComunes(paperWidthMm) {
+  return {
+    plantilla: fs.readFileSync(path.join(__dirname, 'templates', 'ticket.html'), 'utf8'),
+    paperWidthMm,
+    logoUrl: ticketLogoUrl(),
+    negocio: {
+      business_name: businessConfig?.business_name || '',
+      address: businessConfig?.address || '',
+      phone: businessConfig?.phone || '',
+      rfc: businessConfig?.rfc || '',
+      ticket_footer: businessConfig?.ticket_footer || '',
+    },
+  };
+}
+
 function buildTicketHtmlFromTemplate(header, details, extras = {}) {
-  const templatePath = path.join(__dirname, "templates", "ticket.html");
-  const template = fs.readFileSync(templatePath, "utf8");
-
   const paperWidthMm = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 58;
-
-  const rowsHtml = (details || []).map(l => {
-    const qty  = Number(l.quantity ?? 0);
-    const unit = Number(l.unitary_price ?? 0);
-    const nombre = (l.nombre ?? "").toString() || "—";
-    const sub = Number(l.line_total ?? (qty * unit));
-
-    return `
-      <tr>
-        <td>${escHtmlTicket(nombre)}</td>
-        <td class="right">${qty}</td>
-        <td class="right">$${moneyTicket(unit)}</td>
-        <td class="right">$${moneyTicket(sub)}</td>
-      </tr>`;
-  }).join("");
-
-  const total = (details || []).reduce((a, l) => a + Number(l.line_total ?? 0), 0);
-
-  const IVA_RATE = 0.16;
-  const subtotal = total / (1 + IVA_RATE);
-  const iva      = total - subtotal;
-
-  const pagado = extras.pagado != null
-    ? Number(extras.pagado)
-    : Number(header.paid_amount ?? total);
-
-  const cambio = extras.cambio != null
-    ? Number(extras.cambio)
-    : (pagado - total);
-
-  const folio = header.id ?? header.sale_id ?? "";
-  const method = extras.payment_method ?? header.payment_method ?? "";
-
-  const dateText = (typeof formatDateTimeEsMX === "function")
-    ? formatDateTimeEsMX(header.datee)
-    : String(header.datee ?? "");
-
-  const logoPath = `file://${path.join(__dirname, "assets/LogoHidromec.jpg").replace(/\\/g, "/")}`;
-
-  let filledHtml = template
-    .replace(/{{PAPER_W}}/g, String(paperWidthMm))
-    .replace(/{{LOGO}}/g, logoPath)
-
-    .replace(/{{BUSINESS_NAME}}/g, escHtmlTicket(businessConfig?.business_name || ""))
-    .replace(/{{ADDRESS}}/g,       escHtmlTicket(businessConfig?.address || ""))
-    .replace(/{{PHONE}}/g,         escHtmlTicket(businessConfig?.phone || ""))
-    .replace(/{{RFC}}/g,           escHtmlTicket(businessConfig?.rfc || ""))
-    .replace(/{{FOOTER}}/g,        escHtmlTicket(businessConfig?.ticket_footer || ""))
-
-    .replace(/{{FOLIO}}/g,   escHtmlTicket(String(folio)))
-    .replace(/{{DATE}}/g,    escHtmlTicket(String(dateText)))
-    .replace(/{{METHOD}}/g,  escHtmlTicket(String(method)))
-
-    .replace(/{{SUBTOTAL}}/g, moneyTicket(subtotal))
-    .replace(/{{IVA}}/g,      moneyTicket(iva))
-    .replace(/{{TOTAL}}/g,    moneyTicket(total))
-    .replace(/{{PAGADO}}/g,   moneyTicket(pagado))
-    .replace(/{{CAMBIO}}/g,   moneyTicket(cambio))
-
-    .replace(/{{ROWS}}/g, rowsHtml);
-
-  return filledHtml;
+  const fecha = (typeof formatDateTimeEsMX === 'function')
+    ? formatDateTimeEsMX(header?.datee) : String(header?.datee ?? '');
+  return construirTicketHtml(header, details, {
+    ...ticketExtrasComunes(paperWidthMm),
+    fecha,
+    pagado: extras.pagado,
+    cambio: extras.cambio,
+    payment_method: extras.payment_method,
+  });
 }
 
 ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
@@ -3415,15 +3656,106 @@ ipcMain.handle('sp-customers-kpis', async () => {
       const id = Number(payload?.id);
       if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
 
+      /* PRIMERO se reclama, DESPUES se guarda.
+         Guardar antes dejaria a esta maquina creyendo que es la Caja 2 con la
+         Caja 2 en manos de otro equipo: la pantalla diria una cosa y cada
+         venta se rechazaria por otra. Si la caja esta tomada, aqui no cambia
+         nada y se devuelve quien la tiene. */
+      const anterior = loadDeviceConfig()?.register ?? null;
+      const rs = await cajaArrendada.reclamar(id, payload?.name ?? null);
+      if (!rs.ok) {
+        return {
+          success: false,
+          error: rs.data?.mensaje || rs.error || 'No se pudo tomar esta caja.',
+          data: rs.data ?? null,
+        };
+      }
+
       const current = loadDeviceConfig();
       const merged = {
         ...current,
         register: { id, name: payload?.name ?? null }
       };
       saveDeviceConfig(merged);
-      return { success: true, data: merged.register };
+
+      // Soltar la caja ANTERIOR, si habia otra: cambiar de caja no debe dejar
+      // la de antes bloqueada cinco minutos por un equipo que ya no la usa.
+      if (anterior?.id && Number(anterior.id) !== id) {
+        cajaArrendada.soltarOtra(Number(anterior.id)).catch(() => { /* caduca sola */ });
+      }
+
+      return { success: true, data: merged.register, lease: rs.data ?? null };
     } catch (err) {
       console.error('register-set-current:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // ===== ARRIENDO DE CAJA (una caja, un equipo) =====
+
+  /** El catalogo CON quien tiene cada caja, resuelto con el reloj del servidor. */
+  ipcMain.handle('registers-assignments', async (_event, onlyActive = false) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request()
+        .input('machine_id', sql.NVarChar(64), cajaArrendada.identidad().machineId)
+        .input('only_active', sql.Bit, onlyActive ? 1 : 0)
+        .execute('sp_get_register_assignments');
+      return { success: true, data: result.recordset ?? [], yo: cajaArrendada.instantanea() };
+    } catch (err) {
+      console.error('registers-assignments:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /** Estado del arriendo de ESTA maquina, sin ir a la base. */
+  ipcMain.handle('register-lease-status', async () => ({ success: true, data: cajaArrendada.instantanea() }));
+
+  /** Soltar la caja de esta maquina a proposito. */
+  ipcMain.handle('register-release', async () => {
+    const r = await cajaArrendada.soltar('EQUIPO');
+    return { success: r.ok, data: r.data ?? null, error: r.error ?? null };
+  });
+
+  /**
+   * La escotilla: liberar la caja de un equipo que ya no existe.
+   *
+   * Sin esto, cambiar una PC robada o reinstalada obligaria a esperar a que
+   * caduque el arriendo. Con esto es inmediato, y queda registrado que lo hizo
+   * un administrador y no el propio equipo.
+   */
+  ipcMain.handle('register-release-admin', async (_event, payload = {}) => {
+    const id = Number(payload?.id);
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
+    const r = await cajaArrendada.liberarComoAdmin(id);
+    return { success: r.ok, data: r.data ?? null, error: r.error ?? null };
+  });
+
+  // ===== RED MULTICAJA (prueba / MonoCaja -> MultiCaja) =====
+
+  ipcMain.handle('network:diagnose', async (_event, plan = null) => {
+    try { return { success: true, data: await redMulticaja.diagnosticar(plan) }; }
+    catch (err) {
+      console.error('network:diagnose:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('network:prepare', async (_event, payload = {}) => {
+    try {
+      const r = await redMulticaja.preparar({ rotar: !!payload?.rotar });
+      return r.ok ? { success: true, data: r } : { success: false, error: r.error, data: r };
+    } catch (err) {
+      console.error('network:prepare:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('network:reveal-password', async () => {
+    try {
+      const r = redMulticaja.revelarContrasena();
+      return r.ok ? { success: true, data: r } : { success: false, error: r.error };
+    } catch (err) {
       return { success: false, error: err.message };
     }
   });
@@ -3432,9 +3764,32 @@ ipcMain.handle('sp-customers-kpis', async () => {
   ipcMain.handle('setup-run', async (_event, payload = {}) => {
   try {
     const role = payload.role;
-    const server = payload.server;
     const ocusPassword = payload.ocusPassword;
     const saPassword = payload.saPassword;
+
+    /* LA DIRECCION DEL SERVIDOR SE NORMALIZA AQUI, NO EN LA PANTALLA.
+       -------------------------------------------------------------
+       El asistente hacia `serverIp + '\\SQLEXPRESS'` sin mirar lo que habia
+       escrito la persona. Quien escribia solo la IP tenia suerte; quien
+       escribia `192.168.100.211\SQLEXPRESS` -lo mismo que acababa de probar
+       con sqlcmd, que es lo natural- acababa con
+       `192.168.100.211\SQLEXPRESS\SQLEXPRESS` guardado en disco.
+
+       Se normaliza en el proceso principal porque este es el UNICO sitio que
+       escribe `db-config.json`. Arreglarlo solo en la pantalla dejaria a
+       cualquier otra ruta libre de volver a construir la cadena a mano, que
+       es exactamente como aparecio el fallo. */
+    const forma = normalizarServidor(payload.server);
+    if (!forma.ok) {
+      // Se falla ANTES de escribir nada y antes de intentar conectar: no hay
+      // ninguna razon para hacerle esperar 20 reintentos a alguien cuya
+      // direccion ya sabemos que no puede funcionar.
+      return { ok: false, error: forma.error };
+    }
+    const server = forma.server;
+    if (server !== String(payload.server ?? '').trim()) {
+      console.log(`[SETUP] Servidor normalizado: "${payload.server}" -> "${server}"`);
+    }
 
     // 1) Escribe db-config.json segun el rol
     const dbConfig = (role === 'principal')
@@ -3458,13 +3813,32 @@ ipcMain.handle('sp-customers-kpis', async () => {
       return { ok: false, error: 'No se pudo preparar el servidor.' };
     }
 
-    // 3) En secundaria, confirma que la base responde de verdad
-    if (role === 'secundaria') {
+    /* 3) Confirmar que la base responde DE VERDAD, con la configuracion que
+          se acaba de escribir.
+
+          `reconnect()` invalida cualquier intento anterior antes de empezar
+          (ver la generacion en db.js). Sin eso, aqui podia devolverse un bucle
+          que llevaba medio minuto reintentando con la configuracion VIEJA, y
+          el asistente concluia "no se pudo conectar con la computadora
+          principal" teniendo ya guardada la configuracion buena.
+
+          Se exige tambien en la principal: si la base no responde, es mejor
+          decirlo ahora -con el asistente abierto y la persona delante- que
+          dejar `install-config.json` escrito y que el fallo aparezca en el
+          siguiente arranque, sin asistente al que volver. */
+    try {
       await db.reconnect();
-      const st = db.getState();
-      if (st.status !== 'connected') {
-        return { ok: false, error: 'No se pudo conectar con la computadora principal. Revisa la IP y la red.' };
-      }
+    } catch (e) {
+      console.error('setup-run: conexion inicial:', e.message);
+    }
+    const st = db.getState();
+    if (st.status !== 'connected') {
+      return {
+        ok: false,
+        error: role === 'secundaria'
+          ? `No se pudo conectar con la computadora principal (${server}). ${st.error || 'Revisa la IP y la red.'}`
+          : `No se pudo conectar con la base de datos. ${st.error || ''}`.trim(),
+      };
     }
 
     // 4) Guarda la config de instalacion (sin contrasenas en claro)
@@ -3479,6 +3853,21 @@ ipcMain.handle('sp-customers-kpis', async () => {
     console.error('setup-run:', err);
     return { ok: false, error: err.message };
   }
+});
+
+/**
+ * Que va a guardar Wybix con lo que la persona acaba de escribir.
+ *
+ * Lo usa el asistente mientras se teclea, para poder decir "asi voy a
+ * conectarme" o "esto no puede funcionar" ANTES de pulsar el boton. La regla
+ * es exactamente la misma que aplica `setup-run`: una sola gramatica, y la
+ * pantalla la consulta en vez de reimplementarla.
+ */
+ipcMain.handle('setup-normalizar-servidor', async (_event, texto) => {
+  const r = normalizarServidor(texto);
+  return r.ok
+    ? { ok: true, server: r.server, completado: r.completado }
+    : { ok: false, error: r.error };
 });
 
 ipcMain.handle('cloud-get-config', async () => ({ success: true, data: cloudSync.getCloudConfig() }));
@@ -3601,8 +3990,14 @@ ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
 
 //LICENCIA
 ipcMain.handle('get-machine-id', async () => {
-  if (!cachedMachineId) cachedMachineId = generarMachineId();
-  return cachedMachineId;
+  // El sellado en la licencia, mientras siga siendo la misma maquina: un
+  // renombrado o un fallo de WMI no deben cambiar el identificador con el que
+  // el cliente ya esta dado de alta en el servidor de activacion.
+  try { return licenseStore.machineIdEstable(contextoLicencia()); }
+  catch {
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    return cachedMachineId;
+  }
 });
 
 // Abre una URL en el NAVEGADOR del sistema (no en una ventana de Electron)
@@ -3701,7 +4096,7 @@ ipcMain.handle('license:activate', async (_event, payload) => {
       return { ok: false, error, code: data?.code };
     }
 
-    licenseStore.saveLicense(cachedMachineId, data);
+    licenseStore.saveLicense(contextoLicencia(), data);
     return { ok: true, plan: data.plan, customerName: data.customerName };
   } catch (err) {
     console.error('license:activate:', err);
@@ -3715,8 +4110,7 @@ ipcMain.handle('license:activate', async (_event, payload) => {
 // 2. Leer la licencia (Para que Angular la consuma)
 ipcMain.handle('license:get', async () => {
   try {
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-    return licenseStore.readLicense(cachedMachineId).data;
+    return licenseStore.readLicense(contextoLicencia()).data;
   } catch (err) {
     return null;
   }
@@ -3725,8 +4119,7 @@ ipcMain.handle('license:get', async () => {
 // 3. Escribir/Actualizar licencia (Para cuando Angular revalide en segundo plano)
 ipcMain.handle('license:save', async (event, licenseData) => {
   try {
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-    licenseStore.saveLicense(cachedMachineId, licenseData);
+    licenseStore.saveLicense(contextoLicencia(), licenseData);
     return { ok: true };
   } catch (err) {
     return { ok: false };
@@ -3767,7 +4160,7 @@ ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
     // Sellada como prueba antes de guardarse: sin `type`, computeStatus la
     // clasificaria como licencia de pago y la caja anunciaria un plan que
     // nadie compro. Los demas campos remotos se conservan intactos.
-    licenseStore.saveLicense(cachedMachineId, sellarComoPrueba(data));
+    licenseStore.saveLicense(contextoLicencia(), sellarComoPrueba(data));
     return { ok: true, expiresAt: data.expiresAt, trialExpired: !!data.trialExpired };
   } catch (err) {
     console.error('license:start-trial:', err);
@@ -3778,8 +4171,7 @@ ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
 // 6. Estado unificado y blindado (none | trial | active | expired | tamper)
 ipcMain.handle('license:status', async () => {
   try {
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-    return licenseStore.computeStatus(cachedMachineId);
+    return licenseStore.computeStatus(contextoLicencia());
   } catch (err) {
     console.error('license:status:', err);
     return { state: 'none' };
