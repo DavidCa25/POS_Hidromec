@@ -274,7 +274,8 @@ GO
 
 /* ---------- sp_loyalty_catalog (SQL_STORED_PROCEDURE) ---------- */
 /* sp_loyalty_catalog
- * Definicion canonica. Mantener este archivo y generar una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -371,7 +372,8 @@ GO
 
 /* ---------- sp_loyalty_evaluate_sale (SQL_STORED_PROCEDURE) ---------- */
 /* sp_loyalty_evaluate_sale
- * Definicion canonica. Mantener este archivo y generar una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -415,34 +417,61 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    /* La capacidad apagada no es un error: es un negocio que no usa esto. */
+    /* La capacidad apagada no es un error: es un negocio que no usa esto.
+       Devuelve CERO FILAS, con la misma forma que el resultado normal: quien
+       llama recorre una lista de premios y no tiene por que distinguir entre
+       "no gano nada" y "esto esta apagado". */
     IF NOT EXISTS (SELECT 1 FROM dbo.business_config WHERE loyalty_enabled = 1)
     BEGIN
-        SELECT CAST(0 AS INT) AS otorgados;
+        SELECT CAST(NULL AS VARCHAR(12)) AS tipo, CAST(NULL AS NVARCHAR(40)) AS codigo,
+               CAST(NULL AS NVARCHAR(120)) AS nombre, CAST(NULL AS INT) AS numero,
+               CAST(NULL AS NVARCHAR(32)) AS token, CAST(NULL AS NVARCHAR(120)) AS rifa
+        WHERE 1 = 0;
         RETURN;
     END
 
     DECLARE @customer_id INT, @total DECIMAL(12,2), @register_id INT, @fecha DATETIME;
-    SELECT @customer_id = customer_id, @total = total, @register_id = register_id, @fecha = datee
-    FROM dbo.sales WHERE id = @sale_id;
-
-    IF @total IS NULL
-    BEGIN
-        RAISERROR('La venta no existe.', 16, 1);
-        RETURN;
-    END
-
-    /* Ya evaluada: no se otorga dos veces. */
-    IF EXISTS (SELECT 1 FROM dbo.reward_instances WHERE sale_id = @sale_id)
-    OR EXISTS (SELECT 1 FROM dbo.coupon_instances WHERE sale_id = @sale_id)
-    OR EXISTS (SELECT 1 FROM dbo.dynamic_attempts WHERE sale_id = @sale_id)
-    OR EXISTS (SELECT 1 FROM dbo.raffle_entries WHERE sale_id = @sale_id)
-    BEGIN
-        SELECT CAST(0 AS INT) AS otorgados;
-        RETURN;
-    END
-
     DECLARE @ahora DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @yaEvaluada BIT = 0;
+
+    /* ------------------------------------------------------------------
+       UNA venta se evalua UNA vez, aunque la pregunten varios a la vez.
+
+       El `IF EXISTS` de abajo no basta por si solo: es leer y luego escribir,
+       y entre las dos cosas cabe otra sesion entera. Con seis evaluaciones
+       simultaneas de la misma venta -el reintento del IPC, o dos pantallas
+       abiertas sobre el mismo cobro- las seis pasaban la comprobacion y las
+       seis repartian premio. Medido: seis recompensas para una sola venta.
+
+       El bloqueo se toma sobre la FILA DE LA VENTA, no sobre las tablas de
+       premios ni con un candado global. Asi dos cajas cobrando ventas
+       distintas no se esperan nunca: solo se serializa quien pregunta por la
+       MISMA venta, que es exactamente lo que hay que serializar.
+       ------------------------------------------------------------------ */
+    BEGIN TRY
+        BEGIN TRAN;
+
+        SELECT @customer_id = customer_id, @total = total, @register_id = register_id, @fecha = datee
+        FROM dbo.sales WITH (UPDLOCK, HOLDLOCK) WHERE id = @sale_id;
+
+        IF @total IS NULL
+        BEGIN
+            IF XACT_STATE() <> 0 ROLLBACK TRAN;
+            RAISERROR('La venta no existe.', 16, 1);
+            RETURN;
+        END
+
+        /* Ya evaluada: no se otorga dos veces. Quien llegue el segundo
+           esperaba en el UPDLOCK de arriba, asi que aqui ya ve el premio que
+           acaba de escribir el primero. */
+        IF EXISTS (SELECT 1 FROM dbo.reward_instances WHERE sale_id = @sale_id)
+        OR EXISTS (SELECT 1 FROM dbo.coupon_instances WHERE sale_id = @sale_id)
+        OR EXISTS (SELECT 1 FROM dbo.dynamic_attempts WHERE sale_id = @sale_id)
+        OR EXISTS (SELECT 1 FROM dbo.raffle_entries WHERE sale_id = @sale_id)
+            SET @yaEvaluada = 1;
+
+        IF @yaEvaluada = 0
+        BEGIN
     /* Dia de la semana con LUNES = bit 0, que es como lo pinta la pantalla
        ("Lun Mar Mie Jue Vie Sab Dom").
 
@@ -575,7 +604,22 @@ BEGIN
     END
     CLOSE cur; DEALLOCATE cur;
 
-    /* Lo otorgado, para que la pantalla lo cuente y el ticket lo imprima. */
+        DROP TABLE #aplican;
+        END   /* fin del reparto */
+
+        COMMIT TRAN;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0 ROLLBACK TRAN;
+        DECLARE @msg NVARCHAR(400) = ERROR_MESSAGE();
+        RAISERROR(@msg, 16, 1);
+        RETURN;
+    END CATCH
+
+    /* Lo otorgado, para que la pantalla lo cuente y el ticket lo imprima.
+       Se devuelve TAMBIEN cuando la venta ya estaba evaluada: un reintento
+       tiene que poder volver a ensenar el premio, no quedarse sin nada que
+       mostrar porque alguien pregunto dos veces. */
     SELECT 'REWARD' AS tipo, r.code AS codigo, rd.name AS nombre, NULL AS numero,
            NULL AS token, NULL AS rifa
     FROM dbo.reward_instances r
@@ -599,14 +643,13 @@ BEGIN
     JOIN dbo.raffle_definitions rf ON rf.id = e.raffle_id
     WHERE e.sale_id = @sale_id
     ORDER BY tipo, numero;
-
-    DROP TABLE #aplican;
 END
 GO
 
 /* ---------- sp_loyalty_save_campaign (SQL_STORED_PROCEDURE) ---------- */
 /* sp_loyalty_save_campaign
- * Definicion canonica. Mantener este archivo y generar una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -690,7 +733,8 @@ GO
 
 /* ---------- sp_loyalty_save_definition (SQL_STORED_PROCEDURE) ---------- */
 /* sp_loyalty_save_definition
- * Definicion canonica. Mantener este archivo y generar una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

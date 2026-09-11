@@ -98,9 +98,12 @@ const campanaId = row(`
 check(campanaId > 0, `campana creada (#${campanaId})`);
 
 const ventaApagada = vender({ cantidad: 10, precio: 20 });   // $200: cumple el minimo
-evaluar(ventaApagada);
+const nadaApagada = evaluar(ventaApagada);
 check(cuenta('reward_instances', ventaApagada) === 0,
   'con Fidelizacion apagada, una venta que cumple no gana nada');
+check(nadaApagada.length === 0,
+  'y devuelve CERO filas, con la misma forma que el resultado normal',
+  'quien llama recorre una lista y no distingue "no gano" de "esta apagado"');
 
 // Encenderla no debe repartir hacia atras: el premio se gana en el momento.
 fidelizacion(true);
@@ -131,9 +134,13 @@ const segunda = evaluar(venta1);
 check(cuenta('reward_instances', venta1) === 1,
   'la misma venta evaluada de nuevo sigue con UNA recompensa',
   `hay ${cuenta('reward_instances', venta1)}`);
-check(segunda.length === 1,
-  'y devuelve lo ya ganado, no una lista vacia',
-  'la pantalla vuelve a poder ensenar el premio tras un reintento');
+// Antes esta comprobacion pasaba por el motivo equivocado: el procedure
+// devolvia `SELECT 0 AS otorgados`, que tambien es UNA fila. La pantalla
+// habria pintado un premio fantasma sin tipo ni nombre. Ahora se exige que
+// sea el premio de verdad.
+check(segunda.length === 1 && segunda[0].tipo === 'REWARD' && segunda[0].codigo === premios1[0].codigo,
+  'y devuelve EL MISMO premio, no un conteo',
+  `tipo ${segunda[0]?.tipo}, codigo ${segunda[0]?.codigo}`);
 
 const tercera = evaluar(venta1);
 check(cuenta('reward_instances', venta1) === 1, 'ni una tercera llamada anade nada');

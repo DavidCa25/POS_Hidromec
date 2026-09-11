@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-11T18:34:21.684Z",
+  "generado": "2026-09-11T19:21:41.434Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -769,7 +769,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "9dc018e06f78160a"
+      "checksum": "ebc0e36e2ee89be7"
     },
     {
       "nombre": "sp_loyalty_save_campaign",
