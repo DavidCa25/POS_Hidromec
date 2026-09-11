@@ -16,8 +16,13 @@ export class NegocioPanelComponent implements OnInit {
     private get api() { return (window as any).electronAPI; }
     private readonly caps = inject(CapabilityService);
 
-    form: { business_name: string; rfc: string; address: string; phone: string; ticket_footer: string; business_profile: BusinessProfile } =
-        { business_name: '', rfc: '', address: '', phone: '', ticket_footer: '', business_profile: 'RETAIL' };
+    form: {
+        business_name: string; rfc: string; address: string; phone: string;
+        ticket_footer: string; business_profile: BusinessProfile; loyalty_enabled: boolean;
+    } = {
+        business_name: '', rfc: '', address: '', phone: '',
+        ticket_footer: '', business_profile: 'RETAIL', loyalty_enabled: false,
+    };
     cargando = false;
     guardando = false;
 
@@ -40,6 +45,7 @@ export class NegocioPanelComponent implements OnInit {
                 phone: c.phone ?? '',
                 ticket_footer: c.ticket_footer ?? '',
                 business_profile: CapabilityService.parseBusiness(c.business_profile),
+                loyalty_enabled: !!c.loyalty_enabled,
             };
         } catch {
             /* sin datos: formulario vacío */
@@ -62,6 +68,7 @@ export class NegocioPanelComponent implements OnInit {
                 phone: this.form.phone.trim() || null,
                 ticket_footer: this.form.ticket_footer.trim() || null,
                 business_profile: this.form.business_profile,
+                loyalty_enabled: this.form.loyalty_enabled,
             });
             if (!res?.success) throw new Error(res?.error || 'No se pudo guardar.');
             // El menu y las pantallas leen las capacidades de aqui: refrescar.

@@ -101,6 +101,17 @@
             <i class="ph ph-cooking-pot me-2"></i> Recetas y modificadores
           </a>
         </li>
+        <!--
+          UNA entrada, seis secciones dentro. Fidelizacion trae Campanas,
+          Recompensas, Cupones, Dinamicas y Rifas: seis entradas mas en un
+          rail que ya esta lleno habrian sido seis sitios donde perderse.
+        -->
+        <li>
+          <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion" routerLinkActive="active"
+            class="dropdown-item d-flex align-items-center">
+            <i class="ph ph-gift me-2"></i> Fidelización
+          </a>
+        </li>
       </ul>
     </li>
     <li class="nav-item" id="operaciones-dropdown" style="position: relative;"

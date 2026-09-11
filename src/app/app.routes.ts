@@ -57,6 +57,9 @@ export const routes: Routes = [
       { path: 'servicios', loadComponent: () => import('../servicios/servicios').then(m => m.Servicios) },
       { path: 'facturacion', loadComponent: () => import('../facturacion/facturacion').then(m => m.Facturacion) },
       { path: 'recetas', loadComponent: () => import('../hospitality/hospitality-admin').then(m => m.HospitalityAdmin) },
+      // Fidelizacion es un chunk aparte: un negocio que no la enciende no
+      // descarga ni una linea de campanas, dinamicas o rifas.
+      { path: 'fidelizacion', loadComponent: () => import('../loyalty/loyalty-admin').then(m => m.LoyaltyAdmin) },
       { path: 'configuracion', loadComponent: () => import('./config-shell/configShell').then(m => m.ConfigShell) },
     ]
   },
