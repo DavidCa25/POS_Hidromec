@@ -187,7 +187,15 @@
             </thead>
             <tbody>
               <tr *ngFor="let it of items; let i = index">
-                <td class="fw-semibold">{{ it.productName }}</td>
+                <td class="fw-semibold">
+                  {{ it.productName }}
+                  <!-- Las opciones elegidas NO se esconden al cerrar el modal: quien
+                       cobra tiene que poder ver que lleva la linea y cuanto suma cada
+                       extra, sin volver a abrir nada. -->
+                  <span class="venta-opts" *ngIf="it.options?.length">
+                    <span class="venta-opt" *ngFor="let o of resumenOpciones(it)">{{ o.texto }}</span>
+                  </span>
+                </td>
                 <td>
                   <ng-container *ngIf="!isEditing || editUnlocked; else qtyLocked">
                     <input type="number" class="form-control form-control-sm" min="1"
@@ -463,7 +471,11 @@
           </div>
           <div class="prod-item-right">
             <div class="pi-price">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
-            <div class="pi-stock" [class.low]="p.stock <= 3">{{ p.stock }} pz</div>
+            <!-- Disponibilidad real. Una receta tiene stock 0 por diseno; lo
+                 que importa es cuantas se pueden preparar. -->
+            <div class="pi-stock" [class.low]="(p.available_units ?? p.stock) <= 3">
+              {{ p.available_units ?? p.stock }} {{ p.inventory_mode === 'RECIPE' ? 'por preparar' : (p.base_uom || 'pz') }}
+            </div>
           </div>
           <i class="ph-fill ph-plus-circle pi-add"></i>
         </button>

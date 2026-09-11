@@ -99,12 +99,13 @@
                     <span class="hosp-ing">{{ l.ingredientName }}</span>
                     <small class="hosp-ing__base">base: {{ l.baseUom }}</small>
                   </td>
-                  <td><input class="ctl ctl-sm" type="number" min="0" step="0.001" [(ngModel)]="l.inputQty" [name]="'q'+i"></td>
+                  <td><input class="ctl ctl-sm" type="number" min="0" step="0.001" [(ngModel)]="l.inputQty" [name]="'q'+i" (ngModelChange)="lineaTocada()"></td>
                   <td>
                     <wx-select class="wx-sel-compacto" [(ngModel)]="l.inputUom" [name]="'u'+i"
+                               (ngModelChange)="lineaTocada()"
                                [opciones]="opcUoms(l.baseUom)"></wx-select>
                   </td>
-                  <td><input class="ctl ctl-sm" type="number" min="0" max="100" step="1" [(ngModel)]="l.wastePct" [name]="'w'+i"></td>
+                  <td><input class="ctl ctl-sm" type="number" min="0" max="100" step="1" [(ngModel)]="l.wastePct" [name]="'w'+i" (ngModelChange)="lineaTocada()"></td>
                   <td class="r mono">{{ costoLinea(l) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
                   <td>
                     <button class="hosp-x" type="button" (click)="quitarLinea(i)" title="Quitar">
@@ -127,6 +128,8 @@
               <div *ngIf="margen() !== null">
                 <span class="lbl">Margen</span>
                 <b class="mono" [class.neg]="(margen() ?? 0) < 0">{{ margen() | number:'1.0-1' }}%</b>
+                <!-- Contra el precio SIN IVA: el impuesto no es del negocio. -->
+                <span class="hosp-hint">sobre {{ precioSinIva() | currency:'MXN':'symbol-narrow':'1.2-2' }} sin IVA</span>
               </div>
             </div>
 
@@ -262,6 +265,13 @@
                 <div class="grow">
                   <label class="lbl">Efecto en inventario</label>
                   <wx-select [(ngModel)]="o.effect" [name]="'oe'+i" [opciones]="opcEfectos"></wx-select>
+                  <!-- Lo que falta se dice AQUI, junto al campo, y no al guardar:
+                       un CHECK de SQL rechaza la fila con un mensaje que no
+                       nombra ni la opcion ni el campo. -->
+                  <p class="hosp-falta" *ngIf="opcionIncompleta(o)">
+                    <i class="ph ph-warning-circle"></i>
+                    <span *ngFor="let f of problemasDe(o)">{{ f }}</span>
+                  </p>
                 </div>
 
                 <div class="grow" *ngIf="o.effect === 'ADD' || o.effect === 'SUBSTITUTE'">

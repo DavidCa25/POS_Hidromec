@@ -12,6 +12,12 @@ import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService, ShiftService, SoldLine,
 } from '../../core';
+import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
+import { SelectedOption } from '../../core/models';
+import {
+  GrupoPendiente, ResumenOpcion, aSeleccionada, admiteCantidad, gruposQuePreguntar,
+  maximoCantidad, opcionesElegibles, resumenDeOpciones, seleccionAutomatica,
+} from '../../core/opciones';
 
 /*
  * RETAIL POS — capa de presentacion.
@@ -55,6 +61,9 @@ export class Venta implements OnInit, OnDestroy {
   private readonly catalog = inject(CatalogService);
   private readonly shift = inject(ShiftService);
   private readonly sale = inject(SaleService);
+  // Solo para leer los grupos de opciones de un producto. Retail no pinta el
+  // menu Touch; lo necesita para saber que variante lleva una linea.
+  private readonly menu = inject(MenuCatalogService);
 
   today = new Date();
 
@@ -228,7 +237,8 @@ export class Venta implements OnInit, OnDestroy {
   get saleTabs(): Cart[] { return this.cart.carts(); }
   get activeTabId(): number { return this.cart.activeCartId(); }
   get clienteSeleccionado(): CartCustomer | null { return this.cart.activeCart().customer; }
-  get productos(): CatalogProduct[] { return this.catalog.products(); }
+  /** Lo vendible, no todo el inventario: los ingredientes no se cobran. */
+  get productos(): CatalogProduct[] { return this.catalog.vendibles(); }
 
   /** Cliente de credito elegido en el cobro. */
   get customerId(): number | null { return this.cart.activeCart().creditCustomerId; }
@@ -621,10 +631,199 @@ export class Venta implements OnInit, OnDestroy {
     await this.catalog.load(true);
   }
 
-  seleccionarProducto(p: CatalogProduct) {
-    this.cart.addProduct(CatalogService.toLineSource(p), 1);
+  /**
+   * Agrega un producto al carrito, resolviendo antes sus opciones.
+   *
+   * ANTES ERA UNA SOLA LÍNEA: `addProduct(src, 1)`, sin opciones nunca. Con un
+   * producto RECIPE cuya receta depende del tamaño —Caramel Macchiato, Taro
+   * Latte— eso significaba vender sin variante, y `sp_register_sale` rechazaba
+   * la venta con *"no tiene receta configurada"*: falso, la receta estaba, lo
+   * que faltaba era decir de qué tamaño.
+   *
+   * La regla de qué se resuelve solo y qué hay que preguntar vive en
+   * `core/opciones.ts`, la misma que usa Touch. Aquí solo se aplica.
+   */
+  async seleccionarProducto(p: CatalogProduct) {
+    const opciones = await this.resolverOpciones(p);
+    if (opciones === null) return;        // hacía falta elegir y se canceló
+
+    this.cart.addProduct(CatalogService.toLineSource(p), 1, opciones);
     this.lastAddedProductId = p.id;
     this.showModalProductos = false;
+  }
+
+  /**
+   * Las opciones con las que entra la línea, o `null` si se cancela.
+   *
+   * Un producto sin grupos no consulta nada y entra igual de rápido que
+   * siempre: esto solo se nota en los productos que de verdad tienen opciones.
+   */
+  private async resolverOpciones(p: CatalogProduct): Promise<SelectedOption[] | null> {
+    let grupos: ModifierGroup[] = [];
+    try {
+      grupos = await this.menu.groupsOfProduct(p.id);
+    } catch (e) {
+      // Sin el catálogo de opciones no se puede decidir. Se deja constancia y
+      // se sigue: una línea sin opciones es lo que hacía Retail hasta ahora, y
+      // si al producto le hacía falta el tamaño, SQL lo dirá con claridad.
+      console.error('[VENTA] No se pudieron leer las opciones del producto:', e);
+      return [];
+    }
+
+    const elegidas = seleccionAutomatica(grupos);
+
+    /* Primero lo obligatorio, en su orden. */
+    for (const pendiente of gruposQuePreguntar(grupos)) {
+      const opcion = await this.preguntarOpcion(p, pendiente);
+      if (!opcion) return null;
+      elegidas.push(opcion);
+    }
+
+    /* Y despues lo opcional: tipo de leche, extras, quitar. Es donde vive la
+       personalizacion de verdad, y Retail no la ofrecia en absoluto. Se
+       pregunta una sola vez, en una lista, para no encadenar diez modales. */
+    const opcionales = this.gruposOpcionales(grupos);
+    if (opcionales.length) {
+      const extra = await this.preguntarOpcionales(p, opcionales, elegidas);
+      if (extra === null) return null;
+      elegidas.push(...extra);
+    }
+
+    /* Con la seleccion completa se pregunta a SQL si ALCANZA. El catalogo dice
+       si el producto se puede ofrecer; esto dice si esta combinacion se puede
+       preparar. Es la diferencia entre "hay latte" y "hay leche de almendra". */
+    const problema = await this.avisarSiNoAlcanza(p, elegidas);
+    if (problema) return null;
+
+    return elegidas;
+  }
+
+  /** Los grupos que no son obligatorios pero si configurables. */
+  private gruposOpcionales(grupos: ModifierGroup[]): ModifierGroup[] {
+    const obligatorios = new Set(gruposQuePreguntar(grupos).map(x => x.grupo.id));
+    return (grupos || []).filter(g => !obligatorios.has(g.id) && opcionesElegibles(g).length > 0
+      && seleccionAutomatica([g]).length === 0);
+  }
+
+  /**
+   * Una sola hoja con todo lo opcional: sustituciones, extras y quitar.
+   *
+   * Con cantidad cuando el grupo suma consumo -dos shots son dos shots- y sin
+   * ella cuando no significaria nada (no existe "dos veces sin azucar").
+   */
+  private async preguntarOpcionales(
+    p: CatalogProduct, grupos: ModifierGroup[], yaElegidas: SelectedOption[],
+  ): Promise<SelectedOption[] | null> {
+    const html = grupos.map(g => {
+      const max = admiteCantidad(g) ? maximoCantidad(g) : 1;
+      const filas = opcionesElegibles(g).map(o => {
+        const extra = Number(o.price_delta || 0);
+        const precio = extra ? `<span class="vo-precio">+$${extra.toFixed(2)}</span>` : '';
+        const cantidad = max > 1
+          ? `<input type="number" class="vo-cant" min="1" max="${max}" value="1" data-cant="${o.id}">`
+          : '';
+        return `<label class="vo-fila">
+                  <input type="checkbox" data-opt="${o.id}" data-grupo="${g.id}">
+                  <span class="vo-nombre">${o.name}</span>${precio}${cantidad}
+                </label>`;
+      }).join('');
+      return `<div class="vo-grupo"><div class="vo-titulo">${g.name}</div>${filas}</div>`;
+    }).join('');
+
+    const r = await Swal.fire({
+      title: p.product_name,
+      html: `<div class="vo">${html}</div>`,
+      width: 520,
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2563eb',
+      preConfirm: () => {
+        const sel: { grupo: number; opcion: number; cant: number }[] = [];
+        document.querySelectorAll<HTMLInputElement>('.vo input[data-opt]').forEach(el => {
+          if (!el.checked) return;
+          const id = Number(el.dataset['opt']);
+          const c = document.querySelector<HTMLInputElement>(`.vo [data-cant="${id}"]`);
+          sel.push({ grupo: Number(el.dataset['grupo']), opcion: id, cant: Math.max(1, Number(c?.value || 1)) });
+        });
+        return sel;
+      },
+    });
+
+    if (!r.isConfirmed) return null;
+    const elegidas: SelectedOption[] = [];
+    for (const s of (r.value as { grupo: number; opcion: number; cant: number }[] | undefined) || []) {
+      const g = grupos.find(x => x.id === s.grupo);
+      const o = g ? opcionesElegibles(g).find(x => x.id === s.opcion) : null;
+      if (g && o) elegidas.push({ ...aSeleccionada(g, o), quantity: s.cant });
+    }
+    void yaElegidas;
+    return elegidas;
+  }
+
+  /**
+   * Pregunta a SQL si esta combinacion se puede preparar, y lo dice con el
+   * nombre del ingrediente que falta.
+   *
+   * Un fallo de la consulta NO bloquea la venta: es informacion anticipada, y
+   * la venta vuelve a validar existencias dentro de su transaccion. Lo que no
+   * puede pasar es que el cajero lea "no hay receta" cuando lo que falta es
+   * leche de almendra.
+   */
+  private async avisarSiNoAlcanza(p: CatalogProduct, opciones: SelectedOption[]): Promise<boolean> {
+    const hosp = (window as any).wybix;
+    if (typeof hosp?.catalog?.disponibilidad !== 'function') return false;
+    try {
+      const rs = await hosp.catalog.disponibilidad({
+        productId: p.id,
+        options: opciones.map(o => ({ optionId: o.optionId, quantity: o.quantity })),
+      });
+      const d = rs?.data;
+      if (!rs?.success || !d) return false;
+      if (Number(d.disponible) > 0) return false;
+
+      await Swal.fire({
+        icon: 'warning',
+        title: 'No se puede preparar',
+        text: d.motivo || `No hay existencias suficientes para ${p.product_name} con estas opciones.`,
+      });
+      return true;
+    } catch (e) {
+      console.error('[VENTA] No se pudo consultar la disponibilidad:', e);
+      return false;
+    }
+  }
+
+  /** El resumen de opciones de una linea, para el carrito. */
+  resumenOpciones(l: CartLine): ResumenOpcion[] {
+    return resumenDeOpciones(l.options);
+  }
+
+  /** Un grupo, una pregunta. Sin opción elegida no hay línea. */
+  private async preguntarOpcion(p: CatalogProduct, pendiente: GrupoPendiente): Promise<SelectedOption | null> {
+    const opciones = opcionesElegibles(pendiente.grupo);
+    const inputOptions: Record<string, string> = {};
+    for (const o of opciones) {
+      const extra = Number(o.price_delta || 0);
+      inputOptions[String(o.id)] = extra ? `${o.name}  (+$${extra.toFixed(2)})` : o.name;
+    }
+
+    const r = await Swal.fire({
+      title: pendiente.grupo.name,
+      text: p.product_name,
+      input: 'radio',
+      inputOptions,
+      inputValue: String(opciones[0]?.id ?? ''),
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2563eb',
+      inputValidator: (v) => (v ? null : `Elige ${pendiente.grupo.name.toLowerCase()}.`),
+    });
+
+    if (!r.isConfirmed || !r.value) return null;
+    const elegida = opciones.find(o => String(o.id) === String(r.value));
+    return elegida ? aSeleccionada(pendiente.grupo, elegida) : null;
   }
 
   // ==================

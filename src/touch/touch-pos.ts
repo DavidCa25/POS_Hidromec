@@ -10,6 +10,10 @@ import {
   ModifierGroup, ModifierOption, PaymentMethod, SaleService, SelectedOption,
   ServiceMode, ShiftService,
 } from '../core';
+import {
+  admiteCantidad, faltanPorElegir, gruposPendientes, maximoCantidad,
+  opcionesElegibles, resumenDeOpciones,
+} from '../core/opciones';
 
 /*
  * WYBIX TOUCH POS
@@ -86,25 +90,34 @@ export class TouchPos implements OnInit, OnDestroy {
   cantidadHoja = signal(1);
   notaHoja = signal('');
 
+  /**
+   * El precio de la hoja, con la CANTIDAD de cada extra.
+   *
+   * Multiplicar por la cantidad no es un detalle estetico: `sp_register_sale`
+   * recalcula este mismo numero con los `price_delta` de la configuracion y
+   * rechaza la venta si no coincide. Sumar dos shots y cobrar uno terminaria
+   * en "el precio no coincide con sus opciones" al cobrar.
+   */
   readonly precioHoja = computed(() => {
     const p = this.hoja();
     if (!p) return 0;
     let precio = Number(p.price);
-    for (const opts of this.seleccion().values()) {
-      for (const o of opts) precio += Number(o.price_delta || 0);
+    for (const [gid, opts] of this.seleccion()) {
+      const g = this.grupos().find(x => x.id === gid);
+      const conCantidad = !!g && admiteCantidad(g);
+      for (const o of opts) {
+        precio += Number(o.price_delta || 0) * (conCantidad ? (this.cantidades().get(o.id) || 1) : 1);
+      }
     }
     return precio * this.cantidadHoja();
   });
 
   /** Grupos obligatorios que aun no tienen eleccion. */
-  readonly faltantes = computed(() => {
-    const sel = this.seleccion();
-    return this.grupos().filter(g => {
-      const n = (sel.get(g.id) || []).length;
-      const min = g.required ? Math.max(1, g.min_select) : g.min_select;
-      return n < min;
-    });
-  });
+  /* La regla vive en `core/opciones.ts`, compartida con Retail. Estaba escrita
+     solo aqui, y por eso Retail no la tenia: anadia sus lineas sin variante y
+     las ventas de productos con receta por tamano se rechazaban diciendo que
+     no habia receta. Una sola regla, dos pantallas. */
+  readonly faltantes = computed(() => faltanPorElegir(this.grupos(), this.seleccion()));
 
   readonly puedeAgregar = computed(() => this.faltantes().length === 0);
 
@@ -220,6 +233,24 @@ export class TouchPos implements OnInit, OnDestroy {
     return p.available_units > 0 && p.available_units <= 5;
   }
 
+  /**
+   * Si tiene sentido poner un numero en la tarjeta.
+   *
+   * Un producto sin inventario (NONE) llega con 999999 de centinela: no se
+   * cuenta y escribirlo seria ruido.
+   */
+  hayCuenta(p: MenuProduct): boolean {
+    return p.inventory_mode !== 'NONE' && Number(p.available_units) < 999999;
+  }
+
+  /**
+   * Cuantas se pueden despachar. En una receta son las que alcanzan los
+   * ingredientes -con conversion y merma-, no su stock propio, que es 0.
+   */
+  disponibles(p: MenuProduct): number {
+    return Math.max(0, Math.floor(Number(p.available_units) || 0));
+  }
+
   /** Iniciales discretas para el mosaico cuando el producto no tiene imagen. */
   iniciales(p: MenuProduct): string {
     return p.product_name.split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase();
@@ -266,15 +297,15 @@ export class TouchPos implements OnInit, OnDestroy {
     this.notaHoja.set('');
     // Preselecciona lo obligatorio de un solo valor: menos toques.
     const sel = new Map<number, ModifierOption[]>();
-    for (const g of this.grupos()) {
-      if ((g.required || g.min_select > 0) && g.max_select === 1 && g.options.length === 1) {
-        sel.set(g.id, [g.options[0]]);
-      }
+    // Los grupos que se resuelven solos (obligatorio, unico, una sola opcion).
+    for (const p of gruposPendientes(this.grupos())) {
+      if (p.automatico) sel.set(p.grupo.id, [opcionesElegibles(p.grupo)[0]]);
     }
     this.seleccion.set(sel);
   }
 
   cerrarHoja() {
+    this.cantidades.set(new Map());
     this.tecladoNota.set(false);
     this.hoja.set(null);
     this.grupos.set([]);
@@ -313,6 +344,71 @@ export class TouchPos implements OnInit, OnDestroy {
     this.cantidadHoja.update(q => Math.max(1, q + delta));
   }
 
+  /* ------------------------------------------------------ cantidad por extra
+     Dos shots son dos shots: suman 2 x 30 g de cafe y 2 x $10. Sin esto, un
+     extra solo se podia pedir una vez y "doble shot" habia que configurarlo
+     como una opcion aparte, con su propia cantidad duplicada a mano.
+
+     Solo tiene sentido donde el efecto SUMA consumo: no existe "dos veces sin
+     azucar" ni "dos tamanos". */
+  cantidades = signal<Map<number, number>>(new Map());
+
+  admiteCantidad(g: ModifierGroup): boolean { return admiteCantidad(g); }
+  maximoDe(g: ModifierGroup): number { return maximoCantidad(g); }
+
+  cantidadDe(o: ModifierOption): number { return this.cantidades().get(o.id) || 1; }
+
+  cambiarCantidad(g: ModifierGroup, o: ModifierOption, delta: number) {
+    if (!this.elegido(g, o)) return;
+    const max = this.maximoDe(g);
+    this.cantidades.update(m => {
+      const n = new Map(m);
+      n.set(o.id, Math.min(max, Math.max(1, (n.get(o.id) || 1) + delta)));
+      return n;
+    });
+  }
+
+  /** Lo que suman las opciones elegidas, para verlo antes de agregar. */
+  readonly extraHoja = computed(() => {
+    let total = 0;
+    for (const g of this.grupos()) {
+      for (const o of (this.seleccion().get(g.id) || [])) {
+        total += Number(o.price_delta || 0) * (this.cantidades().get(o.id) || 1);
+      }
+    }
+    return total;
+  });
+
+  /** Resumen de la linea del carrito, con su precio por extra. */
+  resumenOpciones(l: CartLine) { return resumenDeOpciones(l.options); }
+
+  /**
+   * Avisa si la combinacion elegida no alcanza, nombrando el ingrediente.
+   *
+   * El catalogo dice si el producto se puede ofrecer -receta base-; esto dice
+   * si ESTA combinacion se puede preparar. Un latte puede estar disponible y
+   * la leche de almendra que eligio el cliente estar agotada.
+   */
+  private async alcanzaLaSeleccion(productId: number, opciones: SelectedOption[]): Promise<boolean> {
+    const hosp = (window as any).wybix;
+    if (typeof hosp?.catalog?.disponibilidad !== 'function') return true;
+    try {
+      const rs = await hosp.catalog.disponibilidad({
+        productId,
+        options: opciones.map(o => ({ optionId: o.optionId, quantity: o.quantity })),
+      });
+      const d = rs?.data;
+      if (!rs?.success || !d) return true;
+      if (Number(d.disponible) > 0) return true;
+      this.mostrar(d.motivo || 'No hay existencias para esta combinación');
+      return false;
+    } catch (e) {
+      // La venta vuelve a validar dentro de su transaccion: esto es UX.
+      console.error('[TOUCH] No se pudo consultar la disponibilidad:', e);
+      return true;
+    }
+  }
+
   confirmarHoja() {
     const p = this.hoja();
     if (!p) return;
@@ -325,13 +421,21 @@ export class TouchPos implements OnInit, OnDestroy {
       for (const o of (this.seleccion().get(g.id) || [])) {
         opciones.push({
           groupId: g.id, optionId: o.id, groupName: g.name, optionName: o.name,
-          priceDelta: Number(o.price_delta || 0), quantity: 1,
+          priceDelta: Number(o.price_delta || 0),
+          quantity: this.admiteCantidad(g) ? this.cantidadDe(o) : 1,
         });
       }
     }
-    this.agregar(p, this.cantidadHoja(), opciones, this.notaHoja().trim() || null);
-    this.cerrarHoja();
-    this.mostrar(`${p.product_name} agregado`, 'ok');
+
+    // Con la seleccion completa se pregunta si ALCANZA, antes de meterla al
+    // carrito. Asi el mensaje nombra el ingrediente que falta en vez de
+    // fallar al cobrar con un error generico.
+    this.alcanzaLaSeleccion(p.id, opciones).then(ok => {
+      if (!ok) return;
+      this.agregar(p, this.cantidadHoja(), opciones, this.notaHoja().trim() || null);
+      this.cerrarHoja();
+      this.mostrar(`${p.product_name} agregado`, 'ok');
+    });
   }
 
   private agregar(p: MenuProduct, qty: number, opciones: SelectedOption[], nota: string | null) {

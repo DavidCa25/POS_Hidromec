@@ -1,3 +1,308 @@
+/* ============================================================
+   0016 — receta efectiva
+
+   Generada con scripts/db/generar-migracion.mjs desde los archivos
+   canonicos de sql/. No editar a mano: regenerar.
+
+   Idempotente: todos los objetos usan CREATE OR ALTER, y los tipos
+   comprueban su existencia antes de crearse. Se puede reejecutar.
+
+   Incluye el bloque de esquema sql/schema/changes/0016_receta-efectiva.sql (tablas,
+   columnas, seed). Cada paso de ese bloque comprueba su existencia.
+   ============================================================ */
+
+/* ========== ESQUEMA: sql/schema/changes/0016_receta-efectiva.sql ========== */
+/* ---------------------------------------------------------------------------
+   BLOQUE DE ESQUEMA — snapshot de la receta efectiva.
+
+   Todo ADITIVO y anulable. Ninguna venta historica cambia de significado: las
+   columnas nuevas quedan en NULL para lo ya vendido, que es la verdad -de esas
+   ventas no sabemos con que receta se prepararon- y no se inventa nada.
+
+   QUE SE CONGELA Y DONDE
+   ----------------------
+   sale_detail.recipe_id / variant_option_id
+       con QUE receta se preparo la linea. No es el historico completo: si
+       manana editan `recipe_lines`, esa receta ya no dice lo mismo.
+
+   sale_detail_modifiers.ingredient_product_id / replaces_product_id /
+   qty_base_aplicado / qty_factor_aplicado
+       que hizo FISICAMENTE cada modificador en el momento de la venta. Antes
+       solo quedaba el nombre y el precio, asi que auditar "por que esta venta
+       consumio leche de almendra" obligaba a mirar la definicion ACTUAL de la
+       opcion, que pudo cambiar.
+
+   El consumo REAL -que producto, cuanto, a que costo- ya estaba congelado en
+   `inventory_movements`, ligado a la linea vendida. Por eso no se duplica aqui
+   la cantidad efectiva de cada ingrediente: existiria dos veces y podrian
+   discrepar. El reembolso sigue leyendo los movimientos, nunca recalculando.
+
+   Idempotente: se puede reejecutar.
+   --------------------------------------------------------------------------- */
+
+IF COL_LENGTH(N'dbo.sale_detail', N'recipe_id') IS NULL
+    ALTER TABLE dbo.sale_detail ADD recipe_id INT NULL;
+GO
+
+IF COL_LENGTH(N'dbo.sale_detail', N'variant_option_id') IS NULL
+    ALTER TABLE dbo.sale_detail ADD variant_option_id INT NULL;
+GO
+
+IF COL_LENGTH(N'dbo.sale_detail_modifiers', N'ingredient_product_id') IS NULL
+    ALTER TABLE dbo.sale_detail_modifiers ADD ingredient_product_id INT NULL;
+GO
+
+IF COL_LENGTH(N'dbo.sale_detail_modifiers', N'replaces_product_id') IS NULL
+    ALTER TABLE dbo.sale_detail_modifiers ADD replaces_product_id INT NULL;
+GO
+
+IF COL_LENGTH(N'dbo.sale_detail_modifiers', N'qty_base_aplicado') IS NULL
+    ALTER TABLE dbo.sale_detail_modifiers ADD qty_base_aplicado DECIMAL(14, 4) NULL;
+GO
+
+IF COL_LENGTH(N'dbo.sale_detail_modifiers', N'qty_factor_aplicado') IS NULL
+    ALTER TABLE dbo.sale_detail_modifiers ADD qty_factor_aplicado DECIMAL(8, 4) NULL;
+GO
+
+/* Sin clave foranea a proposito: el snapshot tiene que sobrevivir aunque la
+   receta o la opcion se borren manana. Una FK obligaria a conservarlas para
+   siempre o a perder el historico, y las dos cosas son peores. */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sale_detail_recipe' AND object_id = OBJECT_ID(N'dbo.sale_detail'))
+CREATE NONCLUSTERED INDEX IX_sale_detail_recipe ON dbo.sale_detail (recipe_id) WHERE recipe_id IS NOT NULL;
+GO
+
+/* ---------- sp_check_availability (SQL_STORED_PROCEDURE) ---------- */
+/* sp_check_availability
+ * Definicion canonica. Mantener este archivo y generar una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+/* ============================================================
+   sp_check_availability — cuantas puedo preparar CON ESTAS OPCIONES.
+
+   QUE PROBLEMA RESUELVE
+   ---------------------
+   `sp_get_menu_catalog` calcula la disponibilidad desde la receta BASE. Es
+   correcto para pintar la rejilla, cuando todavia no hay nada elegido, pero
+   deja de serlo en cuanto alguien elige: un latte podia mostrarse disponible y
+   fallar al cobrar porque la leche de almendra que eligio estaba agotada. El
+   mensaje que veia el cajero no hablaba de la leche.
+
+   Son DOS preguntas distintas y aqui se responde la segunda:
+
+     catalogo    "¿puedo ofrecer este producto?"   -> receta base, estimacion
+     efectiva    "¿puedo preparar ESTA combinacion?" -> receta efectiva real
+
+   USA EL MISMO MOTOR QUE LA VENTA
+   -------------------------------
+   `sp_resolver_receta_efectiva`, el mismo procedimiento que usa
+   `sp_register_sale`. No es una copia parecida: es el mismo codigo. Si fueran
+   dos, empezarian iguales y terminarian distintos, y el sintoma seria que la
+   pantalla promete lo que el cobro rechaza.
+
+   ESTO NO AUTORIZA NADA
+   ---------------------
+   Es informacion para la interfaz. La venta vuelve a validar existencias
+   DENTRO de su transaccion, con los productos bloqueados. Entre esta consulta
+   y el cobro puede vender otra caja, y esa carrera la resuelve la transaccion,
+   no esta respuesta.
+
+   Devuelve una fila: disponible (unidades enteras), y si algo limita, cual es
+   y cuanto hay.
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[sp_check_availability]
+    @product_id INT,
+    @SaleModifiers dbo.SaleModifierType READONLY
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE id = @product_id AND active = 1)
+    BEGIN
+        SELECT CAST(0 AS INT) AS disponible, CAST(0 AS BIT) AS hay_receta,
+               CAST(NULL AS INT) AS limita_product_id, CAST(NULL AS NVARCHAR(100)) AS limita_nombre,
+               CAST(NULL AS DECIMAL(18,6)) AS limita_necesita, CAST(NULL AS DECIMAL(12,2)) AS limita_stock,
+               CAST(NULL AS NVARCHAR(10)) AS limita_uom,
+               N'El producto no existe o esta inactivo.' AS motivo;
+        RETURN;
+    END
+
+    CREATE TABLE #ef_lineas (
+        line_no INT NOT NULL PRIMARY KEY,
+        product_id INT NOT NULL,
+        inventory_mode NVARCHAR(10) NULL,
+        recipe_id INT NULL,
+        variant_option_id INT NULL,
+        scale DECIMAL(8,4) NULL
+    );
+    CREATE TABLE #ef_opciones (
+        line_no INT NOT NULL,
+        modifier_option_id INT NOT NULL,
+        qty INT NOT NULL
+    );
+    CREATE TABLE #ef_requerimientos (
+        line_no INT NOT NULL,
+        product_id INT NOT NULL,
+        qty_per_unit DECIMAL(18,6) NOT NULL,
+        origen NVARCHAR(12) NOT NULL,
+        modifier_option_id INT NULL,
+        recipe_id INT NULL
+    );
+
+    INSERT INTO #ef_lineas (line_no, product_id, scale) VALUES (1, @product_id, 1);
+    INSERT INTO #ef_opciones (line_no, modifier_option_id, qty)
+    SELECT 1, modifier_option_id, ISNULL(quantity, 1) FROM @SaleModifiers;
+
+    EXEC dbo.sp_resolver_receta_efectiva;
+
+    DECLARE @modo NVARCHAR(10), @recipe_id INT;
+    SELECT @modo = inventory_mode, @recipe_id = recipe_id FROM #ef_lineas WHERE line_no = 1;
+
+    /* Un producto con receta y sin receta resoluble no es "cero disponible":
+       es que falta configurarlo, o falta elegir el tamano. Se distingue. */
+    IF @modo = 'RECIPE' AND @recipe_id IS NULL
+    BEGIN
+        SELECT CAST(0 AS INT) AS disponible, CAST(0 AS BIT) AS hay_receta,
+               CAST(NULL AS INT) AS limita_product_id, CAST(NULL AS NVARCHAR(100)) AS limita_nombre,
+               CAST(NULL AS DECIMAL(18,6)) AS limita_necesita, CAST(NULL AS DECIMAL(12,2)) AS limita_stock,
+               CAST(NULL AS NVARCHAR(10)) AS limita_uom,
+               CASE
+                   WHEN NOT EXISTS (SELECT 1 FROM dbo.recipes r WHERE r.product_id = @product_id AND r.active = 1)
+                       THEN N'Este producto no tiene receta configurada.'
+                   WHEN NOT EXISTS (SELECT 1 FROM #ef_opciones o
+                                     JOIN dbo.modifier_options mo ON mo.id = o.modifier_option_id
+                                     JOIN dbo.modifier_groups g ON g.id = mo.group_id AND g.role = 'SIZE')
+                       THEN N'Falta elegir el tamano: la receta depende de el.'
+                   ELSE N'El tamano elegido no tiene receta.'
+               END AS motivo;
+        RETURN;
+    END
+
+    /* NONE no consume nada: siempre se puede preparar. */
+    IF NOT EXISTS (SELECT 1 FROM #ef_requerimientos)
+    BEGIN
+        SELECT CAST(999999 AS INT) AS disponible, CAST(1 AS BIT) AS hay_receta,
+               CAST(NULL AS INT) AS limita_product_id, CAST(NULL AS NVARCHAR(100)) AS limita_nombre,
+               CAST(NULL AS DECIMAL(18,6)) AS limita_necesita, CAST(NULL AS DECIMAL(12,2)) AS limita_stock,
+               CAST(NULL AS NVARCHAR(10)) AS limita_uom, CAST(NULL AS NVARCHAR(200)) AS motivo;
+        RETURN;
+    END
+
+    /* Cuantas unidades alcanzan, y cual es el ingrediente que pone el limite.
+       Se agrupa por producto: si un ingrediente aparece dos veces -receta mas
+       un extra del mismo- lo que manda es la suma, no cada parte. */
+    SELECT TOP 1
+        CAST(CASE WHEN t.necesita <= 0 THEN 999999
+                  ELSE FLOOR(ISNULL(p.stock, 0) / t.necesita) END AS INT) AS disponible,
+        CAST(1 AS BIT) AS hay_receta,
+        p.id AS limita_product_id,
+        p.nombre AS limita_nombre,
+        t.necesita AS limita_necesita,
+        ISNULL(p.stock, 0) AS limita_stock,
+        p.base_uom AS limita_uom,
+        CASE WHEN ISNULL(p.stock, 0) < t.necesita
+             THEN CONCAT(N'No hay suficiente ', p.nombre, N' para preparar esta combinacion.')
+             ELSE NULL END AS motivo
+    FROM (SELECT product_id, SUM(qty_per_unit) AS necesita
+            FROM #ef_requerimientos GROUP BY product_id) t
+    JOIN dbo.products p ON p.id = t.product_id
+    ORDER BY CASE WHEN t.necesita <= 0 THEN 999999
+                  ELSE FLOOR(ISNULL(p.stock, 0) / t.necesita) END ASC,
+             p.id ASC;
+END
+GO
+
+/* ---------- sp_get_sale_ticket (SQL_STORED_PROCEDURE) ---------- */
+/* sp_get_sale_ticket
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+-- =============================================
+-- Author:		<David>
+-- Create date: <11-12-2025>
+-- Description:	<Store procedure para generar un ticket de venta>
+-- Update:      + register_name y + impuestos por linea.
+--
+--              El ticket calculaba el IVA dividiendo el total entre 1.16, con
+--              la tasa escrita a mano en el codigo. Eso solo es cierto si
+--              TODO lo vendido es objeto de impuesto a la tasa general: en una
+--              venta con productos exentos el ticket inventaba un IVA que
+--              nadie cobro. La tasa de cada producto viaja ahora con su linea
+--              y el desglose se calcula linea por linea.
+-- =============================================
+CREATE OR ALTER PROCEDURE dbo.sp_get_sale_ticket
+    @sale_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    --------------------------
+    -- 1) Encabezado de venta
+    --------------------------
+    SELECT
+        s.id,
+        s.datee,
+        s.total,
+        s.payment_method,
+        s.paid_amount,
+        s.balance,
+        s.customer_id,
+        s.due_date,
+        u.usuario AS cashier,
+        c.customerName AS customer_name,
+        s.service_mode,
+        s.register_id,
+        r.name AS register_name
+    FROM dbo.sales s
+    INNER JOIN dbo.users u ON u.id = s.useer_id
+    LEFT JOIN dbo.customers c ON c.id = s.customer_id
+    LEFT JOIN dbo.registers r ON r.id = s.register_id
+    WHERE s.id = @sale_id;
+    SELECT
+        d.product_id,
+        p.nombre,
+        d.quantity,
+        d.unitary_price,
+        d.subtotal AS line_total,
+        d.note,
+        /* La tasa de CADA producto: sin esto el ticket tiene que suponer que
+           todo lleva IVA general, y con un producto exento miente. */
+        p.objeto_impuesto,
+        p.tasa_iva,
+        p.base_uom,
+        mods.modifiers
+    FROM dbo.sale_detail d
+    INNER JOIN dbo.products p ON p.id = d.product_id
+    /* Los modificadores TAL COMO SE COBRARON, con su importe.
+       Antes solo salia el nombre: un ticket con "Leche de almendra" y un total
+       $12 mas alto obliga al cliente a fiarse. Ahora cada extra dice lo que
+       sumo, y los que no suman nada -"Sin azucar"- no llevan cifra.
+       Se lee del snapshot de la venta, no de la configuracion de hoy: un
+       ticket reimpreso manana tiene que decir lo mismo que el de hoy.
+       Nada tecnico: nombres e importes, nunca identificadores. */
+    OUTER APPLY (
+        SELECT STRING_AGG(
+                   CONCAT(
+                       CASE WHEN m.quantity > 1 THEN CONCAT(m.quantity, 'x ') ELSE '' END,
+                       m.option_name,
+                       CASE WHEN ISNULL(m.price_delta, 0) <> 0
+                            THEN CONCAT(' +', FORMAT(m.price_delta * m.quantity, 'N2'))
+                            ELSE '' END),
+                   ', ')
+               WITHIN GROUP (ORDER BY m.id) AS modifiers
+        FROM dbo.sale_detail_modifiers m
+        WHERE m.sale_detail_id = d.id
+    ) mods
+    WHERE d.sale_id = @sale_id
+    ORDER BY d.id;
+END;
+GO
+
+/* ---------- sp_register_sale (SQL_STORED_PROCEDURE) ---------- */
 /* sp_register_sale
  * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
  * No editar en SSMS: modificar este archivo y crear una migracion.
@@ -616,5 +921,194 @@ BEGIN
         IF @num = 1205 SET @msg = CONCAT('[1205] ', @msg);
         RAISERROR(@msg, 16, 1);
     END CATCH
+END
+GO
+
+/* ---------- sp_resolver_receta_efectiva (SQL_STORED_PROCEDURE) ---------- */
+/* sp_resolver_receta_efectiva
+ * Definicion canonica. Mantener este archivo y generar una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+/* ============================================================
+   sp_resolver_receta_efectiva — LA receta efectiva. Una sola.
+
+   QUE ES LA RECETA EFECTIVA
+   -------------------------
+   Lo que de verdad hay que sacar del almacen para preparar UNA unidad de un
+   producto, con las opciones que eligio el cliente ya aplicadas:
+
+       receta base (o la del tamano)
+       x factor de escala
+       - ingredientes removidos
+       ~ ingredientes sustituidos
+       + ingredientes anadidos
+
+   POR QUE VIVE AQUI Y NO DENTRO DE LA VENTA
+   -----------------------------------------
+   Este calculo lo necesitan DOS cosas: registrar la venta y responder
+   "¿cuantos de estos puedo preparar?". Tenerlo escrito dos veces es tener dos
+   motores que empiezan iguales y terminan distintos, y el sintoma seria el
+   peor posible: la pantalla dice que hay y el cobro dice que no, o al reves.
+
+   POR QUE UN PROCEDIMIENTO Y NO UNA FUNCION
+   -----------------------------------------
+   Una funcion de tabla seria mas comoda de invocar, pero el constructor del
+   baseline solo despliega objetos de tipo SQL_STORED_PROCEDURE: una funcion
+   tendria su archivo en Git y NO viajaria al instalador. Ya paso dos veces
+   (`sp_get_product_dependencies`, `sp_register_lease_touch`) y no se repite.
+
+   Tampoco puede devolver un resultset: `sp_register_sale` tendria que hacer
+   `INSERT ... EXEC`, y SQL Server prohibe el ROLLBACK dentro de esa
+   construccion -sustituye el error real por otro que no dice nada-.
+
+   Asi que el contrato son TABLAS TEMPORALES que crea quien llama:
+
+     #ef_lineas       line_no, product_id, inventory_mode
+                      + recipe_id, variant_option_id, scale  (los rellena este
+                        procedimiento: son su respuesta, no su entrada)
+     #ef_opciones     line_no, modifier_option_id, qty
+     #ef_requerimientos  se llena aqui: que producto, cuanto, y de donde sale
+
+   Es un acoplamiento explicito y documentado, y a cambio hay UNA sola
+   implementacion de la regla.
+
+   NO decide si algo esta mal: si un producto RECIPE se queda sin receta, deja
+   `recipe_id` en NULL y quien llama dice por que (la venta con un mensaje, la
+   disponibilidad devolviendo cero). Los mensajes son de quien tiene contexto.
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[sp_resolver_receta_efectiva]
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    /* Lo que el producto ES, si quien llama no lo dijo. */
+    UPDATE l SET inventory_mode = ISNULL(l.inventory_mode, p.inventory_mode)
+    FROM #ef_lineas l JOIN dbo.products p ON p.id = l.product_id;
+
+    /* ---------------------------------------------------- 1) opciones
+       Se releen de `modifier_options` en vez de fiarse de lo que llegue: el
+       efecto, el ingrediente y las cantidades son configuracion, no algo que
+       pueda decidir quien pide la venta. */
+    IF OBJECT_ID('tempdb..#ef_op') IS NOT NULL DROP TABLE #ef_op;
+    CREATE TABLE #ef_op (
+        line_no INT NOT NULL,
+        option_id INT NOT NULL,
+        qty INT NOT NULL,
+        role NVARCHAR(15) NULL,
+        effect NVARCHAR(12) NULL,
+        ingredient_product_id INT NULL,
+        replaces_product_id INT NULL,
+        qty_base DECIMAL(14,4) NULL,
+        qty_factor DECIMAL(8,4) NULL
+    );
+
+    INSERT INTO #ef_op (line_no, option_id, qty, role, effect,
+                        ingredient_product_id, replaces_product_id, qty_base, qty_factor)
+    SELECT o.line_no, o.modifier_option_id, CASE WHEN ISNULL(o.qty, 1) < 1 THEN 1 ELSE o.qty END,
+           g.role, mo.effect, mo.ingredient_product_id, mo.replaces_product_id, mo.qty_base, mo.qty_factor
+    FROM #ef_opciones o
+    JOIN dbo.modifier_options mo ON mo.id = o.modifier_option_id AND mo.active = 1
+    JOIN dbo.modifier_groups g ON g.id = mo.group_id AND g.active = 1;
+
+    /* ---------------------------------------------------- 2) que receta
+       La del TAMANO elegido si existe; si no, la base. El orden del CASE es
+       lo que da preferencia a la variante: una receta propia de "Grande" gana
+       siempre a la base, y por eso el tamano no es una etiqueta.
+
+       Una receta por variante SOLO se alcanza con su opcion SIZE en la linea.
+       Eso es correcto y deliberado: la receta depende del tamano. */
+    UPDATE l
+       SET recipe_id = r.id,
+           variant_option_id = r.variant_option_id
+    FROM #ef_lineas l
+    CROSS APPLY (
+        SELECT TOP 1 rc.id, rc.variant_option_id
+        FROM dbo.recipes rc
+        WHERE rc.product_id = l.product_id AND rc.active = 1
+          AND (rc.variant_option_id IS NULL
+               OR rc.variant_option_id IN (SELECT o.option_id FROM #ef_op o
+                                            WHERE o.line_no = l.line_no AND o.role = 'SIZE'))
+        ORDER BY CASE WHEN rc.variant_option_id IS NULL THEN 1 ELSE 0 END
+    ) r
+    WHERE l.inventory_mode = 'RECIPE';
+
+    /* ---------------------------------------------------- 3) escala
+       SCALE multiplica la receta BASE. No se aplica sobre una receta de
+       variante porque esa ya trae sus propias cantidades: multiplicarla seria
+       contar el tamano dos veces. */
+    UPDATE #ef_lineas SET scale = 1 WHERE scale IS NULL;
+
+    UPDATE l SET scale = o.qty_factor
+    FROM #ef_lineas l
+    JOIN dbo.recipes r ON r.id = l.recipe_id AND r.variant_option_id IS NULL
+    JOIN #ef_op o ON o.line_no = l.line_no AND o.effect = 'SCALE' AND o.qty_factor > 0
+    WHERE l.inventory_mode = 'RECIPE';
+
+    /* ---------------------------------------------------- 4) DIRECT
+       Un producto de inventario directo se consume a si mismo. */
+    INSERT INTO #ef_requerimientos (line_no, product_id, qty_per_unit, origen, modifier_option_id, recipe_id)
+    SELECT l.line_no, l.product_id, 1, 'DIRECT', NULL, NULL
+    FROM #ef_lineas l
+    WHERE l.inventory_mode = 'DIRECT';
+
+    /* NONE no consume nada: no se inserta ninguna fila, a proposito. */
+
+    /* ---------------------------------------------------- 5) receta base
+       La merma es parte del consumo real: preparar 240 ml con 2% de merma
+       gasta 244.8 ml de almacen. `origen` distingue si la cantidad viene de
+       una receta de tamano o de la base, para poder auditarlo despues. */
+    INSERT INTO #ef_requerimientos (line_no, product_id, qty_per_unit, origen, modifier_option_id, recipe_id)
+    SELECT l.line_no, rl.ingredient_product_id,
+           rl.qty_base * (1 + rl.waste_pct / 100.0) * l.scale,
+           CASE WHEN l.variant_option_id IS NOT NULL THEN 'SIZE' ELSE 'BASE' END,
+           NULL, l.recipe_id
+    FROM #ef_lineas l
+    JOIN dbo.recipe_lines rl ON rl.recipe_id = l.recipe_id
+    WHERE l.inventory_mode = 'RECIPE';
+
+    /* ---------------------------------------------------- 6) REMOVE
+       "Sin azucar" quita el requerimiento entero de ese ingrediente. Si el
+       ingrediente no estaba en la receta, no hay nada que quitar y tampoco es
+       un error: pedir "sin crema" un cafe que no lleva crema es inofensivo. */
+    DELETE r
+    FROM #ef_requerimientos r
+    JOIN #ef_op o ON o.line_no = r.line_no AND o.effect = 'REMOVE'
+                 AND o.replaces_product_id = r.product_id
+    WHERE r.origen IN ('BASE', 'SIZE');
+
+    /* ---------------------------------------------------- 7) SUBSTITUTE
+       Cambia el ingrediente conservando la cantidad, salvo que la opcion
+       traiga una cantidad propia (`qty_base`), que entonces manda y escala
+       con el tamano. El requerimiento sustituido queda marcado con su opcion
+       para poder auditar por que se consumio leche de almendra. */
+    UPDATE r
+       SET product_id = o.ingredient_product_id,
+           qty_per_unit = ISNULL(o.qty_base * l.scale, r.qty_per_unit),
+           origen = 'SUBSTITUTE',
+           modifier_option_id = o.option_id
+    FROM #ef_requerimientos r
+    JOIN #ef_lineas l ON l.line_no = r.line_no
+    JOIN #ef_op o ON o.line_no = r.line_no AND o.effect = 'SUBSTITUTE'
+                 AND o.replaces_product_id = r.product_id
+    WHERE r.origen IN ('BASE', 'SIZE');
+
+    /* ---------------------------------------------------- 8) ADD
+       Consumo extra. La cantidad elegida multiplica: dos shots son 2 x 30 g.
+       NO escala con el tamano, a proposito: un shot es un shot, lo pidas en
+       vaso chico o grande. */
+    INSERT INTO #ef_requerimientos (line_no, product_id, qty_per_unit, origen, modifier_option_id, recipe_id)
+    SELECT o.line_no, o.ingredient_product_id, o.qty_base * o.qty, 'ADD', o.option_id, NULL
+    FROM #ef_op o
+    JOIN #ef_lineas l ON l.line_no = o.line_no
+    WHERE o.effect = 'ADD' AND o.ingredient_product_id IS NOT NULL AND o.qty_base > 0
+      AND l.inventory_mode IN ('RECIPE', 'DIRECT');
+
+    /* Un requerimiento de cantidad cero no consume nada y solo ensucia el
+       historial y los movimientos de inventario. */
+    DELETE FROM #ef_requerimientos WHERE qty_per_unit IS NULL OR qty_per_unit <= 0;
+
+    DROP TABLE #ef_op;
 END
 GO

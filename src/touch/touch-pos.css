@@ -278,8 +278,14 @@
 /* Un badge pequeno, no una etiqueta gritando. */
 .tp-card__estado {
   position: absolute; top: 7px; right: 7px;
+  min-width: 21px; text-align: center;
   padding: 0 7px; line-height: 19px; border-radius: 999px;
   font-size: 11px; font-weight: 650;
+  /* Estado normal: la cifra se lee, pero no compite con el nombre ni con el
+     precio. Solo se enciende en ambar cuando de verdad escasea. */
+  background: var(--wx-scrim-chip, rgb(15 30 55 / 0.62)); color: #fff;
+  font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(2px);
 }
 .tp-card__estado--off { background: rgb(190 40 50 / 0.92); color: #fff; }
 .tp-card__estado--low {
@@ -851,3 +857,25 @@
   .tp button:not(:disabled):active { transform: none; }
   .spin { animation-duration: 3s; }
 }
+
+/* Cantidad por extra: dos shots son dos shots.
+   Solo aparece en los grupos cuyo efecto SUMA consumo y solo cuando la opcion
+   ya esta elegida, para no llenar la hoja de controles inertes. */
+.tp-opcion-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tp-cant {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 4px; border-radius: 10px; background: var(--wx-sunken);
+}
+.tp-cant button {
+  width: 38px; height: 38px; border-radius: 9px;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  color: var(--wx-text); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-cant button:hover { background: var(--wx-raised); }
+.tp-cant button:active { transform: scale(0.94); }
+.tp-cant span { min-width: 26px; text-align: center; font-weight: 700; font-size: 15px; }
+
+/* Cada extra del carrito en su renglon, con su precio. */
+.tp-linea__opt { display: block; white-space: pre; }

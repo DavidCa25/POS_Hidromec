@@ -195,3 +195,19 @@
 .hosp-modal__body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: var(--wx-text-sm); }
+
+/* Lo que le falta a una opcion para poder guardarse.
+   Vive junto al campo, no en el boton de guardar: el error de SQL Server que
+   lanza CK_modifier_options_effect no nombra ni la opcion ni el campo, asi que
+   llegar hasta ahi es llegar demasiado tarde. */
+.hosp-falta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 0 0; padding: 6px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wx-warning) 12%, transparent);
+  color: var(--wx-warning);
+  font-size: 11.5px; font-weight: 500; line-height: 1.4;
+}
+.hosp-falta i { font-size: 14px; }
+.hosp-falta span { display: block; width: 100%; }
+.hosp-falta span:first-of-type { width: auto; }

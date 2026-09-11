@@ -14,6 +14,10 @@ CREATE TABLE dbo.sale_detail_modifiers (
     price_delta DECIMAL(10, 2) NOT NULL CONSTRAINT DF_sale_detail_modifiers_price_delta DEFAULT ((0)),
     quantity INT NOT NULL CONSTRAINT DF_sale_detail_modifiers_quantity DEFAULT ((1)),
     effect NVARCHAR(12) COLLATE Modern_Spanish_CI_AS NOT NULL,
+    ingredient_product_id INT NULL,
+    replaces_product_id INT NULL,
+    qty_base_aplicado DECIMAL(14, 4) NULL,
+    qty_factor_aplicado DECIMAL(8, 4) NULL,
     CONSTRAINT PK_sale_detail_modifiers PRIMARY KEY CLUSTERED (id)
 );
 END;

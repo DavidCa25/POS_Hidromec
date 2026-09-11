@@ -225,6 +225,23 @@ export class MenuCatalogService {
   private readonly miniaturas = new Map<number, { version: number; thumb: string | null }>();
 
   /** Grupos de modificadores de un producto, en orden, ya con opciones. */
+  /**
+   * Los grupos de opciones de un producto, cargando el catálogo si hace falta.
+   *
+   * Existe para Retail. Touch ya trae el catálogo completo en memoria y usa
+   * `groupsOf` directamente; Retail vive del catálogo de inventario y no sabía
+   * nada de grupos, que es justo por lo que añadía las líneas sin variante y
+   * las ventas de productos con receta por tamaño se rechazaban.
+   *
+   * La carga es perezosa y se hace una sola vez: el primer producto con
+   * opciones la paga, el resto ya la encuentra hecha.
+   */
+  async groupsOfProduct(productId: number): Promise<ModifierGroup[]> {
+    if (!this.disponible) return [];
+    if (!this.products().length) await this.load();
+    return this.groupsOf(productId);
+  }
+
   groupsOf(productId: number): ModifierGroup[] {
     const ids = this.porProducto().get(productId) || [];
     const map = this.groups();
