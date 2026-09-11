@@ -86,6 +86,43 @@
     background:linear-gradient(90deg,var(--brand),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   #checkout .thanks-sub{font-size:1.2vw; color:var(--muted);}
+
+  /* ===== FIDELIZACION ===== */
+  /* Tres pantallas mas, con el mismo lenguaje que las tres que ya habia:
+     una cifra grande, una linea que la explica, y nada mas que leer. */
+  #premios,#dinamica,#dinres{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2vh;}
+
+  #premios .kicker{font-size:1.6vw;color:var(--brand2);font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+  #premios .title{font-size:3.6vw;font-weight:800;letter-spacing:-.5px;}
+  #premios .list{display:flex;flex-direction:column;gap:1.4vh;margin-top:1vh;width:min(70vw,900px);}
+  #premios .item{
+    display:flex;align-items:center;gap:1.4vw;padding:2vh 2vw;
+    background:var(--card);border:1px solid var(--line);border-radius:18px;text-align:left;
+  }
+  #premios .item .ic{font-size:2.6vw;line-height:1;}
+  #premios .item .tx{flex:1;min-width:0;}
+  #premios .item .n{font-size:1.9vw;font-weight:700;}
+  /* El codigo es lo unico que el cliente tiene que apuntar: va aparte. */
+  #premios .item .c{font-size:1.4vw;color:var(--brand2);font-variant-numeric:tabular-nums;letter-spacing:.06em;}
+  #premios .item .k{font-size:1.1vw;color:var(--muted);}
+
+  #dinamica .name{font-size:2.6vw;font-weight:800;}
+  #dinamica .instr{font-size:1.5vw;color:var(--muted);max-width:60vw;}
+  #dinamica .crono{
+    font-size:13vw;font-weight:800;line-height:1;letter-spacing:-.04em;
+    font-variant-numeric:tabular-nums;color:var(--brand2);
+  }
+  #dinamica .crono.parado{color:var(--accent);}
+  #dinamica .meta{font-size:1.4vw;color:var(--muted);}
+
+  #dinres .big{font-size:6vw;font-weight:800;letter-spacing:-1px;}
+  #dinres .big.ok{color:var(--ok);}
+  #dinres .msg{font-size:2.2vw;color:var(--text);max-width:60vw;}
+  #dinres .premio{font-size:1.8vw;color:var(--brand2);font-weight:700;}
+  #dinres .code{
+    margin-top:1vh;padding:1.2vh 2vw;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;font-size:2vw;font-weight:700;letter-spacing:.1em;font-variant-numeric:tabular-nums;
+  }
 </style>
 </head>
 <body>
@@ -133,6 +170,26 @@
     </div>
     <div class="thanks">¡Gracias por su compra!</div>
     <div class="thanks-sub">Vuelva pronto</div>
+  </section>
+
+  <section class="screen" id="premios">
+    <div class="kicker">Tu compra tiene premio</div>
+    <div class="title" id="prTitle">¡Felicidades!</div>
+    <div class="list" id="prList"></div>
+  </section>
+
+  <section class="screen" id="dinamica">
+    <div class="name" id="dnName">Dinámica</div>
+    <div class="instr" id="dnInstr"></div>
+    <div class="crono" id="dnCrono">0.00</div>
+    <div class="meta" id="dnMeta"></div>
+  </section>
+
+  <section class="screen" id="dinres">
+    <div class="big" id="drBig"></div>
+    <div class="msg" id="drMsg"></div>
+    <div class="premio" id="drPremio"></div>
+    <div class="code" id="drCode" style="display:none"></div>
   </section>
 
 <script>
@@ -227,6 +284,66 @@
     }
   }
 
+  // ------------------------------------------------------ Fidelizacion
+  // Los iconos van como entidades HTML y no como texto: este archivo lo
+  // tocan scripts de generacion, y un emoji fuera del BMP es justo lo que
+  // se rompe al pasar por una herramienta que no cuida la codificacion.
+  const ICONO_PREMIO = {
+    REWARD: '&#127873;', COUPON: '&#127915;',
+    DYNAMIC: '&#127918;', RAFFLE_ENTRY: '&#127903;',
+  };
+  const NOMBRE_PREMIO = {
+    REWARD: 'Recompensa', COUPON: 'Cupón para tu próxima visita',
+    DYNAMIC: 'Tienes una dinámica por jugar', RAFFLE_ENTRY: 'Boleto de rifa',
+  };
+
+  function renderPremios(s){
+    const cont = document.getElementById('prList');
+    cont.innerHTML = '';
+    (s.items || []).forEach(function(it){
+      const div = document.createElement('div');
+      div.className = 'item';
+      // El codigo es lo unico que el cliente necesita apuntar: va en su
+      // propia linea, no escondido dentro de la descripcion.
+      const codigo = it.codigo ? it.codigo
+        : (it.numero != null ? ('Boleto ' + it.numero) : '');
+      div.innerHTML =
+        '<div class="ic">' + (ICONO_PREMIO[it.tipo] || '&#11088;') + '</div>' +
+        '<div class="tx">' +
+          '<div class="n">' + escapeHtml(it.nombre || NOMBRE_PREMIO[it.tipo] || 'Premio') + '</div>' +
+          (codigo ? '<div class="c">' + escapeHtml(codigo) + '</div>' : '') +
+          '<div class="k">' + escapeHtml(NOMBRE_PREMIO[it.tipo] || '') + '</div>' +
+        '</div>';
+      cont.appendChild(div);
+    });
+    document.getElementById('prTitle').textContent =
+      (s.items || []).length > 1 ? '¡Ganaste varios premios!' : '¡Felicidades!';
+  }
+
+  function renderDinamica(s){
+    document.getElementById('dnName').textContent = s.nombre || 'Dinámica';
+    document.getElementById('dnInstr').textContent = s.instruccion || '';
+    const c = document.getElementById('dnCrono');
+    c.textContent = Number(s.transcurrido || 0).toFixed(2);
+    c.classList.toggle('parado', !s.corriendo);
+    // El objetivo se dice ANTES de jugar: una dinamica donde el cliente no
+    // sabe a que apunta no es un juego, es un sorteo con cronometro.
+    document.getElementById('dnMeta').textContent =
+      s.objetivo != null ? ('Objetivo: ' + Number(s.objetivo).toFixed(2) + ' s'
+        + (s.margen ? ' (± ' + Number(s.margen).toFixed(2) + ')' : '')) : '';
+  }
+
+  function renderResultado(s){
+    const big = document.getElementById('drBig');
+    big.textContent = s.gano ? '¡Ganaste!' : 'Casi';
+    big.classList.toggle('ok', !!s.gano);
+    document.getElementById('drMsg').textContent = s.mensaje || '';
+    document.getElementById('drPremio').textContent = s.premio || '';
+    const code = document.getElementById('drCode');
+    if (s.codigo) { code.style.display = 'block'; code.textContent = s.codigo; }
+    else { code.style.display = 'none'; }
+  }
+
   function goIdle(){ show('idle'); }
 
   // Recibe estado del punto de venta
@@ -245,6 +362,24 @@
     } else if (s.mode === 'message') {
       document.getElementById('idleBiz').textContent = s.text || bizName;
       show('idle');
+    } else if (s.mode === 'premios') {
+      // Sustituye al "gracias" y dura mas: es lo que el cliente tiene que
+      // leer y, si trae codigo, apuntar antes de irse.
+      if (checkoutTimer) clearTimeout(checkoutTimer);
+      renderPremios(s);
+      show('premios');
+      checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
+    } else if (s.mode === 'dinamica') {
+      // Sin temporizador a proposito: mientras se juega, la pantalla no se
+      // va sola. La cierra el resultado, que siempre llega.
+      if (checkoutTimer) { clearTimeout(checkoutTimer); checkoutTimer = null; }
+      renderDinamica(s);
+      show('dinamica');
+    } else if (s.mode === 'dinamica-resultado') {
+      if (checkoutTimer) clearTimeout(checkoutTimer);
+      renderResultado(s);
+      show('dinres');
+      checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
     } else if (s.mode === 'idle') {
       if (checkoutTimer) return; // no interrumpir el "gracias"
       goIdle();

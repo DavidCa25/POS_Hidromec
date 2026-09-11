@@ -10,8 +10,10 @@ import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.compo
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
-  Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService, ShiftService, SoldLine,
+  LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
+  ShiftService, SoldLine,
 } from '../../core';
+import { PremiosVenta } from '../../loyalty/premios-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
@@ -53,7 +55,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -546,8 +548,19 @@ export class Venta implements OnInit, OnDestroy {
     await this.refreshFolioFromDb();
   }
 
+  /**
+   * Lo que la ultima venta gano, si Fidelizacion esta encendida.
+   *
+   * Vive aqui y no dentro del modal posventa porque tambien hay que
+   * ensenarlo tras un cobro con terminal, que no pasa por ese modal.
+   */
+  premiosUltimaVenta: LoyaltyAward[] = [];
+
+  cerrarPremios() { this.premiosUltimaVenta = []; }
+
   /** Estado posventa comun a efectivo/tarjeta/credito/terminal. */
-  private afterSale(saleId: number | null, res: { total?: number; paid?: number; change?: number; lines?: SoldLine[]; customer?: CartCustomer | null }, isCredito: boolean) {
+  private afterSale(saleId: number | null, res: { total?: number; paid?: number; change?: number; lines?: SoldLine[]; customer?: CartCustomer | null; premios?: LoyaltyAward[] }, isCredito: boolean) {
+    this.premiosUltimaVenta = res.premios ?? [];
     this.lastSaleId = saleId;
     this.lastSaleIsCredito = isCredito;
     this.lastSaleTotal = res.total ?? 0;

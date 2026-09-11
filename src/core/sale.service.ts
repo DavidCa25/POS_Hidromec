@@ -5,7 +5,8 @@ import { Cart, CartService } from './cart.service';
 import { CatalogService } from './catalog.service';
 import { CustomerDisplayService } from './customer-display.service';
 import { ElectronBridge } from './electron-bridge.service';
-import { CheckoutResult, Payment, SaleIntent, SoldLine } from './models';
+import { CheckoutResult, LoyaltyAward, Payment, SaleIntent, SoldLine } from './models';
+import { LoyaltyService } from './loyalty.service';
 import { ShiftService } from './shift.service';
 
 export interface CheckoutOptions {
@@ -36,6 +37,7 @@ export class SaleService {
   private readonly catalog = inject(CatalogService);
   private readonly display = inject(CustomerDisplayService);
   private readonly shift = inject(ShiftService);
+  private readonly loyalty = inject(LoyaltyService);
 
   /** Evita el doble envio: una venta en vuelo bloquea la siguiente. */
   private inflight = false;
@@ -152,10 +154,22 @@ export class SaleService {
         } catch { /* la impresion nunca deshace una venta ya registrada */ }
       }
 
+      // Fidelizacion: que gano esta venta.
+      //
+      // Aqui y no en cada experiencia. Retail y Touch pasan los dos por este
+      // metodo, asi que poner la llamada en cada uno habria sido escribir dos
+      // veces la misma regla para que una de las dos se quedara atras.
+      //
+      // Va DESPUES del COMMIT y no puede tumbar nada: el procedure es
+      // idempotente por venta y el servicio devuelve lista vacia si falla. La
+      // venta ya esta cobrada; un premio que no se reparte se puede arreglar
+      // despues, un cobro que se cae no.
+      const premios = await this.evaluarFidelizacion(saleId);
+
       this.cart.completeActive();
       this.catalog.invalidate();
 
-      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer };
+      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Ocurrió un error inesperado.' };
     } finally {
@@ -201,6 +215,23 @@ export class SaleService {
   }
 
   // --------------------------------------------------------- posventa
+
+  /**
+   * Los premios de una venta, o ninguno.
+   *
+   * Nunca lanza: se llama con la venta ya cobrada y el cliente delante. Si
+   * Fidelizacion esta apagada, el IPC no existe o SQL falla, la venta sigue
+   * siendo una venta correcta y la pantalla no ensena nada.
+   */
+  private async evaluarFidelizacion(saleId: number | null): Promise<LoyaltyAward[]> {
+    if (!saleId || !this.loyalty.disponible) return [];
+    try {
+      return (await this.loyalty.premiosDeVenta(saleId)) as LoyaltyAward[];
+    } catch (e) {
+      console.warn('[VENTA] fidelizacion:', e);
+      return [];
+    }
+  }
 
   async printTicket(saleId: number, opts: { pagado?: number | null; cambio?: number | null; silent?: boolean; printerName?: string | null; paymentMethod?: string | null }): Promise<{ success: boolean; error?: string }> {
     const api = this.bridge.api;

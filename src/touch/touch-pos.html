@@ -431,4 +431,11 @@
     {{ a.texto }}
   </div>
 
+
+  <!-- Lo que la venta acaba de ganar. Va encima de todo. -->
+  <app-premios-venta
+    [premios]="premiosUltimaVenta()"
+    [saleId]="ultimoFolio()"
+    (cerrado)="cerrarPremios()"></app-premios-venta>
+
 </div>

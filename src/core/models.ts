@@ -166,6 +166,25 @@ export interface CheckoutResult {
   /** Copia de las lineas vendidas (para facturar despues de limpiar). */
   lines?: SoldLine[];
   customer?: CartCustomer | null;
+  /**
+   * Lo que esta venta gano, si Fidelizacion esta encendida.
+   *
+   * Siempre definido cuando la venta salio bien, aunque sea vacio: quien lo
+   * lea no tiene que distinguir "no gano nada" de "no se pudo preguntar",
+   * porque en las dos situaciones no hay nada que ensenar.
+   */
+  premios?: LoyaltyAward[];
+}
+
+/** Un premio concreto de una venta, tal y como lo devolvio SQL. */
+export interface LoyaltyAward {
+  tipo: 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
+  codigo: string | null;
+  nombre: string | null;
+  numero: number | null;
+  /** Solo en DYNAMIC: identifica el intento que queda por jugar. */
+  token: string | null;
+  detalle: string | null;
 }
 
 export interface SoldLine {
@@ -229,4 +248,37 @@ export type CustomerDisplayState =
       method: PaymentMethod;
       credito: boolean;
     }
-  | { mode: 'message'; text: string };
+  | { mode: 'message'; text: string }
+  /*
+   * Fidelizacion en la pantalla del cliente.
+   *
+   * Se anaden modos nuevos en vez de reescribir los que ya hay: 'sale' y
+   * 'checkout' llevan meses funcionando en cajas reales y renombrarlos para
+   * que la lista quede simetrica habria roto lo que ya sirve a cambio de
+   * nada.
+   */
+  | {
+      /** Lo que acaba de ganar esta venta. */
+      mode: 'premios';
+      items: { tipo: string; nombre: string | null; codigo: string | null; numero: number | null }[];
+      negocio?: string | null;
+    }
+  | {
+      /** Dinamica en curso: el cliente ve el cronometro que va a parar. */
+      mode: 'dinamica';
+      nombre: string;
+      instruccion: string | null;
+      objetivo: number | null;
+      margen: number | null;
+      /** Segundos transcurridos, empujados mientras corre. */
+      transcurrido: number;
+      corriendo: boolean;
+    }
+  | {
+      /** Como acabo la dinamica. Lo decidio SQL, aqui solo se ensena. */
+      mode: 'dinamica-resultado';
+      gano: boolean;
+      mensaje: string;
+      premio: string | null;
+      codigo: string | null;
+    };

@@ -60,6 +60,36 @@ export class CustomerDisplayService {
     this.push({ mode: 'message', text }, true);
   }
 
+  // ------------------------------------------------------- Fidelizacion
+  /**
+   * Lo que la venta acaba de ganar.
+   *
+   * Extiende la ventana de "gracias" en lugar de competir con ella: sin esto
+   * el carrito vacio que llega justo despues volveria a idle y el premio
+   * duraria un parpadeo.
+   */
+  showPremios(items: { tipo: string; nombre: string | null; codigo: string | null; numero: number | null }[]): void {
+    if (!items.length) return;
+    this.checkoutHasta = Date.now() + 12000;
+    this.push({ mode: 'premios', items }, true);
+  }
+
+  /**
+   * El cronometro de una dinamica, mientras corre.
+   *
+   * Va sin coalescer y con inmediato=true: es un cronometro, y un frame de
+   * retraso en el numero que el cliente esta mirando se nota.
+   */
+  showDinamica(p: { nombre: string; instruccion: string | null; objetivo: number | null; margen: number | null; transcurrido: number; corriendo: boolean }): void {
+    this.checkoutHasta = Date.now() + 30000;
+    this.push({ mode: 'dinamica', ...p }, true);
+  }
+
+  showResultadoDinamica(p: { gano: boolean; mensaje: string; premio: string | null; codigo: string | null }): void {
+    this.checkoutHasta = Date.now() + 12000;
+    this.push({ mode: 'dinamica-resultado', ...p }, true);
+  }
+
   idle(): void {
     this.push({ mode: 'idle' }, true);
   }
