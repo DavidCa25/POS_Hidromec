@@ -16,7 +16,7 @@ import { Injectable, computed, signal } from '@angular/core';
 export type CampaignOutcome = 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
 export type RewardKind = 'FREE_PRODUCT' | 'AMOUNT' | 'PERCENT';
 export type DynamicType = 'TIMING' | 'WHEEL';
-export type RaffleStatus = 'OPEN' | 'CLOSED' | 'DRAWN';
+export type RaffleStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'DRAWN';
 export type PremioTipo = 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
 
 export interface Campaign {
@@ -102,6 +102,9 @@ export interface RaffleDefinition {
   code_prefix: string | null;
   participaciones: number;
   sorteos: number;
+  /** La foto del cierre: cuantos boletos quedaron dentro, y cuando. */
+  closed_at?: string | null;
+  closed_entries_count?: number | null;
 }
 
 /** Una dinamica que una venta dejo pendiente de jugar. */
@@ -137,6 +140,68 @@ export interface ResultadoDinamica {
   codigo: string | null;
   premio: string | null;
   mensaje: string;
+}
+
+/** Una recompensa o un cupon REALMENTE emitido, no su definicion. */
+export interface LoyaltyInstance {
+  id: number;
+  code: string;
+  definition_id: number;
+  promocion: string;
+  kind: RewardKind;
+  amount: number | null;
+  discount_pct: number | null;
+  product_name: string | null;
+  customer_id: number | null;
+  cliente: string | null;
+  campaign_id: number | null;
+  campana: string | null;
+  sale_id: number | null;
+  register_id: number | null;
+  caja: string | null;
+  machine_id: string | null;
+  issued_at: string;
+  expires_at: string | null;
+  status: string;
+  uses_count: number;
+  uses_allowed: number;
+  /** Lo decide SQL con el reloj del servidor, no la pantalla. */
+  vigente: boolean;
+  situacion: 'VIGENTE' | 'USADO' | 'VENCIDO' | 'ANULADO';
+  ultima_redencion: string | null;
+  venta_redencion: number | null;
+}
+
+/** Lo que respondio SQL sobre un codigo de cupon. */
+export interface CouponCheck {
+  ok: boolean;
+  motivo: 'OK' | 'NO_EXISTE' | 'EXPIRADO' | 'AGOTADO' | 'ANULADO' | 'INACTIVO';
+  /** Valido NO es lo mismo que aplicable: ver `sp_coupon_redeem`. */
+  aplicable: boolean;
+  instance_id: number | null;
+  code: string;
+  nombre: string | null;
+  kind: RewardKind | null;
+  amount: number | null;
+  discount_pct: number | null;
+  product_id: number | null;
+  product_name: string | null;
+  expires_at: string | null;
+  uses_allowed: number | null;
+  uses_count: number | null;
+  cliente: string | null;
+  mensaje: string;
+}
+
+export interface CouponRedeem {
+  ok: boolean;
+  motivo: string;
+  mensaje: string;
+  redemption_id: number | null;
+  instance_id: number | null;
+  uses_count: number | null;
+  uses_allowed: number | null;
+  estado: string | null;
 }
 
 export interface RaffleEntry {
@@ -325,6 +390,84 @@ export class LoyaltyService {
     const r = await this.api?.raffles?.winnerStatus(p);
     if (!r?.success) throw new Error(r?.error || 'No se pudo actualizar al ganador.');
     return (r.data || []) as RaffleWinner[];
+  }
+
+  // --------------------------------------------------------- instancias
+  /**
+   * Lo que Fidelizacion REPARTIO, no lo que tiene definido.
+   *
+   * Es la pregunta que aparece cuando un cliente llega con un codigo en la
+   * mano. Hasta ahora solo se podia responder abriendo SSMS.
+   */
+  async instancias(kindOf: 'REWARD' | 'COUPON', filtros: { estado?: string | null; search?: string | null } = {}): Promise<LoyaltyInstance[]> {
+    const r = await this.api?.loyalty?.instances({
+      kindOf, estado: filtros.estado ?? null, search: filtros.search ?? null,
+    });
+    if (!r?.success) throw new Error(r?.error || 'No se pudieron leer las emisiones.');
+    return (r.data || []).map((x: any) => ({
+      ...x,
+      vigente: !!x.vigente,
+      uses_count: Number(x.uses_count ?? 0),
+      uses_allowed: Number(x.uses_allowed ?? 1),
+      amount: LoyaltyService.num(x.amount),
+      discount_pct: LoyaltyService.num(x.discount_pct),
+    })) as LoyaltyInstance[];
+  }
+
+  // ------------------------------------------------------------- cupones
+  /**
+   * Mirar un codigo sin consumirlo.
+   *
+   * No lanza cuando el cupon no sirve: un papel caducado es el caso normal,
+   * no una averia, y la pantalla tiene que poder decir POR QUE.
+   */
+  async validarCupon(code: string): Promise<CouponCheck> {
+    const r = await this.api?.coupons?.validate({ code });
+    if (!r?.success) {
+      return {
+        ok: false, motivo: 'NO_EXISTE', aplicable: false, instance_id: null,
+        code, nombre: null, kind: null, amount: null, discount_pct: null,
+        product_id: null, product_name: null, expires_at: null,
+        uses_allowed: null, uses_count: null, cliente: null,
+        mensaje: r?.error || 'No se pudo comprobar el cupón.',
+      };
+    }
+    const f = (r.data || [])[0];
+    return { ...f, ok: !!f?.ok, aplicable: !!f?.aplicable } as CouponCheck;
+  }
+
+  /**
+   * Consumir el cupon, con la venta ya cobrada.
+   *
+   * A diferencia de los premios, un fallo aqui SI se ensena: el cliente se
+   * llevo el beneficio y el cupon tiene que quedar gastado. Callarlo dejaria
+   * un cupon de un solo uso disponible para siempre.
+   */
+  async canjearCupon(p: { code: string; saleId: number; registerId?: number | null; amountApplied?: number }): Promise<CouponRedeem> {
+    const r = await this.api?.coupons?.redeem(p);
+    if (!r?.success) {
+      return {
+        ok: false, motivo: 'ERROR', mensaje: r?.error || 'No se pudo canjear el cupón.',
+        redemption_id: null, instance_id: null, uses_count: null, uses_allowed: null, estado: null,
+      };
+    }
+    const f = (r.data || [])[0];
+    return { ...f, ok: !!f?.ok } as CouponRedeem;
+  }
+
+  // --------------------------------------------------------------- rifas
+  /**
+   * Cerrar: deja de admitir boletos y congela cuantos habia.
+   *
+   * Distinto de sortear. Entre los dos pueden pasar semanas y el numero de
+   * participantes no puede moverse, porque es el que se anuncio.
+   */
+  async cerrarRifa(raffleId: number): Promise<RaffleDefinition | null> {
+    const r = await this.api?.raffles?.close({ raffleId });
+    if (!r?.success) throw new Error(r?.error || 'No se pudo cerrar la rifa.');
+    await this.cargar(true);
+    const f = (r.data || [])[0];
+    return f ? LoyaltyService.normRifa(f) : null;
   }
 
   // ------------------------------------------------------------ interior

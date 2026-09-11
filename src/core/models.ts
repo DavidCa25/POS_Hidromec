@@ -174,6 +174,36 @@ export interface CheckoutResult {
    * porque en las dos situaciones no hay nada que ensenar.
    */
   premios?: LoyaltyAward[];
+  /**
+   * Como acabo el canje del cupon, si la venta llevaba uno.
+   *
+   * A diferencia de los premios, esto NO se puede callar: si el canje fallo
+   * -otra caja gasto el cupon primero- el cliente se llevo el beneficio y hay
+   * que decirselo a quien cobra.
+   */
+  cupon?: { ok: boolean; motivo: string; mensaje: string } | null;
+}
+
+/**
+ * El cupon que el cajero aplico a ESTA venta, antes de cobrar.
+ *
+ * Vive en el carrito y no en un servicio suelto porque hay varios carritos a
+ * la vez: el cupon pertenece a la cuenta concreta a la que se aplico, no a la
+ * caja. Aparcar una cuenta y atender otra no puede trasladar el descuento.
+ *
+ * `precioOriginal` guarda lo que valia la linea antes de ponerla a cero: es
+ * lo que permite quitar el cupon y dejar el carrito como estaba.
+ */
+export interface AppliedCoupon {
+  code: string;
+  instanceId: number;
+  nombre: string;
+  kind: 'FREE_PRODUCT' | 'AMOUNT' | 'PERCENT';
+  productId: number | null;
+  productName: string | null;
+  /** Lo que rebajo de verdad. Se registra en la redencion. */
+  amountApplied: number;
+  precioOriginal: number | null;
 }
 
 /** Un premio concreto de una venta, tal y como lo devolvio SQL. */
@@ -277,6 +307,16 @@ export type CustomerDisplayState =
   | {
       /** Como acabo la dinamica. Lo decidio SQL, aqui solo se ensena. */
       mode: 'dinamica-resultado';
+      /**
+       * De donde viene el resultado.
+       *
+       * Hoy solo una dinamica llega aqui, pero el campo es explicito a
+       * proposito: la pantalla reutiliza el mismo diseno para varios origenes
+       * y reutilizar el aspecto no puede costar la semantica. Sin esto,
+       * distinguir un premio de dinamica de uno de rifa obligaria a leer el
+       * texto del mensaje, que es exactamente como se pierde un dato.
+       */
+      origen: 'DYNAMIC' | 'REWARD' | 'RAFFLE';
       gano: boolean;
       mensaje: string;
       premio: string | null;

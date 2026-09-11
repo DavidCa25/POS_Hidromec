@@ -1,0 +1,50 @@
+/* ==========================================================================
+   CUPON EN EL PUNTO DE VENTA
+   Compacto a proposito: vive dentro del panel de cobro, junto al total, y no
+   puede robarle sitio a lo que el cajero mira de verdad.
+   ========================================================================== */
+
+.cup { display: flex; flex-direction: column; gap: 8px; }
+
+/* ------------------------------------------------------------- entrada */
+.cup-form { display: flex; align-items: center; gap: 8px; }
+.cup-form__ic { flex: none; font-size: 18px; color: var(--wx-text-dim); }
+.cup-form .ctl { flex: 1; min-width: 0; }
+
+/* ----------------------------------------------------------- resultado */
+.cup-res {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-sm);
+  /* Desde 0.98 y no desde 0: nada aparece de la nada. */
+  animation: cup-entra var(--wx-dur-state, 160ms) var(--wx-ease-out);
+}
+@keyframes cup-entra { from { opacity: 0; transform: scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .cup-res { animation: none; } }
+
+.cup-res > i { flex: none; font-size: 20px; color: var(--wx-text-muted); }
+.cup-res.ok { background: var(--wx-accent-soft); }
+.cup-res.ok > i { color: var(--wx-accent-text); }
+.cup-res.mal { background: var(--wx-danger-soft); }
+.cup-res.mal > i { color: var(--wx-danger-ink); }
+
+.cup-res__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cup-res__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.cup-res__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.cup-res.mal .cup-res__tx b { color: var(--wx-danger-ink); }
+
+/* -------------------------------------------------------- ya aplicado */
+.cup-puesto {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--wx-accent-soft); border-radius: var(--wx-radius-sm);
+  color: var(--wx-accent-text);
+}
+.cup-puesto > i { flex: none; font-size: 20px; }
+.cup-puesto__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cup-puesto__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.cup-puesto__tx small { opacity: 0.85; font-size: var(--wx-text-xs); }
+.cup-puesto code {
+  padding: 1px 5px; background: var(--wx-surface); border-radius: 4px;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xs);
+}

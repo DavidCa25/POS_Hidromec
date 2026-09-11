@@ -14,6 +14,7 @@ import {
   ShiftService, SoldLine,
 } from '../../core';
 import { PremiosVenta } from '../../loyalty/premios-venta';
+import { CuponVenta } from '../../loyalty/cupon-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
@@ -55,7 +56,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -544,6 +545,7 @@ export class Venta implements OnInit, OnDestroy {
     this.afterSale(res.saleId ?? null, res, isCredito);
     this.showModal = false;
     this.showPostSaleModal = true;
+    await this.avisarCuponFallido(res.cupon);
 
     await this.refreshFolioFromDb();
   }
@@ -557,6 +559,24 @@ export class Venta implements OnInit, OnDestroy {
   premiosUltimaVenta: LoyaltyAward[] = [];
 
   cerrarPremios() { this.premiosUltimaVenta = []; }
+
+  /**
+   * El canje del cupon fallo: hay que decirlo, no tragarselo.
+   *
+   * Pasa cuando otra caja gasto el mismo cupon en el mismo momento. SQL
+   * garantiza que solo una lo consuma, pero no puede deshacer que el cliente
+   * ya se llevo el producto gratis. Quien cobra tiene que enterarse en el
+   * acto, mientras el cliente sigue delante.
+   */
+  private async avisarCuponFallido(cupon?: { ok: boolean; mensaje: string } | null) {
+    if (!cupon || cupon.ok) return;
+    await Swal.fire({
+      icon: 'warning',
+      title: 'El cupón no se pudo canjear',
+      html: `${cupon.mensaje}<br><br>La venta quedó registrada con el descuento aplicado. ` +
+            'Revísalo con el cliente antes de que se vaya.',
+    });
+  }
 
   /** Estado posventa comun a efectivo/tarjeta/credito/terminal. */
   private afterSale(saleId: number | null, res: { total?: number; paid?: number; change?: number; lines?: SoldLine[]; customer?: CartCustomer | null; premios?: LoyaltyAward[] }, isCredito: boolean) {

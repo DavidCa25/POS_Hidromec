@@ -5,7 +5,7 @@ import { Cart, CartService } from './cart.service';
 import { CatalogService } from './catalog.service';
 import { CustomerDisplayService } from './customer-display.service';
 import { ElectronBridge } from './electron-bridge.service';
-import { CheckoutResult, LoyaltyAward, Payment, SaleIntent, SoldLine } from './models';
+import { AppliedCoupon, CheckoutResult, LoyaltyAward, Payment, SaleIntent, SoldLine } from './models';
 import { LoyaltyService } from './loyalty.service';
 import { ShiftService } from './shift.service';
 
@@ -116,6 +116,9 @@ export class SaleService {
       tasaIva: l.tasaIva, options: l.options,
     }));
     const customer = cart.customer;
+    // Se copia ANTES de registrar: `completeActive()` deja el carrito vacio y
+    // con el se iria el cupon que hay que canjear justo despues.
+    const cuponAplicado = cart.coupon ?? null;
 
     this.inflight = true;
     try {
@@ -166,10 +169,17 @@ export class SaleService {
       // despues, un cobro que se cae no.
       const premios = await this.evaluarFidelizacion(saleId);
 
+      // El cupon se CONSUME aqui, con la venta ya confirmada.
+      //
+      // No antes: la redencion apunta a `sale_id`, y ese id no existe hasta
+      // que SQL confirmo. Un cupon gastado por una venta que acabo en
+      // ROLLBACK seria un cupon perdido sin que nadie comprara nada.
+      const cupon = await this.canjearCupon(saleId, cuponAplicado);
+
       this.cart.completeActive();
       this.catalog.invalidate();
 
-      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios };
+      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios, cupon };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Ocurrió un error inesperado.' };
     } finally {
@@ -215,6 +225,29 @@ export class SaleService {
   }
 
   // --------------------------------------------------------- posventa
+
+  /**
+   * Consumir el cupon de esta venta, si llevaba uno.
+   *
+   * Al contrario que los premios, un fallo aqui SI se devuelve: puede pasar
+   * que otra caja gastara el mismo cupon en el mismo segundo. SQL garantiza
+   * que solo uno lo consuma; lo que no puede hacer es adivinar que el cliente
+   * ya se llevo el producto gratis. Eso lo tiene que ver quien cobra.
+   */
+  private async canjearCupon(saleId: number | null, cupon: AppliedCoupon | null): Promise<CheckoutResult['cupon']> {
+    if (!saleId || !cupon) return null;
+    try {
+      const r = await this.loyalty.canjearCupon({
+        code: cupon.code,
+        saleId,
+        registerId: this.register.registerId,
+        amountApplied: cupon.amountApplied,
+      });
+      return { ok: r.ok, motivo: r.motivo, mensaje: r.mensaje };
+    } catch (e: any) {
+      return { ok: false, motivo: 'ERROR', mensaje: e?.message || 'No se pudo canjear el cupón.' };
+    }
+  }
 
   /**
    * Los premios de una venta, o ninguno.
