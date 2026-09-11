@@ -1,0 +1,30 @@
+<button type="button"
+        class="wx-menu__btn"
+        [class.wx-menu__btn--neutral]="variante === 'neutral'"
+        [ngClass]="claseBoton"
+        [attr.popovertarget]="idPanel"
+        [style.anchor-name]="ancla"
+        [disabled]="deshabilitado"
+        [attr.aria-label]="soloIcono ? etiqueta : null"
+        aria-haspopup="menu">
+  <i [class]="icono" aria-hidden="true"></i>
+  <span *ngIf="!soloIcono" class="wx-menu__txt">{{ etiqueta }}</span>
+</button>
+
+<div [id]="idPanel" popover data-anclado
+     class="wx-pop wx-menu__panel"
+     [style.--wx-anchor]="ancla"
+     role="menu">
+  <ul class="wx-pop__list">
+    <li *ngFor="let o of opciones">
+      <button type="button" class="wx-opt" role="menuitem"
+              [disabled]="o.desactivada"
+              (click)="elegirOpcion(o)">
+        <i *ngIf="o.icono" [class]="o.icono" aria-hidden="true"></i>
+        <span class="wx-opt__txt">{{ o.etiqueta }}</span>
+        <span class="wx-opt__nota" *ngIf="o.nota">{{ o.nota }}</span>
+      </button>
+    </li>
+    <li *ngIf="!opciones.length" class="wx-menu__vacio">Sin acciones disponibles.</li>
+  </ul>
+</div>

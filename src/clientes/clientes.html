@@ -61,46 +61,65 @@
       </div>
     </div>
 
+    <div class="ventas-tools" style="margin-bottom:12px;">
+      <wx-tabla-barra [estado]="tabla" [filas]="clientesView"></wx-tabla-barra>
+    </div>
+
     <!-- Tabla -->
     <div class="tabla-wrap">
       <table class="tabla-corte">
         <thead>
           <tr>
-            <th>Cliente</th>
-            <th>Contacto</th>
-            <th class="right">Límite</th>
-            <th class="right">Saldo</th>
-            <th>Estado</th>
-            <th class="right">Acciones</th>
+            <th *ngIf="tabla.esVisible('name')">Cliente</th>
+            <th *ngIf="tabla.esVisible('contacto')">Contacto</th>
+            <th *ngIf="tabla.esVisible('creditLimit')" class="right">Límite</th>
+            <th *ngIf="tabla.esVisible('balance')" class="right">Saldo</th>
+            <th *ngIf="tabla.esVisible('estado')">Estado</th>
+            <th *ngIf="tabla.esVisible('acciones')" class="right">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let c of clientesView">
-            <td class="strong">
+          <ng-container *ngFor="let it of items">
+
+          <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+            <td [attr.colspan]="tabla.visibles.length">
+              <button type="button" class="wx-grupo"
+                      [attr.aria-expanded]="it.abierto"
+                      (click)="tabla.alternarGrupo(it.clave)">
+                <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                <span>{{ it.etiqueta }}</span>
+                <span class="wx-grupo__n">{{ it.total }}</span>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="it.tipo === 'fila' && it.fila as c">
+            <td *ngIf="tabla.esVisible('name')" class="strong">
               {{ c.name }}
               <span *ngIf="!c.active" class="badge badge.tarjeta" style="margin-left:6px;">Inactivo</span>
             </td>
-            <td>
+            <td *ngIf="tabla.esVisible('contacto')">
               <div class="mono">{{ c.phone || '-' }}</div>
               <div class="nota" *ngIf="c.email">{{ c.email }}</div>
             </td>
-            <td class="num mono">$ {{ c.creditLimit | number:'1.2-2' }}</td>
-            <td class="num mono">$ {{ c.balance | number:'1.2-2' }}</td>
-            <td>
+            <td *ngIf="tabla.esVisible('creditLimit')" class="num mono">$ {{ c.creditLimit | number:'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('balance')" class="num mono">$ {{ c.balance | number:'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('estado')">
               <span [ngClass]="badgeEstado(c).cls">{{ badgeEstado(c).text }}</span>
               <span *ngIf="c.overdueCount>0" class="badge badge.tarjeta" style="margin-left:6px;">
                 {{ c.overdueCount }} venc.
               </span>
             </td>
-            <td class="right">
+            <td *ngIf="tabla.esVisible('acciones')" class="right">
               <button class="btn btn-ghost" (click)="abonar(c)">Abonar</button>
               <button class="btn btn-ghost" (click)="editar(c)">Editar</button>
             </td>
           </tr>
+          </ng-container>
         </tbody>
       </table>
 
-      <p class="nota" *ngIf="clientesView.length===0">Sin resultados</p>
+      <p class="nota" *ngIf="items.length===0">Sin resultados</p>
     </div>
   </div>
 

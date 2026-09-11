@@ -46,7 +46,7 @@
           <thead><tr><th></th><th>Código</th><th>Nombre</th><th>Teléfono</th><th>RFC</th><th class="r">Crédito</th><th>Problema</th></tr></thead>
           <tbody>
             <tr *ngFor="let f of cliFilas" [class.err]="!f.valida">
-              <td class="st"><i class="ph" [class.ph-fill ph-check-circle]="f.valida" [class.ok]="f.valida" [class.ph-fill ph-x-circle]="!f.valida" [class.bad]="!f.valida"></i></td>
+              <td class="st"><i class="ph ph-fill" [class.ph-check-circle]="f.valida" [class.ok]="f.valida" [class.ph-x-circle]="!f.valida" [class.bad]="!f.valida"></i></td>
               <td>{{ f.data.code }}</td><td>{{ f.data.name }}</td><td>{{ f.data.phone }}</td><td>{{ f.data.tax_id }}</td>
               <td class="r">{{ f.data.credit_limit }}</td><td class="msg">{{ f.errores.join(' · ') }}</td>
             </tr>
@@ -83,7 +83,7 @@
           <thead><tr><th></th><th>Nombre</th><th>Problema</th></tr></thead>
           <tbody>
             <tr *ngFor="let f of provFilas" [class.err]="!f.valida">
-              <td class="st"><i class="ph" [class.ph-fill ph-check-circle]="f.valida" [class.ok]="f.valida" [class.ph-fill ph-x-circle]="!f.valida" [class.bad]="!f.valida"></i></td>
+              <td class="st"><i class="ph ph-fill" [class.ph-check-circle]="f.valida" [class.ok]="f.valida" [class.ph-x-circle]="!f.valida" [class.bad]="!f.valida"></i></td>
               <td>{{ f.data.name }}</td><td class="msg">{{ f.errores.join(' · ') }}</td>
             </tr>
           </tbody>

@@ -245,7 +245,7 @@
           <button *ngFor="let t of terminals" type="button"
                   class="wz-terminal" [class.sel]="selectedTerminalId===t.id"
                   (click)="seleccionarTerminal(t.id)">
-            <span class="wz-terminal-radio"><i class="ph" [class.ph-fill ph-check-circle]="selectedTerminalId===t.id" [class.ph-circle]="selectedTerminalId!==t.id"></i></span>
+            <span class="wz-terminal-radio"><i class="ph" [class.ph-fill]="selectedTerminalId===t.id" [class.ph-check-circle]="selectedTerminalId===t.id" [class.ph-circle]="selectedTerminalId!==t.id"></i></span>
             <span class="wz-terminal-id">{{ t.id }}</span>
             <span class="wz-terminal-mode" [class.warn]="t.operating_mode!=='PDV'" [class.ok]="t.operating_mode==='PDV'">
               {{ t.operating_mode || 'SIN MODO' }}

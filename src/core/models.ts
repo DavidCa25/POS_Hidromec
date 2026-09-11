@@ -32,6 +32,18 @@ export interface CatalogProduct {
   tasa_iva?: number | null;
   inventory_mode?: InventoryMode;
   sellable?: boolean;
+  /**
+   * Unidades que hay DE VERDAD. Para DIRECT es su stock; para RECIPE, las que
+   * alcanzan sus ingredientes. `products.stock` de una receta es 0 por diseno
+   * y pintarlo como disponibilidad era enganoso.
+   */
+  available_units?: number;
+  base_uom?: string;
+  /** Que ingrediente limita una receta, y cuanto pide por unidad. */
+  limita_nombre?: string | null;
+  limita_stock?: number | null;
+  limita_uom?: string | null;
+  limita_necesita?: number | null;
   allow_decimal_qty?: boolean;
   has_modifiers?: boolean;
   thumb?: string | null;

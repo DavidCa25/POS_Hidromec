@@ -13,19 +13,10 @@
         <i class="ph ph-download-simple"></i> Descargar PDFs
       </button>
 
-      <div style="position:relative;">
-        <button type="button" class="castrol-btn-color" (click)="expExportOpen = !expExportOpen">
-          <i class="ph ph-file-xls"></i> Exportar lista
-        </button>
-        <div *ngIf="expExportOpen" class="wx-pop wx-menu-exportar" role="menu">
-          <button class="wx-opt" role="menuitem" (click)="exportarVentas('pdf'); expExportOpen = false">
-            <i class="ph ph-file-pdf" aria-hidden="true"></i><span>PDF</span>
-          </button>
-          <button class="wx-opt" role="menuitem" (click)="exportarVentas('excel'); expExportOpen = false">
-            <i class="ph ph-file-xls" aria-hidden="true"></i><span>Excel</span>
-          </button>
-        </div>
-      </div>
+      <wx-menu etiqueta="Exportar lista"
+               icono="ph ph-file-xls"
+               [opciones]="opcionesExportar"
+               (elegir)="exportarVentas($any($event))"></wx-menu>
 
       <button type="button" class="castrol-btn-add" (click)="loadSales()">
         <i class="ph ph-arrow-clockwise"></i> Recargar
@@ -60,6 +51,8 @@
           </button>
         </div>
 
+        <wx-tabla-barra [estado]="tabla" [filas]="filteredSales"></wx-tabla-barra>
+
         <div class="ventas-meta">
           <span class="range">{{ pageFrom }}–{{ pageTo }} de {{ totalItems }}</span>
 
@@ -79,42 +72,60 @@
       <table class="castrol-table align-middle">
         <thead>
           <tr>
-            <th style="width:90px;">Ticket</th>
-            <th style="min-width:220px;">Fecha</th>
-            <th style="min-width:160px;">Cajero</th>
-            <th style="width:150px;">Método</th>
-            <th style="width:130px;">Total</th>
-            <th style="width:130px;">Pagado</th>
-            <th style="width:130px;">Cambio</th>
-            <th style="min-width:180px;">Cliente</th>
-            <th style="width:130px;">Vence</th>
-            <th style="width:140px;">Acciones</th>
+            <th *ngIf="tabla.esVisible('id')" style="width:90px;">Ticket</th>
+            <th *ngIf="tabla.esVisible('datee')" style="min-width:220px;">Fecha</th>
+            <th *ngIf="tabla.esVisible('dia')" style="min-width:150px;">Día</th>
+            <th *ngIf="tabla.esVisible('user_name')" style="min-width:160px;">Cajero</th>
+            <th *ngIf="tabla.esVisible('payment_method')" style="width:150px;">Método</th>
+            <th *ngIf="tabla.esVisible('total')" style="width:130px;">Total</th>
+            <th *ngIf="tabla.esVisible('paid_amount')" style="width:130px;">Pagado</th>
+            <th *ngIf="tabla.esVisible('cambio')" style="width:130px;">Cambio</th>
+            <th *ngIf="tabla.esVisible('customer_name')" style="min-width:180px;">Cliente</th>
+            <th *ngIf="tabla.esVisible('due_date')" style="width:130px;">Vence</th>
+            <th *ngIf="tabla.esVisible('acciones')" style="width:140px;">Acciones</th>
           </tr>
         </thead>
 
         <tbody>
           <!-- OJO: aquí usamos pagedSales, NO sales -->
-          <tr *ngFor="let s of pagedSales; trackBy: trackBySaleId">
-            <td class="fw-semibold">#{{ s.id }}</td>
-            <td>{{ s.datee | date:'medium':'':'es-MX' }}</td>
-            <td>{{ s.user_name || '—' }}</td>
-            <td class="fw-semibold">{{ s.payment_method || '—' }}</td>
-            <td class="fw-semibold">{{ s.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td>{{ s.paid_amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td>{{ calcCambio(s) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
-            <td>{{ s.customer_name || '—' }}</td>
-            <td>{{ s.due_date ? (s.due_date | date:'shortDate':'':'es-MX') : '—' }}</td>
+          <ng-container *ngFor="let it of pagedSales">
 
-            <td>
+          <!-- Cabecera de grupo, plegable, dentro de la misma lista paginada. -->
+          <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+            <td [attr.colspan]="tabla.visibles.length">
+              <button type="button" class="wx-grupo"
+                      [attr.aria-expanded]="it.abierto"
+                      (click)="tabla.alternarGrupo(it.clave)">
+                <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                <span>{{ it.etiqueta }}</span>
+                <span class="wx-grupo__n">{{ it.total }}</span>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="it.tipo === 'fila' && it.fila as s">
+            <td *ngIf="tabla.esVisible('id')" class="fw-semibold">#{{ s.id }}</td>
+            <td *ngIf="tabla.esVisible('datee')">{{ s.datee | date:'medium':'':'es-MX' }}</td>
+            <td *ngIf="tabla.esVisible('dia')">{{ s.datee | date:'mediumDate':'':'es-MX' }}</td>
+            <td *ngIf="tabla.esVisible('user_name')">{{ s.user_name || '—' }}</td>
+            <td *ngIf="tabla.esVisible('payment_method')" class="fw-semibold">{{ s.payment_method || '—' }}</td>
+            <td *ngIf="tabla.esVisible('total')" class="fw-semibold">{{ s.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('paid_amount')">{{ s.paid_amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('cambio')">{{ calcCambio(s) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('customer_name')">{{ s.customer_name || '—' }}</td>
+            <td *ngIf="tabla.esVisible('due_date')">{{ s.due_date ? (s.due_date | date:'shortDate':'':'es-MX') : '—' }}</td>
+
+            <td *ngIf="tabla.esVisible('acciones')">
               <button type="button" class="wx-rowbtn" (click)="verPdfVenta(s.id)"
                       [attr.aria-label]="'Ver PDF del ticket ' + s.id">
                 <i class="ph ph-file-pdf" aria-hidden="true"></i> PDF
               </button>
             </td>
           </tr>
+          </ng-container>
 
           <tr *ngIf="!loading && pagedSales.length === 0">
-            <td colspan="10" class="text-center text-muted py-4">
+            <td [attr.colspan]="tabla.visibles.length" class="text-center text-muted py-4">
               No hay ventas para mostrar.
             </td>
           </tr>
