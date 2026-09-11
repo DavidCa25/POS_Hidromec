@@ -353,6 +353,7 @@
     (s.items || []).forEach(function(it){
       const div = document.createElement('div');
       div.className = 'item';
+      div.dataset.origen = it.tipo || '';
       // El codigo es lo unico que el cliente necesita apuntar: va en su
       // propia linea, no escondido dentro de la descripcion.
       const codigo = it.codigo ? it.codigo
@@ -385,6 +386,9 @@
 
   function renderResultado(s){
     const big = document.getElementById('drBig');
+    // El origen queda en el DOM: quien mire esta pantalla -o una captura de
+    // ella- puede saber de donde salio el premio sin interpretar el texto.
+    document.getElementById('dinres').dataset.origen = s.origen || 'DYNAMIC';
     big.textContent = s.gano ? '¡Ganaste!' : 'Casi';
     big.classList.toggle('ok', !!s.gano);
     document.getElementById('drMsg').textContent = s.mensaje || '';

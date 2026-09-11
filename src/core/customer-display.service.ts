@@ -87,7 +87,8 @@ export class CustomerDisplayService {
 
   showResultadoDinamica(p: { gano: boolean; mensaje: string; premio: string | null; codigo: string | null }): void {
     this.checkoutHasta = Date.now() + 12000;
-    this.push({ mode: 'dinamica-resultado', ...p }, true);
+    // `origen` explicito: reutilizar el diseno no puede costar el dato.
+    this.push({ mode: 'dinamica-resultado', origen: 'DYNAMIC', ...p }, true);
   }
 
   idle(): void {
