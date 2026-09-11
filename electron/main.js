@@ -718,12 +718,28 @@ ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCust
 ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
 ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
 ipcMain.handle('customer-display:status', async () => ({ open: !!(customerWindow && !customerWindow.isDestroyed()) }));
+/**
+ * La identidad del NEGOCIO para la pantalla de cliente.
+ *
+ * Devuelve nombre, logo y mensaje. El logo es el MISMO archivo que encabeza
+ * el ticket (`ticketLogoUrl`), no uno aparte: son la misma marca y pedirle al
+ * negocio que la suba dos veces garantiza que un dia no coincidan.
+ *
+ * La pantalla que ve el cliente es el escaparate del comercio, no el nuestro.
+ * Antes mostraba el isotipo de Wybix como identidad principal, que es
+ * exactamente el error que ya se corrigio en el ticket cuando imprimia la
+ * marca de otro cliente.
+ */
 ipcMain.handle('customer:get-business', async () => {
   try {
     const cfg = await ensureBusinessConfig();
-    return { name: cfg?.business_name || cfg?.businessName || '' };
+    return {
+      name: cfg?.business_name || cfg?.businessName || '',
+      logoUrl: ticketLogoUrl(),
+      mensaje: cfg?.ticket_footer || '',
+    };
   } catch {
-    return { name: '' };
+    return { name: '', logoUrl: null, mensaje: '' };
   }
 });
 

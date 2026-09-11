@@ -24,12 +24,6 @@
 
   /* ===== ESPERA ===== */
   #idle{flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:2.2vh;}
-  /* Isotipo oficial de Wybix sobre placa clara: el mismo asset del sistema. */
-  #idle .logo{
-    width:120px;height:120px;border-radius:28px;display:block;
-    object-fit:contain; background:#fff; padding:16px;
-    box-shadow:0 20px 60px rgba(9,16,24,.35);
-  }
   #idle .biz{font-size:4.2vw; font-weight:800; letter-spacing:-.5px; line-height:1.05;}
   #idle .welcome{font-size:1.9vw; color:var(--brand2); font-weight:600;}
   #idle .clock{font-size:1.5vw; color:var(--muted); font-variant-numeric:tabular-nums;}
@@ -87,6 +81,26 @@
   }
   #checkout .thanks-sub{font-size:1.2vw; color:var(--muted);}
 
+  /* ===== IDENTIDAD DEL NEGOCIO =====
+     La pantalla que mira el cliente es el escaparate del COMERCIO. Si el
+     negocio subio su logo, manda ese; si no, un monograma neutro con su
+     inicial. En ningun caso la marca del POS ocupa ese sitio. */
+  #idle .marca{
+    width:120px;height:120px;border-radius:28px;display:grid;place-items:center;
+    background:#fff; box-shadow:0 20px 60px rgba(9,16,24,.35); overflow:hidden;
+  }
+  #idle .marca img{width:100%;height:100%;object-fit:contain;padding:16px;}
+  /* Monograma: el fallback cuando no hay logo. Neutro, no prestado. */
+  #idle .marca .inicial{
+    font-size:58px;font-weight:800;color:var(--brand);letter-spacing:-.02em;line-height:1;
+  }
+  /* Discreto y al pie: quien fabrica el POS, no quien vende. */
+  .porwybix{
+    position:fixed;right:2vw;bottom:1.6vh;
+    font-size:.85vw;color:var(--muted);opacity:.5;letter-spacing:.04em;
+  }
+  .bizmsg{font-size:1.25vw;color:var(--muted);max-width:60vw;}
+
   /* ===== FIDELIZACION ===== */
   /* Tres pantallas mas, con el mismo lenguaje que las tres que ya habia:
      una cifra grande, una linea que la explica, y nada mas que leer. */
@@ -129,12 +143,23 @@
 
   <!-- ESPERA -->
   <section class="screen on" id="idle">
-    <img class="logo" id="idleInitial" src="../assets/wybie_logo.png" alt="Wybix" />
+    <!--
+      La identidad la pone el NEGOCIO, no el POS. `marca` contiene el logo del
+      comercio si lo subio, y si no su inicial. El isotipo de Wybix ya no vive
+      aqui: sustituirle la marca al comercio en su propio mostrador es el
+      mismo error que imprimir la marca de otro cliente en el ticket.
+    -->
+    <div class="marca" id="idleMarca">
+      <span class="inicial" id="idleInicial"></span>
+    </div>
     <div class="biz" id="idleBiz">Bienvenido</div>
     <div class="welcome">Con gusto te atendemos</div>
+    <div class="bizmsg" id="idleMensaje"></div>
     <div class="clock" id="idleClock"></div>
     <div class="waiting"><span class="dot"></span> Esperando la siguiente compra</div>
   </section>
+
+  <div class="porwybix">Powered by Wybix</div>
 
   <!-- VENTA -->
   <section class="screen" id="sale">
@@ -217,17 +242,42 @@
   }
   setInterval(tick, 1000); tick();
 
-  // Nombre del negocio
+  /**
+   * Identidad del negocio: nombre, logo y mensaje.
+   *
+   * Si hay logo, se pinta. Si no, la inicial del negocio sobre placa clara.
+   * Nunca el isotipo del POS: la anterior version ponia `wybie_logo.png` fijo
+   * y ademas escribia la inicial con `.textContent` sobre un `<img>`, que no
+   * renderiza nada; el negocio jamas vio su identidad, viera lo que viera.
+   */
   async function loadBusiness(){
     try {
       const b = await api.getBusiness();
-      bizName = (b && b.name) ? b.name : '';
+      bizName = (b && b.name) ? String(b.name).trim() : '';
+      const marca = document.getElementById('idleMarca');
+      const inicial = document.getElementById('idleInicial');
+
       if (bizName) {
         document.getElementById('idleBiz').textContent = bizName;
         document.getElementById('saleBiz').textContent = bizName;
-        document.getElementById('idleInitial').textContent = bizName.trim().charAt(0).toUpperCase() || 'W';
       }
-    } catch { /* noop */ }
+      // El mensaje del negocio (pie del ticket) cuando lo tenga configurado.
+      const msg = document.getElementById('idleMensaje');
+      if (msg) msg.textContent = (b && b.mensaje) ? String(b.mensaje) : '';
+
+      if (b && b.logoUrl) {
+        const img = document.createElement('img');
+        img.alt = bizName || 'Logo del negocio';
+        // Si el archivo esta corrupto o desaparecio, se cae al monograma en
+        // vez de dejar el icono de imagen rota delante del cliente.
+        img.onerror = function(){ marca.innerHTML = ''; marca.appendChild(inicial); };
+        img.src = b.logoUrl;
+        marca.innerHTML = '';
+        marca.appendChild(img);
+      } else {
+        inicial.textContent = bizName ? bizName.charAt(0).toUpperCase() : '';
+      }
+    } catch { /* sin datos: queda el monograma vacio, nunca marca ajena */ }
   }
   loadBusiness();
 
