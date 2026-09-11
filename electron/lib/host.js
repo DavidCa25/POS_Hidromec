@@ -9,6 +9,7 @@
 // que la regla se pueda probar sola y para que importarla no abra conexiones.
 
 const os = require('os');
+const { hostDe } = require('./servidor-sql');
 
 /**
  * El servidor configurado, esta en esta misma maquina?
@@ -16,13 +17,27 @@ const os = require('os');
  * Acepta las formas con las que la gente escribe un servidor local
  * (localhost, ".", "(local)", 127.0.0.1, el nombre del equipo) y descarta
  * la instancia y el puerto antes de comparar.
+ *
+ * El troceo lo hace `servidor-sql.js`. Antes estaba aqui -otro
+ * `split('\\')[0].split(',')[0]`, el tercero del proyecto- y tener la misma
+ * gramatica escrita en tres sitios es como se llego a que el asistente
+ * generara `192.168.100.211\SQLEXPRESS\SQLEXPRESS` sin que nada protestara.
+ *
+ * `hostDe` devuelve cadena vacia si la cadena no es valida, y una cadena
+ * vacia nunca esta en la lista: un servidor mal escrito no se da por local.
  */
 function servidorEsLocal(server) {
-  const s = String(server ?? '').trim().toLowerCase();
-  if (!s) return false;
-  const equipo = s.split('\\')[0].split(',')[0].trim();
+  // `.` y `(local)` son formas legitimas de nombrar el equipo local, pero no
+  // son nombres de host: el analizador las rechaza, asi que se atienden antes.
+  const bruto = String(server ?? '').trim().toLowerCase();
+  if (!bruto) return false;
+  const sinAdorno = bruto.split('\\')[0].split(',')[0].trim();
+  if (sinAdorno === '.' || sinAdorno === '(local)' || sinAdorno === '(localdb)') return true;
+
+  const equipo = hostDe(server).toLowerCase();
+  if (!equipo) return false;
   const propios = new Set([
-    'localhost', '127.0.0.1', '::1', '.', '(local)', '(localdb)',
+    'localhost', '127.0.0.1', '::1',
     String(os.hostname() || '').toLowerCase()
   ]);
   return propios.has(equipo);

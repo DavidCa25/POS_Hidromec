@@ -23,5 +23,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('setupAPI', {
   runSetup: (options) => ipcRenderer.invoke('setup-run', options),
-  activateLicense: (key) => ipcRenderer.invoke('license:activate', key) 
+  // Con que cadena se va a conectar Wybix, segun lo que se lleve escrito. La
+  // regla vive en el proceso principal: la pantalla la consulta, no la copia.
+  normalizarServidor: (texto) => ipcRenderer.invoke('setup-normalizar-servidor', texto),
+  activateLicense: (key) => ipcRenderer.invoke('license:activate', key)
 });
