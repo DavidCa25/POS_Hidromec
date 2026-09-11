@@ -202,3 +202,34 @@
   background: var(--wx-green-soft, var(--wx-accent-soft));
   color: var(--wx-accent-text);
 }
+
+/* ------------------------------------------- acciones de cabecera */
+.loy-acciones-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Definiciones / Emitidas: dos preguntas sobre lo mismo. */
+.loy-switch {
+  display: inline-flex; gap: 3px; padding: 3px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-sm);
+}
+.loy-switch button {
+  min-height: var(--wx-control-h-sm); padding: 0 14px;
+  background: transparent; border: 0; border-radius: calc(var(--wx-radius-sm) - 2px);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font); font-size: var(--wx-text-sm); font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.loy-switch button:hover { color: var(--wx-text); }
+.loy-switch button:active { transform: scale(0.97); }
+.loy-switch button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+
+.loy-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.loy-filtros .ctl { max-width: 280px; }
+
+/* Aviso dentro de un formulario: se ve antes de guardar, no despues. */
+.loy-nota--ojo {
+  background: var(--wx-warning-soft);
+  color: var(--wx-warning-ink);
+}
+.loy-nota--ojo i { color: var(--wx-warning-ink); }

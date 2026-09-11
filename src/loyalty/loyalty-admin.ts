@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import {
   CapabilityService, CatalogService, CouponDefinition, DynamicDefinition,
-  LoyaltyService, RaffleDefinition, RaffleEntry, RaffleWinner, RewardDefinition,
+  LoyaltyInstance, LoyaltyService, RaffleDefinition, RaffleEntry, RaffleWinner,
+  RewardDefinition,
 } from '../core';
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
 
@@ -86,7 +87,7 @@ interface DraftRifa {
   endsAt: string;
   winnersCount: number;
   codePrefix: string;
-  status: 'OPEN' | 'CLOSED' | 'DRAWN' | '';
+  status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'DRAWN' | '';
 }
 
 @Component({
@@ -104,6 +105,20 @@ export class LoyaltyAdmin implements OnInit {
 
   seccion = signal<Seccion>('resumen');
   guardando = signal(false);
+
+  /**
+   * Definiciones o emisiones.
+   *
+   * Son dos preguntas distintas sobre lo mismo: "que promociones tengo" y
+   * "que se ha repartido". La segunda es la que aparece cuando un cliente
+   * llega con un codigo en la mano, y hasta ahora solo se podia responder
+   * abriendo SSMS.
+   */
+  vista = signal<'definiciones' | 'emitidas'>('definiciones');
+  instancias = signal<LoyaltyInstance[]>([]);
+  cargandoInstancias = signal(false);
+  filtroEstado = signal<string>('');
+  filtroTexto = '';
 
   /** Nombres visibles de las secciones, para la navegacion interna. */
   readonly secciones: { id: Seccion; label: string; icono: string }[] = [
@@ -179,6 +194,8 @@ export class LoyaltyAdmin implements OnInit {
 
   ir(s: Seccion): void {
     this.seccion.set(s);
+    this.vista.set('definiciones');
+    this.instancias.set([]);
     this.cerrarFormularios();
   }
 
@@ -388,7 +405,10 @@ export class LoyaltyAdmin implements OnInit {
   nuevaRifa(): void {
     this.rifa.set({
       id: null, name: '', description: '', prize: '',
-      startsAt: '', endsAt: '', winnersCount: 1, codePrefix: 'RIF', status: 'OPEN',
+      // Nace en BORRADOR: se configura, y activarla es una decision aparte.
+      // Una rifa que empieza repartiendo boletos en cuanto la guardas no deja
+      // margen para revisar el premio o las fechas.
+      startsAt: '', endsAt: '', winnersCount: 1, codePrefix: 'RIF', status: 'DRAFT',
     });
   }
 
@@ -424,6 +444,87 @@ export class LoyaltyAdmin implements OnInit {
     }
   }
 
+  /** Activar: de borrador a admitir boletos. */
+  async activarRifa(r: RaffleDefinition): Promise<void> {
+    this.guardando.set(true);
+    try {
+      await this.loyalty.guardarRifa({
+        id: r.id, name: r.name, description: r.description, prize: r.prize,
+        startsAt: r.starts_at, endsAt: r.ends_at, winnersCount: r.winners_count,
+        codePrefix: r.code_prefix, status: 'OPEN',
+      });
+      await this.exito('Rifa activada');
+      if (this.rifaSel()) await this.abrirRifa(r);
+    } catch (e: any) {
+      await this.avisar('No se pudo activar', e?.message || 'Error.');
+    } finally {
+      this.guardando.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  /**
+   * Cerrar: deja de admitir boletos y congela cuantos habia.
+   *
+   * Se pregunta y se dice el numero, porque ese numero es el que se anuncia y
+   * ya no cambia. No se puede reabrir.
+   */
+  async cerrarRifa(r: RaffleDefinition): Promise<void> {
+    const conf = await Swal.fire({
+      icon: 'warning',
+      title: `¿Cerrar ${r.name}?`,
+      html: `Participan <b>${r.participaciones}</b> boletos.<br><br>` +
+            'Al cerrar dejará de repartir boletos y ese número queda congelado: ' +
+            'es el que se sorteará, aunque el sorteo sea dentro de una semana.<br><br>' +
+            '<b>Una rifa cerrada no se puede reabrir.</b>',
+      showCancelButton: true,
+      confirmButtonText: 'Cerrar la rifa',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!conf.isConfirmed) return;
+
+    this.guardando.set(true);
+    try {
+      const cerrada = await this.loyalty.cerrarRifa(r.id);
+      await Swal.fire({
+        icon: 'success',
+        title: 'Rifa cerrada',
+        text: `Quedaron ${cerrada?.closed_entries_count ?? r.participaciones} boletos participando.`,
+      });
+      if (this.rifaSel()) await this.abrirRifa(r);
+    } catch (e: any) {
+      await this.avisar('No se pudo cerrar', e?.message || 'Error.');
+    } finally {
+      this.guardando.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  // ---------------------------------------------------------- instancias
+  /** Lo repartido de verdad: recompensas o cupones emitidos. */
+  async cargarInstancias(): Promise<void> {
+    const tipo = this.seccion() === 'cupones' ? 'COUPON' : 'REWARD';
+    this.cargandoInstancias.set(true);
+    try {
+      this.instancias.set(await this.loyalty.instancias(tipo, {
+        estado: this.filtroEstado() || null,
+        search: this.filtroTexto.trim() || null,
+      }));
+    } catch (e: any) {
+      this.instancias.set([]);
+      await this.avisar('No se pudo leer', e?.message || 'Error.');
+    } finally {
+      this.cargandoInstancias.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  async verVista(v: 'definiciones' | 'emitidas'): Promise<void> {
+    this.vista.set(v);
+    this.premio.set(null);
+    if (v === 'emitidas') await this.cargarInstancias();
+  }
+
   async abrirRifa(r: RaffleDefinition): Promise<void> {
     this.rifaSel.set(r);
     this.cargandoDetalle.set(true);
@@ -443,7 +544,8 @@ export class LoyaltyAdmin implements OnInit {
     }
   }
 
-  cerrarRifa(): void {
+  /** Volver al listado. Cierra la VISTA, no la rifa. */
+  volverALista(): void {
     this.rifaSel.set(null);
     this.participaciones.set([]);
     this.ganadores.set([]);
@@ -462,10 +564,13 @@ export class LoyaltyAdmin implements OnInit {
     const conf = await Swal.fire({
       icon: 'warning',
       title: `¿Sortear ${r.name}?`,
-      html: `Participan <b>${r.participaciones}</b> boletos y se elegirán <b>${r.winners_count}</b> ` +
+      // El universo ya se congelo al CERRAR: se repite ese numero para que
+      // quien pulsa vea exactamente sobre cuantos boletos se va a sortear.
+      html: `Se sorteará sobre los <b>${r.closed_entries_count ?? r.participaciones}</b> boletos ` +
+            `congelados al cerrar, y se elegirán <b>${r.winners_count}</b> ` +
             `${r.winners_count === 1 ? 'ganador' : 'ganadores'}.<br><br>` +
-            'El sorteo <b>no se puede deshacer</b>: los boletos quedan congelados y la rifa se cierra. ' +
-            'Se guarda el algoritmo y la semilla para que pueda comprobarse después.',
+            'El sorteo <b>no se puede deshacer</b>. Se guarda el algoritmo y la semilla ' +
+            'para que pueda comprobarse después.',
       showCancelButton: true,
       confirmButtonText: 'Sortear',
       cancelButtonText: 'Cancelar',
@@ -570,8 +675,24 @@ export class LoyaltyAdmin implements OnInit {
   }
 
   estadoRifa(s: string): string {
-    return s === 'OPEN' ? 'Abierta' : s === 'CLOSED' ? 'Cerrada' : s === 'DRAWN' ? 'Sorteada' : s;
+    return s === 'DRAFT' ? 'Borrador' : s === 'OPEN' ? 'Activa'
+      : s === 'CLOSED' ? 'Cerrada' : s === 'DRAWN' ? 'Sorteada' : s;
   }
+
+  /** Que se puede hacer con una rifa segun donde este de su ciclo. */
+  puedeActivar(r: { status: string }): boolean { return r.status === 'DRAFT'; }
+  puedeCerrar(r: { status: string }): boolean { return r.status === 'OPEN'; }
+  puedeSortear(r: { status: string }): boolean { return r.status === 'CLOSED'; }
+
+  /**
+   * Un cupon de importe o porcentaje se emite y se valida, pero la caja
+   * todavia no puede aplicarlo: la venta no tiene concepto de descuento. Se
+   * avisa AL CREARLO para que nadie reparta papeles que no se pueden canjear.
+   */
+  beneficioSinCanje(kind: string): boolean {
+    return kind === 'AMOUNT' || kind === 'PERCENT';
+  }
+
 
   /** Los estados que escribe SQL: WINNER, ALTERNATE, DELIVERED, FORFEITED. */
   estadoGanador(s: string): string {

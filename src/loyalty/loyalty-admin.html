@@ -280,10 +280,25 @@
                : 'Un código que el cliente gasta en otra visita.' }}
           </p>
         </div>
-        <button class="btn-primary" type="button"
-                (click)="nuevoPremio(seccion() === 'recompensas' ? 'REWARD' : 'COUPON')">
-          <i class="ph ph-plus"></i> {{ seccion() === 'recompensas' ? 'Nueva recompensa' : 'Nuevo cupón' }}
-        </button>
+        <div class="loy-acciones-head">
+          <!--
+            Dos preguntas distintas sobre lo mismo: que tengo definido y que
+            se ha repartido. La segunda es la que aparece cuando un cliente
+            llega con un codigo en la mano.
+          -->
+          <div class="loy-switch">
+            <button type="button" [class.on]="vista() === 'definiciones'" (click)="verVista('definiciones')">
+              Definiciones
+            </button>
+            <button type="button" [class.on]="vista() === 'emitidas'" (click)="verVista('emitidas')">
+              Emitidas
+            </button>
+          </div>
+          <button class="btn-primary" type="button" *ngIf="vista() === 'definiciones'"
+                  (click)="nuevoPremio(seccion() === 'recompensas' ? 'REWARD' : 'COUPON')">
+            <i class="ph ph-plus"></i> {{ seccion() === 'recompensas' ? 'Nueva recompensa' : 'Nuevo cupón' }}
+          </button>
+        </div>
       </div>
 
       <form class="loy-form" *ngIf="premio() as d" (ngSubmit)="guardarPremio()">
@@ -338,6 +353,16 @@
           </label>
         </div>
 
+        <!--
+          Se avisa AL CREARLO, no al intentar canjearlo. Repartir cien papeles
+          que la caja no puede aceptar es peor que no poder crearlos.
+        -->
+        <p class="loy-nota loy-nota--ojo" *ngIf="premioDe() === 'COUPON' && beneficioSinCanje(d.kind)">
+          <i class="ph ph-warning"></i>
+          Este tipo de cupón se emite y se valida, pero <b>la caja todavía no puede aplicarlo</b>:
+          la venta no tiene concepto de descuento. Para canjear en caja usa <b>Producto gratis</b>.
+        </p>
+
         <div class="loy-checks">
           <label class="loy-check">
             <input type="checkbox" [(ngModel)]="d.active" name="pAct">
@@ -354,7 +379,7 @@
       </form>
 
       <!-- ------------------------------------------- lista recompensas -->
-      <div class="loy-tabla" *ngIf="seccion() === 'recompensas'">
+      <div class="loy-tabla" *ngIf="seccion() === 'recompensas' && vista() === 'definiciones'">
         <table class="wx-tabla" *ngIf="loyalty.recompensas().length; else sinRecompensas">
           <thead>
             <tr><th>Recompensa</th><th>Tipo</th><th>Valor</th>
@@ -383,7 +408,7 @@
       </div>
 
       <!-- ----------------------------------------------- lista cupones -->
-      <div class="loy-tabla" *ngIf="seccion() === 'cupones'">
+      <div class="loy-tabla" *ngIf="seccion() === 'cupones' && vista() === 'definiciones'">
         <table class="wx-tabla" *ngIf="loyalty.cupones().length; else sinCupones">
           <thead>
             <tr><th>Cupón</th><th>Tipo</th><th>Valor</th><th>Prefijo</th>
@@ -411,6 +436,66 @@
           </p>
         </ng-template>
       </div>
+
+      <!-- ================================================ EMITIDAS ==== -->
+      <ng-container *ngIf="vista() === 'emitidas'">
+        <div class="loy-filtros">
+          <input class="ctl" type="search" placeholder="Código, cliente o promoción…"
+                 [(ngModel)]="filtroTexto" (keyup.enter)="cargarInstancias()">
+          <select class="ctl" [ngModel]="filtroEstado()"
+                  (ngModelChange)="filtroEstado.set($event); cargarInstancias()">
+            <option value="">Todas</option>
+            <option value="ISSUED">Emitidas</option>
+            <option value="REDEEMED">Usadas</option>
+            <option value="EXPIRED">Vencidas</option>
+            <option value="VOID">Anuladas</option>
+          </select>
+          <button class="btn-outline" type="button" (click)="cargarInstancias()">
+            <i class="ph ph-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+
+        <p class="loy-hint" *ngIf="cargandoInstancias()">Cargando…</p>
+
+        <div class="loy-tabla" *ngIf="!cargandoInstancias() && instancias().length">
+          <table class="wx-tabla">
+            <thead>
+              <tr>
+                <th>Código</th><th>Promoción</th><th>Cliente</th><th>Origen</th>
+                <th>Emitida</th><th>Vence</th><th class="num">Usos</th><th>Situación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let i of instancias()" [class.apagada]="!i.vigente">
+                <td><code>{{ i.code }}</code></td>
+                <td>
+                  <b>{{ i.promocion }}</b>
+                  <small>{{ etiquetaTipo(i.kind) }}<span *ngIf="i.product_name"> · {{ i.product_name }}</span></small>
+                </td>
+                <td>{{ i.cliente || '—' }}</td>
+                <td>
+                  <small>{{ i.campana || 'Sin campaña' }}</small>
+                  <!-- La venta que lo genero: es por donde se rastrea cualquier reclamo. -->
+                  <small *ngIf="i.sale_id">Venta #{{ i.sale_id }}<span *ngIf="i.caja"> · {{ i.caja }}</span></small>
+                </td>
+                <td><small>{{ i.issued_at | date:'dd/MM/yyyy HH:mm' }}</small></td>
+                <td><small>{{ i.expires_at ? (i.expires_at | date:'dd/MM/yyyy') : 'Sin caducidad' }}</small></td>
+                <td class="num">{{ i.uses_count }}/{{ i.uses_allowed }}</td>
+                <td>
+                  <span class="loy-estado" [class.si]="i.vigente">{{ i.situacion }}</span>
+                  <small *ngIf="i.ultima_redencion">
+                    Usada {{ i.ultima_redencion | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="i.venta_redencion"> · venta #{{ i.venta_redencion }}</span>
+                  </small>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="loy-hint" *ngIf="!cargandoInstancias() && !instancias().length">
+          Todavía no se ha emitido ninguna. Se generan solas al cobrar, con una campaña activa que las entregue.
+        </p>
+      </ng-container>
     </section>
 
     <!-- ================================================== DINÁMICAS ==== -->
@@ -593,13 +678,30 @@
                 </td>
                 <td>{{ r.prize || '—' }}</td>
                 <td><span class="loy-estado" [class.si]="r.status === 'OPEN'">{{ estadoRifa(r.status) }}</span></td>
-                <td class="num">{{ r.participaciones }}</td>
+                <td class="num">
+                  {{ r.closed_entries_count ?? r.participaciones }}
+                  <small *ngIf="r.closed_entries_count != null">congelados</small>
+                </td>
                 <td class="num">{{ r.sorteos }}</td>
+                <!--
+                  Activar, cerrar y sortear son tres actos distintos y en ese
+                  orden. Cada boton aparece solo donde toca: asi el estado de
+                  la rifa se lee en lo que se puede hacer con ella.
+                -->
                 <td class="acciones">
                   <button class="btn-outline btn-sm" type="button" (click)="abrirRifa(r)">
-                    <i class="ph ph-eye"></i> Abrir
+                    <i class="ph ph-eye"></i> Ver
                   </button>
-                  <button class="btn-ghost btn-sm" type="button" (click)="editarRifa(r)">
+                  <button class="btn-outline btn-sm" type="button" *ngIf="puedeActivar(r)"
+                          (click)="activarRifa(r)" [disabled]="guardando()">
+                    <i class="ph ph-play"></i> Activar
+                  </button>
+                  <button class="btn-outline btn-sm" type="button" *ngIf="puedeCerrar(r)"
+                          (click)="cerrarRifa(r)" [disabled]="guardando()">
+                    <i class="ph ph-lock-simple"></i> Cerrar
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="editarRifa(r)"
+                          *ngIf="r.status === 'DRAFT' || r.status === 'OPEN'">
                     <i class="ph ph-pencil-simple"></i>
                   </button>
                 </td>
@@ -618,25 +720,45 @@
       <ng-container *ngIf="rifaSel() as r">
         <div class="loy-sec__head">
           <div>
-            <button class="btn-ghost btn-sm" type="button" (click)="cerrarRifa()">
+            <button class="btn-ghost btn-sm" type="button" (click)="volverALista()">
               <i class="ph ph-arrow-left"></i> Rifas
             </button>
             <h2>{{ r.name }}</h2>
             <p class="loy-sub">{{ r.prize }}</p>
           </div>
-          <button class="btn-primary" type="button" (click)="sortear()"
-                  [disabled]="guardando() || r.status !== 'OPEN' || !r.participaciones">
-            <i class="ph ph-shuffle"></i> Sortear
-          </button>
+          <div class="loy-acciones-head">
+            <button class="btn-outline" type="button" *ngIf="puedeActivar(r)"
+                    (click)="activarRifa(r)" [disabled]="guardando()">
+              <i class="ph ph-play"></i> Activar
+            </button>
+            <button class="btn-outline" type="button" *ngIf="puedeCerrar(r)"
+                    (click)="cerrarRifa(r)" [disabled]="guardando()">
+              <i class="ph ph-lock-simple"></i> Cerrar rifa
+            </button>
+            <button class="btn-primary" type="button" *ngIf="puedeSortear(r)"
+                    (click)="sortear()" [disabled]="guardando() || !(r.closed_entries_count ?? 0)">
+              <i class="ph ph-shuffle"></i> Sortear
+            </button>
+          </div>
         </div>
 
-        <p class="loy-nota" *ngIf="r.status !== 'OPEN'">
-          <i class="ph ph-lock-simple"></i>
-          Esta rifa ya se sorteó. Los boletos quedaron congelados y el resultado no cambia.
+        <p class="loy-nota" *ngIf="r.status === 'DRAFT'">
+          <i class="ph ph-pencil-simple"></i>
+          Es un borrador: todavía no reparte boletos. Actívala cuando esté lista.
         </p>
         <p class="loy-nota" *ngIf="r.status === 'OPEN' && !r.participaciones">
           <i class="ph ph-info"></i>
-          Todavía no hay boletos. Se reparten solos al cobrar, con una campaña que entregue boletos de esta rifa.
+          Activa y sin boletos aún. Se reparten solos al cobrar, con una campaña que entregue boletos de esta rifa.
+        </p>
+        <p class="loy-nota" *ngIf="r.status === 'CLOSED'">
+          <i class="ph ph-lock-simple"></i>
+          Cerrada el {{ r.closed_at | date:'dd/MM/yyyy HH:mm' }} con
+          <b>{{ r.closed_entries_count }}</b> boletos participando. Ese número ya no cambia,
+          aunque el sorteo se haga más tarde.
+        </p>
+        <p class="loy-nota" *ngIf="r.status === 'DRAWN'">
+          <i class="ph ph-trophy"></i>
+          Sorteada sobre {{ r.closed_entries_count ?? r.participaciones }} boletos. El resultado no cambia.
         </p>
 
         <!-- ganadores -->
