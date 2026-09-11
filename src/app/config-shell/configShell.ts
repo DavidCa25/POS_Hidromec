@@ -18,6 +18,11 @@ export class ConfigShell implements OnInit, OnDestroy {
     sections: ConfigSection[] = CONFIG_SECTIONS;
     activeTile: ConfigTile | null = null;
 
+    /** Componente del mosaico abierto, ya cargado. */
+    activeComponent: Type<unknown> | null = null;
+    /** Mientras se descarga el chunk del panel. */
+    cargandoPanel = false;
+
     private statuses: Record<string, Status> = {};
     private sub?: Subscription;
 
@@ -25,10 +30,6 @@ export class ConfigShell implements OnInit, OnDestroy {
     private readonly tilesMulticaja = new Set<string>(['cajas']);
 
     constructor(private drawer: ConfigDrawerService, private license: LicenseService) {}
-
-    get activeComponent(): Type<unknown> | null {
-        return this.activeTile?.component ?? null;
-    }
 
     async ngOnInit() {
         this.sub = this.drawer.close$.subscribe(() => this.cerrar());
@@ -54,12 +55,31 @@ export class ConfigShell implements OnInit, OnDestroy {
         if (this.activeTile) this.cerrar();
     }
 
-    abrir(tile: ConfigTile) {
+    /**
+     * Abre el cajon y carga el panel bajo demanda. Si el usuario cambia de
+     * mosaico antes de que termine la descarga, el resultado tardio se
+     * descarta: solo se muestra el componente del mosaico activo.
+     */
+    async abrir(tile: ConfigTile) {
         this.activeTile = tile;
+        this.activeComponent = null;
+        if (!tile.load) return;
+
+        this.cargandoPanel = true;
+        try {
+            const comp = await tile.load();
+            if (this.activeTile === tile) this.activeComponent = comp;
+        } catch (e) {
+            console.error('No se pudo cargar el panel', tile.id, e);
+        } finally {
+            if (this.activeTile === tile) this.cargandoPanel = false;
+        }
     }
 
     cerrar() {
         this.activeTile = null;
+        this.activeComponent = null;
+        this.cargandoPanel = false;
         this.cargarEstados();
     }
 

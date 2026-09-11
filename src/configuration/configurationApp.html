@@ -3,7 +3,7 @@
   <div class="cfg-header">
     <div class="cfg-title">
       <div class="cfg-icon">
-        <i class="bi bi-gear-fill"></i>
+        <i class="ph-fill ph-gear"></i>
       </div>
 
       <div>
@@ -14,10 +14,10 @@
 
     <div class="actions">
       <button class="btn btn-outline-secondary" type="button" (click)="refreshDevices()">
-        <i class="bi bi-usb-plug"></i> Detectar
+        <i class="ph ph-usb"></i> Detectar
       </button>
       <button class="btn btn-primary" type="button" (click)="save()">
-        <i class="bi bi-check2-circle"></i> Guardar
+        <i class="ph ph-check-circle"></i> Guardar
       </button>
     </div>
   </div>
@@ -29,20 +29,20 @@
     <div class="cfg-card span-6">
       <div class="cfg-card-h">
         <div class="h-left">
-          <span class="chip chip-blue"><i class="bi bi-usb-symbol"></i></span>
+          <span class="chip chip-blue"><i class="ph ph-usb"></i></span>
           <div>
             <div class="h-title">Dispositivos (Puertos)</div>
             <div class="h-sub">Cajón, scanner, báscula y otros por COM/USB</div>
           </div>
         </div>
-        <span class="pill ok"><i class="bi bi-plug"></i> Auto-detect</span>
+        <span class="pill ok"><i class="ph ph-plug"></i> Auto-detect</span>
       </div>
 
       <div class="cfg-card-b">
 
         <!-- Cajón (UI placeholder por ahora) -->
         <div class="section-title">
-          <i class="bi bi-safe2"></i> Cajón de dinero
+          <i class="ph ph-vault"></i> Cajón de dinero
         </div>
 
         <div class="row two">
@@ -116,14 +116,14 @@
                   class="btn-outline"
                   (click)="testDrawer()"
                   [disabled]="!drawerEnabled || !drawerPath || busyTestDrawer">
-            <i class="bi bi-wrench-adjustable"></i>
+            <i class="ph ph-wrench"></i>
             {{ busyTestDrawer ? 'Probando...' : 'Probar' }}
           </button>
         </div>
 
         <!-- Scanner (YA CONECTADO AL TS REAL) -->
         <div class="section-title">
-          <i class="bi bi-upc-scan"></i> Scanner / Lector
+          <i class="ph ph-barcode"></i> Scanner / Lector
         </div>
 
         <div class="row two">
@@ -171,7 +171,7 @@
           <div>
             <label class="lbl">Estado</label>
             <div class="pill neutral" style="justify-content:flex-start;">
-              <i class="bi bi-info-circle"></i>
+              <i class="ph ph-info"></i>
               <span *ngIf="scannerEnabled && scannerPath">Listo: {{ scannerPath }}</span>
               <span *ngIf="scannerEnabled && !scannerPath">Selecciona un COM</span>
               <span *ngIf="!scannerEnabled">Deshabilitado</span>
@@ -183,7 +183,7 @@
 
         <!-- Báscula (placeholder) -->
         <div class="section-title">
-          <i class="bi bi-speedometer2"></i> Báscula (opcional)
+          <i class="ph ph-gauge"></i> Báscula (opcional)
         </div>
 
         <div class="row two">
@@ -229,13 +229,13 @@
     <div class="cfg-card span-6">
       <div class="cfg-card-h">
         <div class="h-left">
-          <span class="chip chip-purple"><i class="bi bi-receipt-cutoff"></i></span>
+          <span class="chip chip-purple"><i class="ph ph-receipt"></i></span>
           <div>
             <div class="h-title">Ticket e impresión</div>
             <div class="h-sub">Tamaño, impresora y comportamiento</div>
           </div>
         </div>
-        <span class="pill warn"><i class="bi bi-printer"></i> Ajustable</span>
+        <span class="pill warn"><i class="ph ph-printer"></i> Ajustable</span>
       </div>
 
       <div class="cfg-card-b">
@@ -342,10 +342,10 @@
 
         <div class="btn-row">
           <button type="button" class="btn-outline" disabled>
-            <i class="bi bi-eye"></i> Vista previa
+            <i class="ph ph-eye"></i> Vista previa
           </button>
           <button type="button" class="btn-primary-sm" disabled>
-            <i class="bi bi-printer"></i> Prueba
+            <i class="ph ph-printer"></i> Prueba
           </button>
         </div>
       </div>
@@ -355,13 +355,13 @@
     <div class="cfg-card span-6">
       <div class="cfg-card-h">
         <div class="h-left">
-          <span class="chip chip-green"><i class="bi bi-database-fill"></i></span>
+          <span class="chip chip-green"><i class="ph-fill ph-database"></i></span>
           <div>
             <div class="h-title">Base de datos / Backups</div>
             <div class="h-sub">Respaldo, exportación y mantenimiento</div>
           </div>
         </div>
-        <span class="pill ok"><i class="bi bi-shield-check"></i> Seguro</span>
+        <span class="pill ok"><i class="ph ph-shield-check"></i> Seguro</span>
       </div>
 
       <div class="cfg-card-b">
@@ -369,13 +369,13 @@
           <div>
             <label class="lbl">Exportar BD</label>
             <button type="button" class="btn-soft" (click)="exportDb()" [disabled]="busyExport || busyImport">
-                <i class="bi bi-download"></i> Exportar
+                <i class="ph ph-download-simple"></i> Exportar
             </button>
           </div>
           <div>
             <label class="lbl">Importar BD</label>
             <button type="button" class="btn-soft" (click)="importDb()" [disabled]="busyExport || busyImport">
-                <i class="bi bi-upload"></i> Importar
+                <i class="ph ph-upload-simple"></i> Importar
             </button>
           </div>
         </div>
@@ -414,7 +414,7 @@
           <div>
             <label class="lbl">Limpiar logs</label>
             <button type="button" class="btn-outline" disabled>
-              <i class="bi bi-trash3"></i> Limpiar
+              <i class="ph ph-trash"></i> Limpiar
             </button>
           </div>
         </div>
@@ -424,7 +424,7 @@
           <div class="path-row">
             <input class="ctl" type="text" value="C:\Users\Public\POS\Backups" disabled>
             <button type="button" class="btn-outline" disabled>
-              <i class="bi bi-folder2-open"></i>
+              <i class="ph ph-folder-open"></i>
             </button>
           </div>
           <div class="hint">Seleccionable desde Electron con un diálogo de carpeta.</div>
@@ -436,13 +436,13 @@
     <div class="cfg-card span-6">
       <div class="cfg-card-h">
         <div class="h-left">
-          <span class="chip chip-orange"><i class="bi bi-sliders"></i></span>
+          <span class="chip chip-orange"><i class="ph ph-sliders-horizontal"></i></span>
           <div>
             <div class="h-title">Preferencias</div>
             <div class="h-sub">IVA, moneda, facturación, WhatsApp y red</div>
           </div>
         </div>
-        <span class="pill neutral"><i class="bi bi-gear"></i> General</span>
+        <span class="pill neutral"><i class="ph ph-gear"></i> General</span>
       </div>
 
       <div class="cfg-card-b">
@@ -487,7 +487,7 @@
         <div class="sep"></div>
 
         <div class="section-title">
-          <i class="bi bi-receipt"></i> Facturación
+          <i class="ph ph-receipt"></i> Facturación
         </div>
 
         <div class="row two">
@@ -527,7 +527,7 @@
         <div class="sep"></div>
 
         <div class="section-title">
-          <i class="bi bi-wifi"></i> Red / Sincronización
+          <i class="ph ph-wifi-high"></i> Red / Sincronización
         </div>
 
         <div class="row two">
@@ -558,14 +558,14 @@
       <div class="cfg-card span-6">
         <div class="cfg-card-h">
           <div class="h-left">
-            <span class="chip chip-blue"><i class="bi bi-credit-card-2-back"></i></span>
+            <span class="chip chip-blue"><i class="ph ph-credit-card"></i></span>
             <div>
               <div class="h-title">Terminal Mercado Pago</div>
               <div class="h-sub">Credenciales Point y terminal en modo PDV</div>
             </div>
           </div>
           <span class="pill" [class.ok]="mpHasToken" [class.warn]="!mpHasToken">
-            <i class="bi bi-shield-lock"></i> {{ mpHasToken ? 'Token guardado' : 'Sin token' }}
+            <i class="ph ph-shield"></i> {{ mpHasToken ? 'Token guardado' : 'Sin token' }}
           </span>
         </div>
 
@@ -586,7 +586,7 @@
               <button type="button" class="btn-outline"
                       (click)="cargarTerminalesMp()"
                       [disabled]="mpLoadingTerminals || !mpHasToken">
-                <i class="bi bi-search"></i>
+                <i class="ph ph-magnifying-glass"></i>
                 {{ mpLoadingTerminals ? 'Buscando...' : 'Listar' }}
               </button>
             </div>
@@ -621,7 +621,7 @@
       <div>
         <label class="lbl">Estado</label>
         <div class="pill" [class.warn]="mpTestMode" [class.ok]="!mpTestMode" style="justify-content:flex-start;">
-          <i class="bi" [class.bi-cone-striped]="mpTestMode" [class.bi-check-circle]="!mpTestMode"></i>
+          <i class="ph" [class.ph-traffic-cone]="mpTestMode" [class.ph-check-circle]="!mpTestMode"></i>
           <span>{{ mpTestMode ? 'Simulación activada' : 'Listo para producción' }}</span>
         </div>
       </div>
@@ -630,7 +630,7 @@
             <button type="button" class="btn-primary-sm"
                     (click)="guardarCredencialesMp()"
                     [disabled]="busyMpSave">
-              <i class="bi bi-check2-circle"></i>
+              <i class="ph ph-check-circle"></i>
               {{ busyMpSave ? 'Guardando...' : 'Guardar credenciales' }}
             </button>
           </div>
@@ -642,13 +642,13 @@
     <div class="cfg-card span-12">
       <div class="cfg-card-h">
         <div class="h-left">
-          <span class="chip chip-gray"><i class="bi bi-shield-lock-fill"></i></span>
+          <span class="chip chip-gray"><i class="ph-fill ph-shield"></i></span>
           <div>
             <div class="h-title">Seguridad y Diagnóstico</div>
             <div class="h-sub">Permisos, logs, depuración y accesos</div>
           </div>
         </div>
-        <span class="pill neutral"><i class="bi bi-bug"></i> Tools</span>
+        <span class="pill neutral"><i class="ph ph-bug"></i> Tools</span>
       </div>
 
       <div class="cfg-card-b">
@@ -656,7 +656,7 @@
         <div class="grid-3">
           <!-- Seguridad -->
           <div class="mini">
-            <div class="mini-title"><i class="bi bi-person-badge"></i> Usuarios</div>
+            <div class="mini-title"><i class="ph ph-identification-badge"></i> Usuarios</div>
             <div class="mini-row">
               <span class="mini-label">Requerir supervisor</span>
               <label class="sw sm">
@@ -681,7 +681,7 @@
 
           <!-- Apariencia -->
           <div class="mini">
-            <div class="mini-title"><i class="bi bi-palette2"></i> Apariencia</div>
+            <div class="mini-title"><i class="ph ph-palette"></i> Apariencia</div>
             <div class="mini-row">
               <span class="mini-label">Tema</span>
               <select class="ctl sm" disabled>
@@ -708,7 +708,7 @@
 
           <!-- Diagnóstico -->
           <div class="mini">
-            <div class="mini-title"><i class="bi bi-activity"></i> Diagnóstico</div>
+            <div class="mini-title"><i class="ph ph-pulse"></i> Diagnóstico</div>
             <div class="mini-row">
               <span class="mini-label">Logs detallados</span>
               <label class="sw sm">
@@ -719,14 +719,14 @@
             <div class="mini-row">
               <span class="mini-label">Abrir carpeta logs</span>
               <button type="button" class="btn-soft sm" disabled>
-                <i class="bi bi-folder2-open"></i>
+                <i class="ph ph-folder-open"></i>
                 Abrir
               </button>
             </div>
             <div class="mini-row">
               <span class="mini-label">Test impresión</span>
               <button type="button" class="btn-soft sm" disabled>
-                <i class="bi bi-printer"></i>
+                <i class="ph ph-printer"></i>
                 Probar
               </button>
             </div>

@@ -3,7 +3,9 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { ShiftService } from '../../core';
 import Swal from 'sweetalert2';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
@@ -57,7 +59,7 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
@@ -101,7 +103,7 @@ export class Corte {
     salidasEfectivo: 0, devolucionesEfectivo: 0
   };
 
-  constructor(private auth: AuthService) {
+  constructor(private auth: AuthService, private shift: ShiftService) {
     this.setPreset('HOY');
   }
 
@@ -410,6 +412,14 @@ export class Corte {
     try {
       const resp = await (window as any).electronAPI.closeShift({
         closure_id: closureId,
+        // La caja que se está cerrando, la misma que usan `getOpenShift` y el
+        // resumen de esta pantalla. Faltaba: sin ella el proceso principal
+        // mandaba `register_id` nulo y el procedimiento caía a "la primera
+        // caja de la tabla", o sea la Caja 1. La laptop, cerrando su Caja 2,
+        // recibía "esta caja la está usando DESKTOP-LNQIU8G": cierto de la
+        // Caja 1, que no era la suya. Abrir, vender y cerrar tienen que
+        // hablar todos de la MISMA caja.
+        register_id: this.selectedRegisterId,
         user_id: userId, // Auditoría: quién cerró el turno
         cash_delivered: Number(this.cashDelivered),
         note: (this.closeNotes || '').trim() || null
@@ -430,26 +440,26 @@ export class Corte {
         icon: 'success',
         title: '¡Corte registrado exitosamente!',
         html: `
-          <div style="text-align:left; background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
+          <div style="text-align:left; background: var(--wx-raised); padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Caja:</span>
-              <span style="font-weight: 700;">${this.selectedRegisterName}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Caja:</span>
+              <span style="font-weight: 600;">${this.selectedRegisterName}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Turno ID:</span>
-              <span style="font-weight: 700;">#${this.openShiftId}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Turno ID:</span>
+              <span style="font-weight: 600;">#${this.openShiftId}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Efectivo esperado:</span>
-              <span style="font-weight: 700;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo esperado:</span>
+              <span style="font-weight: 600;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: #64748b;">Efectivo entregado:</span>
-              <span style="font-weight: 700;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo entregado:</span>
+              <span style="font-weight: 600;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid #e2e8f0;">
-              <span style="font-weight: 700; color: #0f172a;">Diferencia:</span>
-              <span style="font-weight: 800; font-size: 1.2rem; color: ${(data.difference ?? this.cashDiff) >= 0 ? '#16a34a' : '#dc2626'};">
+            <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid var(--wx-edge);">
+              <span style="font-weight: 600; color: var(--wx-text);">Diferencia:</span>
+              <span style="font-weight: 600; font-size: 1.2rem; color: ${(data.difference ?? this.cashDiff) >= 0 ? '#16a34a' : '#dc2626'};">
                 $${(data.difference ?? this.cashDiff).toFixed(2)}
               </span>
             </div>
@@ -462,6 +472,13 @@ export class Corte {
       this.openShiftId = null;
       this.openShiftOpenedAt = null;
       this.openShiftOpeningCash = 0;
+
+      // El turno vive tambien en ShiftService, que es de donde leen las
+      // pantallas de venta. Esta pantalla limpiaba solo SUS campos, asi que el
+      // servicio seguia diciendo "abierto" el resto de la sesion y Retail
+      // entraba a vender sin pedir turno. Se relee de SQL en vez de asumir:
+      // aqui se puede haber cerrado el turno de OTRA caja.
+      await this.shift.refresh();
 
       await this.consultar();
     } catch (e: any) {
@@ -478,21 +495,18 @@ export class Corte {
   }
 
   private async cargarCajas() {
+    // Las cajas son las que el negocio dio de alta. Inventar "Caja 1"/"Caja 2"
+    // cuando la consulta falla no es un respaldo: es cerrar un turno contra una
+    // caja que no existe. Si no se pueden leer, se dice y la lista queda vacia.
     try {
-      const res = await (window as any).electronAPI.getRegisters();
-      if (res?.success) {
-        this.cajas = res.data || [];
-      } else {
-        // Fallback temporal si el API no está listo
-        this.cajas = [
-          { id: 1, name: 'Caja 1' },
-          { id: 2, name: 'Caja 2' }
-        ];
-      }
-    } catch (e) {
-      console.error('Error getRegisters:', e);
-      // Fallback temporal por si truena la llamada
-      this.cajas = [{ id: 1, name: 'Caja 1' }];
+      const res = await (window as any).electronAPI.registersList(true);
+      if (!res?.success) throw new Error(res?.error || 'No se pudieron leer las cajas.');
+      this.cajas = res.data || [];
+    } catch (e: any) {
+      console.error('registers-list:', e);
+      this.cajas = [];
+      await Swal.fire('No se pudieron cargar las cajas',
+        e?.message || 'Revisa la conexión con el servidor.', 'error');
     }
   }
 

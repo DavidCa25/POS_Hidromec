@@ -1,7 +1,7 @@
 const { app } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const puppeteer = require("puppeteer");
+const { htmlToPdf } = require("./printToPdfElectron");
 
 function ensureReportsDir() {
   const dir = path.join(app.getPath("documents"), "TicketsPOS", "ReportesVentas");
@@ -145,24 +145,15 @@ async function generateSalesBatchA4Pdf(docs, opts = {}) {
 
   const html = buildBatchHtml(docs, opts, cfg);
 
-  const browser = await puppeteer.launch({ headless: "new", args: ["--no-sandbox"] });
-  try {
-    const page = await browser.newPage();
-
-    page.setDefaultNavigationTimeout(0);
-    await page.setContent(html, { waitUntil: "domcontentloaded" });
-
-    await page.pdf({
-      path: outPath,
-      format: "A4",
-      printBackground: true,
-      margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
-    });
-
-    return outPath;
-  } finally {
-    await browser.close();
-  }
+  await htmlToPdf(html, {
+    outPath,
+    pageSize: "A4",
+    printBackground: true,
+    marginsMm: { top: 12, right: 12, bottom: 12, left: 12 },
+    // Un reporte largo tarda mas en maquetarse que un ticket.
+    timeoutMs: 60000,
+  });
+  return outPath;
 }
 
 module.exports = { generateSalesBatchA4Pdf };

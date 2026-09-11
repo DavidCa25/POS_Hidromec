@@ -26,6 +26,10 @@
               }
             ],
             "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/@fontsource-variable/geist/index.css",
+              "node_modules/@fontsource-variable/geist-mono/index.css",
+              "src/styles/phosphor.css",
               "src/styles.css"
             ]
           },
@@ -34,12 +38,12 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2mb",
-                  "maximumError": "4mb"
+                  "maximumWarning": "1mb",
+                  "maximumError": "1.5mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "25kB",
+                  "maximumWarning": "30kB",
                   "maximumError": "50kB"
                 }
               ],

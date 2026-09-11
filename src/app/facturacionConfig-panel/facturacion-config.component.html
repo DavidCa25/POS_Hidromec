@@ -5,7 +5,7 @@
       <p>Configura tu RFC y certificados para poder emitir facturas CFDI 4.0.</p>
     </div>
     <div class="fc-status" [class.ok]="config.csd_registrado">
-      <i class="bi" [ngClass]="config.csd_registrado ? 'bi-check-circle-fill' : 'bi-exclamation-circle'"></i>
+      <i class="ph" [ngClass]="config.csd_registrado ? 'ph-fill ph-check-circle' : 'ph-warning-circle'"></i>
       <span>{{ config.csd_registrado ? 'Listo para facturar' : 'Falta registrar certificados' }}</span>
     </div>
   </div>
@@ -40,7 +40,7 @@
                   [class.placeholder]="!config.regimen_fiscal"
                   (click)="regimenAbierto = !regimenAbierto">
             <span>{{ cargandoRegimenes ? 'Cargando regimenes...' : regimenLabel }}</span>
-            <i class="bi bi-chevron-down"></i>
+            <i class="ph ph-caret-down"></i>
           </button>
           <div class="fc-select-menu" *ngIf="regimenAbierto && !cargandoRegimenes">
             <button type="button" class="fc-select-option"
@@ -49,7 +49,7 @@
                     (click)="seleccionarRegimen(r)">
               <span class="fc-opt-code">{{ r.code }}</span>
               <span class="fc-opt-desc">{{ r.description }}</span>
-              <i class="bi bi-check2" *ngIf="r.code === config.regimen_fiscal"></i>
+              <i class="ph ph-check" *ngIf="r.code === config.regimen_fiscal"></i>
             </button>
           </div>
         </div>
@@ -62,7 +62,7 @@
 
     <div class="fc-actions">
       <button class="fc-btn primary" (click)="guardar()" [disabled]="guardando">
-        <i class="bi bi-save"></i>
+        <i class="ph ph-floppy-disk"></i>
         {{ guardando ? 'Guardando...' : 'Guardar datos' }}
       </button>
     </div>
@@ -72,7 +72,7 @@
   <div class="fc-card">
     <h3>Certificados de Sello Digital (CSD)</h3>
     <p class="fc-note">
-      <i class="bi bi-shield-lock"></i>
+      <i class="ph ph-shield"></i>
       Tus certificados se resguardan de forma segura con el timbrador. No se guardan en esta computadora.
     </p>
 
@@ -80,7 +80,7 @@
       <div class="fc-field">
         <label>Archivo .cer</label>
         <label class="fc-file">
-          <i class="bi bi-file-earmark-lock"></i>
+          <i class="ph ph-file-lock"></i>
           <span>{{ cerNombre || 'Seleccionar .cer' }}</span>
           <input type="file" accept=".cer" (change)="onCerSelected($event)" hidden>
         </label>
@@ -88,7 +88,7 @@
       <div class="fc-field">
         <label>Archivo .key</label>
         <label class="fc-file">
-          <i class="bi bi-file-earmark-lock"></i>
+          <i class="ph ph-file-lock"></i>
           <span>{{ keyNombre || 'Seleccionar .key' }}</span>
           <input type="file" accept=".key" (change)="onKeySelected($event)" hidden>
         </label>
@@ -102,7 +102,7 @@
 
     <div class="fc-actions">
       <button class="fc-btn dark" (click)="registrarCertificados()" [disabled]="registrandoCsd">
-        <i class="bi bi-cloud-arrow-up"></i>
+        <i class="ph ph-cloud-arrow-up"></i>
         {{ registrandoCsd ? 'Registrando...' : 'Registrar certificados' }}
       </button>
     </div>

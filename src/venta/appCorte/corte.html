@@ -35,16 +35,16 @@
                   [class.selected]="selectedRegisterId === c.id"
                   (click)="selectRegister(c.id)">
             <div class="user-avatar">
-              <i class="bi bi-pc-display"></i>
+              <i class="ph ph-desktop-tower"></i>
             </div>
             <div class="user-info">
               <div class="user-name">{{ c.name }}</div>
               <div class="user-role">ID: {{ c.id }}</div>
             </div>
-            <i class="bi bi-check-circle-fill check-icon"></i>
+            <i class="ph-fill ph-check-circle check-icon"></i>
           </button>
           <div class="empty-state" *ngIf="cajas.length === 0">
-            <i class="bi bi-display"></i>
+            <i class="ph ph-monitor"></i>
             <p>No hay cajas disponibles</p>
           </div>
         </div>
@@ -53,7 +53,7 @@
                   [disabled]="!selectedRegisterId"
                   (click)="nextStep()">
             Continuar
-            <i class="bi bi-arrow-right"></i>
+            <i class="ph ph-arrow-right"></i>
           </button>
         </div>
       </div>
@@ -61,11 +61,11 @@
       <!-- PASO 2: MODO -->
       <div class="wizard-panel" *ngIf="currentStep === 2">
         <button class="btn-back" (click)="prevStep()">
-          <i class="bi bi-arrow-left"></i> Cambiar caja
+          <i class="ph ph-arrow-left"></i> Cambiar caja
         </button>
 
         <div class="selected-user-badge">
-          <i class="bi bi-pc-display"></i>
+          <i class="ph ph-desktop-tower"></i>
           <span>{{ selectedRegisterName }}</span>
         </div>
 
@@ -76,21 +76,21 @@
                   [class.selected]="mode==='TURNO'"
                   (click)="selectMode('TURNO')">
             <div class="mode-icon turno">
-              <i class="bi bi-clock-history"></i>
+              <i class="ph ph-clock-counter-clockwise"></i>
             </div>
             <div class="mode-content">
               <h3>Cerrar turno</h3>
               <p>Cierra el turno activo de la caja y registra el efectivo</p>
               <div class="mode-badge" *ngIf="mode==='TURNO' && openShiftId">
-                <i class="bi bi-check-circle-fill"></i>
+                <i class="ph-fill ph-check-circle"></i>
                 Turno #{{ openShiftId }} detectado
               </div>
               <div class="mode-badge warning" *ngIf="mode==='TURNO' && selectedRegisterId && !openShiftId">
-                <i class="bi bi-exclamation-triangle-fill"></i>
+                <i class="ph-fill ph-warning"></i>
                 Sin turno abierto
               </div>
             </div>
-            <i class="bi bi-check-circle-fill check-icon"></i>
+            <i class="ph-fill ph-check-circle check-icon"></i>
           </button>
 
           <button type="button"
@@ -98,13 +98,13 @@
                   [class.selected]="mode==='DIA'"
                   (click)="selectMode('DIA')">
             <div class="mode-icon dia">
-              <i class="bi bi-calendar3"></i>
+              <i class="ph ph-calendar-blank"></i>
             </div>
             <div class="mode-content">
               <h3>Reporte por fecha</h3>
               <p>Consulta movimientos de esta caja en un rango específico</p>
             </div>
-            <i class="bi bi-check-circle-fill check-icon"></i>
+            <i class="ph-fill ph-check-circle check-icon"></i>
           </button>
         </div>
 
@@ -116,33 +116,33 @@
                     class="chip"
                     [class.active]="preset==='HOY'"
                     (click)="setPreset('HOY')">
-              <i class="bi bi-calendar-day"></i> Hoy
+              <i class="ph ph-calendar-dot"></i> Hoy
             </button>
             <button type="button" 
                     class="chip"
                     [class.active]="preset==='AYER'"
                     (click)="setPreset('AYER')">
-              <i class="bi bi-calendar-minus"></i> Ayer
+              <i class="ph ph-calendar-minus"></i> Ayer
             </button>
             <button type="button" 
                     class="chip"
                     [class.active]="preset==='SEMANA'"
                     (click)="setPreset('SEMANA')">
-              <i class="bi bi-calendar-week"></i> Esta semana
+              <i class="ph ph-calendar"></i> Esta semana
             </button>
           </div>
 
           <div class="date-range">
             <div class="date-input-group">
               <label>Desde</label>
-              <input type="date" class="form-control" [(ngModel)]="desdeStr">
+              <wx-date [(ngModel)]="desdeStr" name="desdeStr" placeholder="Desde"></wx-date>
             </div>
             <div class="date-separator">
-              <i class="bi bi-arrow-right"></i>
+              <i class="ph ph-arrow-right"></i>
             </div>
             <div class="date-input-group">
               <label>Hasta</label>
-              <input type="date" class="form-control" [(ngModel)]="hastaStr">
+              <wx-date [(ngModel)]="hastaStr" name="hastaStr" placeholder="Hasta"></wx-date>
             </div>
           </div>
         </div>
@@ -152,10 +152,10 @@
                   [disabled]="loading || !canConsult"
                   (click)="consultar()">
             <span *ngIf="!loading">
-              <i class="bi bi-search"></i> Consultar movimientos
+              <i class="ph ph-magnifying-glass"></i> Consultar movimientos
             </span>
             <span *ngIf="loading">
-              <i class="bi bi-arrow-repeat spinner"></i> Consultando...
+              <i class="ph ph-arrows-clockwise spinner"></i> Consultando...
             </span>
           </button>
         </div>
@@ -168,7 +168,7 @@
       <div class="results-header">
         <div class="header-left">
           <button class="btn-icon" (click)="editarFiltros()" title="Cambiar filtros">
-            <i class="bi bi-arrow-left"></i>
+            <i class="ph ph-arrow-left"></i>
           </button>
           <div class="header-info">
             <h2>
@@ -179,16 +179,16 @@
             </h2>
             <div class="header-meta">
               <span class="meta-item">
-                <i class="bi bi-pc-display"></i>
+                <i class="ph ph-desktop-tower"></i>
                 {{ selectedRegisterName }}
               </span>
               <span class="meta-divider">·</span>
               <span class="meta-item" *ngIf="mode === 'DIA'">
-                <i class="bi bi-calendar3"></i>
+                <i class="ph ph-calendar-blank"></i>
                 {{ desdeStr }} → {{ hastaStr }}
               </span>
               <span class="meta-item" *ngIf="mode === 'TURNO' && openShiftOpenedAt">
-                <i class="bi bi-clock"></i>
+                <i class="ph ph-clock"></i>
                 Abierto {{ openShiftOpenedAt | date:'HH:mm' }}
               </span>
             </div>
@@ -198,7 +198,7 @@
         <button class="btn btn-success btn-lg"
                 [disabled]="loading || !canClose"
                 (click)="abrirModalCierre()">
-          <i class="bi bi-check2-circle"></i>
+          <i class="ph ph-check-circle"></i>
           {{ mode === 'TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
         </button>
       </div>
@@ -209,7 +209,7 @@
         <!-- Tarjeta Izquierda: Flujo de Efectivo -->
         <div class="desglose-card">
           <div class="desglose-header">
-            <h4><i class="bi bi-cash"></i> Dinero en Caja</h4>
+            <h4><i class="ph ph-money"></i> Dinero en Caja</h4>
           </div>
           <div class="desglose-body">
             <div class="desglose-row text-muted">
@@ -242,7 +242,7 @@
         <!-- Tarjeta Derecha: Ventas Totales -->
         <div class="desglose-card">
           <div class="desglose-header">
-            <h4><i class="bi bi-cart-check"></i> Ventas Totales</h4>
+            <h4><i class="ph ph-shopping-cart-simple"></i> Ventas Totales</h4>
           </div>
           <div class="desglose-body">
             <div class="desglose-row">
@@ -278,7 +278,7 @@
       <div class="kpis-section">
         <div class="kpi-card entradas">
           <div class="kpi-icon">
-            <i class="bi bi-arrow-down-circle"></i>
+            <i class="ph ph-arrow-circle-down"></i>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Entradas</div>
@@ -288,7 +288,7 @@
 
         <div class="kpi-card salidas">
           <div class="kpi-icon">
-            <i class="bi bi-arrow-up-circle"></i>
+            <i class="ph ph-arrow-circle-up"></i>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Salidas</div>
@@ -298,7 +298,7 @@
 
         <div class="kpi-card neto">
           <div class="kpi-icon">
-            <i class="bi bi-calculator"></i>
+            <i class="ph ph-calculator"></i>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Neto</div>
@@ -308,7 +308,7 @@
 
         <div class="kpi-card esperado" *ngIf="mode === 'TURNO'">
           <div class="kpi-icon">
-            <i class="bi bi-wallet2"></i>
+            <i class="ph ph-wallet"></i>
           </div>
           <div class="kpi-content">
             <div class="kpi-label">Efectivo esperado</div>
@@ -322,7 +322,7 @@
       <div class="movements-section">
         <div class="section-header">
           <h3>
-            <i class="bi bi-list-ul"></i>
+            <i class="ph ph-list-bullets"></i>
             Movimientos ({{ movimientos.length }})
           </h3>
         </div>
@@ -347,11 +347,11 @@
                 </td>
                 <td class="col-tipo">
                   <span class="type-badge" [attr.data-type]="m.typee">
-                    <i class="bi" [ngClass]="{
-                      'bi-cart-check': m.typee === 'SALE',
-                      'bi-piggy-bank': m.typee === 'DEPOSIT',
-                      'bi-cash-coin': m.typee === 'WITHDRAW',
-                      'bi-arrow-counterclockwise': m.typee === 'REFUND'
+                    <i class="ph" [ngClass]="{
+                      'ph-shopping-cart-simple': m.typee === 'SALE',
+                      'ph-piggy-bank': m.typee === 'DEPOSIT',
+                      'ph-coins': m.typee === 'WITHDRAW',
+                      'ph-arrow-counter-clockwise': m.typee === 'REFUND'
                     }"></i>
                     {{ m.typee }}
                   </span>
@@ -360,7 +360,7 @@
                   <div class="ref-cell">
                     <span class="ref-text">{{ m.reference || ('#' + (m.reference_id ?? '—')) }}</span>
                     <span class="ref-note" *ngIf="m.note" [title]="m.note">
-                      <i class="bi bi-sticky"></i>
+                      <i class="ph ph-note"></i>
                     </span>
                   </div>
                 </td>
@@ -374,7 +374,7 @@
           </table>
 
           <div class="empty-state" *ngIf="movimientos.length === 0">
-            <i class="bi bi-inbox"></i>
+            <i class="ph ph-tray"></i>
             <h4>Sin movimientos</h4>
             <p>No se encontraron movimientos en el período seleccionado</p>
           </div>
@@ -382,7 +382,7 @@
 
         <ng-template #loadingTpl>
           <div class="loading-state">
-            <i class="bi bi-arrow-repeat spinner"></i>
+            <i class="ph ph-arrows-clockwise spinner"></i>
             <p>Cargando movimientos...</p>
           </div>
         </ng-template>
@@ -394,11 +394,11 @@
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3>
-            <i class="bi bi-check2-circle"></i>
+            <i class="ph ph-check-circle"></i>
             {{ mode === 'TURNO' ? 'Cerrar turno' : 'Registrar corte' }}
           </h3>
           <button class="btn-close" (click)="cerrarModalCierre()">
-            <i class="bi bi-x-lg"></i>
+            <i class="ph ph-x"></i>
           </button>
         </div>
 
@@ -423,7 +423,7 @@
 
           <div class="amount-display expected">
             <div class="amount-label">
-              <i class="bi bi-calculator-fill"></i>
+              <i class="ph-fill ph-calculator"></i>
               Efectivo esperado
             </div>
             <div class="amount-value">{{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
@@ -436,7 +436,7 @@
 
           <div class="form-group">
             <label class="form-label">
-              <i class="bi bi-cash-stack"></i>
+              <i class="ph ph-money"></i>
               Efectivo entregado
             </label>
             <div class="input-with-currency">
@@ -453,7 +453,7 @@
 
           <div class="amount-display difference" [class.positive]="cashDiff >= 0" [class.negative]="cashDiff < 0">
             <div class="amount-label">
-              <i class="bi" [ngClass]="cashDiff >= 0 ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+              <i class="ph" [ngClass]="cashDiff >= 0 ? 'ph-fill ph-check-circle' : 'ph-fill ph-warning'"></i>
               Diferencia
             </div>
             <div class="amount-value">{{ cashDiff | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
@@ -464,7 +464,7 @@
 
           <div class="form-group">
             <label class="form-label">
-              <i class="bi bi-pencil-square"></i>
+              <i class="ph ph-pencil-simple-line"></i>
               Notas (opcional)
             </label>
             <textarea class="form-control" 
@@ -482,11 +482,11 @@
                 [disabled]="closing || cashDelivered === null || (mode==='TURNO' && !openShiftId)"
                 (click)="confirmarCierreReal()">
           <ng-container *ngIf="!closing; else closingTpl">
-            <i class="bi bi-check-circle"></i>
+            <i class="ph ph-check-circle"></i>
             Confirmar cierre
           </ng-container>
           <ng-template #closingTpl>
-            <i class="bi bi-arrow-repeat spinner"></i>
+            <i class="ph ph-arrows-clockwise spinner"></i>
             Cerrando...
           </ng-template>
         </button>

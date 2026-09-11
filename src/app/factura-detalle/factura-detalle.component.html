@@ -5,7 +5,7 @@
         <h3>Detalle de factura</h3>
         <p *ngIf="data?.uuid">Folio fiscal: {{ data?.uuid }}</p>
       </div>
-      <button class="fd-close" (click)="cerrarModal()"><i class="bi bi-x-lg"></i></button>
+      <button class="fd-close" (click)="cerrarModal()"><i class="ph ph-x"></i></button>
     </div>
 
     <div class="fd-body">
@@ -25,16 +25,16 @@
 
         <div class="fd-actions">
           <button class="fd-btn primary" (click)="descargarArchivos()" [disabled]="descargando">
-            <i class="bi bi-download" *ngIf="!descargando"></i>
+            <i class="ph ph-download-simple" *ngIf="!descargando"></i>
             {{ descargando ? 'Descargando...' : 'Descargar PDF y XML' }}
           </button>
           <button class="fd-btn ghost" (click)="descargarXmlLocal()">
-            <i class="bi bi-filetype-xml"></i> Solo XML (local)
+            <i class="ph ph-file-code"></i> Solo XML (local)
           </button>
 
           <!-- Cancelar: solo si esta timbrada -->
           <button class="fd-btn danger" *ngIf="puedeCancelar" (click)="abrirCancelar()">
-            <i class="bi bi-x-octagon"></i> Cancelar factura
+            <i class="ph ph-x-circle"></i> Cancelar factura
           </button>
         </div>
 

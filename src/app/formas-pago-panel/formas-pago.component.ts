@@ -10,17 +10,17 @@ import { ConfigDrawerService } from '../config-drawer.service';
   imports: [CommonModule, FormsModule],
   styleUrls: ['../panel-controls.css'],
   styles: [`
-    .pay-row{display:flex;justify-content:space-between;align-items:center;padding:.95rem 0;border-bottom:1px solid #eef2f6;}
-    .pay-info{font-weight:600;color:#334155;display:flex;align-items:center;gap:.7rem;}
-    .pay-info i{color:#2563EB;font-size:1.15rem;}
+    .pay-row{display:flex;justify-content:space-between;align-items:center;padding:.95rem 0;border-bottom: 1px solid #eef2f6;}
+    .pay-info{font-weight:600;color: var(--wx-text-muted);display:flex;align-items:center;gap:.7rem;}
+    .pay-info i{color: var(--wx-accent-text);font-size:1.15rem;}
   `],
   template: `
   <div class="panel-content">
-    <div class="section-title"><i class="bi bi-cash-coin"></i> Formas de pago</div>
+    <div class="section-title"><i class="ph ph-coins"></i> Formas de pago</div>
     <p class="hint" style="margin-bottom:.5rem;">Activa las formas de pago que aceptas. Solo esas aparecerán al cobrar.</p>
 
     <div class="pay-row" *ngFor="let m of metodos">
-      <div class="pay-info"><i class="bi bi-{{ m.icon }}"></i> {{ m.label }}</div>
+      <div class="pay-info"><i class="ph ph-{{ m.icon }}"></i> {{ m.label }}</div>
       <label class="sw">
         <input type="checkbox" [checked]="isOn(m.key)" (change)="toggle(m.key)">
         <span class="sl"></span>
@@ -29,7 +29,7 @@ import { ConfigDrawerService } from '../config-drawer.service';
 
     <div class="btn-row" style="justify-content:flex-end; margin-top:2rem;">
       <button class="btn-primary" type="button" (click)="save()" [disabled]="guardando">
-        <i class="bi bi-check2-circle"></i> {{ guardando ? 'Guardando...' : 'Guardar' }}
+        <i class="ph ph-check-circle"></i> {{ guardando ? 'Guardando...' : 'Guardar' }}
       </button>
     </div>
   </div>
@@ -42,11 +42,11 @@ export class FormasPagoPanelComponent implements OnInit {
   guardando = false;
 
   metodos = [
-    { key: 'efectivo', label: 'Efectivo', icon: 'cash-coin' },
+    { key: 'efectivo', label: 'Efectivo', icon: 'coins' },
     { key: 'tarjeta', label: 'Tarjeta', icon: 'credit-card' },
     { key: 'transferencia', label: 'Transferencia', icon: 'bank' },
-    { key: 'credito', label: 'Crédito (fiado)', icon: 'person-lines-fill' },
-    { key: 'terminal_mp', label: 'Terminal Mercado Pago', icon: 'credit-card-2-back' },
+    { key: 'credito', label: 'Crédito (fiado)', icon: 'users' },
+    { key: 'terminal_mp', label: 'Terminal Mercado Pago', icon: 'credit-card' },
   ];
 
   constructor(private drawer: ConfigDrawerService) {}

@@ -21,7 +21,7 @@ export const CATALOGOS_GIRO: GiroCatalogo[] = [
   {
     id: 'abarrotes',
     nombre: 'Abarrotes',
-    icono: 'bi-basket',
+    icono: 'ph-basket',
     productos: [
       // Bebidas
       { part_number: 'ABA-001', name: 'Coca-Cola 600ml', category_name: 'Bebidas', brand_name: 'Coca-Cola' },
@@ -86,7 +86,7 @@ export const CATALOGOS_GIRO: GiroCatalogo[] = [
   {
     id: 'ferreteria',
     nombre: 'Ferreteria',
-    icono: 'bi-tools',
+    icono: 'ph-wrench',
     productos: [
       // Tornilleria y fijacion
       { part_number: 'FER-001', name: 'Tornillo Pija 1" (100 pz)', category_name: 'Tornilleria', brand_name: 'Fiero' },
@@ -150,7 +150,7 @@ export const CATALOGOS_GIRO: GiroCatalogo[] = [
   {
     id: 'refaccionaria',
     nombre: 'Refaccionaria',
-    icono: 'bi-gear-wide-connected',
+    icono: 'ph-gear-six',
     productos: [
       // Lubricantes
       { part_number: 'REF-001', name: 'Aceite Quaker State 20W50 1L', category_name: 'Lubricantes', brand_name: 'Quaker State' },
@@ -217,7 +217,7 @@ export const CATALOGOS_GIRO: GiroCatalogo[] = [
   {
     id: 'farmacias',
     nombre: 'Farmacias',
-    icono: 'bi-capsule',
+    icono: 'ph-pill',
     productos: [
       // Analgesicos
       { part_number: 'FAR-001', name: 'Tempra 500mg (caja)', category_name: 'Analgesicos', brand_name: 'Tempra' },

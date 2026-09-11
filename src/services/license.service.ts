@@ -48,6 +48,25 @@ export class LicenseService {
   // En prueba o monocaja NO se muestra nada de multicaja.
   get permiteMulticaja(): boolean { return this.estado.plan === 'multi'; }
 
+  /**
+   * Como se llama, de cara al usuario, lo que el negocio tiene AHORA.
+   *
+   * Durante la prueba no hay plan contratado. Llamarlo "MonoCaja" -que es lo
+   * que hacian las pantallas al resolver un getter binario- anuncia una compra
+   * que nadie hizo, y de paso esconde que la prueba termina. Se resuelve aqui
+   * para que la instalacion, el panel de licencia y el de cajas digan lo mismo.
+   */
+  get planTexto(): string {
+    if (this.enPrueba) return 'Prueba gratuita';
+    return this.estado.plan === 'multi' ? 'MultiCaja' : 'MonoCaja';
+  }
+
+  /** "quedan 12 dias" / "queda 1 dia", ya en singular o plural. */
+  get textoDiasPrueba(): string {
+    const d = this.diasRestantesPrueba;
+    return d === 1 ? '1 día restante' : `${d} días restantes`;
+  }
+
   // Lee el estado unificado desde Electron (con protección de reloj)
   async cargarEstado(): Promise<LicenseStatus> {
     try {

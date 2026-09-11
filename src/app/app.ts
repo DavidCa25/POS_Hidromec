@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CapabilityService } from '../core';
 import { LicenseService } from '../services/license.service';
 import { SetupInicial } from './setup-inicial/setup-inicial.component';
 import { IniciarPruebaComponent } from './licencia/iniciar-prueba.component';
@@ -10,7 +10,9 @@ import { TrialBannerComponent } from './licencia/trial-banner.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, SetupInicial, IniciarPruebaComponent, LicenciaVencidaComponent, TrialBannerComponent],
+  // Los cuatro componentes solo se usan dentro de bloques @defer en la
+  // plantilla: el compilador los saca del bundle inicial.
+  imports: [RouterOutlet, SetupInicial, IniciarPruebaComponent, LicenciaVencidaComponent, TrialBannerComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
@@ -18,7 +20,7 @@ export class App implements OnInit {
   listo = false;
   necesitaSetup = false;
 
-  constructor(public license: LicenseService) {}
+  constructor(public license: LicenseService, private caps: CapabilityService) {}
 
   async ngOnInit() {
     await this.license.iniciar();
@@ -40,7 +42,16 @@ export class App implements OnInit {
     this.necesitaSetup = !st?.configurado;
   }
 
-  onSetupCompletado() {
+  /**
+   * Salida del asistente hacia la aplicacion.
+   *
+   * Es la transicion de "sin configurar" a "configurado", asi que es aqui
+   * donde las capacidades tienen que quedar al dia: el menu, las rutas y los
+   * guards que se montan a continuacion leen de ellas. Antes solo se ocultaba
+   * el asistente, y Hospitality no aparecia hasta el siguiente arranque.
+   */
+  async onSetupCompletado() {
+    await this.caps.load(true);
     this.necesitaSetup = false;
   }
 }

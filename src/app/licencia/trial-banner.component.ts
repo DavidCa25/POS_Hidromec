@@ -13,7 +13,7 @@ const UMBRALES = [15, 7, 3, 1];
   imports: [CommonModule],
   template: `
   <div class="trial-chip" [class.urgente]="dias <= 5">
-    <i class="bi bi-hourglass-split"></i>
+    <i class="ph ph-hourglass"></i>
     <span class="txt">
       Prueba gratis ·
       <strong>{{ dias }} {{ dias === 1 ? 'día' : 'días' }}</strong> restantes
@@ -23,16 +23,16 @@ const UMBRALES = [15, 7, 3, 1];
   `,
   styles: [`
     .trial-chip{position:fixed;right:18px;bottom:18px;z-index:1500;display:flex;align-items:center;gap:.6rem;
-      background:#0F2A3F;color:#fff;border-radius:999px;padding:.55rem .85rem .55rem 1rem;
-      box-shadow:0 10px 25px rgba(0,0,0,.28);font-size:.9rem;}
-    .trial-chip i{color:#45B3C3;}
-    .trial-chip.urgente{background:#7c2d12;}
-    .trial-chip.urgente i{color:#fdba74;}
-    .txt strong{font-weight:800;}
-    .chip-btn{margin-left:.4rem;background:#2563EB;color:#fff;border:none;border-radius:999px;padding:.35rem .9rem;font-weight:700;font-size:.85rem;cursor:pointer;}
-    .chip-btn:hover{background:#1d4ed8;}
-    .trial-chip.urgente .chip-btn{background:#ea580c;}
-    .trial-chip.urgente .chip-btn:hover{background:#c2410c;}
+      background: #0F2A3F;color: #fff;border-radius:999px;padding:.55rem .85rem .55rem 1rem;
+      box-shadow: var(--wx-shadow-raised);font-size:.9rem;}
+    .trial-chip i{color: #45B3C3;}
+    .trial-chip.urgente{background: #7c2d12;}
+    .trial-chip.urgente i{color: #fdba74;}
+    .txt strong{font-weight: 600;}
+    .chip-btn{margin-left:.4rem;background: #2563EB;color: #fff;border:none;border-radius:999px;padding:.35rem .9rem;font-weight: 600;font-size:.85rem;cursor:pointer;}
+    .chip-btn:hover{background: #1d4ed8;}
+    .trial-chip.urgente .chip-btn{background: #ea580c;}
+    .trial-chip.urgente .chip-btn:hover{background: #c2410c;}
   `]
 })
 export class TrialBannerComponent implements OnInit {

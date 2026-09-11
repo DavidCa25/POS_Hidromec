@@ -1,6 +1,8 @@
 <div class="panel-content">
     
-    <div class="section-title"><i class="bi bi-printer"></i> Impresora y formato</div>
+    <section class="wx-set">
+    <header class="wx-set__head"><i class="ph ph-printer"></i><h3>Impresora y formato</h3></header>
+    <div class="wx-set__body">
     
     <div class="row two">
         <div>
@@ -11,7 +13,7 @@
                     <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         {{ nombreImpresoraSeleccionada }}
                     </span>
-                    <i class="bi bi-chevron-down"></i>
+                    <i class="ph ph-caret-down"></i>
                 </div>
                 
                 <div class="custom-sel-menu" *ngIf="printerOpen">
@@ -37,7 +39,7 @@
             <div class="custom-sel-wrap">
                 <div class="ctl custom-sel-box" (click)="paperSizeOpen = !paperSizeOpen; printerOpen = false;">
                     <span>{{ ticketPaperSize }}</span>
-                    <i class="bi bi-chevron-down"></i>
+                    <i class="ph ph-caret-down"></i>
                 </div>
                 
                 <div class="custom-sel-menu" *ngIf="paperSizeOpen">
@@ -52,8 +54,11 @@
             <div class="hint">Estándar para impresoras térmicas.</div>
         </div>
     </div>
-
-    <div class="section-title"><i class="bi bi-sliders"></i> Comportamiento</div>
+    </div>
+</section>
+<section class="wx-set">
+    <header class="wx-set__head"><i class="ph ph-sliders-horizontal"></i><h3>Comportamiento</h3></header>
+    <div class="wx-set__body">
 
     <div class="row two">
         <div>
@@ -78,8 +83,11 @@
             </div>
         </div>
     </div>
-
-    <div class="section-title"><i class="bi bi-palette2"></i> Diseño del comprobante</div>
+    </div>
+</section>
+<section class="wx-set">
+    <header class="wx-set__head"><i class="ph ph-palette"></i><h3>Diseño del comprobante</h3></header>
+    <div class="wx-set__body">
     
     <div class="row two">
         <div>
@@ -97,13 +105,16 @@
             </div>
         </div>
     </div>
+    </div>
+</section>
+
 
     <div class="btn-row" style="justify-content: flex-end; margin-top: 32px;">
         <button type="button" class="btn-outline">
-            <i class="bi bi-eye"></i> Vista previa
+            <i class="ph ph-eye"></i> Vista previa
         </button>
         <button type="button" class="btn-primary" (click)="save()">
-            <i class="bi bi-check2-circle"></i> Guardar cambios
+            <i class="ph ph-check-circle"></i> Guardar cambios
         </button>
     </div>
 

@@ -6,9 +6,10 @@ import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
-import { ThemeService } from '../services/theme.service';
+import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
+import { CapabilityService } from '../core';
 
 type AppNotification = {
   id: string;
@@ -41,12 +42,13 @@ export class Dashboard {
   isDatosOpen = false;
   themeOpen = false;
 
-  invColors = [
-    { name: 'Azul', value: '#1f2e86' },
-    { name: 'Verde', value: '#00662f' },
-    { name: 'Navy->Gold', value: '#0b1b4d' },
-    { name: 'Café', value: '#6b3f2a' },
-  ];
+  /** Paleta de acentos. Vive en ThemeService para no duplicarla. */
+  readonly presets: AccentPreset[] = ACCENT_PRESETS;
+
+  /** Color mostrado en el selector: puede ser una vista previa sin guardar. */
+  colorEnEdicion = '#1F2E86';
+  /** Muestra enfocada, para la navegación con flechas. */
+  indicePaleta = 0;
 
   currentInvColor = '#1f2e86';
 
@@ -63,7 +65,7 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService) {}
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -71,10 +73,42 @@ export class Dashboard {
     this.menuOpen = !this.isMobile; 
     this.showOverlay = this.isMobile && this.menuOpen;
   }
-  ngOnInit() { this.onResize();if (this.auth.usuarioActual?.nombre) {
+
+  /**
+   * Contexto del negocio para el pie del rail. Se lee de la misma
+   * configuracion que edita Configuracion > Negocio; si aun no se ha rellenado
+   * se muestra un texto neutro en vez de un hueco.
+   */
+  nombreNegocio = 'Wybix POS';
+  appVersion = '';
+
+  get rolTexto(): string {
+    return this.auth.esAdmin ? 'Administrador' : 'Cajero';
+  }
+
+  private async cargarContexto() {
+    try {
+      const cfg = await (window as any).electronAPI?.getConfig?.();
+      const c = cfg?.data ?? cfg ?? {};
+      const n = (c.business_name ?? c.nombre ?? '').trim();
+      if (n) this.nombreNegocio = n;
+    } catch { /* silencioso: es contexto, no bloquea nada */ }
+    try {
+      // El handler devuelve { success, version }, no { data }: sin leer
+      // `version` el pie del rail mostraba "v[object Object]".
+      const v = await (window as any).electronAPI?.getAppVersion?.();
+      const texto = v?.version ?? v?.data ?? (typeof v === 'string' ? v : '');
+      this.appVersion = String(texto ?? '').replace(/^v/, '');
+    } catch { /* silencioso */ }
+  }
+
+  ngOnInit() { this.onResize(); this.cargarContexto();
+    // Perfil de negocio y de dispositivo: deciden que se ve en el menu.
+    this.caps.load();if (this.auth.usuarioActual?.nombre) {
       this.registerService.load();
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();
+      this.colorEnEdicion = this.currentInvColor.toUpperCase();
 
       this.updater.checkForUpdates();
     }
@@ -107,9 +141,25 @@ export class Dashboard {
     } catch { /* silencioso */ }
   }
 
-  toggleTheme() {
-    this.themeOpen = !this.themeOpen;
-    this.notifOpen = false;
+  /**
+   * El popover nativo se encarga de abrir, cerrar, Escape y devolver el foco.
+   * Aqui solo se sincroniza el estado del componente con lo que ya paso.
+   */
+  onPaletaToggle(e: { newState?: string }) {
+    if (e?.newState === 'open') {
+      this.colorEnEdicion = this.currentInvColor.toUpperCase();
+      this.indicePaleta = Math.max(0, this.presets.findIndex(p => this.esColorActual(p.valor)));
+      this.themeOpen = true;
+      this.notifOpen = false;
+    } else {
+      this.cerrarPaleta();
+    }
+  }
+
+  /** Cierra el popover desde codigo (tras elegir un color). */
+  private ocultarPaleta() {
+    const el = document.getElementById('paletaTablas') as any;
+    if (el?.hidePopover && el.matches(':popover-open')) el.hidePopover();
   }
 
   get isDark(): boolean { return this.theme.isDark(); }
@@ -117,8 +167,66 @@ export class Dashboard {
 
   setInvTheme(color: string) {
     this.currentInvColor = color;
+    this.colorEnEdicion = color.toUpperCase();
     this.theme.setInvMain(color);
     this.themeOpen = false;
+    this.ocultarPaleta();
+  }
+
+  /** ¿Es este el color aplicado ahora mismo? Compara sin importar mayúsculas. */
+  esColorActual(valor: string): boolean {
+    return (this.colorEnEdicion || '').toUpperCase() === (valor || '').toUpperCase();
+  }
+
+  esPreset(): boolean {
+    return this.presets.some(p => this.esColorActual(p.valor));
+  }
+
+  get nombreColorActual(): string {
+    return this.presets.find(p => this.esColorActual(p.valor))?.nombre ?? 'Personalizado';
+  }
+
+  /**
+   * Vista previa mientras el usuario arrastra en el selector nativo.
+   * Aplica el color a las tablas SIN guardarlo: así se ve el efecto real
+   * antes de decidir. Si cierra sin confirmar, `cerrarPaleta` lo revierte.
+   */
+  previewColor(color: string) {
+    this.colorEnEdicion = (color || '').toUpperCase();
+    this.theme.previewInvMain(color);
+  }
+
+  /** Confirma y persiste el color personalizado. */
+  confirmarColor(color: string) {
+    this.setInvTheme((color || '').toUpperCase());
+  }
+
+  /** Cierra el selector descartando cualquier vista previa sin confirmar. */
+  private cerrarPaleta() {
+    if (!this.themeOpen) return;
+    this.themeOpen = false;
+    if (!this.esColorActual(this.currentInvColor)) {
+      this.colorEnEdicion = this.currentInvColor.toUpperCase();
+      this.theme.cancelPreview();
+    }
+  }
+
+  /** Flechas, Inicio y Fin dentro de la rejilla de muestras. */
+  onPaletaKey(e: KeyboardEvent) {
+    const COLUMNAS = 8;
+    const ultimo = this.presets.length - 1;
+    let destino: number | null = null;
+    if (e.key === 'ArrowRight') destino = Math.min(this.indicePaleta + 1, ultimo);
+    else if (e.key === 'ArrowLeft') destino = Math.max(this.indicePaleta - 1, 0);
+    else if (e.key === 'ArrowDown') destino = Math.min(this.indicePaleta + COLUMNAS, ultimo);
+    else if (e.key === 'ArrowUp') destino = Math.max(this.indicePaleta - COLUMNAS, 0);
+    else if (e.key === 'Home') destino = 0;
+    else if (e.key === 'End') destino = ultimo;
+    if (destino === null) return;
+    e.preventDefault();
+    this.indicePaleta = destino;
+    const botones = document.querySelectorAll<HTMLElement>('.wx-palette__grid .wx-swatch');
+    botones[destino]?.focus();
   }
 
   ngOnDestroy() {
@@ -270,7 +378,7 @@ export class Dashboard {
     }
     const themeWrapper = document.getElementById('theme-wrapper');
     if (themeWrapper && !themeWrapper.contains(event.target as Node)) {
-      this.themeOpen = false;
+      this.cerrarPaleta();
     }
   }
 

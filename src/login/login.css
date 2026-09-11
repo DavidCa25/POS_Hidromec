@@ -2,7 +2,7 @@
   display: block;
   min-height: 100vh;
   height: 100vh;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--wx-font);
   background: 
     url('../assets/fondo_wybie.png') center center / cover no-repeat;
 }
@@ -16,13 +16,13 @@
 }
 
 .login-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
   border-radius: 18px;
   padding: 2.2rem 2rem 2rem 2rem;
   max-width: 400px;
   width: 100%;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 1.5px 16px rgba(0,0,0,0.06);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .logo {
@@ -31,9 +31,9 @@
 }
 
 h2 {
-  font-family: 'Raleway', sans-serif;
+  font-family: var(--wx-font);
   text-align: center;
-  color: #000080; /* NavyBlue */
+  color: var(--wx-text); /* NavyBlue */
   margin-bottom: 1rem;
 }
 
@@ -50,24 +50,24 @@ form {
 }
 
 input {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
   width: 100%;
   padding: 0.75rem 0.75rem 0.75rem 1.2rem; /* espacio para ícono */
-  border: 1px solid #ccc;
+  border: 1px solid var(--wx-edge-strong);
   border-radius: 8px;
   font-size: 1rem;
   background: #f8fafb;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color var(--wx-dur-state), box-shadow var(--wx-dur-state);
 }
 
 input:focus {
   outline: none;
-  border-color: #191970; /* MidnightBlue */
+  border-color: var(--wx-accent); /* MidnightBlue */
   box-shadow: 0 0 0 2px rgba(0, 111, 61, 0.09);
 }
 
 button:not(.toggle-btn) {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
   width: 100%;
   padding: 0.75rem;
   background: #191970; /* MidnightBlue */
@@ -76,7 +76,7 @@ button:not(.toggle-btn) {
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.3s, box-shadow 0.2s;
+  transition: background var(--wx-dur-layout), box-shadow var(--wx-dur-state);
   box-shadow: 0 2px 12px 0 #006F3D22;
 }
 
@@ -85,20 +85,20 @@ button:hover:not(.toggle-btn) {
 }
 
 .footer {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--wx-font);
   margin-top: 1.6rem;
   text-align: center;
   font-size: 0.90rem;
-  color: #888;
+  color: var(--wx-text-dim);
 }
 
 .error-message {
-  font-family: 'Poppins', sans-serif;
-  background-color: #ffe0e0;
-  color: #b00020;
+  font-family: var(--wx-font);
+  background-color: var(--wx-danger-soft);
+  color: var(--wx-danger);
   padding: 12px;
   margin-top: 15px;
-  border: 1px solid #f5c2c2;
+  border: 1px solid var(--wx-danger);
   border-radius: 8px;
   font-size: 14px;
   text-align: center;
@@ -110,11 +110,11 @@ button:hover:not(.toggle-btn) {
 }
 
 .warning-message {
-  background-color: #fff8e1;
-  color: #8a6d3b;
+  background-color: var(--wx-warning-soft);
+  color: var(--wx-warning);
   padding: 12px;
   margin-bottom: 18px;
-  border: 1px solid #ffecb3;
+  border: 1px solid var(--wx-warning);
   border-radius: 8px;
   font-size: 14px;
   text-align: center;
@@ -128,7 +128,7 @@ button:hover:not(.toggle-btn) {
   border:none;
   cursor: pointer;
   font-size: 1.2rem;
-  color: #555;
+  color: var(--wx-text-muted);
   padding: 0;
 }
 
@@ -187,3 +187,116 @@ button:hover:not(.toggle-btn) {
   left: 0;
 }
 
+
+/* ==========================================================================
+   REFINAMIENTO
+   El Login se CONSERVA: mismo fondo de marca a sangre, misma tarjeta
+   centrada, mismo banner. Es la pantalla con mas personalidad de la app y no
+   se rehace.
+
+   Lo que se afina para integrarlo con el sistema:
+   - El navy estaba escrito como #000080 (NavyBlue) y #191970 (MidnightBlue),
+     dos azules CSS que no son los de Wybix.
+   - El anillo de foco era verde translucido (rgba(0,111,61,.09)) sobre un
+     borde azul: dos colores sin relacion entre si ni con la marca.
+   - El boton llevaba una sombra verde (#006F3D22) heredada de otro tema.
+   - No tenia modo oscuro.
+   ========================================================================== */
+
+.login-card {
+  border-radius: var(--wx-radius-lg);
+  border: 1px solid var(--wx-edge);
+  background: var(--wx-surface);
+  /* La tarjeta si flota de verdad sobre una foto: es la unica sombra
+     profunda de toda la aplicacion, y aqui esta justificada. */
+  box-shadow: 0 2px 8px rgb(6 11 17 / 0.16), 0 28px 64px -22px rgb(6 11 17 / 0.5);
+  padding: 30px 28px 24px;
+  max-width: 380px;
+}
+
+h2 {
+  color: var(--wx-text);
+  font-size: var(--wx-text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+}
+
+input {
+  min-height: 42px;
+  padding: 0 42px 0 14px;
+  background: var(--wx-raised);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-size: var(--wx-text-base);
+  transition: border-color var(--wx-dur-micro) ease,
+              box-shadow var(--wx-dur-micro) ease,
+              background-color var(--wx-dur-micro) ease;
+}
+input::placeholder { color: var(--wx-text-dim); }
+input:focus {
+  background: var(--wx-surface);
+  border-color: var(--wx-accent);
+  box-shadow: 0 0 0 3px var(--wx-accent-soft);
+}
+
+button:not(.toggle-btn) {
+  min-height: 42px;
+  background: var(--wx-navy-700);
+  border: 1px solid var(--wx-navy-700);
+  border-radius: var(--wx-radius-sm);
+  color: #fff;
+  font-size: var(--wx-text-base);
+  font-weight: 600;
+  box-shadow: none;
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+button:not(.toggle-btn):hover { background: var(--wx-navy-600); }
+button:not(.toggle-btn):active { transform: scale(0.985); }
+
+.toggle-btn {
+  right: 8px;
+  width: 30px; height: 30px;
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text-dim);
+  font-size: 17px;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.toggle-btn:hover { background: var(--wx-sunken); color: var(--wx-text); }
+
+/* Mensajes: mismo lenguaje que el resto de la app. */
+.error-message,
+.warning-message {
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  font-size: var(--wx-text-sm);
+  box-shadow: none;
+}
+.error-message { background: var(--wx-danger-soft); color: var(--wx-danger); }
+.warning-message { background: var(--wx-warning-soft); color: var(--wx-warning); }
+
+.footer { font-size: var(--wx-text-xs); color: var(--wx-text-dim); margin-top: 20px; }
+
+/* Modo oscuro: la foto de fondo se atenua para que la tarjeta no quede
+   flotando sobre una imagen mas luminosa que la propia interfaz. */
+:host-context(html.dark) .login-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgb(6 11 17 / 0.5);
+  pointer-events: none;
+}
+:host-context(html.dark) .login-card { position: relative; z-index: 1; }
+:host-context(html.dark) button:not(.toggle-btn) {
+  background: var(--wx-accent);
+  border-color: var(--wx-accent);
+  color: var(--wx-accent-ink);
+}
+:host-context(html.dark) button:not(.toggle-btn):hover { background: var(--wx-accent-hover); }
+
+/* CSS muerto del icono de ojo: la plantilla usa Phosphor desde hace tiempo. */
+.icon-eye, .icon-eye-off { display: none; }

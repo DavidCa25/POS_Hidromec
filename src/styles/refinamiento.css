@@ -1,0 +1,600 @@
+/* ==========================================================================
+   WYBIX POS - REFINAMIENTO DEL LENGUAJE VISUAL
+   --------------------------------------------------------------------------
+   La aplicacion tiene ~1900 usos de clases de Bootstrap en 40 plantillas.
+   Quitarlas seria reescribir cada pantalla y romper layouts sin ganar nada:
+   lo que hace que el producto "parezca Bootstrap" NO es `d-flex` ni la
+   reticula -esas son neutras- sino su LENGUAJE VISUAL: sus botones azules,
+   sus sombras, sus inputs, sus badges saturados, sus radios.
+
+   Asi que aqui se reescribe ese lenguaje contra los tokens de Wybix.
+   Resultado: cada `.btn`, `.card`, `.form-control`, `.table` o `.modal` que
+   ya existe pasa a hablar Wybix sin tocar la plantilla, y el modo oscuro sale
+   gratis porque todo viene de variables.
+
+   Se CONSERVAN las tarjetas (son parte del caracter de Wybix). Lo que cambia
+   es su calidad: borde fino, sombra tenida y muy corta, radio de la escala.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Variables propias de Bootstrap, reenganchadas a los tokens.
+   Con esto, cualquier componente de Bootstrap que no se reescriba aqui
+   igualmente hereda la marca y funciona en oscuro.
+   -------------------------------------------------------------------------- */
+:root,
+html.dark {
+  --bs-body-bg: var(--wx-canvas);
+  --bs-body-color: var(--wx-text);
+  --bs-body-font-family: var(--wx-font);
+  --bs-body-font-size: var(--wx-text-base);
+  --bs-border-color: var(--wx-edge);
+  --bs-border-radius: var(--wx-radius-md);
+  --bs-border-radius-sm: var(--wx-radius-sm);
+  --bs-border-radius-lg: var(--wx-radius-lg);
+  --bs-primary: var(--wx-accent);
+  --bs-primary-rgb: 69, 179, 195;
+  --bs-secondary-color: var(--wx-text-muted);
+  --bs-emphasis-color: var(--wx-text);
+  --bs-link-color: var(--wx-accent-text);
+  --bs-link-hover-color: var(--wx-accent-press);
+  --bs-focus-ring-color: var(--wx-accent-soft);
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--wx-text);
+  --bs-tertiary-bg: var(--wx-raised);
+  --bs-secondary-bg: var(--wx-sunken);
+  --bs-heading-color: var(--wx-text);
+}
+
+html { background: var(--wx-canvas); }
+body {
+  background: var(--wx-canvas);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  line-height: var(--wx-leading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cifras tabulares en cualquier sitio que las pida. */
+.wx-num, .mono, .num, .money, .wx-money {
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* Foco visible y de marca en toda la aplicacion. */
+:focus-visible {
+  outline: 2px solid var(--wx-accent);
+  outline-offset: 2px;
+  border-radius: var(--wx-radius-xs);
+}
+::selection { background: var(--wx-accent); color: var(--wx-accent-ink); }
+
+/* Barras de scroll: en una app de escritorio se ven todo el dia. */
+* { scrollbar-width: thin; scrollbar-color: var(--wx-edge-strong) transparent; }
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--wx-edge-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--wx-text-dim); background-clip: content-box; }
+
+/* ==========================================================================
+   BOTONES
+   Un solo lenguaje: altura fija, sin gradiente, sin sombra de color, sin
+   `translateY` en hover. La jerarquia la dan el relleno y el peso.
+   ========================================================================== */
+.btn {
+  --bs-btn-border-radius: var(--wx-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--wx-control-h);
+  padding: 0 15px;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow: none;
+  box-shadow: none;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out),
+              background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease;
+}
+/* Pulsacion: el boton responde al instante (Emil). */
+.btn:active:not(:disabled) { transform: scale(0.975); }
+.btn:focus, .btn:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--wx-accent);
+  outline-offset: 2px;
+}
+.btn:disabled, .btn.disabled { opacity: 0.45; box-shadow: none; }
+
+.btn-sm { min-height: var(--wx-control-h-sm); padding: 0 11px; font-size: var(--wx-text-sm); }
+.btn-lg { min-height: 46px; padding: 0 20px; font-size: var(--wx-text-md); }
+
+/* Primario = accion. Cyan de marca con tinta casi negra (7.5:1). */
+.btn-primary {
+  background: var(--wx-accent);
+  border-color: var(--wx-accent);
+  color: var(--wx-accent-ink);
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--wx-accent-hover);
+  border-color: var(--wx-accent-hover);
+  color: var(--wx-accent-ink);
+}
+.btn-primary:active {
+  background: var(--wx-accent-press) !important;
+  border-color: var(--wx-accent-press) !important;
+  color: var(--wx-accent-ink) !important;
+}
+
+/* Secundario = superficie con borde. Es el boton por defecto de la app. */
+.btn-secondary, .btn-light,
+.btn-outline-secondary, .btn-outline-dark {
+  background: var(--wx-surface);
+  border-color: var(--wx-edge-strong);
+  color: var(--wx-text);
+}
+.btn-secondary:hover, .btn-light:hover,
+.btn-outline-secondary:hover, .btn-outline-dark:hover {
+  background: var(--wx-raised);
+  border-color: var(--wx-text-dim);
+  color: var(--wx-text);
+}
+
+.btn-outline-primary {
+  background: transparent;
+  color: var(--wx-accent-text);
+  border-color: var(--wx-accent-line);
+}
+.btn-outline-primary:hover {
+  background: var(--wx-accent-soft);
+  color: var(--wx-accent-text);
+  border-color: var(--wx-accent);
+}
+
+.btn-success { background: var(--wx-success); border-color: var(--wx-success); color: #fff; }
+.btn-success:hover { filter: brightness(1.08); color: #fff; }
+.btn-warning { background: var(--wx-warning); border-color: var(--wx-warning); color: #fff; }
+.btn-warning:hover { filter: brightness(1.08); color: #fff; }
+.btn-danger  { background: var(--wx-danger);  border-color: var(--wx-danger);  color: #fff; }
+.btn-danger:hover { filter: brightness(1.08); color: #fff; }
+.btn-info    { background: var(--wx-info);    border-color: var(--wx-info);    color: #fff; }
+.btn-dark    { background: var(--wx-navy-700); border-color: var(--wx-navy-700); color: #fff; }
+
+.btn-outline-danger  { background: transparent; border-color: var(--wx-danger);  color: var(--wx-danger); }
+.btn-outline-danger:hover  { background: var(--wx-danger);  border-color: var(--wx-danger);  color: #fff; }
+.btn-outline-success { background: transparent; border-color: var(--wx-success); color: var(--wx-success); }
+.btn-outline-success:hover { background: var(--wx-success); color: #fff; }
+.btn-outline-warning { background: transparent; border-color: var(--wx-warning); color: var(--wx-warning); }
+.btn-outline-warning:hover { background: var(--wx-warning); color: #fff; }
+
+.btn-link { background: transparent; border-color: transparent; color: var(--wx-accent-text); text-decoration: none; }
+.btn-link:hover { color: var(--wx-accent-press); text-decoration: underline; }
+
+/* ==========================================================================
+   CAMPOS
+   Borde fino, y el foco se comunica con el cyan de marca en vez del azul
+   de Bootstrap.
+   ========================================================================== */
+.form-control, .form-select, .input-group-text {
+  min-height: var(--wx-control-h);
+  padding: 7px 12px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  box-shadow: none;
+  transition: border-color var(--wx-dur-micro) ease,
+              box-shadow var(--wx-dur-micro) ease,
+              background-color var(--wx-dur-micro) ease;
+}
+.form-control:hover:not(:disabled):not(:focus),
+.form-select:hover:not(:disabled):not(:focus) { border-color: var(--wx-text-dim); }
+.form-control:focus, .form-select:focus {
+  background: var(--wx-surface);
+  border-color: var(--wx-accent);
+  box-shadow: 0 0 0 3px var(--wx-accent-soft);
+  color: var(--wx-text);
+  outline: none;
+}
+.form-control::placeholder { color: var(--wx-text-dim); opacity: 1; }
+.form-control:disabled, .form-select:disabled, .form-control[readonly] {
+  background: var(--wx-sunken);
+  color: var(--wx-text-dim);
+  border-color: var(--wx-edge);
+  cursor: not-allowed;
+}
+.form-control.is-invalid, .form-select.is-invalid {
+  border-color: var(--wx-danger);
+  background-image: none;
+  box-shadow: none;
+}
+.form-control.is-invalid:focus { box-shadow: 0 0 0 3px var(--wx-danger-soft); }
+.invalid-feedback { color: var(--wx-danger); font-size: var(--wx-text-sm); }
+.form-control-sm, .form-select-sm { min-height: var(--wx-control-h-sm); padding: 4px 9px; font-size: var(--wx-text-sm); }
+
+.input-group-text { background: var(--wx-raised); color: var(--wx-text-muted); }
+
+.form-label {
+  margin-bottom: 6px;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+}
+
+.form-check-input {
+  border-color: var(--wx-edge-strong);
+  background-color: var(--wx-surface);
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+.form-check-input:checked { background-color: var(--wx-accent); border-color: var(--wx-accent); }
+.form-check-input:focus { border-color: var(--wx-accent); box-shadow: 0 0 0 3px var(--wx-accent-soft); }
+
+/* ==========================================================================
+   SUPERFICIES
+   Las cards se CONSERVAN: son parte del caracter de Wybix. Lo que se afina
+   es la calidad -borde fino, sombra tenida muy corta, radio de la escala-
+   en vez de la sombra de 24px que traian.
+   ========================================================================== */
+.card {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  color: var(--wx-text);
+}
+.card-header, .card-footer { background: transparent; border-color: var(--wx-edge); color: var(--wx-text); }
+
+/* Las utilidades de sombra de Bootstrap se recalibran: la elevacion la
+   decide el sistema, no una utilidad suelta en la plantilla. */
+.shadow-sm { box-shadow: var(--wx-shadow-card) !important; }
+.shadow    { box-shadow: var(--wx-shadow-raised) !important; }
+.shadow-lg { box-shadow: var(--wx-shadow-raised) !important; }
+
+.list-group { background: transparent; }
+.list-group-item {
+  background: var(--wx-surface);
+  border-color: var(--wx-edge);
+  color: var(--wx-text);
+}
+.list-group-item-action:hover { background: var(--wx-raised); color: var(--wx-text); }
+
+.bg-white, .bg-light { background-color: var(--wx-surface) !important; }
+.bg-body, .bg-body-tertiary, .bg-body-secondary { background-color: var(--wx-canvas) !important; }
+.text-dark, .text-body { color: var(--wx-text) !important; }
+.text-muted, .text-secondary { color: var(--wx-text-muted) !important; }
+.text-primary { color: var(--wx-accent-text) !important; }
+.text-success { color: var(--wx-success) !important; }
+.text-danger  { color: var(--wx-danger) !important; }
+.text-warning { color: var(--wx-warning) !important; }
+.text-info    { color: var(--wx-info) !important; }
+.border, .border-top, .border-bottom, .border-start, .border-end { border-color: var(--wx-edge) !important; }
+
+/* ==========================================================================
+   TABLAS
+   El sistema completo vive en table.css. Aqui solo se neutraliza el aspecto
+   por defecto de Bootstrap para que no compita.
+   ========================================================================== */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--wx-text);
+  --bs-table-border-color: var(--wx-edge);
+  --bs-table-striped-bg: var(--wx-raised);
+  --bs-table-hover-bg: var(--wx-raised);
+  color: var(--wx-text);
+  font-size: var(--wx-text-base);
+  margin-bottom: 0;
+}
+.table > :not(caption) > * > * {
+  background-color: transparent;
+  border-bottom-color: var(--wx-edge);
+  box-shadow: none;
+}
+.table thead th, .table-light, thead.table-light th {
+  background: var(--wx-raised) !important;
+  color: var(--wx-text-muted) !important;
+  font-weight: 600;
+  font-size: var(--wx-text-sm);
+  border-bottom-color: var(--wx-edge-strong) !important;
+}
+.table tbody tr:hover > * { background-color: var(--wx-raised); }
+
+/* ==========================================================================
+   MENUS Y DIALOGOS - aqui SI hay elevacion, porque flotan de verdad
+   ========================================================================== */
+.dropdown-menu {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-menu);
+  padding: 5px;
+  color: var(--wx-text);
+  font-size: var(--wx-text-base);
+}
+.dropdown-item {
+  border-radius: var(--wx-radius-xs);
+  padding: 8px 11px;
+  color: var(--wx-text);
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.dropdown-item:hover, .dropdown-item:focus { background: var(--wx-raised); color: var(--wx-text); }
+.dropdown-item.active, .dropdown-item:active { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.dropdown-divider { border-color: var(--wx-edge); }
+
+.modal-content {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+  color: var(--wx-text);
+}
+.modal-header, .modal-footer { border-color: var(--wx-edge); }
+.modal-title { font-size: var(--wx-text-md); font-weight: 600; color: var(--wx-text); }
+.modal-backdrop { background: var(--wx-scrim); }
+.modal-backdrop.show { opacity: 1; }
+.btn-close { filter: none; opacity: 0.5; transition: opacity var(--wx-dur-micro) ease; }
+.btn-close:hover { opacity: 1; }
+html.dark .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+
+/* ==========================================================================
+   BADGES Y AVISOS
+   Sin pastillas saturadas: fondo tenue + texto del propio color de estado.
+   La unica excepcion es el contador de alertas, que tiene que gritar.
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: var(--wx-radius-xs);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.badge.bg-primary   { background: var(--wx-accent-soft) !important;  color: var(--wx-accent-text) !important; }
+.badge.bg-success   { background: var(--wx-success-soft) !important; color: var(--wx-success) !important; }
+.badge.bg-warning   { background: var(--wx-warning-soft) !important; color: var(--wx-warning) !important; }
+.badge.bg-info      { background: var(--wx-info-soft) !important;    color: var(--wx-info) !important; }
+.badge.bg-secondary { background: var(--wx-sunken) !important;       color: var(--wx-text-muted) !important; }
+.badge.bg-danger    { background: var(--wx-danger) !important;       color: #fff !important; }
+
+.progress { background: var(--wx-sunken); border-radius: 999px; height: 7px; }
+.progress-bar { background: var(--wx-accent); transition: width var(--wx-dur-layout) var(--wx-ease-out); }
+
+.alert { border-radius: var(--wx-radius-md); border-width: 1px; font-size: var(--wx-text-base); }
+.alert-success { background: var(--wx-success-soft); border-color: transparent; color: var(--wx-success); }
+.alert-warning { background: var(--wx-warning-soft); border-color: transparent; color: var(--wx-warning); }
+.alert-danger  { background: var(--wx-danger-soft);  border-color: transparent; color: var(--wx-danger); }
+.alert-info    { background: var(--wx-info-soft);    border-color: transparent; color: var(--wx-info); }
+
+.nav-tabs { border-bottom-color: var(--wx-edge); }
+.nav-tabs .nav-link {
+  color: var(--wx-text-muted);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  transition: color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+.nav-tabs .nav-link:hover { color: var(--wx-text); border-bottom-color: var(--wx-edge-strong); }
+.nav-tabs .nav-link.active {
+  background: transparent;
+  color: var(--wx-text);
+  border-bottom-color: var(--wx-accent);
+}
+
+/* ==========================================================================
+   ICONOS (Phosphor)
+   Alineados opticamente con el texto y con tamano heredable. El peso `fill`
+   se reserva a estado ACTIVO/SELECCIONADO: es el sistema de estados nativo
+   del pack, asi no hace falta inventar un segundo indicador.
+   ========================================================================== */
+.ph, .ph-fill, .ph-bold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  vertical-align: -0.125em;
+  line-height: 1;
+}
+.wx-i-sm { font-size: 15px !important; }
+.wx-i-md { font-size: 18px !important; }
+.wx-i-lg { font-size: 21px !important; }
+.wx-i-xl { font-size: 27px !important; }
+
+/* ==========================================================================
+   TECLA / SHORTCUT
+   Los atajos F1/F7/F8/F10 son parte del producto, no decoracion: una tecla
+   se dibuja como tecla, no como badge de Bootstrap.
+   ========================================================================== */
+.wx-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.wx-kbd--dark {
+  background: var(--wx-rail-raised);
+  border-color: rgb(255 255 255 / 0.18);
+  color: var(--wx-rail-text);
+}
+
+/* ==========================================================================
+   ESTADO (punto + palabra)
+   ========================================================================== */
+.wx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+  white-space: nowrap;
+}
+.wx-status::before {
+  content: "";
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.wx-status--ok { color: var(--wx-success); }
+.wx-status--warn { color: var(--wx-warning); }
+.wx-status--danger { color: var(--wx-danger); }
+.wx-status--idle { color: var(--wx-text-dim); }
+.wx-status--accent { color: var(--wx-accent-text); }
+
+/* ==========================================================================
+   SWEETALERT2
+   Lo usa toda la app para confirmar y avisar: debe pertenecer al tema en vez
+   de parecer un dialogo de otra aplicacion.
+   ========================================================================== */
+/* Por encima de cualquier modal de la app: un error que aparece detras del
+   dialogo que lo provoco deja al usuario esperando una respuesta que ya
+   estaba dada. SweetAlert2 trae 1060 de fabrica y los modales de la app van
+   de 2000 a 12500, asi que de fabrica siempre quedaba debajo. */
+.swal2-container {
+  background: var(--wx-scrim) !important;
+  z-index: var(--wx-z-alerta, 20000) !important;
+}
+.swal2-popup {
+  background: var(--wx-surface) !important;
+  border: 1px solid var(--wx-edge) !important;
+  border-radius: var(--wx-radius-lg) !important;
+  box-shadow: var(--wx-shadow-dialog) !important;
+  color: var(--wx-text) !important;
+  font-family: var(--wx-font) !important;
+}
+.swal2-title { color: var(--wx-text) !important; font-size: var(--wx-text-md) !important; font-weight: 600 !important; }
+.swal2-html-container { color: var(--wx-text-muted) !important; font-size: var(--wx-text-base) !important; }
+.swal2-actions { gap: 8px; }
+.swal2-styled { box-shadow: none !important; font-weight: 500 !important; border-radius: var(--wx-radius-sm) !important; }
+.swal2-styled.swal2-confirm { background: var(--wx-accent) !important; color: var(--wx-accent-ink) !important; }
+.swal2-styled.swal2-cancel {
+  background: var(--wx-surface) !important;
+  border: 1px solid var(--wx-edge-strong) !important;
+  color: var(--wx-text) !important;
+}
+.swal2-styled.swal2-deny { background: var(--wx-danger) !important; color: #fff !important; }
+.swal2-input, .swal2-textarea, .swal2-select {
+  background: var(--wx-surface) !important;
+  border: 1px solid var(--wx-edge-strong) !important;
+  border-radius: var(--wx-radius-sm) !important;
+  color: var(--wx-text) !important;
+  box-shadow: none !important;
+  font-family: var(--wx-font) !important;
+}
+
+/* ==========================================================================
+   APEXCHARTS
+   Las graficas leen del tema en vez de tener su propio bloque de oscuro.
+   ========================================================================== */
+.apexcharts-text, .apexcharts-text tspan,
+.apexcharts-xaxis-label, .apexcharts-yaxis-label, .apexcharts-legend-text {
+  fill: var(--wx-text-muted) !important;
+  color: var(--wx-text-muted) !important;
+  font-family: var(--wx-font) !important;
+}
+.apexcharts-gridline, .apexcharts-xaxis line,
+.apexcharts-yaxis line, .apexcharts-xaxis-tick { stroke: var(--wx-edge) !important; }
+.apexcharts-tooltip, .apexcharts-tooltip-title, .apexcharts-tooltip-series-group {
+  background: var(--wx-surface) !important;
+  border-color: var(--wx-edge) !important;
+  color: var(--wx-text) !important;
+  box-shadow: var(--wx-shadow-menu) !important;
+  font-family: var(--wx-font) !important;
+}
+
+/* ==========================================================================
+   MOTION DE DIALOGOS Y AVISOS
+   --------------------------------------------------------------------------
+   Un dialogo no esta anclado a un disparador concreto, asi que escala desde
+   el centro; un menu si lo esta, y por eso escala desde su esquina (ya
+   definido arriba, en cada popover).
+
+   Duraciones: 230ms el dialogo, 170ms el menu. Por encima de 300ms una
+   interfaz de trabajo empieza a sentirse lenta (Emil).
+   ========================================================================== */
+.modal.show .modal-dialog,
+.modal-dialog-centered {
+  animation: wx-dialog-in var(--wx-dur-dialog) var(--wx-ease-out) both;
+}
+@keyframes wx-dialog-in {
+  from { opacity: 0; transform: scale(0.98) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.swal2-popup.swal2-show {
+  animation: wx-dialog-in var(--wx-dur-dialog) var(--wx-ease-out) both !important;
+}
+.swal2-popup.swal2-hide {
+  /* La salida siempre mas rapida que la entrada. */
+  animation: wx-dialog-out var(--wx-dur-menu) var(--wx-ease-out) both !important;
+}
+@keyframes wx-dialog-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.98); }
+}
+
+.dropdown-menu.show {
+  animation: wx-menu-in var(--wx-dur-menu) var(--wx-ease-out) both;
+}
+@keyframes wx-menu-in {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal.show .modal-dialog,
+  .modal-dialog-centered,
+  .swal2-popup.swal2-show,
+  .swal2-popup.swal2-hide,
+  .dropdown-menu.show { animation: none !important; }
+}
+
+/* ==========================================================================
+   ESTADOS VACIOS
+   Un vacio responde dos cosas: que pasa y que puede hacer el usuario.
+   Sin ilustracion generica.
+   ========================================================================== */
+.wx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 44px 24px;
+  text-align: center;
+  color: var(--wx-text-muted);
+}
+.wx-empty > .ph { font-size: 28px; color: var(--wx-text-dim); margin-bottom: 6px; }
+.wx-empty__title { font-size: var(--wx-text-base); font-weight: 600; color: var(--wx-text); }
+.wx-empty__hint { font-size: var(--wx-text-sm); color: var(--wx-text-muted); max-width: 44ch; }
+.wx-empty__action { margin-top: 14px; }

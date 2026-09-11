@@ -6,11 +6,11 @@
       <div class="header-right">
         <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
         <div style="position:relative;">
-          <button class="btn btn-ghost" (click)="expOpen = !expOpen"><i class="bi bi-download"></i> Exportar</button>
+          <button class="btn btn-ghost" (click)="expOpen = !expOpen"><i class="ph ph-download-simple"></i> Exportar</button>
           <div *ngIf="expOpen" class="list-group shadow-sm"
                style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
-            <button class="list-group-item list-group-item-action" (click)="exportar('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
-            <button class="list-group-item list-group-item-action" (click)="exportar('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
+            <button class="list-group-item list-group-item-action" (click)="exportar('pdf')"><i class="ph ph-file-pdf me-2"></i> PDF</button>
+            <button class="list-group-item list-group-item-action" (click)="exportar('excel')"><i class="ph ph-file-xls me-2"></i> Excel</button>
           </div>
         </div>
         <button class="btn btn-primary" (click)="nuevo()">+ Nuevo proveedor</button>
@@ -33,7 +33,18 @@
     <!-- KPIs -->
     <div class="resumen-grid two">
       <div class="kpi-card"><div class="kpi-title">Proveedores</div><div class="kpi-value">{{ kpiTotal }}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Total comprado</div><div class="kpi-value">{{ money(kpiTotalComprado) }}</div></div>
       <div class="kpi-card total"><div class="kpi-title">Total pagado</div><div class="kpi-value">{{ money(kpiTotalPagado) }}</div></div>
+      <!-- El saldo sale de purchase.balance: la misma cifra que la Tabla de compras. -->
+      <div class="kpi-card" [class.deuda]="kpiSaldo > 0">
+        <div class="kpi-title">Por pagar</div>
+        <div class="kpi-value">{{ money(kpiSaldo) }}</div>
+        <div class="kpi-nota" *ngIf="kpiConDeuda">{{ kpiConDeuda }} {{ kpiConDeuda === 1 ? 'proveedor' : 'proveedores' }}</div>
+      </div>
+    </div>
+
+    <div class="ventas-tools" style="margin-bottom:12px;">
+      <wx-tabla-barra [estado]="tabla" [filas]="view"></wx-tabla-barra>
     </div>
 
     <!-- Tabla -->
@@ -41,38 +52,68 @@
       <table class="tabla-corte">
         <thead>
           <tr>
-            <th>Proveedor</th>
-            <th>Contacto</th>
-            <th>RFC</th>
-            <th class="right">Total pagado</th>
-            <th class="right">Acciones</th>
+            <th *ngIf="tabla.esVisible('nombre')">Proveedor</th>
+            <th *ngIf="tabla.esVisible('contacto')">Contacto</th>
+            <th *ngIf="tabla.esVisible('rfc')">RFC</th>
+            <th *ngIf="tabla.esVisible('total_comprado')" class="right">Comprado</th>
+            <th *ngIf="tabla.esVisible('total_paid')" class="right">Pagado</th>
+            <th *ngIf="tabla.esVisible('saldo_pendiente')" class="right">Por pagar</th>
+            <th *ngIf="tabla.esVisible('estado')">Estado</th>
+            <th *ngIf="tabla.esVisible('acciones')" class="right">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let p of view">
-            <td class="strong">{{ p.nombre }}</td>
-            <td>
+          <ng-container *ngFor="let it of items">
+
+          <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+            <td [attr.colspan]="tabla.visibles.length">
+              <button type="button" class="wx-grupo"
+                      [attr.aria-expanded]="it.abierto"
+                      (click)="tabla.alternarGrupo(it.clave)">
+                <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                <span>{{ it.etiqueta }}</span>
+                <span class="wx-grupo__n">{{ it.total }}</span>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="it.tipo === 'fila' && it.fila as p">
+            <td *ngIf="tabla.esVisible('nombre')" class="strong">{{ p.nombre }}</td>
+            <td *ngIf="tabla.esVisible('contacto')">
               <div class="mono">{{ p.telefono || '-' }}</div>
               <div class="sub" *ngIf="p.correo">{{ p.correo }}</div>
             </td>
-            <td class="mono">{{ p.rfc || '-' }}</td>
-            <td class="num mono">{{ money(p.total_paid) }}</td>
-            <td class="right">
+            <td *ngIf="tabla.esVisible('rfc')" class="mono">{{ p.rfc || '-' }}</td>
+            <td *ngIf="tabla.esVisible('total_comprado')" class="num mono">{{ money(p.total_comprado) }}</td>
+            <td *ngIf="tabla.esVisible('total_paid')" class="num mono">{{ money(p.total_paid) }}</td>
+            <td *ngIf="tabla.esVisible('saldo_pendiente')" class="num mono">
+              <span [class.saldo-deuda]="p.saldo_pendiente > 0">{{ money(p.saldo_pendiente) }}</span>
+              <div class="sub" *ngIf="p.compras_pendientes > 0">
+                {{ p.compras_pendientes }} {{ p.compras_pendientes === 1 ? 'compra' : 'compras' }} a crédito
+              </div>
+            </td>
+            <td *ngIf="tabla.esVisible('estado')">
+              <span [class.saldo-deuda]="p.saldo_pendiente > 0">
+                {{ p.saldo_pendiente > 0 ? 'Con saldo' : 'Al corriente' }}
+              </span>
+            </td>
+            <td *ngIf="tabla.esVisible('acciones')" class="right">
               <button class="btn btn-ghost" (click)="verHistorial(p)">Ver</button>
               <button class="btn btn-ghost" (click)="editar(p)">Editar</button>
             </td>
           </tr>
+          </ng-container>
         </tbody>
       </table>
-      <p class="nota" *ngIf="view.length === 0">Sin resultados</p>
+      <p class="nota" *ngIf="items.length === 0">Sin resultados</p>
     </div>
   </div>
 
   <!-- Modal nuevo / editar -->
   <div class="cierre-modal" *ngIf="showForm"
-       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:520px;">
+         style="padding:1.2rem 1.4rem 1.4rem; width:96%; max-width:520px;">
       <h3 style="margin:0 0 .9rem; font-size:1.4rem; font-weight:800;">{{ form.id ? 'Editar proveedor' : 'Nuevo proveedor' }}</h3>
       <div class="filter-row" style="grid-template-columns:1fr 1fr;">
         <div class="filter-group"><label>Nombre</label><input class="form-control" [(ngModel)]="form.nombre"></div>
@@ -89,9 +130,9 @@
 
   <!-- Modal historial de pagos -->
   <div class="cierre-modal" *ngIf="showHist"
-       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width:96%; max-width:640px;">
+         style="padding:1.2rem 1.4rem 1.4rem; width:96%; max-width:640px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem;">
         <h3 style="margin:0; font-size:1.3rem; font-weight:800;">Pagos a {{ sel?.nombre }}</h3>
         <button class="btn btn-ghost" (click)="cerrarHist()">X</button>

@@ -223,7 +223,11 @@
         <div class="field">
           <label>Dirección IP del Servidor Principal</label>
           <input type="text" id="serverIp" placeholder="Ej. 192.168.1.10">
-          <div class="hint">La IPv4 del equipo principal en esta misma red.</div>
+          <!-- Se dice en qué formas se puede escribir porque quien llega aquí
+               suele venir de probar la conexión con sqlcmd, y escribe lo mismo
+               que acaba de funcionar allí. Eso tiene que ser válido. -->
+          <div class="hint" id="serverHint">La IPv4 del equipo principal. Puedes escribir solo la IP,
+            o con instancia (<code>192.168.1.10\SQLEXPRESS</code>) o con puerto (<code>192.168.1.10,1433</code>).</div>
         </div>
         <div class="field">
           <label>Contraseña de conexión</label>
@@ -254,6 +258,9 @@
     const api = window.setupAPI;
     let role = null;
     let activePlan = null;
+
+    document.getElementById('serverIp').addEventListener('input', revisarServidor);
+    document.getElementById('serverIp').addEventListener('blur', revisarServidor);
 
     document.getElementById('licenseKey').addEventListener('input', function(e) {
       const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 14);
@@ -368,6 +375,34 @@
       }
     }
 
+    /**
+     * Eco de lo que Wybix va a guardar, mientras se escribe.
+     *
+     * La regla NO se implementa aqui: se le pregunta al proceso principal, que
+     * es quien la aplica de verdad al guardar. Una segunda copia de la
+     * gramatica en la pantalla es justo lo que produjo el fallo original.
+     */
+    let ultimoServidor = null;
+    async function revisarServidor() {
+      const hint = document.getElementById('serverHint');
+      const texto = document.getElementById('serverIp').value.trim();
+      ultimoServidor = null;
+      if (!texto) {
+        hint.textContent = 'La IPv4 del equipo principal en esta misma red.';
+        hint.style.color = '';
+        return;
+      }
+      const r = await api.normalizarServidor(texto);
+      if (r?.ok) {
+        ultimoServidor = r.server;
+        hint.textContent = `Se conectara a: ${r.server}`;
+        hint.style.color = '';
+      } else {
+        hint.textContent = r?.error || 'Direccion no valida.';
+        hint.style.color = '#F08A8A';
+      }
+    }
+
     async function finishSecundaria() {
       const serverIp = document.getElementById('serverIp').value.trim();
       const ocusPassword = document.getElementById('ocusPassS').value.trim();
@@ -377,12 +412,25 @@
         return;
       }
 
+      /* Se comprueba la forma ANTES de entrar a la pantalla de instalacion.
+         Antes esto era `serverIp + '\\SQLEXPRESS'` a ciegas: quien escribia
+         `192.168.100.211\SQLEXPRESS` acababa conectandose a
+         `192.168.100.211\SQLEXPRESS\SQLEXPRESS` y esperando 20 reintentos para
+         que le dijeran que revisara el firewall. */
+      const forma = await api.normalizarServidor(serverIp);
+      if (!forma?.ok) {
+        showErr('errS', forma?.error || 'La direccion del servidor no es valida.');
+        return;
+      }
+
       show('step3');
       document.getElementById('installMsg').textContent = 'Conectando con Servidor Central...';
 
       const res = await api.runSetup({
         role: 'secundaria',
-        server: serverIp + '\\SQLEXPRESS',
+        // Se manda lo que escribio la persona: `setup-run` normaliza y valida
+        // otra vez. Esta pantalla no es la duena de la regla.
+        server: serverIp,
         ocusPassword
       });
       if (!res?.ok) {

@@ -2,7 +2,7 @@
   <div class="inv-header-section">
     <div class="inv-header-content">
       <div class="inv-title-wrapper">
-        <i class="bi bi-box-seam inv-icon"></i>
+        <i class="ph ph-package inv-icon"></i>
         <h1 class="inv-main-title">Inventario</h1>
       </div>
       <p class="inv-subtitle">Administra productos, stock y precios</p>
@@ -10,39 +10,34 @@
 
     <div class="inv-actions-group">
       <button class="castrol-btn-add" type="button" (click)="abrirProductoModal()">
-        <i class="bi bi-plus-circle-dotted me-2"></i> Agregar Producto
+        <i class="ph ph-plus-circle me-2"></i> Agregar Producto
       </button>
 
       <button class="castrol-btn-color" type="button" (click)="abrirBrandModal()">
-        <i class="bi bi-tags me-2"></i> Agregar Marca
+        <i class="ph ph-tag me-2"></i> Agregar Marca
       </button>
 
       <button class="castrol-btn-color" type="button" (click)="abrirCategoryModal()">
-        <i class="bi bi-folder-plus me-2"></i> Agregar Categoría
+        <i class="ph ph-folder-plus me-2"></i> Agregar Categoría
       </button>
 
-      <div style="position:relative;">
-        <button class="castrol-btn-color" type="button" (click)="expExportOpen = !expExportOpen">
-          <i class="bi bi-download me-2"></i> Exportar
-        </button>
-        <div *ngIf="expExportOpen" class="list-group shadow-sm"
-             style="position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:150px; border-radius:12px; overflow:hidden;">
-          <button class="list-group-item list-group-item-action" (click)="exportarInv('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i> PDF</button>
-          <button class="list-group-item list-group-item-action" (click)="exportarInv('excel')"><i class="bi bi-file-earmark-excel me-2"></i> Excel</button>
-        </div>
-      </div>
+      <!-- En top layer: la cabecera tiene overflow:hidden y recortaba el menu. -->
+      <wx-menu etiqueta="Exportar"
+               icono="ph ph-download-simple"
+               [opciones]="opcionesExportar"
+               (elegir)="exportarInv($any($event))"></wx-menu>
     </div>
   </div>
 
   <div class="d-flex justify-content-between align-items-center mb-3" style="gap:14px; flex-wrap:wrap;">
     <div class="ventas-stats-badge">
-      <i class="bi bi-list-check"></i>
+      <i class="ph ph-list-checks"></i>
       <span>{{ totalItems }} productos</span>
     </div>
 
     <div class="ventas-tools">
       <div class="ventas-search">
-        <i class="bi bi-search"></i>
+        <i class="ph ph-magnifying-glass"></i>
         <input
           type="search"
           placeholder="Buscar por número de parte, producto, marca, categoría, proveedor..."
@@ -56,7 +51,7 @@
           (click)="clearFilter()"
           title="Limpiar"
         >
-          <i class="bi bi-x-lg"></i>
+          <i class="ph ph-x"></i>
         </button>
       </div>
 
@@ -67,10 +62,12 @@
 
         <div class="ventas-page-size">
           <span>Mostrar</span>
-          <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
-            <option *ngFor="let n of pageSizeOptions" [ngValue]="n">{{ n }}</option>
-          </select>
+          <wx-select class="wx-sel-compacto" [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)" [opciones]="opcionesPagina"></wx-select>
         </div>
+
+        <!-- Filtrar / Agrupar / Columnas. La logica es compartida
+             (EstadoTabla); aqui solo se declara contra que filas. -->
+        <wx-tabla-barra [estado]="tabla" [filas]="inventarioFiltrado"></wx-tabla-barra>
       </div>
     </div>
   </div>
@@ -79,34 +76,67 @@
     <table class="castrol-table">
       <thead>
         <tr>
-          <th style="width:70px;">#</th>
-          <th style="min-width:180px;">Número de parte</th>
-          <th style="min-width:150px;">Código de barras</th>
-          <th style="min-width:260px;">Producto</th>
-          <th style="width:140px;">Precio</th>
-          <th style="width:110px;">Stock</th>
-          <th style="min-width:160px;">Categoría</th>
-          <th style="min-width:160px;">Marca</th>
-          <th style="min-width:200px;">Proveedor (Default)</th>
-          <th style="width:170px;">Acciones</th>
+          <th *ngIf="tabla.esVisible('indice')" style="width:70px;">#</th>
+          <th *ngIf="tabla.esVisible('part_number')" style="min-width:180px;">Código interno / SKU</th>
+          <th *ngIf="tabla.esVisible('bar_code')" style="min-width:150px;">Código de barras</th>
+          <th *ngIf="tabla.esVisible('product_name')" style="min-width:260px;">Producto</th>
+          <th *ngIf="tabla.esVisible('price')" class="money" style="width:140px;">Precio</th>
+          <th *ngIf="tabla.esVisible('stock')" class="num" style="width:110px;">Stock</th>
+          <th *ngIf="tabla.esVisible('category_name')" style="min-width:160px;">Categoría</th>
+          <th *ngIf="tabla.esVisible('brand_name')" style="min-width:160px;">Marca</th>
+          <th *ngIf="tabla.esVisible('default_supplier_name')" style="min-width:200px;">Proveedor (Default)</th>
+          <th *ngIf="tabla.esVisible('presentacion')" style="min-width:180px;">Presentación de compra</th>
+          <th *ngIf="tabla.esVisible('inventory_mode')" style="min-width:130px;">Tipo</th>
+          <th *ngIf="tabla.esVisible('acciones')" style="width:170px;">Acciones</th>
         </tr>
       </thead>
 
       <tbody>
-        <tr *ngFor="let item of inventarioPaginado; let i = index">
-          <td class="fw-semibold">{{ pageStartIndex + i + 1 }}</td>
-          <td>{{ item.part_number ?? '-' }}</td>
-          <td class="mono">{{ item.bar_code || '-' }}</td>
-          <td>{{ item.product_name ?? item.nombre ?? '-' }}</td>
+        <ng-container *ngFor="let it of inventarioPaginado; let i = index">
 
-          <td class="fw-semibold">
+        <!-- Cabecera de grupo, cuando la tabla esta agrupada. Ocupa toda la
+             fila y se pliega. Va dentro de la misma lista paginada, asi que
+             agrupar no descoloca la paginacion. -->
+        <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+          <td [attr.colspan]="tabla.visibles.length">
+            <button type="button" class="wx-grupo"
+                    [attr.aria-expanded]="it.abierto"
+                    (click)="tabla.alternarGrupo(it.clave)">
+              <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+              <span>{{ it.etiqueta }}</span>
+              <span class="wx-grupo__n">{{ it.total }}</span>
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="it.tipo === 'fila'">
+          <ng-container *ngIf="it.fila as item">
+          <td *ngIf="tabla.esVisible('indice')" class="num text-muted">{{ pageStartIndex + i + 1 }}</td>
+          <td *ngIf="tabla.esVisible('part_number')">{{ item.part_number ?? '-' }}</td>
+          <td *ngIf="tabla.esVisible('bar_code')" class="mono">{{ item.bar_code || '-' }}</td>
+          <td *ngIf="tabla.esVisible('product_name')">{{ item.product_name ?? item.nombre ?? '-' }}</td>
+
+          <td *ngIf="tabla.esVisible('price')" class="money fw-semibold">
             {{ (item.price ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </td>
 
-          <td>{{ item.stock ?? '-' }}</td>
-          <td>{{ item.category_name ?? '-' }}</td>
-          <td>{{ item.brand_name ?? '-' }}</td>
-          <td>
+          <!-- El stock se guarda SIEMPRE en unidad base. Escribirlo sin la
+               unidad convertia "12000" en un numero sin sentido: son
+               mililitros, no cajas. Y una receta no tiene stock propio: lo
+               que importa de ella es cuantas se pueden preparar. -->
+          <td *ngIf="tabla.esVisible('stock')" class="num">
+            <ng-container *ngIf="esReceta(item); else stockPropio">
+              <span class="stock-receta">{{ disponibles(item) }}</span>
+              <span class="stock-uom">por preparar</span>
+            </ng-container>
+            <ng-template #stockPropio>
+              <span>{{ item.stock ?? '-' }}</span>
+              <span class="stock-uom" *ngIf="item.stock != null">{{ item.base_uom || 'pza' }}</span>
+            </ng-template>
+          </td>
+          <td *ngIf="tabla.esVisible('category_name')">{{ item.category_name ?? '-' }}</td>
+          <td *ngIf="tabla.esVisible('brand_name')">{{ item.brand_name ?? '-' }}</td>
+          <td *ngIf="tabla.esVisible('default_supplier_name')">
             <span class="supplier-badge" *ngIf="item.default_supplier_name; else noSup">
               {{ item.default_supplier_name }}
             </span>
@@ -114,35 +144,49 @@
               <span class="text-muted">—</span>
             </ng-template>
           </td>
+          <td *ngIf="tabla.esVisible('presentacion')">
+            {{ item.default_presentation_name || '—' }}
+            <span class="stock-uom" *ngIf="item.default_presentation_factor > 1">x{{ item.default_presentation_factor }}</span>
+          </td>
+          <td *ngIf="tabla.esVisible('inventory_mode')">
+            {{ item.inventory_mode === 'RECIPE' ? 'Receta' : item.inventory_mode === 'NONE' ? 'Sin inventario' : 'Directo' }}
+          </td>
 
-          <td class="acciones-cell">
+          <td *ngIf="tabla.esVisible('acciones')" class="acciones-cell">
             <div class="action-group">
               <!-- botón proveedores -->
               <button class="action-btn btn-suppliers"
                       aria-label="Proveedores"
                       data-tooltip="Proveedores"
                       (click)="abrirProveedoresModal(item)">
-                <i class="bi bi-truck"></i>
+                <i class="ph ph-truck"></i>
               </button>
 
               <button class="action-btn btn-editar"
                       aria-label="Editar"
                       data-tooltip="Editar"
                       (click)="abrirEditarProducto(item)">
-                <i class="bi bi-pencil-square"></i>
+                <i class="ph ph-pencil-simple-line"></i>
               </button>
 
-              <button class="action-btn btn-delete" aria-label="Eliminar" data-tooltip="Eliminar">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 3h6l1 1h4v2H4V4h4l1-1zm1 7h2v8h-2v-8zm4 0h2v8h-2v-8zM6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7z"/>
-                </svg>
+              <!-- Baja LOGICA: el producto deja de venderse y conserva su
+                   historial. Nunca se borra la fila. -->
+              <button class="action-btn btn-delete"
+                      type="button"
+                      aria-label="Dar de baja"
+                      data-tooltip="Dar de baja"
+                      [disabled]="dandoDeBaja === item.id"
+                      (click)="darDeBajaProducto(item)">
+                <i class="ph ph-trash" aria-hidden="true"></i>
               </button>
             </div>
           </td>
+          </ng-container>
         </tr>
+        </ng-container>
 
         <tr *ngIf="inventarioPaginado.length === 0">
-          <td colspan="9" class="text-muted text-center py-4">
+          <td [attr.colspan]="tabla.visibles.length" class="text-muted text-center py-4">
             No hay datos de inventario disponibles.
           </td>
         </tr>
@@ -152,7 +196,7 @@
 
   <div class="ventas-pager" *ngIf="totalItems > 0">
     <button class="pager-btn" (click)="prevPage()" [disabled]="page <= 1">
-      <i class="bi bi-chevron-left"></i> Anterior
+      <i class="ph ph-caret-left"></i> Anterior
     </button>
 
     <div class="pager-pages">
@@ -170,7 +214,7 @@
     </div>
 
     <button class="pager-btn" (click)="nextPage()" [disabled]="page >= totalPages">
-      Siguiente <i class="bi bi-chevron-right"></i>
+      Siguiente <i class="ph ph-caret-right"></i>
     </button>
   </div>
 
@@ -186,22 +230,18 @@
         <!-- Marca y categoria solo en ALTA (el SP de update no las modifica) -->
         <div class="grid-col-span" *ngIf="!editingProductId">
           <label>Marca</label>
-          <select name="brand" [(ngModel)]="form.brand" required class="my-1 mr-sm-2">
-            <option [ngValue]="null" disabled>Selecciona una</option>
-            <option *ngFor="let brand of brands" [ngValue]="brand.id">{{brand.namee}}</option>
-          </select>
+          <wx-select name="brand" [(ngModel)]="form.brand" [opciones]="opcMarcas"
+                     [buscable]="brands.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div *ngIf="!editingProductId">
           <label>Categoría</label>
-          <select name="category" [(ngModel)]="form.category" required class="my-1 mr-sm-2">
-            <option [ngValue]="null" disabled>Selecciona una</option>
-            <option *ngFor="let cat of categorys" [ngValue]="cat.id">{{cat.namee}}</option>
-          </select>
+          <wx-select name="category" [(ngModel)]="form.category" [opciones]="opcCategorias"
+                     [buscable]="categorys.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div class="grid-col-span">
-          <label>Número de parte</label>
+          <label>Código interno / SKU</label>
           <input type="text" name="partNumber" [(ngModel)]="form.partNumber" required class="my-1 mr-sm-2">
         </div>
 
@@ -215,13 +255,104 @@
           <input type="number" step="0.01" name="price" [(ngModel)]="form.price" required class="my-1 mr-sm-2" placeholder="0.00">
         </div>
 
-        <div>
-          <label>Stock</label>
-          <input type="number" step="0.01" name="stock" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
+        <!-- El stock fisico solo existe cuando el producto se cuenta. Una
+             receta lo deriva de sus ingredientes y un servicio no tiene. -->
+        <div *ngIf="capturaStock">
+          <!-- El stock SIEMPRE se guarda en la unidad base. Sin decirlo, "12"
+               en un producto medido en ml son 12 ml, no 12 envases: es el
+               error mas facil de cometer y el mas dificil de ver despues. -->
+          <label>Stock <span class="prod-unidad" *ngIf="unidadDeStock && !presentacionStock">en {{ unidadDeStock }}</span></label>
+          <div class="prod-stock">
+            <input type="number" step="0.01" name="stock" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
+            <!-- "Tengo 12 cajas de un litro": se escribe 12, se elige la caja
+                 y se guardan 12000 ml. En la base el stock sigue siendo
+                 siempre unidad base, que es lo que consumen las recetas. -->
+            <wx-select class="prod-stock__uom" *ngIf="opcPresentacionesStock.length > 1"
+                       name="presentacionStock" [(ngModel)]="presentacionStock"
+                       [opciones]="opcPresentacionesStock"></wx-select>
+          </div>
+          <small class="prod-ayuda" *ngIf="equivalenciaStock">{{ equivalenciaStock }}</small>
+          <small class="prod-ayuda" *ngIf="!equivalenciaStock && ayudaDeStock">{{ ayudaDeStock }}</small>
         </div>
 
-        <!-- Codigo de barras solo en EDICION (el SP de alta aun no lo recibe) -->
-        <div class="grid-col-span-3" *ngIf="editingProductId">
+        <!-- ===== CONTROL DEL PRODUCTO (solo alimentos y bebidas) =====
+             Retail no ve nada de esto: su producto sigue naciendo con
+             inventario directo, vendible y en piezas, como siempre. -->
+        <div class="grid-col-span-3 prod-control" *ngIf="caps.hospitality">
+          <div class="prod-control__titulo">Control del producto</div>
+
+          <div class="prod-modos" role="radiogroup" aria-label="Control del producto">
+            <button type="button" class="prod-modo" *ngFor="let m of modosInventario"
+                    [class.on]="form.inventoryMode === m.valor"
+                    [attr.aria-pressed]="form.inventoryMode === m.valor"
+                    (click)="cambiarModo(m.valor)">
+              <i class="ph {{ m.icono }}" aria-hidden="true"></i>
+              <span class="prod-modo__t">{{ m.titulo }}</span>
+              <span class="prod-modo__d">{{ m.desc }}</span>
+            </button>
+          </div>
+
+          <p class="prod-nota" *ngIf="notaDelModo">
+            <i class="ph ph-info" aria-hidden="true"></i> {{ notaDelModo }}
+          </p>
+
+          <div class="prod-control__fila">
+            <div class="prod-control__campo">
+              <label for="baseUom">Unidad base</label>
+              <wx-select name="baseUom" [ngModel]="form.baseUom" (ngModelChange)="cambiarUnidad($event)"
+                         [opciones]="opcUnidades" placeholder="Pieza"></wx-select>
+            </div>
+
+            <label class="prod-check">
+              <input type="checkbox" name="allowDecimalQty" [(ngModel)]="form.allowDecimalQty">
+              <span>Permitir cantidades decimales</span>
+            </label>
+
+            <label class="prod-check">
+              <input type="checkbox" name="sellable" [(ngModel)]="form.sellable">
+              <span>Se vende en caja</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ===== PRESENTACIONES DE COMPRA (opcional) =====
+             La tabla, sus procedimientos y la conversion en la compra existian
+             desde el dominio Hospitality; lo que no habia era donde definirlas. -->
+        <div class="grid-col-span-3 prod-present" *ngIf="gestionaPresentaciones">
+          <label>Presentaciones de compra <span class="prod-imagen__opt">(opcional)</span></label>
+          <p class="prod-ayuda">Cómo compras este producto. Al registrar una compra de 5 «Caja 1 L», el inventario sube 5000 ml.</p>
+
+          <div class="prod-present__fila" *ngFor="let p of presentaciones; let i = index">
+            <input type="text" class="prod-present__nombre" placeholder="Ej. Caja 1 L"
+                   [(ngModel)]="p.name" [name]="'presNombre' + i">
+            <input type="number" min="0" step="0.01" class="prod-present__factor" placeholder="1000"
+                   [(ngModel)]="p.factorToBase" [name]="'presFactor' + i">
+            <span class="prod-present__uom">{{ form.baseUom }}</span>
+            <span class="prod-present__eq">{{ equivalencia(p) }}</span>
+            <button type="button" class="prod-present__x" (click)="quitarPresentacion(i)"
+                    aria-label="Quitar presentación">
+              <i class="ph ph-x" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <button type="button" class="btn-outline btn-sm" (click)="agregarPresentacion()">
+            <i class="ph ph-plus" aria-hidden="true"></i> Agregar presentación
+          </button>
+        </div>
+
+        <!-- Codigo de barras: opcional y tambien al dar de alta. El
+             procedimiento lo acepta desde hace tiempo; el formulario solo lo
+             ofrecia al editar. Sin marcar, se guarda NULL. -->
+        <div class="grid-col-span-3">
+          <label class="prod-check prod-check--suelto">
+            <input type="checkbox" name="tieneCodigoBarras"
+                   [ngModel]="form.tieneCodigoBarras"
+                   (ngModelChange)="alternarCodigoBarras($event)">
+            <span>Este producto tiene código de barras</span>
+          </label>
+        </div>
+
+        <div class="grid-col-span-3" *ngIf="form.tieneCodigoBarras">
           <label>Código de barras</label>
           <div style="display:flex; gap:8px; align-items:center;">
             <input type="text" name="barCode" [(ngModel)]="form.barCode"
@@ -236,6 +367,35 @@
             </button>
           </div>
           <small *ngIf="capturandoCodigo" style="color:#2563eb;">Escanea ahora con la pistola...</small>
+        </div>
+
+        <!-- Imagen opcional. Se guarda con el producto: al dar de alta hace
+             falta su id, asi que se manda despues de crearlo. La miniatura la
+             reduce el proceso principal (192px, JPEG bajo 64 KB), aqui solo se
+             elige y se previsualiza. -->
+        <div class="grid-col-span-3 prod-imagen">
+          <label>Imagen <span class="prod-imagen__opt">(opcional)</span></label>
+          <div class="prod-imagen__fila">
+            <div class="prod-imagen__marco" [class.vacia]="!imagenPrevia">
+              <img *ngIf="imagenPrevia" [src]="imagenPrevia" alt="Vista previa del producto">
+              <i *ngIf="!imagenPrevia" class="ph ph-image" aria-hidden="true"></i>
+            </div>
+
+            <input #archivoImagen type="file" accept="image/*" hidden
+                   (change)="elegirImagen($event)">
+
+            <div class="prod-imagen__acciones">
+              <button type="button" class="btn-outline btn-sm" (click)="archivoImagen.click()">
+                <i class="ph ph-upload-simple" aria-hidden="true"></i>
+                {{ imagenPrevia ? 'Cambiar' : 'Elegir imagen' }}
+              </button>
+              <button type="button" class="btn-ghost btn-sm" *ngIf="imagenPrevia"
+                      (click)="quitarImagen(); archivoImagen.value = ''">
+                Quitar
+              </button>
+              <small class="prod-imagen__nota">{{ notaImagen }}</small>
+            </div>
+          </div>
         </div>
 
         <ng-container *ngIf="facturacionActiva">
@@ -270,7 +430,7 @@
             <div class="sat-dd" [class.open]="objImpAbierto">
               <button type="button" class="sat-dd-trigger" (click)="objImpAbierto = !objImpAbierto; tasaAbierta = false">
                 <span>{{ objetoImpuestoLabel }}</span>
-                <i class="bi bi-chevron-down"></i>
+                <i class="ph ph-caret-down"></i>
               </button>
               <div class="sat-dd-menu" *ngIf="objImpAbierto">
                 <button type="button" class="sat-dd-opt" *ngFor="let o of objetoImpuestoOpts"
@@ -278,7 +438,7 @@
                         (click)="form.objetoImpuesto = o.code; objImpAbierto = false">
                   <span class="sat-dd-code">{{ o.code }}</span>
                   <span>{{ o.label }}</span>
-                  <i class="bi bi-check2" *ngIf="o.code === form.objetoImpuesto"></i>
+                  <i class="ph ph-check" *ngIf="o.code === form.objetoImpuesto"></i>
                 </button>
               </div>
             </div>
@@ -290,14 +450,14 @@
             <div class="sat-dd" [class.open]="tasaAbierta">
               <button type="button" class="sat-dd-trigger" (click)="tasaAbierta = !tasaAbierta; objImpAbierto = false">
                 <span>{{ tasaIvaLabel }}</span>
-                <i class="bi bi-chevron-down"></i>
+                <i class="ph ph-caret-down"></i>
               </button>
               <div class="sat-dd-menu" *ngIf="tasaAbierta">
                 <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
                         [class.sel]="t.value === form.tasaIva"
                         (click)="form.tasaIva = t.value; tasaAbierta = false">
                   <span>{{ t.label }}</span>
-                  <i class="bi bi-check2" *ngIf="t.value === form.tasaIva"></i>
+                  <i class="ph ph-check" *ngIf="t.value === form.tasaIva"></i>
                 </button>
               </div>
             </div>
@@ -331,7 +491,7 @@
       </div>
 
       <button class="suppliers-close" type="button" (click)="cerrarProveedoresModal()">
-        <i class="bi bi-x-lg"></i>
+        <i class="ph ph-x"></i>
       </button>
     </div>
 
@@ -347,7 +507,7 @@
                   type="button"
                   [disabled]="creatingSupplier"
                   (click)="crearProveedorCatalogoYSeleccionar()">
-            <i class="bi bi-plus-circle me-1"></i>
+            <i class="ph ph-plus-circle me-1"></i>
             {{ creatingSupplier ? 'Creando...' : 'Crear proveedor' }}
           </button>
         </div>
@@ -358,12 +518,8 @@
       <div class="row g-3 align-items-end">
         <div class="col-md-6">
           <label class="form-label">Proveedor</label>
-          <select class="form-select" [(ngModel)]="supplierToAdd" name="supplierToAdd">
-            <option [ngValue]="null" disabled>Selecciona un proveedor</option>
-            <option *ngFor="let s of suppliersCatalog" [ngValue]="s.id">
-              {{ s.nombre }}
-            </option>
-          </select>
+          <wx-select [(ngModel)]="supplierToAdd" name="supplierToAdd" [opciones]="opcProveedores"
+                     [buscable]="suppliersCatalog.length > 8" placeholder="Selecciona un proveedor"></wx-select>
         </div>
 
         <div class="col-md-3">
@@ -381,7 +537,7 @@
           </label>
 
           <button type="button" class="btn btn-primary" (click)="agregarProveedorAlProducto()">
-            <i class="bi bi-link-45deg me-1"></i> Vincular
+            <i class="ph ph-link-simple me-1"></i> Vincular
           </button>
         </div>
       </div>
@@ -449,10 +605,10 @@
 <div class="mini-modal" *ngIf="brandModalAbierto">
   <div class="mini-modal-header">
     <div class="mini-modal-title">
-      <i class="bi bi-tags me-2"></i> Agregar marca
+      <i class="ph ph-tag me-2"></i> Agregar marca
     </div>
     <button type="button" class="mini-close" (click)="cerrarBrandModal()">
-      <i class="bi bi-x-lg"></i>
+      <i class="ph ph-x"></i>
     </button>
   </div>
 
@@ -488,10 +644,10 @@
 <div class="mini-modal" *ngIf="categoryModalAbierto">
   <div class="mini-modal-header">
     <div class="mini-modal-title">
-      <i class="bi bi-folder-plus me-2"></i> Agregar categoría
+      <i class="ph ph-folder-plus me-2"></i> Agregar categoría
     </div>
     <button type="button" class="mini-close" (click)="cerrarCategoryModal()">
-      <i class="bi bi-x-lg"></i>
+      <i class="ph ph-x"></i>
     </button>
   </div>
 

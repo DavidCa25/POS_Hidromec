@@ -2,7 +2,7 @@
 
   <!-- Encabezado -->
   <header class="cs-head">
-    <div class="cs-head-ic"><i class="bi bi-sliders2"></i></div>
+    <div class="cs-head-ic"><i class="ph ph-sliders-horizontal"></i></div>
     <div>
       <h1>Configuración</h1>
       <p>Elige una sección para ajustarla</p>
@@ -21,7 +21,7 @@
               (click)="abrir(tile)">
 
         <span class="cs-tile-chip" [attr.data-c]="tile.color">
-          <i class="bi bi-{{ tile.icon }}"></i>
+          <i class="ph ph-{{ tile.icon }}"></i>
         </span>
 
         <span class="cs-tile-title">{{ tile.title }}</span>
@@ -32,7 +32,7 @@
           {{ statusLabel(tile) }}
         </span>
 
-        <i class="bi bi-arrow-right-short cs-tile-go"></i>
+        <i class="ph ph-arrow-right cs-tile-go"></i>
       </button>
     </div>
   </section>
@@ -45,7 +45,7 @@
       <header class="cs-drawer-head" *ngIf="activeTile">
         <div class="cs-drawer-title">
           <span class="cs-tile-chip" [attr.data-c]="activeTile.color">
-            <i class="bi bi-{{ activeTile.icon }}"></i>
+            <i class="ph ph-{{ activeTile.icon }}"></i>
           </span>
           <div>
             <h3>{{ activeTile.title }}</h3>
@@ -53,18 +53,20 @@
           </div>
         </div>
         <button class="cs-x" type="button" (click)="cerrar()" aria-label="Cerrar">
-          <i class="bi bi-x-lg"></i>
+          <i class="ph ph-x"></i>
         </button>
       </header>
 
       <div class="cs-drawer-body">
-        <ng-container *ngIf="activeComponent; else soon">
+        <ng-container *ngIf="activeComponent; else pendiente">
           <ng-container *ngComponentOutlet="activeComponent"></ng-container>
         </ng-container>
 
-        <ng-template #soon>
-          <div class="cs-soon">
-            <i class="bi bi-tools"></i>
+        <ng-template #pendiente>
+          <!-- Mientras baja el chunk del panel no se muestra nada: tarda
+               milisegundos y un mensaje intermitente distraeria mas. -->
+          <div class="cs-soon" *ngIf="!cargandoPanel">
+            <i class="ph ph-wrench"></i>
             <p>Este módulo estará disponible pronto.</p>
           </div>
         </ng-template>

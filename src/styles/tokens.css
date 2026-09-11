@@ -1,0 +1,331 @@
+/* ==========================================================================
+   WYBIX POS - TOKENS
+   --------------------------------------------------------------------------
+   Esto NO es un design system nuevo: es la escala que la aplicacion ya usaba,
+   puesta por escrito y hecha coherente.
+
+   Antes convivian cinco pilas tipograficas, radios de 8/12/16/18/20/22/24px,
+   sombras de 6 a 48px de difuminado y ~40 hex distintos para "gris". Todo eso
+   funcionaba, pero era el motivo de que la app se leyera como plantilla: nada
+   estaba decidido, cada archivo improvisaba.
+
+   Se conserva el CARACTER de Wybix: superficies con tarjeta, esquinas amables
+   (no radios enterprise de 4px), densidad comoda. Lo que cambia es que ahora
+   cada valor esta elegido.
+
+   ADN con la landing: mismo navy, mismo cyan, misma familia tipografica.
+   Distinto nivel de expresividad: la landing vende, el POS trabaja.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------------- */
+  /* MARCA                                                             */
+  /* Navy = estructura y marca.  Cyan = accion, seleccion, foco.       */
+  /* ---------------------------------------------------------------- */
+  --wx-navy-900: #060B11;
+  --wx-navy-800: #0A1119;
+  --wx-navy-700: #0F1826;
+  --wx-navy-600: #16233A;
+  --wx-navy-500: #1E2B44;
+  --wx-navy-400: #2A3A55;
+
+  --wx-cyan-700: #1F6C7A;
+  --wx-cyan-600: #2A8494;
+  --wx-cyan-500: #45B3C3;   /* Cyan Wybix, el mismo de la landing */
+  --wx-cyan-400: #5FCEDE;
+  --wx-cyan-ink: #04161A;   /* tinta sobre cyan: 7.5:1 (blanco da 2.3:1) */
+
+  /* Estados: un rol, un color. Sin arcoiris decorativo. */
+  --wx-green-600: #157347;
+  --wx-green-500: #1B9E5A;
+  --wx-amber-600: #A16207;
+  --wx-amber-500: #CA8A04;
+  --wx-red-600:   #BE3A31;
+  --wx-red-500:   #DC4A3D;
+  --wx-blue-600:  #2563EB;
+  --wx-blue-500:  #3B82F6;
+
+  /* ---------------------------------------------------------------- */
+  /* SUPERFICIES                                                       */
+  /* canvas -> workspace -> surface -> raised -> sunken                */
+  /* Se conservan las tarjetas: lo que cambia es que ahora hay una     */
+  /* escala, en vez de cinco blancos ligeramente distintos.            */
+  /* ---------------------------------------------------------------- */
+  --wx-canvas:    #F2F5F9;
+  --wx-workspace: #FFFFFF;
+  --wx-surface:   #FFFFFF;
+  --wx-raised:    #F7F9FC;
+  --wx-sunken:    #EDF1F6;
+  --wx-scrim:     rgb(9 16 24 / 0.42);
+
+  /* El rail de navegacion es navy en los dos temas: es la silueta que
+     hace reconocible a Wybix aunque no se vea el logo. */
+  --wx-rail:            #0F1826;
+  --wx-rail-raised:     #1B2740;
+  --wx-rail-text:       #C6D3E1;
+  --wx-rail-text-strong:#F4F8FC;
+  --wx-rail-text-dim:   #7D8DA1;
+  --wx-rail-edge:       rgb(255 255 255 / 0.08);
+
+  /* ---------------------------------------------------------------- */
+  /* TEXTO - tres niveles, verificados contra AA                       */
+  /* ---------------------------------------------------------------- */
+  --wx-text:        #16212E;
+  --wx-text-muted:  #55677A;
+  /* Verificado contra AA: 4.7:1 sobre blanco y 4.3:1 sobre el canvas.
+     Con #7A8B9C daba 3.5:1 y no cumplia para texto de 11-13px. */
+  --wx-text-dim:    #617284;
+  --wx-text-invert: #FFFFFF;
+
+  /* ---------------------------------------------------------------- */
+  /* BORDES                                                            */
+  /* ---------------------------------------------------------------- */
+  --wx-edge:        #E1E7EF;
+  --wx-edge-strong: #C8D2DE;
+  --wx-edge-soft:   #EFF3F8;
+
+  /* ---------------------------------------------------------------- */
+  /* ROLES SEMANTICOS                                                  */
+  /* ---------------------------------------------------------------- */
+  --wx-accent:       var(--wx-cyan-500);
+  --wx-accent-hover: var(--wx-cyan-400);
+  --wx-accent-press: var(--wx-cyan-600);
+  --wx-accent-ink:   var(--wx-cyan-ink);
+  --wx-accent-text:  var(--wx-cyan-700);  /* cyan legible sobre claro */
+  --wx-accent-soft:  rgb(69 179 195 / 0.13);
+  --wx-accent-line:  rgb(69 179 195 / 0.40);
+
+  --wx-success:      var(--wx-green-600);
+  --wx-success-soft: rgb(27 158 90 / 0.13);
+  --wx-warning:      var(--wx-amber-600);
+  --wx-warning-soft: rgb(202 138 4 / 0.15);
+  --wx-danger:       var(--wx-red-600);
+  --wx-danger-soft:  rgb(220 74 61 / 0.12);
+  --wx-info:         var(--wx-blue-600);
+  --wx-info-soft:    rgb(37 99 235 / 0.10);
+
+  /* ---------------------------------------------------------------- */
+  /* ACENTO ELEGIBLE POR EL USUARIO (el color de las tablas)           */
+  /* ThemeService escribe estos valores y CALCULA el foreground por    */
+  /* luminancia, para que la cabecera nunca quede ilegible.            */
+  /* ---------------------------------------------------------------- */
+  --wx-user-accent:      #1F2E86;
+  --wx-user-accent-fg:   #FFFFFF;
+  --wx-user-accent-soft: rgb(31 46 134 / 0.10);
+  --wx-user-accent-line: rgb(31 46 134 / 0.32);
+  --wx-user-accent-text: #1F2E86;  /* legible sobre superficie clara */
+
+  /* ---------------------------------------------------------------- */
+  /* TIPOGRAFIA                                                        */
+  /* Geist para interfaz (la misma familia que la landing) y Geist Mono */
+  /* para TODA cifra: dinero, cantidades, folios, horas. Es lo que hace */
+  /* que las columnas de dinero dejen de bailar al cambiar de valor.    */
+  /* ---------------------------------------------------------------- */
+  --wx-font: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --wx-font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --wx-text-xs:   11.5px;
+  --wx-text-sm:   13px;
+  --wx-text-base: 14px;
+  --wx-text-md:   16px;
+  --wx-text-lg:   21px;
+  --wx-text-xl:   28px;
+  --wx-text-2xl:  40px;   /* reservado al TOTAL del punto de venta */
+
+  --wx-leading-tight: 1.22;
+  --wx-leading: 1.5;
+
+  /* ---------------------------------------------------------------- */
+  /* FORMA                                                             */
+  /* Se conservan las esquinas amables de Wybix -no es una herramienta  */
+  /* enterprise de 4px- pero con una escala de cuatro pasos en vez de    */
+  /* los siete radios distintos que habia.                              */
+  /* ---------------------------------------------------------------- */
+  --wx-radius-xs: 6px;
+  --wx-radius-sm: 9px;
+  --wx-radius-md: 13px;
+  --wx-radius-lg: 18px;
+
+  /* ---------------------------------------------------------------- */
+  /* ELEVACION                                                         */
+  /* Se conservan las sombras (la app las tenia y le dan calidez), pero */
+  /* mucho mas finas y tenidas de navy en vez de negro puro.            */
+  /* ---------------------------------------------------------------- */
+  --wx-shadow-card:
+    0 1px 2px rgb(16 33 46 / 0.04),
+    0 1px 3px rgb(16 33 46 / 0.05);
+  --wx-shadow-raised:
+    0 1px 2px rgb(16 33 46 / 0.05),
+    0 4px 12px -4px rgb(16 33 46 / 0.10);
+  --wx-shadow-menu:
+    0 1px 2px rgb(16 33 46 / 0.06),
+    0 10px 28px -10px rgb(16 33 46 / 0.20);
+  --wx-shadow-dialog:
+    0 2px 6px rgb(16 33 46 / 0.08),
+    0 28px 64px -24px rgb(16 33 46 / 0.34);
+
+  /* ---------------------------------------------------------------- */
+  /* DENSIDAD                                                          */
+  /* ---------------------------------------------------------------- */
+  --wx-row-h: 46px;
+  --wx-control-h: 38px;
+  --wx-control-h-sm: 32px;
+
+  /* ---------------------------------------------------------------- */
+  /* MOTION (Emil)                                                     */
+  /* En el POS el motion es FEEDBACK, no espectaculo. Curvas fuertes:   */
+  /* las de CSS por defecto no tienen punch. Nunca `ease-in` en UI.     */
+  /* ---------------------------------------------------------------- */
+  --wx-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --wx-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --wx-dur-press: 110ms;   /* pulsacion: tiene que sentirse instantanea */
+  --wx-dur-micro: 150ms;   /* hover, color, seleccion */
+  --wx-dur-state: 190ms;   /* cambio de estado pequeno */
+  --wx-dur-menu:  170ms;   /* dropdown, popover */
+  --wx-dur-dialog: 230ms;  /* dialogo */
+  --wx-dur-layout: 260ms;  /* colapsar rail, abrir submenu */
+
+  --wx-z-sticky: 20;
+  --wx-z-rail: 40;
+  --wx-z-menu: 60;
+  --wx-z-dialog: 80;
+  --wx-z-toast: 100;
+  --wx-z-tooltip: 120;
+
+  /* TECHO DE AVISOS.
+     Un aviso de error tiene que verse SIEMPRE, tambien cuando lo dispara un
+     modal que ya esta abierto. Los modales de pantalla completa de la app no
+     usan esta escala -llevan numeros propios de 2000 a 12500, heredados-, asi
+     que el aviso se queda por encima de todos ellos con margen.
+
+     Este numero no se sube "un poco mas" cada vez que algo queda tapado: la
+     franja a partir de 13000 esta RESERVADA, y el guardian de capas
+     (scripts/pruebas/capas.mjs) falla si un componente entra en ella.
+     Por eso deja de ser una guerra de z-index y pasa a ser un contrato. */
+  --wx-z-alerta: 20000;
+
+  /* Estados de superficie compartidos por menus, filas y opciones. Antes cada
+     componente inventaba su propio gris de hover y no coincidian entre si. */
+  /* Fondo del grupo de configuracion: hundido respecto del panel, no elevado.
+     Da forma al grupo sin convertirlo en una tarjeta que flota encima. */
+  --wx-set-bg: #F6F8FB;
+
+  /* Scrollbar: visible sobre superficie clara sin llamar la atencion. */
+  /* Tinta de los distintivos de severidad.
+     El color semantico a secas no llega a AA sobre su propio fondo tenue: el
+     rojo daba 4.45:1 y el ambar 4.04:1 sobre la fila. Estos valores son el
+     minimo ajuste que alcanza 4.5:1, calculado sobre el fondo compuesto. */
+  --wx-danger-ink:  #B6382F;
+  --wx-warning-ink: #945A06;
+  --wx-success-ink: var(--wx-success);
+
+  --wx-scroll-thumb:       rgb(15 30 55 / 0.22);
+  --wx-scroll-thumb-hover: rgb(15 30 55 / 0.38);
+
+  --wx-hover:    rgb(15 30 55 / 0.055);
+  --wx-pressed:  rgb(15 30 55 / 0.10);
+
+  /* El tooltip invierte: tinta oscura sobre claro. Es lo que lo separa de un
+     menu, que comparte la superficie de la app. */
+  --wx-tooltip-bg: #10192B;
+  --wx-tooltip-fg: #F2F6FC;
+
+  /* Anillo de foco unico para toda la aplicacion. */
+  --wx-focus-ring: 0 0 0 3px var(--wx-accent-ring, rgb(69 179 195 / 0.42));
+}
+
+/* ==========================================================================
+   MODO OSCURO
+   No es "light invertido": tiene su propia escala de superficies, y los
+   estados suben de luminancia para seguir cumpliendo AA sobre navy.
+   ========================================================================== */
+html.dark {
+  color-scheme: dark;
+
+  --wx-canvas:    #0A1119;
+  --wx-workspace: #0F1826;
+  --wx-surface:   #16233A;
+  --wx-raised:    #1E2B44;
+  --wx-sunken:    #0F1826;
+  --wx-scrim:     rgb(3 7 12 / 0.62);
+
+  --wx-rail:            #080E17;
+  --wx-rail-raised:     #1B2740;
+  --wx-rail-text:       #AEBED0;
+  --wx-rail-text-strong:#F4F8FC;
+  --wx-rail-text-dim:   #6F8095;
+
+  --wx-text:        #E8EFF6;
+  --wx-text-muted:  #9DAEC0;
+  --wx-text-dim:    #7A8B9E;
+  --wx-text-invert: #0A1119;
+
+  --wx-edge:        rgb(255 255 255 / 0.10);
+  --wx-edge-strong: rgb(255 255 255 / 0.18);
+  --wx-edge-soft:   rgb(255 255 255 / 0.06);
+
+  --wx-accent-text: var(--wx-cyan-400);
+  --wx-accent-soft: rgb(69 179 195 / 0.17);
+  --wx-accent-line: rgb(69 179 195 / 0.42);
+
+  --wx-success:      #3FBF7F;
+  --wx-success-soft: rgb(63 191 127 / 0.16);
+  --wx-warning:      #E0A33E;
+  --wx-warning-soft: rgb(224 163 62 / 0.16);
+  --wx-danger:       #F0555B;
+  --wx-danger-soft:  rgb(240 85 91 / 0.16);
+  --wx-info:         #60A5FA;
+  --wx-info-soft:    rgb(96 165 250 / 0.14);
+
+  /* En oscuro la elevacion se comunica con el borde superior de luz, no
+     con sombra: una sombra negra sobre fondo negro no se ve. */
+  --wx-shadow-card:   0 0 0 1px rgb(255 255 255 / 0.04);
+  --wx-shadow-raised: 0 2px 8px rgb(0 0 0 / 0.40);
+  --wx-shadow-menu:   0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px -10px rgb(0 0 0 / 0.7);
+  --wx-shadow-dialog: 0 2px 6px rgb(0 0 0 / 0.5), 0 28px 64px -24px rgb(0 0 0 / 0.85);
+
+  /* En oscuro el hover sube luz en vez de bajarla: oscurecer sobre navy no se
+     percibe. */
+  /* En oscuro hundir es imposible (ya estamos abajo), asi que el grupo sube
+     una pizca de luz: es el mismo gesto de "zona aparte" invertido. */
+  --wx-set-bg: rgb(255 255 255 / 0.028);
+
+  /* En oscuro el ajuste va en sentido contrario: la tinta se aclara. */
+  --wx-danger-ink:  #F48084;
+  --wx-warning-ink: var(--wx-warning);
+  --wx-success-ink: #47C284;
+
+  --wx-scroll-thumb:       rgb(255 255 255 / 0.16);
+  --wx-scroll-thumb-hover: rgb(255 255 255 / 0.28);
+
+  --wx-hover:   rgb(255 255 255 / 0.06);
+  --wx-pressed: rgb(255 255 255 / 0.10);
+
+  /* Y el tooltip deja de invertir, porque sobre un fondo oscuro un tooltip
+     claro deslumbra. Se queda como superficie elevada con borde. */
+  --wx-tooltip-bg: #26364F;
+  --wx-tooltip-fg: #EEF3FA;
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   Se elimina el MOVIMIENTO, no el diseno: el cambio de color y de opacidad
+   se conserva porque ayuda a entender el estado y no marea.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --wx-dur-press: 1ms;
+    --wx-dur-micro: 1ms;
+    --wx-dur-state: 1ms;
+    --wx-dur-menu: 1ms;
+    --wx-dur-dialog: 1ms;
+    --wx-dur-layout: 1ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

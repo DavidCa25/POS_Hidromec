@@ -1,0 +1,213 @@
+/* ==========================================================================
+   RECETAS Y MODIFICADORES — Backoffice
+   Mismos tokens que el resto de Wybix. Aqui solo hay composicion: los
+   controles (.ctl, .btn-*, .wx-set, .wx-choice) vienen de la hoja global.
+   ========================================================================== */
+
+.hosp { display: flex; flex-direction: column; gap: 18px; color: var(--wx-text); }
+
+/* ------------------------------------------------------------- cabecera */
+.hosp-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.hosp-head__ic {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 22px;
+}
+.hosp-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.hosp-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.hosp-tabs { display: flex; gap: 4px; padding: 4px; background: var(--wx-sunken); border-radius: var(--wx-radius-md); }
+.hosp-tabs button {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: var(--wx-control-h); padding: 0 16px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-family: var(--wx-font); font-size: var(--wx-text-base); font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.hosp-tabs button:hover { color: var(--wx-text); }
+.hosp-tabs button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+
+/* --------------------------------------------------------------- rejilla */
+.hosp-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: start;
+}
+.hosp-grid--mods { grid-template-columns: 300px minmax(0, 1fr); }
+@media (max-width: 1200px) { .hosp-grid, .hosp-grid--mods { grid-template-columns: 1fr; } }
+
+.hosp-col {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+}
+.hosp-col__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hosp-col__head h2 { margin: 0; font-size: var(--wx-text-base); font-weight: 600; }
+.hosp-count {
+  min-width: 24px; padding: 2px 8px; text-align: center;
+  background: var(--wx-sunken); border-radius: 999px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+}
+
+.hosp-list {
+  display: flex; flex-direction: column; gap: 3px;
+  max-height: 52vh; overflow-y: auto;
+  margin: 2px -4px 0; padding: 0 4px;
+}
+
+.hosp-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 11px; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text); font-family: var(--wx-font); font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+@media (hover: hover) and (pointer: fine) { .hosp-item:hover { background: var(--wx-hover); } }
+.hosp-item:active { transform: scale(0.995); }
+.hosp-item.on {
+  position: relative;
+  background: var(--wx-accent-soft);
+  border-color: var(--wx-accent-line);
+  font-weight: 600;
+}
+.hosp-item.on::before {
+  content: "";
+  position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--wx-accent);
+}
+.hosp-item.off { opacity: 0.55; }
+.hosp-item__name { flex: 1; min-width: 0; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.hosp-item__meta { color: var(--wx-text-muted); font-family: var(--wx-font-mono); font-size: var(--wx-text-xs); }
+
+.hosp-role {
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--wx-sunken); color: var(--wx-text-dim);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+}
+.hosp-role[data-r="SIZE"] { background: var(--wx-info-soft); color: var(--wx-info); }
+.hosp-role[data-r="ADDON"] { background: var(--wx-success-soft); color: var(--wx-success); }
+.hosp-role[data-r="SUBSTITUTION"] { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
+
+/* ------------------------------------------------------------ contenido */
+.hosp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hosp-main__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hosp-main__head h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.hosp-sub { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.hosp-variants { display: flex; flex-direction: column; gap: 8px; }
+.hosp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hosp-chip {
+  min-height: 34px; padding: 0 14px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge-strong); border-radius: 999px;
+  color: var(--wx-text); font-family: var(--wx-font); font-size: var(--wx-text-sm); cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+@media (hover: hover) and (pointer: fine) { .hosp-chip:hover { background: var(--wx-raised); } }
+.hosp-chip:active { transform: scale(0.98); }
+.hosp-chip.on { background: var(--wx-accent); border-color: var(--wx-accent); color: var(--wx-accent-ink); font-weight: 600; }
+
+/* ---------------------------------------------------------------- tabla */
+.hosp-table { width: 100%; border-collapse: collapse; }
+.hosp-table th {
+  padding: 0 8px 8px; text-align: left;
+  border-bottom: 1px solid var(--wx-edge);
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+}
+.hosp-table td { padding: 7px 8px; border-bottom: 1px solid var(--wx-edge-soft); vertical-align: middle; }
+.hosp-table .r { text-align: right; }
+.mono { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+
+.hosp-ing { display: block; font-weight: 500; }
+.hosp-ing__base { color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+
+.ctl-sm { min-height: 32px; padding: 4px 8px; font-size: var(--wx-text-sm); }
+
+.hosp-x {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-dim); cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.hosp-x:hover { background: var(--wx-danger-soft); color: var(--wx-danger); }
+
+.hosp-cost {
+  display: flex; gap: 32px; margin-top: 16px; padding: 14px 16px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+  border: 1px solid var(--wx-edge-soft);
+}
+.hosp-cost div { display: flex; flex-direction: column; gap: 2px; }
+.hosp-cost b { font-family: var(--wx-font-mono); font-size: var(--wx-text-lg); font-weight: 700; letter-spacing: -0.01em; }
+.hosp-cost b.neg { color: var(--wx-danger); }
+
+/* -------------------------------------------------------------- opciones */
+.hosp-opt {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; margin-bottom: 10px;
+  background: var(--wx-raised); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+}
+.hosp-opt__row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.hosp-opt__row .grow { flex: 1 1 180px; min-width: 0; }
+
+/* ----------------------------------------------------------------- vacio */
+.hosp-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 48px 24px; text-align: center;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); color: var(--wx-text-muted);
+}
+.hosp-empty i { font-size: 34px; color: var(--wx-text-dim); }
+.hosp-empty h3 { margin: 4px 0 0; color: var(--wx-text); font-size: var(--wx-text-md); font-weight: 600; }
+.hosp-empty p { margin: 0; max-width: 46ch; font-size: var(--wx-text-sm); line-height: 1.5; }
+
+.hosp-hint { margin: 6px 0 0; color: var(--wx-text-dim); font-size: var(--wx-text-xs); line-height: 1.5; }
+
+/* ---------------------------------------------------------------- modal */
+.hosp-modal {
+  position: fixed; inset: 0; z-index: var(--wx-z-dialog);
+  display: grid; place-items: center; padding: 24px;
+  background: var(--wx-scrim);
+}
+.hosp-modal__box {
+  width: min(560px, 100%); max-height: 82vh; display: flex; flex-direction: column;
+  background: var(--wx-surface); border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog); overflow: hidden;
+}
+.hosp-modal__box header,
+.hosp-modal__box footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px;
+}
+.hosp-modal__box header { border-bottom: 1px solid var(--wx-edge); }
+.hosp-modal__box header h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.hosp-modal__box footer { border-top: 1px solid var(--wx-edge); justify-content: flex-end; }
+.hosp-modal__body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+.btn-sm { min-height: 32px; padding: 0 12px; font-size: var(--wx-text-sm); }
+
+/* Lo que le falta a una opcion para poder guardarse.
+   Vive junto al campo, no en el boton de guardar: el error de SQL Server que
+   lanza CK_modifier_options_effect no nombra ni la opcion ni el campo, asi que
+   llegar hasta ahi es llegar demasiado tarde. */
+.hosp-falta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 0 0; padding: 6px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wx-warning) 12%, transparent);
+  color: var(--wx-warning);
+  font-size: 11.5px; font-weight: 500; line-height: 1.4;
+}
+.hosp-falta i { font-size: 14px; }
+.hosp-falta span { display: block; width: 100%; }
+.hosp-falta span:first-of-type { width: auto; }

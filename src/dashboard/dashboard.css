@@ -1,1048 +1,860 @@
-/* =========================
-   DASHBOARD LAYOUT (Base)
-   ========================= */
+/* ==========================================================================
+   WYBIX POS - APP SHELL (sidebar + topbar)
+   --------------------------------------------------------------------------
+   REFINAMIENTO, no rediseno. Se conservan intactos:
+   - la estructura de la sidebar y sus SUBMENUS desplegables
+   - el orden y la agrupacion de los destinos
+   - la topbar con sus mismas funciones (buscador, color, tema, alertas,
+     descarga, usuario)
+   - el comportamiento de colapso y el de movil
+
+   Lo que se refina:
+   - La sidebar pasa a navy de marca. Antes era blanca con texto oscuro, que
+     es el patron exacto de "sidebar + topbar + white cards" de cualquier
+     plantilla. En navy, la silueta de la app se vuelve reconocible y ademas
+     iguala su comportamiento en claro y en oscuro.
+   - El estado activo se comunica con TRES senales coherentes -barra de
+     acento, icono relleno y peso- en vez de solo un fondo de color.
+   - Los submenus se abren con una transicion de altura corta en vez de
+     aparecer de golpe.
+   - Espaciado, tipografia, contraste y foco.
+   ========================================================================== */
+
+:host { display: block; }
+
 .dashboard-wrapper {
   display: flex;
   min-height: 100vh;
-  background: #f8fafc;
-  position: relative;
+  background: var(--wx-canvas);
 }
 
-/* =========================
-   SIDEBAR (Premium)
-   ========================= */
-:root{
-  /* Premium sidebar tokens */
-  --sb-bg: rgba(255,255,255,.92);
-  --sb-border: rgba(15,23,42,.08);
-  --sb-shadow: 0 18px 40px rgba(2,6,23,.10);
-  --sb-text: #0f172a;
-  --sb-muted: #64748b;
-  --sb-active: rgba(59,130,246,.10);
-  --sb-active-2: rgba(59,130,246,.16);
-  --sb-radius: 18px;
-}
-
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
 .sidebar {
-  width: 240px;
-  min-width: 240px;
-  max-width: 240px;
-
-  background: var(--sb-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border-right: 1px solid var(--sb-border);
-  box-shadow: var(--sb-shadow);
-
+  position: sticky;
+  top: 0;
+  z-index: var(--wx-z-rail);
+  flex: 0 0 auto;
+  width: 250px;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  transition: all 0.28s cubic-bezier(.77,0,.18,1);
-  z-index: 1030;
+  background: var(--wx-rail);
+  border-right: 1px solid var(--wx-rail-edge);
   overflow-x: hidden;
-  position: relative;
+  overflow-y: auto;
+  transition: width var(--wx-dur-layout) var(--wx-ease-out);
 }
 
-/* Sidebar cerrado */
-.sidebar.collapsed,
-.sidebar.sidebar-mobile-closed {
-  width: 0 !important;
-  min-width: 0 !important;
-  max-width: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  overflow: hidden !important;
-  box-shadow: none !important;
-  position: absolute !important;
-  left: 0 !important;
-  top: 0 !important;
-}
-
-/* Header sidebar */
 .sidebar-header {
-  text-align: center;
-  padding: 2rem 1rem 1.2rem 1rem;
-  border-bottom: 1px solid rgba(15,23,42,.06);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px !important;
+  height: 64px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--wx-rail-edge);
+  text-align: left !important;
 }
-
-.sidebar-header::after{
-  content:"";
-  display:block;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(15,23,42,.08), transparent);
-  margin-top: 16px;
-}
-
-/* Logo como “badge” */
 .sidebar-logo {
-  width: 96px;
-  height: 96px;
-  border-radius: 22px;
-  background: #fff;
-  border: 1px solid rgba(15,23,42,.08);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-  padding: 8px;
-  margin-bottom: 8px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: var(--wx-radius-sm);
   object-fit: contain;
+  background: #fff;
+  padding: 2px;
 }
-
 .sidebar-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--sb-text);
-  letter-spacing: .3px;
-  transition: opacity 0.25s;
+  margin: 0 !important;
+  font-size: var(--wx-text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--wx-rail-text-strong) !important;
+  white-space: nowrap;
+  transition: opacity var(--wx-dur-layout) var(--wx-ease-out);
 }
 
-/* Menú */
 .sidebar-menu {
-  list-style: none;
-  padding: 1.2rem 0 0 0;
   margin: 0;
-}
-.sidebar-menu li {
-  margin-bottom: 10px;
+  padding: 8px 0 14px;
+  list-style: none;
+
+  /* La lista ocupa toda la altura sobrante y reparte ese sobrante entre los
+     arranques de grupo. Sin esto, `margin-top: auto` no tendria de donde
+     tomar espacio y todo seguiria apelmazado arriba. */
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;          /* permite encoger y que aparezca el scroll */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* Link base */
+/* --------------------------------------------------------------------------
+   GRUPOS
+   --------------------------------------------------------------------------
+   Tres puntos de corte: Operacion, Gestion y Sistema. El primer bloque
+   (Estadisticas / Alertas) no lleva marca porque debe quedar pegado a la
+   cabecera.
+
+   `:has(.sidebar-link)` evita el hueco fantasma: muchos destinos estan detras
+   de `*ngIf="auth.esAdmin"`, y si el enlace que abre un grupo no se pinta, el
+   <li> seguiria vacio pero aportando separacion.
+   -------------------------------------------------------------------------- */
+/* Separacion entre grupos.
+   La iteracion anterior repartia el sobrante de la columna entre los cortes y
+   producia huecos de hasta 62px: la navegacion quedaba estirada a la fuerza.
+   Un menu no tiene que llenar la altura que tiene.
+
+   18px es poco mas de un tercio de la altura de un destino: suficiente para
+   que el ojo agrupe, y demasiado poco para leerse como un hueco. Los items de
+   un mismo grupo quedan pegados, que es lo que hace que se lean como grupo. */
+.sidebar-menu > li.wx-grp:has(.sidebar-link) {
+  margin-top: 18px;
+}
+
+/* El bloque de sistema ya no se ancla al pie. Anclarlo obligaba a abrir un
+   vacio continuo en medio de la columna, y ese vacio se veia peor que dejar
+   el aire sobrante abajo, que es donde no molesta. */
+.sidebar-menu > li.wx-grp--sistema:has(.sidebar-link) { padding-bottom: 4px; }
+
+/* Cuando el contenido desborda (pantalla baja o varios submenus abiertos), el
+   reparto vale cero por si solo y el bloque vuelve al flujo con scroll. */
+
+/* Al colapsar el rail no hay etiquetas y la lista es mucho mas corta: repartir
+   ahi deja los iconos flotando sueltos. Se agrupan arriba. */
+.sidebar.collapsed .sidebar-menu > li.wx-grp { margin-top: 0; }
+.sidebar.collapsed .sidebar-menu { justify-content: flex-start; }
+
+/* --------------------------------------------------------------------------
+   DESTINO
+   -------------------------------------------------------------------------- */
 .sidebar-link {
   position: relative;
   display: flex;
   align-items: center;
-
-  color: rgba(15,23,42,.86);
+  gap: 11px;
+  height: 44px;
+  padding: 0 16px !important;
+  color: var(--wx-rail-text);
+  font-family: var(--wx-font);
+  font-size: 14.5px;
+  font-weight: 400;
   text-decoration: none;
-
-  margin: 0 10px;
-  padding: .85rem 1rem;
-
-  border-radius: 14px;
-  background: transparent;
-  border: 1px solid transparent;
-
-  font-size: 1.05rem;
-  font-weight: 500;
-
-  transition: background .18s ease, box-shadow .18s ease, transform .08s ease, border-color .18s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease;
 }
+.sidebar-link > i { font-size: 19px; flex: 0 0 auto; }
+.sidebar-link > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
-.sidebar-link i {
-  font-size: 1.05rem;
-  margin-right: 10px;
-  color: rgba(15,23,42,.65);
-  transition: color .18s ease, transform .18s ease;
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-link:hover { background: rgb(255 255 255 / 0.055); color: var(--wx-rail-text-strong); }
 }
+.sidebar-link:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
 
-/* Hover */
-.sidebar-link:hover{
-  background: rgba(2,6,23,.04);
-  border-color: rgba(15,23,42,.06);
-  box-shadow: 0 10px 20px rgba(2,6,23,.06);
-  transform: translateY(-1px);
-}
-.sidebar-link:hover i{
-  color: rgba(59,130,246,.95);
-}
-
-/* Active */
+/* Activo: barra de acento + icono en cyan + peso. Sin glow. */
 .sidebar-link.active {
-  background: linear-gradient(180deg, var(--sb-active) 0%, rgba(59,130,246,.06) 100%);
-  border-color: rgba(59,130,246,.18);
-  box-shadow: 0 14px 26px rgba(59,130,246,.14);
-  color: rgba(30,64,175,.95) !important;
-  font-weight: 700;
+  background: rgb(255 255 255 / 0.07);
+  color: var(--wx-rail-text-strong);
+  font-weight: 500;
 }
-.sidebar-link.active i {
-  color: rgba(30,64,175,.95) !important;
-}
-
-/* Indicador lateral */
-.sidebar-link.active::before{
+.sidebar-link.active::before {
   content: "";
   position: absolute;
-  left: -2px;
-  top: 10px;
-  bottom: 10px;
-  width: 4px;
-  border-radius: 999px;
-  background: rgba(59,130,246,.85);
-  box-shadow: 0 10px 22px rgba(59,130,246,.22);
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--wx-accent);
+}
+.sidebar-link.active > i { color: var(--wx-accent); }
+
+/* Contador de alertas: el unico elemento del rail que puede gritar. */
+.sidebar-link .badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 6px;
+  background: var(--wx-danger) !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  font-family: var(--wx-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-/* =========================
-   CONTENT + HEADER
-   ========================= */
+/* Chevron del submenu. */
+.chevron {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--wx-rail-text-dim);
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
+}
+.rotate-180 { transform: rotate(180deg); }
+
+/* --------------------------------------------------------------------------
+   SUBMENUS
+   Se conserva el patron desplegable. Antes aparecian de golpe y en posicion
+   absoluta con z-index 9999, lo que los sacaba del flujo del rail; ahora se
+   despliegan en su sitio con una transicion de altura corta.
+   -------------------------------------------------------------------------- */
+.sidebar .nav-item { position: relative; }
+
+.sidebar .dropdown-menu.dropdown-venta {
+  position: static !important;
+  display: block !important;
+  width: 100% !important;
+  margin: 0;
+  padding: 0;
+  background: rgb(0 0 0 / 0.22) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  /* De 0 a auto no es animable: se usa max-height, que aqui es seguro porque
+     los submenus tienen 2-4 elementos. */
+  max-height: 0;
+  opacity: 0;
+  /* Cerrar es mas rapido que abrir: al cerrar el usuario ya decidio (Emil).
+     Altura y opacidad comparten duracion para que el contenido no aparezca
+     con el contenedor a medio abrir. */
+  transition: max-height var(--wx-dur-micro) var(--wx-ease-out),
+              opacity var(--wx-dur-micro) var(--wx-ease-out);
+}
+.sidebar .nav-item.is-open > .dropdown-menu.dropdown-venta {
+  max-height: 300px;
+  opacity: 1;
+  transition: max-height var(--wx-dur-state) var(--wx-ease-out),
+              opacity var(--wx-dur-state) var(--wx-ease-out);
+}
+
+.sidebar .dropdown-venta .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  /* 46px = 16 de padding + 19 de icono + 11 de hueco: la etiqueta del submenu
+     cae exactamente bajo la etiqueta del destino que lo abre. */
+  padding: 0 14px 0 46px !important;
+  border-radius: 0;
+  color: var(--wx-rail-text);
+  font-size: 13.5px;
+  white-space: nowrap;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.sidebar .dropdown-venta .dropdown-item > i { font-size: 16px; color: var(--wx-rail-text-dim); }
+.sidebar .dropdown-venta .dropdown-item:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--wx-rail-text-strong);
+}
+.sidebar .dropdown-venta .dropdown-item.active {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--wx-rail-text-strong);
+  font-weight: 500;
+}
+.sidebar .dropdown-venta .dropdown-item.active > i { color: var(--wx-accent); }
+
+/* --------------------------------------------------------------------------
+   COLAPSADA
+   -------------------------------------------------------------------------- */
+.sidebar.collapsed { width: 68px; }
+.sidebar.collapsed .sidebar-title,
+.sidebar.collapsed .sidebar-link > span,
+.sidebar.collapsed .chevron { opacity: 0; width: 0; overflow: hidden; }
+.sidebar.collapsed .sidebar-header { justify-content: center; padding: 0 !important; }
+.sidebar.collapsed .sidebar-link { justify-content: center; padding: 0 !important; gap: 0; }
+.sidebar.collapsed .sidebar-link > i { font-size: 20px; }
+.sidebar.collapsed .sidebar-link .badge {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  margin: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9.5px;
+}
+.sidebar.collapsed .dropdown-venta { display: none !important; }
+
+/* ==========================================================================
+   CONTENIDO
+   ========================================================================== */
 .dashboard-content {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
-  transition: margin-left 0.3s;
-  margin-left: 0;
-  position: relative;
 }
 
+/* --------------------------------------------------------------------------
+   TOPBAR
+   Mismas funciones, mismo orden. Cambia el acabado.
+   -------------------------------------------------------------------------- */
 .dashboard-header {
-  background: #fff;
-  padding: 1.2rem 2rem 1.2rem 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-  min-height: 68px;
-  box-shadow: 0 2px 10px #0001;
+  position: sticky;
+  top: 0;
+  z-index: var(--wx-z-sticky);
+  height: 60px;
+  padding: 0 14px !important;
+  background: var(--wx-workspace) !important;
+  border-bottom: 1px solid var(--wx-edge) !important;
+  box-shadow: none !important;
+  flex: 0 0 auto;
 }
 
 .menu-btn {
-  min-width: 48px;
-  min-height: 44px;
-  border-radius: 12px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 18px;
-  box-shadow: 0 2px 8px #1976d225;
-  transition: background 0.18s, box-shadow 0.2s, transform .08s ease;
+  display: inline-grid !important;
+  place-items: center;
+  width: var(--wx-control-h);
+  height: var(--wx-control-h);
+  padding: 0 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--wx-radius-sm) !important;
+  color: var(--wx-text-muted) !important;
+  box-shadow: none !important;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
 }
-.menu-btn:hover {
-  background: #e3f0fb !important;
-  box-shadow: 0 2px 18px #1976d245;
-  transform: translateY(-1px);
-}
+.menu-btn:hover { background: var(--wx-raised) !important; color: var(--wx-text) !important; }
+.menu-btn i { font-size: 20px; }
 
-/* Main content card */
-.main-content {
-  padding: 2.5rem;
-  background: #f8fafc;
-  flex: 1;
-  min-height: 80vh;
-  border-radius: 20px;
-  box-shadow: 0 2px 24px 0 #1976d208;
-  margin-top: 1.2rem;
+/* Buscador. */
+.search-bar { max-width: 260px; }
+.search-bar .input-group-text {
+  background: var(--wx-raised) !important;
+  border-color: var(--wx-edge-strong) !important;
+  color: var(--wx-text-dim) !important;
+  padding-right: 4px;
 }
-
-/* Overlay móvil */
-.sidebar-backdrop {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(60,60,80,0.07);
-  z-index: 1020;
-  transition: background 0.2s;
+.search-bar .form-control {
+  background: var(--wx-raised);
+  border-color: var(--wx-edge-strong);
+  padding-left: 4px;
 }
-
-/* Mobile behavior */
-@media (max-width: 900px) {
-  .sidebar {
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    border-radius: 0 22px 22px 0;
-    box-shadow: 2px 0 30px #0002;
-    width: 240px;
-    min-width: 240px;
-    max-width: 240px;
-    transition: left 0.3s cubic-bezier(.77,0,.18,1), width 0.25s;
-    z-index: 1100;
-  }
-  .sidebar.sidebar-mobile-closed {
-    left: -260px !important;
-  }
-  .dashboard-content,
-  .dashboard-wrapper.sidebar-open .dashboard-content {
-    margin-left: 0 !important;
-  }
-  .main-content {
-    padding: 1.1rem;
-    margin-top: 0.7rem;
-  }
+.search-bar:focus-within .input-group-text,
+.search-bar:focus-within .form-control {
+  background: var(--wx-surface);
+  border-color: var(--wx-accent);
 }
+.search-bar .form-control:focus { box-shadow: none; }
 
-/* =========================
-   Dropdowns (Venta/Compra) - Animación
-   ========================= */
-.chevron{
-  transition: transform .25s ease, opacity .25s ease;
-  opacity: .65;
+/* Botones de icono de la barra (tema, alertas, descarga). */
+.dashboard-header .btn-light,
+.dark-toggle-btn {
+  display: inline-grid !important;
+  place-items: center;
+  width: var(--wx-control-h);
+  height: var(--wx-control-h);
+  padding: 0 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--wx-radius-sm) !important;
+  color: var(--wx-text-muted) !important;
+  box-shadow: none !important;
+  transition: background-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
 }
-.rotate-180{ transform: rotate(180deg); opacity: 1; }
+.dashboard-header .btn-light:hover,
+.dark-toggle-btn:hover { background: var(--wx-raised) !important; color: var(--wx-text) !important; }
+.dashboard-header .btn-light:active,
+.dark-toggle-btn:active { transform: scale(0.94); }
+.dashboard-header .btn-light i,
+.dark-toggle-btn i { font-size: 19px; }
 
-/* Parent del dropdown: look sutil */
-#operaciones-dropdown > .sidebar-link{
-  border-radius: 14px;
-  transition: background .2s ease, box-shadow .25s ease, transform .06s ease, border-color .18s ease;
+/* Contador sobre la campana. */
+.dashboard-header .badge.bg-danger {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border: 2px solid var(--wx-workspace);
+  border-radius: 999px !important;
+  font-family: var(--wx-font-mono);
+  font-size: 10px;
+  font-weight: 600;
 }
 
-/* Cuando abre el dropdown */
-#operaciones-dropdown.is-open > .sidebar-link,
-#operaciones-dropdown.is-open > a.sidebar-link{
-  background: rgba(2,6,23,.035);
-  border-color: rgba(15,23,42,.06);
-}
-
-/* Override Bootstrap: mantener display, animamos con max-height */
-.dropdown-venta{
-  display: block !important;
-
-  margin: 6px 10px 0 10px;
-
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border-radius: 16px !important;
-  border: 1px solid rgba(15,23,42,.08) !important;
-  box-shadow: 0 18px 40px rgba(2,6,23,.12) !important;
-
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-6px);
-  overflow: hidden;
+/* Selector de color de las tablas. */
+/* --------------------------------------------------------------------------
+   SELECTOR DE COLOR DE TABLAS
+   El disparador mostraba cuatro cuadros fijos: no decia cual estaba puesto.
+   Ahora muestra el color vigente.
+   -------------------------------------------------------------------------- */
+.theme-swatch-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--wx-control-h);
+  height: var(--wx-control-h);
   padding: 0;
-  pointer-events: none;
-
-  transition:
-    max-height .35s cubic-bezier(.22,.61,.36,1),
-    opacity .25s ease,
-    transform .35s cubic-bezier(.22,.61,.36,1),
-    padding .20s ease;
-}
-
-/* abierto */
-#operaciones-dropdown.is-open > .dropdown-venta{
-  max-height: 420px;
-  opacity: 1;
-  transform: translateY(0);
-  padding: 6px;
-  pointer-events: auto;
-}
-
-/* Items */
-.dropdown-venta .dropdown-item{
-  border-radius: 12px !important;
-  padding: .65rem .75rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background .18s ease, transform .12s ease, color .18s ease;
-  color: rgba(15,23,42,.86);
-}
-.dropdown-venta .dropdown-item i{
-  color: rgba(15,23,42,.62);
-}
-.dropdown-venta .dropdown-item:hover{
-  background: rgba(59,130,246,.08);
-  transform: translateX(2px);
-  color: rgba(30,64,175,.95);
-}
-.dropdown-venta .dropdown-item:hover i{
-  color: rgba(30,64,175,.95);
-}
-.dropdown-venta .dropdown-item.active{
-  background: rgba(59,130,246,.12);
-  color: rgba(30,64,175,.95);
-  box-shadow: inset 0 0 0 1px rgba(59,130,246,.22);
-}
-
-/* Compacto en mobile */
-@media (max-width: 900px){
-  #operaciones-dropdown > .sidebar-link{ padding: .85rem 1rem; }
-  .dropdown-venta .dropdown-item{ padding: .65rem .8rem; }
-}
-
-/* =========================
-   User dropdown (Premium)
-   ========================= */
-.dashboard-user-wrapper{
-  position: relative;
-}
-
-.dashboard-user img{
-  width: 36px;
-  height: 36px;
-  object-fit: cover;
-  border-radius: 50%;
-  background: #f6f6f6;
-}
-
-.user-trigger{
-  padding: .45rem .8rem;
-  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
   cursor: pointer;
-  transition: background .2s ease, box-shadow .25s ease, transform .08s ease;
-  border: 1px solid rgba(15,23,42,.06);
-  background: rgba(255,255,255,.75);
+  transition: background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease;
 }
-.user-trigger:hover{
-  background: rgba(2,6,23,.03);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-  transform: translateY(-1px);
+.theme-swatch-btn:hover { background: var(--wx-raised); border-color: var(--wx-edge); }
+.theme-swatch-btn__dot {
+  width: 17px;
+  height: 17px;
+  border-radius: var(--wx-radius-xs);
+  background: var(--wx-user-accent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
+  /* El cambio de color es informacion, no espectaculo: cruza rapido. */
+  transition: background-color var(--wx-dur-micro) ease;
 }
 
-.user-dropdown{
+.theme-option {
+  height: 36px;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  transition: transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.theme-option:hover { transform: scale(1.04); }
+.theme-option:active { transform: scale(0.97); }
+.theme-option.active {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18),
+              0 0 0 2px var(--wx-surface),
+              0 0 0 4px var(--wx-accent);
+}
+
+/* Los paneles flotantes de la barra (color, notificaciones) escalan desde su
+   esquina superior derecha, que es donde vive el disparador. Escalar desde el
+   centro los haria aparecer de la nada (Emil). */
+.dashboard-header .position-absolute {
+  background: var(--wx-surface) !important;
+  border: 1px solid var(--wx-edge) !important;
+  border-radius: var(--wx-radius-md) !important;
+  box-shadow: var(--wx-shadow-menu) !important;
+  transform-origin: top right;
+  animation: wx-pop var(--wx-dur-menu) var(--wx-ease-out) both;
+}
+@keyframes wx-pop {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-header .position-absolute { animation: none; }
+}
+
+/* --------------------------------------------------------------------------
+   USUARIO
+   -------------------------------------------------------------------------- */
+.dashboard-user-wrapper { position: relative; }
+
+.dashboard-user {
+  gap: 9px;
+  height: var(--wx-control-h);
+  padding: 0 10px 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+.dashboard-user:hover { background: var(--wx-raised); }
+.dashboard-user img { width: 27px; height: 27px; border-radius: var(--wx-radius-xs); object-fit: cover; }
+.dashboard-user span { color: var(--wx-text) !important; font-size: var(--wx-text-base); font-weight: 500; }
+.dashboard-user .chevron { color: var(--wx-text-dim); margin-left: 2px; }
+
+.user-dropdown {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border-radius: 14px;
-  border: 1px solid rgba(15,23,42,.08);
-  box-shadow: 0 18px 36px rgba(2,6,23,.12);
-
-  list-style: none;
-  padding: 6px;
+  z-index: var(--wx-z-menu);
+  min-width: 200px;
   margin: 0;
-  min-width: 180px;
-
-  max-height: 0;
+  padding: 5px;
+  list-style: none;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge) !important;
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-menu) !important;
   opacity: 0;
-  overflow: hidden;
-  transform: translateY(-6px);
-
-  transition:
-    max-height .3s cubic-bezier(.22,.61,.36,1),
-    opacity .25s ease,
-    transform .3s cubic-bezier(.22,.61,.36,1);
+  visibility: hidden;
+  transform: scale(0.97) translateY(-4px);
+  transform-origin: top right;
+  transition: opacity var(--wx-dur-menu) var(--wx-ease-out),
+              transform var(--wx-dur-menu) var(--wx-ease-out),
+              visibility var(--wx-dur-menu);
 }
-.dashboard-user-wrapper.is-open > .user-dropdown{
-  max-height: 240px;
+.dashboard-user-wrapper.is-open .user-dropdown {
   opacity: 1;
-  transform: translateY(0);
+  visibility: visible;
+  transform: scale(1) translateY(0);
 }
-
-.user-dropdown .dropdown-item{
-  border-radius: 12px;
-  padding: .6rem .8rem;
+.user-dropdown .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: background .18s ease, transform .12s ease;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text);
+  font-size: var(--wx-text-base);
   cursor: pointer;
-  color: rgba(15,23,42,.86);
 }
-.user-dropdown .dropdown-item:hover{
-  background: rgba(59,130,246,.08);
-  transform: translateX(2px);
+.user-dropdown .dropdown-item > i { color: var(--wx-text-muted); font-size: 17px; }
+.user-dropdown .dropdown-item:hover { background: var(--wx-raised); }
+
+/* --------------------------------------------------------------------------
+   AREA DE TRABAJO
+   -------------------------------------------------------------------------- */
+.main-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 20px 22px 32px !important;
+  background: var(--wx-canvas) !important;
+  min-height: 0 !important;
 }
 
-/* =========================
-   Theme swatch (Premium)
-   ========================= */
-.theme-swatch-btn{
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  border: 1px solid rgba(15,23,42,.10);
-  background: rgba(255,255,255,.92);
+/* ==========================================================================
+   MOVIL
+   La sidebar entra como panel lateral y sube la altura de los destinos a
+   objetivo tactil. No es "la sidebar de escritorio abierta encima".
+   ========================================================================== */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--wx-z-rail) - 1);
+  background: var(--wx-scrim);
+  animation: wx-fade var(--wx-dur-menu) var(--wx-ease-out) both;
+}
+@keyframes wx-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(82vw, 280px);
+    transform: translateX(0);
+    box-shadow: var(--wx-shadow-dialog);
+    transition: transform var(--wx-dur-layout) var(--wx-ease-out);
+  }
+  .sidebar.sidebar-mobile-closed,
+  .sidebar.collapsed { transform: translateX(-100%); width: min(82vw, 280px); }
+
+  /* En movil nunca se colapsa a iconos: se cierra del todo. */
+  .sidebar.collapsed .sidebar-title,
+  .sidebar.collapsed .sidebar-link > span,
+  .sidebar.collapsed .chevron { opacity: 1; width: auto; }
+  .sidebar.collapsed .sidebar-link { justify-content: flex-start; padding: 0 16px !important; gap: 11px; }
+  .sidebar.collapsed .sidebar-header { justify-content: flex-start; padding: 0 16px !important; }
+  .sidebar.collapsed .dropdown-venta { display: block !important; }
+  .sidebar.collapsed .sidebar-link .badge { position: static; min-width: 20px; height: 19px; font-size: 11px; }
+
+  .sidebar-link { height: 46px; }
+  .sidebar .dropdown-venta .dropdown-item { height: 42px; }
+
+  .main-content { padding: 16px 14px 28px !important; }
+  .search-bar { max-width: 180px; }
+}
+
+@media (max-width: 600px) {
+  .search-bar { display: none !important; }
+  .dashboard-user span { display: none; }
+}
+
+/* ==========================================================================
+   PALETA DE COLOR DE TABLAS
+   --------------------------------------------------------------------------
+   Antes: cuatro rectangulos grandes en dos columnas. Ahora: una rejilla de
+   muestras pequenas, la marca de seleccion dentro de la propia muestra, y
+   una fila para color personalizado.
+
+   El selector personalizado es el nativo del sistema: es el que el usuario
+   ya conoce, no anade dependencias y trae accesibilidad de serie. Mientras
+   arrastra se aplica una VISTA PREVIA sobre las tablas reales; solo se
+   guarda al confirmar.
+   ========================================================================== */
+/* La caja, el anclaje, la sombra y el motion los pone la primitiva `.wx-pop`.
+   Aqui solo queda lo propio del selector. El bloque anterior fijaba
+   `position: absolute` con `top/right`, que peleaba con el anclaje nativo, y
+   una `animation` que impedia interrumpir la salida a medio camino. */
+.wx-palette { padding: 12px; }
+
+.wx-palette__title {
+  margin: 0 0 10px;
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  color: var(--wx-text);
+}
+
+.wx-palette__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 7px;
-  cursor: pointer;
-  box-shadow: 0 12px 26px rgba(2,6,23,.10);
-  transition: transform .12s ease, box-shadow .12s ease;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
 }
-.theme-swatch-btn:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 18px 34px rgba(2,6,23,.14);
-}
-.theme-swatch-btn .swatch{
-  border-radius: 7px;
-  display:block;
-}
-.theme-swatch-btn .s1{ background:#1f2e86; }
-.theme-swatch-btn .s2{ background:#00662f; }
-.theme-swatch-btn .s3{ background:#cd950c; }
-.theme-swatch-btn .s4{ background:#111827; }
 
-.theme-option{
+.wx-swatch {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: var(--wx-radius-xs);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 11px;
+  /* Un aro interior separa la muestra del fondo sin anadir un borde de color. */
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  transition: transform var(--wx-dur-press) var(--wx-ease-out),
+              box-shadow var(--wx-dur-micro) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wx-swatch:hover { transform: scale(1.12); }
+}
+.wx-swatch:active { transform: scale(0.94); }
+.wx-swatch:focus-visible {
+  outline: 2px solid var(--wx-accent);
+  outline-offset: 2px;
+}
+/* Seleccionada: aro de la superficie + aro de acento. Se lee sobre cualquier
+   color, incluidos los muy claros. */
+.wx-swatch.is-on {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18),
+              0 0 0 2px var(--wx-surface),
+              0 0 0 4px var(--wx-accent);
+}
+
+/* Fila de color personalizado. El input nativo se superpone invisible para
+   conservar su comportamiento y su accesibilidad. */
+.wx-palette__custom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px dashed var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--wx-dur-micro) ease, background-color var(--wx-dur-micro) ease;
+}
+.wx-palette__custom:hover { background: var(--wx-raised); border-color: var(--wx-text-dim); }
+.wx-palette__custom.is-on { border-style: solid; border-color: var(--wx-accent-line); background: var(--wx-accent-soft); }
+.wx-palette__custom:focus-within { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.wx-palette__customdot {
+  width: 17px; height: 17px;
+  border-radius: var(--wx-radius-xs);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
+  flex: 0 0 auto;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+.wx-palette__customtxt { font-size: var(--wx-text-sm); font-weight: 500; color: var(--wx-text); }
+.wx-palette__custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+
+.wx-palette__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--wx-edge);
+}
+.wx-palette__hex {
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  color: var(--wx-text);
+  letter-spacing: 0.02em;
+}
+.wx-palette__nombre { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+
+/* ==========================================================================
+   ICONO ACTIVO RELLENO
+   --------------------------------------------------------------------------
+   Phosphor usa el MISMO codepoint en `regular` y en `fill`: solo cambia la
+   familia. Eso permite rellenar el icono activo desde CSS, sin tocar una
+   sola plantilla ni duplicar clases.
+
+   Se aplica solo al icono que encabeza el destino: el chevron del submenu se
+   queda en trazo, porque rellenarlo lo convertiria en una mancha.
+   ========================================================================== */
+.sidebar-link.active > i:not(.chevron),
+.sidebar .dropdown-venta .dropdown-item.active > i {
+  font-family: "Phosphor-Fill" !important;
+}
+
+/* ==========================================================================
+   SIDEBAR EN CADA TEMA
+   --------------------------------------------------------------------------
+   El navy se conserva en los dos temas: es el ancla de identidad. Lo que
+   cambia es como se relaciona con su entorno.
+
+   En CLARO el rail contrasta mucho con el lienzo, asi que necesita un borde
+   definido y puede permitirse un hover mas tenue.
+
+   En OSCURO el rail y el lienzo estan cerca: el borde casi desaparece y el
+   trabajo de separacion lo hace un rail algo mas profundo que el fondo, con
+   hover y activo un punto mas marcados para que sigan leyendose.
+   ========================================================================== */
+.sidebar { border-right: 1px solid rgb(0 0 0 / 0.22); }
+
+:host-context(html.dark) .sidebar {
+  border-right: 1px solid rgb(255 255 255 / 0.07);
+}
+:host-context(html.dark) .sidebar-link:hover { background: rgb(255 255 255 / 0.07); }
+:host-context(html.dark) .sidebar-link.active { background: rgb(255 255 255 / 0.09); }
+:host-context(html.dark) .sidebar .dropdown-menu.dropdown-venta {
+  /* Sobre un rail ya muy oscuro, oscurecer mas el submenu no se ve: se
+     aclara ligeramente en su lugar. */
+  background: rgb(255 255 255 / 0.03) !important;
+}
+:host-context(html.dark) .sidebar-header { border-bottom-color: rgb(255 255 255 / 0.07); }
+
+/* En claro el submenu si puede hundirse respecto al rail. */
+.sidebar .dropdown-menu.dropdown-venta { background: rgb(0 0 0 / 0.24) !important; }
+
+/* --------------------------------------------------------------------------
+   ANCLAJE DEL SELECTOR DE COLOR
+   El panel se ancla al boton de la topbar. `position-try-fallbacks` (definido
+   en la primitiva) lo voltea si no cabe, asi que ya no invade los controles
+   vecinos ni se sale por el borde de la ventana.
+   -------------------------------------------------------------------------- */
+.theme-swatch-btn { anchor-name: --wx-ancla-paleta; }
+.wx-palette {
+  --wx-anchor: --wx-ancla-paleta;
+  /* Se despliega bajo el boton y crece hacia la izquierda: el boton vive en
+     el extremo derecho de la barra. */
+  --wx-pop-area: bottom span-left;
+  --wx-pop-origin: top right;
+  width: 268px;
+}
+
+/* ==========================================================================
+   TOPBAR: BOTONES DE ICONO
+   --------------------------------------------------------------------------
+   Antes cada control traia su propia caja: `btn btn-light` de Bootstrap con
+   `p-2`, y margenes distintos por boton (`me-1`, `me-2`, `me-3`). El resultado
+   era una fila con separaciones irregulares y superficies que no coincidian.
+
+   Ahora comparten tamano, superficie, hover, foco y peso de icono, y la
+   separacion la pone el contenedor.
+   ========================================================================== */
+.topbar-acciones { gap: 6px; }
+
+.wx-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   height: 36px;
-  border-radius: 12px;
-  border: 2px solid rgba(15,23,42,.12);
+  min-width: 36px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+  transition: background var(--wx-dur-press) ease,
+              color var(--wx-dur-press) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
 }
-.theme-option:hover{
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: 0 10px 18px rgba(2,6,23,.10);
-}
-.theme-option.active{
-  border-color: rgba(15,23,42,.50);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
-}
+.wx-iconbtn > i { font-size: 19px; line-height: 1; }
 
-/* =========================
-   Search bar (header) mini polish
-   ========================= */
-.search-bar .input-group-text{
-  border-radius: 14px 0 0 14px !important;
-  border-color: rgba(15,23,42,.10) !important;
+@media (hover: hover) and (pointer: fine) {
+  .wx-iconbtn:hover { background: var(--wx-hover); color: var(--wx-text); }
 }
-.search-bar .form-control{
-  border-radius: 0 14px 14px 0 !important;
-  border-color: rgba(15,23,42,.10) !important;
-}
-.search-bar .form-control:focus{
-  box-shadow: 0 0 0 3px rgba(59,130,246,.12) !important;
-  border-color: rgba(59,130,246,.35) !important;
-}
+.wx-iconbtn:active { transform: scale(0.94); }
+.wx-iconbtn:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
 
+/* Variante con etiqueta: el unico control de la barra que necesita palabra,
+   porque su icono solo no se entiende. */
+.wx-iconbtn--etiqueta { padding: 0 11px 0 9px; }
+.wx-iconbtn__txt { white-space: nowrap; }
 
-/* =========================================================
-   NAVBAR / HEADER (Premium - glass + compact)
-   ========================================================= */
-:root{
-  --top-bg: rgba(255,255,255,.86);
-  --top-border: rgba(15,23,42,.08);
-  --top-shadow: 0 10px 30px rgba(2,6,23,.08);
+/* El icono de paleta va tenido con el color vigente de las tablas: hace de
+   muestra sin anadir un segundo elemento al boton. */
+.theme-swatch-btn__ph { color: var(--wx-user-accent); }
+.wx-iconbtn.theme-swatch-btn:hover .theme-swatch-btn__ph { color: var(--wx-user-accent); }
 
-  --ui-text: #0f172a;
-  --ui-muted: #64748b;
+/* El menu lateral se separa del grupo: no pertenece a la fila de acciones. */
+.wx-iconbtn.menu-btn { margin-right: 4px; }
 
-  /* Accent: usa el azul premium para coherencia */
-  --ui-accent: rgba(59,130,246,.92);
-  --ui-accent-soft: rgba(59,130,246,.12);
-  --ui-accent-soft2: rgba(59,130,246,.18);
+@media (prefers-reduced-motion: reduce) {
+  .wx-iconbtn:active { transform: none; }
 }
 
-/* Header contenedor */
-.dashboard-header{
-  background: var(--top-bg) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border-bottom: 1px solid var(--top-border) !important;
-  box-shadow: var(--top-shadow) !important;
-
-  padding: .9rem 1.25rem !important;
-  min-height: 66px;
-}
-
-/* Título “Hidromec Bajio” */
-.dashboard-header h4{
-  color: var(--ui-text) !important;
-  letter-spacing: .2px;
-  font-weight: 700 !important;
-}
-
-/* Botones del header (campana, download, menu) */
-.dashboard-header .btn.btn-light{
-  background: rgba(255,255,255,.78) !important;
-  border: 1px solid rgba(15,23,42,.08) !important;
-  box-shadow: 0 10px 20px rgba(2,6,23,.08);
-  border-radius: 14px !important;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-}
-
-.dashboard-header .btn.btn-light:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px rgba(2,6,23,.12);
-  background: rgba(255,255,255,.92) !important;
-}
-
-/* Menu button especial */
-.menu-btn{
-  box-shadow: 0 12px 24px rgba(2,6,23,.10) !important;
-}
-
-/* =========================================================
-   SEARCH BAR (Header)
-   ========================================================= */
-.search-bar{
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(15,23,42,.08);
-  background: rgba(255,255,255,.72);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-}
-
-.search-bar .input-group-text{
-  background: transparent !important;
-  border: 0 !important;
-  color: rgba(15,23,42,.65) !important;
-  padding-left: 14px;
-}
-
-.search-bar .form-control{
-  background: transparent !important;
-  border: 0 !important;
-  padding: .6rem .9rem;
-  color: var(--ui-text) !important;
-}
-
-.search-bar .form-control::placeholder{
-  color: rgba(100,116,139,.9);
-}
-
-.search-bar .form-control:focus{
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Focus ring suave */
-.search-bar:focus-within{
-  border-color: rgba(59,130,246,.35);
-  box-shadow: 0 0 0 4px rgba(59,130,246,.12), 0 14px 28px rgba(2,6,23,.10);
-}
-
-/* =========================================================
-   USER (avatar + name) - premium chip
-   ========================================================= */
-.dashboard-user-wrapper .user-trigger{
-  background: rgba(255,255,255,.78);
-  border: 1px solid rgba(15,23,42,.08);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-  border-radius: 16px;
-}
-
-.dashboard-user-wrapper .user-trigger:hover{
-  background: rgba(255,255,255,.92);
-  box-shadow: 0 16px 28px rgba(2,6,23,.12);
-}
-
-.dashboard-user-wrapper .dashboard-user span{
-  color: rgba(15,23,42,.78) !important;
-  font-weight: 700;
-}
-
-/* dropdown user */
-.user-dropdown{
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(15,23,42,.10);
-  box-shadow: 0 18px 40px rgba(2,6,23,.14);
-  border-radius: 16px;
-  padding: 6px;
-}
-
-.user-dropdown .dropdown-item{
-  border-radius: 12px;
-  padding: .65rem .75rem;
-}
-
-.user-dropdown .dropdown-item:hover{
-  background: rgba(59,130,246,.08);
-}
-
-/* =========================================================
-   SIDEBAR (alinear con el navbar)
-   ========================================================= */
-.sidebar{
-  border-right: 1px solid rgba(15,23,42,.08) !important;
-}
-
-/* =========================================================
-   DROPDOWNS “FLECHAS” (Venta / Compra)
-   - que se vea igual al sidebar premium
-   ========================================================= */
-
-/* IMPORTANTE:
-   Tienes 2 <li id="operaciones-dropdown"> (duplicado).
-   Este CSS sigue funcionando, pero es MUY recomendable
-   cambiar a class="operaciones-dropdown" y listo.
-*/
-
-/* Cabecera del dropdown (la fila “Venta” / “Compra”) */
-#operaciones-dropdown > .sidebar-link{
-  margin: 0 10px;
-  border-radius: 14px;
-  border: 1px solid transparent;
-}
-
-/* Cuando se abre (flecha) */
-#operaciones-dropdown.is-open > .sidebar-link,
-#operaciones-dropdown.is-open > a.sidebar-link{
-  background: rgba(2,6,23,.03);
-  border-color: rgba(15,23,42,.08);
-  box-shadow: 0 12px 26px rgba(2,6,23,.08);
-}
-
-/* Contenedor del submenú */
-.dropdown-venta{
-  display: block !important;
-
-  /* ahora “encaja” con los márgenes del sidebar */
-  margin: 8px 10px 0 10px !important;
-
-  background: rgba(255,255,255,.92) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border: 1px solid rgba(15,23,42,.10) !important;
-  border-radius: 16px !important;
-
-  box-shadow: 0 18px 40px rgba(2,6,23,.12) !important;
-
-  /* estado cerrado */
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-6px);
-  overflow: hidden;
-  padding: 0;
-  pointer-events: none;
-
-  transition:
-    max-height .34s cubic-bezier(.22,.61,.36,1),
-    opacity .22s ease,
-    transform .34s cubic-bezier(.22,.61,.36,1),
-    padding .18s ease;
-}
-
-/* Estado abierto */
-#operaciones-dropdown.is-open > .dropdown-venta{
-  max-height: 420px;
-  opacity: 1;
-  transform: translateY(0);
-  padding: 6px;
-  pointer-events: auto;
-}
-
-/* Items submenú */
-.dropdown-venta .dropdown-item{
-  border-radius: 12px !important;
-  padding: .70rem .80rem !important;
+/* ==========================================================================
+   SUCURSAL — PIE DEL RAIL
+   --------------------------------------------------------------------------
+   Ancla el pie de la columna y da contexto de donde se esta trabajando. De
+   paso ocupa el aire que quedaba abajo, asi que el aprovechamiento vertical
+   mejora sin estirar la navegacion.
+   ========================================================================== */
+.sidebar-sucursal {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  color: rgba(15,23,42,.80) !important;
-  font-weight: 600;
-
-  transition: background .16s ease, transform .12s ease, box-shadow .12s ease;
+  flex: 0 0 auto;
+  margin: 8px 10px 10px;
+  padding: 10px;
+  border-radius: var(--wx-radius-md);
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.07);
 }
 
-.dropdown-venta .dropdown-item i{
-  color: rgba(15,23,42,.60);
-  transition: color .16s ease;
-}
-
-.dropdown-venta .dropdown-item:hover{
-  background: var(--ui-accent-soft) !important;
-  transform: translateX(2px);
-}
-
-.dropdown-venta .dropdown-item:hover i{
-  color: rgba(30,64,175,.95);
-}
-
-/* Active del routerLinkActive */
-.dropdown-venta .dropdown-item.active{
-  background: var(--ui-accent-soft2) !important;
-  box-shadow: inset 0 0 0 1px rgba(59,130,246,.22);
-  color: rgba(30,64,175,.95) !important;
-}
-
-/* =========================================================
-   Chevron (flecha) un poco más premium
-   ========================================================= */
-.chevron{
-  opacity: .55;
-  transition: transform .25s ease, opacity .25s ease;
-}
-.rotate-180{
-  transform: rotate(180deg);
-  opacity: 1;
-}
-
-/* =========================================================
-   Fix: Top bar spacing en pantallas chicas
-   ========================================================= */
-@media (max-width: 900px){
-  .dashboard-header{
-    padding: .75rem .9rem !important;
-  }
-  .search-bar{
-    max-width: 200px !important;
-  }
-}
-
-/* =========================================================
-   NAVBAR / HEADER (Premium - glass + compact)
-   ========================================================= */
-:root{
-  --top-bg: rgba(255,255,255,.86);
-  --top-border: rgba(15,23,42,.08);
-  --top-shadow: 0 10px 30px rgba(2,6,23,.08);
-
-  --ui-text: #0f172a;
-  --ui-muted: #64748b;
-
-  /* Accent: usa el azul premium para coherencia */
-  --ui-accent: rgba(59,130,246,.92);
-  --ui-accent-soft: rgba(59,130,246,.12);
-  --ui-accent-soft2: rgba(59,130,246,.18);
-}
-
-/* Header contenedor */
-.dashboard-header{
-  background: var(--top-bg) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border-bottom: 1px solid var(--top-border) !important;
-  box-shadow: var(--top-shadow) !important;
-
-  padding: .9rem 1.25rem !important;
-  min-height: 66px;
-}
-
-/* Título “Hidromec Bajio” */
-.dashboard-header h4{
-  color: var(--ui-text) !important;
-  letter-spacing: .2px;
-  font-weight: 700 !important;
-}
-
-/* Botones del header (campana, download, menu) */
-.dashboard-header .btn.btn-light{
-  background: rgba(255,255,255,.78) !important;
-  border: 1px solid rgba(15,23,42,.08) !important;
-  box-shadow: 0 10px 20px rgba(2,6,23,.08);
-  border-radius: 14px !important;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-}
-
-.dashboard-header .btn.btn-light:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px rgba(2,6,23,.12);
-  background: rgba(255,255,255,.92) !important;
-}
-
-/* Menu button especial */
-.menu-btn{
-  box-shadow: 0 12px 24px rgba(2,6,23,.10) !important;
-}
-
-/* =========================================================
-   SEARCH BAR (Header)
-   ========================================================= */
-.search-bar{
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(15,23,42,.08);
-  background: rgba(255,255,255,.72);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-}
-
-.search-bar .input-group-text{
-  background: transparent !important;
-  border: 0 !important;
-  color: rgba(15,23,42,.65) !important;
-  padding-left: 14px;
-}
-
-.search-bar .form-control{
-  background: transparent !important;
-  border: 0 !important;
-  padding: .6rem .9rem;
-  color: var(--ui-text) !important;
-}
-
-.search-bar .form-control::placeholder{
-  color: rgba(100,116,139,.9);
-}
-
-.search-bar .form-control:focus{
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Focus ring suave */
-.search-bar:focus-within{
-  border-color: rgba(59,130,246,.35);
-  box-shadow: 0 0 0 4px rgba(59,130,246,.12), 0 14px 28px rgba(2,6,23,.10);
-}
-
-/* =========================================================
-   USER (avatar + name) - premium chip
-   ========================================================= */
-.dashboard-user-wrapper .user-trigger{
-  background: rgba(255,255,255,.78);
-  border: 1px solid rgba(15,23,42,.08);
-  box-shadow: 0 10px 22px rgba(2,6,23,.08);
-  border-radius: 16px;
-}
-
-.dashboard-user-wrapper .user-trigger:hover{
-  background: rgba(255,255,255,.92);
-  box-shadow: 0 16px 28px rgba(2,6,23,.12);
-}
-
-.dashboard-user-wrapper .dashboard-user span{
-  color: rgba(15,23,42,.78) !important;
-  font-weight: 700;
-}
-
-/* dropdown user */
-.user-dropdown{
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(15,23,42,.10);
-  box-shadow: 0 18px 40px rgba(2,6,23,.14);
-  border-radius: 16px;
-  padding: 6px;
-}
-
-.user-dropdown .dropdown-item{
-  border-radius: 12px;
-  padding: .65rem .75rem;
-}
-
-.user-dropdown .dropdown-item:hover{
-  background: rgba(59,130,246,.08);
-}
-
-/* =========================================================
-   SIDEBAR (alinear con el navbar)
-   ========================================================= */
-.sidebar{
-  border-right: 1px solid rgba(15,23,42,.08) !important;
-}
-
-/* =========================================================
-   DROPDOWNS “FLECHAS” (Venta / Compra)
-   - que se vea igual al sidebar premium
-   ========================================================= */
-
-/* IMPORTANTE:
-   Tienes 2 <li id="operaciones-dropdown"> (duplicado).
-   Este CSS sigue funcionando, pero es MUY recomendable
-   cambiar a class="operaciones-dropdown" y listo.
-*/
-
-/* Cabecera del dropdown (la fila “Venta” / “Compra”) */
-#operaciones-dropdown > .sidebar-link{
-  margin: 0 10px;
-  border-radius: 14px;
-  border: 1px solid transparent;
-}
-
-/* Cuando se abre (flecha) */
-#operaciones-dropdown.is-open > .sidebar-link,
-#operaciones-dropdown.is-open > a.sidebar-link{
-  background: rgba(2,6,23,.03);
-  border-color: rgba(15,23,42,.08);
-  box-shadow: 0 12px 26px rgba(2,6,23,.08);
-}
-
-/* Contenedor del submenú */
-.dropdown-venta{
-  display: block !important;
-
-  /* ahora “encaja” con los márgenes del sidebar */
-  margin: 8px 10px 0 10px !important;
-
-  background: rgba(255,255,255,.92) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border: 1px solid rgba(15,23,42,.10) !important;
-  border-radius: 16px !important;
-
-  box-shadow: 0 18px 40px rgba(2,6,23,.12) !important;
-
-  /* estado cerrado */
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-6px);
-  overflow: hidden;
-  padding: 0;
-  pointer-events: none;
-
-  transition:
-    max-height .34s cubic-bezier(.22,.61,.36,1),
-    opacity .22s ease,
-    transform .34s cubic-bezier(.22,.61,.36,1),
-    padding .18s ease;
-}
-
-/* Estado abierto */
-#operaciones-dropdown.is-open > .dropdown-venta{
-  max-height: 420px;
-  opacity: 1;
-  transform: translateY(0);
-  padding: 6px;
-  pointer-events: auto;
-}
-
-/* Items submenú */
-.dropdown-venta .dropdown-item{
-  border-radius: 12px !important;
-  padding: .70rem .80rem !important;
-  display: flex;
+.sidebar-sucursal__tile {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: var(--wx-radius-sm);
+  background: rgb(255 255 255 / 0.08);
+  color: var(--wx-accent);
+  font-size: 18px;
+}
 
-  color: rgba(15,23,42,.80) !important;
+.sidebar-sucursal__txt { display: flex; flex-direction: column; min-width: 0; }
+.sidebar-sucursal__nombre {
+  font-size: 13px;
   font-weight: 600;
-
-  transition: background .16s ease, transform .12s ease, box-shadow .12s ease;
+  color: var(--wx-rail-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-sucursal__meta {
+  font-size: 11.5px;
+  color: var(--wx-rail-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dropdown-venta .dropdown-item i{
-  color: rgba(15,23,42,.60);
-  transition: color .16s ease;
+/* Colapsado solo cabe la baldosa, centrada. */
+.sidebar-sucursal--min {
+  justify-content: center;
+  margin: 8px 8px 10px;
+  padding: 8px;
 }
 
-.dropdown-venta .dropdown-item:hover{
-  background: var(--ui-accent-soft) !important;
-  transform: translateX(2px);
+/* En claro el rail sigue siendo navy, asi que el bloque se separa subiendo
+   luz igual que en oscuro; lo que cambia es cuanta. */
+:host-context(html.dark) .sidebar-sucursal {
+  background: rgb(255 255 255 / 0.035);
+  border-color: rgb(255 255 255 / 0.055);
 }
-
-.dropdown-venta .dropdown-item:hover i{
-  color: rgba(30,64,175,.95);
-}
-
-/* Active del routerLinkActive */
-.dropdown-venta .dropdown-item.active{
-  background: var(--ui-accent-soft2) !important;
-  box-shadow: inset 0 0 0 1px rgba(59,130,246,.22);
-  color: rgba(30,64,175,.95) !important;
-}
-
-/* =========================================================
-   Chevron (flecha) un poco más premium
-   ========================================================= */
-.chevron{
-  opacity: .55;
-  transition: transform .25s ease, opacity .25s ease;
-}
-.rotate-180{
-  transform: rotate(180deg);
-  opacity: 1;
-}
-
-/* =========================================================
-   Fix: Top bar spacing en pantallas chicas
-   ========================================================= */
-@media (max-width: 900px){
-  .dashboard-header{
-    padding: .75rem .9rem !important;
-  }
-  .search-bar{
-    max-width: 200px !important;
-  }
-}
-
-
-/* =========================================================
-   MODO OSCURO — shell del dashboard
-   ========================================================= */
-:host-context(html.dark) .dashboard-wrapper { background: #0b1220; }
-:host-context(html.dark) .sidebar { background: #0f1826 !important; border-right: 1px solid rgba(255,255,255,.08); }
-:host-context(html.dark) .sidebar-title { color: #f1f5f9 !important; }
-:host-context(html.dark) .sidebar-link { color: #cbd5e1 !important; }
-:host-context(html.dark) .sidebar-link:hover,
-:host-context(html.dark) .sidebar-link.active { background: rgba(255,255,255,.08) !important; color: #fff !important; }
-:host-context(html.dark) .sidebar-link .chevron { color: #94a3b8; }
-:host-context(html.dark) .dashboard-header { background: #0f1826 !important; border-color: rgba(255,255,255,.08) !important; }
-:host-context(html.dark) .dropdown-venta { background: #16233a !important; }
-:host-context(html.dark) .dropdown-venta .dropdown-item { color: #e2e8f0 !important; }
-:host-context(html.dark) .dropdown-venta .dropdown-item:hover { background: rgba(255,255,255,.07) !important; }
-:host-context(html.dark) .btn-light { background: #1e2b44 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.1) !important; }
-:host-context(html.dark) .btn-light:hover { background: #26344f !important; }
-:host-context(html.dark) .dark-toggle-btn i { color: #fbbf24; }
-:host-context(html.dark) .dashboard-user { color: #e2e8f0 !important; }
-:host-context(html.dark) .main-content,
-:host-context(html.dark) .main-content.bg-body-tertiary { background: #0b1220 !important; }
-:host-context(html.dark) .dashboard-content { background: #0b1220 !important; }
-:host-context(html.dark) .main-content { box-shadow: none !important; }

@@ -4,58 +4,58 @@
   align-items: flex-start;
   justify-content: center;
   padding: 3rem 1rem;
-  background: #f4f6fa;
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: var(--wx-canvas);
+  font-family: var(--wx-font);
 }
 
 .cajon-card {
-  background: #ffffff;
+  background: var(--wx-surface);
   border-radius: 2rem;
   padding: 2.5rem 2.8rem;
   max-width: 640px;
   width: 100%;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .cajon-card h2 {
   font-size: 2rem;
-  font-weight: 800;
+  font-weight: 600;
   margin-bottom: 1.3rem;
   letter-spacing: -0.03em;
-  color: #0f172a;
+  color: var(--wx-text);
 }
 
 .descripcion {
-  color: #4b5563;
+  color: var(--wx-text-muted);
   font-size: 0.98rem;
   margin-bottom: 1.8rem;
 }
 
 .estado {
-  background: #f9fafb;
+  background: var(--wx-raised);
   border-radius: 1.3rem;
   padding: 1rem 1.2rem;
   margin-bottom: 1.8rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--wx-edge);
 }
 
 .estado-label {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #6b7280;
+  color: var(--wx-text-muted);
   margin-bottom: 0.15rem;
 }
 
 .estado-valor {
   font-size: 0.98rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--wx-text);
 }
 
 .estado-tip {
   font-size: 0.82rem;
-  color: #9ca3af;
+  color: var(--wx-text-dim);
   margin-top: 0.4rem;
 }
 
@@ -71,14 +71,14 @@
 .btn-primary {
   background: #2563eb;
   color: #ffffff;
-  box-shadow: 0 12px 25px rgba(37, 99, 235, 0.35);
-  transition: background 0.2s ease, transform 0.08s ease, box-shadow 0.2s ease;
+  box-shadow: var(--wx-shadow-raised);
+  transition: background var(--wx-dur-state) ease, transform var(--wx-dur-press) ease, box-shadow var(--wx-dur-state) ease;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: #1d4ed8;
-  transform: translateY(-1px);
-  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.4);
+  
+  box-shadow: var(--wx-shadow-raised);
 }
 
 .btn-primary:disabled {

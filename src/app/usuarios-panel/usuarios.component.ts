@@ -13,33 +13,33 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
   styles: [`
     .u-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
     .u-table{width:100%;border-collapse:collapse;}
-    .u-table th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;color:#94a3b8;padding:.5rem .6rem;border-bottom:1px solid #eef2f6;}
+    .u-table th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;color: var(--wx-text-dim);padding:.5rem .6rem;border-bottom: 1px solid #eef2f6;}
     .u-table th.right,.u-table td.right{text-align:right;}
-    .u-table td{padding:.7rem .6rem;border-bottom:1px solid #f4f6f9;vertical-align:middle;}
-    .u-name{font-weight:700;color:#0f172a;}
+    .u-table td{padding:.7rem .6rem;border-bottom: 1px solid #f4f6f9;vertical-align:middle;}
+    .u-name{font-weight: 600;color: var(--wx-text);}
     .u-rol-wrap{position:relative;display:inline-block;}
-    .u-badge{border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:.3rem .7rem;font-weight:700;font-size:.82rem;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;color:#334155;}
-    .u-badge.rol-admin{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
-    .u-badge.rol-supervisor{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9;}
-    .u-badge.rol-cajero{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
-    .u-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:40;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.12);overflow:hidden;min-width:150px;}
-    .u-menu-opt{padding:.6rem .9rem;cursor:pointer;font-size:.9rem;color:#334155;}
-    .u-menu-opt:hover{background:#f1f5f9;}
-    .u-estado{font-weight:700;color:#16a34a;font-size:.85rem;}
-    .u-estado.off{color:#94a3b8;}
-    .u-act{border:none;background:#f1f5f9;color:#475569;width:34px;height:34px;border-radius:9px;cursor:pointer;margin-left:.35rem;}
-    .u-act:hover{background:#e2e8f0;color:#0f172a;}
+    .u-badge{border: 1px solid var(--wx-edge);background: var(--wx-raised);border-radius:999px;padding:.3rem .7rem;font-weight: 600;font-size:.82rem;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;color: var(--wx-text-muted);}
+    .u-badge.rol-admin{background: var(--wx-info-soft);border-color: #bfdbfe;color: var(--wx-accent-text);}
+    .u-badge.rol-supervisor{background: var(--wx-accent-soft);border-color: var(--wx-accent-line);color: var(--wx-accent-text);}
+    .u-badge.rol-cajero{background: #f0fdf4;border-color: #bbf7d0;color: var(--wx-success);}
+    .u-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:40;background: var(--wx-surface);border: 1px solid var(--wx-edge);border-radius:12px;box-shadow: var(--wx-shadow-raised);overflow:hidden;min-width:150px;}
+    .u-menu-opt{padding:.6rem .9rem;cursor:pointer;font-size:.9rem;color: var(--wx-text-muted);}
+    .u-menu-opt:hover{background: var(--wx-sunken);}
+    .u-estado{font-weight: 600;color: var(--wx-success);font-size:.85rem;}
+    .u-estado.off{color: var(--wx-text-dim);}
+    .u-act{border:none;background: var(--wx-sunken);color: var(--wx-text-muted);width:34px;height:34px;border-radius:9px;cursor:pointer;margin-left:.35rem;}
+    .u-act:hover{background: var(--wx-edge);color: var(--wx-text);}
     .u-modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:1100;}
-    .u-dialog{background:#fff;padding:1.4rem 1.5rem;border-radius:20px;width:96%;max-width:420px;}
-    .u-dialog h3{margin:0 0 1rem;font-size:1.3rem;font-weight:800;color:#0f172a;}
+    .u-dialog{background: var(--wx-surface);padding:1.4rem 1.5rem;border-radius:20px;width:96%;max-width:420px;}
+    .u-dialog h3{margin:0 0 1rem;font-size:1.3rem;font-weight: 600;color: var(--wx-text);}
     .u-rolsel{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
     .u-modal-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.4rem;}
   `],
   template: `
   <div class="panel-content">
     <div class="u-head">
-      <div class="section-title" style="margin:0;"><i class="bi bi-person-badge"></i> Usuarios y permisos</div>
-      <button class="btn-primary" type="button" (click)="nuevo()"><i class="bi bi-plus-lg"></i> Nuevo usuario</button>
+      <div class="section-title" style="margin:0;"><i class="ph ph-identification-badge"></i> Usuarios y permisos</div>
+      <button class="btn-primary" type="button" (click)="nuevo()"><i class="ph ph-plus"></i> Nuevo usuario</button>
     </div>
 
     <p class="hint" *ngIf="cargando">Cargando usuarios...</p>
@@ -52,7 +52,7 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
           <td>
             <div class="u-rol-wrap">
               <button class="u-badge rol-{{ u.rol }}" (click)="toggleRol(u.id)">
-                {{ rolLabel(u.rol) }} <i class="bi bi-chevron-down"></i>
+                {{ rolLabel(u.rol) }} <i class="ph ph-caret-down"></i>
               </button>
               <div class="u-menu" *ngIf="menuRolId === u.id">
                 <div class="u-menu-opt" *ngFor="let r of roles" (click)="cambiarRol(u, r.key)">{{ r.label }}</div>
@@ -61,13 +61,13 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
           </td>
           <td><span class="u-estado" [class.off]="!u.active">{{ u.active ? 'Activo' : 'Inactivo' }}</span></td>
           <td class="right">
-            <button class="u-act" type="button" (click)="resetPassword(u)" title="Cambiar contraseña"><i class="bi bi-key"></i></button>
+            <button class="u-act" type="button" (click)="resetPassword(u)" title="Cambiar contraseña"><i class="ph ph-key"></i></button>
             <button class="u-act" type="button" (click)="toggleActivo(u)" [title]="u.active ? 'Desactivar' : 'Activar'">
-              <i class="bi" [ngClass]="u.active ? 'bi-person-dash' : 'bi-person-check'"></i>
+              <i class="ph" [ngClass]="u.active ? 'ph-user-minus' : 'ph-user-check'"></i>
             </button>
           </td>
         </tr>
-        <tr *ngIf="usuarios.length === 0"><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem;">Sin usuarios</td></tr>
+        <tr *ngIf="usuarios.length === 0"><td colspan="4" style="text-align:center;color: var(--wx-text-dim);padding:1.5rem;">Sin usuarios</td></tr>
       </tbody>
     </table>
   </div>
@@ -83,7 +83,7 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
       <label class="lbl" style="margin-top:.7rem;">Rol</label>
       <div class="u-rol-wrap" style="width:100%;">
         <button class="ctl u-rolsel" type="button" (click)="rolNuevoOpen = !rolNuevoOpen">
-          {{ rolLabel(form.rol) }} <i class="bi bi-chevron-down"></i>
+          {{ rolLabel(form.rol) }} <i class="ph ph-caret-down"></i>
         </button>
         <div class="u-menu" *ngIf="rolNuevoOpen" style="width:100%;">
           <div class="u-menu-opt" *ngFor="let r of roles" (click)="form.rol = r.key; rolNuevoOpen = false">{{ r.label }}</div>

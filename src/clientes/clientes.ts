@@ -1,9 +1,12 @@
 import { Component, OnInit } from '@angular/core';
+import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
+import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import Swal from 'sweetalert2';
 import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
+import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 
 type Cliente = {
   id: number;
@@ -39,16 +42,41 @@ type ClienteVenta = {
 @Component({
   selector: 'app-clientes',
   templateUrl: './clientes.html',
-  imports: [
+  imports: [WxTablaBarraComponent, 
     RouterOutlet,
     FormsModule,
     CommonModule,
     DatePipe,
-    DecimalPipe
+    DecimalPipe,
+    WxSelectComponent
   ],
   styleUrls: ['./clientes.css']
 })
 export class Clientes implements OnInit {
+
+
+  // Listas de los selectores. Son las mismas opciones que habia en el marcado,
+  // movidas aqui para que las consuma la primitiva. No cambia ningun valor.
+  readonly opcEstado: WxOpcion[] = [
+    { valor: 'todos', etiqueta: 'Todos' },
+    { valor: 'activos', etiqueta: 'Activos' },
+    { valor: 'inactivos', etiqueta: 'Inactivos' },
+  ];
+  readonly opcActivo: WxOpcion[] = [
+    { valor: true, etiqueta: 'Sí' },
+    { valor: false, etiqueta: 'No' },
+  ];
+  readonly opcRiesgo: WxOpcion[] = [
+    { valor: 0, etiqueta: '0 - Normal' },
+    { valor: 1, etiqueta: '1 - Bajo Riesgo' },
+    { valor: 2, etiqueta: '2 - Medio Riesgo' },
+    { valor: 3, etiqueta: '3 - Alto Riesgo' },
+  ];
+  readonly opcMetodoAbono: WxOpcion[] = [
+    { valor: 'EFECTIVO', etiqueta: 'Efectivo' },
+    { valor: 'TARJETA', etiqueta: 'Tarjeta' },
+    { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia' },
+  ];
 
   clientes: Cliente[] = [];
   loading = false;
@@ -156,6 +184,25 @@ export class Clientes implements OnInit {
   get activosCount()  { return this.clientes.filter(c => c.active).length; }
 
   // ----- Vista filtrada -----
+  /**
+   * Descriptor de la tabla. Clientes usa `tabla-corte`: la barra comparte el
+   * ESTADO, no el marcado, asi que no hace falta reescribir la tabla.
+   */
+  readonly tabla = new EstadoTabla('clientes', [
+    { clave: 'name', titulo: 'Cliente', obligatoria: true },
+    { clave: 'contacto', titulo: 'Contacto' },
+    { clave: 'creditLimit', titulo: 'Límite' },
+    { clave: 'balance', titulo: 'Saldo' },
+    { clave: 'estado', titulo: 'Estado', filtrable: true, agrupable: true,
+      valor: (c) => !c.active ? 'Inactivo'
+                  : (c.overdueCount > 0) ? 'Con vencidos'
+                  : (c.balance > 0) ? 'Con saldo' : 'Al corriente' },
+    { clave: 'acciones', titulo: 'Acciones', obligatoria: true },
+  ]);
+
+  /** Lo buscado, ya filtrado por la barra, y aplanado con sus grupos. */
+  get items(): WxItem[] { return this.tabla.aplanar(this.tabla.filtrar(this.clientesView)); }
+
   get clientesView(): Cliente[] {
     let rows = [...this.clientes];
 

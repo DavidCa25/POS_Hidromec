@@ -10,31 +10,31 @@ import Swal from 'sweetalert2';
   styles: [`
     :host{display:block;}
     .sv-head{margin-bottom:1.2rem;}
-    .sv-head h2{font-weight:800;margin:0;color:#0f172a;}
-    .sv-head p{color:#64748b;margin:.25rem 0 0;font-size:.9rem;}
+    .sv-head h2{font-weight: 600;margin:0;color: var(--wx-text);}
+    .sv-head p{color: var(--wx-text-muted);margin:.25rem 0 0;font-size:.9rem;}
     .sv-tabs{display:flex;gap:8px;margin-bottom:1.2rem;}
-    .sv-tab{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:.55rem 1.1rem;font-weight:700;font-size:.9rem;cursor:pointer;color:#334155;}
-    .sv-tab.active{background:#0f2a3f;color:#fff;border-color:#0f2a3f;}
-    .sv-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.4rem;max-width:560px;box-shadow:0 10px 30px rgba(15,23,42,.05);}
+    .sv-tab{border: 1px solid var(--wx-edge);background: var(--wx-surface);border-radius:999px;padding:.55rem 1.1rem;font-weight: 600;font-size:.9rem;cursor:pointer;color: var(--wx-text-muted);}
+    .sv-tab.active{background: #0f2a3f;color: #fff;border-color: #0f2a3f;}
+    .sv-card{background: var(--wx-surface);border: 1px solid var(--wx-edge);border-radius:16px;padding:1.4rem;max-width:560px;box-shadow: var(--wx-shadow-raised);}
     .sv-field{margin-bottom:1rem;}
-    .sv-field label{display:block;font-size:.8rem;font-weight:700;color:#334155;margin-bottom:.35rem;}
-    .sv-ctl{width:100%;border:1px solid #cbd5e1;border-radius:11px;padding:.7rem .9rem;font-size:.95rem;outline:none;background:#f8fafc;color:#0f172a;}
-    .sv-ctl:focus{border-color:#45B3C3;box-shadow:0 0 0 3px rgba(69,179,195,.12);background:#fff;}
+    .sv-field label{display:block;font-size:.8rem;font-weight: 600;color: var(--wx-text-muted);margin-bottom:.35rem;}
+    .sv-ctl{width:100%;border: 1px solid var(--wx-edge-strong);border-radius:11px;padding:.7rem .9rem;font-size:.95rem;outline:none;background: var(--wx-raised);color: var(--wx-text);}
+    .sv-ctl:focus{border-color: #45B3C3;box-shadow:0 0 0 3px rgba(69,179,195,.12);background: var(--wx-surface);}
     .sv-montos{display:flex;flex-wrap:wrap;gap:8px;}
-    .sv-monto{border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:.5rem .9rem;font-weight:700;cursor:pointer;color:#334155;}
-    .sv-monto.sel{background:#45B3C3;color:#fff;border-color:#45B3C3;}
-    .sv-btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:12px;padding:.8rem 1.4rem;font-weight:800;font-size:.95rem;cursor:pointer;background:#0f2a3f;color:#fff;}
+    .sv-monto{border: 1px solid var(--wx-edge-strong);background: var(--wx-surface);border-radius:10px;padding:.5rem .9rem;font-weight: 600;cursor:pointer;color: var(--wx-text-muted);}
+    .sv-monto.sel{background: #45B3C3;color: var(--wx-accent-ink);border-color: #45B3C3;}
+    .sv-btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:12px;padding:.8rem 1.4rem;font-weight: 600;font-size:.95rem;cursor:pointer;background: #0f2a3f;color: #fff;}
     .sv-btn:disabled{opacity:.5;cursor:not-allowed;}
-    .sv-banner{display:flex;gap:10px;align-items:flex-start;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#92400e;border-radius:12px;padding:.8rem 1rem;font-size:.85rem;margin-bottom:1.2rem;max-width:560px;}
+    .sv-banner{display:flex;gap:10px;align-items:flex-start;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color: var(--wx-warning);border-radius:12px;padding:.8rem 1rem;font-size:.85rem;margin-bottom:1.2rem;max-width:560px;}
 
-    :host-context(html.dark) .sv-head h2{color:#f1f5f9;}
-    :host-context(html.dark) .sv-tab{background:#16233a;border-color:rgba(255,255,255,.12);color:#cbd5e1;}
-    :host-context(html.dark) .sv-tab.active{background:#45B3C3;color:#04121a;border-color:#45B3C3;}
-    :host-context(html.dark) .sv-card{background:#16233a;border-color:rgba(255,255,255,.1);}
-    :host-context(html.dark) .sv-field label{color:#94a3b8;}
-    :host-context(html.dark) .sv-ctl{background:#0f1826;color:#e2e8f0;border-color:rgba(255,255,255,.14);}
-    :host-context(html.dark) .sv-monto{background:#0f1826;color:#cbd5e1;border-color:rgba(255,255,255,.14);}
-    :host-context(html.dark) .sv-banner{background:rgba(245,158,11,.12);color:#fcd9a1;}
+    :host-context(html.dark) .sv-head h2{color: var(--wx-text);}
+    :host-context(html.dark) .sv-tab{background: var(--wx-surface);border-color: var(--wx-edge);color: var(--wx-text-muted);}
+    :host-context(html.dark) .sv-tab.active{background: #45B3C3;color: #04121a;border-color: #45B3C3;}
+    :host-context(html.dark) .sv-card{background: var(--wx-surface);border-color: var(--wx-edge);}
+    :host-context(html.dark) .sv-field label{color: var(--wx-text-dim);}
+    :host-context(html.dark) .sv-ctl{background: var(--wx-sunken);color: var(--wx-text);border-color: var(--wx-edge-strong);}
+    :host-context(html.dark) .sv-monto{background: var(--wx-sunken);color: var(--wx-text-muted);border-color: var(--wx-edge-strong);}
+    :host-context(html.dark) .sv-banner{background: rgba(245,158,11,.12);color: #fcd9a1;}
   `],
   template: `
   <div class="sv-head">
@@ -43,7 +43,7 @@ import Swal from 'sweetalert2';
   </div>
 
   <div class="sv-banner">
-    <i class="bi bi-info-circle"></i>
+    <i class="ph ph-info"></i>
     <span>Módulo en integración con <b>TAECEL</b>. Ya está configurado; las operaciones en vivo se habilitan al conectar la API del proveedor.</span>
   </div>
 
@@ -71,7 +71,7 @@ import Swal from 'sweetalert2';
       </div>
     </div>
     <button class="sv-btn" [disabled]="busy || telefono.length!==10 || !monto" (click)="operar('recarga')">
-      <i class="bi bi-phone"></i> {{ busy ? 'Procesando...' : 'Realizar recarga' }}
+      <i class="ph ph-device-mobile"></i> {{ busy ? 'Procesando...' : 'Realizar recarga' }}
     </button>
   </div>
 
@@ -92,7 +92,7 @@ import Swal from 'sweetalert2';
       <input class="sv-ctl" type="number" [(ngModel)]="montoServicio" min="1" placeholder="0.00">
     </div>
     <button class="sv-btn" [disabled]="busy || !referencia || !montoServicio" (click)="operar('servicio')">
-      <i class="bi bi-lightning-charge"></i> {{ busy ? 'Procesando...' : 'Pagar servicio' }}
+      <i class="ph ph-lightning"></i> {{ busy ? 'Procesando...' : 'Pagar servicio' }}
     </button>
   </div>
   `

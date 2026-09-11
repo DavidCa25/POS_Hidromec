@@ -1,0 +1,43 @@
+<button type="button" class="wx-sel__campo"
+        [attr.popovertarget]="idPanel"
+        [style.anchor-name]="ancla"
+        [disabled]="deshabilitado"
+        [class.is-vacio]="!seleccionada"
+        role="combobox" [attr.aria-expanded]="false" aria-haspopup="listbox">
+  <span class="wx-sel__txt">{{ etiqueta }}</span>
+  <span class="wx-sel__nota" *ngIf="seleccionada?.nota">{{ seleccionada?.nota }}</span>
+  <i class="ph ph-caret-down wx-sel__flecha" aria-hidden="true"></i>
+</button>
+
+<div [id]="idPanel" popover data-anclado
+     class="wx-pop wx-sel__panel"
+     [style.--wx-anchor]="ancla"
+     role="dialog"
+     (toggle)="alAbrirCerrar($any($event))"
+     (keydown)="alPulsar($event)">
+
+  <div class="wx-sel__buscar" *ngIf="buscable">
+    <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+    <input #busqueda type="text" [(ngModel)]="filtro" (ngModelChange)="alFiltrar()"
+           [placeholder]="textoBusqueda" [attr.aria-label]="textoBusqueda"
+           autocomplete="off" spellcheck="false">
+  </div>
+
+  <ul class="wx-pop__list" role="listbox">
+    <li *ngFor="let o of visibles; let i = index">
+      <button type="button" class="wx-opt"
+              role="option"
+              [attr.aria-selected]="esSeleccionada(o)"
+              [attr.data-activo]="i === indice"
+              [disabled]="o.desactivada"
+              (pointerdown)="elegirPuntero($event, o)"
+              (click)="elegirClick($event, o)"
+              (mouseenter)="indice = i">
+        <span class="wx-opt__txt">{{ o.etiqueta }}</span>
+        <span class="wx-opt__nota" *ngIf="o.nota">{{ o.nota }}</span>
+        <i class="ph-fill ph-check wx-opt__check" aria-hidden="true"></i>
+      </button>
+    </li>
+    <li *ngIf="!visibles.length" class="wx-sel__vacio">{{ vacio }}</li>
+  </ul>
+</div>

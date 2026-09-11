@@ -4,18 +4,18 @@
 
 /* Layout general del panel */
 .panel-content {
-    color: #0f172a;
+    color: var(--wx-text);
 }
 
 .section-title {
     font-size: 15px;
-    font-weight: 900;
-    color: #0f172a;
+    font-weight: 600;
+    color: var(--wx-text);
     margin: 24px 0 16px;
     display: flex;
     align-items: center;
     gap: 8px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--wx-edge-soft);
     padding-bottom: 8px;
 }
 
@@ -29,15 +29,15 @@
 .lbl {
     display: block;
     font-size: 13px;
-    font-weight: 800;
-    color: #334155;
+    font-weight: 600;
+    color: var(--wx-text-muted);
     margin-bottom: 6px;
 }
 
 .hint {
     display: block;
     font-size: 11.5px;
-    color: #64748b;
+    color: var(--wx-text-muted);
     margin-top: 6px;
     line-height: 1.4;
 }
@@ -49,25 +49,25 @@
     width: 100%;
     padding: 10px 14px;
     font-size: 14px;
-    color: #0f172a;
-    background-color: #fff;
-    border: 1px solid #cbd5e1;
+    color: var(--wx-text);
+    background-color: var(--wx-surface);
+    border: 1px solid var(--wx-edge-strong);
     border-radius: 12px;
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--wx-dur-state), box-shadow var(--wx-dur-state);
     box-sizing: border-box;
 }
 
 .ctl:focus {
-    border-color: #2563eb;
+    border-color: var(--wx-accent);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .ctl:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
+    background-color: var(--wx-raised);
+    color: var(--wx-text-dim);
     cursor: not-allowed;
-    border-color: #e2e8f0;
+    border-color: var(--wx-edge);
 }
 
 /* Magia para que el Select se vea moderno */
@@ -88,8 +88,8 @@ select.ctl:disabled {
 
 /* Lo máximo que permite el motor del navegador para los Options */
 select.ctl option {
-    background-color: #ffffff;
-    color: #0f172a;
+    background-color: var(--wx-surface);
+    color: var(--wx-text);
     font-size: 14px;
     padding: 10px; /* Chrome/Edge ignoran el padding, pero Firefox lo respeta */
 }
@@ -124,7 +124,7 @@ select.ctl option {
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: #cbd5e1;
-    transition: .3s ease;
+    transition: var(--wx-dur-layout) ease;
     border-radius: 24px;
 }
 
@@ -137,7 +137,7 @@ select.ctl option {
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: var(--wx-dur-layout) cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border-radius: 50%;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
@@ -157,8 +157,8 @@ select.ctl option {
 
 .ttext {
     font-size: 13.5px;
-    color: #475569;
-    font-weight: 700;
+    color: var(--wx-text-muted);
+    font-weight: 600;
 }
 
 /* ==========================================================================
@@ -177,10 +177,10 @@ select.ctl option {
     gap: 8px;
     padding: 10px 18px;
     font-size: 13.5px;
-    font-weight: 800;
+    font-weight: 600;
     border-radius: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
     border: none;
     outline: none;
 }
@@ -188,25 +188,25 @@ select.ctl option {
 .btn-primary {
     background-color: #2563eb;
     color: white;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+    box-shadow: var(--wx-shadow-raised);
 }
 
 .btn-primary:hover:not(:disabled) {
     background-color: #1d4ed8;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+    
+    box-shadow: var(--wx-shadow-raised);
 }
 
 .btn-outline, .btn-outline-secondary {
     background-color: transparent;
-    color: #334155;
-    border: 1px solid #cbd5e1;
+    color: var(--wx-text-muted);
+    border: 1px solid var(--wx-edge-strong);
 }
 
 .btn-outline:hover:not(:disabled), .btn-outline-secondary:hover:not(:disabled) {
-    background-color: #f8fafc;
-    border-color: #94a3b8;
-    color: #0f172a;
+    background-color: var(--wx-raised);
+    border-color: var(--wx-edge-strong);
+    color: var(--wx-text);
 }
 
 .btn:disabled, .btn-outline:disabled, .btn-primary:disabled, .btn-outline-secondary:disabled {
@@ -217,8 +217,8 @@ select.ctl option {
 }
 
 select.ctl option {
-    background-color: #ffffff;
-    color: #0f172a;
+    background-color: var(--wx-surface);
+    color: var(--wx-text);
     font-size: 14px;
     padding: 12px; /* Chrome/Electron casi siempre ignoran esto, pero Firefox sí lo lee */
 }
@@ -237,19 +237,19 @@ select.ctl option {
     align-items: center;
     cursor: pointer;
     user-select: none;
-    background-color: #fff;
+    background-color: var(--wx-surface);
 }
 
 .custom-sel-box.disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
+    background-color: var(--wx-raised);
+    color: var(--wx-text-dim);
     cursor: not-allowed;
-    border-color: #e2e8f0;
+    border-color: var(--wx-edge);
 }
 
 .custom-sel-box i {
-    color: #64748b;
-    transition: transform 0.2s;
+    color: var(--wx-text-muted);
+    transition: transform var(--wx-dur-state);
 }
 
 /* El menú que flota por encima */
@@ -258,10 +258,10 @@ select.ctl option {
     top: calc(100% + 6px);
     left: 0;
     right: 0;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: var(--wx-surface);
+    border: 1px solid var(--wx-edge-strong);
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+    box-shadow: var(--wx-shadow-raised);
     
     /* z-index alto para que pase por encima de los demás controles */
     z-index: 9999; 
@@ -277,20 +277,20 @@ select.ctl option {
 .custom-sel-option {
     padding: 12px 14px;
     font-size: 14px;
-    color: #334155;
+    color: var(--wx-text-muted);
     cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
+    transition: background-color var(--wx-dur-micro), color var(--wx-dur-micro);
 }
 
 .custom-sel-option:hover {
-    background-color: #f8fafc;
-    color: #2563eb;
+    background-color: var(--wx-raised);
+    color: var(--wx-accent-text);
 }
 
 .custom-sel-option.selected {
     background-color: rgba(37, 99, 235, 0.08);
-    color: #2563eb;
-    font-weight: 800;
+    color: var(--wx-accent-text);
+    font-weight: 600;
 }
 
 /* Scrollbar personalizado para el menú desplegable (opcional pero se ve mejor) */
@@ -309,3 +309,27 @@ select.ctl option {
     from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+/* --------------------------------------------------------------------------
+   LISTA DE OPCIONES EXCLUYENTES (tipo de negocio, experiencia de la caja)
+   Tarjetas grandes con radio oculto: el area de toque es toda la tarjeta.
+   -------------------------------------------------------------------------- */
+.wx-choice-list { display: grid; gap: 10px; }
+.wx-choice {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; cursor: pointer;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-md); color: var(--wx-text);
+  transition: border-color var(--wx-dur-micro) ease, background-color var(--wx-dur-micro) ease;
+}
+.wx-choice:hover { border-color: var(--wx-text-dim); background: var(--wx-raised); }
+.wx-choice.is-on { border-color: var(--wx-accent); background: var(--wx-accent-soft); }
+.wx-choice input { position: absolute; opacity: 0; width: 0; height: 0; }
+.wx-choice:has(input:focus-visible) { box-shadow: var(--wx-focus-ring); }
+.wx-choice__ic {
+  flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-accent-text); font-size: 20px;
+}
+.wx-choice.is-on .wx-choice__ic { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.wx-choice__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wx-choice__txt b { font-size: var(--wx-text-base); font-weight: 600; }
+.wx-choice__txt small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.4; }

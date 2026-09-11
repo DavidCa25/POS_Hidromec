@@ -7,7 +7,9 @@
       <div class="mb-4">
         <div class="small text-muted">
           Esta pantalla es para <b>reabastecer inventario</b>. Al registrar, se <b>sumará stock</b> y se
-          <b>actualizará el precio sugerido</b> usando: compra (sin IVA) + IVA + % ganancia.
+          <b>actualizará el precio de venta</b> usando: compra (sin IVA) + IVA + % ganancia.
+          El precio se calcula <b>por unidad base</b>: una bolsa de 400&nbsp;g a $95 deja el gramo en $0.2375.
+          A los <b>ingredientes</b> solo se les actualiza el costo: no se venden en caja.
         </div>
       </div>
 
@@ -33,7 +35,7 @@
                       class="form-control text-start d-flex justify-content-between align-items-center"
                       (click)="proveedorAbierto = !proveedorAbierto">
                 <span [class.text-muted]="!proveedorSeleccionado">{{ proveedorLabel }}</span>
-                <i class="bi bi-chevron-down"></i>
+                <i class="ph ph-caret-down"></i>
               </button>
               <div *ngIf="proveedorAbierto" class="list-group shadow-sm"
                    style="position:absolute;z-index:20;left:0;right:0;max-height:220px;overflow:auto;">
@@ -67,8 +69,11 @@
 
                   <th style="width:150px;">% Ganancia</th>
 
-                  <!-- Nuevo sugerido con IVA + ganancia -->
-                  <th style="width:190px;">Nuevo sugerido</th>
+                  <!-- Nuevo sugerido con IVA + ganancia, por unidad base -->
+                  <th style="width:190px;">Nuevo precio de venta</th>
+
+                  <!-- Lo que se paga por esta linea -->
+                  <th style="width:150px;">Importe</th>
 
                   <th style="width:60px;"></th>
                 </tr>
@@ -84,6 +89,17 @@
                            [(ngModel)]="it.qty"
                            name="qty-{{i}}"
                            (ngModelChange)="onQtyChange(i)" />
+                    <!-- En que se compra esta linea. El procedimiento convierte
+                         a unidad base: 5 cajas de 1 L suben 5000 ml. Solo
+                         aparece si el producto tiene presentaciones. -->
+                    <wx-select *ngIf="it.presentaciones.length > 1"
+                               class="wx-sel-compacto mt-1"
+                               [(ngModel)]="it.presentationId"
+                               name="pres-{{i}}"
+                               [opciones]="it.opciones"></wx-select>
+                    <div class="small text-muted mt-1" *ngIf="entraAlInventario(it)">
+                      Entran {{ entraAlInventario(it) }}
+                    </div>
                   </td>
 
                   <!-- Precio compra SIN IVA -->
@@ -99,10 +115,13 @@
                   <!-- Compra con IVA calculada -->
                   <td class="fw-semibold text-end">
                     {{
-                      ((it.purchasePrice || 0) * (1 + ivaTasa))
+                      ((it.purchasePrice || 0) * (1 + it.ivaProducto))
                         | currency:'MXN':'symbol-narrow':'1.2-2'
                     }}
-                    <div class="small text-muted mt-1">IVA {{ (ivaTasa*100) | number:'1.0-0' }}%</div>
+                    <!-- La tasa es la del producto: lo exento no paga IVA. -->
+                    <div class="small text-muted mt-1">
+                      {{ it.ivaProducto > 0 ? 'IVA ' + (it.ivaProducto*100 | number:'1.0-0') + '%' : 'Exento' }}
+                    </div>
                   </td>
 
                   <td>
@@ -113,25 +132,39 @@
                            (ngModelChange)="onProfitChange(i)" />
                   </td>
 
-                  <!-- Nuevo sugerido = compraConIVA * (1 + ganancia%) -->
+                  <!-- Nuevo precio de venta: por UNIDAD BASE, que es lo que
+                       escribe sp_register_purchase. Comprar una bolsa de 400 g
+                       a $95 no pone el gramo a $95. -->
                   <td class="fw-semibold text-end">
-                    {{
-                      ((it.purchasePrice || 0) * (1 + ivaTasa) * (1 + ((it.profitPercent || 0) / 100)))
-                        | currency:'MXN':'symbol-narrow':'1.2-2'
-                    }}
+                    <ng-container *ngIf="it.sellable; else noSeVende">
+                      {{ it.suggestedPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                      <div class="small text-muted mt-1">por {{ it.baseUom }}</div>
+                    </ng-container>
+                    <ng-template #noSeVende>
+                      <span class="text-muted fw-normal">No se vende</span>
+                      <div class="small text-muted mt-1">
+                        costo {{ it.costoBase | currency:'MXN':'symbol-narrow':'1.2-4' }} / {{ it.baseUom }}
+                      </div>
+                    </ng-template>
+                  </td>
+
+                  <!-- Importe de la linea, sin IVA -->
+                  <td class="fw-semibold text-end">
+                    {{ it.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                    <div class="small text-muted mt-1">Sin IVA</div>
                   </td>
 
                   <td>
                     <button type="button" class="btn btn-sm btn-danger rounded-circle btn-icon-xs"
                             (click)="quitarItem(i)">
-                      <i class="bi bi-trash"></i>
+                      <i class="ph ph-trash"></i>
                     </button>
                   </td>
                 </tr>
 
                 <!-- Mensaje cuando no hay productos -->
                 <tr *ngIf="items.length === 0">
-                  <td colspan="7" class="text-center text-muted py-4">
+                  <td colspan="8" class="text-center text-muted py-4">
                     No hay productos agregados. Usa “Agregar producto”.
                   </td>
                 </tr>
@@ -143,16 +176,44 @@
           <button type="button"
                   class="btn btn-outline-primary btn-sm mt-2 btn-compact"
                   (click)="abrirModalProductos()">
-            <i class="bi bi-plus-lg"></i> Agregar producto
+            <i class="ph ph-plus"></i> Agregar producto
           </button>
         </div>
 
-        <!-- Solo botón registrar (sin totales) -->
+        <!-- Cierre de la compra: como se paga y cuanto se paga -->
+        <div class="compra-cierre mt-4" *ngIf="items.length > 0">
+          <div class="compra-pago">
+            <label class="form-label">Forma de pago</label>
+            <wx-select [(ngModel)]="formaDePago"
+                       name="formaDePago"
+                       [opciones]="formasDePago"></wx-select>
+            <div class="small text-muted mt-2">{{ notaFormaDePago }}</div>
+          </div>
+
+          <div class="compra-totales">
+            <div class="compra-total-fila">
+              <span>Subtotal</span>
+              <span>{{ subtotalSinIva | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="compra-total-fila">
+              <span>IVA</span>
+              <span>{{ iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="compra-total-fila compra-total-fila--fuerte">
+              <span>Total de la compra</span>
+              <span>{{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="small text-muted mt-1">
+              {{ items.length }} {{ items.length === 1 ? 'partida' : 'partidas' }}
+            </div>
+          </div>
+        </div>
+
         <div class="d-flex justify-content-end mt-4">
           <button type="button"
                   class="btn btn-success d-flex align-items-center gap-2 btn-registrar"
                   (click)="registrarCompra()">
-            <i class="bi bi-save"></i> Registrar compra
+            <i class="ph ph-floppy-disk"></i> Registrar compra
           </button>
         </div>
       </form>
@@ -190,7 +251,6 @@
                 <th style="width:170px;">Precio compra</th>
 
                 <th style="width:140px;">% Ganancia</th>
-                <th style="width:190px;">Nuevo sugerido</th>
                 <th>Acción</th>
               </tr>
             </thead>
@@ -226,14 +286,9 @@
                          name="profit-{{i}}" />
                 </td>
 
-                <!-- Nuevo sugerido = (compraSinIVA*(1+IVA))*(1+ganancia%) -->
-                <td class="fw-semibold text-end">
-                  {{
-                    ((p.purchasePrice || 0) * (1 + ivaTasa) * (1 + ((p.profitPercent || 0) / 100)))
-                      | currency:'MXN':'symbol-narrow':'1.2-2'
-                  }}
-                </td>
-
+                <!-- El nuevo precio de venta se calcula en la linea, no aqui:
+                     depende de la presentacion en que se compre, y eso se
+                     elige despues de agregar el producto. -->
                 <td class="text-center">
                   <button type="button" class="btn btn-primary btn-add"
                           (click)="seleccionarProducto(p)">
@@ -243,7 +298,7 @@
               </tr>
 
               <tr *ngIf="productos.length === 0">
-                <td colspan="10" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center text-muted py-4">
                   No hay productos activos.
                 </td>
               </tr>

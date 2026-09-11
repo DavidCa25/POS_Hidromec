@@ -1,0 +1,881 @@
+/* ==========================================================================
+   WYBIX TOUCH POS
+   --------------------------------------------------------------------------
+   Misma familia visual que el resto de Wybix: mismos tokens, mismo navy y
+   cyan, misma tipografia, mismos radios y curvas. Lo unico que cambia es la
+   ERGONOMIA, y cambia aqui dentro: la densidad tactil se declara en el scope
+   de esta pantalla, no en el design system, para que Retail conserve sus
+   38 px y no existan dos escalas que mantener.
+
+   Reglas de movimiento que se siguen en todo el archivo:
+   - solo `transform` y `opacity` (no disparan layout ni paint);
+   - `ease-out` para lo que entra, curvas de los tokens, nunca `ease-in`;
+   - nada por encima de 300 ms;
+   - `transition`, no `keyframes`, en lo que se toca rapido y seguido;
+   - el hover va detras de `@media (hover: hover)`: en tactil un toque
+     dispara hover y dejaria el estilo pegado.
+   ========================================================================== */
+
+.tp {
+  /* Densidad tactil. Unica diferencia de escala con Retail. */
+  --tp-touch: 56px;          /* accion principal */
+  --tp-tap: 44px;            /* objetivo minimo */
+  --tp-gap: 10px;
+  --tp-cats: 124px;
+  --tp-cart: 336px;
+  --wx-control-h: var(--tp-touch);
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wx-canvas);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+@media (min-width: 1600px) { .tp { --tp-cats: 148px; --tp-cart: 380px; --tp-gap: 12px; } }
+@media (min-width: 1900px) { .tp { --tp-cats: 164px; --tp-cart: 408px; --tp-gap: 14px; } }
+
+.tp button,
+.tp .tp-card,
+.tp .tp-cat {
+  font-family: var(--wx-font);
+  cursor: pointer;
+  touch-action: manipulation;
+  /* La respuesta al toque se declara una vez para todo lo pulsable. */
+}
+/* Respuesta al toque: el objeto se hunde un poco y vuelve. */
+.tp button:not(:disabled):active { transform: scale(0.97); }
+.tp button:disabled { cursor: default; }
+
+/* ========================================================== BARRA SUPERIOR */
+.tp-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--wx-rail);
+  color: var(--wx-rail-text-strong);
+  /* Sin borde: el cambio de superficie ya separa la barra del lienzo. */
+  box-shadow: 0 1px 0 var(--wx-rail-edge);
+}
+
+.tp-top__marca {
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+  /* Separador tenue en vez de un borde completo. */
+  padding-right: 16px;
+  box-shadow: inset -1px 0 0 var(--wx-rail-edge);
+}
+.tp-top__logo {
+  width: 30px; height: 30px; flex: 0 0 auto;
+  object-fit: contain;
+  background: #fff;
+  border-radius: var(--wx-radius-sm);
+  padding: 2px;
+}
+.tp-top__nombre {
+  color: var(--wx-rail-text);
+  font-size: var(--wx-text-base); font-weight: 600; letter-spacing: -0.01em;
+}
+@media (max-width: 1400px) { .tp-top__nombre { display: none; } }
+
+/* Cuentas: control segmentado sobre una pista, no pestanas sueltas. */
+.tp-cuentas {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px;
+  background: rgb(255 255 255 / 0.05);
+  border-radius: 999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tp-cuentas::-webkit-scrollbar { display: none; }
+
+.tp-cuenta {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: var(--tp-tap); padding: 0 15px;
+  background: transparent; border: 0; border-radius: 999px;
+  color: var(--wx-rail-text); white-space: nowrap;
+  font-size: var(--wx-text-sm); font-weight: 550;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+/* Activa: cyan solido y un realce interior que le da cuerpo sin agrandarla. */
+.tp-cuenta.on {
+  background: var(--wx-accent); color: var(--wx-accent-ink); font-weight: 650;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 3px rgb(0 0 0 / 0.30);
+}
+/* El "+" existe pero no pide turno. */
+.tp-cuenta--add { padding: 0 12px; color: var(--wx-rail-text-dim); font-size: 17px; }
+@media (hover: hover) and (pointer: fine) {
+  .tp-cuenta--add:hover { color: var(--wx-rail-text-strong); }
+}
+.tp-cuenta__n {
+  min-width: 19px; padding: 0 6px; line-height: 18px;
+  background: rgb(0 0 0 / 0.20); border-radius: 999px;
+  font-family: var(--wx-font-mono); font-size: 11px; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.tp-cuenta.on .tp-cuenta__n { background: rgb(0 0 0 / 0.14); }
+
+.tp-top__acciones { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.tp-turno {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--tp-tap); padding: 0 14px;
+  background: rgb(255 255 255 / 0.05); border: 0; border-radius: 999px;
+  color: var(--wx-rail-text); font-size: var(--wx-text-sm); font-weight: 550;
+}
+.tp-turno.warn { background: var(--wx-warning-soft); color: var(--wx-warning); }
+.tp-turno__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wx-rail-text-dim); }
+.tp-turno__dot.on { background: var(--wx-success); }
+@media (max-width: 1200px) { .tp-turno__txt { display: none; } .tp-turno { padding: 0 14px; } }
+
+.tp-iconbtn {
+  width: var(--tp-tap); height: var(--tp-tap);
+  display: grid; place-items: center;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-rail-text); font-size: 20px;
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tp-iconbtn:hover { background: rgb(255 255 255 / 0.07); color: var(--wx-rail-text-strong); }
+}
+.tp-iconbtn.on { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.tp-iconbtn--claro { background: var(--wx-sunken); color: var(--wx-text); }
+
+/* ==================================================================== CUERPO */
+.tp-body {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: var(--tp-cats) minmax(0, 1fr) var(--tp-cart);
+  gap: var(--tp-gap);
+  padding: var(--tp-gap);
+}
+
+/* ================================================================ CATEGORIAS */
+.tp-cats {
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 2px;
+}
+/* Un rail de navegacion, no una pila de botones: las inactivas no llevan
+   caja propia y solo se separan por espacio y color de texto. */
+.tp-cat {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 68px; padding: 10px 6px;
+  background: transparent; border: 0;
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text-muted); text-align: center;
+  font-size: var(--wx-text-sm); font-weight: 550; line-height: 1.2;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tp-cat:not(.on):hover { background: var(--wx-hover); color: var(--wx-text); }
+}
+.tp-cat i { font-size: 21px; opacity: 0.85; }
+.tp-cat__txt {
+  max-width: 100%;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* La categoria activa se lee de un vistazo desde un metro de distancia. */
+.tp-cat.on {
+  background: var(--wx-accent-soft);
+  color: var(--wx-accent-text);
+  font-weight: 650;
+}
+.tp-cat.on::before {
+  content: "";
+  position: absolute; left: 0; top: 14px; bottom: 14px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--wx-accent);
+}
+.tp-cat.on i { opacity: 1; }
+
+/* ================================================================= PRODUCTOS */
+.tp-main { min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/*
+ * La rejilla se adapta al ancho PERO la tarjeta no crece sin limite: con
+ * cuatro productos no deben aparecer cuatro tarjetas gigantes. El maximo de
+ * la pista lo impide y `justify-content: start` las deja alineadas.
+ */
+.tp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 200px));
+  justify-content: start;
+  gap: var(--tp-gap);
+  align-content: start;
+  padding-bottom: 6px;
+}
+@media (min-width: 1600px) { .tp-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 216px)); } }
+/*
+ * Pantalla estrecha, sobre todo con el escalado de Windows al 125%: a
+ * 1092 px CSS el area de catalogo baja a 582 px. auto-fill cuenta las pistas
+ * con el MAXIMO del minmax, asi que con un tope de 200 px solo caben dos
+ * columnas y se desperdicia un tercio del ancho. Con 180 px entran tres sin
+ * que la tarjeta se quede pequena.
+ */
+@media (max-width: 1200px) { .tp-grid { grid-template-columns: repeat(auto-fill, minmax(148px, 180px)); } }
+
+/* Sin borde: la tarjeta se separa del lienzo por superficie y sombra. */
+.tp-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 8px 8px 12px;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+  text-align: left;
+  transition: box-shadow var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+/* Al tocar se hunde y el cyan confirma cual fue, sin pintarla entera. */
+.tp-card:not(:disabled):active {
+  box-shadow: var(--wx-shadow-card), 0 0 0 2px var(--wx-accent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tp-card:not(:disabled):hover { box-shadow: var(--wx-shadow-raised); }
+}
+
+/* Agotado: baja de superficie y de contraste, no parece roto. */
+.tp-card.off { background: transparent; box-shadow: inset 0 0 0 1px var(--wx-edge); }
+.tp-card.off .tp-card__media { opacity: 0.45; }
+.tp-card.off .tp-card__nombre { color: var(--wx-text-muted); }
+.tp-card.off .tp-card__precio { color: var(--wx-text-dim); }
+
+.tp-card__media {
+  position: relative;
+  display: grid; place-items: center;
+  aspect-ratio: 4 / 3; overflow: hidden;
+  /* Degradado apenas perceptible: da volumen y evita el rectangulo muerto. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--wx-surface) 0%, transparent 70%),
+    var(--wx-sunken);
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text-dim);
+}
+/* Con foto manda la imagen: nada de fondo compitiendo. */
+.tp-card__media.con-foto { background: var(--wx-sunken); }
+.tp-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Sin foto: icono del dominio e inicial discreta, no un placeholder. */
+.tp-card__media > i { font-size: 28px; opacity: 0.42; }
+.tp-card__ini {
+  position: absolute; left: 8px; bottom: 7px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--wx-text-dim); opacity: 0.5;
+}
+
+/* Un badge pequeno, no una etiqueta gritando. */
+.tp-card__estado {
+  position: absolute; top: 7px; right: 7px;
+  min-width: 21px; text-align: center;
+  padding: 0 7px; line-height: 19px; border-radius: 999px;
+  font-size: 11px; font-weight: 650;
+  /* Estado normal: la cifra se lee, pero no compite con el nombre ni con el
+     precio. Solo se enciende en ambar cuando de verdad escasea. */
+  background: var(--wx-scrim-chip, rgb(15 30 55 / 0.62)); color: #fff;
+  font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(2px);
+}
+.tp-card__estado--off { background: rgb(190 40 50 / 0.92); color: #fff; }
+.tp-card__estado--low {
+  min-width: 21px; text-align: center;
+  background: var(--wx-warning-soft); color: var(--wx-warning-ink);
+  font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums;
+}
+
+.tp-card__txt { display: flex; flex-direction: column; gap: 6px; min-height: 46px; padding: 0 3px; }
+.tp-card__nombre {
+  color: var(--wx-text);
+  font-size: var(--wx-text-base); font-weight: 550; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tp-card__pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+/* Nombre y precio son dos niveles: peso medio arriba, mono cyan abajo. */
+.tp-card__precio {
+  color: var(--wx-accent-text);
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-md); font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+.tp-card__mods { color: var(--wx-text-dim); font-size: 15px; opacity: 0.8; }
+
+/* ==================================================================== CUENTA */
+.tp-cart {
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card), var(--wx-shadow-raised);
+  overflow: hidden;
+}
+.tp-cart__head {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 16px 12px;
+}
+.tp-cart__head h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; letter-spacing: -0.01em; }
+.tp-cart__n {
+  min-width: 22px; padding: 1px 7px; text-align: center;
+  background: var(--wx-accent-soft); border-radius: 999px;
+  color: var(--wx-accent-text); font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs); font-weight: 650;
+}
+.tp-txtbtn {
+  margin-left: auto;
+  display: inline-flex; align-items: center;
+  min-height: var(--tp-tap); padding: 0 10px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm);
+}
+@media (hover: hover) and (pointer: fine) { .tp-txtbtn:hover { color: var(--wx-danger); } }
+
+/* Estado de la cuenta completa, no del producto: por eso vive aqui arriba. */
+.tp-servicio {
+  flex: 0 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  margin: 0 16px 12px; padding: 4px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.tp-servicio button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--tp-tap);
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm); font-weight: 550;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-servicio button.on { background: var(--wx-surface); color: var(--wx-text); font-weight: 650; box-shadow: var(--wx-shadow-card); }
+
+.tp-lineas { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 10px; }
+
+.tp-linea {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "txt qty" "txt imp";
+  align-items: center;
+  gap: 2px 12px;
+  padding: 12px 6px;
+}
+/* Un filete tenue entre lineas, nunca alrededor de cada una. */
+.tp-linea + .tp-linea { box-shadow: inset 0 1px 0 var(--wx-edge-soft); }
+.tp-linea__txt { grid-area: txt; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tp-linea__nombre { font-size: var(--wx-text-base); font-weight: 600; line-height: 1.3; }
+/* Los modificadores acompanan: mismo cyan, menor peso y opacidad. */
+.tp-linea__opts {
+  color: var(--wx-accent-text); font-size: var(--wx-text-xs); line-height: 1.4;
+  opacity: 0.85;
+}
+.tp-linea__nota {
+  color: var(--wx-text-dim); font-size: var(--wx-text-xs); font-style: italic; line-height: 1.35;
+}
+
+.tp-linea__qty { grid-area: qty; display: flex; align-items: center; gap: 2px; }
+.tp-linea__qty button {
+  width: var(--tp-tap); height: var(--tp-tap);
+  display: grid; place-items: center;
+  background: var(--wx-sunken); border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text); font-size: 15px;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-linea__qty button:first-child:active { background: var(--wx-danger-soft); color: var(--wx-danger); }
+.tp-linea__num {
+  min-width: 28px; text-align: center;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-md); font-weight: 650;
+}
+.tp-linea__imp {
+  grid-area: imp; text-align: right;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--wx-text-muted);
+}
+
+/* Vacio: dice lo justo y deja el sitio a lo que importa. */
+.tp-cart__vacia {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 32px 20px; color: var(--wx-text-dim); text-align: center;
+}
+.tp-cart__vacia i { font-size: 20px; opacity: 0.55; }
+.tp-cart__vacia p { margin: 0; font-size: var(--wx-text-sm); }
+
+/* El pie no se va con el scroll: Cobrar siempre esta a la vista. */
+.tp-cart__foot {
+  flex: 0 0 auto;
+  padding: 14px 16px 16px;
+  background: var(--wx-surface);
+  box-shadow: inset 0 1px 0 var(--wx-edge);
+}
+.tp-cart__total { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.tp-cart__total span { color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.tp-cart__total b {
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xl);
+  font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1600px) { .tp-cart__total b { font-size: var(--wx-text-2xl); } }
+
+/* ============================================================== BOTONES BASE */
+.tp-primaria, .tp-secundaria {
+  width: 100%; min-height: var(--tp-touch);
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  border: 0; border-radius: var(--wx-radius-md);
+  font-size: var(--wx-text-md); font-weight: 650;
+  transition: background-color var(--wx-dur-micro) ease, opacity var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-primaria {
+  background: var(--wx-accent); color: var(--wx-accent-ink);
+  /* Realce interior de 1px: cuerpo sin brillo ni gradiente. */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(9 16 24 / 0.18);
+  letter-spacing: -0.01em;
+}
+.tp-primaria:not(:disabled):active {
+  background: var(--wx-accent-press);
+  box-shadow: inset 0 1px 2px rgb(9 16 24 / 0.22);
+}
+/* Deshabilitado: legible, no un fantasma. */
+.tp-primaria:disabled {
+  background: var(--wx-sunken); color: var(--wx-text-dim);
+  box-shadow: none; opacity: 1;
+}
+.tp-secundaria { background: var(--wx-sunken); color: var(--wx-text); }
+
+/* ================================================================== OVERLAYS */
+.tp-overlay {
+  position: fixed; inset: 0; z-index: var(--wx-z-dialog);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: var(--wx-scrim);
+  /* Nada aparece de la nada: entra desde 0.97, no desde 0. */
+}
+
+.tp-hoja {
+  width: min(620px, 100%); max-height: 86vh;
+  display: flex; flex-direction: column;
+  background: var(--wx-surface);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+  transform: none;
+  transition: transform var(--wx-dur-dialog) var(--wx-ease-out);
+}
+.tp-hoja--sm { width: min(400px, 100%); }
+@starting-style { .tp-hoja { transform: scale(0.97) translateY(10px); } }
+
+.tp-hoja__head {
+  flex: 0 0 auto;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 20px 20px 16px;
+  box-shadow: inset 0 -1px 0 var(--wx-edge-soft);
+}
+.tp-hoja__id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tp-hoja__media {
+  width: 46px; height: 46px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  background: var(--wx-accent-soft); border-radius: var(--wx-radius-md);
+  color: var(--wx-accent-text); font-size: 22px;
+}
+.tp-hoja__head h3 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.tp-hoja__head p {
+  margin: 2px 0 0; color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-base);
+}
+
+.tp-hoja__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; }
+
+.tp-grupo { margin-bottom: 24px; }
+.tp-grupo:last-child { margin-bottom: 0; }
+.tp-grupo__head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 9px; }
+.tp-grupo__head h4 { margin: 0; font-size: var(--wx-text-base); font-weight: 650; letter-spacing: -0.01em; }
+.tp-grupo__regla {
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--wx-sunken); color: var(--wx-text-dim);
+  font-size: var(--wx-text-xs); font-weight: 600;
+}
+.tp-grupo__regla.req { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+
+.tp-opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 8px; }
+.tp-opcion {
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
+  min-height: var(--tp-touch); padding: 10px 16px;
+  background: var(--wx-sunken); border: 0;
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text); text-align: left;
+  font-size: var(--wx-text-base);
+  transition: background-color var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+/* Elegida: sube de superficie y se ancla con un anillo cyan de 2px. */
+.tp-opcion.on {
+  background: var(--wx-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--wx-accent);
+  color: var(--wx-accent-text); font-weight: 650;
+}
+.tp-opcion.off { opacity: 0.45; }
+.tp-opcion__n { line-height: 1.25; }
+.tp-opcion__p {
+  color: var(--wx-text-muted); font-family: var(--wx-font-mono); font-size: var(--wx-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.tp-opcion.on .tp-opcion__p { color: var(--wx-accent-text); }
+.tp-opcion__sin { color: var(--wx-danger); font-size: 10px; font-weight: 600; }
+
+.tp-nota {
+  width: 100%; min-height: var(--tp-touch);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; text-align: left;
+  background: var(--wx-sunken); border: 0;
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font-size: var(--wx-text-base);
+  transition: box-shadow var(--wx-dur-micro) ease, background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-nota.on { background: var(--wx-surface); box-shadow: inset 0 0 0 2px var(--wx-accent); }
+.tp-nota i { color: var(--wx-text-dim); font-size: 19px; }
+.tp-nota .ph-vacio { color: var(--wx-text-dim); }
+.tp-nota__kb { margin-top: 10px; }
+
+.tp-hoja__foot {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px 20px;
+  box-shadow: inset 0 1px 0 var(--wx-edge-soft);
+}
+.tp-hoja__qty { display: flex; align-items: center; gap: 4px; }
+.tp-hoja__qty button {
+  width: var(--tp-touch); height: var(--tp-touch);
+  display: grid; place-items: center;
+  background: var(--wx-sunken); border: 0; border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font-size: 17px;
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-hoja__qty span {
+  min-width: 40px; text-align: center;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-lg); font-weight: 700;
+}
+.tp-hoja__add { flex: 1; justify-content: space-between; padding: 0 20px; }
+.tp-hoja__precio { font-family: var(--wx-font-mono); }
+
+/* ================================================================= BUSQUEDA */
+.tp-buscador {
+  width: min(620px, 100%);
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px;
+  background: var(--wx-surface); border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+  transform: none;
+  transition: transform var(--wx-dur-dialog) var(--wx-ease-out);
+}
+@starting-style { .tp-buscador { transform: scale(0.97) translateY(10px); } }
+.tp-buscador__campo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 6px 0 14px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.tp-buscador__campo > i { color: var(--wx-text-dim); font-size: 20px; }
+.tp-buscador__campo input {
+  flex: 1; min-width: 0; min-height: var(--tp-touch);
+  background: transparent; border: 0; outline: none;
+  color: var(--wx-text); font-family: var(--wx-font); font-size: var(--wx-text-lg);
+}
+.tp-buscador__campo .tp-iconbtn { width: 42px; height: 42px; }
+
+.tp-buscador__res {
+  min-height: 92px; max-height: 34vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.tp-res {
+  display: flex; align-items: center; gap: 11px;
+  min-height: var(--tp-tap); padding: 8px 12px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text); text-align: left; font-size: var(--wx-text-base);
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-res:active { background: var(--wx-accent-soft); }
+.tp-res.off { opacity: 0.45; }
+.tp-res i { color: var(--wx-text-dim); font-size: 18px; }
+.tp-res__n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-res__p { color: var(--wx-accent-text); font-family: var(--wx-font-mono); font-weight: 600; }
+.tp-res__vacio { margin: 18px 0; color: var(--wx-text-dim); font-size: var(--wx-text-sm); text-align: center; }
+
+/* ==================================================================== COBRO */
+.tp-cobro {
+  position: absolute; inset: 0; top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--tp-cart);
+  gap: var(--tp-gap);
+  padding: var(--tp-gap);
+  padding-top: calc(var(--tp-gap) + 56px);
+  background: var(--wx-canvas);
+  transform: none;
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
+}
+@starting-style { .tp-cobro { transform: translateY(6px); } }
+
+.tp-cobro__panel {
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0; overflow-y: auto;
+}
+/* A 768px de alto el teclado cabe justo: sin este respiro aparecia una
+   barra de desplazamiento por dos pixeles. */
+@media (max-height: 800px) {
+  .tp-cobro__panel { gap: 8px; }
+  .tp-cobro__total { padding-top: 12px; padding-bottom: 12px; }
+}
+.tp-cobro__head { display: flex; align-items: center; gap: 12px; }
+.tp-cobro__head h2 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; }
+
+.tp-cobro__total {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 20px 24px;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+}
+.tp-cobro__total span {
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm);
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+.tp-cobro__total b {
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-2xl);
+  font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.tp-metodos {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 4px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.tp-metodo {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px;
+  background: transparent; border: 0;
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-size: var(--wx-text-base); font-weight: 550;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-metodo i { font-size: 19px; }
+.tp-metodo.on {
+  background: var(--wx-surface); color: var(--wx-accent-text); font-weight: 650;
+  box-shadow: var(--wx-shadow-card), 0 1px 3px rgb(9 16 24 / 0.10);
+}
+
+.tp-dinero { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tp-dinero__campo {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 14px 18px;
+  background: var(--wx-sunken); border: 0;
+  border-radius: var(--wx-radius-md);
+  transition: background-color var(--wx-dur-state) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-dinero__campo span {
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs);
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+.tp-dinero__campo b {
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xl); font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+/* El cambio solo toma protagonismo cuando ya hay dinero recibido. */
+.tp-dinero__campo--cambio b { color: var(--wx-text-dim); }
+.tp-dinero__campo--cambio.activo { background: var(--wx-success-soft); }
+.tp-dinero__campo--cambio.activo b { color: var(--wx-success); }
+
+.tp-rapidas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tp-rapidas button {
+  min-height: var(--tp-tap);
+  background: transparent; border: 0;
+  border-radius: var(--wx-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--wx-edge);
+  color: var(--wx-text-muted); font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-base); font-weight: 600; font-variant-numeric: tabular-nums;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-rapidas button:active { background: var(--wx-hover); color: var(--wx-text); }
+.tp-rapidas button.on {
+  background: var(--wx-accent-soft); color: var(--wx-accent-text);
+  box-shadow: inset 0 0 0 1px var(--wx-accent-line);
+}
+
+/* Teclado numerico: parte de Wybix, no una calculadora pegada. */
+.tp-num { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tp-num button {
+  min-height: 56px;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  color: var(--wx-text); font-family: var(--wx-font-mono);
+  font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums;
+  transition: background-color var(--wx-dur-micro) ease, box-shadow var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-num button:active {
+  background: var(--wx-accent-soft); color: var(--wx-accent-text);
+  box-shadow: inset 0 1px 3px rgb(9 16 24 / 0.12);
+}
+.tp-num__del { color: var(--wx-danger) !important; font-size: 20px !important; }
+.tp-num--sm button { min-height: 46px; font-size: 18px; }
+
+.tp-otro {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 32px 24px; text-align: center;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-lg); box-shadow: var(--wx-shadow-card);
+}
+.tp-otro i { font-size: 34px; color: var(--wx-accent-text); }
+.tp-otro h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.tp-otro p { margin: 0; max-width: 40ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); line-height: 1.5; }
+
+.tp-cobro__confirmar { margin-top: auto; }
+
+/* Contexto de lo que se cobra. */
+.tp-cobro__resumen {
+  display: flex; flex-direction: column; min-height: 0;
+  padding: 16px;
+  background: var(--wx-surface); border: 0;
+  border-radius: var(--wx-radius-lg); box-shadow: var(--wx-shadow-card);
+}
+.tp-cobro__resumen h3 {
+  margin: 0 0 12px; font-size: var(--wx-text-xs); font-weight: 650;
+  color: var(--wx-text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+}
+/* Con una sola linea la lista no estira: crece cuando hay mas. */
+.tp-cobro__resumen .tp-resumen__lineas { flex: 0 1 auto; }
+.tp-resumen__lineas { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.tp-resumen__l { display: flex; align-items: baseline; gap: 9px; padding: 6px 0; border-bottom: 1px solid var(--wx-edge-soft); }
+.tp-resumen__q {
+  min-width: 26px; padding: 1px 6px; text-align: center;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-xs);
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xs); font-weight: 650;
+}
+.tp-resumen__n { flex: 1; min-width: 0; font-size: var(--wx-text-sm); }
+.tp-resumen__n small { display: block; color: var(--wx-accent-text); font-size: var(--wx-text-xs); }
+.tp-resumen__i { font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.tp-resumen__pie { flex: 0 0 auto; padding-top: 10px; border-top: 1px solid var(--wx-edge); }
+.tp-resumen__modo {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--wx-accent-soft); color: var(--wx-accent-text);
+  font-size: var(--wx-text-xs); font-weight: 600;
+}
+.tp-resumen__total { display: flex; align-items: baseline; justify-content: space-between; }
+.tp-resumen__total span { color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.tp-resumen__total b { font-family: var(--wx-font-mono); font-size: var(--wx-text-lg); font-weight: 700; }
+
+.tp-lbl { display: block; margin-bottom: 7px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.tp-fondo {
+  margin-bottom: 12px; padding: 12px 16px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xl); font-weight: 700;
+}
+
+/* ========================================================= VENTA COMPLETADA */
+.tp-overlay--exito { background: rgb(9 16 24 / 0.55); }
+.tp-exito {
+  width: min(420px, 100%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 32px 28px 24px;
+  background: var(--wx-surface); border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog); text-align: center;
+  transform: none;
+  transition: transform var(--wx-dur-dialog) var(--wx-ease-out);
+}
+@starting-style { .tp-exito { transform: scale(0.97) translateY(10px); } }
+.tp-exito__ic {
+  width: 44px; height: 44px; margin-bottom: 4px;
+  display: grid; place-items: center;
+  background: var(--wx-success-soft); border-radius: 50%;
+  color: var(--wx-success); font-size: 22px;
+  box-shadow: 0 0 0 6px var(--wx-success-soft);
+}
+.tp-exito__lbl {
+  margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-xs);
+  text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;
+}
+.tp-exito__titulo { font-size: var(--wx-text-lg); font-weight: 650; }
+/* Lo que el cajero busca en menos de un segundo. */
+.tp-exito__monto {
+  font-family: var(--wx-font-mono); font-size: 44px; font-weight: 700;
+  letter-spacing: -0.035em; line-height: 1.02; color: var(--wx-success);
+  font-variant-numeric: tabular-nums;
+}
+.tp-exito__folio {
+  margin: 6px 0 0; color: var(--wx-text-dim); font-size: var(--wx-text-xs);
+  font-family: var(--wx-font-mono);
+}
+.tp-exito__acciones { display: flex; gap: 10px; width: 100%; margin-top: 24px; }
+.tp-exito__acciones .tp-secundaria { flex: 0 0 42%; font-size: var(--wx-text-base); font-weight: 550; }
+
+/* ===================================================================== AVISO */
+.tp-aviso {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: var(--wx-z-toast);
+  display: inline-flex; align-items: center; gap: 9px;
+  max-width: 90vw; padding: 12px 18px;
+  background: var(--wx-tooltip-bg); color: var(--wx-tooltip-fg);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-dialog);
+  font-size: var(--wx-text-base);
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
+}
+@starting-style { .tp-aviso { transform: translateX(-50%) translateY(8px); } }
+.tp-aviso i { font-size: 19px; color: var(--wx-danger); }
+.tp-aviso.ok i { color: var(--wx-success); }
+
+/* ============================================================ ESTADOS VACIOS */
+.tp-estado {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 56px 24px; text-align: center; color: var(--wx-text-muted);
+}
+.tp-estado i { font-size: 32px; color: var(--wx-text-dim); }
+.tp-estado h3 { margin: 0; color: var(--wx-text); font-size: var(--wx-text-md); font-weight: 650; }
+.tp-estado p { margin: 0; max-width: 40ch; font-size: var(--wx-text-sm); line-height: 1.5; }
+
+.spin { animation: tp-spin 900ms linear infinite; }
+@keyframes tp-spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   MOVIMIENTO REDUCIDO
+   Se quita el desplazamiento, se conservan color y opacidad: siguen
+   explicando el estado y no marean.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .tp-hoja, .tp-buscador, .tp-exito, .tp-cobro, .tp-aviso, .tp-overlay { transition: none; }
+  .tp button:not(:disabled):active { transform: none; }
+  .spin { animation-duration: 3s; }
+}
+
+/* Cantidad por extra: dos shots son dos shots.
+   Solo aparece en los grupos cuyo efecto SUMA consumo y solo cuando la opcion
+   ya esta elegida, para no llenar la hoja de controles inertes. */
+.tp-opcion-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tp-cant {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 4px; border-radius: 10px; background: var(--wx-sunken);
+}
+.tp-cant button {
+  width: 38px; height: 38px; border-radius: 9px;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  color: var(--wx-text); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-cant button:hover { background: var(--wx-raised); }
+.tp-cant button:active { transform: scale(0.94); }
+.tp-cant span { min-width: 26px; text-align: center; font-weight: 700; font-size: 15px; }
+
+/* Cada extra del carrito en su renglon, con su precio. */
+.tp-linea__opt { display: block; white-space: pre; }

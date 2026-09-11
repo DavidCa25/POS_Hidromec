@@ -1,28 +1,88 @@
 // license.js
 // Almacenamiento blindado de la licencia / prueba:
-//   - Cifrado AES-256-CBC (encrypt-then-MAC) atado al machineId
+//   - Cifrado AES-256-CBC (encrypt-then-MAC)
 //   - Firma HMAC-SHA256: editar el archivo a mano lo invalida
 //   - Copia espejo en OTRA carpeta: borrar/editar solo una no sirve
 //   - Ancla de reloj (lastSeen) en ambas copias: retrasar la fecha no extiende
-//   - Cualquier manipulación => estado 'tamper' (bloquea)
-//   - Migra automaticamente el license.json antiguo (texto plano)
+//   - Huella de maquina GUARDADA y comparada por senales (electron/lib/huella)
+//   - Migra automaticamente los formatos anteriores
+//
+// ===========================================================================
+// POR QUE CAMBIO EL FORMATO (v2 -> v3)
+// ===========================================================================
+// Hasta el formato v2, la LLAVE DE CIFRADO se derivaba del machineId:
+//
+//     keyFor(machineId) = sha256(SECRET || machineId)
+//
+// y el machineId incluia `os.hostname()` y dependia de que `wmic` respondiera.
+// Eso mezclaba dos preguntas que no son la misma:
+//
+//     "¿puedo leer este archivo?"   y   "¿es la misma maquina?"
+//
+// Renombrar el equipo -o un fallo temporal de WMI- hacia fallar la primera, y
+// el modulo respondia la segunda: licencia legitima marcada como manipulada y
+// aplicacion bloqueada. Es el defecto que se encontro en QA.
+//
+// En el formato v3 la llave se deriva de una SAL ALEATORIA por instalacion,
+// guardada en claro en la cabecera. El archivo siempre descifra en la maquina
+// que lo escribio, pase lo que pase con el hardware. La identidad se decide
+// aparte, comparando la huella guardada contra la actual, senal por senal.
+//
+// QUE SE PIERDE Y QUE NO
+// ----------------------
+// Con la sal en claro, quien extraiga SECRET del binario podria LEER el
+// contenido de la licencia. Antes tambien necesitaba el machineId, que se
+// calcula en la maquina destino de todos modos, asi que la diferencia real es
+// pequena. Lo que NO cambia es lo que importa: el HMAC sigue cubriendo el
+// contenido, asi que EDITAR una licencia -estirar la fecha, cambiar el plan-
+// sigue siendo imposible sin SECRET. Y copiar la licencia a otra PC se sigue
+// rechazando, ahora por la huella en vez de por no poder descifrar.
+//
+// COMPATIBILIDAD
+// --------------
+//   v3          se lee y se compara la huella.
+//   v2          se descifra con el machineId v1. Si abre, se re-sella como v3
+//               en el acto: el cliente no se entera de nada.
+//   v2 + WMI    si el machineId actual no abre el archivo, se prueban las
+//               variantes ENUMERABLES de la huella v1 degradada (sin uuid, sin
+//               disco, sin ninguno de los dos). Eso recupera exactamente el
+//               caso "wmic no respondio al arrancar".
+//   legado      texto plano de versiones muy viejas: se acepta y se re-sella.
+//
+// Lo unico irrecuperable es una licencia v2 en un equipo que YA fue renombrado
+// antes de esta version: su llave dependia de un hostname que ya no existe y
+// no hay forma de derivarla. Esos equipos siguen viendo el mensaje de siempre
+// -"No pudimos validar tu licencia, activa tu clave"- y se resuelven
+// reactivando.
+// ===========================================================================
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { app } = require('electron');
+const { construirHuella, compararHuella, conviene_resellar } = require('./lib/huella');
 
 // Secreto de firma/cifrado (ofuscado por partes; no aparece literal en el codigo).
 const _seed = ['W7bx', '9pOS', 'kL2z', 'Q8vT', 'mN4r', 'Zr1c'];
 const SECRET = crypto.createHash('sha256').update(_seed.join('-') + '::wybix::lic::v2').digest(); // 32 bytes
 
+const FORMATO = 3;
+
 function mainPath()   { return path.join(app.getPath('userData'), 'license.json'); }
 function mirrorPath() { return path.join(app.getPath('appData'), '.wxsys.dat'); }
 
-function keyFor(machineId) {
+/** Llave del formato v3: sal por instalacion, no hardware. */
+function claveDeSal(salt) {
+  return crypto.createHash('sha256')
+    .update(Buffer.concat([SECRET, Buffer.from(String(salt || ''), 'hex')]))
+    .digest();
+}
+
+/** Llave del formato v2 (legado): derivada del machineId. */
+function claveDeMaquina(machineId) {
   return crypto.createHash('sha256')
     .update(Buffer.concat([SECRET, Buffer.from(String(machineId || ''))]))
-    .digest(); // 32 bytes -> AES-256
+    .digest();
 }
 
 function safeEq(a, b) {
@@ -32,9 +92,43 @@ function safeEq(a, b) {
   try { return crypto.timingSafeEqual(ba, bb); } catch { return false; }
 }
 
-function encryptPayload(obj, machineId) {
+function cifrarV3(obj) {
+  const salt = crypto.randomBytes(16).toString('hex');
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', keyFor(machineId), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', claveDeSal(salt), iv);
+  const pt = Buffer.from(JSON.stringify(obj), 'utf8');
+  const ct = Buffer.concat([cipher.update(pt), cipher.final()]);
+  const body = Buffer.concat([iv, ct]);
+  // El HMAC cubre el cuerpo Y la sal: cambiar la sal invalida la firma.
+  const mac = crypto.createHmac('sha256', SECRET)
+    .update(Buffer.concat([body, Buffer.from(salt, 'hex')])).digest('hex');
+  return { v: FORMATO, salt, b: body.toString('base64'), s: mac };
+}
+
+function descifrarV3(blob) {
+  if (!blob || blob.v !== FORMATO || !blob.b || !blob.s || !blob.salt) return null;
+  const body = Buffer.from(blob.b, 'base64');
+  const mac = crypto.createHmac('sha256', SECRET)
+    .update(Buffer.concat([body, Buffer.from(String(blob.salt), 'hex')])).digest('hex');
+  if (!safeEq(mac, blob.s)) return null; // firma invalida -> manipulado
+  try {
+    const iv = body.subarray(0, 16);
+    const ct = body.subarray(16);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', claveDeSal(blob.salt), iv);
+    const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
+    return JSON.parse(pt.toString('utf8'));
+  } catch { return null; }
+}
+
+/**
+ * Cifra en el formato v2. Ya no se usa para guardar: existe para que las
+ * pruebas puedan FABRICAR una licencia como la escribia la version anterior y
+ * comprobar que se migra. Duplicar el algoritmo en la prueba obligaria a
+ * duplicar tambien el secreto.
+ */
+function cifrarV2(obj, machineId) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', claveDeMaquina(machineId), iv);
   const pt = Buffer.from(JSON.stringify(obj), 'utf8');
   const ct = Buffer.concat([cipher.update(pt), cipher.final()]);
   const body = Buffer.concat([iv, ct]);
@@ -43,16 +137,17 @@ function encryptPayload(obj, machineId) {
   return { v: 2, b: body.toString('base64'), s: mac };
 }
 
-function decryptPayload(blob, machineId) {
+/** Formato v2 (legado): hay que aportar el machineId con el que se sello. */
+function descifrarV2(blob, machineId) {
   if (!blob || blob.v !== 2 || !blob.b || !blob.s) return null;
   const body = Buffer.from(blob.b, 'base64');
   const mac = crypto.createHmac('sha256', SECRET)
     .update(Buffer.concat([body, Buffer.from(String(machineId))])).digest('hex');
-  if (!safeEq(mac, blob.s)) return null; // firma invalida -> manipulado
+  if (!safeEq(mac, blob.s)) return null;
   try {
     const iv = body.subarray(0, 16);
     const ct = body.subarray(16);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', keyFor(machineId), iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', claveDeMaquina(machineId), iv);
     const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
     return JSON.parse(pt.toString('utf8'));
   } catch { return null; }
@@ -67,35 +162,87 @@ function writeBlob(p, blob) {
   catch { return false; }
 }
 
-// Lee una copia: distingue v2 firmado, legado (texto plano) y manipulado.
-function loadOne(p, machineId) {
+/**
+ * Normaliza el contexto. Se admite un string por compatibilidad con las
+ * llamadas antiguas (`saveLicense(machineId, datos)`), que siguen funcionando
+ * aunque sin huella.
+ */
+function contexto(ctx) {
+  if (typeof ctx === 'string') return { machineIdV1: ctx, candidatosV1: [ctx], huella: null };
+  const c = ctx || {};
+  const principal = c.machineIdV1 || '';
+  // El machineId actual va primero; las variantes degradadas son el rescate.
+  const candidatos = [principal, ...(c.candidatosV1 || [])].filter(Boolean);
+  return {
+    machineIdV1: principal,
+    candidatosV1: [...new Set(candidatos)],
+    huella: c.huella || null,
+  };
+}
+
+/**
+ * Lee una copia. Distingue v3, v2 (con sus candidatos), legado y manipulado.
+ */
+function loadOne(p, ctx) {
   const raw = readBlob(p);
   if (!raw) return { data: null, tampered: false, present: false };
-  if (raw.v === 2) {
-    const d = decryptPayload(raw, machineId);
+
+  if (raw.v === FORMATO) {
+    const d = descifrarV3(raw);
     return { data: d, tampered: !d, present: true };
   }
-  // Formato antiguo (texto plano de versiones previas): se acepta y luego se migra a v2.
-  if (raw.plan || raw.type || raw.expiresAt || raw.revalidateBy) {
-    return { data: raw, tampered: false, present: true, legacy: true };
+
+  if (raw.v === 2) {
+    for (const id of ctx.candidatosV1) {
+      const d = descifrarV2(raw, id);
+      // Se marca `viejo` para que se re-selle como v3 en cuanto se pueda.
+      if (d) return { data: d, tampered: false, present: true, viejo: true };
+    }
+    return { data: null, tampered: true, present: true };
   }
+
+  // Formato antiguo (texto plano de versiones previas): se acepta y se migra.
+  if (raw.plan || raw.type || raw.expiresAt || raw.revalidateBy) {
+    return { data: raw, tampered: false, present: true, viejo: true };
+  }
+
   return { data: null, tampered: true, present: true };
 }
 
-function saveLicense(machineId, obj) {
+/**
+ * Guarda la licencia en las dos copias, sellando la huella actual.
+ *
+ * `conservarHuella` evita degradar una huella buena cuando la lectura de
+ * hardware vino incompleta: se mantiene la que ya estaba.
+ */
+function saveLicense(ctx, obj, conservarHuella = null) {
+  const c = contexto(ctx);
   const data = { ...(obj || {}) };
-  data.machineId = machineId;
+  // El machineId sellado NO se reescribe: es el identificador con el que el
+  // cliente ya esta dado de alta en el servidor de activacion. Si se
+  // sobreescribiera, renombrar el equipo volveria a reportar una maquina
+  // distinta -que era la otra mitad del mismo problema-. Solo se pone cuando
+  // aun no hay ninguno, es decir en la primera activacion.
+  data.machineId = data.machineId || c.machineIdV1 || '';
   data.lastSeen = Math.max(Number(obj && obj.lastSeen || 0), Date.now());
-  const blob = encryptPayload(data, machineId);
+  const huella = conservarHuella || c.huella || data.fp || null;
+  if (huella) data.fp = huella;
+
+  const blob = cifrarV3(data);
   writeBlob(mainPath(), blob);
   writeBlob(mirrorPath(), blob);
   return data;
 }
 
-// Reconcilia las dos copias y devuelve { data, tampered }.
-function readLicense(machineId) {
-  const a = loadOne(mainPath(), machineId);
-  const b = loadOne(mirrorPath(), machineId);
+/**
+ * Reconcilia las dos copias.
+ * @returns {{ data, tampered, identidad }}
+ *   identidad: 'misma' | 'otra' | 'indeterminada' | 'sin-huella'
+ */
+function readLicense(ctx) {
+  const c = contexto(ctx);
+  const a = loadOne(mainPath(), c);
+  const b = loadOne(mirrorPath(), c);
 
   let data = null;
   if (a.data && b.data) {
@@ -106,30 +253,47 @@ function readLicense(machineId) {
     const ea = Date.parse(a.data.expiresAt || '') || 0;
     const eb = Date.parse(b.data.expiresAt || '') || 0;
     if (ea && eb) data.expiresAt = new Date(Math.min(ea, eb)).toISOString();
+    // huella: la mas completa de las dos
+    data.fp = a.data.fp || b.data.fp || null;
   } else {
     data = a.data || b.data || null;
   }
 
-  // Manipulacion real: existe una copia v2 que NO verifica y no hay dato sano que la respalde.
+  // Manipulacion real: hay una copia que NO verifica y ningun dato sano detras.
   const tampered = (a.tampered || b.tampered) && !data;
+  if (tampered || !data) return { data, tampered, identidad: 'sin-huella' };
 
-  // Si hay dato sano pero alguna copia falta / esta manipulada / es legado -> re-sella ambas coherentes.
-  if (data && (a.tampered || b.tampered || !a.present || !b.present || a.legacy || b.legacy)) {
-    saveLicense(machineId, data);
+  // -------- identidad: ¿es esta la maquina donde se sello? --------
+  const identidad = c.huella ? compararHuella(data.fp, c.huella) : 'sin-huella';
+
+  const hayQueMigrar = a.viejo || b.viejo || !a.present || !b.present;
+  const sellarHuella = c.huella && (identidad === 'sin-huella' ||
+                                    conviene_resellar(data.fp, c.huella));
+
+  // Nunca se re-sella cuando la maquina no coincide: seria bendecir una copia.
+  if (identidad !== 'otra' && (hayQueMigrar || sellarHuella)) {
+    const nueva = sellarHuella ? c.huella : data.fp;
+    data = saveLicense(c, data, nueva);
   }
 
-  return { data, tampered };
+  return { data, tampered: false, identidad };
 }
 
-function computeStatus(machineId) {
-  const { data, tampered } = readLicense(machineId);
-  if (tampered) return { state: 'tamper' };
+function computeStatus(ctx) {
+  const c = contexto(ctx);
+  const { data, tampered, identidad } = readLicense(c);
+  if (tampered) return { state: 'tamper', motivo: 'firma' };
   if (!data) return { state: 'none' };
+
+  // La licencia es de OTRO equipo. Antes esto se detectaba porque el archivo no
+  // descifraba; ahora se detecta por la huella, que es lo que de verdad
+  // distingue una copia de un cambio de nombre.
+  if (identidad === 'otra') return { state: 'tamper', motivo: 'otro-equipo' };
 
   const now = Date.now();
   const lastSeen = Number(data.lastSeen || 0);
   const effectiveNow = Math.max(now, lastSeen); // el reloj no puede retroceder
-  if (now > lastSeen) saveLicense(machineId, { ...data, lastSeen: now });
+  if (now > lastSeen) saveLicense(c, { ...data, lastSeen: now }, data.fp);
 
   const type = data.type || (data.plan === 'trial' ? 'trial' : 'paid');
 
@@ -153,6 +317,23 @@ function computeStatus(machineId) {
   };
 }
 
+/**
+ * El machineId que se le REPORTA al servidor de activacion.
+ *
+ * Se devuelve el que quedo sellado en la licencia mientras siga siendo la
+ * misma maquina. Asi un renombrado o un fallo de WMI no cambian el
+ * identificador con el que el cliente ya esta dado de alta, que era otra forma
+ * del mismo problema: reactivar tras un rename reportaba una maquina distinta.
+ */
+function machineIdEstable(ctx) {
+  const c = contexto(ctx);
+  try {
+    const { data, identidad } = readLicense(c);
+    if (data && data.machineId && identidad !== 'otra') return data.machineId;
+  } catch { /* sin licencia legible: se usa el calculado */ }
+  return c.machineIdV1;
+}
+
 function clearLicense() {
   for (const p of [mainPath(), mirrorPath()]) {
     try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch { /* noop */ }
@@ -160,4 +341,8 @@ function clearLicense() {
   return true;
 }
 
-module.exports = { saveLicense, readLicense, computeStatus, clearLicense };
+module.exports = {
+  saveLicense, readLicense, computeStatus, clearLicense, machineIdEstable,
+  // Expuestos para las pruebas: permiten ejercitar el formato sin Electron.
+  _internos: { cifrarV3, descifrarV3, cifrarV2, descifrarV2, claveDeMaquina, FORMATO, mainPath, mirrorPath },
+};

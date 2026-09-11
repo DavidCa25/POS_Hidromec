@@ -1,14 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <title>Wybix POS</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <!--
+    Sin CDN.
+
+    Wybix POS es una aplicacion de escritorio que tiene que seguir cobrando
+    con el internet caido. Bootstrap, los iconos y las tipografias se cargaban
+    desde jsdelivr y Google Fonts, asi que una caja sin red se quedaba sin
+    iconos, sin tipografia y sin layout. Ahora se empaquetan desde
+    node_modules (ver angular.json > architect.build.options.styles).
+  -->
+  <script>
+    /* Pinta el tema antes del primer frame: sin esto la app arranca en
+       blanco y luego salta a oscuro. */
+    try {
+      if (localStorage.getItem('ui-dark') === '1') {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) { /* almacenamiento bloqueado: se queda en claro */ }
+  </script>
 </head>
 <body>
   <app-root></app-root>

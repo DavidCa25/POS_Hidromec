@@ -19,11 +19,7 @@
 
         <div class="filter-group">
           <label>Estado</label>
-          <select class="form-control" [(ngModel)]="estado">
-            <option value="todos">Todos</option>
-            <option value="activos">Activos</option>
-            <option value="inactivos">Inactivos</option>
-          </select>
+          <wx-select [(ngModel)]="estado" [opciones]="opcEstado" placeholder="Todos"></wx-select>
         </div>
 
         <div class="filter-group">
@@ -65,52 +61,71 @@
       </div>
     </div>
 
+    <div class="ventas-tools" style="margin-bottom:12px;">
+      <wx-tabla-barra [estado]="tabla" [filas]="clientesView"></wx-tabla-barra>
+    </div>
+
     <!-- Tabla -->
     <div class="tabla-wrap">
       <table class="tabla-corte">
         <thead>
           <tr>
-            <th>Cliente</th>
-            <th>Contacto</th>
-            <th class="right">Límite</th>
-            <th class="right">Saldo</th>
-            <th>Estado</th>
-            <th class="right">Acciones</th>
+            <th *ngIf="tabla.esVisible('name')">Cliente</th>
+            <th *ngIf="tabla.esVisible('contacto')">Contacto</th>
+            <th *ngIf="tabla.esVisible('creditLimit')" class="right">Límite</th>
+            <th *ngIf="tabla.esVisible('balance')" class="right">Saldo</th>
+            <th *ngIf="tabla.esVisible('estado')">Estado</th>
+            <th *ngIf="tabla.esVisible('acciones')" class="right">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let c of clientesView">
-            <td class="strong">
+          <ng-container *ngFor="let it of items">
+
+          <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+            <td [attr.colspan]="tabla.visibles.length">
+              <button type="button" class="wx-grupo"
+                      [attr.aria-expanded]="it.abierto"
+                      (click)="tabla.alternarGrupo(it.clave)">
+                <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                <span>{{ it.etiqueta }}</span>
+                <span class="wx-grupo__n">{{ it.total }}</span>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="it.tipo === 'fila' && it.fila as c">
+            <td *ngIf="tabla.esVisible('name')" class="strong">
               {{ c.name }}
               <span *ngIf="!c.active" class="badge badge.tarjeta" style="margin-left:6px;">Inactivo</span>
             </td>
-            <td>
+            <td *ngIf="tabla.esVisible('contacto')">
               <div class="mono">{{ c.phone || '-' }}</div>
               <div class="nota" *ngIf="c.email">{{ c.email }}</div>
             </td>
-            <td class="num mono">$ {{ c.creditLimit | number:'1.2-2' }}</td>
-            <td class="num mono">$ {{ c.balance | number:'1.2-2' }}</td>
-            <td>
+            <td *ngIf="tabla.esVisible('creditLimit')" class="num mono">$ {{ c.creditLimit | number:'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('balance')" class="num mono">$ {{ c.balance | number:'1.2-2' }}</td>
+            <td *ngIf="tabla.esVisible('estado')">
               <span [ngClass]="badgeEstado(c).cls">{{ badgeEstado(c).text }}</span>
               <span *ngIf="c.overdueCount>0" class="badge badge.tarjeta" style="margin-left:6px;">
                 {{ c.overdueCount }} venc.
               </span>
             </td>
-            <td class="right">
+            <td *ngIf="tabla.esVisible('acciones')" class="right">
               <button class="btn btn-ghost" (click)="abonar(c)">Abonar</button>
               <button class="btn btn-ghost" (click)="editar(c)">Editar</button>
             </td>
           </tr>
+          </ng-container>
         </tbody>
       </table>
 
-      <p class="nota" *ngIf="clientesView.length===0">Sin resultados</p>
+      <p class="nota" *ngIf="items.length===0">Sin resultados</p>
     </div>
   </div>
 
   <!-- Modal Nuevo/Editar -->
-  <div class="cierre-modal" *ngIf="showModal" style="position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;">
-    <div class="cierre-dialog modal-content" style="background:#fff; padding:1.2rem 1.2rem 1.4rem; border-radius:20px; width: 96%; max-width: 560px;">
+  <div class="cierre-modal" *ngIf="showModal" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center;">
+    <div class="cierre-dialog modal-content" style="padding:1.2rem 1.2rem 1.4rem; width: 96%; max-width: 560px;">
       <h3 style="margin:0 0 .6rem; font-size:1.4rem; font-weight:800;">
         {{ editing ? 'Editar cliente' : 'Nuevo cliente' }}
       </h3>
@@ -138,10 +153,7 @@
         </div>
         <div class="filter-group">
           <label>Activo</label>
-          <select class="form-control" [(ngModel)]="form.active">
-            <option [ngValue]="true">Sí</option>
-            <option [ngValue]="false">No</option>
-          </select>
+          <wx-select [(ngModel)]="form.active" [opciones]="opcActivo"></wx-select>
         </div>
       </div>
 
@@ -162,7 +174,7 @@
           <label>Régimen Fiscal</label>
           <div class="fn-select" [class.open]="regimenAbierto">
             <button type="button" class="fn-select-trigger" [class.ph]="!form.regimen_fiscal" (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
-              <span>{{ regimenLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ regimenLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="regimenAbierto">
               <button type="button" class="fn-opt" *ngFor="let r of regimenes" (click)="form.regimen_fiscal = r.code; regimenAbierto = false">
@@ -177,7 +189,7 @@
           <label>Uso CFDI</label>
           <div class="fn-select" [class.open]="usoAbierto">
             <button type="button" class="fn-select-trigger" [class.ph]="!form.uso_cfdi" (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
-              <span>{{ usoLabel }}</span><i class="bi bi-chevron-down"></i>
+              <span>{{ usoLabel }}</span><i class="ph ph-caret-down"></i>
             </button>
             <div class="fn-select-menu" *ngIf="usoAbierto">
               <button type="button" class="fn-opt" *ngFor="let u of usosCfdi" (click)="form.uso_cfdi = u.code; usoAbierto = false">
@@ -207,12 +219,7 @@
         </div>
         <div class="filter-group">
           <label>Nivel de riesgo</label>
-          <select class="form-control" [(ngModel)]="form.riskLevel">
-            <option [ngValue]="0">0 - Normal</option>
-            <option [ngValue]="1">1 - Bajo Riesgo</option>
-            <option [ngValue]="2">2 - Medio Riesgo</option>
-            <option [ngValue]="3">3 - Alto Riesgo</option>
-          </select>
+          <wx-select [(ngModel)]="form.riskLevel" [opciones]="opcRiesgo"></wx-select>
         </div>
       </div>
       <!-- FIN CONFIGURACIÓN AVANZADA CRÉDITO -->
@@ -240,9 +247,9 @@
 
 <div class="cierre-modal"
        *ngIf="showAbonoModal"
-       style="position:fixed; inset:0; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; z-index:1100;">
+       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
     <div class="cierre-dialog modal-content"
-         style="background:#fff; padding:1.2rem 1.4rem 1.4rem; border-radius:22px; width: 96%; max-width: 780px;">
+         style="padding:1.2rem 1.4rem 1.4rem; width: 96%; max-width: 780px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem;">
         <h3 style="margin:0; font-size:1.4rem; font-weight:800;">
           Abonar a crédito
@@ -329,12 +336,7 @@
 
           <div class="filter-group" style="margin-top:.7rem;">
             <label>Método de pago</label>
-            <select class="form-control"
-                    [(ngModel)]="abonoPaymentMethod">
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TARJETA">Tarjeta</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-            </select>
+            <wx-select [(ngModel)]="abonoPaymentMethod" [opciones]="opcMetodoAbono"></wx-select>
           </div>
 
           <div class="filter-group" style="margin-top:.7rem;">

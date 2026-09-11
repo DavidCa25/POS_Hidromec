@@ -1,9 +1,14 @@
 import { Component } from "@angular/core";
+import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
+import { WxTablaBarraComponent } from '../../app/wx-tabla/wx-tabla-barra.component';
+import { EstadoTabla, WxItem } from '../../app/wx-tabla/tabla-estado';
 import Swal from "sweetalert2";
 import { ReportService, ReportConfig } from "../../services/report.service";
 import { FormsModule } from "@angular/forms";
 import { RouterOutlet } from "@angular/router";
 import { NgIf, NgFor, DatePipe, CurrencyPipe, NgClass } from "@angular/common";
+import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 interface SaleRow {
   id: number;
@@ -23,9 +28,14 @@ type PageToken = number | "...";
   templateUrl: "./tablaVenta.html",
   styleUrls: ["./tablaVenta.css"],
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet],
+  imports: [WxMenuComponent, WxTablaBarraComponent, NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet, WxSelectComponent, WxDateComponent],
 })
 export class TablaVentaComponent {
+  /** Mismas opciones de siempre, en el formato del selector Wybix. */
+  get opcionesPagina(): WxOpcion[] {
+    return this.pageSizeOptions.map(n => ({ valor: n, etiqueta: String(n) }));
+  }
+
   loading = false;
   sales: SaleRow[] = [];
 
@@ -33,6 +43,25 @@ export class TablaVentaComponent {
   expExportOpen = false;
   pageSizeOptions: number[] = [10, 25, 50, 100];
   pageSize = 10;
+
+  /** Descriptor de la tabla. La logica vive en EstadoTabla, compartida. */
+  readonly tabla = new EstadoTabla('ventas', [
+    { clave: 'id', titulo: 'Ticket', obligatoria: true },
+    { clave: 'datee', titulo: 'Fecha' },
+    { clave: 'dia', titulo: 'Día', ocultaPorDefecto: true, agrupable: true,
+      valor: (v) => new Date(v.datee).toLocaleDateString('es-MX', { dateStyle: 'medium' }) },
+    { clave: 'user_name', titulo: 'Cajero', filtrable: true, agrupable: true,
+      valor: (v) => v.user_name || 'Sin cajero' },
+    { clave: 'payment_method', titulo: 'Método', filtrable: true, agrupable: true,
+      valor: (v) => v.payment_method || 'Sin método' },
+    { clave: 'total', titulo: 'Total' },
+    { clave: 'paid_amount', titulo: 'Pagado', ocultaPorDefecto: true },
+    { clave: 'cambio', titulo: 'Cambio', ocultaPorDefecto: true },
+    { clave: 'customer_name', titulo: 'Cliente', filtrable: true, agrupable: true,
+      valor: (v) => v.customer_name || 'Público General' },
+    { clave: 'due_date', titulo: 'Vence', ocultaPorDefecto: true },
+    { clave: 'acciones', titulo: 'Acciones', obligatoria: true },
+  ]);
   currentPage = 1;
 
   showExportModal = false;
@@ -122,6 +151,14 @@ export class TablaVentaComponent {
       filename: 'ventas'
     };
   }
+
+  /** Opciones del menu de exportacion. Constante: `wx-menu` compara por
+      referencia y un getter crearia un arreglo nuevo en cada ciclo. */
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf',   etiqueta: 'PDF',   icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
   async exportarVentas(tipo: 'pdf' | 'excel') {
     this.expExportOpen = false;
     const cfg = this.cfgReporteVentas();
@@ -153,8 +190,14 @@ export class TablaVentaComponent {
     });
   }
 
+  /** Lo buscado, ya pasado por los filtros de la barra. */
+  get ventasVisibles(): SaleRow[] { return this.tabla.filtrar(this.filteredSales); }
+
+  /** Filas y cabeceras de grupo en una sola lista: se pagina esto. */
+  get itemsTabla(): WxItem[] { return this.tabla.aplanar(this.ventasVisibles); }
+
   get totalItems() {
-    return this.filteredSales.length;
+    return this.itemsTabla.length;
   }
 
   get totalPages() {
@@ -171,9 +214,9 @@ export class TablaVentaComponent {
     return Math.min(this.currentPage * this.pageSize, this.totalItems);
   }
 
-  get pagedSales(): SaleRow[] {
+  get pagedSales(): WxItem[] {
     const start = (this.currentPage - 1) * this.pageSize;
-    return this.filteredSales.slice(start, start + this.pageSize);
+    return this.itemsTabla.slice(start, start + this.pageSize);
   }
 
   setPageSize(size: number) {

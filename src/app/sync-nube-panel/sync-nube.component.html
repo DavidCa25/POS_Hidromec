@@ -56,7 +56,7 @@
     </div>
 
     <div class="sn-result" *ngIf="lastResult" [class.ok]="lastOk" [class.err]="lastOk === false">
-      <i class="bi" [class.bi-check-circle]="lastOk" [class.bi-exclamation-triangle]="lastOk === false"></i>
+      <i class="ph" [class.ph-check-circle]="lastOk" [class.ph-warning]="lastOk === false"></i>
       <span>{{ lastResult }}</span>
     </div>
 

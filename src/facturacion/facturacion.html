@@ -7,10 +7,10 @@
     </div>
     <div class="fac-head-actions">
       <button class="fac-btn ghost" (click)="irAConfiguracion()">
-        <i class="bi bi-gear"></i> Configuracion
+        <i class="ph ph-gear"></i> Configuracion
       </button>
       <button class="fac-btn primary" (click)="nuevaFactura()">
-        <i class="bi bi-plus-lg"></i> Nueva factura
+        <i class="ph ph-plus"></i> Nueva factura
       </button>
     </div>
   </div>
@@ -36,7 +36,7 @@
 
   <!-- Buscador -->
   <div class="fac-search">
-    <i class="bi bi-search"></i>
+    <i class="ph ph-magnifying-glass"></i>
     <input type="text" [(ngModel)]="busqueda" (keyup.enter)="cargar()"
            placeholder="Buscar por RFC, razon social o folio fiscal...">
   </div>
@@ -49,11 +49,11 @@
 
   <!-- Vacio -->
   <div class="fac-empty" *ngIf="!cargando && invoices.length === 0">
-    <i class="bi bi-receipt"></i>
+    <i class="ph ph-receipt"></i>
     <h3>Aun no hay facturas</h3>
     <p>Cuando emitas tu primera factura, aparecera aqui.</p>
     <button class="fac-btn primary" (click)="nuevaFactura()">
-      <i class="bi bi-plus-lg"></i> Emitir primera factura
+      <i class="ph ph-plus"></i> Emitir primera factura
     </button>
   </div>
 
@@ -79,7 +79,7 @@
         <span class="badge" [ngClass]="'badge-' + f.estado">{{ estadoLabel(f.estado) }}</span>
       </div>
       <div class="c-acc">
-        <button class="icon-btn" title="Ver" (click)="verFactura(f)"><i class="bi bi-eye"></i></button>
+        <button class="icon-btn" title="Ver" (click)="verFactura(f)"><i class="ph ph-eye"></i></button>
       </div>
     </div>
   </div>

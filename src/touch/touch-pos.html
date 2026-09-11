@@ -1,0 +1,434 @@
+<div class="tp" [class.tp--cobro]="vista() === 'cobro'">
+
+  <!-- ===================================================== BARRA SUPERIOR -->
+  <header class="tp-top">
+    <!-- Isotipo oficial (el mismo asset del sidebar del dashboard). Va sobre
+         placa clara porque la marca solo existe en su version oscura. -->
+    <div class="tp-top__marca">
+      <img class="tp-top__logo" src="assets/wybie_logo.png" alt="Wybix" />
+      <span class="tp-top__nombre">Wybix</span>
+    </div>
+
+    <!-- Cuentas abiertas: control segmentado, no pestañas provisionales -->
+    <div class="tp-cuentas" role="tablist" aria-label="Cuentas abiertas">
+      <button type="button" class="tp-cuenta" *ngFor="let c of cuentas(); let i = index"
+              role="tab" [attr.aria-selected]="c.id === cuentaActiva()"
+              [class.on]="c.id === cuentaActiva()" (click)="cambiarCuenta(c.id)">
+        <span class="tp-cuenta__txt">{{ etiquetaCuenta(c.id, i) }}</span>
+        <span class="tp-cuenta__n" *ngIf="itemsDe(c) > 0">{{ itemsDe(c) }}</span>
+      </button>
+      <button type="button" class="tp-cuenta tp-cuenta--add" (click)="nuevaCuenta()" aria-label="Nueva cuenta">
+        <i class="ph ph-plus"></i>
+      </button>
+    </div>
+
+    <div class="tp-top__acciones">
+      <button type="button" class="tp-turno" [class.warn]="!hayTurno()"
+              (click)="!hayTurno() && abrirTurno.set(true)">
+        <span class="tp-turno__dot" [class.on]="hayTurno()"></span>
+        <span class="tp-turno__txt">{{ hayTurno() ? 'Turno abierto' : 'Abrir turno' }}</span>
+      </button>
+      <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
+              [class.on]="buscando()" aria-label="Buscar producto">
+        <i class="ph ph-magnifying-glass"></i>
+      </button>
+      <button type="button" class="tp-iconbtn" (click)="salir()" aria-label="Salir del punto de venta">
+        <i class="ph ph-sign-out"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================ CUERPO -->
+  <div class="tp-body">
+
+    <!-- ------------------------------------------------------ CATEGORIAS -->
+    <nav class="tp-cats" aria-label="Categorías">
+      <button type="button" class="tp-cat" [class.on]="categoriaSel() === null" (click)="elegirCategoria(null)">
+        <i class="ph ph-squares-four"></i>
+        <span class="tp-cat__txt">Todo</span>
+      </button>
+      <button type="button" class="tp-cat" *ngFor="let c of categorias()"
+              [class.on]="categoriaSel() === c.category_id" (click)="elegirCategoria(c.category_id)">
+        <i class="ph ph-tag"></i>
+        <span class="tp-cat__txt">{{ c.category_name }}</span>
+      </button>
+    </nav>
+
+    <!-- --------------------------------------------------------- PRODUCTOS -->
+    <main class="tp-main">
+      <div class="tp-estado" *ngIf="cargando()">
+        <i class="ph ph-circle-notch spin"></i>
+        <p>Cargando catálogo…</p>
+      </div>
+
+      <div class="tp-estado" *ngIf="!cargando() && errorCatalogo()">
+        <i class="ph ph-warning-circle"></i>
+        <h3>No se pudo cargar el catálogo</h3>
+        <p>{{ errorCatalogo() }}</p>
+      </div>
+
+      <div class="tp-estado" *ngIf="!cargando() && !errorCatalogo() && !productos().length">
+        <i class="ph ph-tray"></i>
+        <h3>{{ termino() ? 'Sin resultados' : 'Sin productos' }}</h3>
+        <p *ngIf="termino()">Nada coincide con “{{ termino() }}”.</p>
+        <p *ngIf="!termino()">Marca productos como vendibles en Inventario para que aparezcan aquí.</p>
+      </div>
+
+      <div class="tp-grid" *ngIf="!cargando() && productos().length">
+        <button type="button" class="tp-card" *ngFor="let p of productos()"
+                [class.off]="agotado(p)" [disabled]="agotado(p)" (click)="tocar(p)">
+
+          <span class="tp-card__media" [class.con-foto]="p.thumb">
+            <img *ngIf="p.thumb" [src]="p.thumb" [alt]="p.product_name" loading="lazy">
+            <ng-container *ngIf="!p.thumb">
+              <i class="ph {{ icono(p) }}" aria-hidden="true"></i>
+              <span class="tp-card__ini">{{ iniciales(p) }}</span>
+            </ng-container>
+
+            <!-- La disponibilidad se muestra SIEMPRE, no solo cuando escasea.
+                 Antes solo aparecia con 5 o menos, asi que en una barra con
+                 existencias normales no habia forma de saber cuantas quedaban
+                 sin ir a Inventario y dividir a mano. -->
+            <span class="tp-card__estado tp-card__estado--off" *ngIf="agotado(p)">Agotado</span>
+            <span class="tp-card__estado"
+                  [class.tp-card__estado--low]="pocas(p)"
+                  *ngIf="!agotado(p) && hayCuenta(p)">{{ disponibles(p) }}</span>
+          </span>
+
+          <span class="tp-card__txt">
+            <span class="tp-card__nombre">{{ p.product_name }}</span>
+            <span class="tp-card__pie">
+              <span class="tp-card__precio">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+              <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones"></i>
+            </span>
+          </span>
+        </button>
+      </div>
+    </main>
+
+    <!-- ---------------------------------------------------------- CUENTA -->
+    <aside class="tp-cart" aria-label="Cuenta actual">
+      <div class="tp-cart__head">
+        <h2>Cuenta</h2>
+        <span class="tp-cart__n" *ngIf="totales().itemCount">{{ totales().itemCount }}</span>
+        <button type="button" class="tp-txtbtn" *ngIf="lineas().length" (click)="vaciar()">Vaciar</button>
+      </div>
+
+      <!-- Estado de la CUENTA completa, no del producto -->
+      <div class="tp-servicio" role="group" aria-label="Modo de servicio">
+        <button type="button" [class.on]="serviceMode() === 'DINE_IN'" (click)="fijarServicio('DINE_IN')">
+          <i class="ph ph-fork-knife"></i> Aquí
+        </button>
+        <button type="button" [class.on]="serviceMode() === 'TAKEAWAY'" (click)="fijarServicio('TAKEAWAY')">
+          <i class="ph ph-bag"></i> Para llevar
+        </button>
+      </div>
+
+      <div class="tp-lineas">
+        <div class="tp-linea" *ngFor="let l of lineas()">
+          <div class="tp-linea__txt">
+            <span class="tp-linea__nombre">{{ l.productName }}</span>
+            <span class="tp-linea__opts" *ngIf="l.options?.length">
+              <span class="tp-linea__opt" *ngFor="let o of resumenOpciones(l)">{{ o.texto }}</span>
+            </span>
+            <span class="tp-linea__nota" *ngIf="l.note">{{ l.note }}</span>
+          </div>
+
+          <div class="tp-linea__qty">
+            <button type="button" (click)="mas(l, -1)" [attr.aria-label]="'Quitar uno de ' + l.productName">
+              <i class="ph" [class.ph-minus]="l.qty > 1" [class.ph-trash]="l.qty === 1"></i>
+            </button>
+            <span class="tp-linea__num">{{ l.qty }}</span>
+            <button type="button" (click)="mas(l, 1)" [attr.aria-label]="'Agregar uno de ' + l.productName">
+              <i class="ph ph-plus"></i>
+            </button>
+          </div>
+
+          <span class="tp-linea__imp">{{ l.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+        </div>
+
+        <div class="tp-cart__vacia" *ngIf="!lineas().length">
+          <i class="ph ph-hand-tap"></i>
+          <p>Toca un producto para empezar</p>
+        </div>
+      </div>
+
+      <div class="tp-cart__foot">
+        <div class="tp-cart__total">
+          <span>Total</span>
+          <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+        </div>
+        <button type="button" class="tp-primaria" [disabled]="!lineas().length" (click)="irACobro()">
+          <i class="ph ph-arrow-right"></i> Cobrar
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ========================================================== BUSQUEDA -->
+  <div class="tp-overlay" *ngIf="buscando()" (click)="cerrarBusqueda()">
+    <div class="tp-buscador" (click)="$event.stopPropagation()">
+      <div class="tp-buscador__campo">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" readonly inputmode="none" placeholder="Buscar producto…"
+               [value]="termino()" aria-label="Término de búsqueda">
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarBusqueda()" aria-label="Cerrar búsqueda">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div class="tp-buscador__res">
+        <button type="button" class="tp-res" *ngFor="let p of productos() | slice:0:8"
+                [class.off]="agotado(p)" [disabled]="agotado(p)"
+                (click)="tocar(p); cerrarBusqueda()">
+          <i class="ph {{ icono(p) }}"></i>
+          <span class="tp-res__n">{{ p.product_name }}</span>
+          <span class="tp-res__p">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+        </button>
+        <p class="tp-res__vacio" *ngIf="!productos().length">Nada coincide todavía.</p>
+      </div>
+
+      <wx-teclado [valor]="termino()" (valorChange)="termino.set($event)" [maximo]="40"></wx-teclado>
+    </div>
+  </div>
+
+  <!-- ============================================ HOJA DE MODIFICADORES -->
+  <div class="tp-overlay" *ngIf="hoja() as p" (click)="cerrarHoja()">
+    <div class="tp-hoja" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <header class="tp-hoja__head">
+        <div class="tp-hoja__id">
+          <span class="tp-hoja__media"><i class="ph {{ icono(p) }}"></i></span>
+          <div>
+            <h3>{{ p.product_name }}</h3>
+            <p>{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
+          </div>
+        </div>
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarHoja()" aria-label="Cerrar">
+          <i class="ph ph-x"></i>
+        </button>
+      </header>
+
+      <div class="tp-hoja__body">
+        <section class="tp-grupo" *ngFor="let g of grupos()">
+          <div class="tp-grupo__head">
+            <h4>{{ g.name }}</h4>
+            <span class="tp-grupo__regla" [class.req]="g.required || g.min_select > 0">{{ reglaGrupo(g) }}</span>
+          </div>
+          <div class="tp-opciones">
+            <div class="tp-opcion-wrap" *ngFor="let o of g.options">
+              <button type="button" class="tp-opcion"
+                      [class.on]="elegido(g, o)" [class.off]="o.available_units <= 0"
+                      [disabled]="o.available_units <= 0"
+                      (click)="alternarOpcion(g, o)">
+                <span class="tp-opcion__n">{{ o.name }}</span>
+                <span class="tp-opcion__p" *ngIf="o.price_delta">+{{ o.price_delta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                <span class="tp-opcion__sin" *ngIf="o.available_units <= 0">Sin existencia</span>
+              </button>
+              <!-- Cantidad solo donde SUMA consumo: dos shots son dos shots.
+                   No existe "dos veces sin azucar" ni "dos tamanos". -->
+              <div class="tp-cant" *ngIf="admiteCantidad(g) && elegido(g, o)">
+                <button type="button" (click)="cambiarCantidad(g, o, -1)" aria-label="Menos">
+                  <i class="ph ph-minus"></i>
+                </button>
+                <span>{{ cantidadDe(o) }}</span>
+                <button type="button" (click)="cambiarCantidad(g, o, 1)" aria-label="Más">
+                  <i class="ph ph-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tp-grupo">
+          <div class="tp-grupo__head">
+            <h4>Nota para barra</h4>
+            <span class="tp-grupo__regla">Opcional</span>
+          </div>
+          <button type="button" class="tp-nota" (click)="tecladoNota.set(!tecladoNota())"
+                  [class.on]="tecladoNota()">
+            <i class="ph ph-note-pencil"></i>
+            <span *ngIf="notaHoja()">{{ notaHoja() }}</span>
+            <span class="ph-vacio" *ngIf="!notaHoja()">Sin hielo, bien caliente…</span>
+          </button>
+          <div class="tp-nota__kb" *ngIf="tecladoNota()">
+            <wx-teclado [valor]="notaHoja()" (valorChange)="notaHoja.set($event)" [maximo]="120"></wx-teclado>
+          </div>
+        </section>
+      </div>
+
+      <footer class="tp-hoja__foot">
+        <div class="tp-hoja__qty">
+          <button type="button" (click)="masHoja(-1)" aria-label="Menos"><i class="ph ph-minus"></i></button>
+          <span>{{ cantidadHoja() }}</span>
+          <button type="button" (click)="masHoja(1)" aria-label="Más"><i class="ph ph-plus"></i></button>
+        </div>
+        <button type="button" class="tp-primaria tp-hoja__add" [disabled]="!puedeAgregar()" (click)="confirmarHoja()">
+          <ng-container *ngIf="puedeAgregar()">
+            <span>Agregar</span>
+            <span class="tp-hoja__precio">{{ precioHoja() | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          </ng-container>
+          <span *ngIf="!puedeAgregar()">Elige {{ faltantes()[0].name }}</span>
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ============================================================= COBRO -->
+  <div class="tp-cobro" *ngIf="vista() === 'cobro'">
+    <div class="tp-cobro__panel">
+      <header class="tp-cobro__head">
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="volverAlMenu()" aria-label="Volver">
+          <i class="ph ph-arrow-left"></i>
+        </button>
+        <h2>Cobrar</h2>
+      </header>
+
+      <div class="tp-cobro__total">
+        <span>Total a pagar</span>
+        <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+      </div>
+
+      <div class="tp-metodos" role="group" aria-label="Método de pago">
+        <button type="button" class="tp-metodo" [class.on]="metodo() === 'EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
+          <i class="ph ph-coins"></i> Efectivo
+        </button>
+        <button type="button" class="tp-metodo" [class.on]="metodo() === 'TARJETA'" (click)="elegirMetodo('TARJETA')">
+          <i class="ph ph-credit-card"></i> Tarjeta
+        </button>
+        <button type="button" class="tp-metodo" [class.on]="metodo() === 'TRANSFERENCIA'" (click)="elegirMetodo('TRANSFERENCIA')">
+          <i class="ph ph-bank"></i> Transferencia
+        </button>
+      </div>
+
+      <ng-container *ngIf="metodo() === 'EFECTIVO'">
+        <div class="tp-dinero">
+          <div class="tp-dinero__campo">
+            <span>Recibido</span>
+            <b>{{ recibidoNum() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+          <!-- El cambio toma protagonismo solo cuando ya hay recibido -->
+          <div class="tp-dinero__campo tp-dinero__campo--cambio" [class.activo]="recibidoNum() > 0">
+            <span>Cambio</span>
+            <b>{{ cambio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+        </div>
+
+        <div class="tp-rapidas">
+          <button type="button" *ngFor="let s of sugerencias()"
+                  [class.on]="recibidoNum() === s" (click)="usarSugerencia(s)">
+            {{ s | currency:'MXN':'symbol-narrow':'1.0-0' }}
+          </button>
+        </div>
+
+        <div class="tp-num">
+          <button type="button" *ngFor="let t of ['1','2','3','4','5','6','7','8','9','.','0']" (click)="tecla(t)">{{ t }}</button>
+          <button type="button" class="tp-num__del" (click)="tecla('<')" aria-label="Borrar">
+            <i class="ph ph-backspace"></i>
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- Tarjeta y transferencia: solo presentación, sin lógica financiera -->
+      <div class="tp-otro" *ngIf="metodo() !== 'EFECTIVO'">
+        <i class="ph" [class.ph-credit-card]="metodo() === 'TARJETA'" [class.ph-bank]="metodo() === 'TRANSFERENCIA'"></i>
+        <h3>{{ metodo() === 'TARJETA' ? 'Cobro con tarjeta' : 'Transferencia' }}</h3>
+        <p>
+          {{ metodo() === 'TARJETA'
+            ? 'Cobra en la terminal y confirma aquí cuando el pago quede aprobado.'
+            : 'Confirma aquí cuando el depósito esté verificado.' }}
+        </p>
+      </div>
+
+      <button type="button" class="tp-primaria tp-cobro__confirmar"
+              [disabled]="!alcanza() || cobrando()" (click)="confirmar()">
+        <i class="ph ph-check-circle" *ngIf="!cobrando()"></i>
+        <i class="ph ph-circle-notch spin" *ngIf="cobrando()"></i>
+        {{ cobrando() ? 'Cobrando…' : 'Confirmar cobro' }}
+      </button>
+    </div>
+
+    <!-- Contexto: qué se está cobrando -->
+    <aside class="tp-cobro__resumen">
+      <h3>Esta cuenta</h3>
+      <div class="tp-resumen__lineas">
+        <div class="tp-resumen__l" *ngFor="let l of lineas()">
+          <span class="tp-resumen__q">{{ l.qty }}</span>
+          <span class="tp-resumen__n">
+            {{ l.productName }}
+            <small *ngIf="l.optionsLabel">{{ l.optionsLabel }}</small>
+          </span>
+          <span class="tp-resumen__i">{{ l.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+        </div>
+      </div>
+      <div class="tp-resumen__pie">
+        <span *ngIf="serviceMode()" class="tp-resumen__modo">
+          <i class="ph" [class.ph-fork-knife]="serviceMode() === 'DINE_IN'" [class.ph-bag]="serviceMode() === 'TAKEAWAY'"></i>
+          {{ serviceMode() === 'DINE_IN' ? 'Para consumir aquí' : 'Para llevar' }}
+        </span>
+        <div class="tp-resumen__total">
+          <span>Total</span>
+          <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================================================== ABRIR TURNO -->
+  <div class="tp-overlay" *ngIf="abrirTurno()" (click)="abrirTurno.set(false)">
+    <div class="tp-hoja tp-hoja--sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <header class="tp-hoja__head">
+        <div class="tp-hoja__id">
+          <span class="tp-hoja__media"><i class="ph ph-vault"></i></span>
+          <div><h3>Abrir turno</h3><p>Necesario para vender en esta caja</p></div>
+        </div>
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="abrirTurno.set(false)" aria-label="Cerrar">
+          <i class="ph ph-x"></i>
+        </button>
+      </header>
+      <div class="tp-hoja__body">
+        <label class="tp-lbl">Fondo inicial</label>
+        <div class="tp-fondo">{{ (fondo() || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+        <div class="tp-num tp-num--sm">
+          <button type="button" *ngFor="let t of ['1','2','3','4','5','6','7','8','9','.','0']" (click)="teclaFondo(t)">{{ t }}</button>
+          <button type="button" class="tp-num__del" (click)="teclaFondo('<')" aria-label="Borrar">
+            <i class="ph ph-backspace"></i>
+          </button>
+        </div>
+      </div>
+      <footer class="tp-hoja__foot">
+        <button type="button" class="tp-primaria" (click)="confirmarTurno()">Abrir turno</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ================================================= VENTA COMPLETADA -->
+  <div class="tp-overlay tp-overlay--exito" *ngIf="mostrarCambio()" (click)="cerrarCambio()">
+    <div class="tp-exito" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <span class="tp-exito__ic"><i class="ph-fill ph-check"></i></span>
+
+      <ng-container *ngIf="ultimoCambio() > 0; else sinCambio">
+        <p class="tp-exito__lbl">Cambio a devolver</p>
+        <b class="tp-exito__monto">{{ ultimoCambio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+      </ng-container>
+      <ng-template #sinCambio>
+        <b class="tp-exito__titulo">Venta registrada</b>
+      </ng-template>
+
+      <p class="tp-exito__folio" *ngIf="ultimoFolio()">Folio {{ ultimoFolio() }}</p>
+
+      <div class="tp-exito__acciones">
+        <button type="button" class="tp-secundaria" (click)="imprimirUltimo()">
+          <i class="ph ph-printer"></i> Reimprimir
+        </button>
+        <button type="button" class="tp-primaria" (click)="cerrarCambio()">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= AVISO -->
+  <div class="tp-aviso" *ngIf="aviso() as a" [class.ok]="a.tipo === 'ok'" role="status">
+    <i class="ph" [class.ph-check-circle]="a.tipo === 'ok'" [class.ph-warning-circle]="a.tipo === 'error'"></i>
+    {{ a.texto }}
+  </div>
+
+</div>

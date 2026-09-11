@@ -1,0 +1,152 @@
+/* La caja, la sombra, el anclaje y el motion vienen de `.wx-pop`
+   (src/styles/overlay.css). Aqui solo lo propio de esta barra.
+   Todo con tokens: el tema lo resuelven ellos, no un bloque oscuro aparte. */
+
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wx-tb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Mismo alto y radio que el resto de controles de la barra de tabla, para que
+   se lean como una sola fila de herramientas. */
+.wx-tb__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--wx-control-h);
+  padding: 0 12px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.wx-tb__btn:hover { background: var(--wx-raised); border-color: var(--wx-edge-strong); color: var(--wx-text); }
+.wx-tb__btn:active { transform: scale(0.98); }
+.wx-tb__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wx-focus-ring);
+  border-color: var(--wx-user-accent, var(--wx-accent));
+}
+
+/* Con algo puesto, el boton lo dice: un filtro invisible esconde filas sin
+   explicacion, y eso se lee como "faltan datos". */
+.wx-tb__btn--activo {
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft));
+  border-color: var(--wx-user-accent-line, var(--wx-accent-line));
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+}
+
+.wx-tb__conteo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--wx-user-accent, var(--wx-accent));
+  color: var(--wx-user-accent-fg, #fff);
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-xs);
+}
+
+.wx-tb__flecha { font-size: 13px; opacity: 0.7; }
+.wx-tb__btn--icono { padding: 0 10px; }
+
+/* ------------------------------------------------------------- paneles */
+.wx-tb__panel {
+  --wx-pop-area: bottom span-right;
+  --wx-pop-origin: top left;
+  min-width: 240px;
+  max-width: min(92vw, 340px);
+}
+
+.wx-tb__scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wx-tb__grupo {
+  margin: 8px 4px 2px;
+  color: var(--wx-text-dim);
+  font-size: var(--wx-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.wx-tb__grupo:first-child { margin-top: 2px; }
+
+.wx-tb__opcion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--wx-radius-xs);
+  color: var(--wx-text);
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+}
+.wx-tb__opcion:hover { background: var(--wx-hover); }
+.wx-tb__opcion--fija { opacity: 0.75; cursor: default; }
+.wx-tb__opcion input { accent-color: var(--wx-user-accent, var(--wx-accent)); cursor: inherit; }
+
+.wx-tb__txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wx-tb__n {
+  color: var(--wx-text-dim);
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-xs);
+}
+
+.wx-tb__limpiar {
+  border: 0;
+  background: transparent;
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+  font: inherit;
+  font-size: var(--wx-text-xs);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--wx-radius-xs);
+}
+.wx-tb__limpiar:hover { background: var(--wx-hover); }
+
+.wx-tb__vacio {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--wx-text-dim);
+  font-size: var(--wx-text-sm);
+}
+
+@media (max-width: 720px) {
+  .wx-tb { width: 100%; }
+  .wx-tb__btn { flex: 1 1 auto; justify-content: center; }
+}
