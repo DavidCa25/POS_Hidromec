@@ -85,8 +85,14 @@
               <span class="tp-card__ini">{{ iniciales(p) }}</span>
             </ng-container>
 
+            <!-- La disponibilidad se muestra SIEMPRE, no solo cuando escasea.
+                 Antes solo aparecia con 5 o menos, asi que en una barra con
+                 existencias normales no habia forma de saber cuantas quedaban
+                 sin ir a Inventario y dividir a mano. -->
             <span class="tp-card__estado tp-card__estado--off" *ngIf="agotado(p)">Agotado</span>
-            <span class="tp-card__estado tp-card__estado--low" *ngIf="pocas(p)">{{ p.available_units }}</span>
+            <span class="tp-card__estado"
+                  [class.tp-card__estado--low]="pocas(p)"
+                  *ngIf="!agotado(p) && hayCuenta(p)">{{ disponibles(p) }}</span>
           </span>
 
           <span class="tp-card__txt">
@@ -122,7 +128,9 @@
         <div class="tp-linea" *ngFor="let l of lineas()">
           <div class="tp-linea__txt">
             <span class="tp-linea__nombre">{{ l.productName }}</span>
-            <span class="tp-linea__opts" *ngIf="l.optionsLabel">{{ l.optionsLabel }}</span>
+            <span class="tp-linea__opts" *ngIf="l.options?.length">
+              <span class="tp-linea__opt" *ngFor="let o of resumenOpciones(l)">{{ o.texto }}</span>
+            </span>
             <span class="tp-linea__nota" *ngIf="l.note">{{ l.note }}</span>
           </div>
 
@@ -207,14 +215,27 @@
             <span class="tp-grupo__regla" [class.req]="g.required || g.min_select > 0">{{ reglaGrupo(g) }}</span>
           </div>
           <div class="tp-opciones">
-            <button type="button" class="tp-opcion" *ngFor="let o of g.options"
-                    [class.on]="elegido(g, o)" [class.off]="o.available_units <= 0"
-                    [disabled]="o.available_units <= 0"
-                    (click)="alternarOpcion(g, o)">
-              <span class="tp-opcion__n">{{ o.name }}</span>
-              <span class="tp-opcion__p" *ngIf="o.price_delta">+{{ o.price_delta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-              <span class="tp-opcion__sin" *ngIf="o.available_units <= 0">Sin existencia</span>
-            </button>
+            <div class="tp-opcion-wrap" *ngFor="let o of g.options">
+              <button type="button" class="tp-opcion"
+                      [class.on]="elegido(g, o)" [class.off]="o.available_units <= 0"
+                      [disabled]="o.available_units <= 0"
+                      (click)="alternarOpcion(g, o)">
+                <span class="tp-opcion__n">{{ o.name }}</span>
+                <span class="tp-opcion__p" *ngIf="o.price_delta">+{{ o.price_delta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                <span class="tp-opcion__sin" *ngIf="o.available_units <= 0">Sin existencia</span>
+              </button>
+              <!-- Cantidad solo donde SUMA consumo: dos shots son dos shots.
+                   No existe "dos veces sin azucar" ni "dos tamanos". -->
+              <div class="tp-cant" *ngIf="admiteCantidad(g) && elegido(g, o)">
+                <button type="button" (click)="cambiarCantidad(g, o, -1)" aria-label="Menos">
+                  <i class="ph ph-minus"></i>
+                </button>
+                <span>{{ cantidadDe(o) }}</span>
+                <button type="button" (click)="cambiarCantidad(g, o, 1)" aria-label="Más">
+                  <i class="ph ph-plus"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 

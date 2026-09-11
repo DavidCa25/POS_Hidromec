@@ -98,6 +98,38 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
   ipcMain.handle('recipes:delete', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_delete_recipe', (r) => r.input('recipe_id', sql.Int, payload.recipeId)));
 
+  /* ---------------------------------------------------- disponibilidad
+     Cuantas unidades se pueden preparar CON LAS OPCIONES ELEGIDAS.
+
+     El catalogo responde "¿puedo ofrecer este producto?" mirando la receta
+     base; esto responde "¿puedo preparar ESTA combinacion?" con la receta
+     efectiva. Son preguntas distintas: un latte puede estar disponible y la
+     leche de almendra que eligio el cliente estar agotada.
+
+     Es informacion para la pantalla, NO una autorizacion: la venta vuelve a
+     validar existencias dentro de su transaccion, con los productos
+     bloqueados. */
+  ipcMain.handle('hospitality:availability', async (_e, payload = {}) => {
+    try {
+      const p = await pool();
+      const tvp = new sql.Table('dbo.SaleModifierType');
+      tvp.columns.add('line_no', sql.Int, { nullable: false });
+      tvp.columns.add('modifier_option_id', sql.Int, { nullable: false });
+      tvp.columns.add('quantity', sql.Int, { nullable: false });
+      for (const o of (payload.options || [])) {
+        tvp.rows.add(1, Number(o.optionId ?? o.modifier_option_id), Number(o.quantity ?? 1) || 1);
+      }
+      const r = await p.request()
+        .input('product_id', sql.Int, Number(payload.productId))
+        .input('SaleModifiers', tvp)
+        .execute('sp_check_availability');
+      return { success: true, data: r.recordset?.[0] ?? null };
+    } catch (e) {
+      console.error('[HOSPITALITY] availability:', e.message);
+      return { success: false, error: e.message };
+    }
+  });
+
   // --------------------------------------------------------- modificadores
   ipcMain.handle('modifiers:list', async (_e, payload = {}) => {
     try {

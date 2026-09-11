@@ -8,6 +8,7 @@ import {
   Presentation, RecipeHeader, RecipeLine, Uom,
 } from '../core';
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
+import { problemasDeOpcion } from '../core/opciones';
 
 /*
  * Administracion de Hospitality: recetas, modificadores y presentaciones.
@@ -94,13 +95,53 @@ export class HospitalityAdmin implements OnInit {
   draftLines = signal<DraftLine[]>([]);
   guardando = signal(false);
 
+  /**
+   * Avisa al signal de que una linea cambio.
+   *
+   * QUE SE ROMPIO
+   * -------------
+   * Las cantidades, unidades y mermas se editan con `[(ngModel)]="l.inputQty"`,
+   * que MUTA el objeto dentro del arreglo. Un signal compara por referencia:
+   * el arreglo sigue siendo el mismo, asi que `costoReceta` -que es un
+   * `computed`- no se volvia a calcular. Las lineas si se actualizaban, porque
+   * `costoLinea()` es un metodo que corre en cada ciclo de deteccion.
+   *
+   * Resultado: las tres lineas decian 2.85 / 4.55 / 1.20 y el resumen seguia
+   * anclado en una suma vieja hasta guardar o recargar.
+   *
+   * Reemplazar el arreglo es lo minimo que hace falta para que el computed se
+   * entere. No se copian las lineas: se conservan las mismas referencias, que
+   * es lo que `[(ngModel)]` sigue editando.
+   */
+  lineaTocada() {
+    this.draftLines.set([...this.draftLines()]);
+  }
+
   /** Costo de una unidad con los costos actuales: la misma formula que SQL. */
   readonly costoReceta = computed(() =>
     this.draftLines().reduce((a, l) => a + l.inputQty * this.factor(l.inputUom, l.baseUom) * Number(l.cost ?? 0) * (1 + l.wastePct / 100), 0));
 
   readonly precioSel = computed(() => Number(this.productoSel()?.price ?? 0));
+
+  /**
+   * El precio SIN IVA, que es lo que de verdad se queda el negocio.
+   *
+   * `products.price` es el precio de mostrador, con IVA incluido; el costo
+   * (`products.cost`) viene de la compra y NO lo lleva -el IVA de una compra
+   * es acreditable-. Comparar uno contra otro infla el margen: un producto de
+   * $100 con $80 de costo salia al 20% cuando el margen real es del 7.2%,
+   * porque $13.79 de esos $100 son del SAT. A margenes altos casi no se nota;
+   * a margenes bajos es la diferencia entre ganar y perder.
+   */
+  readonly precioSinIva = computed(() => {
+    const p = this.productoSel();
+    if (!p) return 0;
+    const tasa = (p.objeto_impuesto ?? '02') !== '02' ? 0 : Number(p.tasa_iva ?? 0.16);
+    return Number(p.price ?? 0) / (1 + tasa);
+  });
+
   readonly margen = computed(() => {
-    const p = this.precioSel(), c = this.costoReceta();
+    const p = this.precioSinIva(), c = this.costoReceta();
     if (!p) return null;
     return ((p - c) / p) * 100;
   });
@@ -345,9 +386,33 @@ export class HospitalityAdmin implements OnInit {
     return this.ingredientes().find(i => i.id === id)?.base_uom ?? '';
   }
 
+  /** Lo que le falta a cada opcion, por indice, para marcarlo en la pantalla. */
+  problemasDe(o: DraftOption): string[] { return problemasDeOpcion(o); }
+  opcionIncompleta(o: DraftOption): boolean { return problemasDeOpcion(o).length > 0; }
+
   async guardarGrupo() {
     const g = this.draftGrupo();
     if (!g) return;
+
+    /* VALIDACION ANTES DE GUARDAR.
+       La base ya lo impide con `CK_modifier_options_effect`, pero ese CHECK
+       rechaza la fila con un mensaje de SQL Server que no nombra ni el campo
+       ni la opcion. Quien esta configurando el menu no puede hacer nada con
+       eso. Aqui se dice que falta y en cual. */
+    const malas = this.draftOptions()
+      .map((o, i) => ({ i, nombre: o.name || `Opción ${i + 1}`, fallos: problemasDeOpcion(o) }))
+      .filter(x => x.fallos.length);
+
+    if (malas.length) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Faltan datos en las opciones',
+        html: malas.map(m =>
+          `<b>${m.nombre}</b><br><small>${m.fallos.join('<br>')}</small>`).join('<br><br>'),
+      });
+      return;
+    }
+
     this.guardando.set(true);
     try {
       await this.hosp.saveModifierGroup({

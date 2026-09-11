@@ -663,3 +663,42 @@
   line-height: 1.4;
 }
 .venta-no-editable i { color: var(--wx-info); font-size: 16px; }
+
+/* Opciones de la linea en el carrito.
+   Se muestran SIEMPRE, no solo mientras el modal esta abierto: quien cobra
+   tiene que poder ver que lleva el producto y cuanto suma cada extra. */
+.venta-opts { display: block; margin-top: 3px; }
+.venta-opt {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--wx-text-muted);
+  line-height: 1.35;
+  white-space: pre;
+}
+
+/* Hoja de opciones de Retail (dentro de SweetAlert).
+   Mismo contenido que la hoja de Touch, en el formato que encaja en un modal
+   de escritorio: una lista con casilla, precio y cantidad cuando procede. */
+.vo { text-align: left; max-height: 52vh; overflow-y: auto; padding: 2px 4px; }
+.vo-grupo { margin-bottom: 14px; }
+.vo-titulo {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--wx-text-muted); margin-bottom: 6px;
+}
+.vo-fila {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; margin-bottom: 5px;
+  border: 1px solid var(--wx-edge); border-radius: 10px;
+  font-size: 13.5px; cursor: pointer;
+  transition: background var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+.vo-fila:hover { background: var(--wx-raised); border-color: var(--wx-edge-strong); }
+.vo-fila input[type=checkbox] { width: 17px; height: 17px; flex: 0 0 auto; cursor: pointer; }
+.vo-nombre { flex: 1; }
+.vo-precio { font-weight: 600; color: var(--wx-success); }
+.vo-cant {
+  width: 56px; text-align: center; padding: 5px 6px;
+  border: 1px solid var(--wx-edge-strong); border-radius: 8px;
+  font-size: 13px; background: var(--wx-surface); color: var(--wx-text);
+}
