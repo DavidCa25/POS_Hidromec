@@ -16,6 +16,9 @@ CREATE TABLE dbo.raffle_definitions (
     winners_count INT NOT NULL CONSTRAINT DF_raffle_definitions_winners DEFAULT ((1)),
     code_prefix NVARCHAR(8) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_raffle_definitions_prefix DEFAULT ('RF'),
     created_at DATETIME2(0) NOT NULL CONSTRAINT DF_raffle_definitions_created_at DEFAULT (sysutcdatetime()),
+    closed_at DATETIME2(0) NULL,
+    closed_entries_count INT NULL,
+    closed_max_entry_id INT NULL,
     CONSTRAINT PK_raffle_definitions PRIMARY KEY CLUSTERED (id)
 );
 END;
