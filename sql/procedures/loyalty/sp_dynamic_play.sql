@@ -43,7 +43,7 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @ahora DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @ahora DATETIME2(0) = SYSDATETIME();   /* Hora local del negocio: misma politica que sp_loyalty_evaluate_sale. */
     DECLARE @id INT, @def INT, @tipo NVARCHAR(20), @estado NVARCHAR(12),
             @expira DATETIME2(0), @objetivo DECIMAL(12,4), @tolerancia DECIMAL(12,4),
             @rewardDef INT, @campaign INT, @customer INT, @sale INT, @register INT,

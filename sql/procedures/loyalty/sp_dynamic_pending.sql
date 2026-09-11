@@ -40,7 +40,7 @@ BEGIN
     LEFT JOIN dbo.customers c ON c.id = a.customer_id
     WHERE a.sale_id = @sale_id
       AND a.status = 'PENDING'
-      AND (a.expires_at IS NULL OR a.expires_at > SYSUTCDATETIME())
+      AND (a.expires_at IS NULL OR a.expires_at > SYSDATETIME())
     ORDER BY a.id;
 END
 GO

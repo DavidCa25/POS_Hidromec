@@ -58,7 +58,35 @@ BEGIN
     END
 
     DECLARE @customer_id INT, @total DECIMAL(12,2), @register_id INT, @fecha DATETIME;
-    DECLARE @ahora DATETIME2(0) = SYSUTCDATETIME();
+    /* ------------------------------------------------------------------
+       RELOJ: hora LOCAL del negocio, en todo Fidelizacion.
+
+       Una campana no puede medir unas reglas con un reloj y otras con otro.
+       Aqui convivian los dos: la vigencia (`starts_at` / `ends_at`) se
+       comparaba contra SYSUTCDATETIME mientras el dia de la semana y el
+       horario salian de `sales.datee`, que `sp_register_sale` sella con
+       GETDATE() -hora local-. Con el servidor en UTC-6, una campana con
+       fecha de fin caducaba SEIS HORAS antes del final del dia elegido.
+
+       La politica para V1 es la hora local del servidor, y no es una
+       eleccion arbitraria: es la que ya usa el resto del POS en lo
+       operativo -la venta, el turno, los movimientos de caja- y la unica
+       que el negocio entiende. "Promocion los martes de 2 a 4" significa
+       las dos de la tarde ALLI, no en Greenwich.
+
+       Wybix todavia no tiene una zona horaria configurable. Cuando la
+       tenga, este es el unico sitio que hay que mirar: reglas y caducidades
+       de Fidelizacion se derivan de aqui.
+
+       Los `created_at` por defecto de las tablas siguen en UTC: son
+       auditoria de fila, no reglas, y ningun procedure los deja al valor
+       por defecto ni ninguna pantalla los muestra.
+       ------------------------------------------------------------------ */
+    /* `@ahora` sella lo que se EMITE en este momento (issued_at, caducidades).
+       Las CONDICIONES de la campana no lo usan: esas miran a `@fecha`, el
+       instante de la venta. Son dos preguntas distintas y cada una tiene su
+       reloj, pero ambos son locales. */
+    DECLARE @ahora DATETIME2(0) = SYSDATETIME();
     DECLARE @yaEvaluada BIT = 0;
 
     /* ------------------------------------------------------------------
@@ -121,8 +149,20 @@ BEGIN
     INTO #aplican
     FROM dbo.campaigns c
     WHERE c.active = 1
-      AND (c.starts_at IS NULL OR c.starts_at <= @ahora)
-      AND (c.ends_at IS NULL OR c.ends_at >= @ahora)
+      /* Contra el instante de LA VENTA, no contra "ahora".
+
+         Es la misma familia de fallo que el reloj: la pregunta es "¿esta
+         campana aplicaba a ESTA venta?", y eso lo decide cuando ocurrio la
+         venta, no cuando a alguien le dio por evaluarla.
+
+         Con `@ahora` las cuatro condiciones miraban a dos instantes
+         distintos: el dia y el horario salian de la venta, y la vigencia del
+         momento de evaluar. En una venta que se evalua al segundo siguiente
+         coinciden, asi que no se nota; en una que se reevalua mas tarde -o
+         que se cobra a las 23:59:58 y se evalua a las 00:00:01- no. Medido:
+         una venta de ayer cobraba premios de una campana que empezo hoy. */
+      AND (c.starts_at IS NULL OR c.starts_at <= @fecha)
+      AND (c.ends_at IS NULL OR c.ends_at >= @fecha)
       AND (c.min_total IS NULL OR @total >= c.min_total)
       AND (c.weekday_mask IS NULL OR (c.weekday_mask & POWER(2, @dow)) > 0)
       AND (c.time_from IS NULL OR @hora >= c.time_from)

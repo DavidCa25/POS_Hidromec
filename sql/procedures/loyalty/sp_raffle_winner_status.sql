@@ -40,7 +40,7 @@ BEGIN
         UPDATE dbo.raffle_winners
            SET status = @status,
                notes = ISNULL(@notes, notes),
-               delivered_at = CASE WHEN @status = 'DELIVERED' THEN SYSUTCDATETIME() ELSE delivered_at END,
+               delivered_at = CASE WHEN @status = 'DELIVERED' THEN SYSDATETIME() ELSE delivered_at END,
                delivered_by_user_id = CASE WHEN @status = 'DELIVERED' THEN @user_id ELSE delivered_by_user_id END
          WHERE id = @winner_id;
 
