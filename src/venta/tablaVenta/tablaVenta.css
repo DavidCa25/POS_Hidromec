@@ -68,23 +68,6 @@
   z-index: 1;
 }
 
-.ventas-stats-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--wx-user-accent-soft);             
-  color: var(--wx-user-accent);
-  padding: 0.6rem 1.2rem;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  border: 1.5px solid rgba(0,0,0,0.10);
-}
-
-.ventas-stats-badge i {
-  font-size: 1.1rem;
-}
-
 /* Contenedor principal de la tabla */
 .castrol-table-container {
   background: var(--wx-canvas);
@@ -570,128 +553,7 @@
   
 }
 
-.ventas-tools{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  margin-left:auto;
-  flex-wrap:wrap;
-}
-
-.ventas-search{
-  position:relative;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  background: var(--wx-surface);
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:14px;
-  padding:10px 12px;
-  min-width:320px;
-  box-shadow: var(--wx-shadow-raised);
-}
-
-.ventas-search i{ opacity:.65; }
-.ventas-search input{
-  border:0;
-  outline:0;
-  width:100%;
-  background:transparent;
-  font-size:14px;
-}
-
-.ventas-search .clear-btn{
-  border:0;
-  background:transparent;
-  padding:2px 6px;
-  border-radius:10px;
-  opacity:.7;
-}
-.ventas-search .clear-btn:hover{ background:rgba(0,0,0,.06); opacity:1; }
-
-.ventas-meta{
-  display:flex;
-  align-items:center;
-  gap:14px;
-}
-
-.ventas-meta .range{
-  font-size:13px;
-  color: rgba(0,0,0,.55);
-}
-
-.ventas-page-size{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  background: var(--wx-surface);
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:14px;
-  padding:8px 10px;
-  box-shadow: var(--wx-shadow-raised);
-}
-
-.ventas-page-size select{
-  border:0;
-  outline:0;
-  background:transparent;
-  font-weight:600;
-}
-
 /* pager */
-.ventas-pager{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-  padding:14px 6px 4px;
-}
-
-.pager-btn{
-  border:1px solid rgba(0,0,0,.10);
-  background: var(--wx-surface);
-  border-radius:14px;
-  padding:10px 14px;
-  font-weight:600;
-  box-shadow: var(--wx-shadow-raised);
-}
-
-.pager-btn:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-  box-shadow:none;
-}
-
-.pager-pages{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-  justify-content:center;
-}
-
-.page-btn{
-  width:40px;
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(0,0,0,.10);
-  background: var(--wx-surface);
-  font-weight: 600;
-  box-shadow: var(--wx-shadow-raised);
-}
-
-.page-btn.active{
-  border-color: rgba(31,46,134,.55);
-  box-shadow: var(--wx-shadow-raised);
-}
-
-.page-btn.dots{
-  width:auto;
-  padding:0 12px;
-  font-weight: 600;
-  opacity:.7;
-  box-shadow:none;
-}
 
 /* ==========================================================================
    ACCIONES DE LA CABECERA
@@ -762,4 +624,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .castrol-btn-color:active, .castrol-btn-add:active { transform: none; }
+}
+
+/* El menu de Exportar toma el ritmo de los botones de ESTA cabecera: aqui
+   miden 43px de alto y radio 13, no los 38/9 del resto. Se ajusta con las
+   variables del componente, sin duplicar su regla. */
+.ventas-actions-group wx-menu {
+  --wx-menu-alto: 43px;
+  --wx-menu-radio: var(--wx-radius-md);
 }

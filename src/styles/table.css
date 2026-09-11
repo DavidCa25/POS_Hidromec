@@ -444,3 +444,187 @@
 .wx-rowbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) { .wx-rowbtn:active { transform: none; } }
+
+/* ==========================================================================
+   BARRA DE HERRAMIENTAS DE TABLA
+   --------------------------------------------------------------------------
+   QUE SE ROMPIO
+   Esta barra -recuento, buscador, rango, "Mostrar", paginacion- estaba
+   COPIADA en tablaCompra.css, tablaVenta.css e inventario.css, y las tres
+   copias pintaban con literales de tema claro: #f1f6ff de fondo,
+   rgba(11,27,77,...) de texto, #0b1b4d en la pagina activa.
+
+   En oscuro los tokens cambian pero los literales no, asi que quedaba texto
+   claro sobre fondo claro: "4 compras registradas", "1-4 de 4", "Mostrar" y
+   los botones Anterior/Siguiente desaparecian. Solo inventario.css tenia un
+   parche puntual para el recuento, lo que confirmaba que se estaba tapando el
+   sintoma pantalla por pantalla.
+
+   Ahora hay UNA definicion, con tokens. El tema lo resuelven los tokens; esta
+   hoja no necesita un bloque oscuro propio.
+   ========================================================================== */
+.ventas-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ventas-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-raised);
+  border: 1px solid var(--wx-edge);
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ventas-stats-badge i { font-size: 1.05rem; opacity: 0.85; }
+
+.ventas-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 240px;
+  flex: 1 1 260px;
+  max-width: 420px;
+  padding: 0 12px;
+  height: 40px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+}
+.ventas-search:focus-within { border-color: var(--wx-user-accent, var(--wx-accent)); box-shadow: var(--wx-focus-ring); }
+.ventas-search i { opacity: 0.6; color: var(--wx-text-muted); }
+.ventas-search input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--wx-text);
+  font-size: var(--wx-text-sm);
+  min-width: 0;
+}
+.ventas-search input::placeholder { color: var(--wx-text-dim); }
+.ventas-search .clear-btn {
+  border: 0;
+  background: transparent;
+  color: var(--wx-text-muted);
+  cursor: pointer;
+  border-radius: var(--wx-radius-xs);
+  padding: 2px 4px;
+}
+.ventas-search .clear-btn:hover { background: var(--wx-hover); color: var(--wx-text); }
+
+.ventas-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ventas-meta .range {
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--wx-raised);
+  border: 1px solid var(--wx-edge);
+  white-space: nowrap;
+}
+
+.ventas-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+}
+.ventas-page-size span {
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ventas-pager {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+}
+.pager-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+/* `.page-btn` y `.pager-btn` ya estan definidos arriba, con tokens. Aqui solo
+   el estado "puntos suspensivos", que no es un boton pulsable. */
+.page-btn.dots {
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+}
+
+@media (max-width: 720px) {
+  .ventas-tools { justify-content: stretch; }
+  .ventas-search { max-width: none; }
+  .ventas-pager { flex-wrap: wrap; }
+}
+
+/* ==========================================================================
+   FILA DE CABECERA DE GRUPO
+   --------------------------------------------------------------------------
+   Cuando la tabla se agrupa (wx-tabla-barra), entre las filas aparece una
+   cabecera plegable. Vive aqui y no en cada pantalla porque las cinco tablas
+   la pintan igual, aunque por dentro sean `castrol-table` o `tabla-corte`.
+   ========================================================================== */
+.wx-grupo-fila > td {
+  padding: 0 !important;
+  background: var(--wx-raised);
+  border-top: 1px solid var(--wx-edge);
+  border-bottom: 1px solid var(--wx-edge);
+}
+.wx-grupo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--wx-text);
+  font: inherit;
+  font-size: var(--wx-text-sm);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.wx-grupo:hover { background: var(--wx-hover); }
+.wx-grupo:focus-visible { outline: none; box-shadow: inset var(--wx-focus-ring); }
+.wx-grupo__flecha { transition: transform var(--wx-dur-micro) var(--wx-ease-out); }
+.wx-grupo[aria-expanded="true"] .wx-grupo__flecha { transform: rotate(90deg); }
+.wx-grupo__n {
+  margin-left: auto;
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}

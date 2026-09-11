@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
+import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
@@ -40,7 +42,7 @@ type ClienteVenta = {
 @Component({
   selector: 'app-clientes',
   templateUrl: './clientes.html',
-  imports: [
+  imports: [WxTablaBarraComponent, 
     RouterOutlet,
     FormsModule,
     CommonModule,
@@ -182,6 +184,25 @@ export class Clientes implements OnInit {
   get activosCount()  { return this.clientes.filter(c => c.active).length; }
 
   // ----- Vista filtrada -----
+  /**
+   * Descriptor de la tabla. Clientes usa `tabla-corte`: la barra comparte el
+   * ESTADO, no el marcado, asi que no hace falta reescribir la tabla.
+   */
+  readonly tabla = new EstadoTabla('clientes', [
+    { clave: 'name', titulo: 'Cliente', obligatoria: true },
+    { clave: 'contacto', titulo: 'Contacto' },
+    { clave: 'creditLimit', titulo: 'Límite' },
+    { clave: 'balance', titulo: 'Saldo' },
+    { clave: 'estado', titulo: 'Estado', filtrable: true, agrupable: true,
+      valor: (c) => !c.active ? 'Inactivo'
+                  : (c.overdueCount > 0) ? 'Con vencidos'
+                  : (c.balance > 0) ? 'Con saldo' : 'Al corriente' },
+    { clave: 'acciones', titulo: 'Acciones', obligatoria: true },
+  ]);
+
+  /** Lo buscado, ya filtrado por la barra, y aplanado con sus grupos. */
+  get items(): WxItem[] { return this.tabla.aplanar(this.tabla.filtrar(this.clientesView)); }
+
   get clientesView(): Cliente[] {
     let rows = [...this.clientes];
 

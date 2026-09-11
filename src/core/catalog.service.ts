@@ -18,9 +18,24 @@ export class CatalogService {
   readonly loadedAt = signal<number>(0);
   readonly loading = signal(false);
 
+  /**
+   * Lo que se puede cobrar.
+   *
+   * `sp_get_active_products` devuelve TODOS los activos, ingredientes
+   * incluidos, porque Inventario y Compras los necesitan: la leche se compra
+   * aunque no se venda. Filtrar es cosa de quien vende, y hasta ahora solo lo
+   * hacia Touch -en SQL, dentro de `sp_get_menu_catalog`-; el buscador de
+   * Retail listaba los insumos y dejaba agregarlos a la venta.
+   *
+   * `undefined` significa que la fila viene de un origen que no trae la
+   * columna. Ahi lo seguro es tratarla como vendible: nunca esconder algo que
+   * si se cobra.
+   */
+  readonly vendibles = computed(() => this.products().filter(p => p.sellable !== false));
+
   readonly categories = computed(() => {
     const vistos = new Map<string, number>();
-    for (const p of this.products()) {
+    for (const p of this.vendibles()) {
       const n = p.category_name || '';
       if (n) vistos.set(n, (vistos.get(n) ?? 0) + 1);
     }
@@ -58,24 +73,29 @@ export class CatalogService {
     this.products.set([]);
   }
 
+  /** Solo entre lo vendible: el escaner tampoco debe colar un ingrediente. */
   findByBarcode(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
     if (!key) return undefined;
-    return this.products().find(p => (p.bar_code || '').trim().toLowerCase() === key);
+    return this.vendibles().find(p => (p.bar_code || '').trim().toLowerCase() === key);
   }
 
   findByPartNumber(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
     if (!key) return undefined;
-    return this.products().find(p => (p.part_number || '').toLowerCase() === key);
+    return this.vendibles().find(p => (p.part_number || '').toLowerCase() === key);
   }
 
+  /**
+   * Por id, sobre el catalogo COMPLETO: una venta guardada puede referirse a
+   * un producto que hoy ya no se vende, y esa linea tiene que poder leerse.
+   */
   findById(id: number): CatalogProduct | undefined {
     return this.products().find(p => p.id === id);
   }
 
   /** Filtro de texto sobre nombre, parte, codigo, marca y categoria. */
-  search(term: string, list: CatalogProduct[] = this.products()): CatalogProduct[] {
+  search(term: string, list: CatalogProduct[] = this.vendibles()): CatalogProduct[] {
     const t = (term || '').trim().toLowerCase();
     if (!t) return list;
     return list.filter(p =>
@@ -117,6 +137,14 @@ export class CatalogService {
       tasa_iva: r.tasa_iva != null ? Number(r.tasa_iva) : null,
       inventory_mode: r.inventory_mode ?? undefined,
       sellable: r.sellable != null ? !!r.sellable : undefined,
+      base_uom: r.base_uom ?? undefined,
+      // Sin la columna se cae al stock: una base anterior a este cambio sigue
+      // mostrando lo mismo que mostraba antes, no un cero nuevo.
+      available_units: r.available_units != null ? Number(r.available_units) : Number(r.stock ?? 0),
+      limita_nombre: r.limita_nombre ?? null,
+      limita_stock: r.limita_stock != null ? Number(r.limita_stock) : null,
+      limita_uom: r.limita_uom ?? null,
+      limita_necesita: r.limita_necesita != null ? Number(r.limita_necesita) : null,
       allow_decimal_qty: r.allow_decimal_qty != null ? !!r.allow_decimal_qty : undefined,
       has_modifiers: r.has_modifiers != null ? !!r.has_modifiers : undefined,
       thumb: r.thumb ?? null,

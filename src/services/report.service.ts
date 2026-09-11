@@ -81,9 +81,82 @@ export class ReportService {
     return [n, t, fecha].filter(Boolean).join('_');
   }
 
+  /**
+   * Saca la funcion de un modulo CommonJS importado dinamicamente.
+   *
+   * QUE SE ROMPIO
+   * -------------
+   * `const { default: autoTable } = await import('jspdf-autotable')` asume UNA
+   * forma de interoperabilidad. `jspdf-autotable` es un bundle UMD de webpack,
+   * y segun como lo procese el empaquetador el resultado puede llegar como la
+   * funcion suelta, como `{ default: fn }` o como `{ default: { default: fn } }`.
+   * En la aplicacion empaquetada llegaba envuelto una vez de mas: `autoTable`
+   * era un objeto y llamarlo reventaba con "g is not a function" -el nombre
+   * minificado de la variable-. En `ng serve` no pasaba, y por eso el defecto
+   * solo se veia en el instalador.
+   *
+   * Esto no adivina: prueba las formas posibles y falla con un mensaje que se
+   * puede leer si ninguna sirve.
+   */
+  private static callable(mod: any, nombre: string): any {
+    const candidatos = [mod, mod?.default, mod?.default?.default];
+    const fn = candidatos.find(c => typeof c === 'function');
+    if (!fn) throw new Error(`No se pudo cargar ${nombre}: el modulo no expone una funcion.`);
+    return fn;
+  }
+
+  /** Igual, para un valor exportado con nombre (jsPDF). */
+  private static named(mod: any, nombre: string): any {
+    const candidatos = [mod?.[nombre], mod?.default?.[nombre], mod?.default, mod];
+    const fn = candidatos.find(c => typeof c === 'function');
+    if (!fn) throw new Error(`No se pudo cargar ${nombre}.`);
+    return fn;
+  }
+
+  /**
+   * Entrega el archivo al usuario.
+   *
+   * QUE SE ROMPIO
+   * -------------
+   * `doc.save()` y `XLSX.writeFile()` crean un Blob y disparan un
+   * `<a download>`. Eso es del navegador: la aplicacion empaquetada sirve la
+   * pagina por `file://`, donde esa descarga no llega a ninguna parte. El
+   * usuario pulsaba Exportar y no ocurria nada visible -sin error, sin
+   * archivo-, que es exactamente lo que se reporto en "Exportar lista".
+   *
+   * Con Electron delante se pide donde guardar y se escribe el archivo de
+   * verdad. Fuera de Electron -o si el canal no existiera- se conserva la
+   * descarga del navegador, para no perder un camino que ya funcionaba.
+   */
+  private async entregar(bytes: ArrayBuffer | Uint8Array, nombre: string, ext: string,
+                         etiqueta: string, respaldo: () => void): Promise<void> {
+    const guardar = this.api?.guardarArchivo;
+    if (typeof guardar !== 'function') { respaldo(); return; }
+
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let binario = '';
+    // En trozos: `String.fromCharCode(...u8)` desborda la pila con archivos
+    // grandes, y un reporte de inventario completo lo es.
+    for (let i = 0; i < u8.length; i += 0x8000) {
+      binario += String.fromCharCode.apply(null, Array.from(u8.subarray(i, i + 0x8000)) as any);
+    }
+
+    const r = await guardar({
+      suggestedName: nombre,
+      extension: ext,
+      base64: btoa(binario),
+      title: `Guardar ${etiqueta}`,
+      filters: [{ name: etiqueta, extensions: [ext] }],
+    });
+    if (r && r.success === false) throw new Error(r.error || 'No se pudo guardar el archivo.');
+  }
+
   // ================= EXCEL =================
   async exportExcel(cfg: ReportConfig) {
-    const XLSX = await import('xlsx-js-style');
+    const mod: any = await import('xlsx-js-style');
+    // Mismo problema de interoperabilidad que autoTable: segun el
+    // empaquetador, `utils` puede colgar del modulo o de su `default`.
+    const XLSX: any = mod?.utils ? mod : (mod?.default?.utils ? mod.default : mod);
     const negocio = await this.negocio();
     const cols = cfg.columns;
     const ncol = cols.length;
@@ -155,15 +228,21 @@ export class ReportService {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
-    XLSX.writeFile(wb, this.baseName(cfg, negocio) + '.xlsx');
+
+    const nombre = this.baseName(cfg, negocio);
+    const bytes: Uint8Array = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    await this.entregar(bytes, nombre, 'xlsx', 'Hoja de calculo',
+                        () => XLSX.writeFile(wb, nombre + '.xlsx'));
   }
 
   // ================= PDF =================
   async exportPdf(cfg: ReportConfig) {
-    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    const [modPdf, modTabla] = await Promise.all([
       import('jspdf'),
       import('jspdf-autotable'),
     ]);
+    const jsPDF = ReportService.named(modPdf, 'jsPDF');
+    const autoTable = ReportService.callable(modTabla, 'jspdf-autotable');
     const negocio = await this.negocio();
     const cols = cfg.columns;
     const landscape = cols.length > 5;
@@ -214,6 +293,8 @@ export class ReportService {
       doc.text(`Pagina ${i} de ${pages}`, W - M, H - 18, { align: 'right' });
     }
 
-    doc.save(this.baseName(cfg, negocio) + '.pdf');
+    const nombre = this.baseName(cfg, negocio);
+    await this.entregar(doc.output('arraybuffer'), nombre, 'pdf', 'Documento PDF',
+                        () => doc.save(nombre + '.pdf'));
   }
 }

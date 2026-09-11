@@ -1,0 +1,103 @@
+<div class="wx-tb">
+
+  <!-- ------------------------------------------------------ FILTRAR POR -->
+  <button type="button" class="wx-tb__btn"
+          [class.wx-tb__btn--activo]="estado.hayFiltros"
+          [attr.popovertarget]="idFiltrar"
+          [style.anchor-name]="anclaFiltrar"
+          aria-haspopup="dialog">
+    <i class="ph ph-funnel" aria-hidden="true"></i>
+    <span>Filtrar por</span>
+    <span class="wx-tb__conteo" *ngIf="estado.cuantosFiltros">{{ estado.cuantosFiltros }}</span>
+    <i class="ph ph-caret-down wx-tb__flecha" aria-hidden="true"></i>
+  </button>
+
+  <div [id]="idFiltrar" popover data-anclado class="wx-pop wx-tb__panel"
+       [style.--wx-anchor]="anclaFiltrar" role="dialog">
+    <div class="wx-pop__head">
+      <span>Filtrar por</span>
+      <button type="button" class="wx-tb__limpiar" *ngIf="estado.hayFiltros"
+              (click)="estado.limpiarFiltros()">Limpiar</button>
+    </div>
+
+    <div class="wx-pop__body wx-tb__scroll">
+      <ng-container *ngFor="let c of filtrables; trackBy: porClave">
+        <p class="wx-tb__grupo">{{ c.titulo }}</p>
+        <!-- Casillas, no un select: se filtra por varios valores a la vez. -->
+        <label class="wx-tb__opcion" *ngFor="let o of opciones(c); trackBy: porValor">
+          <input type="checkbox"
+                 [checked]="estado.filtroActivo(c.clave, o.valor)"
+                 (change)="estado.alternarFiltro(c.clave, o.valor)">
+          <span class="wx-tb__txt">{{ o.etiqueta }}</span>
+          <span class="wx-tb__n">{{ o.n }}</span>
+        </label>
+      </ng-container>
+      <p class="wx-tb__vacio" *ngIf="!filtrables.length">Esta tabla no tiene filtros.</p>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------ AGRUPAR POR -->
+  <button type="button" class="wx-tb__btn"
+          [class.wx-tb__btn--activo]="estado.grupo"
+          [attr.popovertarget]="idAgrupar"
+          [style.anchor-name]="anclaAgrupar"
+          aria-haspopup="menu">
+    <i class="ph ph-rows" aria-hidden="true"></i>
+    <span>{{ estado.grupo ? 'Agrupado: ' + estado.etiquetaGrupo : 'Agrupar por' }}</span>
+    <i class="ph ph-caret-down wx-tb__flecha" aria-hidden="true"></i>
+  </button>
+
+  <div [id]="idAgrupar" popover data-anclado class="wx-pop wx-tb__panel"
+       [style.--wx-anchor]="anclaAgrupar" role="menu">
+    <ul class="wx-pop__list">
+      <li>
+        <button type="button" class="wx-opt" role="menuitem" (click)="elegirGrupo(null)">
+          <span class="wx-opt__txt">Sin agrupar</span>
+          <i class="ph-fill ph-check wx-opt__check" *ngIf="!estado.grupo" aria-hidden="true"></i>
+        </button>
+      </li>
+      <li *ngFor="let c of agrupables; trackBy: porClave">
+        <button type="button" class="wx-opt" role="menuitem" (click)="elegirGrupo(c.clave)">
+          <span class="wx-opt__txt">{{ c.titulo }}</span>
+          <i class="ph-fill ph-check wx-opt__check" *ngIf="estado.grupo === c.clave" aria-hidden="true"></i>
+        </button>
+      </li>
+      <li *ngIf="!agrupables.length" class="wx-tb__vacio">Esta tabla no se agrupa.</li>
+    </ul>
+  </div>
+
+  <!-- --------------------------------------------------------- COLUMNAS -->
+  <button type="button" class="wx-tb__btn wx-tb__btn--icono"
+          [class.wx-tb__btn--activo]="estado.columnasOcultas"
+          [attr.popovertarget]="idColumnas"
+          [style.anchor-name]="anclaColumnas"
+          aria-label="Columnas"
+          aria-haspopup="dialog">
+    <i class="ph ph-columns" aria-hidden="true"></i>
+    <span class="wx-tb__conteo" *ngIf="estado.columnasOcultas">{{ estado.columnasOcultas }}</span>
+    <i class="ph ph-dots-three" aria-hidden="true"></i>
+  </button>
+
+  <div [id]="idColumnas" popover data-anclado class="wx-pop wx-tb__panel"
+       [style.--wx-anchor]="anclaColumnas" role="dialog">
+    <div class="wx-pop__head">
+      <span>Columnas</span>
+      <button type="button" class="wx-tb__limpiar" *ngIf="estado.columnasOcultas"
+              (click)="estado.mostrarTodasLasColumnas()">Mostrar todas</button>
+    </div>
+    <div class="wx-pop__body wx-tb__scroll">
+      <label class="wx-tb__opcion" *ngFor="let c of estado.columnas; trackBy: porClave"
+             [class.wx-tb__opcion--fija]="c.obligatoria">
+        <input type="checkbox"
+               [checked]="estado.esVisible(c.clave)"
+               [disabled]="!estado.puedeOcultar(c.clave)"
+               (change)="estado.alternarColumna(c.clave)">
+        <span class="wx-tb__txt">{{ c.titulo }}</span>
+        <!-- Una columna obligatoria no se puede quitar: sin ella la tabla deja
+             de identificar sus propias filas. -->
+        <span class="wx-tb__n" *ngIf="c.obligatoria">fija</span>
+      </label>
+    </div>
+  </div>
+
+</div>

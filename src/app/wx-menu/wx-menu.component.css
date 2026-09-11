@@ -1,0 +1,87 @@
+/* La caja, la sombra, el anclaje, el motion y las opciones vienen de la
+   primitiva `.wx-pop` / `.wx-opt` (src/styles/overlay.css). Aqui solo va lo
+   propio de un menu de acciones. */
+:host {
+  display: inline-flex;
+  position: relative;
+
+  /* Metricas del disparador. Cada pantalla tiene su ritmo de botones -en
+     Inventario miden 38px con radio 9, en Ventas 43 con radio 13-, asi que se
+     exponen como variables en vez de duplicar la regla en cada CSS. */
+  --wx-menu-alto: var(--wx-control-h);
+  --wx-menu-radio: var(--wx-radius-sm);
+}
+
+/* El panel se abre pegado al borde derecho del disparador: estos menus viven
+   en la esquina superior derecha de las pantallas y abrir hacia la izquierda
+   evita salirse por el lado de la ventana. */
+.wx-menu__panel {
+  --wx-pop-area: bottom span-left;
+  --wx-pop-origin: top right;
+  min-width: 190px;
+  padding: 6px;
+}
+
+.wx-menu__txt { margin-left: 6px; }
+
+.wx-menu__vacio {
+  padding: 10px 12px;
+  color: var(--wx-text-dim);
+  font-size: var(--wx-text-sm);
+}
+
+/* --------------------------------------------------------------------------
+   EL DISPARADOR
+   --------------------------------------------------------------------------
+   Estilo propio, no heredado de la pantalla. Angular encapsula por
+   componente: una regla de `inventario.css` no alcanza a un boton pintado
+   dentro de la plantilla de `wx-menu`, y por eso salia con el gris del
+   navegador. Los valores son los MISMOS que ya usaban esas cabeceras; no hay
+   ningun color nuevo.
+   -------------------------------------------------------------------------- */
+.wx-menu__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--wx-menu-alto);
+  padding: 0 13px;
+  border-radius: var(--wx-menu-radio);
+  font-family: var(--wx-font);
+  font-size: var(--wx-text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+
+  /* Por defecto: sobre la cabecera pintada con el acento. Ahi el contraste
+     tiene que venir del blanco, no del propio acento. */
+  background: rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.26);
+  color: #fff;
+}
+.wx-menu__btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.2);
+  border-color: rgb(255 255 255 / 0.4);
+}
+.wx-menu__btn:active:not(:disabled) { transform: scale(0.975); }
+.wx-menu__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Sobre una superficie normal, el contraste viene de los tokens. */
+.wx-menu__btn--neutral {
+  background: var(--wx-surface);
+  border-color: var(--wx-edge);
+  color: var(--wx-text);
+}
+.wx-menu__btn--neutral:hover:not(:disabled) {
+  background: var(--wx-raised);
+  border-color: var(--wx-edge-strong);
+}
+.wx-menu__btn--neutral:focus-visible {
+  outline: none;
+  box-shadow: var(--wx-focus-ring);
+  border-color: var(--wx-user-accent, var(--wx-accent));
+}
+
+.wx-menu__btn:disabled { opacity: 0.45; cursor: not-allowed; }
