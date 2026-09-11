@@ -573,8 +573,9 @@ export class LoyaltyAdmin implements OnInit {
     return s === 'OPEN' ? 'Abierta' : s === 'CLOSED' ? 'Cerrada' : s === 'DRAWN' ? 'Sorteada' : s;
   }
 
+  /** Los estados que escribe SQL: WINNER, ALTERNATE, DELIVERED, FORFEITED. */
   estadoGanador(s: string): string {
-    return s === 'PENDING' ? 'Pendiente' : s === 'DELIVERED' ? 'Entregado'
+    return s === 'WINNER' ? 'Por entregar' : s === 'DELIVERED' ? 'Entregado'
       : s === 'FORFEITED' ? 'No reclamado' : s === 'ALTERNATE' ? 'Suplente' : s;
   }
 

@@ -443,7 +443,16 @@ BEGIN
     END
 
     DECLARE @ahora DATETIME2(0) = SYSUTCDATETIME();
-    DECLARE @dow TINYINT = DATEPART(WEEKDAY, @fecha) - 1;   -- 0 = domingo
+    /* Dia de la semana con LUNES = bit 0, que es como lo pinta la pantalla
+       ("Lun Mar Mie Jue Vie Sab Dom").
+
+       No se usa `DATEPART(WEEKDAY) - 1` por dos razones. La primera es que
+       daria DOMINGO = 0 y una campana de "solo lunes" se entregaria los
+       domingos. La segunda es que DATEPART(WEEKDAY) depende de SET DATEFIRST,
+       que es una opcion de SESION: con varias cajas conectandose con distinta
+       configuracion regional, la misma campana aplicaria en dias distintos
+       segun el equipo que cobrara. Esta formula no depende de nada. */
+    DECLARE @dow TINYINT = (DATEPART(WEEKDAY, @fecha) + @@DATEFIRST - 2) % 7;
     DECLARE @hora TIME(0) = CAST(@fecha AS TIME(0));
 
     /* Las campanas que APLICAN a esta venta. Cada condicion es una columna, y

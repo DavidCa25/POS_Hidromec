@@ -652,13 +652,16 @@
                 <td><code>{{ g.boleto }}</code></td>
                 <td>{{ g.cliente || 'Sin cliente identificado' }}</td>
                 <td><span class="loy-estado" [class.si]="g.status === 'DELIVERED'">{{ estadoGanador(g.status) }}</span></td>
+                <!-- 'WINNER' es el estado que escribe sp_raffle_draw. Gatear
+                     estos botones por 'PENDING' los dejaba invisibles: nunca
+                     se habria podido entregar un premio desde la pantalla. -->
                 <td class="acciones">
                   <button class="btn-outline btn-sm" type="button" (click)="entregar(g)"
-                          *ngIf="g.status === 'PENDING'">
+                          *ngIf="g.status === 'WINNER'">
                     <i class="ph ph-hand-heart"></i> Entregado
                   </button>
                   <button class="btn-ghost btn-sm" type="button" (click)="descartar(g)"
-                          *ngIf="g.status === 'PENDING'">
+                          *ngIf="g.status === 'WINNER'">
                     <i class="ph ph-x"></i> No reclamado
                   </button>
                 </td>

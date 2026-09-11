@@ -32,6 +32,7 @@
     "db:test-alertas": "node scripts/db/pruebas/alertas.mjs",
     "db:test-upgrade": "node scripts/db/pruebas/upgrade.mjs",
     "db:test-cajas": "node scripts/db/pruebas/cajas.mjs",
+    "db:test-fidelizacion": "node scripts/db/pruebas/fidelizacion.mjs",
     "db:test-rol": "node scripts/db/pruebas/rol-aplicacion.mjs",
     "db:test-variante": "node scripts/db/pruebas/receta-por-variante.mjs",
     "db:test-receta-efectiva": "node scripts/db/pruebas/receta-efectiva.mjs",
