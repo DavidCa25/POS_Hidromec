@@ -26,8 +26,10 @@ export class ConfigShell implements OnInit, OnDestroy {
     private statuses: Record<string, Status> = {};
     private sub?: Subscription;
 
-    // Tiles que solo aplican con licencia MULTICAJA.
-    private readonly tilesMulticaja = new Set<string>(['cajas']);
+    // Tiles que solo aplican con licencia MULTICAJA. Con las dos dentro, la
+    // seccion "MultiCaja" se queda vacia y `aplicarPlan` la elimina entera:
+    // una instalacion de una sola caja no ve ni el grupo.
+    private readonly tilesMulticaja = new Set<string>(['cajas', 'red-multicaja']);
 
     constructor(private drawer: ConfigDrawerService, private license: LicenseService) {}
 

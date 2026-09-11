@@ -76,13 +76,30 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', load: devices },
             { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', load: devices },
             { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'monitor', color: 'purple', size: '2x1',
-              load: () => import('../customer-display-panel/customer-display.component').then(m => m.CustomerDisplayPanelComponent) },
+              load: () => import('../customer-display-panel/customer-display.component').then(m => m.CustomerDisplayPanelComponent) }
+        ]
+    },
+    /*
+     * La nube no es un dispositivo.
+     *
+     * Estas tres entradas vivian entre la impresora y la bascula, que es
+     * donde nadie las busca: hablan de la app del dueno, no de algo que se
+     * enchufa a la caja. Se agrupan con el borrado de cuenta, que tambien es
+     * de la cuenta en la nube y estaba en "Personalizacion", al lado del pie
+     * del ticket.
+     */
+    {
+        id: 'nube',
+        title: 'Nube y app del dueño',
+        tiles: [
             { id: 'sync-nube', title: 'Sincronización en la nube', desc: 'Activa el envío de datos a la app del dueño', icon: 'cloud-arrow-up', color: 'blue', size: '2x1',
               load: () => import('../sync-nube-panel/sync-nube.component').then(m => m.SyncNubePanelComponent) },
             { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code', color: 'green', size: '1x1',
               load: () => import('../pairing-qr-panel/pairing-qr.component').then(m => m.PairingQr) },
             { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'device-mobile', color: 'blue', size: '1x1',
-              load: () => import('../descarga-app-panel/descarga-app.component').then(m => m.DescargaAppPanel) }
+              load: () => import('../descarga-app-panel/descarga-app.component').then(m => m.DescargaAppPanel) },
+            { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
+              load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
         ]
     },
     {
@@ -91,9 +108,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         tiles: [
             { id: 'ticket', title: 'Ticket', desc: 'Logo, pie de página y datos fiscales', icon: 'receipt', color: 'purple', size: '1x1', load: ticket },
             { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'storefront', color: 'green', size: '2x1',
-              load: () => import('../negocio-panel/negocio-panel.component').then(m => m.NegocioPanelComponent) },
-            { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
-              load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
+              load: () => import('../negocio-panel/negocio-panel.component').then(m => m.NegocioPanelComponent) }
         ]
     },
     {
@@ -116,12 +131,27 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
               load: () => import('../actualizaciones-panel/actualizaciones.component').then(m => m.ActualizacionesPanelComponent) },
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'pulse', color: 'gray', size: '1x1',
               load: () => import('../diagnostico-panel/diagnostico-panel.component').then(m => m.DiagnosticoPanel) },
+            { id: 'experiencia', title: 'Experiencia de esta caja', desc: 'Retail, Touch o solo administración', icon: 'devices', color: 'purple', size: '1x1',
+              load: () => import('../device-profile-panel/device-profile.component').then(m => m.DeviceProfilePanelComponent) },
+        ]
+    },
+    /*
+     * MultiCaja, en su propio grupo.
+     *
+     * Las dos entradas estaban sueltas en "Sistema", entre la licencia y el
+     * diagnostico. Juntas se explican la una a la otra -una prepara la red, la
+     * otra reparte las cajas- y, sobre todo, con una licencia de una sola caja
+     * desaparece el GRUPO ENTERO en vez de quedar un hueco: `aplicarPlan`
+     * borra las secciones que se quedan sin mosaicos.
+     */
+    {
+        id: 'multicaja',
+        title: 'MultiCaja',
+        tiles: [
             { id: 'cajas', title: 'Cajas', desc: 'Identidad de esta máquina y catálogo de cajas', icon: 'desktop-tower', color: 'blue', size: '2x1',
               load: () => import('../register-panel/register-panel.component').then(m => m.RegistersPanel) },
             { id: 'red-multicaja', title: 'Red MultiCaja', desc: 'Prepara esta máquina para que otras cajas se conecten', icon: 'wifi-high', color: 'blue', size: '2x1',
-              load: () => import('../red-multicaja-panel/red-multicaja.component').then(m => m.RedMulticajaPanel) },
-            { id: 'experiencia', title: 'Experiencia de esta caja', desc: 'Retail, Touch o solo administración', icon: 'devices', color: 'purple', size: '1x1',
-              load: () => import('../device-profile-panel/device-profile.component').then(m => m.DeviceProfilePanelComponent) },
+              load: () => import('../red-multicaja-panel/red-multicaja.component').then(m => m.RedMulticajaPanel) }
         ]
     },
     {
