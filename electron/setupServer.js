@@ -21,6 +21,18 @@ function resolvePaths() {
     setupExe:   path.join(base, 'sqlexpress', 'setup.exe'),
     configFile: path.join(base, 'ConfigurationFile.ini'),
     psScript:   path.join(base, 'setup-sqlserver.ps1'),
+    // Solo la parte de RED, sin instalar nada. `setup-sqlserver.ps1` la hace
+    // tambien, pero unicamente cuando Wybix instala el motor: si SQL ya
+    // respondia, se salta entero y con el se saltan el puerto, el Browser y
+    // el firewall. Este script existe para ese caso.
+    psRed:      path.join(base, 'preparar-red.ps1'),
+    // Definicion canonica del rol con el que opera la aplicacion. Viaja con
+    // el instalador igual que las migraciones: sin ella no se puede dar de
+    // alta una caja secundaria en una base que no lo traiga. En desarrollo
+    // sale del arbol de Git; empaquetada, de resources/permissions/.
+    permisos: isDev
+      ? path.join(__dirname, '..', 'sql', 'permissions', 'ocus_app_full_role.sql')
+      : path.join(base, 'permissions', 'ocus_app_full_role.sql'),
     templateBak: path.join(base, 'template.bak'),
     servicing:  path.join(base, 'sql-servicing.json'),
     sqlUpdates: path.join(base, 'sqlupdates')
@@ -267,10 +279,74 @@ async function restoreTemplate(masterPool, dbName, bakPath) {
   log('Plantilla restaurada.');
 }
 
+const ROL_APP = 'ocus_app_full_role';
+
+/**
+ * El rol con el que opera la aplicacion, garantizado.
+ *
+ * POR QUE HACE FALTA GARANTIZARLO
+ * -------------------------------
+ * `ocus_app_full_role` vivia UNICAMENTE dentro del template.bak heredado.
+ * `sql/permissions/ocus_app_full_role.sql` es su definicion canonica, pero
+ * nadie lo ejecutaba: ni el baseline, ni el setup, ni una migracion. Mientras
+ * el template fue el artefacto hecho a mano nadie lo noto; en cuanto se
+ * reconstruyo desde Git, el rol dejo de existir.
+ *
+ * Y `ensureLogin` lo daba por hecho:
+ *
+ *     IF EXISTS (... 'ocus_app_full_role') ALTER ROLE ... ADD MEMBER
+ *
+ * Sin rol, esa linea no hace NADA y no dice nada. El login se creaba, el
+ * usuario se creaba, y la caja secundaria conectaba con una cuenta que solo
+ * podia hacer CONNECT: cada pantalla fallaba por su cuenta con un error de
+ * permisos que no menciona la causa.
+ *
+ * LA DEFINICION NO SE DUPLICA
+ * ---------------------------
+ * Se ejecuta el ARCHIVO canonico, no una copia de los GRANT en JavaScript.
+ * Dos listas de permisos en dos lenguajes divergen; la unica pregunta seria
+ * cual de las dos manda.
+ *
+ * Idempotente: el archivo comprueba la existencia del rol y los GRANT
+ * repetidos no fallan ni duplican nada.
+ */
+async function ensureRole(server, dbName) {
+  const paths = resolvePaths();
+  if (!fs.existsSync(paths.permisos)) {
+    throw new Error(
+      `No se encontro la definicion del rol de la aplicacion en: ${paths.permisos}. ` +
+      'Sin ella no se puede dar de alta una caja secundaria.');
+  }
+
+  const dbPool = await connectDb(server, dbName);
+  try {
+    const lotes = fs.readFileSync(paths.permisos, 'utf8')
+      .replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n?/gi).map(s => s.trim()).filter(Boolean);
+    for (const lote of lotes) await dbPool.request().batch(lote);
+
+    // Se comprueba el resultado en vez de darlo por hecho: es justo lo que
+    // fallaba en silencio.
+    const r = await dbPool.request().query(`
+      SELECT COUNT(*) AS n FROM sys.database_principals
+       WHERE name = '${ROL_APP}' AND type = 'R';`);
+    if (!Number(r.recordset?.[0]?.n)) {
+      throw new Error(`No se pudo crear el rol ${ROL_APP} en ${dbName}.`);
+    }
+    log(`Rol ${ROL_APP} listo, con sus permisos.`);
+    return { ok: true };
+  } finally {
+    await dbPool.close();
+  }
+}
+
 // Crea el login ocus_app y lo remapea al usuario huerfano de la plantilla
 async function ensureLogin(server, dbName, user, password) {
   log(`Configurando login ${user}...`);
   const p = password.replace(/'/g, "''");
+
+  // El rol PRIMERO: sin el, el ALTER ROLE de mas abajo no haria nada y la
+  // caja secundaria conectaria sin poder hacer nada.
+  await ensureRole(server, dbName);
 
   const master = await connectMaster(server);
   try {
@@ -292,13 +368,28 @@ async function ensureLogin(server, dbName, user, password) {
       ELSE
         ALTER USER [${user}] WITH LOGIN = [${user}];
 
-      IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'ocus_app_full_role')
-        ALTER ROLE [ocus_app_full_role] ADD MEMBER [${user}];`);
+      ALTER ROLE [${ROL_APP}] ADD MEMBER [${user}];`);
+
+    /* Antes esto era `IF EXISTS (rol) ALTER ROLE ...`: sin rol no pasaba nada
+       y nadie se enteraba. Ahora el rol esta garantizado arriba, asi que el
+       ALTER ROLE va a secas -si fallara, se veria- y ademas se comprueba la
+       membresia, que es lo unico que de verdad decide si la caja secundaria
+       podra operar. */
+    const m = await dbPool.request().query(`
+      SELECT COUNT(*) AS n
+        FROM sys.database_role_members rm
+        JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id
+        JOIN sys.database_principals u ON u.principal_id = rm.member_principal_id
+       WHERE r.name = '${ROL_APP}' AND u.name = '${user}';`);
+    if (!Number(m.recordset?.[0]?.n)) {
+      throw new Error(
+        `${user} se creo pero no quedo dentro de ${ROL_APP}: conectaria sin permisos para operar.`);
+    }
   } finally {
     await dbPool.close();
   }
 
-  log('Login listo.');
+  log(`Login listo: ${user} es miembro de ${ROL_APP}.`);
 }
 
 /**
@@ -481,14 +572,30 @@ async function ensureServerReady(options = {}) {
     await master.close();
   }
 
-  // 3) Login para las cajas secundarias
+  // 3) El rol de la aplicacion, SIEMPRE.
+  //
+  // Va antes que el login y fuera del `if (ocusPassword)` a proposito. Una
+  // base puede no traerlo -las creadas desde un baseline reconstruido antes
+  // de que el rol formara parte de el- y entonces `ALTER ROLE ADD MEMBER` no
+  // hacia nada, en silencio. Repararlo aqui significa que la instalacion se
+  // arregla sola al arrancar, sin esperar a que alguien compre MultiCaja.
+  //
+  // Un fallo aqui no impide vender: la principal entra por autenticacion de
+  // Windows y no necesita el rol. Se dice y se sigue.
+  try {
+    await ensureRole(server, dbName);
+  } catch (e) {
+    log(`No se pudo garantizar el rol de la aplicacion: ${e.message}`);
+  }
+
+  // 4) Login para las cajas secundarias
   if (ocusPassword) {
     await ensureLogin(server, dbName, 'ocus_app', ocusPassword);
   } else {
     log('Sin ocusPassword: se omite la configuracion del login (solo caja unica).');
   }
 
-  // 4) Permisos que la aplicacion necesita para migrarse a si misma.
+  // 5) Permisos que la aplicacion necesita para migrarse a si misma.
   //    Va SIEMPRE, no solo cuando hay ocusPassword: el login puede existir de
   //    una instalacion anterior y aun asi faltarle permisos (es el caso que
   //    rompio la actualizacion a Hospitality). Un fallo aqui no impide
@@ -622,6 +729,11 @@ async function comprobarMotor(server, paths, { altaDeHost = false, loInstaloWybi
 
 module.exports = {
   ensureServerReady, ensureSchemaPermissions,
+  // Reutilizados por electron/lib/red-principal.js para el paso
+  // prueba/MonoCaja -> MultiCaja, que hace lo mismo que el asistente sin
+  // reinstalar nada. Duplicar `ensureLogin` habria sido duplicar la regla de
+  // que cuenta usan las cajas secundarias.
+  resolvePaths, runElevated, ensureRole, ensureLogin, connectMaster, connectDb, sqlServerReachable,
   comprobarMotor, decidirSobreMotor, compararBuild, majorDe, ramaDe,
   leerServicing, buildDelMotor,
 };

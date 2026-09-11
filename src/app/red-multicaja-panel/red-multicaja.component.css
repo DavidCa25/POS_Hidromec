@@ -1,0 +1,142 @@
+/* ===== Preparar la red para MultiCaja ===== */
+
+.rd { color: var(--wx-text); }
+
+.rd-intro { font-size: 13px; color: var(--wx-text-muted); line-height: 1.5; margin: 0 0 16px; }
+
+/* ------------------------------------------------------------- titular ---
+   Un solo mensaje grande. Quien abre esta pantalla quiere saber una cosa:
+   si ya puede conectar la otra caja. */
+.rd-estado {
+  display: flex; gap: 12px; align-items: center;
+  border: 1px solid var(--wx-edge); border-radius: 14px;
+  padding: 14px; margin-bottom: 18px;
+  background: var(--wx-raised);
+}
+.rd-estado-ic {
+  width: 44px; height: 44px; border-radius: 12px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center; font-size: 21px;
+  background: var(--wx-sunken); color: var(--wx-text-dim);
+}
+.rd-estado b { display: block; font-size: 15px; font-weight: 600; }
+.rd-estado small { display: block; font-size: 12px; color: var(--wx-text-muted); margin-top: 2px; line-height: 1.45; }
+
+.rd-estado.ok { background: color-mix(in srgb, var(--wx-success) 7%, var(--wx-surface)); border-color: color-mix(in srgb, var(--wx-success) 25%, transparent); }
+.rd-estado.ok .rd-estado-ic { background: color-mix(in srgb, var(--wx-success) 14%, transparent); color: var(--wx-success); }
+
+.rd-estado.aviso { background: color-mix(in srgb, var(--wx-warning) 8%, var(--wx-surface)); border-color: color-mix(in srgb, var(--wx-warning) 28%, transparent); }
+.rd-estado.aviso .rd-estado-ic { background: color-mix(in srgb, var(--wx-warning) 16%, transparent); color: var(--wx-warning); }
+
+.rd-estado.no { background: color-mix(in srgb, var(--wx-danger) 7%, var(--wx-surface)); border-color: color-mix(in srgb, var(--wx-danger) 22%, transparent); }
+.rd-estado.no .rd-estado-ic { background: color-mix(in srgb, var(--wx-danger) 14%, transparent); color: var(--wx-danger); }
+
+/* -------------------------------------------------------------- puntos --- */
+.rd-h {
+  font-size: 11.5px; font-weight: 600; color: var(--wx-text-muted);
+  text-transform: uppercase; letter-spacing: .06em; margin: 0 0 10px;
+}
+
+.rd-punto {
+  display: flex; gap: 10px; align-items: flex-start;
+  border: 1px solid var(--wx-edge); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 7px; background: var(--wx-surface);
+}
+.rd-punto i { font-size: 17px; margin-top: 1px; flex: 0 0 auto; }
+.rd-punto b { display: block; font-size: 13px; font-weight: 600; }
+.rd-punto span { display: block; font-size: 12px; color: var(--wx-text-muted); line-height: 1.45; margin-top: 1px; }
+
+.rd-punto.falta { border-color: color-mix(in srgb, var(--wx-danger) 30%, transparent); }
+.rd-punto.falta i { color: var(--wx-danger); }
+.rd-punto.dudoso i { color: var(--wx-warning); }
+/* Lo que ya está bien se ve, pero no compite por la atención con lo que falta. */
+.rd-punto.ok { opacity: .72; }
+.rd-punto.ok i { color: var(--wx-success); }
+
+/* ------------------------------------------------------------- acciones --- */
+.rd-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+
+.rd-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--wx-edge-strong); border-radius: 11px;
+  padding: 10px 15px; font-weight: 600; font-size: 13px; cursor: pointer;
+  background: var(--wx-surface); color: var(--wx-text);
+  transition: background var(--wx-dur-micro) ease,
+              border-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.rd-btn:hover:not(:disabled) { background: var(--wx-raised); }
+.rd-btn:active:not(:disabled) { transform: scale(0.975); }
+.rd-btn.primary { background: var(--wx-accent); border-color: var(--wx-accent); color: #fff; }
+.rd-btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--wx-accent) 88%, #000); }
+.rd-btn.peligro { color: var(--wx-danger); border-color: color-mix(in srgb, var(--wx-danger) 35%, transparent); }
+.rd-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.rd-hint { display: block; font-size: 11.5px; color: var(--wx-text-muted); margin-top: 9px; line-height: 1.45; }
+
+/* Girar sin `transition: all` y sin keyframes por componente. */
+.rd-gira { animation: rd-giro 900ms linear infinite; }
+@keyframes rd-giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rd-gira { animation: none; } }
+
+/* ------------------------------------------- datos para la otra caja --- */
+.rd-receta {
+  margin-top: 18px; padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--wx-accent) 25%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--wx-accent) 5%, var(--wx-surface));
+}
+.rd-receta-h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
+.rd-receta-h > span { flex: 1; }
+.rd-receta-p { font-size: 12.5px; color: var(--wx-text-muted); line-height: 1.5; margin: 8px 0 12px; }
+
+.rd-dato { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.rd-dato-k { font-size: 11.5px; color: var(--wx-text-muted); width: 82px; flex: 0 0 auto; }
+.rd-dato code {
+  flex: 1; font-family: var(--wx-font-mono, ui-monospace, monospace);
+  font-size: 13px; padding: 8px 10px; border-radius: 9px;
+  background: var(--wx-sunken); color: var(--wx-text);
+  overflow-x: auto; white-space: nowrap;
+}
+/* La contraseña se lee de la pantalla y se teclea en otra máquina: aquí el
+   tamaño no es decoración, es la diferencia entre acertarla y no. */
+.rd-secreto { font-size: 15px; letter-spacing: .04em; font-weight: 600; }
+
+.rd-mini {
+  border: 1px solid var(--wx-edge-strong); border-radius: 9px;
+  background: var(--wx-surface); color: var(--wx-text);
+  font-size: 11.5px; font-weight: 600; padding: 6px 10px; cursor: pointer;
+  transition: background var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.rd-mini:hover { background: var(--wx-raised); }
+.rd-mini:active { transform: scale(0.96); }
+
+.rd-aviso {
+  display: flex; gap: 9px; align-items: flex-start; margin-top: 12px;
+  border-radius: 11px; padding: 10px 12px; font-size: 12px; line-height: 1.45;
+  background: color-mix(in srgb, var(--wx-warning) 10%, transparent);
+  color: var(--wx-warning);
+}
+.rd-aviso.ok { background: color-mix(in srgb, var(--wx-success) 10%, transparent); color: var(--wx-success); }
+.rd-aviso i { margin-top: 1px; font-size: 15px; flex: 0 0 auto; }
+
+.rd-ips { margin-top: 10px; }
+.rd-ips small { font-size: 11.5px; color: var(--wx-text-muted); line-height: 1.5; }
+.rd-ips b { font-family: var(--wx-font-mono, ui-monospace, monospace); margin-right: 6px; }
+
+.rd-note {
+  display: flex; gap: 9px; align-items: flex-start; margin-top: 16px;
+  background: color-mix(in srgb, var(--wx-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wx-accent) 16%, transparent);
+  border-radius: 12px; padding: 11px 13px;
+  font-size: 12.2px; color: var(--wx-accent-text); line-height: 1.45;
+}
+.rd-note i { margin-top: 1px; }
+
+.rd-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 30px 20px; text-align: center; color: var(--wx-text-muted);
+}
+.rd-empty i { font-size: 28px; }
+.rd-empty p { margin: 0; font-size: 13px; }
+.rd-error { color: var(--wx-danger); }
+.rd-error small { display: block; margin: 4px 0 10px; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
