@@ -412,6 +412,14 @@ export class Corte {
     try {
       const resp = await (window as any).electronAPI.closeShift({
         closure_id: closureId,
+        // La caja que se está cerrando, la misma que usan `getOpenShift` y el
+        // resumen de esta pantalla. Faltaba: sin ella el proceso principal
+        // mandaba `register_id` nulo y el procedimiento caía a "la primera
+        // caja de la tabla", o sea la Caja 1. La laptop, cerrando su Caja 2,
+        // recibía "esta caja la está usando DESKTOP-LNQIU8G": cierto de la
+        // Caja 1, que no era la suya. Abrir, vender y cerrar tienen que
+        // hablar todos de la MISMA caja.
+        register_id: this.selectedRegisterId,
         user_id: userId, // Auditoría: quién cerró el turno
         cash_delivered: Number(this.cashDelivered),
         note: (this.closeNotes || '').trim() || null
