@@ -34,9 +34,20 @@ export class RegisterService {
     return this._id != null;
   }
 
-  /** Fijar la caja de esta máquina (desde el panel de configuración). */
+  /**
+   * Fijar la caja de esta máquina (desde el panel de configuración).
+   *
+   * El proceso principal RECLAMA la caja en SQL antes de guardarla: si la
+   * tiene otro equipo, aquí no cambia nada y se lanza el motivo, con el
+   * nombre de esa máquina. Antes este método ignoraba la respuesta y guardaba
+   * siempre, así que la pantalla podía decir "esta máquina es la Caja 2"
+   * mientras cada venta se rechazaba por lo contrario.
+   */
   async setCurrent(id: number, name?: string): Promise<void> {
-    await this.api?.registerSetCurrent?.({ id, name });
+    const rs = await this.api?.registerSetCurrent?.({ id, name });
+    if (rs && rs.success === false) {
+      throw new Error(rs.error || 'No se pudo asignar la caja.');
+    }
     this._id = id;
     this._name = name ?? null;
   }

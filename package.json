@@ -22,19 +22,34 @@
     "db:baseline": "node scripts/db/construir-baseline.mjs",
     "db:test-install": "node scripts/db/probar-instalacion.mjs",
     "db:apply": "node scripts/db/aplicar-migraciones.mjs",
-    "db:test-hospitality": "node scripts/db/probar-migracion.mjs --conservar && node scripts/db/pruebas/dominio-hospitality.mjs && node scripts/db/pruebas/venta-hospitality.mjs && node scripts/db/pruebas/concurrencia.mjs",
+    "db:test-hospitality": "node scripts/db/probar-migracion.mjs --conservar && node scripts/db/pruebas/dominio-hospitality.mjs && node scripts/db/pruebas/venta-hospitality.mjs && node scripts/db/pruebas/concurrencia.mjs && node scripts/db/pruebas/receta-efectiva.mjs && node scripts/db/pruebas/receta-por-variante.mjs",
     "db:test-setup": "node scripts/db/pruebas/setup-inicial.mjs",
     "db:test-latte": "node scripts/db/pruebas/latte.mjs",
     "db:test-baja": "node scripts/db/pruebas/baja-producto.mjs",
     "db:test-turno": "node scripts/db/pruebas/turno.mjs",
+    "db:test-compras": "node scripts/db/pruebas/compras.mjs",
+    "db:test-bebidas": "node scripts/db/pruebas/bebidas.mjs",
+    "db:test-alertas": "node scripts/db/pruebas/alertas.mjs",
     "db:test-upgrade": "node scripts/db/pruebas/upgrade.mjs",
+    "db:test-cajas": "node scripts/db/pruebas/cajas.mjs",
+    "db:test-rol": "node scripts/db/pruebas/rol-aplicacion.mjs",
+    "db:test-variante": "node scripts/db/pruebas/receta-por-variante.mjs",
+    "db:test-receta-efectiva": "node scripts/db/pruebas/receta-efectiva.mjs",
     "db:diagnose": "electron scripts/db/diagnosticar-migracion.js",
     "db:test-backup": "node scripts/db/probar-respaldo.mjs",
     "db:check-template": "node scripts/db/verificar-template.mjs",
     "db:prepare-release": "npm run db:baseline && npm run db:check-template -- --a-fondo && npm run db:test-install",
     "test:capas": "node scripts/pruebas/capas.mjs",
     "test:ipc": "node scripts/pruebas/auditar-ipc.mjs",
-    "test:trial": "node scripts/pruebas/licencia-prueba.mjs"
+    "test:trial": "node scripts/pruebas/licencia-prueba.mjs",
+    "test:ticket": "node scripts/pruebas/ticket.mjs",
+    "test:licencia": "node scripts/pruebas/licencia-huella.mjs && node scripts/pruebas/licencia-almacen.mjs",
+    "test:red": "node scripts/pruebas/red-principal.mjs",
+    "test:servidor": "node scripts/pruebas/servidor-sql.mjs",
+    "test:pool": "node scripts/pruebas/pool-ciclo-vida.mjs",
+    "test:arranque": "node scripts/pruebas/arranque-secundaria.mjs",
+    "test:opciones": "node scripts/pruebas/opciones-linea.mjs",
+    "test:multicaja": "node scripts/pruebas/servidor-sql.mjs && node scripts/pruebas/pool-ciclo-vida.mjs && node scripts/pruebas/arranque-secundaria.mjs && node scripts/pruebas/red-principal.mjs && node scripts/db/pruebas/cajas.mjs && node scripts/db/pruebas/rol-aplicacion.mjs"
   },
   "prettier": {
     "overrides": [
@@ -83,6 +98,10 @@
         "to": "setup-sqlserver.ps1"
       },
       {
+        "from": "installer/preparar-red.ps1",
+        "to": "preparar-red.ps1"
+      },
+      {
         "from": "installer/template.bak",
         "to": "template.bak"
       },
@@ -107,6 +126,13 @@
       {
         "from": "electron/migrations",
         "to": "migrations",
+        "filter": [
+          "**/*.sql"
+        ]
+      },
+      {
+        "from": "sql/permissions",
+        "to": "permissions",
         "filter": [
           "**/*.sql"
         ]

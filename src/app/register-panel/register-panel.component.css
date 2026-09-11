@@ -87,3 +87,29 @@
 }
 .rg-empty i { font-size: 28px; color: #cbd5e1; }
 .rg-empty p { margin: 0; font-size: 13px; }
+/* No es lo mismo "no hay cajas" que "no pude preguntar". */
+.rg-error { color: var(--wx-danger-ink, var(--wx-danger)); }
+.rg-error small {
+  display: block;
+  margin: 4px 0 10px;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs);
+}
+
+/* Quien tiene la caja, cuando no es esta maquina.
+   Rojo y no naranja a proposito: "Inactiva" es un estado del catalogo y es
+   reversible con un clic; "la tiene otro equipo" es un impedimento real para
+   lo que la persona intentaba hacer. Dos avisos del mismo color se leen como
+   el mismo aviso. */
+.rg-badge.otro {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: color-mix(in srgb, var(--wx-danger) 12%, transparent);
+  color: var(--wx-danger);
+}
+.rg-badge.otro i { font-size: 12px; }
+
+.rg-item.busy { opacity: .7; pointer-events: none; }
+.rg-pick:disabled { cursor: progress; }
+
+.rg-free { color: var(--wx-danger); }
+.rg-free:hover { background: color-mix(in srgb, var(--wx-danger) 10%, var(--wx-surface)); }

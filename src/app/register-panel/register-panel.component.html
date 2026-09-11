@@ -1,7 +1,8 @@
 <div class="rg">
 
   <p class="rg-intro">
-    Elige qué caja es esta máquina. Cada caja lleva su propio turno, sus ventas y su corte.
+    Elige qué caja es esta máquina. Cada caja lleva su propio turno, sus ventas y su corte,
+    y solo puede estar en un equipo a la vez.
   </p>
 
   <!-- Caja actual de esta máquina -->
@@ -17,22 +18,50 @@
   <!-- Lista de cajas -->
   <div class="rg-list-h">Cajas disponibles</div>
 
-  <div class="rg-empty" *ngIf="!loading && !registers.length">
+  <!-- No pudo leerse: es distinto de que no haya cajas, y se dice. -->
+  <div class="rg-empty rg-error" *ngIf="!loading && errorCarga">
+    <i class="ph ph-warning-circle"></i>
+    <p>No se pudo leer el catálogo de cajas.</p>
+    <small>{{ errorCarga }}</small>
+    <button type="button" class="rg-btn" (click)="cargar()">Reintentar</button>
+  </div>
+
+  <div class="rg-empty" *ngIf="!loading && !errorCarga && !registers.length">
     <i class="ph ph-tray"></i>
     <p>No hay cajas. Crea la primera abajo.</p>
   </div>
 
   <div class="rg-item" *ngFor="let r of registers"
-       [class.sel]="esActual(r)" [class.off]="!r.is_active">
-    <button type="button" class="rg-pick" (click)="elegirCaja(r)">
+       [class.sel]="esActual(r)" [class.off]="!r.is_active" [class.busy]="busyId === r.id">
+    <button type="button" class="rg-pick" (click)="elegirCaja(r)" [disabled]="busyId === r.id">
       <span class="rg-radio">
-        <i class="ph" [class.ph-fill ph-check-circle]="esActual(r)" [class.ph-circle]="!esActual(r)"></i>
+        <!-- Una clase por enlace. `[class.a b]` no es una sintaxis valida: el
+             analizador corta en el espacio y en tiempo de ejecucion intenta
+             setAttribute('[class.ph-fill'), que el DOM rechaza. La excepcion
+             aborta el renderizado de la FILA, asi que la lista salia vacia
+             aunque el componente tuviera los datos. -->
+        <i class="ph"
+           [class.ph-fill]="esActual(r)"
+           [class.ph-check-circle]="esActual(r)"
+           [class.ph-circle]="!esActual(r)"></i>
       </span>
       <span class="rg-info">
         <span class="rg-name">{{ r.name }} <span class="rg-code">{{ r.code }}</span></span>
         <span class="rg-badge" *ngIf="!r.is_active">Inactiva</span>
         <span class="rg-badge me" *ngIf="esActual(r)">Esta máquina</span>
+        <!-- Quién la tiene, no solo que está ocupada: sin el nombre, quien
+             mira la pantalla no sabe a qué equipo tiene que ir. -->
+        <span class="rg-badge otro" *ngIf="ocupadaPorOtro(r)">
+          <i class="ph ph-lock-simple"></i> {{ quienLaTiene(r) }}
+        </span>
       </span>
+    </button>
+
+    <!-- La escotilla. Solo aparece si de verdad la tiene otro equipo. -->
+    <button type="button" class="rg-toggle rg-free" *ngIf="ocupadaPorOtro(r)"
+            (click)="liberar(r)" [disabled]="busyId === r.id"
+            title="Liberar esta caja">
+      <i class="ph ph-lock-key-open"></i>
     </button>
 
     <button type="button" class="rg-toggle" (click)="toggleActiva(r)"
@@ -57,7 +86,11 @@
 
   <div class="rg-note" *ngIf="license.permiteMulticaja">
     <i class="ph ph-info"></i>
-    <span>Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es la suya.</span>
+    <span>
+      Las cajas se crean una sola vez, normalmente desde la máquina principal. Cada máquina elige cuál es
+      la suya y la mantiene mientras está encendida. Si un equipo se apaga, su caja queda libre sola en
+      unos minutos.
+    </span>
   </div>
 
   <!-- Sin multicaja: durante la prueba todavia no hay plan que nombrar. -->

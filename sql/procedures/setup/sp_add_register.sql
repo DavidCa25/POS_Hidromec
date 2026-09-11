@@ -43,6 +43,15 @@ BEGIN
 
         DECLARE @new_id INT = SCOPE_IDENTITY();
 
+        /* La caja nace con su fila de asignacion, LIBRE. Que la fila exista
+           siempre es lo que permite que reclamarla sea un UPDATE sobre la
+           clave primaria -una sola sentencia, un solo candado- en vez de un
+           INSERT condicional con su carrera. Nace en la misma transaccion
+           que la caja: no hay ventana en la que exista una sin la otra. */
+        INSERT INTO dbo.register_assignments
+            (register_id, machine_id, machine_name, claimed_at, heartbeat_at, lease_until, released_at, released_by)
+        VALUES (@new_id, N'', NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), N'INICIAL');
+
         COMMIT TRAN;
 
         SELECT id, code, name, is_active, created_at

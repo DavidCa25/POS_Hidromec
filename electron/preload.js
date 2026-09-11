@@ -161,6 +161,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     securityRisk: (r) => ipcRenderer.invoke('security:risk', r),
 
     exportDatabase: () => ipcRenderer.invoke('export-database'),
+    // Guarda bytes generados en el renderer (PDF, Excel) como archivo real.
+    guardarArchivo: (payload) => ipcRenderer.invoke('files:save-bytes', payload),
     importDatabase: () => ipcRenderer.invoke('import-database'),
 
     // Proveedores por producto
@@ -222,6 +224,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerGetCurrent: () => ipcRenderer.invoke('register-get-current'),
     registerSetCurrent: (payload) => ipcRenderer.invoke('register-set-current', payload),
 
+    // Arriendo de caja: una caja, un equipo.
+    registersAssignments: (onlyActive) => ipcRenderer.invoke('registers-assignments', onlyActive),
+    registerLeaseStatus: () => ipcRenderer.invoke('register-lease-status'),
+    registerRelease: () => ipcRenderer.invoke('register-release'),
+    registerReleaseAdmin: (payload) => ipcRenderer.invoke('register-release-admin', payload),
+
+    // Preparar esta mÃ¡quina como servidor de las demÃ¡s cajas
+    networkDiagnose: (plan) => ipcRenderer.invoke('network:diagnose', plan),
+    networkPrepare: (payload) => ipcRenderer.invoke('network:prepare', payload),
+    networkRevealPassword: () => ipcRenderer.invoke('network:reveal-password'),
+
     cloudGetConfig: () => ipcRenderer.invoke('cloud-get-config'),
     cloudSetConfig: (partial) => ipcRenderer.invoke('cloud-set-config', partial),
     cloudPushNow: () => ipcRenderer.invoke('cloud-push-now'),
@@ -274,6 +287,10 @@ contextBridge.exposeInMainWorld('wybix', {
         menu: () => ipcRenderer.invoke('catalog:menu'),
         uoms: () => ipcRenderer.invoke('catalog:uoms'),
         ingredients: (p) => ipcRenderer.invoke('catalog:ingredients', p),
+        // Cuantas unidades se pueden preparar CON las opciones elegidas. Es
+        // UX, no autorizacion: la venta vuelve a validar dentro de su
+        // transaccion, con los productos bloqueados.
+        disponibilidad: (p) => ipcRenderer.invoke('hospitality:availability', p),
     },
     recipes: {
         get: (p) => ipcRenderer.invoke('recipes:get', p),
