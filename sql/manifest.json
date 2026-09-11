@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-04T05:12:50.147Z",
+  "generado": "2026-09-11T15:53:47.643Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -40,7 +40,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "6e564e53341c34de"
+      "checksum": "b62c29c1238188c1"
     },
     {
       "nombre": "sp_add_supplier",
@@ -97,13 +97,22 @@
       "checksum": "d90b02d808345959"
     },
     {
+      "nombre": "sp_check_availability",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_check_availability.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ae92f89a36a84bfd"
+    },
+    {
       "nombre": "sp_close_shift",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/cash/sp_close_shift.sql",
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "4a254c44ba9f9a83"
+      "checksum": "ec72c3d01f71fbf3"
     },
     {
       "nombre": "sp_cloud_daily_summary",
@@ -184,7 +193,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2017da6e6a98effa"
+      "checksum": "1fc6469fc1337ef5"
     },
     {
       "nombre": "sp_delete_modifier_group",
@@ -202,7 +211,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "47934ca3784b1ec9"
+      "checksum": "6dc12a214a726a3e"
     },
     {
       "nombre": "sp_delete_product_presentation",
@@ -238,7 +247,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "266c3069d8308673"
+      "checksum": "6c4e714f637bd7ad"
     },
     {
       "nombre": "sp_get_actual_folio",
@@ -445,7 +454,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "5024cda2ab9fcce0"
+      "checksum": "46bedb01793043ff"
     },
     {
       "nombre": "sp_get_modifier_groups",
@@ -493,6 +502,15 @@
       "checksum": "24f4de8508cfbafa"
     },
     {
+      "nombre": "sp_get_product_dependencies",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_get_product_dependencies.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7b1ca91239dc0c1a"
+    },
+    {
       "nombre": "sp_get_product_presentations",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/hospitality/sp_get_product_presentations.sql",
@@ -523,7 +541,7 @@
       "nombre": "sp_get_profit_overview",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/reports/sp_get_profit_overview.sql",
-      "origen": "Hidromec_DataBase",
+      "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
       "checksum": "4d613d7d54f2ddc7"
@@ -535,7 +553,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "52ab485cb4a9453f"
+      "checksum": "ab81dbd639ff6972"
     },
     {
       "nombre": "sp_get_recipe",
@@ -545,6 +563,15 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "f3a25cb839be37af"
+    },
+    {
+      "nombre": "sp_get_register_assignments",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/setup/sp_get_register_assignments.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "599198505b1be5f6"
     },
     {
       "nombre": "sp_get_registers",
@@ -571,7 +598,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "ad9776fdf3e2b4b4"
+      "checksum": "287fba6c62ca8d97"
     },
     {
       "nombre": "sp_get_sales_filtered",
@@ -616,7 +643,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "dc78881f82f285a5"
+      "checksum": "62a0076144b179ac"
     },
     {
       "nombre": "sp_get_top_selling_product",
@@ -724,7 +751,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "25b8e07b21308f3f"
+      "checksum": "25dc390ad42e17fc"
     },
     {
       "nombre": "sp_reactivate_product",
@@ -763,6 +790,15 @@
       "checksum": "4a0b80341ace3e52"
     },
     {
+      "nombre": "sp_register_claim",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/setup/sp_register_claim.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "c27cfb1f87eea6da"
+    },
+    {
       "nombre": "sp_register_customer_payment",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/customers/sp_register_customer_payment.sql",
@@ -772,13 +808,31 @@
       "checksum": "972b059e91866918"
     },
     {
+      "nombre": "sp_register_lease_touch",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/setup/sp_register_lease_touch.sql",
+      "origen": "Wybix_Production",
+      "critico": true,
+      "clasificacion": "current",
+      "checksum": "3313a6eabebff8b7"
+    },
+    {
       "nombre": "sp_register_purchase",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/purchases/sp_register_purchase.sql",
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "66b0f3e6177ebcd9"
+      "checksum": "7c58021636f7100f"
+    },
+    {
+      "nombre": "sp_register_release",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/setup/sp_register_release.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "da1e529e006ac151"
     },
     {
       "nombre": "sp_register_sale",
@@ -787,7 +841,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "27bde94466122bc1"
+      "checksum": "209196daf2e3322e"
     },
     {
       "nombre": "sp_register_supplier_payment",
@@ -796,7 +850,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "580d380457c86864"
+      "checksum": "bf69de9f8a07e09a"
     },
     {
       "nombre": "sp_remove_product_supplier",
@@ -814,7 +868,16 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "68db1256134e1bac"
+      "checksum": "aea0f1da69275f1b"
+    },
+    {
+      "nombre": "sp_resolver_receta_efectiva",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_resolver_receta_efectiva.sql",
+      "origen": "Wybix_Production",
+      "critico": true,
+      "clasificacion": "current",
+      "checksum": "916cb454d984472c"
     },
     {
       "nombre": "sp_sales_by_payment",
@@ -931,7 +994,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "26f4885a06760589"
+      "checksum": "601520a0b0b491ce"
     },
     {
       "nombre": "sp_setup_status",
@@ -1191,20 +1254,20 @@
     }
   ],
   "esquema": {
-    "generado": "2026-09-04T05:12:58.384Z",
+    "generado": "2026-09-11T15:53:55.939Z",
     "base": "Wybix_Production",
     "excluidas": [
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 39,
-      "columnas": 364,
-      "pk": 39,
+      "tablas": 40,
+      "columnas": 378,
+      "pk": 40,
       "unicas": 4,
-      "foraneas": 40,
+      "foraneas": 41,
       "chequeos": 13,
-      "predeterminados": 97,
-      "indices": 33
+      "predeterminados": 100,
+      "indices": 35
     },
     "objetos": [
       {
@@ -1572,6 +1635,20 @@
         "checksum": "563c187ce820d974"
       },
       {
+        "nombre": "register_assignments",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/register_assignments.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_register_assignments",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "781abcfd5a4d2ec0"
+      },
+      {
         "nombre": "registers",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/registers.sql",
@@ -1590,28 +1667,28 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/sale_detail.sql",
         "origen": "Wybix_Production",
-        "columnas": 10,
+        "columnas": 12,
         "pk": "PK__sale_det__3213E83FBDF6DC13",
         "unicas": 0,
         "foraneas": 2,
         "chequeos": 0,
         "predeterminados": 0,
-        "indices": 0,
-        "checksum": "a5f9ecd06c63adba"
+        "indices": 1,
+        "checksum": "e6f933b2cb039faa"
       },
       {
         "nombre": "sale_detail_modifiers",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/sale_detail_modifiers.sql",
         "origen": "Wybix_Production",
-        "columnas": 8,
+        "columnas": 12,
         "pk": "PK_sale_detail_modifiers",
         "unicas": 0,
         "foraneas": 2,
         "chequeos": 0,
         "predeterminados": 2,
         "indices": 1,
-        "checksum": "22669bb5f130e16f"
+        "checksum": "94833bfb6474aa0b"
       },
       {
         "nombre": "sale_refund_detail",

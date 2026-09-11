@@ -25,6 +25,12 @@ export const CRITICOS = [
   'sp_get_actual_folio',
   // Multicaja: `sp_register_sale` resuelve el register contra esta tabla.
   'sp_get_registers',
+  // Sin el arriendo, `sp_register_sale` y `sp_open_shift` no compilan: lo
+  // invocan para comprobar que esta caja es de este equipo.
+  'sp_register_lease_touch',
+  // Sin el, ninguna venta con receta puede resolverse: `sp_register_sale`
+  // lo invoca para construir los requerimientos de CADA venta.
+  'sp_resolver_receta_efectiva',
 ];
 
 /** Tipos de tabla que reciben los procedures transaccionales. */
@@ -76,6 +82,11 @@ asignar('inventory', [
   'sp_get_active_products', 'sp_get_product_by_id', 'sp_add_brand', 'sp_add_categories',
   'sp_get_brands', 'sp_get_categories', 'sp_dead_products', 'sp_reorder_suggestions',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
+  // Quien bloquea la baja de un producto (recetas vivas, modificadores
+  // activos). Devuelve los nombres como DATOS y no dentro del mensaje de
+  // error, porque el controlador degrada el texto de los errores a un byte
+  // por caracter y los acentos se pierden.
+  'sp_get_product_dependencies',
 ]);
 
 asignar('cash', [
@@ -121,6 +132,10 @@ asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit']);
 asignar('setup', [
   'sp_setup_inicial', 'sp_setup_status', 'sp_add_register', 'sp_set_register_active',
   'sp_get_registers', 'sp_get_business_config', 'sp_update_business_config',
+  // Arriendo de caja (una caja, un equipo). Viven aqui, junto al resto del
+  // catalogo de cajas, y no en un dominio propio: son la misma familia.
+  'sp_register_lease_touch', 'sp_register_claim', 'sp_register_release',
+  'sp_get_register_assignments',
 ]);
 
 asignar('whatsapp', [
@@ -137,6 +152,10 @@ asignar('hospitality', [
   'sp_get_product_presentations', 'sp_save_product_presentation', 'sp_delete_product_presentation',
   'sp_set_product_image', 'sp_get_product_thumbs',
   'sp_get_menu_catalog',
+  // El motor de receta efectiva y la disponibilidad consciente de la
+  // seleccion. `sp_resolver_receta_efectiva` es CRITICO: sin el,
+  // `sp_register_sale` no puede resolver ninguna receta.
+  'sp_resolver_receta_efectiva', 'sp_check_availability',
 ]);
 
 asignar('_cuarentena', ['sp_mig_test']);

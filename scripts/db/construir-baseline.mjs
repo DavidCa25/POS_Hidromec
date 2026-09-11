@@ -11,6 +11,7 @@
  *     sql/procedures/             procedures desplegables (current + incierto)
  *     sql/baseline/v1/00_*.sql    schema_migrations + database_metadata
  *     sql/baseline/v1/01_seed.sql seed estructural
+ *     sql/permissions/            el rol con el que opera la aplicacion
  *
  * y solo si todo verifica, saca un `.bak`.
  *
@@ -51,6 +52,9 @@ const mal = (t) => { console.log(`   FALLA  ${t}`); fallos++; };
 const bien = (t) => console.log(`   ok     ${t}`);
 const paso = (t) => console.log(`\n-- ${t}`);
 const corto = (e) => String(e).split('\n')[0].replace(/^Excepci.n al llamar a "\w+" con los argumentos "\d+": /, '').slice(0, 120);
+
+/** Rutas siempre con `/`: el manifiesto las guarda asi y Windows usa `\`. */
+const barras = (p) => String(p).split('\\').join('/');
 
 const manifiesto = JSON.parse(readFileSync('sql/manifest.json', 'utf8'));
 const procesos = manifiesto.objetos.filter(o => o.tipo === 'SQL_STORED_PROCEDURE');
@@ -101,6 +105,58 @@ try {
   if (errT) mal(`${errT} tipos fallaron`); else bien(`${tiposArch.length} tipos creados`);
 
   paso('4. Procedures desplegables desde sql/procedures/');
+
+  /* ------------------------------------------------------------------------
+     EL ARBOL Y EL MANIFIESTO TIENEN QUE DECIR LO MISMO.
+
+     Este paso dice "desde sql/procedures/", pero la lista real sale del
+     MANIFIESTO. Mientras los dos coincidan da igual; cuando no coinciden, el
+     baseline deja fuera el procedure en silencio y ademas marca su migracion
+     como aplicada (paso 7). Una instalacion nueva se queda entonces sin el
+     objeto y sin forma de repararlo: la migracion que lo crearia ya figura
+     puesta.
+
+     No es hipotetico. Paso dos veces seguidas:
+
+       sp_get_product_dependencies   lo llama `sp-delete-product`
+       sp_register_lease_touch       lo llaman `sp_register_sale` y
+                                     `sp_open_shift` en CADA venta y turno
+
+     Los dos tenian su archivo canonico y su migracion, y los dos faltaban en
+     el `.bak`. El segundo solo salto porque es critico; el primero llevaba una
+     ronda entera sin que nadie lo notara.
+
+     La causa de fondo es que el manifiesto se genera desde una base de
+     referencia (`db:extract`), asi que un objeto nuevo no entra en el hasta
+     que esa base recibe la migracion. Eso es correcto y no se cambia: lo que
+     no puede ser es que la diferencia salga barata. Aqui se detiene la
+     construccion y se dice exactamente que ejecutar.
+     ------------------------------------------------------------------------ */
+  const enManifiesto = new Set(procesos.map(o => barras(o.archivo)));
+  const enDisco = [];
+  (function recorrer(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const ruta = join(dir, e.name);
+      // `_cuarentena` guarda a proposito lo que el baseline no despliega.
+      if (e.isDirectory()) { if (e.name !== '_cuarentena') recorrer(ruta); }
+      else if (e.name.toLowerCase().endsWith('.sql')) enDisco.push(barras(ruta));
+    }
+  })(join('sql', 'procedures'));
+
+  const huerfanos = enDisco.filter(f => !enManifiesto.has(f));
+  if (huerfanos.length) {
+    mal(`${huerfanos.length} procedure(s) del arbol canonico NO estan en sql/manifest.json:`);
+    for (const f of huerfanos) console.log(`          ${f}`);
+    console.log('          El baseline los dejaria fuera del .bak EN SILENCIO, y el paso 7');
+    console.log('          marcaria su migracion como aplicada: una instalacion nueva se');
+    console.log('          quedaria sin el objeto y sin forma de repararlo.');
+    console.log('          Regenera el manifiesto por su proceso normal:');
+    console.log('            node scripts/db/aplicar-migraciones.mjs --base Wybix_Production --si');
+    console.log('            npm run db:extract && npm run db:extract-schema');
+  } else {
+    bien(`los ${enDisco.length} procedures del arbol estan declarados en el manifiesto`);
+  }
+
   const clases = repartirPorClase(procesos);
   console.log(lineasDeClase(clases));
   const desplegables = clases.desplegables;
@@ -165,7 +221,39 @@ try {
   //
   // Las migraciones siguen en Git y se aplican igual sobre instalaciones
   // anteriores: esto solo declara lo que el template ya trae puesto.
-  paso('7. Migraciones que este baseline ya incluye');
+  /* ------------------------------------------------------------------------
+     EL ROL CON EL QUE OPERA LA APLICACION.
+
+     `ocus_app_full_role` vivia UNICAMENTE dentro del template.bak hecho a
+     mano. `sql/permissions/ocus_app_full_role.sql` se escribio como su
+     definicion canonica -"si manana hay que reconstruir la base desde Git,
+     los permisos vienen con ella"- pero NADIE lo ejecutaba: ni el baseline,
+     ni el setup, ni una migracion.
+
+     Mientras el template fue el artefacto heredado no se noto. En cuanto se
+     reconstruyo desde Git, el rol desaparecio: una instalacion limpia nacia
+     sin rol y sin permisos. La principal seguia funcionando -entra por
+     autenticacion de Windows- pero `ensureLogin` creaba `ocus_app` y luego
+     `IF EXISTS (rol) ALTER ROLE ADD MEMBER` no hacia nada, asi que la caja
+     secundaria conectaba con una cuenta que solo podia hacer CONNECT. El
+     sintoma habria sido "la secundaria no ve nada", en el cliente.
+
+     El USUARIO no se siembra aqui a proposito: lo crea `ensureLogin` cuando
+     hay una contrasena de red, que es el unico momento en que hace falta. Un
+     usuario huerfano en el template obligaria ademas a remapear su SID, y
+     `ALTER USER ... WITH LOGIN` no admite usuarios creados sin login.
+     ------------------------------------------------------------------------ */
+  paso('7. Rol de la aplicacion (sql/permissions/)');
+  const ARCHIVO_ROL = join('sql', 'permissions', 'ocus_app_full_role.sql');
+  if (!existsSync(ARCHIVO_ROL)) {
+    mal(`no se encontro ${barras(ARCHIVO_ROL)}: el baseline nacería sin rol de aplicacion`);
+  } else {
+    const rRol = aplicarArchivo(ARCHIVO_ROL);
+    if (rRol.ok) bien('ocus_app_full_role.sql');
+    else mal(`ocus_app_full_role.sql: ${rRol.error}`);
+  }
+
+  paso('8. Migraciones que este baseline ya incluye');
   const migraciones = readdirSync(DIR_MIGRACIONES).filter(f => f.endsWith('.sql')).sort();
   if (!migraciones.length) {
     bien('no hay migraciones que registrar');
@@ -179,7 +267,7 @@ try {
     else mal(`no se pudieron registrar las migraciones: ${corto(r[0].error)}`);
   }
 
-  paso('8. Verificacion');
+  paso('9. Verificacion');
   const esqBase = new Map(leerEsquema(TMP).map(t => [t.nombre, t]));
   let tOk = 0;
   const tDif = [];
@@ -213,6 +301,31 @@ try {
   if (noDeben.length) mal(`objetos no desplegables presentes en la base: ${noDeben.join(', ')}`);
   else bien('ningun objeto futuro ni legacy se colo en el baseline');
 
+  /* El rol tiene que estar Y tener sus permisos. Existir vacio seria peor que
+     no existir: `ensureLogin` metería a `ocus_app` dentro y la caja secundaria
+     conectaria creyendo que puede operar. */
+  const ROL = 'ocus_app_full_role';
+  const hayRol = consultar(TMP, `
+    SELECT name FROM sys.database_principals WHERE name = '${ROL}' AND type = 'R';`).length > 0;
+  if (!hayRol) {
+    mal(`el rol ${ROL} no existe: una instalacion limpia nacería sin permisos de aplicacion`);
+  } else {
+    const ESPERADOS = [
+      'SELECT@SCHEMA', 'INSERT@SCHEMA', 'UPDATE@SCHEMA', 'DELETE@SCHEMA',
+      'EXECUTE@SCHEMA', 'ALTER@SCHEMA', 'REFERENCES@SCHEMA',
+      'CREATE TABLE@DATABASE', 'CREATE VIEW@DATABASE', 'CREATE PROCEDURE@DATABASE',
+      'CREATE FUNCTION@DATABASE', 'CREATE TYPE@DATABASE',
+    ];
+    const tiene = new Set(consultar(TMP, `
+      SELECT p.permission_name + '@' + p.class_desc AS permiso
+        FROM sys.database_permissions p
+        JOIN sys.database_principals g ON g.principal_id = p.grantee_principal_id
+       WHERE g.name = '${ROL}' AND p.state_desc = 'GRANT';`).map(r => r.permiso));
+    const faltan = ESPERADOS.filter(p => !tiene.has(p));
+    if (faltan.length) mal(`a ${ROL} le faltan permisos: ${faltan.join(', ')}`);
+    else bien(`${ROL} existe con sus ${ESPERADOS.length} permisos`);
+  }
+
   const criticos = manifiesto.objetos.filter(o => o.critico).map(o => o.nombre);
   const tipos = consultar(TMP, `SELECT name FROM sys.table_types WHERE schema_id = SCHEMA_ID('dbo');`);
   const ausentes = criticos.filter(n => !mods.has(n) && !tipos.some(t => t.name === n));
@@ -228,13 +341,16 @@ try {
   // Lo unico que puede traer filas es el seed estructural: cosas sin las que
   // el producto no arranca, nunca datos de un negocio.
   //   registers          la caja 1, que sp_register_sale necesita resolver
+  //   register_assignments  su arriendo, LIBRE. El invariante del arriendo es
+  //                      que toda caja tiene su fila; sin ella, la unica caja
+  //                      de una instalacion nueva seria la unica sin arriendo.
   //   WA_Configuracion   la fila unica de configuracion de WhatsApp
   //   database_metadata  version del baseline
   //   uoms               catalogo de unidades (pieza, gramo, litro, metro...).
   //                      Es estructura: sin el no se puede escribir una receta.
   //   schema_migrations  las migraciones que este baseline ya trae aplicadas
   const SEMBRADAS = {
-    registers: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    registers: 1, register_assignments: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
     schema_migrations: migraciones.length,
   };
   for (const f of conFilas) console.log(`          ${String(f.filas).padStart(3)}  ${f.tabla}`);
@@ -253,7 +369,7 @@ try {
   if (bv[0] && bv[0].valor === String(VERSION)) bien(`database_metadata.baseline_version = ${VERSION}`);
   else mal(`baseline_version = ${bv[0] ? bv[0].valor : '(ausente)'}`);
 
-  paso('9. Respaldo');
+  paso('10. Respaldo');
   if (fallos) {
     console.log('   omitido: la verificacion no paso, no se genera .bak');
   } else {

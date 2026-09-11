@@ -16,6 +16,30 @@ IF NOT EXISTS (SELECT 1 FROM dbo.registers WHERE code = 'C1')
     INSERT INTO dbo.registers (code, name, is_active) VALUES ('C1', 'Caja 1', 1);
 GO
 
+/* Y su fila de arriendo, LIBRE.
+ *
+ * El invariante del arriendo de caja es que TODA caja tiene su fila en
+ * `register_assignments`: es lo que permite que reclamarla sea un UPDATE sobre
+ * la clave primaria -una sola sentencia, un solo candado- en vez de un INSERT
+ * condicional con su carrera. `sp_add_register` la crea en la misma
+ * transaccion que la caja, y la migracion 0014 la sembro para las que ya
+ * existian.
+ *
+ * Falta el tercer camino, y es justo el de una instalacion nueva: aqui la
+ * Caja 1 nace del seed, no de `sp_add_register`, y 0014 ya viaja marcada como
+ * aplicada en el template, asi que no vuelve a ejecutarse. Sin esta linea, el
+ * unico register de una instalacion recien entregada seria el unico sin fila.
+ *
+ * `machine_id` vacio no coincide con ninguna maquina real y `released_at`
+ * puesto la deja disponible: la primera caja que la reclame se la lleva. */
+IF NOT EXISTS (SELECT 1 FROM dbo.register_assignments a
+               JOIN dbo.registers r ON r.id = a.register_id WHERE r.code = 'C1')
+    INSERT INTO dbo.register_assignments
+        (register_id, machine_id, machine_name, claimed_at, heartbeat_at, lease_until, released_at, released_by)
+    SELECT r.id, N'', NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), N'INICIAL'
+    FROM dbo.registers r WHERE r.code = 'C1';
+GO
+
 /* Singleton de configuracion de WhatsApp. `sp_WA_UpdateConfiguracion` hace
  * UPDATE sin upsert: si la fila no existe, el modulo queda inerte sin avisar.
  * Se siembra desactivada (Activo = 0), que es como viaja hoy en template.bak. */
