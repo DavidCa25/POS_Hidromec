@@ -1,0 +1,179 @@
+<div class="rd">
+
+  <p class="rd-intro">
+    Para que otra computadora funcione como caja, esta máquina tiene que dejarla entrar por la red local.
+    Wybix lo configura solo: no hace falta instalar nada más, ni abrir puertos a mano.
+  </p>
+
+  <div class="rd-empty" *ngIf="cargando && !diag">
+    <i class="ph ph-circle-notch rd-gira"></i>
+    <p>Revisando esta máquina…</p>
+  </div>
+
+  <div class="rd-empty rd-error" *ngIf="error && !diag">
+    <i class="ph ph-warning-circle"></i>
+    <p>No se pudo revisar la red.</p>
+    <small>{{ error }}</small>
+    <button type="button" class="rd-btn" (click)="revisar()">Reintentar</button>
+  </div>
+
+  <ng-container *ngIf="diag">
+
+    <!-- ===================================================== RESUMEN ===== -->
+    <!-- Un solo titular. Quien abre esto quiere saber una cosa: ¿puedo
+         conectar la otra caja o no? -->
+    <div class="rd-estado"
+         [class.ok]="diag.accion === 'listo'"
+         [class.aviso]="diag.accion === 'preparar' || diag.accion === 'falta-contrasena'"
+         [class.no]="diag.accion === 'no-es-servidor' || diag.accion === 'necesita-multicaja'">
+      <span class="rd-estado-ic">
+        <i class="ph"
+           [class.ph-check-circle]="diag.accion === 'listo'"
+           [class.ph-wrench]="diag.accion === 'preparar' || diag.accion === 'falta-contrasena'"
+           [class.ph-prohibit]="diag.accion === 'no-es-servidor' || diag.accion === 'necesita-multicaja'"></i>
+      </span>
+      <div>
+        <b *ngIf="diag.accion === 'listo'">Esta máquina ya sirve a otras cajas</b>
+        <b *ngIf="diag.accion === 'preparar'">Falta preparar esta máquina</b>
+        <b *ngIf="diag.accion === 'falta-contrasena'">Falta la contraseña de conexión</b>
+        <b *ngIf="diag.accion === 'no-es-servidor'">La base de datos está en otro equipo</b>
+        <b *ngIf="diag.accion === 'necesita-multicaja'">Tu plan opera una sola caja</b>
+
+        <small *ngIf="diag.accion === 'listo'">
+          {{ diag.equipo }} · {{ servidorParaSecundaria }}
+        </small>
+        <small *ngIf="diag.accion === 'preparar'">
+          Hay {{ puntosFalta.length }} cosa(s) por configurar. Wybix las hace por ti.
+        </small>
+        <small *ngIf="diag.accion === 'falta-contrasena'">
+          El servidor está bien, pero no hay ninguna contraseña que darle a la otra caja.
+        </small>
+        <small *ngIf="diag.accion === 'no-es-servidor'">
+          Esta caja se conecta a {{ diag.servidor }}. Prepara la red en esa máquina, no en esta.
+        </small>
+        <small *ngIf="diag.accion === 'necesita-multicaja'">
+          Para varias cajas en red necesitas una licencia MultiCaja.
+        </small>
+      </div>
+    </div>
+
+    <!-- ================================================ LISTA DE PUNTOS === -->
+    <ng-container *ngIf="diag.esServidor">
+      <div class="rd-h">Estado de esta máquina</div>
+
+      <div class="rd-punto" *ngFor="let p of puntosFalta" [class.falta]="true">
+        <i class="ph" [ngClass]="iconoDe(p)"></i>
+        <div><b>{{ p.titulo }}</b><span>{{ p.detalle }}</span></div>
+      </div>
+
+      <!-- "No se pudo comprobar" NO es "está bien". Mezclarlos sería el peor
+           mensaje posible: decirle a alguien que su firewall está correcto
+           cuando en realidad no se pudo mirar. -->
+      <div class="rd-punto dudoso" *ngFor="let p of puntosDudosos">
+        <i class="ph" [ngClass]="iconoDe(p)"></i>
+        <div><b>{{ p.titulo }}</b><span>{{ p.detalle }}</span></div>
+      </div>
+
+      <div class="rd-punto ok" *ngFor="let p of puntosOk">
+        <i class="ph" [ngClass]="iconoDe(p)"></i>
+        <div><b>{{ p.titulo }}</b><span>{{ p.detalle }}</span></div>
+      </div>
+
+      <!-- ===================================================== ACCIONES === -->
+      <div class="rd-acciones">
+        <button type="button" class="rd-btn primary" (click)="preparar()"
+                [disabled]="trabajando || !license.permiteMulticaja">
+          <i class="ph" [class.ph-shield-check]="!trabajando" [class.ph-circle-notch]="trabajando"
+             [class.rd-gira]="trabajando"></i>
+          {{ trabajando ? 'Configurando…'
+                        : (diag.listo ? 'Volver a revisar y reparar' : 'Preparar esta máquina') }}
+        </button>
+
+        <button type="button" class="rd-btn" (click)="verContrasena()"
+                *ngIf="!contrasena && !diag.faltaContrasena" [disabled]="trabajando">
+          <i class="ph ph-eye"></i> Ver contraseña
+        </button>
+
+        <button type="button" class="rd-btn peligro" (click)="rotar()"
+                *ngIf="!diag.faltaContrasena" [disabled]="trabajando || !license.permiteMulticaja">
+          <i class="ph ph-arrows-clockwise"></i> Cambiar contraseña
+        </button>
+
+        <button type="button" class="rd-btn" (click)="revisar()" [disabled]="trabajando || cargando">
+          <i class="ph ph-arrow-clockwise"></i> Revisar
+        </button>
+      </div>
+
+      <small class="rd-hint" *ngIf="diag.requiereElevacion">
+        Windows pedirá permiso de administrador: hay que tocar el firewall y la configuración del
+        servicio de SQL Server.
+      </small>
+
+      <!-- ============================== DATOS PARA LA CAJA SECUNDARIA ===== -->
+      <div class="rd-receta" *ngIf="contrasena">
+        <div class="rd-receta-h">
+          <i class="ph ph-key"></i>
+          <span>Datos para la caja secundaria</span>
+          <button type="button" class="rd-mini" (click)="ocultarContrasena()">Ocultar</button>
+        </div>
+
+        <p class="rd-receta-p">
+          En la otra computadora, instala Wybix y elige <b>“Caja secundaria”</b>. Cuando te pida los
+          datos del servidor, escribe esto:
+        </p>
+
+        <div class="rd-dato">
+          <span class="rd-dato-k">Servidor</span>
+          <code>{{ servidorParaSecundaria }}</code>
+          <button type="button" class="rd-mini" (click)="copiar(servidorParaSecundaria)">Copiar</button>
+        </div>
+        <div class="rd-dato">
+          <span class="rd-dato-k">Usuario</span>
+          <code>{{ diag.usuario }}</code>
+        </div>
+        <div class="rd-dato">
+          <span class="rd-dato-k">Contraseña</span>
+          <code class="rd-secreto">{{ contrasena }}</code>
+          <button type="button" class="rd-mini" (click)="copiar(contrasena)">
+            {{ copiado ? '¡Copiada!' : 'Copiar' }}
+          </button>
+        </div>
+
+        <!-- Si el sistema no ofrece cifrado real, la contraseña NO se guardó.
+             Decirlo aquí, mientras está en pantalla, es la única oportunidad
+             de que alguien la apunte. -->
+        <div class="rd-aviso" *ngIf="!contrasenaGuardada">
+          <i class="ph ph-warning"></i>
+          <span>
+            Este equipo no puede guardar la contraseña de forma segura, así que <b>no se guardó</b>.
+            Apúntala ahora: si la pierdes, tendrás que generar una nueva y volver a configurar las
+            cajas secundarias.
+          </span>
+        </div>
+
+        <div class="rd-aviso ok" *ngIf="contrasenaGuardada">
+          <i class="ph ph-lock-key"></i>
+          <span>
+            Guardada y cifrada en este equipo. Puedes volver a verla desde aquí cuando agregues otra caja.
+          </span>
+        </div>
+
+        <div class="rd-ips" *ngIf="(diag.ips?.length || 0) > 1">
+          <small>
+            Esta máquina tiene varias direcciones de red. Si la de arriba no funciona, prueba con:
+            <b *ngFor="let d of diag.ips">{{ d.ip }} </b>
+          </small>
+        </div>
+      </div>
+
+      <div class="rd-note" *ngIf="!license.permiteMulticaja">
+        <i class="ph ph-info"></i>
+        <span>
+          Con tu plan actual solo puede operar una caja. Cuando actives <b>MultiCaja</b>, vuelve aquí y
+          Wybix preparará esta máquina para las demás.
+        </span>
+      </div>
+    </ng-container>
+
+  </ng-container>
+</div>
