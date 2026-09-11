@@ -9,6 +9,11 @@ GO
 -- Author:		<David Casillas>
 -- Create date: <07-12-2025>
 -- Description:	<Registrar pago a proveedores>
+-- Update:      Solo el EFECTIVO mueve el cajon. Antes, pagar por
+--              transferencia o con cheque tambien restaba de la caja: el
+--              arqueo salia corto por dinero que nunca estuvo ahi. Y el
+--              movimiento nacia sin closure_id ni register_id, asi que en
+--              multicaja podia acabar en el corte de otra.
 -- =============================================
 CREATE OR ALTER PROCEDURE dbo.sp_register_supplier_payment
   @user_id        INT,
@@ -16,14 +21,35 @@ CREATE OR ALTER PROCEDURE dbo.sp_register_supplier_payment
   @purchase_id    INT = NULL,
   @amount         DECIMAL(10,2),
   @payment_method NVARCHAR(50),
-  @note           NVARCHAR(255) = NULL
+  @note           NVARCHAR(255) = NULL,
+  @register_id    INT = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
   SET XACT_ABORT ON;
 
   DECLARE @currentBalance DECIMAL(10,2);
-  DECLARE @payment_id INT, @cash_id INT;
+  DECLARE @payment_id INT, @cash_id INT = NULL;
+  DECLARE @metodo NVARCHAR(50) = UPPER(LTRIM(RTRIM(ISNULL(@payment_method, 'EFECTIVO'))));
+  DECLARE @closure_id INT = NULL;
+
+  IF @register_id IS NULL
+      SELECT TOP 1 @register_id = id FROM dbo.registers ORDER BY id;
+
+  IF @metodo = 'EFECTIVO'
+  BEGIN
+    SELECT TOP (1) @closure_id = id
+    FROM dbo.cash_closures
+    WHERE register_id = @register_id
+      AND closed_at IS NULL
+    ORDER BY opened_at DESC, id DESC;
+
+    IF @closure_id IS NULL
+    BEGIN
+      RAISERROR('Para pagar en efectivo hace falta un turno abierto en esta caja.',16,1);
+      RETURN;
+    END
+  END
 
   BEGIN TRY
     BEGIN TRAN;
@@ -55,34 +81,41 @@ BEGIN
       supplier_id, purchase_id, amount, payment_method, user_id, note
     )
     VALUES(
-      @supplier_id, @purchase_id, @amount, @payment_method, @user_id, @note
+      @supplier_id, @purchase_id, @amount, @metodo, @user_id, @note
     );
 
     SET @payment_id = SCOPE_IDENTITY();
 
-    -- 2) Movimiento de CAJA (salida)
-    INSERT INTO cash_movements(
-      datee, userId, typee, reference_id, reference, amount, note
-    )
-    VALUES(
-      GETDATE(),
-      @user_id,
-      'SUPPLIER_PAYMENT',
-      @payment_id,
-      CONCAT('Pago prov. ', @supplier_id,
-             CASE WHEN @purchase_id IS NOT NULL
-                  THEN CONCAT(' compra ', @purchase_id)
-                  ELSE ''
-             END),
-      -@amount,
-      @note
-    );
+    -- 2) Movimiento de CAJA (salida). SOLO en efectivo: un cheque o una
+    --    transferencia salen del banco, no del cajon.
+    IF @metodo = 'EFECTIVO'
+    BEGIN
+      INSERT INTO cash_movements(
+        datee, userId, typee, reference_id, reference, amount, note,
+        closure_id, register_id
+      )
+      VALUES(
+        GETDATE(),
+        @user_id,
+        'SUPPLIER_PAYMENT',
+        @payment_id,
+        CONCAT('Pago prov. ', @supplier_id,
+               CASE WHEN @purchase_id IS NOT NULL
+                    THEN CONCAT(' compra ', @purchase_id)
+                    ELSE ''
+               END),
+        -@amount,
+        @note,
+        @closure_id,
+        @register_id
+      );
 
-    SET @cash_id = SCOPE_IDENTITY();
+      SET @cash_id = SCOPE_IDENTITY();
 
-    UPDATE supplier_payments
-      SET cash_movement_id = @cash_id
-    WHERE id = @payment_id;
+      UPDATE supplier_payments
+        SET cash_movement_id = @cash_id
+      WHERE id = @payment_id;
+    END
 
     -- 3) Actualizar saldo de la compra (si aplica)
     IF @purchase_id IS NOT NULL

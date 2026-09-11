@@ -44,6 +44,8 @@
             <wx-select class="wx-sel-compacto" [ngModel]="pageSize" (ngModelChange)="setPageSize($event)" [opciones]="opcionesPagina"></wx-select>
           </div>
 
+          <wx-tabla-barra [estado]="tabla" [filas]="comprasFiltradas"></wx-tabla-barra>
+
           <a (click)="agregarCompra()" class="castrol-btn-add">
             <i class="ph ph-plus-circle"></i> Agregar Compra
           </a>
@@ -58,17 +60,36 @@
         <thead>
           <tr>
             <th style="width:46px;"></th>
-            <th>ID</th>
-            <th>Proveedor</th>
-            <th>Fecha</th>
-            <th>Total</th>
-            <th style="width:160px;">Acciones</th>
+            <th *ngIf="tabla.esVisible('id')">ID</th>
+            <th *ngIf="tabla.esVisible('proveedor')">Proveedor</th>
+            <th *ngIf="tabla.esVisible('fecha')">Fecha</th>
+            <th *ngIf="tabla.esVisible('mes')">Mes</th>
+            <th *ngIf="tabla.esVisible('total')">Total</th>
+            <th *ngIf="tabla.esVisible('pago')" style="width:130px;">Pago</th>
+            <th *ngIf="tabla.esVisible('usuario')">Usuario</th>
+            <th *ngIf="tabla.esVisible('acciones')" style="width:160px;">Acciones</th>
           </tr>
         </thead>
 
         <tbody>
           <!-- OJO: aquí usamos pagedCompras, NO comprasFiltradas -->
-          <ng-container *ngFor="let c of pagedCompras; trackBy: trackByCompraId">
+          <ng-container *ngFor="let it of pagedCompras">
+
+            <!-- Cabecera de grupo, plegable. Va dentro de la misma lista
+                 paginada, asi que agrupar no descoloca la paginacion. -->
+            <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+              <td [attr.colspan]="tabla.visibles.length + 1">
+                <button type="button" class="wx-grupo"
+                        [attr.aria-expanded]="it.abierto"
+                        (click)="tabla.alternarGrupo(it.clave)">
+                  <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                  <span>{{ it.etiqueta }}</span>
+                  <span class="wx-grupo__n">{{ it.total }}</span>
+                </button>
+              </td>
+            </tr>
+
+            <ng-container *ngIf="it.tipo === 'fila' && it.fila as c">
             <tr class="parent-row">
               <td class="caret-cell">
                 <button type="button"
@@ -80,12 +101,22 @@
                 </button>
               </td>
 
-              <td class="mono id-cell" (click)="toggle(c.id)">{{ c.id }}</td>
-              <td class="nowrap">{{ c.supplierLabel }}</td>
-              <td>{{ c.date | date:'dd/MM/yyyy' }}</td>
-              <td class="fw-semibold">{{ c.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+              <td *ngIf="tabla.esVisible('id')" class="mono id-cell" (click)="toggle(c.id)">{{ c.id }}</td>
+              <td *ngIf="tabla.esVisible('proveedor')" class="nowrap">{{ c.supplierLabel }}</td>
+              <td *ngIf="tabla.esVisible('fecha')">{{ c.date | date:'dd/MM/yyyy' }}</td>
+              <td *ngIf="tabla.esVisible('mes')" class="nowrap">{{ c.date | date:'MMMM y' }}</td>
+              <td *ngIf="tabla.esVisible('total')" class="fw-semibold">{{ c.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
 
-              <td class="acciones-cell">
+              <td *ngIf="tabla.esVisible('pago')">
+                <span [class]="clasePago(c)">{{ etiquetaPago(c) }}</span>
+                <div class="small text-muted mt-1" *ngIf="c.balance > 0">
+                  Saldo {{ c.balance | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </div>
+              </td>
+
+              <td *ngIf="tabla.esVisible('usuario')" class="nowrap">{{ c.user_name }}</td>
+
+              <td *ngIf="tabla.esVisible('acciones')" class="acciones-cell">
                 <div class="action-group">
                   <button class="action-btn btn-edit" data-tooltip="Editar" (click)="editar(c)">
                     <i class="ph ph-pencil-simple" aria-hidden="true"></i>
@@ -100,7 +131,7 @@
 
             <tr class="detail-row" *ngIf="isOpen(c.id)">
               <td></td>
-              <td colspan="5">
+              <td [attr.colspan]="tabla.visibles.length">
                 <div class="detail-wrap">
                   <div class="detail-anim">
                     <div class="detail-header">
@@ -119,7 +150,6 @@
                             <tr>
                               <th style="width:56px;">#</th>
                               <th>Producto</th>
-                              <th>Proveedor</th>
                               <th>Cantidad</th>
                               <th>Precio</th>
                               <th>Importe</th>
@@ -129,14 +159,17 @@
                             <tr *ngFor="let d of c.details; let j = index">
                               <td>{{ j + 1 }}</td>
                               <td class="nowrap">{{ d.product_name }}</td>
-                              <td class="nowrap">{{ d.supplier_name }}</td>
-                              <td>{{ d.quantity }}</td>
+                              <td>
+                                {{ d.quantity }}
+                                <!-- En que se compro y cuanto entro al inventario. -->
+                                <div class="small text-muted" *ngIf="d.conversion">{{ d.conversion }}</div>
+                              </td>
                               <td>{{ d.unit_price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
                               <td class="fw-semibold">{{ d.line_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
                             </tr>
 
                             <tr *ngIf="c.details.length === 0">
-                              <td colspan="6" class="empty">Sin partidas.</td>
+                              <td colspan="5" class="empty">Sin partidas.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -147,10 +180,11 @@
                 </div>
               </td>
             </tr>
+            </ng-container>
           </ng-container>
 
           <tr *ngIf="!loading && totalItems === 0">
-            <td colspan="6" class="empty">No hay compras registradas.</td>
+            <td [attr.colspan]="tabla.visibles.length + 1" class="empty">No hay compras registradas.</td>
           </tr>
         </tbody>
       </table>

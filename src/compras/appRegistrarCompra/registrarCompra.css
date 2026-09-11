@@ -119,3 +119,44 @@ h2 {
 :host-context(html.dark) .compact-table thead.table-light th { background: var(--wx-raised) !important; color: var(--wx-text-muted) !important; }
 :host-context(html.dark) .modal-productos .modal-content { background: var(--wx-surface) !important; }
 :host-context(html.dark) .modal-productos .buscador { background: var(--wx-sunken) !important; color: var(--wx-text) !important; }
+
+/* =========================================================
+   CIERRE DE LA COMPRA - forma de pago + totales
+   Faltaba lo mas basico: cuanto se esta comprando. El total aparecia
+   despues, en la tabla de compras, cuando ya no se podia corregir.
+   Los tokens de superficie y borde ya cambian con el tema: no hace
+   falta repetir el bloque en oscuro.
+   ========================================================= */
+.compra-cierre {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border: 1px solid var(--wx-edge);
+  border-radius: 14px;
+  background: var(--wx-sunken);
+}
+
+.compra-pago { flex: 1 1 280px; max-width: 380px; }
+
+.compra-totales { flex: 0 1 320px; min-width: 260px; }
+
+.compra-total-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 6px 0;
+  color: var(--wx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.compra-total-fila--fuerte {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--wx-edge-strong);
+  color: var(--wx-text);
+  font-size: var(--wx-text-md);
+  font-weight: 700;
+}

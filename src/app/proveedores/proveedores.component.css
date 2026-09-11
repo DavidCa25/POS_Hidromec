@@ -224,3 +224,8 @@
 
 .resumen-grid.two { grid-template-columns: repeat(2,1fr); }
 @media (max-width: 640px){ .resumen-grid.two { grid-template-columns: 1fr; } }
+
+/* Deuda pendiente: el numero que hay que mirar primero. */
+.saldo-deuda { color: var(--wx-danger-ink, var(--wx-danger)); font-weight: 700; }
+.kpi-card.deuda .kpi-value { color: var(--wx-danger-ink, var(--wx-danger)); }
+.kpi-nota { margin-top: 2px; color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
