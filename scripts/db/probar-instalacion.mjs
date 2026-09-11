@@ -82,7 +82,52 @@ try {
   if (faltan.length) mal(`la aplicacion se detendria: faltan ${faltan.join(', ')}`);
   else if (lista.length) bien(`los ${lista.length} objetos criticos responden (${modulos.length} modulos + ${tiposCriticos.length} tipos): el arranque pasaria`);
 
-  paso('4. Conjunto desplegable');
+  /* ------------------------------------------------------------------------
+     EL ROL CON EL QUE OPERA UNA CAJA SECUNDARIA.
+
+     Una instalacion limpia tiene que traerlo. Este paso existe porque cuando
+     no lo traia NADA fallaba de forma visible: la principal entra por
+     autenticacion de Windows y opera igual, y `ensureLogin` creaba el login y
+     el usuario sin protestar -su `ALTER ROLE ADD MEMBER` iba dentro de un
+     `IF EXISTS (rol)` que simplemente no hacia nada-. El problema aparecia
+     mucho despues, en casa del cliente, el dia que conectaba la segunda caja:
+     entraba y no podia leer ni escribir nada.
+
+     Se comprueba el rol Y sus permisos: existir vacio seria peor que no
+     existir, porque `ensureLogin` metería la cuenta dentro y todo pareceria
+     correcto.
+     ------------------------------------------------------------------------ */
+  paso('4. Rol de la aplicacion');
+  const ROL = 'ocus_app_full_role';
+  const hayRol = consultar(TMP, `
+    SELECT name FROM sys.database_principals WHERE name = '${ROL}' AND type = 'R';`).length > 0;
+  if (!hayRol) {
+    mal(`falta ${ROL}: la caja secundaria conectaria sin permisos para operar`);
+  } else {
+    const ESPERADOS = [
+      'SELECT@SCHEMA', 'INSERT@SCHEMA', 'UPDATE@SCHEMA', 'DELETE@SCHEMA',
+      'EXECUTE@SCHEMA', 'ALTER@SCHEMA', 'REFERENCES@SCHEMA',
+      'CREATE TABLE@DATABASE', 'CREATE VIEW@DATABASE', 'CREATE PROCEDURE@DATABASE',
+      'CREATE FUNCTION@DATABASE', 'CREATE TYPE@DATABASE',
+    ];
+    const tiene = new Set(consultar(TMP, `
+      SELECT p.permission_name + '@' + p.class_desc AS permiso
+        FROM sys.database_permissions p
+        JOIN sys.database_principals g ON g.principal_id = p.grantee_principal_id
+       WHERE g.name = '${ROL}' AND p.state_desc = 'GRANT';`).map(r => r.permiso));
+    const faltanPerm = ESPERADOS.filter(p => !tiene.has(p));
+    if (faltanPerm.length) mal(`a ${ROL} le faltan permisos: ${faltanPerm.join(', ')}`);
+    else bien(`${ROL} con sus ${ESPERADOS.length} permisos, incluido REFERENCES`);
+  }
+
+  // El USUARIO no viaja en el template a proposito: lo crea `ensureLogin`
+  // cuando hay contrasena de red, que es el unico momento en que hace falta.
+  const hayUsuario = consultar(TMP, `
+    SELECT name FROM sys.database_principals WHERE name = 'ocus_app';`).length > 0;
+  if (hayUsuario) mal('ocus_app viaja en el template: deberia crearlo ensureLogin al dar de alta la red');
+  else bien('sin cuenta de red preinstalada: el instalador no entrega credenciales');
+
+  paso('5. Conjunto desplegable');
   const manifiesto = JSON.parse(readFileSync('sql/manifest.json', 'utf8'));
   // El conjunto lo define `lib/catalogo.mjs`; aqui solo se comprueba contra la
   // base restaurada. Ningun script vuelve a decidir por su cuenta que entra.
@@ -104,7 +149,7 @@ try {
   if (tiposFaltan.length) mal(`tipos ausentes: ${tiposFaltan.join(', ')}`);
   else bien(`${tiposGit.length}/${tiposGit.length} tipos de tabla presentes`);
 
-  paso('5. Esquema contra Git');
+  paso('6. Esquema contra Git');
   const esq = new Map(leerEsquema(TMP).map(t => [t.nombre, t]));
   let ok = 0;
   const dif = [];
@@ -119,7 +164,7 @@ try {
   if (dif.length) mal(`tablas distintas: ${dif.join(', ')}`);
   if (!falta.length && !dif.length) bien(`${ok} tablas identicas a Git`);
 
-  paso('6. Contenido');
+  paso('7. Contenido');
   const filas = consultar(TMP, `
     SELECT t.name AS tabla, SUM(p.rows) AS filas
       FROM sys.tables t JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0,1)
@@ -130,8 +175,11 @@ try {
   // de un negocio. Las unidades de medida son estructura -sin ellas no se
   // puede escribir una receta- y schema_migrations declara lo que el template
   // ya trae aplicado.
+  // `register_assignments` viaja con UNA fila: el arriendo LIBRE de la Caja 1.
+  // El invariante del arriendo es que toda caja tiene su fila; sin ella, la
+  // unica caja de una instalacion recien entregada seria la unica sin arriendo.
   const SEMBRADAS = {
-    registers: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    registers: 1, register_assignments: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
     schema_migrations: archivos.length,
   };
   const sobra = filas.filter(f => SEMBRADAS[f.tabla] !== Number(f.filas));
@@ -144,7 +192,7 @@ try {
   if (Number(u) === 0) bien('0 usuarios: el alta del administrador la hace el cliente');
   else mal(`el respaldo trae ${u} usuarios`);
 
-  paso('7. Procedencia');
+  paso('8. Procedencia');
   const bv = consultar(TMP, `
     SELECT valor FROM dbo.database_metadata WHERE clave = 'baseline_version';`);
   if (bv[0]) bien(`nacio de Baseline V${bv[0].valor}`);

@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-04T05:12:50.147Z",
+  "generado": "2026-09-11T15:53:47.643Z",
   "nota": "Generado por scripts/db/extraer.mjs. No editar a mano.",
   "objetos": [
     {
@@ -43,6 +43,10 @@
       "tipo": "modulo"
     },
     {
+      "nombre": "sp_register_lease_touch",
+      "tipo": "modulo"
+    },
+    {
       "nombre": "sp_register_purchase",
       "tipo": "modulo"
     },
@@ -52,6 +56,10 @@
     },
     {
       "nombre": "sp_register_supplier_payment",
+      "tipo": "modulo"
+    },
+    {
+      "nombre": "sp_resolver_receta_efectiva",
       "tipo": "modulo"
     },
     {

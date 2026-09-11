@@ -53,6 +53,7 @@ Thumbs.db
 /installer/*
 !/installer/ConfigurationFile.ini
 !/installer/setup-sqlserver.ps1
+!/installer/preparar-red.ps1
 !/installer/LEEME.md
 !/installer/sql-servicing.json
 
