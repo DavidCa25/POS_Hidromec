@@ -279,6 +279,19 @@ q(`UPDATE dbo.campaigns SET active = 0 WHERE id = ${campDin}`);
 const boletosAntes = Number(scalar(`SELECT COUNT(*) FROM dbo.raffle_entries WHERE raffle_id = ${rifaId} AND status = 'VALID'`));
 check(boletosAntes >= 3, `la rifa llega al sorteo con ${boletosAntes} boletos`);
 
+/*
+ * Cerrar ANTES de sortear.
+ *
+ * Esta prueba sorteaba directamente sobre una rifa abierta, porque entonces
+ * el sorteo cerraba y elegia en la misma operacion. Ahora son dos actos y el
+ * procedure rechaza sortear una rifa que sigue admitiendo boletos: el cambio
+ * de comportamiento es el arreglo, no una regresion.
+ */
+const cerrada = row(`EXEC dbo.sp_raffle_close @raffle_id=${rifaId}, @user_id=${f.userId};`);
+check(cerrada.status === 'CLOSED', 'la rifa se cierra antes de sortear');
+check(Number(cerrada.closed_entries_count) === boletosAntes,
+  'congelando los boletos que habia', `${cerrada.closed_entries_count} = ${boletosAntes}`);
+
 const ganadores = rows(`
   EXEC dbo.sp_raffle_draw @raffle_id=${rifaId}, @user_id=${f.userId}, @register_id=1,
     @machine_id=N'PRUEBA', @winners=1, @alternates=1;`);
@@ -286,16 +299,16 @@ check(ganadores.length >= 1, `el sorteo devolvio ${ganadores.length} fila(s)`);
 check(!!ganadores[0]?.boleto, 'con el numero de boleto legible', `boleto: ${ganadores[0]?.boleto}`);
 
 const sorteo = row(`SELECT TOP 1 * FROM dbo.raffle_draws WHERE raffle_id = ${rifaId} ORDER BY id DESC`);
-check(sorteo.entries_count === boletosAntes,
-  'y dejo escrito cuantos boletos participaban',
-  `${sorteo.entries_count} = ${boletosAntes}`);
+check(sorteo.entries_count === Number(cerrada.closed_entries_count),
+  'y sorteo sobre el universo congelado AL CERRAR',
+  `${sorteo.entries_count} = ${cerrada.closed_entries_count}`);
 check(!!sorteo.seed && !!sorteo.algorithm && sorteo.algorithm_version !== null,
   'con algoritmo, version y semilla: el sorteo se puede comprobar meses despues',
   `${sorteo.algorithm} v${sorteo.algorithm_version}`);
 check(sorteo.max_entry_id !== null, 'y con el universo congelado (max_entry_id)');
 
 check(scalar(`SELECT status FROM dbo.raffle_definitions WHERE id = ${rifaId}`) === 'DRAWN',
-  'la rifa queda sorteada, no abierta');
+  'la rifa queda sorteada, no cerrada ni abierta');
 
 const repetir = fails(`EXEC dbo.sp_raffle_draw @raffle_id=${rifaId}, @user_id=${f.userId}, @register_id=1;`, null);
 check(repetir.ok, 'y volver a sortearla se rechaza',
