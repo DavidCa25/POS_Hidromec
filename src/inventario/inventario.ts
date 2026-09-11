@@ -6,6 +6,9 @@ import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../services/report.service';
 import { CatalogoItem } from '../services/catalogos.service';
 import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.component';
+import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
+import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
+import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { CapabilityService, HospitalityService, InventoryMode, Uom } from '../core';
 
@@ -98,7 +101,7 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
+  imports: [WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
@@ -1029,7 +1032,20 @@ export class Inventario {
     });
   }
 
-  get totalItems(): number { return this.inventarioFiltrado.length; }
+  /** Lo que buscó el usuario, ya pasado por los filtros de la barra. */
+  get inventarioVisible(): any[] {
+    return this.tabla.filtrar(this.inventarioFiltrado);
+  }
+
+  /**
+   * Filas y cabeceras de grupo, en una sola lista plana. Se pagina esto y no
+   * las filas sueltas: asi agrupar no rompe la paginacion ni la busqueda.
+   */
+  get itemsTabla(): WxItem[] {
+    return this.tabla.aplanar(this.inventarioVisible);
+  }
+
+  get totalItems(): number { return this.itemsTabla.length; }
 
   get totalPages(): number {
     const t = Math.ceil(this.totalItems / this.pageSize);
@@ -1044,10 +1060,9 @@ export class Inventario {
     return Math.min(this.pageStartIndex + this.pageSize, this.totalItems);
   }
 
-  get inventarioPaginado(): any[] {
+  get inventarioPaginado(): WxItem[] {
     const start = this.pageStartIndex;
-    const end = start + this.pageSize;
-    return this.inventarioFiltrado.slice(start, end);
+    return this.itemsTabla.slice(start, start + this.pageSize);
   }
 
   clearFilter() { this.filtro = ''; this.page = 1; }
@@ -1089,6 +1104,58 @@ export class Inventario {
       filename: 'inventario'
     };
   }
+
+  /** Opciones del menu de exportacion. Constante: `wx-menu` compara por
+      referencia y un getter crearia un arreglo nuevo en cada ciclo. */
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf',   etiqueta: 'PDF',   icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  /**
+   * Descriptor de la tabla: que columnas hay, cuales se pueden esconder y por
+   * cuales tiene sentido filtrar o agrupar. La barra de herramientas y la
+   * tabla leen de aqui; la logica vive en `EstadoTabla`, compartida.
+   */
+  readonly tabla = new EstadoTabla('inventario', [
+    { clave: 'indice',    titulo: '#' },
+    { clave: 'part_number', titulo: 'Código interno / SKU' },
+    { clave: 'bar_code',  titulo: 'Código de barras', ocultaPorDefecto: true },
+    // Sin el nombre, la tabla deja de identificar sus propias filas.
+    { clave: 'product_name', titulo: 'Producto', obligatoria: true },
+    { clave: 'price',     titulo: 'Precio' },
+    { clave: 'stock',     titulo: 'Stock' },
+    { clave: 'category_name', titulo: 'Categoría', filtrable: true, agrupable: true,
+      valor: (f) => f.category_name || 'Sin categoría' },
+    { clave: 'brand_name', titulo: 'Marca', filtrable: true, agrupable: true,
+      valor: (f) => f.brand_name || 'Sin marca' },
+    { clave: 'default_supplier_name', titulo: 'Proveedor (Default)', filtrable: true, agrupable: true,
+      valor: (f) => f.default_supplier_name || 'Sin proveedor' },
+    { clave: 'presentacion', titulo: 'Presentación de compra', ocultaPorDefecto: true,
+      valor: (f) => f.default_presentation_name || '—' },
+    // El tipo de inventario es lo que explica por que una receta no tiene
+    // existencias propias: poder agrupar por el ahorra muchas preguntas.
+    { clave: 'inventory_mode', titulo: 'Tipo', ocultaPorDefecto: true, filtrable: true, agrupable: true,
+      valor: (f) => f.inventory_mode === 'RECIPE' ? 'Receta'
+                  : f.inventory_mode === 'NONE' ? 'Sin inventario' : 'Directo' },
+    { clave: 'acciones',  titulo: 'Acciones', obligatoria: true },
+  ]);
+
+  /** Un producto por receta no tiene existencias propias: su stock es 0. */
+  esReceta(item: any): boolean {
+    return (item?.inventory_mode ?? 'DIRECT') === 'RECIPE';
+  }
+
+  /**
+   * Cuantas unidades alcanzan. Lo calcula SQL a partir de los ingredientes
+   * -con conversion y merma-; si la columna no viniera, se cae al stock para
+   * no inventar un cero.
+   */
+  disponibles(item: any): number {
+    const n = Number(item?.available_units ?? item?.stock ?? 0);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  }
+
   async exportarInv(tipo: 'pdf' | 'excel') {
     this.expExportOpen = false;
     const cfg = this.cfgReporteInv();
