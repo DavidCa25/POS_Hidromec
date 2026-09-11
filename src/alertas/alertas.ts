@@ -4,7 +4,18 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../services/report.service';
 
-interface Reorden { id: number; nombre: string; stock: number; vendido_ventana: number; prom_diario: number; dias_restantes: number; sugerido: number; }
+interface Reorden {
+  id: number; nombre: string; stock: number; vendido_ventana: number;
+  prom_diario: number; dias_restantes: number; sugerido: number | null;
+  /** DIRECT o RECIPE. Un NONE no llega nunca hasta aqui. */
+  inventory_mode?: string;
+  base_uom?: string;
+  /** En una receta, el ingrediente que se acaba primero. */
+  limita_nombre?: string | null;
+  limita_stock?: number | null;
+  limita_uom?: string | null;
+  limita_necesita?: number | null;
+}
 
 @Component({
   selector: 'app-alertas',
@@ -368,11 +379,19 @@ interface Reorden { id: number; nombre: string; stock: number; vendido_ventana: 
                         <thead><tr><th>Producto</th><th class="r">Stock</th><th class="r">Vende/día</th><th class="r">Se acaba en</th><th class="r">Pedir</th></tr></thead>
                         <tbody>
                           <tr *ngFor="let f of reorden">
-                            <td class="al-name">{{ f.nombre }}</td>
-                            <td class="r">{{ f.stock }}</td>
+                            <td class="al-name">
+                              {{ f.nombre }}
+                              <!-- En una receta, "quedan 3" no dice que reponer.
+                                   El ingrediente que la limita, si. -->
+                              <div class="al-sub" *ngIf="f.limita_nombre">
+                                falta {{ f.limita_nombre }}: hay {{ f.limita_stock }} {{ f.limita_uom }},
+                                cada uno lleva {{ f.limita_necesita }} {{ f.limita_uom }}
+                              </div>
+                            </td>
+                            <td class="r">{{ existencia(f) }}</td>
                             <td class="r">{{ f.prom_diario }}</td>
-                            <td class="r"><span class="pill" [ngClass]="urgencia(f.dias_restantes)">{{ f.dias_restantes }} {{ f.dias_restantes === 1 ? 'día' : 'días' }}</span></td>
-                            <td class="r sug">{{ f.sugerido }}</td>
+                            <td class="r"><span class="pill" [ngClass]="urgencia(f.dias_restantes)">{{ plazo(f) }}</span></td>
+                            <td class="r sug">{{ f.sugerido == null ? '—' : f.sugerido }}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -883,6 +902,28 @@ export class Alertas implements OnInit {
   setDias(d: number) { this.diasAlerta = d; this.cargarReorden(); }
   urgencia(d: number): string { return d <= 2 ? 'crit' : d <= 5 ? 'warn' : 'ok'; }
 
+  /**
+   * Cuanto le queda, en palabras.
+   *
+   * Cero dias NO es "se acaba en 0 dias": es que ya no hay. Escribirlo como un
+   * plazo era lo que producia el "se acabara en menos de 0 dias" que se vio en
+   * la VM -sintoma de que el calculo tomaba el stock 0 de una receta, ya
+   * corregido en SQL-. Aqui se cierra el circulo: aunque el numero fuera raro,
+   * la pantalla no puede decir un absurdo.
+   */
+  plazo(f: Reorden): string {
+    const d = Math.max(0, Math.floor(Number(f?.dias_restantes) || 0));
+    if (d <= 0) return 'Sin existencias';
+    return d === 1 ? '1 día' : `${d} días`;
+  }
+
+  /** La existencia con su unidad. Una receta se cuenta en unidades servibles. */
+  existencia(f: Reorden): string {
+    const n = Number(f?.stock) || 0;
+    if (f?.inventory_mode === 'RECIPE') return `${n} por preparar`;
+    return `${n} ${f?.base_uom || 'pza'}`;
+  }
+
   // ---- Agotados ----
   async cargarAgotados() {
     this.cargandoAgotados = true;
@@ -1088,9 +1129,13 @@ export class Alertas implements OnInit {
       }
       case 'reorden': {
         const f = this.reorden[0]; if (!f) return [];
-        return [{ etiqueta: 'Producto', valor: n(f.nombre) },
-                { etiqueta: 'Se acaba en', valor: '≤ ' + f.dias_restantes + ' días', fuerte: true, tono: 'atencion' },
-                { etiqueta: 'Pedir', valor: n(f.sugerido) }];
+        const filas = [{ etiqueta: 'Producto', valor: n(f.nombre) },
+                       { etiqueta: 'Se acaba en', valor: this.plazo(f), fuerte: true, tono: 'atencion' }];
+        if (f.limita_nombre) {
+          filas.push({ etiqueta: 'Lo limita', valor: `${f.limita_nombre} (${f.limita_stock} ${f.limita_uom})` });
+        }
+        filas.push({ etiqueta: 'Pedir', valor: f.sugerido == null ? '—' : n(f.sugerido) });
+        return filas;
       }
       case 'muertos': {
         const m = this.muertos[0]; if (!m) return [];
