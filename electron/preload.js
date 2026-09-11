@@ -314,6 +314,8 @@ contextBridge.exposeInMainWorld('wybix', {
     },
     loyalty: {
         catalog: () => ipcRenderer.invoke('loyalty:catalog'),
+        // Lo repartido de verdad, para auditarlo sin abrir SSMS.
+        instances: (p) => ipcRenderer.invoke('loyalty:instances', p),
         saveCampaign: (p) => ipcRenderer.invoke('loyalty:save-campaign', p),
         saveDefinition: (p) => ipcRenderer.invoke('loyalty:save-definition', p),
         // Se llama DESPUES de cobrar. Si falla, la venta ya esta hecha: el
@@ -324,8 +326,16 @@ contextBridge.exposeInMainWorld('wybix', {
         pending: (p) => ipcRenderer.invoke('dynamics:pending', p),
         play: (p) => ipcRenderer.invoke('dynamics:play', p),
     },
+    coupons: {
+        // Mirar sin consumir, antes de cobrar.
+        validate: (p) => ipcRenderer.invoke('coupons:validate', p),
+        // Consumir, con la venta ya cobrada. Un fallo aqui SI se ensena.
+        redeem: (p) => ipcRenderer.invoke('coupons:redeem', p),
+    },
     raffles: {
         save: (p) => ipcRenderer.invoke('raffles:save', p),
+        // Cerrar y sortear son dos actos distintos.
+        close: (p) => ipcRenderer.invoke('raffles:close', p),
         detail: (p) => ipcRenderer.invoke('raffles:detail', p),
         draw: (p) => ipcRenderer.invoke('raffles:draw', p),
         winnerStatus: (p) => ipcRenderer.invoke('raffles:winner-status', p),

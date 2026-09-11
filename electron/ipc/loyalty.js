@@ -187,6 +187,44 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('winners', sql.Int, num(p.winners))
       .input('alternates', sql.Int, num(p.alternates) ?? 0)));
 
+  /**
+   * Cerrar una rifa: deja de admitir boletos y congela cuantos habia.
+   * Es un acto propio, distinto de sortear.
+   */
+  ipcMain.handle('raffles:close', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_raffle_close', (r) => r
+      .input('raffle_id', sql.Int, num(p.raffleId))
+      .input('user_id', sql.Int, num(p.userId))));
+
+  // ------------------------------------------------------------- cupones
+  /** Mirar, sin consumir. Se llama cuando el cajero teclea el codigo. */
+  ipcMain.handle('coupons:validate', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_coupon_validate', (r) =>
+      r.input('code', sql.NVarChar(24), txt(p.code))));
+
+  /**
+   * Consumir, con la venta ya cobrada.
+   *
+   * A diferencia de los premios, un fallo aqui SI importa y se devuelve tal
+   * cual: el cliente se llevo un beneficio y el cupon tiene que quedar
+   * gastado. Quien llama debe ensenar el motivo, no callarselo.
+   */
+  ipcMain.handle('coupons:redeem', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_coupon_redeem', (r) => r
+      .input('code', sql.NVarChar(24), txt(p.code))
+      .input('sale_id', sql.Int, num(p.saleId))
+      .input('register_id', sql.Int, num(p.registerId))
+      .input('machine_id', sql.NVarChar(64), equipo())
+      .input('amount_applied', sql.Decimal(12, 2), num(p.amountApplied) ?? 0)));
+
+  /** Lo repartido de verdad: recompensas o cupones emitidos. */
+  ipcMain.handle('loyalty:instances', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_loyalty_instances', (r) => r
+      .input('kind_of', sql.NVarChar(10), txt(p.kindOf) || 'REWARD')
+      .input('estado', sql.NVarChar(12), txt(p.estado))
+      .input('search', sql.NVarChar(120), txt(p.search))
+      .input('top', sql.Int, num(p.top) ?? 300)));
+
   ipcMain.handle('raffles:winner-status', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_raffle_winner_status', (r) => r
       .input('winner_id', sql.Int, num(p.winnerId))

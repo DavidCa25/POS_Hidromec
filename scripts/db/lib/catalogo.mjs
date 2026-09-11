@@ -166,6 +166,11 @@ asignar('loyalty', [
   'sp_loyalty_evaluate_sale',
   'sp_dynamic_pending', 'sp_dynamic_play',
   'sp_raffle_save', 'sp_raffle_detail', 'sp_raffle_draw', 'sp_raffle_winner_status',
+  'sp_raffle_close',
+  // Cupones: validar antes de cobrar, consumir despues de cobrar.
+  'sp_coupon_validate', 'sp_coupon_redeem',
+  // Lo repartido de verdad, para poder auditarlo sin abrir SSMS.
+  'sp_loyalty_instances',
 ]);
 
 asignar('_cuarentena', ['sp_mig_test']);
