@@ -1,5 +1,6 @@
 /* sp_raffle_detail
- * Definicion canonica. Mantener este archivo y generar una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

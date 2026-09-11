@@ -20,6 +20,7 @@ CREATE TABLE dbo.business_config (
     invoicing_provider NVARCHAR(30) COLLATE Modern_Spanish_CI_AS NULL,
     ticket_footer NVARCHAR(300) COLLATE Modern_Spanish_CI_AS NULL,
     business_profile NVARCHAR(20) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_business_config_business_profile DEFAULT ('RETAIL'),
+    loyalty_enabled BIT NOT NULL CONSTRAINT DF_business_config_loyalty_enabled DEFAULT ((0)),
     PRIMARY KEY CLUSTERED (id)
 );
 END;
