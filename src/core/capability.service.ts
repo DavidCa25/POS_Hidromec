@@ -22,6 +22,15 @@ export class CapabilityService {
   readonly businessProfile = signal<BusinessProfile>('RETAIL');
   readonly deviceProfile = signal<DeviceProfile>('RETAIL_POS');
   readonly customerDisplayEnabled = signal(false);
+  /**
+   * Fidelizacion encendida para el NEGOCIO, no para este equipo.
+   *
+   * Vive en business_config junto a business_profile, no en
+   * device-config.json: una campana la lanza el negocio y la ven todas las
+   * cajas. Si dependiera del dispositivo, la Caja 2 regalaria cafes que la
+   * Caja 1 no conoce.
+   */
+  readonly loyaltyEnabled = signal(false);
   readonly loaded = signal(false);
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -34,11 +43,13 @@ export class CapabilityService {
       touchPos: dp === 'TOUCH_POS',
       retailPos: dp === 'RETAIL_POS',
       customerDisplay: this.customerDisplayEnabled(),
+      loyalty: this.loyaltyEnabled(),
     };
   });
 
   get hospitality(): boolean { return this.capabilities().hospitality; }
   get touchPos(): boolean { return this.capabilities().touchPos; }
+  get loyalty(): boolean { return this.capabilities().loyalty; }
 
   /**
    * Donde vende ESTA caja ahora mismo.
@@ -69,7 +80,8 @@ export class CapabilityService {
         const cfg = await api?.getConfig?.();
         const c = cfg?.data ?? cfg ?? {};
         this.businessProfile.set(CapabilityService.parseBusiness(c?.business_profile));
-      } catch { this.businessProfile.set('RETAIL'); }
+        this.loyaltyEnabled.set(!!c?.loyalty_enabled);
+      } catch { this.businessProfile.set('RETAIL'); this.loyaltyEnabled.set(false); }
       try {
         const dev = await api?.getDeviceConfig?.();
         const d = dev?.data ?? dev ?? {};

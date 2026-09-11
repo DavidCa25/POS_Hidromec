@@ -1077,6 +1077,12 @@ ipcMain.handle('update-business-config', async (_e, payload = {}) => {
       .input('ticket_footer', sql.NVarChar(300), payload.ticket_footer ?? null)
       // Perfil del negocio (RETAIL | HOSPITALITY). NULL conserva el actual.
       .input('business_profile', sql.NVarChar(20), payload.business_profile ?? null)
+      // Fidelizacion encendida. NULL -y no 0- cuando no viene: este mismo
+      // handler atiende al panel de datos del negocio, que guarda sin
+      // mencionarla. Mandar 0 ahi apagaria las campanas al cambiar el telefono.
+      .input('loyalty_enabled', sql.Bit,
+        payload.loyalty_enabled === undefined || payload.loyalty_enabled === null
+          ? null : (payload.loyalty_enabled ? 1 : 0))
       .execute('sp_update_business_config');
     businessConfig = null; // invalida el cache para releer datos frescos
     return { success: true };

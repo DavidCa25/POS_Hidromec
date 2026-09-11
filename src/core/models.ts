@@ -205,6 +205,8 @@ export interface Capabilities {
   retailPos: boolean;
   /** Pantalla de cliente habilitada en ESTE dispositivo. */
   customerDisplay: boolean;
+  /** Campanas, recompensas, cupones, dinamicas y rifas. */
+  loyalty: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */
