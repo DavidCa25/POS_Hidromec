@@ -33,7 +33,18 @@
     <!-- KPIs -->
     <div class="resumen-grid two">
       <div class="kpi-card"><div class="kpi-title">Proveedores</div><div class="kpi-value">{{ kpiTotal }}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Total comprado</div><div class="kpi-value">{{ money(kpiTotalComprado) }}</div></div>
       <div class="kpi-card total"><div class="kpi-title">Total pagado</div><div class="kpi-value">{{ money(kpiTotalPagado) }}</div></div>
+      <!-- El saldo sale de purchase.balance: la misma cifra que la Tabla de compras. -->
+      <div class="kpi-card" [class.deuda]="kpiSaldo > 0">
+        <div class="kpi-title">Por pagar</div>
+        <div class="kpi-value">{{ money(kpiSaldo) }}</div>
+        <div class="kpi-nota" *ngIf="kpiConDeuda">{{ kpiConDeuda }} {{ kpiConDeuda === 1 ? 'proveedor' : 'proveedores' }}</div>
+      </div>
+    </div>
+
+    <div class="ventas-tools" style="margin-bottom:12px;">
+      <wx-tabla-barra [estado]="tabla" [filas]="view"></wx-tabla-barra>
     </div>
 
     <!-- Tabla -->
@@ -41,30 +52,60 @@
       <table class="tabla-corte">
         <thead>
           <tr>
-            <th>Proveedor</th>
-            <th>Contacto</th>
-            <th>RFC</th>
-            <th class="right">Total pagado</th>
-            <th class="right">Acciones</th>
+            <th *ngIf="tabla.esVisible('nombre')">Proveedor</th>
+            <th *ngIf="tabla.esVisible('contacto')">Contacto</th>
+            <th *ngIf="tabla.esVisible('rfc')">RFC</th>
+            <th *ngIf="tabla.esVisible('total_comprado')" class="right">Comprado</th>
+            <th *ngIf="tabla.esVisible('total_paid')" class="right">Pagado</th>
+            <th *ngIf="tabla.esVisible('saldo_pendiente')" class="right">Por pagar</th>
+            <th *ngIf="tabla.esVisible('estado')">Estado</th>
+            <th *ngIf="tabla.esVisible('acciones')" class="right">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let p of view">
-            <td class="strong">{{ p.nombre }}</td>
-            <td>
+          <ng-container *ngFor="let it of items">
+
+          <tr class="wx-grupo-fila" *ngIf="it.tipo === 'grupo'">
+            <td [attr.colspan]="tabla.visibles.length">
+              <button type="button" class="wx-grupo"
+                      [attr.aria-expanded]="it.abierto"
+                      (click)="tabla.alternarGrupo(it.clave)">
+                <i class="ph ph-caret-right wx-grupo__flecha" aria-hidden="true"></i>
+                <span>{{ it.etiqueta }}</span>
+                <span class="wx-grupo__n">{{ it.total }}</span>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="it.tipo === 'fila' && it.fila as p">
+            <td *ngIf="tabla.esVisible('nombre')" class="strong">{{ p.nombre }}</td>
+            <td *ngIf="tabla.esVisible('contacto')">
               <div class="mono">{{ p.telefono || '-' }}</div>
               <div class="sub" *ngIf="p.correo">{{ p.correo }}</div>
             </td>
-            <td class="mono">{{ p.rfc || '-' }}</td>
-            <td class="num mono">{{ money(p.total_paid) }}</td>
-            <td class="right">
+            <td *ngIf="tabla.esVisible('rfc')" class="mono">{{ p.rfc || '-' }}</td>
+            <td *ngIf="tabla.esVisible('total_comprado')" class="num mono">{{ money(p.total_comprado) }}</td>
+            <td *ngIf="tabla.esVisible('total_paid')" class="num mono">{{ money(p.total_paid) }}</td>
+            <td *ngIf="tabla.esVisible('saldo_pendiente')" class="num mono">
+              <span [class.saldo-deuda]="p.saldo_pendiente > 0">{{ money(p.saldo_pendiente) }}</span>
+              <div class="sub" *ngIf="p.compras_pendientes > 0">
+                {{ p.compras_pendientes }} {{ p.compras_pendientes === 1 ? 'compra' : 'compras' }} a crédito
+              </div>
+            </td>
+            <td *ngIf="tabla.esVisible('estado')">
+              <span [class.saldo-deuda]="p.saldo_pendiente > 0">
+                {{ p.saldo_pendiente > 0 ? 'Con saldo' : 'Al corriente' }}
+              </span>
+            </td>
+            <td *ngIf="tabla.esVisible('acciones')" class="right">
               <button class="btn btn-ghost" (click)="verHistorial(p)">Ver</button>
               <button class="btn btn-ghost" (click)="editar(p)">Editar</button>
             </td>
           </tr>
+          </ng-container>
         </tbody>
       </table>
-      <p class="nota" *ngIf="view.length === 0">Sin resultados</p>
+      <p class="nota" *ngIf="items.length === 0">Sin resultados</p>
     </div>
   </div>
 
