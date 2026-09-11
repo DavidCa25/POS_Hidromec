@@ -25,6 +25,8 @@ BEGIN
 
     SELECT r.id, r.name, r.description, r.prize, r.starts_at, r.ends_at,
            r.status, r.winners_count, r.code_prefix, r.created_at,
+           /* La foto del cierre: cuantos boletos quedaron dentro y cuando. */
+           r.closed_at, r.closed_entries_count, r.closed_max_entry_id,
            (SELECT COUNT(*) FROM dbo.raffle_entries e WHERE e.raffle_id = r.id AND e.status = 'VALID') AS participaciones,
            (SELECT COUNT(DISTINCT e.customer_id) FROM dbo.raffle_entries e WHERE e.raffle_id = r.id AND e.customer_id IS NOT NULL) AS clientes,
            (SELECT COUNT(DISTINCT e.register_id) FROM dbo.raffle_entries e WHERE e.raffle_id = r.id) AS cajas

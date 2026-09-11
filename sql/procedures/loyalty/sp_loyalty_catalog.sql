@@ -71,6 +71,7 @@ BEGIN
 
     SELECT r.id, r.name, r.description, r.prize, r.starts_at, r.ends_at,
            r.status, r.winners_count, r.code_prefix, r.created_at,
+           r.closed_at, r.closed_entries_count,
            (SELECT COUNT(*) FROM dbo.raffle_entries e WHERE e.raffle_id = r.id AND e.status = 'VALID') AS participaciones,
            (SELECT COUNT(*) FROM dbo.raffle_draws d WHERE d.raffle_id = r.id) AS sorteos
     FROM dbo.raffle_definitions r

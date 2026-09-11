@@ -5,17 +5,25 @@
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
-/* ---- Crear o actualizar una rifa, y cambiar su estado.
+/* ---- Crear o actualizar una rifa, y activarla.
 
-   El estado NO se puede mover a cualquier sitio:
+   El ciclo de vida es de una sola direccion:
 
-     DRAFT  -> OPEN     se abre y empieza a admitir participaciones
-     OPEN   -> CLOSED   deja de admitir, todavia sin sortear
-     CLOSED -> OPEN     reabrir es legitimo mientras no se haya sorteado
-     *      -> DRAWN    SOLO lo hace `sp_raffle_draw`
+     DRAFT  -> OPEN     se activa y empieza a admitir participaciones
+     OPEN   -> CLOSED   SOLO lo hace `sp_raffle_close`, que congela el universo
+     CLOSED -> DRAWN    SOLO lo hace `sp_raffle_draw`
 
-   Volver a DRAFT o a OPEN despues de sortear cambiaria el universo de un
-   sorteo ya hecho, que es exactamente lo que no puede pasar. */
+   Esta edicion solo puede hacer el primer paso. Los otros dos pertenecen a
+   procedures propios porque cada uno deja constancia de algo -la foto de
+   participantes, el resultado- y llegar ahi por un UPDATE de edicion se la
+   saltaria.
+
+   NO se puede reabrir una rifa cerrada. Se penso permitirlo "mientras no se
+   haya sorteado", pero reabrir mueve el universo que ya se anuncio: la gente
+   que pregunto cuantos boletos participaban recibio una respuesta, y esa
+   respuesta dejaria de ser cierta sin que nadie se entere. Si algun dia hace
+   falta, tendra que ser una operacion explicita y auditada, no un efecto de
+   guardar el formulario. */
 CREATE OR ALTER PROCEDURE [dbo].[sp_raffle_save]
     @id INT = NULL,
     @name NVARCHAR(120),
@@ -57,6 +65,21 @@ BEGIN
         IF @status = 'DRAWN'
         BEGIN
             RAISERROR('El estado sorteada lo pone el sorteo, no la edicion.', 16, 1);
+            RETURN;
+        END
+        IF @status = 'CLOSED' AND @actual <> 'CLOSED'
+        BEGIN
+            RAISERROR('Para cerrar una rifa usa Cerrar: el cierre congela cuantos boletos participaban.', 16, 1);
+            RETURN;
+        END
+        IF @actual = 'CLOSED' AND @status IS NOT NULL AND @status <> 'CLOSED'
+        BEGIN
+            RAISERROR('Esta rifa esta cerrada y no se puede reabrir: cambiaria el universo que ya se anuncio.', 16, 1);
+            RETURN;
+        END
+        IF @status = 'DRAFT' AND @actual <> 'DRAFT'
+        BEGIN
+            RAISERROR('Una rifa ya activada no vuelve a borrador.', 16, 1);
             RETURN;
         END
 

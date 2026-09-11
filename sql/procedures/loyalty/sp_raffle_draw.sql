@@ -62,15 +62,41 @@ BEGIN
     BEGIN RAISERROR('Esta rifa ya se sorteo. Consulta el resultado anterior.', 16, 1); RETURN; END
 
     IF @estado = 'DRAFT'
-    BEGIN RAISERROR('Esta rifa todavia no se ha abierto: no tiene participaciones.', 16, 1); RETURN; END
+    BEGIN RAISERROR('Esta rifa todavia no se ha activado: no tiene participaciones.', 16, 1); RETURN; END
 
+    /* Se sortea SOBRE UNA RIFA CERRADA, nunca sobre una abierta.
+
+       Antes el sorteo cerraba y elegia de un tiron, lo que obligaba a sortear
+       en el mismo instante en que querias dejar de repartir boletos. Ahora
+       cerrar es un acto propio (`sp_raffle_close`) que congela el universo, y
+       el sorteo puede ocurrir cuando toque. */
+    IF @estado = 'OPEN'
+    BEGIN
+        RAISERROR('Cierra la rifa antes de sortearla: mientras siga abierta pueden entrar mas boletos.', 16, 1);
+        RETURN;
+    END
+
+    /* El universo es el que se congelo AL CERRAR, no el que haya ahora.
+
+       La diferencia importa aunque hoy nada pueda insertar boletos en una
+       rifa cerrada: el numero de participantes es el que se anuncio ese dia,
+       y un sorteo que ocurre una semana despues tiene que seguir usandolo. */
     DECLARE @total INT, @maxId INT;
-    SELECT @total = COUNT(*), @maxId = ISNULL(MAX(id), 0)
-    FROM dbo.raffle_entries
-    WHERE raffle_id = @raffle_id AND status = 'VALID';
+    SELECT @total = closed_entries_count, @maxId = closed_max_entry_id
+    FROM dbo.raffle_definitions WHERE id = @raffle_id;
 
-    IF @total = 0
-    BEGIN RAISERROR('Esta rifa no tiene participaciones validas: no hay nada que sortear.', 16, 1); RETURN; END
+    /* Una rifa cerrada por una version anterior no tiene la foto. Se toma
+       ahora: sigue siendo el universo correcto porque cerrada ya no admite
+       boletos nuevos. */
+    IF @total IS NULL OR @maxId IS NULL
+    BEGIN
+        SELECT @total = COUNT(*), @maxId = ISNULL(MAX(id), 0)
+        FROM dbo.raffle_entries
+        WHERE raffle_id = @raffle_id AND status = 'VALID';
+    END
+
+    IF ISNULL(@total, 0) = 0
+    BEGIN RAISERROR('Esta rifa se cerro sin participaciones validas: no hay nada que sortear.', 16, 1); RETURN; END
 
     IF @cuantos < 1 SET @cuantos = 1;
     IF @cuantos > @total SET @cuantos = @total;
@@ -82,12 +108,12 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        /* La rifa se cierra ANTES de elegir. Entre el cierre y la eleccion no
-           puede colarse una participacion: `sp_loyalty_evaluate_sale` solo
-           inserta en rifas OPEN, y aqui ya no lo esta. */
+        /* Solo desde CLOSED. La condicion en el propio UPDATE es lo que hace
+           que dos cajas sorteando a la vez no produzcan dos sorteos: la
+           segunda no encuentra fila que actualizar. */
         UPDATE dbo.raffle_definitions
            SET status = 'DRAWN'
-         WHERE id = @raffle_id AND status IN ('OPEN', 'CLOSED');
+         WHERE id = @raffle_id AND status = 'CLOSED';
 
         IF @@ROWCOUNT = 0
         BEGIN
@@ -100,10 +126,10 @@ BEGIN
             (raffle_id, entries_count, max_entry_id, drawn_at, drawn_by_user_id,
              register_id, machine_id, algorithm, algorithm_version, seed, status)
         VALUES
-            (@raffle_id, @total, @maxId, SYSUTCDATETIME(), @user_id,
+            (@raffle_id, @total, @maxId, SYSDATETIME(), @user_id,
              @register_id, @machine_id, 'CRYPTO_UNIFORM', 1,
              CONCAT('raffle:', @raffle_id, '|max:', @maxId, '|n:', @total,
-                    '|at:', CONVERT(NVARCHAR(30), SYSUTCDATETIME(), 126)),
+                    '|at:', CONVERT(NVARCHAR(30), SYSDATETIME(), 126)),
              'DONE');
 
         SET @draw_id = SCOPE_IDENTITY();
