@@ -11,6 +11,7 @@ const { autoUpdater } = require('electron-updater');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
 const { runMigrations } = require('./migrationsRunner');
 const ipcHospitality = require('./ipc/hospitality');
+const ipcLoyalty = require('./ipc/loyalty');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
@@ -55,6 +56,11 @@ process.on('unhandledRejection', (motivo) => {
 // catalogo Touch e imagenes). Vive en su propio modulo: main.js ya tiene
 // 158 handlers y no debe crecer sin orden.
 ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
+
+// IPC del dominio Fidelizacion (campanas, recompensas, cupones, dinamicas y
+// rifas). `machineId` se pasa como funcion, no como valor: al cargar este
+// modulo la huella todavia no esta construida.
+ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEsteEquipo() });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 

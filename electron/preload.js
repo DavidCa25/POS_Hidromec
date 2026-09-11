@@ -312,6 +312,24 @@ contextBridge.exposeInMainWorld('wybix', {
         set: (p) => ipcRenderer.invoke('images:set', p),
         sync: (p) => ipcRenderer.invoke('images:sync', p),
     },
+    loyalty: {
+        catalog: () => ipcRenderer.invoke('loyalty:catalog'),
+        saveCampaign: (p) => ipcRenderer.invoke('loyalty:save-campaign', p),
+        saveDefinition: (p) => ipcRenderer.invoke('loyalty:save-definition', p),
+        // Se llama DESPUES de cobrar. Si falla, la venta ya esta hecha: el
+        // renderer se lo calla y sigue, no le ensena un error a quien ya pago.
+        evaluateSale: (p) => ipcRenderer.invoke('loyalty:evaluate-sale', p),
+    },
+    dynamics: {
+        pending: (p) => ipcRenderer.invoke('dynamics:pending', p),
+        play: (p) => ipcRenderer.invoke('dynamics:play', p),
+    },
+    raffles: {
+        save: (p) => ipcRenderer.invoke('raffles:save', p),
+        detail: (p) => ipcRenderer.invoke('raffles:detail', p),
+        draw: (p) => ipcRenderer.invoke('raffles:draw', p),
+        winnerStatus: (p) => ipcRenderer.invoke('raffles:winner-status', p),
+    },
 });
 
 
