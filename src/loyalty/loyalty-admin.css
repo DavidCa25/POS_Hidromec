@@ -233,3 +233,7 @@
   color: var(--wx-warning-ink);
 }
 .loy-nota--ojo i { color: var(--wx-warning-ink); }
+
+/* El motivo de un guardado rechazado, dentro del formulario. */
+.loy-nota--mal { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+.loy-nota--mal i { color: var(--wx-danger-ink); }

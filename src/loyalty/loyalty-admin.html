@@ -364,6 +364,15 @@
         </div>
 
         <!--
+          El motivo se QUEDA aqui. Un modal que se cierra de un clic reflejo
+          deja un formulario de seis campos sin ninguna marca de cual falta, y
+          quien lo cierra deprisa cree que guardo.
+        -->
+        <p class="loy-nota loy-nota--mal" *ngIf="problema() as e">
+          <i class="ph ph-warning-circle"></i> {{ e }}
+        </p>
+
+        <!--
           Se avisa AL CREARLO, no al intentar canjearlo. Repartir cien papeles
           que la caja no puede aceptar es peor que no poder crearlos.
         -->

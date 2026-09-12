@@ -116,6 +116,16 @@ export class LoyaltyAdmin implements OnInit {
    * abriendo SSMS.
    */
   vista = signal<'definiciones' | 'emitidas'>('definiciones');
+
+  /**
+   * Por que no se pudo guardar, EN el formulario.
+   *
+   * El modal solo no basta: se cierra de un clic reflejo y deja un formulario
+   * con seis campos y ninguna marca de cual falta. Quien lo cierra deprisa se
+   * queda convencido de que guardo, y luego no encuentra lo que creyo crear.
+   * Este mensaje se queda hasta que se corrige o se cancela.
+   */
+  problema = signal<string | null>(null);
   instancias = signal<LoyaltyInstance[]>([]);
   cargandoInstancias = signal(false);
   filtroEstado = signal<string>('');
@@ -225,6 +235,7 @@ export class LoyaltyAdmin implements OnInit {
   }
 
   private cerrarFormularios(): void {
+    this.problema.set(null);
     this.campana.set(null);
     this.premio.set(null);
     this.dinamica.set(null);
@@ -354,10 +365,11 @@ export class LoyaltyAdmin implements OnInit {
   async guardarPremio(): Promise<void> {
     const d = this.premio();
     if (!d) return;
-    if (!d.name.trim()) return this.avisar('Falta el nombre', 'Ponle nombre.');
-    if (d.kind === 'FREE_PRODUCT' && !d.productId) return this.avisar('Falta el producto', 'Elige qué producto se regala.');
-    if (d.kind === 'AMOUNT' && !(d.amount && d.amount > 0)) return this.avisar('Falta el importe', 'El descuento debe ser mayor que cero.');
-    if (d.kind === 'PERCENT' && !(d.discountPct && d.discountPct > 0)) return this.avisar('Falta el porcentaje', 'El porcentaje debe ser mayor que cero.');
+    this.problema.set(null);
+    if (!d.name.trim()) return this.falta('Ponle nombre.');
+    if (d.kind === 'FREE_PRODUCT' && !d.productId) return this.falta('Elige qué producto se regala.');
+    if (d.kind === 'AMOUNT' && !(d.amount && d.amount > 0)) return this.falta('El descuento debe ser mayor que cero.');
+    if (d.kind === 'PERCENT' && !(d.discountPct && d.discountPct > 0)) return this.falta('El porcentaje debe ser mayor que cero.');
 
     this.guardando.set(true);
     try {
@@ -371,13 +383,26 @@ export class LoyaltyAdmin implements OnInit {
         codePrefix: d.codePrefix.trim() || null, active: d.active,
       });
       this.premio.set(null);
+      // Se vuelve a Definiciones pase lo que pase: lo que se acaba de crear
+      // tiene que quedar delante de quien lo creo, no en la pestana de al lado.
+      this.vista.set('definiciones');
       await this.exito('Guardado');
     } catch (e: any) {
+      // El motivo de SQL tambien se queda puesto: "no se pudo guardar" a secas
+      // no dice si falto un dato o si fallo la conexion.
+      this.problema.set(e?.message || 'No se pudo guardar.');
       await this.avisar('No se pudo guardar', e?.message || 'Error.');
     } finally {
       this.guardando.set(false);
       this.cd.detectChanges();
     }
+  }
+
+  /** Falta un dato: se dice en el formulario y ademas se avisa. */
+  private falta(motivo: string): Promise<void> {
+    this.problema.set(motivo);
+    this.cd.detectChanges();
+    return this.avisar('Falta un dato', motivo).then(() => undefined);
   }
 
   // ============================================================= dinamicas
