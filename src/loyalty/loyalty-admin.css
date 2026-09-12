@@ -246,3 +246,6 @@
   border-radius: var(--wx-radius-md);
   box-shadow: var(--wx-shadow-card);
 }
+
+/* El peso se edita en la propia fila: es lo que mas se toca. */
+.loy-peso { width: 78px; text-align: right; }

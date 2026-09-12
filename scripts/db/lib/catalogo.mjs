@@ -171,6 +171,8 @@ asignar('loyalty', [
   'sp_coupon_validate', 'sp_coupon_redeem',
   // Lo repartido de verdad, para poder auditarlo sin abrir SSMS.
   'sp_loyalty_instances',
+  // Ruleta: sectores y su sorteo, decidido en el servidor.
+  'sp_dynamic_segments', 'sp_dynamic_save_segment',
 ]);
 
 asignar('_cuarentena', ['sp_mig_test']);

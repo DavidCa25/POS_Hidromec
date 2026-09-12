@@ -1,3 +1,95 @@
+/* ============================================================
+   0024 — ruleta con segmentos
+
+   Generada con scripts/db/generar-migracion.mjs desde los archivos
+   canonicos de sql/. No editar a mano: regenerar.
+
+   Idempotente: todos los objetos usan CREATE OR ALTER, y los tipos
+   comprueban su existencia antes de crearse. Se puede reejecutar.
+
+   Incluye el bloque de esquema sql/schema/changes/0024_ruleta-con-segmentos.sql (tablas,
+   columnas, seed). Cada paso de ese bloque comprueba su existencia.
+   ============================================================ */
+
+/* ========== ESQUEMA: sql/schema/changes/0024_ruleta-con-segmentos.sql ========== */
+/* ============================================================
+   0024 — la ruleta, y lo que hace falta para que el dominio sea extensible
+
+   Hasta ahora la unica dinamica funcional de punta a punta era el
+   cronometro. "Motor de dinamicas" con un solo juego dentro no es un motor:
+   es un cronometro con nombre largo.
+
+   La ruleta obliga a modelar lo que al cronometro no le hacia falta: un juego
+   con VARIOS resultados posibles, cada uno con su premio y su probabilidad.
+   Eso es justo lo que convierte esto en extensible, porque PICK_ONE,
+   RANDOM_REVEAL y SCRATCH son la misma pregunta -"¿cual de estos resultados
+   sale?"- con otra animacion encima.
+
+   POR QUE UNA TABLA Y NO UN JSON
+   ------------------------------
+   Un segmento apunta a una recompensa o a una rifa. Con JSON en una columna,
+   borrar una recompensa dejaria segmentos apuntando al vacio y nadie se
+   enteraria hasta que alguien girara la ruleta. Con filas y claves ajenas, la
+   base lo impide.
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.dynamic_segments', 'U') IS NULL
+BEGIN
+CREATE TABLE dbo.dynamic_segments (
+    id INT IDENTITY(1, 1) NOT NULL,
+    definition_id INT NOT NULL,
+    /* El orden en que se pintan. La rueda se dibuja con esto, asi que mover
+       un segmento cambia donde aparece. */
+    sort_order INT NOT NULL CONSTRAINT DF_dynamic_segments_orden DEFAULT ((0)),
+    label NVARCHAR(60) COLLATE Modern_Spanish_CI_AS NOT NULL,
+    /* Que pasa si sale: nada, una recompensa, o boletos de rifa. */
+    outcome NVARCHAR(16) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_dynamic_segments_outcome DEFAULT ('NONE'),
+    reward_definition_id INT NULL,
+    raffle_id INT NULL,
+    quantity INT NOT NULL CONSTRAINT DF_dynamic_segments_cantidad DEFAULT ((1)),
+    /* Peso, no porcentaje.
+       Con pesos, anadir un segmento no obliga a recalcular los demas para que
+       vuelvan a sumar 100. El servidor normaliza al sortear. */
+    weight INT NOT NULL CONSTRAINT DF_dynamic_segments_peso DEFAULT ((1)),
+    active BIT NOT NULL CONSTRAINT DF_dynamic_segments_active DEFAULT ((1)),
+    created_at DATETIME2(0) NOT NULL CONSTRAINT DF_dynamic_segments_created_at DEFAULT (sysutcdatetime()),
+    CONSTRAINT PK_dynamic_segments PRIMARY KEY CLUSTERED (id)
+);
+END;
+
+IF OBJECT_ID(N'dbo.CK_dynamic_segments_outcome', 'C') IS NULL
+ALTER TABLE dbo.dynamic_segments WITH CHECK ADD CONSTRAINT CK_dynamic_segments_outcome
+    CHECK ([outcome] = 'NONE' OR [outcome] = 'REWARD' OR [outcome] = 'RAFFLE_ENTRY');
+
+/* Un peso negativo dejaria el sorteo sin sentido; uno de cero es legitimo
+   -un segmento que se pinta pero nunca sale-. */
+IF OBJECT_ID(N'dbo.CK_dynamic_segments_peso', 'C') IS NULL
+ALTER TABLE dbo.dynamic_segments WITH CHECK ADD CONSTRAINT CK_dynamic_segments_peso
+    CHECK ([weight] >= 0 AND [quantity] >= 1);
+
+IF OBJECT_ID(N'dbo.FK_dynamic_segments_definition', 'F') IS NULL
+ALTER TABLE dbo.dynamic_segments WITH CHECK ADD CONSTRAINT FK_dynamic_segments_definition
+    FOREIGN KEY (definition_id) REFERENCES dbo.dynamic_definitions (id);
+
+IF OBJECT_ID(N'dbo.FK_dynamic_segments_reward', 'F') IS NULL
+ALTER TABLE dbo.dynamic_segments WITH CHECK ADD CONSTRAINT FK_dynamic_segments_reward
+    FOREIGN KEY (reward_definition_id) REFERENCES dbo.reward_definitions (id);
+
+IF OBJECT_ID(N'dbo.FK_dynamic_segments_raffle', 'F') IS NULL
+ALTER TABLE dbo.dynamic_segments WITH CHECK ADD CONSTRAINT FK_dynamic_segments_raffle
+    FOREIGN KEY (raffle_id) REFERENCES dbo.raffle_definitions (id);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_dynamic_segments_definition')
+CREATE NONCLUSTERED INDEX IX_dynamic_segments_definition
+    ON dbo.dynamic_segments (definition_id, sort_order);
+
+/* Que segmento salio. Sin esto, un intento de ruleta guardaria "gano" sin
+   decir QUE gano, y reclamar un premio seria imposible de comprobar. */
+IF COL_LENGTH('dbo.dynamic_attempts', 'segment_id') IS NULL
+ALTER TABLE dbo.dynamic_attempts ADD segment_id INT NULL;
+GO
+
+/* ---------- sp_dynamic_play (SQL_STORED_PROCEDURE) ---------- */
 /* sp_dynamic_play
  * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
  * No editar en SSMS: modificar este archivo y crear una migracion.
@@ -300,5 +392,140 @@ BEGIN
                 WHEN @resultado = 'WIN' THEN N'¡Ganaste!'
                 WHEN @segEtiqueta IS NOT NULL THEN CONCAT(N'Salió: ', @segEtiqueta)
                 ELSE N'Esta vez no fue. ¡Gracias por participar!' END AS mensaje;
+END
+GO
+
+/* ---------- sp_dynamic_save_segment (SQL_STORED_PROCEDURE) ---------- */
+/* sp_dynamic_save_segment
+ * Definicion canonica. Mantener este archivo y generar una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+/* ============================================================
+   sp_dynamic_save_segment — crear, cambiar o quitar un sector de la ruleta.
+
+   UNO a uno, no la lista entera de golpe. Reemplazar todos los sectores en
+   cada guardado significaria borrarlos y volver a crearlos, y con ello
+   cambiarian sus ids: los intentos ya jugados apuntan a un `segment_id`, y
+   un premio reclamado tiene que poder seguir diciendo QUE sector salio.
+
+   `@borrar` desactiva en vez de eliminar, por lo mismo: un sector que ya
+   premio a alguien no se puede hacer desaparecer del historial.
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[sp_dynamic_save_segment]
+    @id INT = NULL,
+    @definition_id INT,
+    @label NVARCHAR(60),
+    @outcome NVARCHAR(16) = 'NONE',        -- NONE | REWARD | RAFFLE_ENTRY
+    @reward_definition_id INT = NULL,
+    @raffle_id INT = NULL,
+    @quantity INT = 1,
+    @weight INT = 1,
+    @sort_order INT = NULL,
+    @borrar BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.dynamic_definitions WHERE id = @definition_id)
+    BEGIN RAISERROR('La dinamica no existe.', 16, 1); RETURN; END
+
+    /* Quitar: se desactiva. Ver la nota de arriba. */
+    IF @borrar = 1
+    BEGIN
+        IF @id IS NULL BEGIN RAISERROR('Falta el sector que se quiere quitar.', 16, 1); RETURN; END
+        UPDATE dbo.dynamic_segments SET active = 0 WHERE id = @id AND definition_id = @definition_id;
+        EXEC dbo.sp_dynamic_segments @definition_id = @definition_id;
+        RETURN;
+    END
+
+    IF LTRIM(RTRIM(ISNULL(@label, N''))) = N''
+    BEGIN RAISERROR('Cada sector necesita una etiqueta: es lo que lee el cliente.', 16, 1); RETURN; END
+
+    SET @outcome = UPPER(LTRIM(RTRIM(ISNULL(@outcome, N'NONE'))));
+    IF @outcome NOT IN ('NONE', 'REWARD', 'RAFFLE_ENTRY')
+    BEGIN RAISERROR('Resultado de sector desconocido.', 16, 1); RETURN; END
+
+    /* Un sector que promete algo tiene que decir QUE promete. Sin esto se
+       guardaria "Bebida gratis" sin bebida, y la ruleta pararia ahi sin
+       entregar nada. */
+    IF @outcome = 'REWARD' AND @reward_definition_id IS NULL
+    BEGIN RAISERROR('Ese sector entrega una recompensa: elige cual.', 16, 1); RETURN; END
+    IF @outcome = 'RAFFLE_ENTRY' AND @raffle_id IS NULL
+    BEGIN RAISERROR('Ese sector entrega boletos: elige la rifa.', 16, 1); RETURN; END
+
+    IF ISNULL(@quantity, 0) < 1 SET @quantity = 1;
+    IF ISNULL(@weight, 0) < 0 SET @weight = 0;
+
+    IF @sort_order IS NULL
+        SELECT @sort_order = ISNULL(MAX(sort_order), -1) + 1
+        FROM dbo.dynamic_segments WHERE definition_id = @definition_id;
+
+    IF @id IS NULL
+    BEGIN
+        INSERT INTO dbo.dynamic_segments
+            (definition_id, sort_order, label, outcome, reward_definition_id, raffle_id, quantity, weight, active)
+        VALUES
+            (@definition_id, @sort_order, @label, @outcome,
+             CASE WHEN @outcome = 'REWARD' THEN @reward_definition_id END,
+             CASE WHEN @outcome = 'RAFFLE_ENTRY' THEN @raffle_id END,
+             @quantity, @weight, 1);
+    END
+    ELSE
+    BEGIN
+        UPDATE dbo.dynamic_segments
+           SET label = @label, outcome = @outcome,
+               reward_definition_id = CASE WHEN @outcome = 'REWARD' THEN @reward_definition_id END,
+               raffle_id = CASE WHEN @outcome = 'RAFFLE_ENTRY' THEN @raffle_id END,
+               quantity = @quantity, weight = @weight, sort_order = @sort_order,
+               active = 1
+         WHERE id = @id AND definition_id = @definition_id;
+    END
+
+    EXEC dbo.sp_dynamic_segments @definition_id = @definition_id;
+END
+GO
+
+/* ---------- sp_dynamic_segments (SQL_STORED_PROCEDURE) ---------- */
+/* sp_dynamic_segments
+ * Definicion canonica. Mantener este archivo y generar una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+/* ============================================================
+   sp_dynamic_segments — los sectores de una ruleta, en orden.
+
+   Los usa el administrador para editarlos y el juego para dibujar la rueda.
+   Se devuelve tambien el peso ya convertido a probabilidad, porque es lo que
+   una persona quiere leer -"sale el 20% de las veces"- aunque lo que se
+   guarde sean pesos.
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[sp_dynamic_segments]
+    @definition_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @total INT;
+    SELECT @total = SUM(weight)
+    FROM dbo.dynamic_segments
+    WHERE definition_id = @definition_id AND active = 1;
+
+    SELECT s.id, s.definition_id, s.sort_order, s.label, s.outcome,
+           s.reward_definition_id, rd.name AS reward_name,
+           s.raffle_id, rf.name AS raffle_name,
+           s.quantity, s.weight, s.active,
+           /* La probabilidad real, calculada aqui: si la pantalla la dedujera
+              por su cuenta, dos pantallas podrian anunciar numeros distintos
+              de la misma ruleta. */
+           CAST(CASE WHEN ISNULL(@total, 0) = 0 THEN 0
+                     ELSE (s.weight * 100.0) / @total END AS DECIMAL(5,2)) AS probabilidad
+    FROM dbo.dynamic_segments s
+    LEFT JOIN dbo.reward_definitions rd ON rd.id = s.reward_definition_id
+    LEFT JOIN dbo.raffle_definitions rf ON rf.id = s.raffle_id
+    WHERE s.definition_id = @definition_id
+    ORDER BY s.sort_order, s.id;
 END
 GO

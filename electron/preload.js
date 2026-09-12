@@ -328,6 +328,9 @@ contextBridge.exposeInMainWorld('wybix', {
     dynamics: {
         pending: (p) => ipcRenderer.invoke('dynamics:pending', p),
         play: (p) => ipcRenderer.invoke('dynamics:play', p),
+        // Sectores de la ruleta. Quien decide cual sale es SQL, no la rueda.
+        segments: (p) => ipcRenderer.invoke('dynamics:segments', p),
+        saveSegment: (p) => ipcRenderer.invoke('dynamics:save-segment', p),
     },
     coupons: {
         // Mirar sin consumir, antes de cobrar.

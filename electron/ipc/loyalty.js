@@ -143,6 +143,29 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('input_value', sql.Decimal(12, 4), num(p.inputValue) ?? 0)
       .input('machine_id', sql.NVarChar(64), equipo())));
 
+  // ----------------------------------------------------------- la ruleta
+  /** Los sectores de una ruleta, en orden y con su probabilidad real. */
+  ipcMain.handle('dynamics:segments', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_dynamic_segments', (r) =>
+      r.input('definition_id', sql.Int, num(p.definitionId))));
+
+  /**
+   * Crear, cambiar o quitar un sector. Devuelve la lista completa ya
+   * recalculada, asi que la pantalla no tiene que volver a pedirla.
+   */
+  ipcMain.handle('dynamics:save-segment', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_dynamic_save_segment', (r) => r
+      .input('id', sql.Int, num(p.id))
+      .input('definition_id', sql.Int, num(p.definitionId))
+      .input('label', sql.NVarChar(60), txt(p.label))
+      .input('outcome', sql.NVarChar(16), txt(p.outcome) || 'NONE')
+      .input('reward_definition_id', sql.Int, num(p.rewardDefinitionId))
+      .input('raffle_id', sql.Int, num(p.raffleId))
+      .input('quantity', sql.Int, num(p.quantity) ?? 1)
+      .input('weight', sql.Int, num(p.weight) ?? 1)
+      .input('sort_order', sql.Int, num(p.sortOrder))
+      .input('borrar', sql.Bit, p.borrar ? 1 : 0)));
+
   // ------------------------------------------------------------------ rifas
   ipcMain.handle('raffles:save', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_raffle_save', (r) => r

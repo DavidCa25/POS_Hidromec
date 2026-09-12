@@ -540,7 +540,7 @@
             <span>Tipo</span>
             <wx-select [opciones]="[
                 { valor: 'TIMING', etiqueta: 'Parar el cronómetro' },
-                { valor: 'WHEEL', etiqueta: 'Ruleta', desactivada: true }]"
+                { valor: 'WHEEL', etiqueta: 'Ruleta' }]"
               [(ngModel)]="d.type" name="dType"></wx-select>
           </label>
           <label class="loy-f">
@@ -571,6 +571,11 @@
           </label>
         </div>
 
+        <p class="loy-nota" *ngIf="d.type === 'WHEEL'">
+          <i class="ph ph-info"></i>
+          Guardala y despues usa <b>Sectores</b> para decir que puede salir.
+          El sector ganador lo elige el servidor; la rueda solo lo ensena.
+        </p>
         <p class="loy-nota" *ngIf="d.type === 'TIMING'">
           <i class="ph ph-info"></i>
           Gana quien detenga el contador <b>exactamente</b> cuando muestre
@@ -593,11 +598,115 @@
         </div>
       </form>
 
+      <!-- ================================================ SECTORES ==== -->
+      <section class="loy-form" *ngIf="editandoSectores() as d">
+        <div class="loy-sec__head">
+          <div>
+            <h3 class="loy-h3"><i class="ph ph-chart-pie-slice"></i> Sectores de «{{ d.name }}»</h3>
+            <p class="loy-sub">Lo que puede salir al girar. El servidor elige; la rueda lo enseña.</p>
+          </div>
+          <button class="btn-ghost btn-sm" type="button" (click)="cerrarSectores()">
+            <i class="ph ph-x"></i> Cerrar
+          </button>
+        </div>
+
+        <div class="loy-tabla" *ngIf="sectores().length">
+          <table class="wx-tabla">
+            <thead>
+              <tr><th>Sector</th><th>Qué entrega</th><th class="num">Peso</th>
+                  <th class="num">Probabilidad</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let sec of sectores()" [class.apagada]="!sec.active">
+                <td><b>{{ sec.label }}</b></td>
+                <td>
+                  <span class="loy-pill" *ngIf="sec.outcome === 'NONE'">Sin premio</span>
+                  <span *ngIf="sec.outcome === 'REWARD'">{{ sec.reward_name }}</span>
+                  <span *ngIf="sec.outcome === 'RAFFLE_ENTRY'">
+                    {{ sec.quantity }} boleto{{ sec.quantity === 1 ? '' : 's' }} · {{ sec.raffle_name }}
+                  </span>
+                </td>
+                <td class="num">
+                  <input class="ctl loy-peso" type="number" min="0" [value]="sec.weight"
+                         (change)="cambiarPeso(sec, $any($event.target).value)">
+                </td>
+                <!-- La probabilidad la calcula SQL: si la dedujera la pantalla,
+                     dos pantallas podrían anunciar números distintos. -->
+                <td class="num">{{ sec.probabilidad | number:'1.0-1' }}%</td>
+                <td class="acciones">
+                  <button class="btn-ghost btn-sm" type="button" (click)="moverSector(sec, -1)" title="Subir">
+                    <i class="ph ph-arrow-up"></i>
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="moverSector(sec, 1)" title="Bajar">
+                    <i class="ph ph-arrow-down"></i>
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="quitarSector(sec)" title="Quitar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="loy-hint" *ngIf="!sectores().length">
+          Todavía no hay sectores. Añade al menos dos para que la ruleta tenga sentido.
+        </p>
+
+        <fieldset class="loy-fs">
+          <legend>Añadir sector</legend>
+          <div class="loy-form__grid">
+            <label class="loy-f loy-f--wide">
+              <span>Qué dice el sector</span>
+              <input class="ctl" type="text" maxlength="60" [(ngModel)]="sectorNuevo.label"
+                     name="secLabel" placeholder="Bebida gratis">
+            </label>
+            <label class="loy-f">
+              <span>Qué entrega</span>
+              <wx-select [opciones]="opcResultadoSector" [(ngModel)]="sectorNuevo.outcome"
+                         name="secOut"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'REWARD'">
+              <span>Recompensa</span>
+              <wx-select [opciones]="opcRecompensas()" [(ngModel)]="sectorNuevo.rewardDefinitionId"
+                         name="secRew" placeholder="Elegir recompensa"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'RAFFLE_ENTRY'">
+              <span>Rifa</span>
+              <wx-select [opciones]="opcRifas()" [(ngModel)]="sectorNuevo.raffleId"
+                         name="secRif" placeholder="Elegir rifa"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'RAFFLE_ENTRY'">
+              <span>Cuántos boletos</span>
+              <input class="ctl" type="number" min="1" [(ngModel)]="sectorNuevo.quantity" name="secQty">
+            </label>
+            <label class="loy-f">
+              <span>Peso</span>
+              <input class="ctl" type="number" min="0" [(ngModel)]="sectorNuevo.weight" name="secPeso">
+            </label>
+          </div>
+          <!-- Pesos y no porcentajes: añadir un sector no obliga a recalcular
+               los demás para que vuelvan a sumar 100. -->
+          <p class="loy-nota">
+            <i class="ph ph-info"></i>
+            El <b>peso</b> dice cuántas veces sale ese sector comparado con los otros.
+            Peso 1 contra peso 3 significa que el segundo sale tres veces más. Con peso 0 se
+            pinta pero nunca sale.
+          </p>
+          <div class="btn-row">
+            <button class="btn-primary" type="button" (click)="agregarSector()" [disabled]="guardando()">
+              <i class="ph ph-plus"></i> Añadir sector
+            </button>
+          </div>
+        </fieldset>
+      </section>
+
       <!-- ================================================ PROBANDO ==== -->
       <div class="loy-prueba" *ngIf="probando() as d">
         <app-dinamica-juego
           modo="PREVIEW"
           [definicion]="d"
+          [segmentos]="sectores()"
           (cerrado)="cerrarPrueba()"></app-dinamica-juego>
       </div>
 
@@ -628,6 +737,10 @@
                 <button class="btn-outline btn-sm" type="button"
                         (click)="probar(d)" [disabled]="abriendoVentana()">
                   <i class="ph ph-play-circle"></i> Probar
+                </button>
+                <button class="btn-outline btn-sm" type="button" *ngIf="d.type === 'WHEEL'"
+                        (click)="editarSectores(d)">
+                  <i class="ph ph-chart-pie-slice"></i> Sectores
                 </button>
                 <button class="btn-ghost btn-sm" type="button" (click)="editarDinamica(d)"
                         title="Editar">

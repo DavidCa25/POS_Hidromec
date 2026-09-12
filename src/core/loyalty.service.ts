@@ -133,6 +133,23 @@ export interface PremioDeVenta {
   detalle: string | null;
 }
 
+/** Un sector de la ruleta. La probabilidad la calcula SQL, no la pantalla. */
+export interface WheelSegment {
+  id: number;
+  definition_id: number;
+  sort_order: number;
+  label: string;
+  outcome: 'NONE' | 'REWARD' | 'RAFFLE_ENTRY';
+  reward_definition_id: number | null;
+  reward_name: string | null;
+  raffle_id: number | null;
+  raffle_name: string | null;
+  quantity: number;
+  weight: number;
+  active: boolean;
+  probabilidad: number;
+}
+
 export interface ResultadoDinamica {
   ok: boolean;
   motivo: string | null;
@@ -140,6 +157,15 @@ export interface ResultadoDinamica {
   codigo: string | null;
   premio: string | null;
   mensaje: string;
+  /**
+   * El sector que salio, cuando el juego tiene sectores.
+   *
+   * Lo elige SQL. La rueda anima HACIA el; nunca al reves. Si el angulo de la
+   * animacion decidiera el premio, bastaria con tocar el angulo.
+   */
+  segmento_id?: number | null;
+  segmento_orden?: number | null;
+  segmento?: string | null;
 }
 
 /** Una recompensa o un cupon REALMENTE emitido, no su definicion. */
@@ -358,7 +384,38 @@ export class LoyaltyService {
       codigo: fila?.codigo ?? null,
       premio: fila?.premio ?? null,
       mensaje: fila?.mensaje || 'Sin resultado.',
+      // El sector lo eligio SQL: la rueda solo lo representa.
+      segmento_id: fila?.segmento_id ?? null,
+      segmento_orden: fila?.segmento_orden ?? null,
+      segmento: fila?.segmento ?? null,
     };
+  }
+
+  // ------------------------------------------------------------- ruleta
+  /** Los sectores de una ruleta, en orden. */
+  async segmentos(definitionId: number): Promise<WheelSegment[]> {
+    const r = await this.api?.dynamics?.segments({ definitionId });
+    if (!r?.success) throw new Error(r?.error || 'No se pudieron leer los sectores.');
+    return (r.data || []).map((x: any) => ({
+      ...x,
+      quantity: Number(x.quantity ?? 1),
+      weight: Number(x.weight ?? 0),
+      probabilidad: Number(x.probabilidad ?? 0),
+      active: !!x.active,
+    })) as WheelSegment[];
+  }
+
+  /** Crear, cambiar o quitar un sector. Devuelve la lista ya recalculada. */
+  async guardarSegmento(p: Record<string, any>): Promise<WheelSegment[]> {
+    const r = await this.api?.dynamics?.saveSegment(p);
+    if (!r?.success) throw new Error(r?.error || 'No se pudo guardar el sector.');
+    return (r.data || []).map((x: any) => ({
+      ...x,
+      quantity: Number(x.quantity ?? 1),
+      weight: Number(x.weight ?? 0),
+      probabilidad: Number(x.probabilidad ?? 0),
+      active: !!x.active,
+    })) as WheelSegment[];
   }
 
   // --------------------------------------------------------------- rifas

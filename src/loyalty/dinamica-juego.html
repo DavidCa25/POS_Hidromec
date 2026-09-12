@@ -40,26 +40,59 @@
 
     <!-- El objetivo con los MISMOS dos decimales que el cronometro: si uno
          dijera "10" y el otro "10.00", parecerian juegos distintos. -->
-    <p class="dj-objetivo" *ngIf="objetivoTexto">
+    <p class="dj-objetivo" *ngIf="!esRuleta && objetivoTexto">
       Detenlo exactamente en <b>{{ objetivoTexto }}</b>
     </p>
 
-    <div class="dj-crono" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
+    <!-- ===================================================== RULETA === -->
+    <ng-container *ngIf="esRuleta">
+      <p class="dj-nota dj-nota--aviso" *ngIf="!sectores.length">
+        <i class="ph ph-warning"></i>
+        Esta ruleta todavía no tiene sectores. Añádelos para poder jugar.
+      </p>
+
+      <div class="dj-rueda" *ngIf="sectores.length">
+        <span class="dj-rueda__aguja" aria-hidden="true"></span>
+        <!--
+          El giro es SOLO estetico. El sector ya lo eligio el servidor antes
+          de que esta rueda se mueva: aqui se anima hacia el, nunca al reves.
+        -->
+        <div class="dj-rueda__disco" [class.girando]="girando()"
+             [style.background]="fondoRueda"
+             [style.transform]="'rotate(' + angulo() + 'deg)'">
+          <span class="dj-rueda__et" *ngFor="let s of sectores; let i = index"
+                [style.transform]="'rotate(' + anguloEtiqueta(i) + 'deg) translateY(-78px)'">
+            {{ s.label }}
+          </span>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ================================================= CRONÓMETRO === -->
+    <div class="dj-crono" *ngIf="!esRuleta" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
 
     <div class="btn-row dj-acciones">
       <button class="btn-primary dj-grande" type="button"
-              *ngIf="!corriendo() && !enviando()" (click)="arrancar()">
+              *ngIf="esRuleta && sectores.length && !girando() && !enviando()" (click)="girar()">
+        <i class="ph ph-arrows-clockwise"></i> Girar
+      </button>
+      <span class="dj-enviando" *ngIf="esRuleta && girando()">
+        <i class="ph ph-spinner"></i> Girando…
+      </span>
+
+      <button class="btn-primary dj-grande" type="button"
+              *ngIf="!esRuleta && !corriendo() && !enviando()" (click)="arrancar()">
         <i class="ph ph-play"></i> Empezar
       </button>
       <button class="btn-primary dj-grande dj-parar" type="button"
-              *ngIf="corriendo()" (click)="parar()">
+              *ngIf="!esRuleta && corriendo()" (click)="parar()">
         <i class="ph ph-stop"></i> ¡Parar!
       </button>
       <span class="dj-enviando" *ngIf="enviando()">
         <i class="ph ph-spinner"></i> Comprobando…
       </span>
       <button class="btn-ghost" type="button" (click)="cerrar()"
-              *ngIf="!corriendo() && !enviando()">
+              *ngIf="!corriendo() && !enviando() && !girando()">
         {{ esPreview ? 'Cerrar' : 'Dejarlo' }}
       </button>
     </div>

@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import {
   CapabilityService, CatalogService, CouponDefinition, DynamicDefinition,
   LoyaltyInstance, LoyaltyService, RaffleDefinition, RaffleEntry, RaffleWinner,
-  RewardDefinition,
+  RewardDefinition, WheelSegment,
 } from '../core';
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../app/wx-date/wx-date.component';
@@ -161,6 +161,14 @@ export class LoyaltyAdmin implements OnInit {
    */
   probando = signal<DynamicDefinition | null>(null);
   abriendoVentana = signal(false);
+
+  /** Los sectores de la ruleta que se esta editando o probando. */
+  sectores = signal<WheelSegment[]>([]);
+  /** La ruleta cuyos sectores se estan editando. */
+  editandoSectores = signal<DynamicDefinition | null>(null);
+  sectorNuevo = { label: '', outcome: 'NONE' as 'NONE' | 'REWARD' | 'RAFFLE_ENTRY',
+                  rewardDefinitionId: null as number | null, raffleId: null as number | null,
+                  quantity: 1, weight: 1 };
   rifa = signal<DraftRifa | null>(null);
 
   /** Rifa abierta en el detalle, con sus boletos y ganadores. */
@@ -463,6 +471,107 @@ export class LoyaltyAdmin implements OnInit {
     }
   }
 
+  // ------------------------------------------------------ sectores
+  /**
+   * Abrir el editor de sectores de una ruleta.
+   *
+   * Los sectores viven aparte de la definicion porque son varios y cada uno
+   * apunta a un premio distinto. Editarlos dentro del mismo formulario habria
+   * convertido una pantalla sencilla en una hoja de calculo.
+   */
+  async editarSectores(d: DynamicDefinition): Promise<void> {
+    this.editandoSectores.set(d);
+    this.sectorNuevo = { label: '', outcome: 'NONE', rewardDefinitionId: null, raffleId: null, quantity: 1, weight: 1 };
+    try {
+      this.sectores.set(await this.loyalty.segmentos(d.id));
+    } catch (e: any) {
+      this.sectores.set([]);
+      await this.avisar('No se pudieron leer los sectores', e?.message || 'Error.');
+    } finally { this.cd.detectChanges(); }
+  }
+
+  cerrarSectores(): void {
+    this.editandoSectores.set(null);
+    this.sectores.set([]);
+  }
+
+  async agregarSector(): Promise<void> {
+    const d = this.editandoSectores();
+    if (!d) return;
+    const n = this.sectorNuevo;
+    if (!n.label.trim()) return this.avisar('Falta la etiqueta', 'Es lo que lee el cliente en la rueda.');
+    if (n.outcome === 'REWARD' && !n.rewardDefinitionId) return this.avisar('Falta la recompensa', 'Elige qué entrega ese sector.');
+    if (n.outcome === 'RAFFLE_ENTRY' && !n.raffleId) return this.avisar('Falta la rifa', 'Elige de qué rifa son los boletos.');
+
+    this.guardando.set(true);
+    try {
+      this.sectores.set(await this.loyalty.guardarSegmento({
+        definitionId: d.id, label: n.label.trim(), outcome: n.outcome,
+        rewardDefinitionId: n.rewardDefinitionId, raffleId: n.raffleId,
+        quantity: n.quantity, weight: n.weight,
+      }));
+      this.sectorNuevo = { label: '', outcome: 'NONE', rewardDefinitionId: null, raffleId: null, quantity: 1, weight: 1 };
+    } catch (e: any) {
+      await this.avisar('No se pudo añadir', e?.message || 'Error.');
+    } finally {
+      this.guardando.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  async cambiarPeso(sec: WheelSegment, peso: number): Promise<void> {
+    const d = this.editandoSectores();
+    if (!d) return;
+    try {
+      this.sectores.set(await this.loyalty.guardarSegmento({
+        id: sec.id, definitionId: d.id, label: sec.label, outcome: sec.outcome,
+        rewardDefinitionId: sec.reward_definition_id, raffleId: sec.raffle_id,
+        quantity: sec.quantity, weight: Math.max(0, Number(peso) || 0), sortOrder: sec.sort_order,
+      }));
+    } catch (e: any) {
+      await this.avisar('No se pudo cambiar', e?.message || 'Error.');
+    } finally { this.cd.detectChanges(); }
+  }
+
+  /** Mover un sector cambia DONDE se pinta en la rueda. */
+  async moverSector(sec: WheelSegment, delta: number): Promise<void> {
+    const d = this.editandoSectores();
+    if (!d) return;
+    try {
+      this.sectores.set(await this.loyalty.guardarSegmento({
+        id: sec.id, definitionId: d.id, label: sec.label, outcome: sec.outcome,
+        rewardDefinitionId: sec.reward_definition_id, raffleId: sec.raffle_id,
+        quantity: sec.quantity, weight: sec.weight,
+        sortOrder: Math.max(0, sec.sort_order + delta),
+      }));
+    } catch (e: any) {
+      await this.avisar('No se pudo mover', e?.message || 'Error.');
+    } finally { this.cd.detectChanges(); }
+  }
+
+  async quitarSector(sec: WheelSegment): Promise<void> {
+    const d = this.editandoSectores();
+    if (!d) return;
+    const conf = await Swal.fire({
+      icon: 'question',
+      title: `¿Quitar "${sec.label}"?`,
+      text: 'Dejará de salir en la ruleta. Los premios que ya entregó se conservan.',
+      showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
+    });
+    if (!conf.isConfirmed) return;
+    try {
+      this.sectores.set(await this.loyalty.guardarSegmento({ id: sec.id, definitionId: d.id, label: sec.label, borrar: true }));
+    } catch (e: any) {
+      await this.avisar('No se pudo quitar', e?.message || 'Error.');
+    } finally { this.cd.detectChanges(); }
+  }
+
+  readonly opcResultadoSector = [
+    { valor: 'NONE', etiqueta: 'Sin premio' },
+    { valor: 'REWARD', etiqueta: 'Una recompensa' },
+    { valor: 'RAFFLE_ENTRY', etiqueta: 'Boletos de rifa' },
+  ];
+
   // ------------------------------------------------------- vista previa
   /**
    * Probar una dinamica sin venta, sin premio y sin segundo monitor.
@@ -472,7 +581,17 @@ export class LoyaltyAdmin implements OnInit {
    * intentos, no crea recompensas y no toca ninguna metrica.
    */
   async probar(d: DynamicDefinition): Promise<void> {
-    if (d.type !== 'TIMING') {
+    if (d.type === 'WHEEL') {
+      try {
+        const secs = await this.loyalty.segmentos(d.id);
+        this.sectores.set(secs);
+        if (!secs.filter(x => x.active).length) {
+          return this.avisar('Sin sectores', 'Añade sectores a la ruleta antes de probarla.');
+        }
+      } catch (e: any) {
+        return this.avisar('No se pudieron leer los sectores', e?.message || 'Error.');
+      }
+    } else if (d.type !== 'TIMING') {
       return this.avisar('Todavía no', `La vista previa de ${d.type} llegará con su renderer.`);
     }
     this.abriendoVentana.set(true);
