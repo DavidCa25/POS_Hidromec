@@ -1,109 +1,51 @@
-<div class="dj" [class.dj--preview]="esPreview">
+<!--
+  El JUEGO no esta aqui: esta en la pantalla del cliente. Esto es su estado,
+  para que quien administra sepa que esta pasando y pueda cortar.
 
-  <!-- En vista previa se dice ARRIBA y en todo momento: nadie debe creer que
-       esto acaba de regalar algo. -->
+  Antes este componente pintaba el juego completo, y el resultado eran dos
+  ruletas jugables a la vez. La experiencia pertenece a una sola pantalla.
+-->
+<div class="dj">
   <p class="dj-preview" *ngIf="esPreview">
-    <i class="ph ph-eye"></i> Vista previa · no se entregan premios reales
+    <i class="ph ph-eye"></i> Vista previa · no se entregan premios
   </p>
 
-  <!-- ================================================== RESULTADO ==== -->
-  <ng-container *ngIf="resultado() as r; else juego">
-    <header class="dj-head">
-      <div class="dj-head__ic" [class.gano]="r.resultado === 'WIN'">
-        <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : 'ph-hand-heart' }}"></i>
-      </div>
-      <h3>{{ r.resultado === 'WIN' ? '¡Ganó!' : r.ok ? 'Esta vez no' : 'No se pudo jugar' }}</h3>
-      <p>{{ r.mensaje }}</p>
-    </header>
-
-    <div class="dj-premio" *ngIf="r.premio">
-      <i class="ph ph-gift"></i>
-      <span><b>{{ r.premio }}</b></span>
-      <code *ngIf="r.codigo">{{ r.codigo }}</code>
+  <div class="dj-estado">
+    <span class="dj-estado__ic" [class.activo]="fase() !== 'RESULTADO'">
+      <i class="ph {{ esRuleta ? 'ph-chart-pie-slice' : 'ph-timer' }}"></i>
+    </span>
+    <div class="dj-estado__tx">
+      <b>{{ definicion?.name }}</b>
+      <small [ngSwitch]="fase()">
+        <span *ngSwitchCase="'LISTA'">Esperando al cliente en su pantalla…</span>
+        <span *ngSwitchCase="'JUGANDO'">Jugando…</span>
+        <span *ngSwitchCase="'GIRANDO'">Girando…</span>
+        <span *ngSwitchCase="'RESULTADO'">Terminó</span>
+      </small>
     </div>
+    <span class="dj-punto" *ngIf="fase() !== 'RESULTADO'" aria-hidden="true"></span>
+  </div>
 
-    <div class="btn-row dj-acciones">
-      <button class="btn-outline" type="button" *ngIf="esPreview" (click)="reiniciar()">
-        <i class="ph ph-arrow-counter-clockwise"></i> Probar otra vez
-      </button>
-      <button class="btn-primary" type="button" (click)="cerrar()">Continuar</button>
+  <!-- El resultado, en seco: aqui no se celebra nada. La celebración es del
+       cliente, en su pantalla. -->
+  <div class="dj-res" *ngIf="resultado() as r" [class.gano]="r.resultado === 'WIN'">
+    <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : r.ok ? 'ph-hand-heart' : 'ph-warning-circle' }}"></i>
+    <div class="dj-res__tx">
+      <b>{{ r.resultado === 'WIN' ? 'Ganó' : r.ok ? 'No ganó' : 'No se pudo jugar' }}</b>
+      <small *ngIf="r.segmento">Salió: {{ r.segmento }}</small>
+      <small *ngIf="r.premio">{{ r.premio }}</small>
+      <small *ngIf="r.codigo"><code>{{ r.codigo }}</code></small>
+      <small *ngIf="!r.ok">{{ r.mensaje }}</small>
     </div>
-  </ng-container>
+  </div>
 
-  <!-- ===================================================== JUEGO ===== -->
-  <ng-template #juego>
-    <header class="dj-head">
-      <div class="dj-head__ic"><i class="ph ph-timer"></i></div>
-      <h3>{{ definicion?.name || 'Dinámica' }}</h3>
-      <p>{{ definicion?.description || 'Detén el cronómetro justo en el segundo exacto.' }}</p>
-    </header>
-
-    <!-- El objetivo con los MISMOS dos decimales que el cronometro: si uno
-         dijera "10" y el otro "10.00", parecerian juegos distintos. -->
-    <p class="dj-objetivo" *ngIf="!esRuleta && objetivoTexto">
-      Detenlo exactamente en <b>{{ objetivoTexto }}</b>
-    </p>
-
-    <!-- ===================================================== RULETA === -->
-    <ng-container *ngIf="esRuleta">
-      <p class="dj-nota dj-nota--aviso" *ngIf="!sectores.length">
-        <i class="ph ph-warning"></i>
-        Esta ruleta todavía no tiene sectores. Añádelos para poder jugar.
-      </p>
-
-      <div class="dj-rueda" *ngIf="sectores.length">
-        <span class="dj-rueda__aguja" aria-hidden="true"></span>
-        <!--
-          El giro es SOLO estetico. El sector ya lo eligio el servidor antes
-          de que esta rueda se mueva: aqui se anima hacia el, nunca al reves.
-        -->
-        <div class="dj-rueda__disco" [class.girando]="girando()"
-             [style.background]="fondoRueda"
-             [style.transform]="'rotate(' + angulo() + 'deg)'">
-          <span class="dj-rueda__et" *ngFor="let s of sectores; let i = index"
-                [style.transform]="'rotate(' + anguloEtiqueta(i) + 'deg) translateY(-78px)'">
-            {{ s.label }}
-          </span>
-        </div>
-      </div>
-    </ng-container>
-
-    <!-- ================================================= CRONÓMETRO === -->
-    <div class="dj-crono" *ngIf="!esRuleta" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
-
-    <div class="btn-row dj-acciones">
-      <button class="btn-primary dj-grande" type="button"
-              *ngIf="esRuleta && sectores.length && !girando() && !enviando()" (click)="girar()">
-        <i class="ph ph-arrows-clockwise"></i> Girar
-      </button>
-      <span class="dj-enviando" *ngIf="esRuleta && girando()">
-        <i class="ph ph-spinner"></i> Girando…
-      </span>
-
-      <button class="btn-primary dj-grande" type="button"
-              *ngIf="!esRuleta && !corriendo() && !enviando()" (click)="arrancar()">
-        <i class="ph ph-play"></i> Empezar
-      </button>
-      <button class="btn-primary dj-grande dj-parar" type="button"
-              *ngIf="!esRuleta && corriendo()" (click)="parar()">
-        <i class="ph ph-stop"></i> ¡Parar!
-      </button>
-      <span class="dj-enviando" *ngIf="enviando()">
-        <i class="ph ph-spinner"></i> Comprobando…
-      </span>
-      <button class="btn-ghost" type="button" (click)="cerrar()"
-              *ngIf="!corriendo() && !enviando() && !girando()">
-        {{ esPreview ? 'Cerrar' : 'Dejarlo' }}
-      </button>
-    </div>
-
-    <!-- Se dice en voz alta: es lo que hace creible el juego para quien lo
-         juega y para quien lo cobra. -->
-    <p class="dj-nota">
-      <i class="ph ph-shield-check"></i>
-      {{ esPreview
-         ? 'En una partida real el resultado lo decide el servidor.'
-         : 'El resultado lo decide el servidor.' }}
-    </p>
-  </ng-template>
+  <div class="btn-row dj-acciones">
+    <button class="btn-outline" type="button" *ngIf="esPreview && fase() === 'RESULTADO'"
+            (click)="reiniciar()">
+      <i class="ph ph-arrow-counter-clockwise"></i> Probar otra vez
+    </button>
+    <button class="btn-ghost" type="button" (click)="cerrar()">
+      {{ esPreview ? 'Finalizar vista previa' : 'Continuar' }}
+    </button>
+  </div>
 </div>

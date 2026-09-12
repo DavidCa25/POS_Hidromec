@@ -294,20 +294,40 @@ export type CustomerDisplayState =
       negocio?: string | null;
     }
   | {
-      /** Dinamica en curso: el cliente ve el cronometro que va a parar. */
-      mode: 'dinamica';
-      nombre: string;
-      instruccion: string | null;
-      objetivo: number | null;
       /**
-       * Lo transcurrido en CENTESIMAS ENTERAS, no en segundos.
+       * La dinamica, en la pantalla del CLIENTE.
        *
-       * Es la misma unidad con la que la caja cuenta y juzga. Mandar segundos
-       * con decimales obligaria a esta pantalla a redondear por su cuenta, y
-       * podria ensenar 10.00 mientras la caja muestra 9.99.
+       * Un solo estado con fases, no cuatro mensajes sueltos: el cliente esta
+       * viviendo UNA cosa -un juego-, y partirla obligaba a la pantalla a
+       * recomponerla.
+       *
+       * QUIEN HACE QUE
+       *   POS / ADMIN     configura, lanza y recibe el veredicto de SQL.
+       *   ESTA PANTALLA   presenta, anima y recoge la intencion del cliente.
+       *
+       * El cronometro lo corre esta pantalla: es donde esta el boton y donde
+       * se mira el numero. Manda de vuelta CUANDO paro -en centesimas
+       * enteras-, nunca si gano.
        */
-      centesimas: number;
-      corriendo: boolean;
+      mode: 'dinamica';
+      tipo: 'TIMING' | 'WHEEL';
+      fase: 'LISTA' | 'JUGANDO' | 'GIRANDO' | 'RESULTADO';
+      nombre: string;
+      /** El reto, en una linea. Lo que se lee antes de jugar. */
+      reto: string;
+      /** Que se puede ganar. Va ANTES del juego: es la razon para jugar. */
+      premios: string[];
+      /** Solo TIMING: la centesima exacta que hay que clavar. */
+      objetivo?: number | null;
+      /** Solo WHEEL: las etiquetas de los sectores, en orden de dibujo. */
+      sectores?: string[];
+      /** Solo en GIRANDO: hacia que sector tiene que parar la rueda. */
+      ganadorIndice?: number | null;
+      /** Solo en RESULTADO. */
+      gano?: boolean;
+      mensaje?: string;
+      premioGanado?: string | null;
+      codigo?: string | null;
     }
   | {
       /** Como acabo la dinamica. Lo decidio SQL, aqui solo se ensena. */

@@ -75,14 +75,28 @@ export class CustomerDisplayService {
   }
 
   /**
-   * El cronometro de una dinamica, mientras corre.
+   * La dinamica, en la pantalla del cliente.
    *
-   * Va sin coalescer y con inmediato=true: es un cronometro, y un frame de
-   * retraso en el numero que el cliente esta mirando se nota.
+   * Se manda el estado COMPLETO en cada fase. La pantalla no acumula: si
+   * guardara trozos, abrirla a mitad de partida la dejaria sin saber que
+   * estaba pasando.
+   *
+   * La ventana se mantiene viva mucho mas que un "gracias": una partida dura
+   * lo que el cliente tarde en decidirse.
    */
-  showDinamica(p: { nombre: string; instruccion: string | null; objetivo: number | null; centesimas: number; corriendo: boolean }): void {
-    this.checkoutHasta = Date.now() + 30000;
+  showDinamica(p: Omit<Extract<CustomerDisplayState, { mode: 'dinamica' }>, 'mode'>): void {
+    this.checkoutHasta = Date.now() + 120000;
     this.push({ mode: 'dinamica', ...p }, true);
+  }
+
+  /**
+   * Lo que el cliente pulso en SU pantalla.
+   *
+   * Llega como intencion -empezar, parar, girar-, nunca como resultado. Quien
+   * la convierte en jugada es quien escucha esto; quien decide, SQL.
+   */
+  alPulsarCliente(cb: (a: { tipo: string; centesimas?: number }) => void): void {
+    try { this.bridge.api?.onCustomerAction?.(cb); } catch { /* sin pantalla, sin acciones */ }
   }
 
   showResultadoDinamica(p: { gano: boolean; mensaje: string; premio: string | null; codigo: string | null }): void {

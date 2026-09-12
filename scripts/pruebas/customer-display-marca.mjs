@@ -106,7 +106,9 @@ check(!/#idle .marca/.test(firma.slice(0, 200)),
 // ===================================================================
 seccion('5. Todos los estados, incluidos los de Fidelizacion');
 
-for (const id of ['idle', 'sale', 'checkout', 'premios', 'dinamica', 'dinres']) {
+/* `juego` sustituyo a `dinamica`: la experiencia dejo de ser un cronometro
+   suelto y paso a ser una pantalla con fases -reto, juego y resultado-. */
+for (const id of ['idle', 'sale', 'checkout', 'premios', 'juego', 'dinres']) {
   check(new RegExp(`id="${id}"`).test(vista), `existe el estado ${id}`);
 }
 

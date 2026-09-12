@@ -177,6 +177,20 @@
           <i class="ph ph-gift"></i> <span>Fidelización</span>
         </a>
       </li>
+      <!--
+        Aplicaciones es una seccion propia de Wybix, no una preferencia ni una
+        opcion tecnica: es el catalogo de modulos del producto. Por eso no vive
+        dentro de Configuracion ni en el menu del usuario.
+
+        Siempre visible; Fidelizacion, solo cuando esta encendida.
+      -->
+      <li class="wx-grp wx-grp--sistema">
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="ph ph-squares-four"></i> <span>Aplicaciones</span>
+        </a>
+      </li>
       <li class="wx-grp wx-grp--sistema">
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/configuracion"
            routerLinkActive="active"
@@ -375,18 +389,6 @@
         </div>
 
         <ul class="user-dropdown shadow-sm border-0">
-          <!--
-            Aplicaciones vive aqui y no en el rail: se toca dos veces al ano.
-            Una entrada permanente en el menu principal por algo asi es la
-            saturacion que se queria evitar.
-          -->
-          <li>
-            <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones" routerLinkActive="active"
-               (click)="isUserDropdownOpen = false"
-               class="dropdown-item d-flex align-items-center">
-              <i class="ph ph-squares-four me-2"></i> Aplicaciones
-            </a>
-          </li>
           <li>
             <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
               <i class="ph ph-sign-out me-2"></i> Cerrar sesión

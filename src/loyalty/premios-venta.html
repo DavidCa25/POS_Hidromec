@@ -50,10 +50,12 @@
         <i class="ph ph-warning-circle"></i> {{ m }}
       </p>
 
+      <!-- El juego lo ve el CLIENTE en su pantalla. Aqui solo su estado. -->
       <app-dinamica-juego *ngIf="pendiente() as p"
         modo="LIVE"
         [token]="p.token"
         [definicion]="p"
+        [segmentos]="sectores()"
         (terminado)="alTerminarJuego()"
         (cerrado)="cerrar()"></app-dinamica-juego>
 

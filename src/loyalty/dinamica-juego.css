@@ -1,106 +1,55 @@
 /* ==========================================================================
-   EL JUEGO DE UNA DINAMICA
-   Una sola implementacion para la partida real y para la vista previa: si
-   fueran dos, la de prueba dejaria de parecerse a la de verdad.
+   ESTADO DE UNA DINAMICA — en la caja / administrador
+   El juego vive en la pantalla del cliente. Esto solo cuenta que pasa.
    ========================================================================== */
 
-.dj { display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center; }
+.dj { display: flex; flex-direction: column; gap: 12px; }
 
-/* La vista previa se marca con color, no solo con texto: se tiene que notar
-   de un vistazo que esto no esta repartiendo nada. */
 .dj-preview {
-  display: flex; align-items: center; gap: 8px; margin: 0;
-  padding: 8px 14px; border-radius: 999px;
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 7px; margin: 0;
+  padding: 5px 11px; border-radius: 999px;
   background: var(--wx-warning-soft); color: var(--wx-warning-ink);
   font-size: var(--wx-text-xs); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.05em;
 }
 
-.dj-head { display: flex; flex-direction: column; align-items: center; gap: 7px; }
-.dj-head__ic {
-  width: 54px; height: 54px; display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 26px;
+.dj-estado {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
 }
-.dj-head__ic.gano { background: var(--wx-green-soft, var(--wx-accent-soft)); }
-.dj-head h3 { margin: 0; font-size: var(--wx-text-lg); font-weight: 700; }
-.dj-head p { margin: 0; max-width: 44ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
-
-.dj-objetivo { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
-.dj-objetivo b { color: var(--wx-text); font-variant-numeric: tabular-nums; }
-
-/* Sin transicion, a proposito: es un cronometro. Suavizar el numero seria
-   mentir sobre el instante en que se paro, que es justo lo que se juega. */
-.dj-crono {
-  padding: 6px 0;
-  font-size: 68px; font-weight: 700; line-height: 1;
-  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
-  color: var(--wx-text-muted);
+.dj-estado__ic {
+  width: 42px; height: 42px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; background: var(--wx-surface);
+  color: var(--wx-text-muted); font-size: 21px;
 }
-.dj-crono.corriendo { color: var(--wx-accent-text); }
+.dj-estado__ic.activo { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.dj-estado__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dj-estado__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.dj-estado__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
 
-.dj-acciones { justify-content: center; margin-top: 2px; }
-.dj-grande { min-height: 50px; padding: 0 28px; font-size: var(--wx-text-md); font-weight: 600; }
-.dj-parar { background: var(--wx-danger); border-color: var(--wx-danger); }
-
-.dj-premio {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 15px;
-  background: var(--wx-accent-soft); border-radius: var(--wx-radius-md);
-  color: var(--wx-accent-text);
+/* Un punto que late: dice "esto sigue vivo" sin ocupar sitio. */
+.dj-punto {
+  width: 10px; height: 10px; flex: none; border-radius: 50%;
+  background: var(--wx-accent);
+  animation: dj-pulso 1.4s ease-in-out infinite;
 }
-.dj-premio code {
-  padding: 2px 8px; background: var(--wx-surface); border-radius: 6px;
-  font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); letter-spacing: 0.06em;
+@keyframes dj-pulso { 50% { opacity: 0.25; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .dj-punto { animation: none; } }
+
+.dj-res {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 15px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
 }
-
-.dj-enviando { display: inline-flex; align-items: center; gap: 8px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
-.dj-enviando i { animation: dj-girar 900ms linear infinite; }
-@keyframes dj-girar { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .dj-enviando i { animation: none; } }
-
-.dj-nota {
-  display: flex; align-items: center; gap: 7px; margin: 0;
-  color: var(--wx-text-dim); font-size: var(--wx-text-xs);
+.dj-res > i { font-size: 21px; color: var(--wx-text-muted); flex: none; }
+.dj-res.gano { background: var(--wx-accent-soft); }
+.dj-res.gano > i { color: var(--wx-accent-text); }
+.dj-res__tx { display: flex; flex-direction: column; min-width: 0; }
+.dj-res__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.dj-res__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.dj-res code {
+  padding: 1px 6px; background: var(--wx-surface); border-radius: 4px;
+  font-family: var(--wx-font-mono); letter-spacing: 0.06em;
 }
 
-/* ------------------------------------------------------------- la rueda */
-.dj-rueda { position: relative; width: 220px; height: 220px; }
-
-/* La aguja marca DONDE se lee el resultado. Arriba, fija. */
-.dj-rueda__aguja {
-  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0; z-index: 2;
-  border-left: 11px solid transparent;
-  border-right: 11px solid transparent;
-  border-top: 18px solid var(--wx-danger);
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,.3));
-}
-
-.dj-rueda__disco {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 4px solid var(--wx-surface);
-  box-shadow: var(--wx-shadow-card), inset 0 0 0 1px var(--wx-edge);
-  /* ease-out fuerte: arranca rapido y se va frenando, como una rueda de
-     verdad. Un giro lineal parece un GIF, no un sorteo. */
-  transition: transform 4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .dj-rueda__disco { transition: transform 300ms ease-out; }
-}
-
-.dj-rueda__et {
-  position: absolute; top: 50%; left: 50%;
-  transform-origin: 0 0;
-  margin: -8px 0 0 -34px;
-  width: 68px; text-align: center;
-  font-size: 10px; font-weight: 700; line-height: 1.1;
-  color: var(--wx-accent-ink, #fff);
-  text-shadow: 0 1px 2px rgba(0,0,0,.45);
-  pointer-events: none;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-.dj-nota--aviso { color: var(--wx-warning-ink); }
-.dj-nota--aviso i { color: var(--wx-warning-ink); }
+.dj-acciones { justify-content: flex-end; margin-top: 0; }

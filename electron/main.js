@@ -790,6 +790,23 @@ ipcMain.handle('customer-display:status', async () => ({
 }));
 // La misma pantalla en una ventana normal: para configurar y probar sin
 // depender de que haya un segundo monitor conectado.
+/**
+ * Lo que el cliente pulso en SU pantalla, de vuelta al POS.
+ *
+ * La pantalla de cliente no habla con SQL ni sabe de premios: presenta y
+ * recoge la intencion. Quien la convierte en una jugada -y quien recibe el
+ * veredicto del servidor- es la ventana principal.
+ */
+ipcMain.handle('customer:action', async (_e, accion = {}) => {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('customer-display:action', accion);
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
 ipcMain.handle('customer-display:preview-open', async () => openCustomerPreview());
 ipcMain.handle('customer-display:preview-close', async () => closeCustomerPreview());
 /**
@@ -807,10 +824,27 @@ ipcMain.handle('customer-display:preview-close', async () => closeCustomerPrevie
 ipcMain.handle('customer:get-business', async () => {
   try {
     const cfg = await ensureBusinessConfig();
+    /* Lo que se puede ganar HOY, para que la pantalla de espera tenga algo
+       que ofrecer. Sin esto solo podria saludar, y una pantalla que siempre
+       dice lo mismo deja de mirarse. */
+    let premios = [];
+    let campana = null;
+    if (cfg?.loyalty_enabled) {
+      try {
+        const pool = await poolPromise;
+        const r = await pool.request().execute('sp_loyalty_catalog');
+        const [campanas = [], recompensas = []] = r.recordsets || [];
+        const activas = campanas.filter(c => c.active);
+        campana = activas.length ? activas[0].name : null;
+        premios = recompensas.filter(x => x.active).slice(0, 4).map(x => x.name);
+      } catch { /* la pantalla de espera nunca puede tumbar nada */ }
+    }
     return {
       name: cfg?.business_name || cfg?.businessName || '',
       logoUrl: ticketLogoUrl(),
       mensaje: cfg?.ticket_footer || '',
+      premios,
+      campana,
     };
   } catch {
     return { name: '', logoUrl: null, mensaje: '' };

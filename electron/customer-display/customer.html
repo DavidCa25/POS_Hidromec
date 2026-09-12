@@ -22,16 +22,52 @@
   .screen{display:none; height:100vh; padding:4vh 5vw;}
   .screen.on{display:flex;}
 
-  /* ===== ESPERA ===== */
-  #idle{flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:2.2vh;}
-  #idle .biz{font-size:4.2vw; font-weight:800; letter-spacing:-.5px; line-height:1.05;}
-  #idle .welcome{font-size:1.9vw; color:var(--brand2); font-weight:600;}
-  #idle .clock{font-size:1.5vw; color:var(--muted); font-variant-numeric:tabular-nums;}
-  #idle .waiting{
-    margin-top:1vh; font-size:1.2vw; color:var(--muted); display:flex; align-items:center; gap:12px;
+  /* ===== ESPERA =====
+     Es el rato en que la pantalla se mira sin que nadie la obligue: al entrar,
+     mientras esperan turno, mientras cobran a otro. Si solo pone la hora, deja
+     de mirarse. Si dice que hay algo que ganar, se mira. */
+  #idle{flex-direction:column;align-items:center;justify-content:space-between;padding:5vh 5vw;}
+
+  .idle-marca{display:flex;flex-direction:column;align-items:center;gap:1.6vh;}
+  #idle .biz{font-size:2.6vw;font-weight:800;letter-spacing:-.01em;line-height:1.05;opacity:.92;}
+
+  .idle-gancho{
+    display:flex;flex-direction:column;align-items:center;gap:1.6vh;
+    text-align:center;max-width:74vw;
   }
-  #idle .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);animation:pulse 1.4s infinite;}
-  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.1);}}
+  .idle-kicker{
+    font-size:1.3vw;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--brand2);min-height:1.3vw;
+  }
+  .idle-titulo{
+    font-size:4.6vw;font-weight:800;line-height:1.05;letter-spacing:-.02em;
+    text-wrap:balance;margin:0;
+  }
+  .idle-sub{font-size:1.5vw;color:var(--muted);max-width:56ch;}
+
+  .idle-premios{display:flex;flex-wrap:wrap;gap:1.2vh 1vw;justify-content:center;}
+  .idle-premio{
+    display:inline-flex;align-items:center;gap:.6vw;
+    padding:1.2vh 1.8vw;border-radius:999px;
+    background:var(--card);border:1px solid var(--line);
+    font-size:1.6vw;font-weight:700;color:var(--brand2);
+  }
+  .idle-premio::before{content:'★';opacity:.85;}
+
+  .idle-pie{
+    display:flex;align-items:center;gap:1.6vw;
+    color:var(--muted);font-size:1.1vw;
+  }
+  #idle .clock{font-variant-numeric:tabular-nums;}
+  .bizmsg{max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* La marca: logo del negocio o su inicial. */
+  #idle .marca{
+    width:110px;height:110px;border-radius:26px;display:grid;place-items:center;
+    background:#fff;box-shadow:0 20px 60px rgba(9,16,24,.35);overflow:hidden;
+  }
+  #idle .marca img{width:100%;height:100%;object-fit:contain;padding:14px;}
+  #idle .marca .inicial{font-size:52px;font-weight:800;color:var(--brand);line-height:1;}
 
   /* ===== VENTA ===== */
   #sale{flex-direction:column; gap:2vh;}
@@ -81,40 +117,185 @@
   }
   #checkout .thanks-sub{font-size:1.2vw; color:var(--muted);}
 
-  /* ===== IDENTIDAD DEL NEGOCIO =====
-     La pantalla que mira el cliente es el escaparate del COMERCIO. Si el
-     negocio subio su logo, manda ese; si no, un monograma neutro con su
-     inicial. En ningun caso la marca del POS ocupa ese sitio. */
-  #idle .marca{
-    width:120px;height:120px;border-radius:28px;display:grid;place-items:center;
-    background:#fff; box-shadow:0 20px 60px rgba(9,16,24,.35); overflow:hidden;
-  }
-  #idle .marca img{width:100%;height:100%;object-fit:contain;padding:16px;}
-  /* Monograma: el fallback cuando no hay logo. Neutro, no prestado. */
-  #idle .marca .inicial{
-    font-size:58px;font-weight:800;color:var(--brand);letter-spacing:-.02em;line-height:1;
-  }
   /* Discreto y al pie: quien fabrica el POS, no quien vende. */
   .porwybix{
     position:fixed;right:2vw;bottom:1.6vh;
-    font-size:.85vw;color:var(--muted);opacity:.5;letter-spacing:.04em;
+    font-size:.85vw;color:var(--muted);opacity:.45;letter-spacing:.04em;
   }
-  .bizmsg{font-size:1.25vw;color:var(--muted);max-width:60vw;}
 
   /* ===== MODO VISTA PREVIA =====
-     Tiene que verse SIEMPRE y desde lejos. Una pantalla de cliente que
-     parece real y no reparte nada es un malentendido caro: alguien anuncia
-     un premio al cliente que tiene delante y luego no existe. */
+     Un chip pequeno, arriba a la derecha. Tiene que quedar claro para quien
+     administra, pero la pantalla debe seguir pareciendose a la de verdad: si
+     la vista previa se ve distinta, deja de servir para comprobar como se
+     vera. La garantia de que no se entrega nada es del backend, no de una
+     banda naranja. */
   .previewbadge{
-    position:fixed;left:0;right:0;top:0;z-index:99;
-    display:none;align-items:center;justify-content:center;gap:.8vw;
-    padding:.9vh 1vw;
-    background:repeating-linear-gradient(45deg,#b45309,#b45309 14px,#92400e 14px,#92400e 28px);
-    color:#fff;font-size:1.1vw;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+    position:fixed;right:1.2vw;top:1.2vh;z-index:100;
+    display:none;align-items:center;gap:.5vw;
+    padding:.6vh 1vw;border-radius:999px;
+    background:rgba(180,83,9,.22);border:1px solid rgba(245,158,11,.5);
+    color:#fcd34d;font-size:.95vw;font-weight:700;letter-spacing:.04em;
   }
   body.es-preview .previewbadge{display:flex;}
-  /* El contenido baja para no quedar tapado por la banda. */
-  body.es-preview .screen{padding-top:7vh;}
+
+  /* ===== LA DINAMICA =====
+     Poca cosa en pantalla y muy grande: el cliente la mira de pie, a dos
+     metros, mientras alguien le cobra. Todo lo que no sea el reto, el premio
+     y el boton estorba. */
+  #juego{align-items:center;justify-content:center;}
+  .jg{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2.2vh;text-align:center;width:100%;
+  }
+
+  .jg-reto{
+    font-size:2.4vw;font-weight:800;line-height:1.15;letter-spacing:-.01em;
+    max-width:70vw;text-wrap:balance;
+  }
+
+  /* El numero que hay que clavar. Es el protagonista antes de empezar. */
+  .jg-objetivo{
+    display:none;
+    font-size:9vw;font-weight:800;line-height:1;letter-spacing:-.04em;
+    font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,var(--brand2),var(--brand));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .jg--objetivo .jg-objetivo{display:block;}
+
+  /* Los premios, en fichas. Se leen antes de jugar, que es cuando importan. */
+  .jg-premios{display:none;flex-wrap:wrap;gap:1vh 1vw;justify-content:center;max-width:74vw;}
+  .jg--premios .jg-premios{display:flex;}
+  .jg-premio{
+    display:inline-flex;align-items:center;gap:.6vw;
+    padding:1.1vh 1.6vw;border-radius:999px;
+    background:var(--card);border:1px solid var(--line);
+    font-size:1.5vw;font-weight:700;color:var(--brand2);
+  }
+  .jg-premio::before{content:'★';opacity:.8;}
+
+  /* ------------------------------------------------------- cronometro */
+  .jg-crono{
+    display:none;
+    font-size:15vw;font-weight:800;line-height:1;letter-spacing:-.05em;
+    font-variant-numeric:tabular-nums;color:var(--accent);
+    text-shadow:0 0 60px rgba(127,212,224,.25);
+  }
+  .jg--crono .jg-crono{display:block;}
+
+  /* ------------------------------------------------------------ rueda */
+  .jg-rueda{display:none;position:relative;width:min(46vh,46vw);aspect-ratio:1;}
+  .jg--rueda .jg-rueda{display:block;}
+
+  .jg-rueda__aguja{
+    position:absolute;top:-1.4vh;left:50%;transform:translateX(-50%);
+    width:0;height:0;z-index:3;
+    border-left:1.4vh solid transparent;
+    border-right:1.4vh solid transparent;
+    border-top:2.6vh solid #ef4444;
+    filter:drop-shadow(0 .4vh .6vh rgba(0,0,0,.5));
+  }
+  .jg-rueda__disco{
+    position:absolute;inset:0;border-radius:50%;
+    /* Aro exterior grueso y sombra profunda: parece una rueda, no un grafico. */
+    border:.9vh solid #0e1c28;
+    box-shadow:0 0 0 .5vh rgba(127,212,224,.35),
+               0 2.4vh 5vh rgba(0,0,0,.5),
+               inset 0 0 6vh rgba(0,0,0,.35);
+    /* Arranca despacio, acelera y frena largo: asi se siente un giro de
+       verdad. Lineal parece un GIF. */
+    transition:transform 5.2s cubic-bezier(.17,.67,.16,1);
+  }
+  .jg-rueda__centro{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:22%;aspect-ratio:1;border-radius:50%;z-index:2;
+    background:radial-gradient(circle at 35% 30%, #fff, #d7e6ee 60%, #b9cdd8);
+    box-shadow:0 .6vh 1.4vh rgba(0,0,0,.45), inset 0 -.4vh .8vh rgba(0,0,0,.12);
+  }
+  /* Las etiquetas van HORIZONTALES dentro de cada sector: un texto girado 90
+     grados no se lee de pie y a dos metros. */
+  .jg-rueda__et{
+    position:absolute;left:50%;top:50%;
+    transform-origin:0 0;
+    pointer-events:none;
+    font-weight:800;line-height:1.05;
+    text-shadow:0 1px 2px rgba(0,0,0,.55);
+    color:#0b1620;
+  }
+  .jg-rueda__et span{
+    display:block;transform:translate(-50%,-50%);
+    max-width:15ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+
+  /* ------------------------------------------------------- el boton --
+     Redondo, rojo y con relieve. Tiene que pedir que lo pulsen desde el otro
+     lado del mostrador. */
+  .jg-boton{
+    display:none;position:relative;
+    width:min(26vh,26vw);aspect-ratio:1;border-radius:50%;
+    border:0;padding:0;cursor:pointer;
+    background:radial-gradient(circle at 50% 32%, #ff6b6b, #e11d2f 58%, #9f0d1c);
+    box-shadow:
+      0 1.6vh 0 #6d0a14,                 /* el cuerpo del boton */
+      0 2.6vh 4vh rgba(0,0,0,.55),       /* sombra sobre el fondo */
+      inset 0 -.8vh 2vh rgba(0,0,0,.35),
+      inset 0 .8vh 2vh rgba(255,255,255,.28);
+    transition:transform 90ms ease-out, box-shadow 90ms ease-out;
+  }
+  .jg--boton .jg-boton{display:block;}
+  .jg-boton:hover{transform:translateY(-.3vh);}
+  /* Al pulsar se HUNDE: el cuerpo se acorta y el boton baja con el. */
+  .jg-boton:active{
+    transform:translateY(1.3vh);
+    box-shadow:
+      0 .3vh 0 #6d0a14,
+      0 .6vh 1.2vh rgba(0,0,0,.5),
+      inset 0 -.4vh 1.4vh rgba(0,0,0,.4),
+      inset 0 .4vh 1.4vh rgba(255,255,255,.22);
+  }
+  .jg-boton:disabled{filter:saturate(.5) brightness(.7);cursor:default;}
+  .jg-boton__cara{
+    position:absolute;inset:0;display:grid;place-items:center;
+    color:#fff;font-size:2.6vw;font-weight:800;letter-spacing:.06em;
+    text-shadow:0 .3vh .6vh rgba(0,0,0,.45);
+  }
+  /* Late suavemente mientras se puede pulsar: llama sin gritar. */
+  @keyframes jg-latido{50%{box-shadow:
+      0 1.6vh 0 #6d0a14,
+      0 2.6vh 4vh rgba(0,0,0,.55),
+      0 0 0 2.2vh rgba(225,29,47,.14),
+      inset 0 -.8vh 2vh rgba(0,0,0,.35),
+      inset 0 .8vh 2vh rgba(255,255,255,.28);}}
+  .jg-boton.late{animation:jg-latido 1.8s ease-in-out infinite;}
+  @media (prefers-reduced-motion: reduce){
+    .jg-boton.late{animation:none;}
+    .jg-rueda__disco{transition:transform 600ms ease-out;}
+  }
+
+  .jg-pie{font-size:1.2vw;color:var(--muted);max-width:60vw;}
+
+  /* ------------------------------------------------------- resultado */
+  .jg--gano .jg-reto{color:var(--ok);font-size:5.5vw;}
+  .jg--pierde .jg-reto{font-size:4.5vw;}
+  .jg-codigo{
+    display:none;padding:1.2vh 2vw;border-radius:14px;
+    background:var(--card);border:1px solid var(--line);
+    font-size:2vw;font-weight:800;letter-spacing:.12em;font-variant-numeric:tabular-nums;
+  }
+  .jg--codigo .jg-codigo{display:block;}
+
+  /* Confeti: unas cuantas piezas cayendo. Nada de librerias. */
+  .jg-confeti{position:fixed;inset:0;pointer-events:none;overflow:hidden;display:none;z-index:40;}
+  .jg--fiesta .jg-confeti{display:block;}
+  .jg-confeti i{
+    position:absolute;top:-6vh;width:.8vw;height:1.4vh;opacity:.9;
+    animation:jg-caer linear forwards;
+  }
+  @keyframes jg-caer{
+    to{transform:translateY(110vh) rotate(720deg);opacity:.15;}
+  }
+  @media (prefers-reduced-motion: reduce){ .jg-confeti{display:none !important;} }
+
 
   /* ===== FIDELIZACION ===== */
   /* Tres pantallas mas, con el mismo lenguaje que las tres que ya habia:
@@ -159,24 +340,75 @@
   <!-- ESPERA -->
   <section class="screen on" id="idle">
     <!--
-      La identidad la pone el NEGOCIO, no el POS. `marca` contiene el logo del
-      comercio si lo subio, y si no su inicial. El isotipo de Wybix ya no vive
-      aqui: sustituirle la marca al comercio en su propio mostrador es el
-      mismo error que imprimir la marca de otro cliente en el ticket.
+      La identidad la pone el NEGOCIO, no el POS. `marca` lleva su logo si lo
+      subio, y si no su inicial. Sustituirle la marca al comercio en su propio
+      mostrador es el mismo error que imprimir la marca de otro en el ticket.
     -->
-    <div class="marca" id="idleMarca">
-      <span class="inicial" id="idleInicial"></span>
+    <div class="idle-marca">
+      <div class="marca" id="idleMarca">
+        <span class="inicial" id="idleInicial"></span>
+      </div>
+      <div class="biz" id="idleBiz">Bienvenido</div>
     </div>
-    <div class="biz" id="idleBiz">Bienvenido</div>
-    <div class="welcome">Con gusto te atendemos</div>
-    <div class="bizmsg" id="idleMensaje"></div>
-    <div class="clock" id="idleClock"></div>
-    <div class="waiting"><span class="dot"></span> Esperando la siguiente compra</div>
+
+    <!--
+      El gancho. Cambia segun lo que el negocio tenga encendido: si hay algo
+      que ganar, lo dice; si no, saluda. Una pantalla que siempre pone lo
+      mismo deja de mirarse a la semana.
+    -->
+    <div class="idle-gancho">
+      <p class="idle-kicker" id="idleKicker"></p>
+      <h2 class="idle-titulo" id="idleTitulo">Bienvenido</h2>
+      <div class="idle-premios" id="idlePremios"></div>
+      <p class="idle-sub" id="idleSub"></p>
+    </div>
+
+    <div class="idle-pie">
+      <span class="clock" id="idleClock"></span>
+      <span class="bizmsg" id="idleMensaje"></span>
+    </div>
   </section>
 
-  <div class="previewbadge">
-    Modo vista previa · no se entregan premios reales
-  </div>
+  <!-- ============================================ LA DINAMICA =========
+       Esta pantalla ES la experiencia. No es un espejo del administrador ni
+       un panel de estado: es lo que mira el cliente mientras juega, y lo
+       unico de Wybix que ve alguien que no trabaja aqui.
+       ================================================================= -->
+  <section class="screen" id="juego">
+    <div class="jg">
+      <p class="jg-reto" id="jgReto"></p>
+
+      <!-- El objetivo, enorme. Es el numero que hay que clavar. -->
+      <div class="jg-objetivo" id="jgObjetivo"></div>
+
+      <!-- El premio va ANTES de jugar: es la razon para jugar. -->
+      <div class="jg-premios" id="jgPremios"></div>
+
+      <!-- ---------------------------------------------------- RULETA -->
+      <div class="jg-rueda" id="jgRueda">
+        <span class="jg-rueda__aguja" aria-hidden="true"></span>
+        <div class="jg-rueda__disco" id="jgDisco"></div>
+        <div class="jg-rueda__centro" id="jgCentro"></div>
+      </div>
+
+      <!-- ------------------------------------------------ CRONOMETRO -->
+      <div class="jg-crono" id="jgCrono"></div>
+
+      <!-- ------------------------------------------------ EL BOTON --
+           Grande, redondo y con relieve: tiene que pedir que lo pulsen
+           desde el otro lado del mostrador. -->
+      <button type="button" class="jg-boton" id="jgBoton">
+        <span class="jg-boton__cara" id="jgBotonTxt">COMENZAR</span>
+      </button>
+
+      <div class="jg-codigo" id="jgCodigo"></div>
+      <p class="jg-pie" id="jgPie"></p>
+    </div>
+  </section>
+
+  <div class="jg-confeti" id="jgConfeti" aria-hidden="true"></div>
+
+  <div class="previewbadge"><span aria-hidden="true">●</span> Vista previa</div>
 
   <div class="porwybix">Powered by Wybix</div>
 
@@ -220,13 +452,6 @@
     <div class="kicker">Tu compra tiene premio</div>
     <div class="title" id="prTitle">¡Felicidades!</div>
     <div class="list" id="prList"></div>
-  </section>
-
-  <section class="screen" id="dinamica">
-    <div class="name" id="dnName">Dinámica</div>
-    <div class="instr" id="dnInstr"></div>
-    <div class="crono" id="dnCrono">0.00</div>
-    <div class="meta" id="dnMeta"></div>
   </section>
 
   <section class="screen" id="dinres">
@@ -294,6 +519,8 @@
       const msg = document.getElementById('idleMensaje');
       if (msg) msg.textContent = (b && b.mensaje) ? String(b.mensaje) : '';
 
+      pintarGancho(b || {});
+
       if (b && b.logoUrl) {
         const img = document.createElement('img');
         img.alt = bizName || 'Logo del negocio';
@@ -308,6 +535,51 @@
       }
     } catch { /* sin datos: queda el monograma vacio, nunca marca ajena */ }
   }
+  /**
+   * El gancho de la pantalla de espera.
+   *
+   * Se ELIGE segun lo que el negocio tenga encendido, no se escribe fijo. Una
+   * frase de cortesia -"con gusto te atendemos"- no da ningun motivo para
+   * mirar la segunda pantalla; "hoy puedes ganar un cafe" si.
+   *
+   * Sin nada activo se cae en una bienvenida, que sigue siendo mejor que una
+   * pantalla vacia. El fallback es lo de siempre, no lo de portada.
+   */
+  function pintarGancho(b) {
+    const kicker = document.getElementById('idleKicker');
+    const titulo = document.getElementById('idleTitulo');
+    const sub = document.getElementById('idleSub');
+    const prem = document.getElementById('idlePremios');
+    if (!titulo) return;
+
+    const premios = Array.isArray(b.premios) ? b.premios.filter(Boolean) : [];
+    prem.innerHTML = '';
+
+    if (premios.length) {
+      kicker.textContent = 'Tu compra puede tener premio';
+      titulo.textContent = premios.length > 1 ? 'Hoy puedes ganar' : 'Hoy puedes ganar';
+      premios.slice(0, 4).forEach(function (p) {
+        const d = document.createElement('span');
+        d.className = 'idle-premio';
+        d.textContent = p;
+        prem.appendChild(d);
+      });
+      sub.textContent = 'Pregunta en caja cómo participar.';
+      return;
+    }
+
+    if (b.campana) {
+      kicker.textContent = 'Promoción activa';
+      titulo.textContent = b.campana;
+      sub.textContent = 'Pregunta en caja cómo participar.';
+      return;
+    }
+
+    kicker.textContent = '';
+    titulo.textContent = bizName ? ('Bienvenido a ' + bizName) : 'Bienvenido';
+    sub.textContent = 'Con gusto te atendemos.';
+  }
+
   loadBusiness();
 
   function renderSale(s){
@@ -400,21 +672,6 @@
       (s.items || []).length > 1 ? '¡Ganaste varios premios!' : '¡Felicidades!';
   }
 
-  function renderDinamica(s){
-    document.getElementById('dnName').textContent = s.nombre || 'Dinámica';
-    document.getElementById('dnInstr').textContent = s.instruccion || '';
-    const c = document.getElementById('dnCrono');
-    // Centesimas enteras, la misma unidad que la caja: aqui NO se redondea
-    // nada por cuenta propia, porque entonces las dos pantallas podrian
-    // ensenar numeros distintos del mismo instante.
-    c.textContent = (Number(s.centesimas || 0) / 100).toFixed(2);
-    c.classList.toggle('parado', !s.corriendo);
-    // El objetivo se dice ANTES de jugar: una dinamica donde el cliente no
-    // sabe a que apunta no es un juego, es un sorteo con cronometro.
-    document.getElementById('dnMeta').textContent =
-      s.objetivo != null ? ('Detenlo exactamente en ' + Number(s.objetivo).toFixed(2)) : '';
-  }
-
   function renderResultado(s){
     const big = document.getElementById('drBig');
     // El origen queda en el DOM: quien mire esta pantalla -o una captura de
@@ -428,6 +685,222 @@
     if (s.codigo) { code.style.display = 'block'; code.textContent = s.codigo; }
     else { code.style.display = 'none'; }
   }
+
+  /* =================================================== LA DINAMICA ====
+     Esta pantalla ES la experiencia del cliente: presenta, anima y recoge lo
+     que el cliente pulsa. NO decide nada.
+
+     El cronometro corre AQUI porque aqui esta el boton y aqui se mira el
+     numero. Lo que viaja de vuelta es la intencion -STOP_TIMING con las
+     centesimas que se estaban mostrando-, nunca "he ganado".
+
+     La accion se separa de su origen a proposito: hoy es un boton en una
+     pantalla tactil, y manana podria ser un pulsador fisico en la pared. El
+     evento seria el mismo.
+     ==================================================================== */
+  var jgEstado = null;
+  var jgT0 = 0;
+  var jgRaf = null;
+  var jgCentesimas = 0;
+
+  /* Colores de los sectores. Contrastados entre si y legibles con texto
+     oscuro encima: la rueda tiene que leerse de un vistazo. */
+  var JG_COLORES = [
+    '#45B3C3', '#F4B740', '#7FD4E0', '#EF7D57',
+    '#9BD17B', '#C792EA', '#FFD166', '#5EC5D6'
+  ];
+
+  function jgClase(mods) {
+    var jg = document.querySelector('#juego .jg');
+    if (!jg) return;
+    jg.className = 'jg' + (mods.length ? ' ' + mods.map(function (m) { return 'jg--' + m; }).join(' ') : '');
+  }
+
+  function jgBoton(texto, visible, habilitado, late) {
+    var b = document.getElementById('jgBoton');
+    var t = document.getElementById('jgBotonTxt');
+    if (!b || !t) return;
+    t.textContent = texto || '';
+    b.disabled = !habilitado;
+    b.classList.toggle('late', !!late);
+  }
+
+  function jgPremios(lista) {
+    var c = document.getElementById('jgPremios');
+    if (!c) return;
+    c.innerHTML = '';
+    (lista || []).forEach(function (p) {
+      var d = document.createElement('span');
+      d.className = 'jg-premio';
+      d.textContent = p;
+      c.appendChild(d);
+    });
+  }
+
+  /** Dibuja la rueda: sectores, aro y etiquetas horizontales. */
+  function jgDibujarRueda(sectores) {
+    var disco = document.getElementById('jgDisco');
+    if (!disco) return;
+    var n = (sectores || []).length;
+    if (!n) { disco.style.background = 'var(--card)'; disco.innerHTML = ''; return; }
+
+    var paso = 360 / n;
+    var tramos = sectores.map(function (_, i) {
+      var c = JG_COLORES[i % JG_COLORES.length];
+      return c + ' ' + (i * paso) + 'deg ' + ((i + 1) * paso) + 'deg';
+    });
+    disco.style.background = 'conic-gradient(' + tramos.join(',') + ')';
+
+    /* Las etiquetas se colocan girando el CONTENEDOR y desgirando el texto:
+       asi caen dentro de su sector pero se leen horizontales. Un texto a 90
+       grados no se lee de pie y a dos metros. */
+    disco.innerHTML = '';
+    var fuente = n <= 5 ? 1.5 : n <= 8 ? 1.15 : 0.95;   // vw
+    sectores.forEach(function (label, i) {
+      var ang = paso * i + paso / 2;
+      var et = document.createElement('div');
+      et.className = 'jg-rueda__et';
+      et.style.transform = 'rotate(' + ang + 'deg) translate(0, -32%)';
+      et.style.fontSize = fuente + 'vw';
+      var sp = document.createElement('span');
+      sp.style.transform = 'translate(-50%,-50%) rotate(' + (-ang) + 'deg)';
+      sp.textContent = label;
+      et.appendChild(sp);
+      disco.appendChild(et);
+    });
+  }
+
+  function jgConfeti() {
+    var c = document.getElementById('jgConfeti');
+    if (!c) return;
+    c.innerHTML = '';
+    for (var i = 0; i < 70; i++) {
+      var p = document.createElement('i');
+      p.style.left = (Math.random() * 100) + 'vw';
+      p.style.background = JG_COLORES[i % JG_COLORES.length];
+      p.style.animationDuration = (2.6 + Math.random() * 2.2) + 's';
+      p.style.animationDelay = (Math.random() * 0.7) + 's';
+      c.appendChild(p);
+    }
+  }
+
+  function jgPararReloj() {
+    if (jgRaf) { cancelAnimationFrame(jgRaf); jgRaf = null; }
+  }
+
+  /* Centesimas ENTERAS: de este mismo entero salen el numero que se pinta y
+     el que se manda. Contar en segundos y redondear dos veces es como la
+     pantalla acaba diciendo 10.00 y el servidor juzgando 9.99. */
+  function jgTic() {
+    jgCentesimas = Math.round((performance.now() - jgT0) / 10);
+    var e = document.getElementById('jgCrono');
+    if (e) e.textContent = (jgCentesimas / 100).toFixed(2);
+    jgRaf = requestAnimationFrame(jgTic);
+  }
+
+  function jgPulsar() {
+    if (!jgEstado) return;
+    var f = jgEstado.fase;
+
+    if (f === 'LISTA') {
+      if (jgEstado.tipo === 'TIMING') {
+        // Empieza AQUI: el cronometro vive donde esta el boton.
+        jgCentesimas = 0;
+        jgT0 = performance.now();
+        jgPararReloj();
+        jgTic();
+        jgEstado.fase = 'JUGANDO';
+        jgPintar(jgEstado);
+        api.enviar({ tipo: 'START_TIMING' });
+      } else {
+        jgBoton('GIRANDO…', true, false, false);
+        api.enviar({ tipo: 'SPIN' });
+      }
+      return;
+    }
+
+    if (f === 'JUGANDO' && jgEstado.tipo === 'TIMING') {
+      jgPararReloj();
+      jgBoton('…', true, false, false);
+      // Lo que viaja es CUANDO paro, no si gano.
+      api.enviar({ tipo: 'STOP_TIMING', centesimas: jgCentesimas });
+    }
+  }
+
+  function jgPintar(s) {
+    jgEstado = s;
+    var reto = document.getElementById('jgReto');
+    var obj = document.getElementById('jgObjetivo');
+    var pie = document.getElementById('jgPie');
+    var cod = document.getElementById('jgCodigo');
+
+    if (s.fase === 'LISTA') {
+      jgPararReloj();
+      reto.textContent = s.reto || s.nombre || '';
+      if (s.tipo === 'TIMING') {
+        obj.textContent = Number(s.objetivo || 0).toFixed(2);
+        jgPremios(s.premios);
+        jgClase(['objetivo', 'premios', 'boton']);
+        jgBoton('COMENZAR', true, true, true);
+      } else {
+        jgDibujarRueda(s.sectores || []);
+        jgPremios(s.premios);
+        jgClase(['premios', 'rueda', 'boton']);
+        jgBoton('GIRAR', true, true, true);
+      }
+      pie.textContent = '';
+      return;
+    }
+
+    if (s.fase === 'JUGANDO') {
+      // Durante el juego no hay nada mas que mirar: el numero y el boton.
+      reto.textContent = s.reto || '';
+      var e = document.getElementById('jgCrono');
+      if (e) e.textContent = (jgCentesimas / 100).toFixed(2);
+      jgClase(['crono', 'boton']);
+      jgBoton('¡PARAR!', true, true, false);
+      pie.textContent = '';
+      return;
+    }
+
+    if (s.fase === 'GIRANDO') {
+      var disco = document.getElementById('jgDisco');
+      var n = (s.sectores || []).length || 1;
+      var paso = 360 / n;
+      var i = typeof s.ganadorIndice === 'number' ? s.ganadorIndice : 0;
+      // Cinco vueltas y para donde ya se decidio. La animacion REPRESENTA el
+      // resultado; no lo produce.
+      var destino = 360 * 5 + (360 - (i * paso + paso / 2));
+      jgClase(['rueda', 'boton']);
+      jgBoton('GIRANDO…', true, false, false);
+      reto.textContent = s.reto || '';
+      if (disco) {
+        var actual = Number(disco.dataset.giro || 0) + destino;
+        disco.dataset.giro = actual;
+        requestAnimationFrame(function () { disco.style.transform = 'rotate(' + actual + 'deg)'; });
+      }
+      return;
+    }
+
+    if (s.fase === 'RESULTADO') {
+      jgPararReloj();
+      reto.textContent = s.mensaje || (s.gano ? '¡GANASTE!' : 'CASI');
+      jgPremios(s.premioGanado ? [s.premioGanado] : []);
+      if (cod) cod.textContent = s.codigo || '';
+      var mods = [s.gano ? 'gano' : 'pierde'];
+      if (s.premioGanado) mods.push('premios');
+      if (s.codigo) mods.push('codigo');
+      if (s.gano) { mods.push('fiesta'); jgConfeti(); }
+      if (s.tipo === 'WHEEL') mods.push('rueda');
+      jgClase(mods);
+      jgBoton('', false, false, false);
+      pie.textContent = '';
+    }
+  }
+
+  var jgBtn = document.getElementById('jgBoton');
+  if (jgBtn) jgBtn.addEventListener('click', jgPulsar);
+
 
   function goIdle(){ show('idle'); }
 
@@ -455,11 +928,14 @@
       show('premios');
       checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
     } else if (s.mode === 'dinamica') {
-      // Sin temporizador a proposito: mientras se juega, la pantalla no se
-      // va sola. La cierra el resultado, que siempre llega.
+      // Sin temporizador mientras se juega: la pantalla no se va sola a media
+      // partida. Solo el resultado pone cuenta atras.
       if (checkoutTimer) { clearTimeout(checkoutTimer); checkoutTimer = null; }
-      renderDinamica(s);
-      show('dinamica');
+      jgPintar(s);
+      show('juego');
+      if (s.fase === 'RESULTADO') {
+        checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 14000);
+      }
     } else if (s.mode === 'dinamica-resultado') {
       if (checkoutTimer) clearTimeout(checkoutTimer);
       renderResultado(s);

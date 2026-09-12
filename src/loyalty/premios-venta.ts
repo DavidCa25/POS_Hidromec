@@ -124,6 +124,9 @@ export class PremiosVenta {
         return;
       }
       this.sinIntento.set(null);
+      // Una ruleta necesita sus sectores para poder dibujarse y para saber
+      // que se puede ganar: el premio se anuncia ANTES de jugar.
+      this.sectores.set(p.type === 'WHEEL' ? await this.loyalty.segmentos(p.definition_id) : []);
       this.pendiente.set(p);
       this.jugando.set(true);
     } finally {
@@ -134,6 +137,9 @@ export class PremiosVenta {
 
   /** Por que no se pudo abrir el juego, si es que no se pudo. */
   sinIntento = signal<string | null>(null);
+
+  /** Los sectores, cuando la dinamica de esta venta es una ruleta. */
+  sectores = signal<any[]>([]);
 
   /** El juego termino: se vuelve a la lista de premios con el resultado. */
   alTerminarJuego(): void {
