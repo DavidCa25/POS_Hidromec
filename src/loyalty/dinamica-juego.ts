@@ -73,6 +73,17 @@ export class DinamicaJuego implements OnDestroy {
   /** En que centesima paro el cliente. Va al resultado para que lo vea. */
   private paroEn: number | null = null;
 
+  /**
+   * Lo mismo, en segundos, para quien esta en la caja.
+   *
+   * Si el cliente reclama -"yo lo pare en diez justo"- quien tiene que
+   * responder es el cajero, y hasta ahora su pantalla no lo sabia: solo
+   * decia gano o no gano.
+   */
+  get marcador(): string | null {
+    return this.paroEn == null ? null : (this.paroEn / 100).toFixed(2);
+  }
+
   ngOnDestroy(): void {
     // La pantalla del cliente vuelve a lo suyo: dejarla con una partida a
     // medias seria dejar un cronometro parado delante de alguien.

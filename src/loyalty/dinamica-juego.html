@@ -32,6 +32,8 @@
     <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : r.ok ? 'ph-hand-heart' : 'ph-warning-circle' }}"></i>
     <div class="dj-res__tx">
       <b>{{ r.resultado === 'WIN' ? 'Ganó' : r.ok ? 'No ganó' : 'No se pudo jugar' }}</b>
+      <!-- El cajero es quien responde si el cliente reclama la jugada. -->
+      <small *ngIf="marcador">Paró en {{ marcador }}</small>
       <small *ngIf="r.segmento">Salió: {{ r.segmento }}</small>
       <small *ngIf="r.premio">{{ r.premio }}</small>
       <small *ngIf="r.codigo"><code>{{ r.codigo }}</code></small>
