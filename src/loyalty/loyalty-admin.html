@@ -442,6 +442,14 @@
               <td class="num">{{ c.emitidos }}</td>
               <td><span class="loy-estado" [class.si]="c.active">{{ c.active ? 'Activo' : 'Apagado' }}</span></td>
               <td class="acciones">
+                <!-- Sin esto, definir un cupon no producia ni un codigo: habia
+                     que montar una campana y esperar a que alguien comprase. -->
+                <button class="btn-outline btn-sm" type="button" (click)="emitirCupones(c)"
+                        [disabled]="guardando() || !c.active"
+                        [title]="c.active ? 'Generar códigos para repartir'
+                                          : 'Enciéndelo antes: los códigos no se podrían canjear'">
+                  <i class="ph ph-ticket"></i> Emitir
+                </button>
                 <button class="btn-ghost btn-sm" type="button" (click)="editarCupon(c)">
                   <i class="ph ph-pencil-simple"></i>
                 </button>
@@ -461,14 +469,12 @@
         <div class="loy-filtros">
           <input class="ctl" type="search" placeholder="Código, cliente o promoción…"
                  [(ngModel)]="filtroTexto" (keyup.enter)="cargarInstancias()">
-          <select class="ctl" [ngModel]="filtroEstado()"
-                  (ngModelChange)="filtroEstado.set($event); cargarInstancias()">
-            <option value="">Todas</option>
-            <option value="ISSUED">Emitidas</option>
-            <option value="REDEEMED">Usadas</option>
-            <option value="EXPIRED">Vencidas</option>
-            <option value="VOID">Anuladas</option>
-          </select>
+          <!-- Era un <select> nativo, el unico de esta pantalla: se veia con
+               el aspecto del sistema operativo en medio de controles de
+               Wybix. wx-select ya estaba importado aqui. -->
+          <wx-select [opciones]="opcEstadoInstancia" placeholder="Todas"
+                     [ngModel]="filtroEstado()" name="fEstado"
+                     (ngModelChange)="filtroEstado.set($event); cargarInstancias()"></wx-select>
           <button class="btn-outline" type="button" (click)="cargarInstancias()">
             <i class="ph ph-magnifying-glass"></i> Buscar
           </button>
@@ -805,6 +811,16 @@
               <span>Prefijo del boleto</span>
               <input class="ctl" type="text" maxlength="8" [(ngModel)]="d.codePrefix" name="rPre">
             </label>
+            <label class="loy-f">
+              <span>Boletos en total</span>
+              <input class="ctl" type="number" min="1" [(ngModel)]="d.ticketsTotal" name="rTot"
+                     placeholder="Sin límite">
+              <small class="loy-ayuda">
+                Déjalo vacío y la rifa reparte boletos sin tope. Con un número, deja de
+                repartir al llenarse. Se puede subir después, pero no bajar por debajo de
+                los que ya salieron.
+              </small>
+            </label>
             <label class="loy-f loy-f--wide">
               <span>Bases o descripción</span>
               <input class="ctl" type="text" [(ngModel)]="d.description" name="rDesc" maxlength="400">
@@ -833,8 +849,12 @@
                 <td>{{ r.prize || '—' }}</td>
                 <td><span class="loy-estado" [class.si]="r.status === 'OPEN'">{{ estadoRifa(r.status) }}</span></td>
                 <td class="num">
-                  {{ r.closed_entries_count ?? r.participaciones }}
+                  {{ r.closed_entries_count ?? r.participaciones }}<!--
+                  --><span class="loy-de" *ngIf="r.tickets_total">/{{ r.tickets_total }}</span>
                   <small *ngIf="r.closed_entries_count != null">congelados</small>
+                  <small *ngIf="r.closed_entries_count == null && r.tickets_total">
+                    {{ r.tickets_total - r.participaciones }} sin repartir
+                  </small>
                 </td>
                 <td class="num">{{ r.sorteos }}</td>
                 <!--
@@ -950,8 +970,19 @@
         <div class="loy-tabla">
           <h3 class="loy-h3">
             <i class="ph ph-tickets"></i> Boletos
-            <span class="loy-count">{{ r.participaciones }}</span>
+            <span class="loy-count">{{ r.participaciones }}<span class="loy-de"
+                  *ngIf="r.tickets_total">/{{ r.tickets_total }}</span></span>
           </h3>
+          <!-- La barra solo tiene sentido con un tope: sin el, no hay
+               "cuanto falta" que representar. -->
+          <div class="loy-barra" *ngIf="r.tickets_total"
+               [attr.aria-label]="r.participaciones + ' de ' + r.tickets_total + ' boletos repartidos'">
+            <span [style.width.%]="progresoBoletos(r)"></span>
+          </div>
+          <p class="loy-hint" *ngIf="r.tickets_total && r.participaciones >= r.tickets_total"
+             style="padding-top:0">
+            La rifa se llenó: ya no reparte más boletos. Puedes ampliarla editándola.
+          </p>
           <p class="loy-hint" *ngIf="cargandoDetalle()">Cargando boletos…</p>
           <table class="wx-tabla" *ngIf="participaciones().length">
             <thead>

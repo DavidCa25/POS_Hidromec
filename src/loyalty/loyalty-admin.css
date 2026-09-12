@@ -104,6 +104,29 @@
 
 .loy-hint { margin: 0; padding: 18px 2px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
 
+/* La linea que explica un campo cuando su nombre no basta. Debajo del
+   control y con su mismo ancho: una ayuda que flota al lado no se lee como
+   parte del campo. */
+/* "412/500": el denominador acompana al numero, no compite con el. */
+.loy-de { color: var(--wx-text-muted); font-weight: 500; }
+
+/* Cuanto lleva repartido una rifa con tope. Sin tope no se pinta: no
+   habria nada que representar. */
+.loy-barra {
+  height: 6px; margin: 2px 0 12px; border-radius: 999px;
+  background: var(--wx-sunken); overflow: hidden;
+}
+.loy-barra > span {
+  display: block; height: 100%; border-radius: inherit;
+  background: var(--wx-accent);
+  transition: width var(--wx-dur-state) var(--wx-ease-out);
+}
+
+.loy-ayuda {
+  display: block; margin-top: 5px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.45;
+}
+
 .loy-nota {
   display: flex; align-items: center; gap: 9px; margin: 0;
   padding: 11px 14px;

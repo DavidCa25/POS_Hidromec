@@ -89,6 +89,8 @@ interface DraftRifa {
   endsAt: string;
   winnersCount: number;
   codePrefix: string;
+  /** Cuantos boletos tiene la rifa. Vacio es sin tope. */
+  ticketsTotal: number | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'DRAWN' | '';
 }
 
@@ -130,6 +132,15 @@ export class LoyaltyAdmin implements OnInit {
   instancias = signal<LoyaltyInstance[]>([]);
   cargandoInstancias = signal(false);
   filtroEstado = signal<string>('');
+
+  /** Estados por los que se puede filtrar lo emitido. */
+  readonly opcEstadoInstancia: WxOpcion[] = [
+    { valor: '', etiqueta: 'Todas' },
+    { valor: 'ISSUED', etiqueta: 'Emitidas' },
+    { valor: 'REDEEMED', etiqueta: 'Usadas' },
+    { valor: 'EXPIRED', etiqueta: 'Vencidas' },
+    { valor: 'VOID', etiqueta: 'Anuladas' },
+  ];
   filtroTexto = '';
 
   /** Nombres visibles de las secciones, para la navegacion interna. */
@@ -639,7 +650,8 @@ export class LoyaltyAdmin implements OnInit {
       // Nace en BORRADOR: se configura, y activarla es una decision aparte.
       // Una rifa que empieza repartiendo boletos en cuanto la guardas no deja
       // margen para revisar el premio o las fechas.
-      startsAt: '', endsAt: '', winnersCount: 1, codePrefix: 'RIF', status: 'DRAFT',
+      startsAt: '', endsAt: '', winnersCount: 1, codePrefix: 'RIF',
+      ticketsTotal: null, status: 'DRAFT',
     });
   }
 
@@ -647,7 +659,8 @@ export class LoyaltyAdmin implements OnInit {
     this.rifa.set({
       id: r.id, name: r.name, description: r.description ?? '', prize: r.prize ?? '',
       startsAt: LoyaltyAdmin.fecha(r.starts_at), endsAt: LoyaltyAdmin.fecha(r.ends_at),
-      winnersCount: r.winners_count, codePrefix: r.code_prefix ?? '', status: r.status,
+      winnersCount: r.winners_count, codePrefix: r.code_prefix ?? '',
+      ticketsTotal: r.tickets_total ?? null, status: r.status,
     });
   }
 
@@ -663,6 +676,7 @@ export class LoyaltyAdmin implements OnInit {
         id: d.id, name: d.name.trim(), description: d.description.trim() || null,
         prize: d.prize.trim(), startsAt: d.startsAt || null, endsAt: d.endsAt || null,
         winnersCount: d.winnersCount, codePrefix: d.codePrefix.trim() || null,
+        ticketsTotal: Number(d.ticketsTotal) > 0 ? Number(d.ticketsTotal) : null,
         status: d.status || null,
       });
       this.rifa.set(null);
@@ -682,7 +696,7 @@ export class LoyaltyAdmin implements OnInit {
       await this.loyalty.guardarRifa({
         id: r.id, name: r.name, description: r.description, prize: r.prize,
         startsAt: r.starts_at, endsAt: r.ends_at, winnersCount: r.winners_count,
-        codePrefix: r.code_prefix, status: 'OPEN',
+        codePrefix: r.code_prefix, ticketsTotal: r.tickets_total ?? null, status: 'OPEN',
       });
       await this.exito('Rifa activada');
       if (this.rifaSel()) await this.abrirRifa(r);
@@ -961,6 +975,68 @@ export class LoyaltyAdmin implements OnInit {
     // local del propio valor, no un slice del ISO, que estaria desplazado.
     const m = s.match(/(\d{2}):(\d{2})/);
     return m ? `${m[1]}:${m[2]}` : '';
+  }
+
+  /**
+   * Generar codigos de un cupon para repartirlos a mano.
+   *
+   * Sin esto, definir un cupon no producia ni un solo codigo usable: habia
+   * que crear ademas una campana que lo entregase y esperar a que alguien
+   * comprase. El caso de repartir un taco de volantes no tenia camino.
+   */
+  async emitirCupones(c: CouponDefinition): Promise<void> {
+    if (!c.active) {
+      return this.avisar('El cupón está apagado',
+        'Enciéndelo antes de emitirlo: los códigos repartidos no se podrían canjear.');
+    }
+
+    const r = await Swal.fire({
+      title: `Emitir cupones de "${c.name}"`,
+      input: 'number',
+      inputLabel: '¿Cuántos códigos?',
+      inputValue: '10',
+      inputAttributes: { min: '1', max: '500', step: '1' },
+      showCancelButton: true,
+      confirmButtonText: 'Emitir',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (v) => {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 1 || n > 500) return 'Entre 1 y 500.';
+        return null;
+      },
+    });
+    if (!r.isConfirmed) return;
+
+    this.guardando.set(true);
+    try {
+      const codigos = await this.loyalty.emitirCupones(c.id, Number(r.value));
+      /* Se ensenan los codigos aqui mismo. Emitirlos y mandar a buscarlos a
+         la pestana de al lado obliga a filtrar y adivinar cuales son los
+         que se acaban de crear. */
+      await Swal.fire({
+        icon: 'success',
+        title: `${codigos.length} ${codigos.length === 1 ? 'cupón emitido' : 'cupones emitidos'}`,
+        html: `<div style="text-align:left;max-height:38vh;overflow:auto;font-family:monospace;
+                          font-size:13px;line-height:1.8">${
+          codigos.map(x => x.code).join('<br>')
+        }</div>`,
+        confirmButtonText: 'Listo',
+      });
+      this.vista.set('emitidas');
+      await this.cargarInstancias();
+    } catch (e: any) {
+      await this.avisar('No se pudieron emitir', e?.message || 'Error.');
+    } finally {
+      this.guardando.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  /** Que porcentaje de los boletos se ha repartido. Se topa en 100. */
+  progresoBoletos(r: RaffleDefinition): number {
+    const total = Number(r.tickets_total) || 0;
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((Number(r.participaciones) || 0) * 100 / total));
   }
 
   private avisar(title: string, text: string): Promise<any> {

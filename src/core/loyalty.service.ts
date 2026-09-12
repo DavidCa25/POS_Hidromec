@@ -100,6 +100,8 @@ export interface RaffleDefinition {
   status: RaffleStatus;
   winners_count: number;
   code_prefix: string | null;
+  /** Cuantos boletos tiene la rifa en total. NULL es sin tope. */
+  tickets_total?: number | null;
   participaciones: number;
   sorteos: number;
   /** La foto del cierre: cuantos boletos quedaron dentro, y cuando. */
@@ -326,6 +328,25 @@ export class LoyaltyService {
   async guardarRifa(p: Record<string, any>): Promise<void> {
     await this.exigirOk(this.api?.raffles?.save(p), 'No se pudo guardar la rifa.');
     await this.cargar(true);
+  }
+
+  /**
+   * Emitir cupones a mano.
+   *
+   * Devuelve los codigos recien creados para poder dictarlos o imprimirlos
+   * sin ir a buscarlos a otra pantalla. Un cupon apagado se rechaza aqui
+   * abajo, en SQL: repartir codigos que nadie puede canjear es una
+   * discusion en el mostrador dos semanas despues.
+   */
+  async emitirCupones(definitionId: number, cantidad: number):
+      Promise<Array<{ code: string; expires_at: string | null }>> {
+    const r = await this.api?.coupons?.issue({ definitionId, quantity: cantidad });
+    if (!r?.success) throw new Error(r?.error || 'No se pudieron emitir los cupones.');
+    const filas: any[] = Array.isArray(r.data) ? r.data : (r.data ? [r.data] : []);
+    const malo = filas.find(x => x?.ok === false);
+    if (malo) throw new Error(malo.mensaje || 'No se pudieron emitir los cupones.');
+    await this.cargar(true);
+    return filas.map(x => ({ code: x.code, expires_at: x.expires_at ?? null }));
   }
 
   // -------------------------------------------------------------- ventas

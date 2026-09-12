@@ -177,7 +177,8 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('ends_at', sql.DateTime2, p.endsAt ? new Date(p.endsAt) : null)
       .input('winners_count', sql.Int, num(p.winnersCount) ?? 1)
       .input('code_prefix', sql.NVarChar(8), txt(p.codePrefix))
-      .input('status', sql.NVarChar(10), txt(p.status))));
+      .input('status', sql.NVarChar(10), txt(p.status))
+      .input('tickets_total', sql.Int, num(p.ticketsTotal))));
 
   ipcMain.handle('raffles:detail', async (_e, p = {}) => {
     try {
@@ -221,6 +222,20 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
 
   // ------------------------------------------------------------- cupones
   /** Mirar, sin consumir. Se llama cuando el cajero teclea el codigo. */
+  /**
+   * Emitir cupones sin venta.
+   *
+   * Es el unico camino para convertir una definicion en codigos repartibles
+   * sin montar una campana y esperar a que alguien compre.
+   */
+  ipcMain.handle('coupons:issue', async (_e, p = {}) =>
+    ejecutar(await pool(), 'sp_coupon_issue', (r) => r
+      .input('definition_id', sql.Int, num(p.definitionId))
+      .input('quantity', sql.Int, num(p.quantity) ?? 1)
+      .input('customer_id', sql.Int, num(p.customerId))
+      .input('machine_id', sql.NVarChar(64), txt(p.machineId))
+      .input('register_id', sql.Int, num(p.registerId))));
+
   ipcMain.handle('coupons:validate', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_coupon_validate', (r) =>
       r.input('code', sql.NVarChar(24), txt(p.code))));

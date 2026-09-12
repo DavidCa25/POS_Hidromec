@@ -336,6 +336,7 @@ contextBridge.exposeInMainWorld('wybix', {
     },
     coupons: {
         // Mirar sin consumir, antes de cobrar.
+        issue: (p) => ipcRenderer.invoke('coupons:issue', p),
         validate: (p) => ipcRenderer.invoke('coupons:validate', p),
         // Consumir, con la venta ya cobrada. Un fallo aqui SI se ensena.
         redeem: (p) => ipcRenderer.invoke('coupons:redeem', p),
