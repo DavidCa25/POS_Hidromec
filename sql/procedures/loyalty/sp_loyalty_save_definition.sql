@@ -94,8 +94,13 @@ BEGIN
 
     IF @kind_of = 'DYNAMIC'
     BEGIN
-        IF @type = 'TIMING' AND (ISNULL(@target_value, 0) <= 0 OR ISNULL(@tolerance, 0) <= 0)
-        BEGIN RAISERROR('Una dinamica de tiempo necesita objetivo y tolerancia mayores que cero.', 16, 1); RETURN; END
+        /* TIMING solo necesita el segundo objetivo.
+           `tolerance` ya no participa: el juego es exacto a la centesima y
+           exigir un margen mayor que cero impedia guardar justo la dinamica
+           que se queria -"detenlo en 10.00 clavados"-. La columna se conserva
+           porque hay definiciones viejas que la traen; simplemente se ignora. */
+        IF @type = 'TIMING' AND ISNULL(@target_value, 0) <= 0
+        BEGIN RAISERROR('Una dinamica de cronometro necesita el segundo objetivo.', 16, 1); RETURN; END
         IF ISNULL(@attempts_allowed, 0) < 1 SET @attempts_allowed = 1;
 
         IF @id IS NULL

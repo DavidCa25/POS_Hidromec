@@ -36,6 +36,7 @@
     "db:test-fidelizacion-multicaja": "node scripts/db/pruebas/fidelizacion-multicaja.mjs",
     "db:test-fidelizacion-cupones": "node scripts/db/pruebas/fidelizacion-cupones.mjs",
     "db:test-fidelizacion-horarios": "node scripts/db/pruebas/fidelizacion-horarios.mjs",
+    "db:test-fidelizacion-cronometro": "node scripts/db/pruebas/fidelizacion-cronometro.mjs",
     "db:test-rol": "node scripts/db/pruebas/rol-aplicacion.mjs",
     "db:test-variante": "node scripts/db/pruebas/receta-por-variante.mjs",
     "db:test-receta-efectiva": "node scripts/db/pruebas/receta-efectiva.mjs",

@@ -311,10 +311,20 @@
 
           <label class="loy-f">
             <span>Tipo</span>
-            <wx-select [opciones]="[
-                { valor: 'FREE_PRODUCT', etiqueta: 'Producto gratis' },
-                { valor: 'AMOUNT', etiqueta: 'Descuento en pesos' },
-                { valor: 'PERCENT', etiqueta: 'Descuento en porcentaje' }]"
+            <!--
+              Los tipos ofrecidos dependen de si se pueden CANJEAR.
+
+              En un cupon solo se ofrece producto gratis: el descuento en
+              pesos o en porcentaje no se puede aplicar en caja todavia -la
+              venta no tiene concepto de descuento- y dejarlos elegibles
+              significaba repartir papeles que el cajero luego no podria
+              aceptar. Se marcan como proximamente, no se esconden: quien los
+              busca merece saber que existen y que no estan listos.
+
+              Una recompensa SI admite los tres: se entrega en el momento y no
+              pasa por el canje.
+            -->
+            <wx-select [opciones]="tiposDePremio()"
               [(ngModel)]="d.kind" name="pKind"></wx-select>
           </label>
 
@@ -515,7 +525,7 @@
           <label class="loy-f loy-f--wide">
             <span>Nombre</span>
             <input class="ctl" type="text" [(ngModel)]="d.name" name="dName"
-                   placeholder="Para el cronómetro en 10" maxlength="120">
+                   placeholder="Detén el cronómetro en 10.00" maxlength="120">
           </label>
           <label class="loy-f">
             <span>Tipo</span>
@@ -530,16 +540,16 @@
                        name="dRew" placeholder="Elegir recompensa"></wx-select>
           </label>
 
-          <ng-container *ngIf="d.type === 'TIMING'">
-            <label class="loy-f">
-              <span>Segundo objetivo</span>
-              <input class="ctl" type="number" min="1" step="0.1" [(ngModel)]="d.targetValue" name="dTar">
-            </label>
-            <label class="loy-f">
-              <span>Margen (±s)</span>
-              <input class="ctl" type="number" min="0" step="0.01" [(ngModel)]="d.tolerance" name="dTol">
-            </label>
-          </ng-container>
+          <!--
+            Sin margen. El negocio no configura una tolerancia: el juego es
+            "detenlo en 10.00 exactos". Pedir un margen obligaba ademas a
+            ponerlo mayor que cero, asi que la dinamica que se queria era
+            justo la que no se podia guardar.
+          -->
+          <label class="loy-f" *ngIf="d.type === 'TIMING'">
+            <span>Segundo exacto</span>
+            <input class="ctl" type="number" min="0.01" step="0.01" [(ngModel)]="d.targetValue" name="dTar">
+          </label>
 
           <label class="loy-f">
             <span>Intentos por venta</span>
@@ -548,14 +558,14 @@
           <label class="loy-f loy-f--wide">
             <span>Instrucción para el cliente</span>
             <input class="ctl" type="text" [(ngModel)]="d.description" name="dDesc"
-                   placeholder="Detén el cronómetro lo más cerca posible de 10 segundos" maxlength="400">
+                   placeholder="Detén el cronómetro exactamente en 10.00" maxlength="400">
           </label>
         </div>
 
         <p class="loy-nota" *ngIf="d.type === 'TIMING'">
           <i class="ph ph-info"></i>
-          Gana quien pare entre {{ ((d.targetValue || 0) - (d.tolerance || 0)) | number:'1.2-2' }} y
-          {{ ((d.targetValue || 0) + (d.tolerance || 0)) | number:'1.2-2' }} segundos.
+          Gana quien detenga el contador <b>exactamente</b> cuando muestre
+          <b>{{ (d.targetValue || 0) | number:'1.2-2' }}</b>. Ni una centésima antes ni después.
           El resultado lo decide el servidor, no la caja.
         </p>
 
@@ -585,7 +595,7 @@
               <td><b>{{ d.name }}</b><small *ngIf="d.description">{{ d.description }}</small></td>
               <td><span class="loy-pill">{{ d.type === 'TIMING' ? 'Cronómetro' : 'Ruleta' }}</span></td>
               <td>
-                <span *ngIf="d.type === 'TIMING'">{{ d.target_value }}s ± {{ d.tolerance }}</span>
+                <span *ngIf="d.type === 'TIMING'">Exacto en {{ d.target_value | number:'1.2-2' }}</span>
                 <span *ngIf="d.type !== 'TIMING'">—</span>
               </td>
               <td>{{ d.reward_name || '—' }}</td>

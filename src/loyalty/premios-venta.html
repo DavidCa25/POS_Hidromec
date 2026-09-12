@@ -69,17 +69,16 @@
         <header class="pv-head">
           <div class="pv-head__ic"><i class="ph ph-timer"></i></div>
           <h2>{{ pendiente()?.name || 'Dinámica' }}</h2>
-          <p>{{ pendiente()?.description || 'Detén el cronómetro lo más cerca posible del objetivo.' }}</p>
+          <p>{{ pendiente()?.description || 'Detén el cronómetro justo en el segundo exacto.' }}</p>
         </header>
 
+        <!-- El objetivo con los MISMOS dos decimales que el cronometro: si
+             uno dijera "10" y el otro "10.00", el juego pareceria otro. -->
         <p class="pv-objetivo" *ngIf="objetivo !== null">
-          Objetivo <b>{{ objetivo | number:'1.2-2' }} s</b>
-          <span *ngIf="margen !== null"> · margen ± {{ margen | number:'1.2-2' }}</span>
+          Detenlo exactamente en <b>{{ objetivoTexto }}</b>
         </p>
 
-        <div class="pv-crono" [class.corriendo]="corriendo()">
-          {{ transcurrido() | number:'1.2-2' }}
-        </div>
+        <div class="pv-crono" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
 
         <div class="btn-row pv-acciones">
           <button class="btn-primary pv-btn-grande" type="button"

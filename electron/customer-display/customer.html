@@ -375,13 +375,15 @@
     document.getElementById('dnName').textContent = s.nombre || 'Dinámica';
     document.getElementById('dnInstr').textContent = s.instruccion || '';
     const c = document.getElementById('dnCrono');
-    c.textContent = Number(s.transcurrido || 0).toFixed(2);
+    // Centesimas enteras, la misma unidad que la caja: aqui NO se redondea
+    // nada por cuenta propia, porque entonces las dos pantallas podrian
+    // ensenar numeros distintos del mismo instante.
+    c.textContent = (Number(s.centesimas || 0) / 100).toFixed(2);
     c.classList.toggle('parado', !s.corriendo);
     // El objetivo se dice ANTES de jugar: una dinamica donde el cliente no
     // sabe a que apunta no es un juego, es un sorteo con cronometro.
     document.getElementById('dnMeta').textContent =
-      s.objetivo != null ? ('Objetivo: ' + Number(s.objetivo).toFixed(2) + ' s'
-        + (s.margen ? ' (± ' + Number(s.margen).toFixed(2) + ')' : '')) : '';
+      s.objetivo != null ? ('Detenlo exactamente en ' + Number(s.objetivo).toFixed(2)) : '';
   }
 
   function renderResultado(s){

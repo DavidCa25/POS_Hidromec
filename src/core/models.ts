@@ -299,9 +299,14 @@ export type CustomerDisplayState =
       nombre: string;
       instruccion: string | null;
       objetivo: number | null;
-      margen: number | null;
-      /** Segundos transcurridos, empujados mientras corre. */
-      transcurrido: number;
+      /**
+       * Lo transcurrido en CENTESIMAS ENTERAS, no en segundos.
+       *
+       * Es la misma unidad con la que la caja cuenta y juzga. Mandar segundos
+       * con decimales obligaria a esta pantalla a redondear por su cuenta, y
+       * podria ensenar 10.00 mientras la caja muestra 9.99.
+       */
+      centesimas: number;
       corriendo: boolean;
     }
   | {

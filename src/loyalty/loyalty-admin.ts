@@ -74,7 +74,6 @@ interface DraftDinamica {
   type: 'TIMING' | 'WHEEL';
   description: string;
   targetValue: number | null;
-  tolerance: number | null;
   attemptsAllowed: number;
   rewardDefinitionId: number | null;
   active: boolean;
@@ -151,6 +150,30 @@ export class LoyaltyAdmin implements OnInit {
   // ------------------------------------------------------------- derivados
   readonly productos = computed<WxOpcion[]>(() =>
     this.catalog.vendibles().map(p => ({ valor: p.id, etiqueta: p.product_name, nota: p.part_number ?? '' })));
+
+  /**
+   * Los tipos de beneficio que se pueden elegir AHORA.
+   *
+   * Un cupon hay que canjearlo, y hoy solo el producto gratis se puede
+   * aplicar: la venta no tiene concepto de descuento. Los otros dos aparecen
+   * desactivados y con su motivo, en vez de desaparecer: esconderlos haria
+   * pensar que no existen, y dejarlos elegibles haria repartir papeles que la
+   * caja no puede aceptar.
+   */
+  readonly tiposDePremio = computed<WxOpcion[]>(() => {
+    const cupon = this.premioDe() === 'COUPON';
+    return [
+      { valor: 'FREE_PRODUCT', etiqueta: 'Producto gratis' },
+      {
+        valor: 'AMOUNT', etiqueta: 'Descuento en pesos',
+        nota: cupon ? 'Próximamente' : undefined, desactivada: cupon,
+      },
+      {
+        valor: 'PERCENT', etiqueta: 'Descuento en porcentaje',
+        nota: cupon ? 'Próximamente' : undefined, desactivada: cupon,
+      },
+    ];
+  });
 
   readonly opcRecompensas = computed<WxOpcion[]>(() =>
     this.loyalty.recompensas().filter(r => r.active).map(r => ({ valor: r.id, etiqueta: r.name })));
@@ -361,7 +384,7 @@ export class LoyaltyAdmin implements OnInit {
   nuevaDinamica(): void {
     this.dinamica.set({
       id: null, name: '', type: 'TIMING', description: '',
-      targetValue: 10, tolerance: 0.2, attemptsAllowed: 1,
+      targetValue: 10, attemptsAllowed: 1,
       rewardDefinitionId: null, active: true,
     });
   }
@@ -369,7 +392,7 @@ export class LoyaltyAdmin implements OnInit {
   editarDinamica(d: DynamicDefinition): void {
     this.dinamica.set({
       id: d.id, name: d.name, type: d.type, description: d.description ?? '',
-      targetValue: d.target_value, tolerance: d.tolerance,
+      targetValue: d.target_value,
       attemptsAllowed: d.attempts_allowed, rewardDefinitionId: d.reward_definition_id,
       active: d.active,
     });
@@ -381,7 +404,7 @@ export class LoyaltyAdmin implements OnInit {
     if (!d.name.trim()) return this.avisar('Falta el nombre', 'Ponle nombre a la dinámica.');
     if (!d.rewardDefinitionId) return this.avisar('Falta el premio', 'Elige qué recompensa se lleva quien gane.');
     if (d.type === 'TIMING' && !(d.targetValue && d.targetValue > 0)) {
-      return this.avisar('Falta el objetivo', 'En una dinámica de tiempo hay que decir a qué segundo hay que parar.');
+      return this.avisar('Falta el segundo exacto', 'Di en qué segundo hay que detener el contador, por ejemplo 10.00.');
     }
 
     this.guardando.set(true);
@@ -389,7 +412,7 @@ export class LoyaltyAdmin implements OnInit {
       await this.loyalty.guardarDefinicion('DYNAMIC', {
         id: d.id, name: d.name.trim(), type: d.type,
         description: d.description.trim() || null,
-        targetValue: d.targetValue, tolerance: d.tolerance,
+        targetValue: d.targetValue,
         attemptsAllowed: d.attemptsAllowed,
         rewardDefinitionId: d.rewardDefinitionId, active: d.active,
       });

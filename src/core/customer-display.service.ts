@@ -80,7 +80,7 @@ export class CustomerDisplayService {
    * Va sin coalescer y con inmediato=true: es un cronometro, y un frame de
    * retraso en el numero que el cliente esta mirando se nota.
    */
-  showDinamica(p: { nombre: string; instruccion: string | null; objetivo: number | null; margen: number | null; transcurrido: number; corriendo: boolean }): void {
+  showDinamica(p: { nombre: string; instruccion: string | null; objetivo: number | null; centesimas: number; corriendo: boolean }): void {
     this.checkoutHasta = Date.now() + 30000;
     this.push({ mode: 'dinamica', ...p }, true);
   }

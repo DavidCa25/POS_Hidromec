@@ -57,7 +57,7 @@ export class PremiosVenta implements OnDestroy {
   @Output() cerrado = new EventEmitter<void>();
 
   /**
-   * La dinamica con todos sus datos: nombre, instruccion, objetivo y margen.
+   * La dinamica con todos sus datos: nombre, instruccion y objetivo.
    *
    * El premio de la venta solo trae el token. El resto se pide con
    * sp_dynamic_pending, que ademas comprueba que el intento siga vivo y sin
@@ -68,7 +68,19 @@ export class PremiosVenta implements OnDestroy {
 
   jugando = signal(false);
   corriendo = signal(false);
-  transcurrido = signal(0);
+  /**
+   * Lo transcurrido, en CENTESIMAS ENTERAS.
+   *
+   * No en segundos con decimales: el juego se gana o se pierde por lo que el
+   * cliente LEE, y lo que lee tiene dos decimales. Si el estado fuera un
+   * flotante en segundos, lo pintado y lo enviado podrian redondear distinto
+   * -9.995 * 100 da 999.4999999999999 en coma flotante- y la pantalla diria
+   * 10.00 mientras el servidor juzga 9.99.
+   *
+   * Contando en centesimas, lo que se ve y lo que se manda son EL MISMO
+   * numero. No hay nada que puedan discrepar.
+   */
+  centesimas = signal(0);
   enviando = signal(false);
   resultado = signal<ResultadoDinamica | null>(null);
 
@@ -136,7 +148,7 @@ export class PremiosVenta implements OnDestroy {
       }
       this.pendiente.set(p);
       this.resultado.set(null);
-      this.transcurrido.set(0);
+      this.centesimas.set(0);
       this.corriendo.set(false);
       this.jugando.set(true);
       this.empujarCrono(false);
@@ -148,7 +160,7 @@ export class PremiosVenta implements OnDestroy {
 
   arrancar(): void {
     if (this.corriendo()) return;
-    this.transcurrido.set(0);
+    this.centesimas.set(0);
     this.t0 = performance.now();
     this.corriendo.set(true);
     this.ultimoPush = 0;
@@ -164,14 +176,21 @@ export class PremiosVenta implements OnDestroy {
    */
   private tic = (): void => {
     if (!this.corriendo()) return;
-    const s = (performance.now() - this.t0) / 1000;
-    this.transcurrido.set(s);
+    // Milisegundos -> centesimas, redondeando UNA vez. De aqui sale tanto lo
+    // que se pinta como lo que se juzga.
+    const c = Math.round((performance.now() - this.t0) / 10);
+    this.centesimas.set(c);
     // A la pantalla del cliente, ~20 veces por segundo. A 60 serian 60 IPC
     // por segundo para mover dos decimales que el ojo no distingue.
-    if (s - this.ultimoPush >= 0.05) { this.ultimoPush = s; this.empujarCrono(true); }
+    if (c - this.ultimoPush >= 5) { this.ultimoPush = c; this.empujarCrono(true); }
     this.cd.detectChanges();
     this.raf = requestAnimationFrame(this.tic);
   };
+
+  /** Lo que se pinta: exactamente las centesimas contadas. */
+  get textoCrono(): string {
+    return (this.centesimas() / 100).toFixed(2);
+  }
 
   private pararReloj(): void {
     this.corriendo.set(false);
@@ -189,15 +208,25 @@ export class PremiosVenta implements OnDestroy {
   async parar(): Promise<void> {
     if (!this.corriendo() || this.enviando()) return;
     this.pararReloj();
-    const segundos = this.transcurrido();
     this.empujarCrono(false);
 
     const d = this.pendiente();
     if (!d?.token) return;
 
+    /*
+     * Se manda EXACTAMENTE lo que dice la pantalla, ya cuantizado: las
+     * centesimas contadas divididas entre 100. SQL las vuelve a multiplicar
+     * por 100 en DECIMAL, que es aritmetica exacta, y compara enteros.
+     *
+     * El renderer NO manda si gano: solo cuando paro. Quien decide es el
+     * servidor, y por eso el valor que viaja tiene que ser el mismo que el
+     * cliente esta mirando.
+     */
+    const segundos = this.centesimas() / 100;
+
     this.enviando.set(true);
     try {
-      const r = await this.loyalty.jugar(d.token, Number(segundos.toFixed(3)));
+      const r = await this.loyalty.jugar(d.token, segundos);
       this.resultado.set(r);
       this.display.showResultadoDinamica({
         gano: r.resultado === 'WIN',
@@ -223,21 +252,23 @@ export class PremiosVenta implements OnDestroy {
       nombre: d.name || 'Dinámica',
       instruccion: d.description ?? null,
       objetivo: this.objetivo,
-      margen: this.margen,
-      transcurrido: this.transcurrido(),
+      // En centesimas, la misma unidad: la pantalla del cliente tiene que
+      // ensenar el MISMO numero que la caja, no uno redondeado aparte.
+      centesimas: this.centesimas(),
       corriendo,
     });
   }
 
-  /** A qué segundo hay que apuntar. Lo dice la definicion, no esta pantalla. */
+  /** A qué centesima hay que apuntar. Lo dice la definicion, no esta pantalla. */
   get objetivo(): number | null {
     const n = Number(this.pendiente()?.target_value);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
-  get margen(): number | null {
-    const n = Number(this.pendiente()?.tolerance);
-    return Number.isFinite(n) && n > 0 ? n : null;
+  /** El objetivo tal y como se lee: dos decimales, igual que el cronometro. */
+  get objetivoTexto(): string {
+    const o = this.objetivo;
+    return o === null ? '' : o.toFixed(2);
   }
 
   cerrar(): void {
