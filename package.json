@@ -46,6 +46,7 @@
     "db:check-template": "node scripts/db/verificar-template.mjs",
     "db:prepare-release": "npm run db:baseline && npm run db:check-template -- --a-fondo && npm run db:test-install",
     "test:marca": "node scripts/pruebas/customer-display-marca.mjs",
+    "test:modulos": "node scripts/pruebas/modulos-navegacion.mjs",
     "test:capas": "node scripts/pruebas/capas.mjs",
     "test:ipc": "node scripts/pruebas/auditar-ipc.mjs",
     "test:trial": "node scripts/pruebas/licencia-prueba.mjs",

@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import {
   CATEGORIAS, CapabilityService, Capabilities, MODULOS, ModuleCategory, ModuleDefinition,
 } from '../../core';
+import { AuthService } from '../../services/auth.service';
 
 /*
  * Aplicaciones de Wybix: que capacidades opcionales tiene encendidas el
@@ -33,7 +34,20 @@ import {
 export class Aplicaciones implements OnInit {
   readonly caps = inject(CapabilityService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly cd = inject(ChangeDetectorRef);
+
+  /**
+   * Activar un modulo cambia lo que puede hacer TODO el negocio, en todas las
+   * cajas. No es una preferencia del equipo: es la clase de decision que ya
+   * exige rol de administrador en el resto de Wybix, y aqui se reutiliza el
+   * mismo criterio en vez de inventar otro.
+   *
+   * El enlace ya se oculta a quien no es administrador, pero esconder un
+   * boton no es un permiso: quien llegue por la URL se encuentra la puerta
+   * cerrada igual.
+   */
+  get puedeAdministrar(): boolean { return this.auth.esAdmin; }
 
   /** Cual se esta cambiando ahora mismo, para bloquear solo ese. */
   cambiando = signal<string | null>(null);
@@ -51,6 +65,15 @@ export class Aplicaciones implements OnInit {
     MODULOS.filter(m => this.encendido(m)).length);
 
   async ngOnInit(): Promise<void> {
+    if (!this.puedeAdministrar) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Solo para administradores',
+        text: 'Activar o desactivar aplicaciones cambia lo que puede hacer todo el negocio.',
+      });
+      this.router.navigateByUrl('/dashboard/venta');
+      return;
+    }
     await this.caps.load(true);
     this.cd.detectChanges();
   }
@@ -67,6 +90,7 @@ export class Aplicaciones implements OnInit {
    * pulsa merece saber que esos datos siguen ahi y no se han borrado.
    */
   async alternar(m: ModuleDefinition): Promise<void> {
+    if (!this.puedeAdministrar) return;
     const activo = this.encendido(m);
 
     if (activo) {
