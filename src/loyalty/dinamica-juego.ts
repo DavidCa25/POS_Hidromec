@@ -96,12 +96,20 @@ export class DinamicaJuego implements OnDestroy {
     return p ? [p] : [];
   }
 
+  /**
+   * El encabezado del reto.
+   *
+   * En TIMING lo redacta la pantalla del cliente, porque la instruccion y
+   * el numero tienen que leerse como UNA sola frase -"detenlo exactamente
+   * en 10.00"- y partirla entre dos capas es como se acaba ensenando un
+   * numero y un boton sin relacion aparente. Aqui solo viaja el caso en
+   * que la dinamica no tiene objetivo y su propia descripcion es lo unico
+   * que hay que decir.
+   */
   private get reto(): string {
-    if (this.esRuleta) return '¿Te atreves a probar tu suerte?';
+    if (this.esRuleta) return 'Prueba tu suerte';
     const o = Number(this._def?.target_value);
-    return Number.isFinite(o) && o > 0
-      ? 'Detén el cronómetro exactamente en'
-      : (this._def?.description || '¿Te atreves?');
+    return Number.isFinite(o) && o > 0 ? '' : (this._def?.description || '');
   }
 
   /** Manda la partida a la pantalla del cliente y se queda escuchando. */
@@ -215,7 +223,11 @@ export class DinamicaJuego implements OnDestroy {
       sectores: this.esRuleta ? this.sectores.map(s => s.label) : undefined,
       ganadorIndice: ganadorIndice ?? null,
       gano: r ? r.resultado === 'WIN' : undefined,
-      mensaje: r ? (r.resultado === 'WIN' ? '¡GANASTE!' : r.ok ? 'CASI' : r.mensaje) : undefined,
+      // `mensaje` viaja SOLO cuando algo fallo. Ganar o no ganar lo
+      // redacta la pantalla del cliente, que es quien sabe con cuanto
+      // espacio cuenta; mandar aqui un "CASI" obligaba a la pantalla a
+      // adivinar si ese texto era una derrota normal o un error.
+      mensaje: r && !r.ok ? r.mensaje : undefined,
       premioGanado: r?.premio ?? null,
       codigo: r?.codigo ?? null,
     });

@@ -4,472 +4,530 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pantalla de cliente</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0b1620; --bg2:#0f1f2b; --card:#12212e; --line:#22384880;
-    --text:#eaf2f6; --muted:#8fa8b8; --brand:#45B3C3; --brand2:#7fd4e0;
-    --ok:#34d399; --accent:#f8fafc;
+  /* ====================================================================
+     LA PANTALLA DEL CLIENTE ES SENALIZACION COMERCIAL INTERACTIVA.
+
+     No es un dashboard, ni un ticket gigante, ni una landing, ni una
+     maquina de casino. Se mira de pie, a dos metros, de reojo, mientras
+     alguien cobra. De ahi sale todo lo demas: una sola idea por pantalla,
+     tipografia a sangre y nada de tarjetas.
+
+     LA MARCA DEL NEGOCIO ES LA PROTAGONISTA. Wybix pone la estructura, la
+     tipografia, el movimiento y el acabado.
+
+     Antes este archivo declaraba su propia paleta y cargaba Poppins desde
+     Google Fonts: era un TERCER sistema de diseno que coincidia con Wybix
+     solo porque alguien habia copiado el cyan a mano. Ahora los valores
+     salen de src/styles/tokens.css, que es la identidad de verdad.
+     ==================================================================== */
+
+  /* Las fuentes viajan con la aplicacion. Una caja puede estar sin
+     internet y la pantalla del cliente no puede quedarse en Arial. */
+  @font-face{
+    font-family:'Geist Variable'; font-style:normal; font-weight:100 900;
+    font-display:block;
+    src:url(../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2) format('woff2-variations');
   }
+  @font-face{
+    font-family:'Geist Mono Variable'; font-style:normal; font-weight:100 900;
+    font-display:block;
+    src:url(../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2) format('woff2-variations');
+  }
+
+  :root{
+    --wx-font:'Geist Variable','Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --wx-font-mono:'Geist Mono Variable','Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    /* Un solo tema para toda la pantalla: tinta, hueso y UN acento. */
+    --tinta:#0A1119;
+    --hueso:#F4F7FA;
+    --humo:#94A7BA;
+    --filete:rgb(244 247 250 / .16);
+    --filete-fuerte:rgb(69 179 195 / .85);
+    --accent:#45B3C3;          /* --wx-cyan-500 */
+    --accent-claro:#7FD4E0;
+    --ok:#2F9E68;
+
+    /* El rojo es SOLO del pulsador. Nada mas en la pantalla es rojo. */
+    --pulsador:#DC4A3D;
+    --pulsador-cuerpo:#8E2C22;
+
+    --wx-ease-out:cubic-bezier(.23,1,.32,1);
+    --wx-dur-press:110ms; --wx-dur-micro:150ms;
+    --wx-dur-state:190ms;  --wx-dur-dialog:230ms;
+
+    /* Un solo sistema de esquinas: 9 / 13 / 18. Lo redondo (pulsador y
+       rueda) es su propia familia y esta documentado. */
+    --r-sm:9px; --r-md:13px; --r-lg:18px;
+
+    /* ---------------------------------------------------------------
+       LA UNIDAD DE LA MARQUESINA
+
+       Todo se mide en `--u`. En un 16:9 vale 1vw, asi que la pantalla se
+       ve igual a 1024x576, 1366x768 y 1920x1080. En una pantalla mas
+       alta que ancha se limita por la altura y nada se desborda.
+       --------------------------------------------------------------- */
+    --u:min(1vw, 1.7778vh);
+
+    /* La jerarquia esta DECIDIDA, no es escalado proporcional: entre el
+       protagonista y lo secundario hay un factor de tres, no de uno y
+       medio. Asi se lee a cuatro metros cual es el mensaje. */
+    --t-micro:calc(1.55 * var(--u));
+    --t-et:calc(2.1 * var(--u));
+    --t-cuerpo:calc(2.9 * var(--u));
+    --t-lista:calc(3.4 * var(--u));
+    --t-titular:calc(7.2 * var(--u));
+    --t-gigante:calc(9.4 * var(--u));
+    --t-total:calc(13 * var(--u));
+    --t-numero:calc(17 * var(--u));
+
+    --margen:calc(5.5 * var(--u));
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    :root{
+      --wx-dur-press:1ms; --wx-dur-micro:1ms;
+      --wx-dur-state:1ms; --wx-dur-dialog:1ms;
+    }
+  }
+
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
   body{
-    font-family:'Poppins',system-ui,sans-serif;
-    background:radial-gradient(1200px 800px at 70% -10%, #16233A 0%, var(--bg) 62%);
-    color:var(--text); height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased;
+    font-family:var(--wx-font);
+    background:var(--tinta); color:var(--hueso);
+    height:100vh; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
   }
-  .screen{display:none; height:100vh; padding:4vh 5vw;}
-  .screen.on{display:flex;}
+  .mono{font-family:var(--wx-font-mono);font-variant-numeric:tabular-nums;}
 
-  /* ===== ESPERA =====
-     Es el rato en que la pantalla se mira sin que nadie la obligue: al entrar,
-     mientras esperan turno, mientras cobran a otro. Si solo pone la hora, deja
-     de mirarse. Si dice que hay algo que ganar, se mira. */
-  #idle{flex-direction:column;align-items:center;justify-content:space-between;padding:5vh 5vw;}
+  .screen{display:none;height:100vh;padding:var(--margen);}
+  .screen.on{display:flex;flex-direction:column;}
 
-  .idle-marca{display:flex;flex-direction:column;align-items:center;gap:1.6vh;}
-  #idle .biz{font-size:2.6vw;font-weight:800;letter-spacing:-.01em;line-height:1.05;opacity:.92;}
+  /* ================================================== LA MARQUESINA ===
+     El armazon comun: cabecera arriba, mensaje al centro, pie abajo.
+     Nunca una tarjeta, nunca una capsula. Lo que separa contenido es un
+     filete o el espacio en blanco.
+     ==================================================================== */
+  .mq__top{
+    display:flex;align-items:center;gap:calc(1.6 * var(--u));
+    font-size:var(--t-micro);flex:none;
+  }
+  .mq__marca{font-weight:700;letter-spacing:-.01em;}
+  .mq__modo{display:none;color:var(--accent);font-weight:600;}
+  .mq__modo.on{display:inline;}
+  .mq__reloj{margin-left:auto;color:var(--humo);}
 
-  .idle-gancho{
-    display:flex;flex-direction:column;align-items:center;gap:1.6vh;
-    text-align:center;max-width:74vw;
+  /* El logo del negocio: pequeno y permanente, como el mastil de un
+     periodico. No hace falta que sea enorme para que sea suyo. */
+  .mq__logo{
+    width:calc(3.6 * var(--u));aspect-ratio:1;border-radius:var(--r-sm);
+    background:var(--hueso);color:var(--tinta);
+    display:grid;place-items:center;overflow:hidden;flex:none;
   }
-  .idle-kicker{
-    font-size:1.3vw;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--brand2);min-height:1.3vw;
-  }
-  .idle-titulo{
-    font-size:4.6vw;font-weight:800;line-height:1.05;letter-spacing:-.02em;
-    text-wrap:balance;margin:0;
-  }
-  .idle-sub{font-size:1.5vw;color:var(--muted);max-width:56ch;}
+  .mq__logo img{width:100%;height:100%;object-fit:contain;padding:12%;}
+  .mq__inicial{font-size:calc(2.2 * var(--u));font-weight:800;line-height:1;}
 
-  .idle-premios{display:flex;flex-wrap:wrap;gap:1.2vh 1vw;justify-content:center;}
-  .idle-premio{
-    display:inline-flex;align-items:center;gap:.6vw;
-    padding:1.2vh 1.8vw;border-radius:999px;
-    background:var(--card);border:1px solid var(--line);
-    font-size:1.6vw;font-weight:700;color:var(--brand2);
+  .mq__cuerpo{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;}
+  .mq__pie{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:calc(4 * var(--u));font-size:var(--t-micro);color:var(--humo);flex:none;
   }
-  .idle-premio::before{content:'★';opacity:.85;}
 
-  .idle-pie{
-    display:flex;align-items:center;gap:1.6vw;
-    color:var(--muted);font-size:1.1vw;
+  /* La etiqueta pequena que encabeza el mensaje. Hay UNA por pantalla. */
+  .mq__et{
+    font-size:var(--t-et);font-weight:700;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+    margin-bottom:calc(1.4 * var(--u));min-height:calc(1.2 * var(--u));
   }
-  #idle .clock{font-variant-numeric:tabular-nums;}
-  .bizmsg{max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mq__titular{
+    font-size:var(--t-titular);font-weight:800;
+    line-height:.98;letter-spacing:-.035em;text-wrap:balance;
+    max-width:17ch;
+  }
+  /* Lo secundario baja de verdad: si compite, no es secundario. */
+  .mq__tambien{
+    margin-top:calc(2.6 * var(--u));font-size:var(--t-cuerpo);color:var(--humo);
+    border-top:1px solid var(--filete);padding-top:calc(1.4 * var(--u));
+    max-width:34ch;
+  }
+  .mq__tambien b{color:var(--hueso);font-weight:600;}
 
-  /* La marca: logo del negocio o su inicial. */
-  #idle .marca{
-    width:110px;height:110px;border-radius:26px;display:grid;place-items:center;
-    background:#fff;box-shadow:0 20px 60px rgba(9,16,24,.35);overflow:hidden;
-  }
-  #idle .marca img{width:100%;height:100%;object-fit:contain;padding:14px;}
-  #idle .marca .inicial{font-size:52px;font-weight:800;color:var(--brand);line-height:1;}
+  /* ========================================================= ESPERA === */
+  #idle .mq__titular{max-width:15ch;}
 
-  /* ===== VENTA ===== */
-  #sale{flex-direction:column; gap:2vh;}
-  #sale .head{display:flex; justify-content:space-between; align-items:baseline;}
-  #sale .head .biz{font-size:2vw; font-weight:800;}
-  /* Modo de servicio: el cliente ve si su pedido es para llevar. */
-  #sale .head .modo{
-    display:none; margin-left:.9vw; padding:.3vh 1vw; border-radius:999px;
-    background:rgba(69,179,195,.16); color:var(--brand2);
-    font-size:1vw; font-weight:600; vertical-align:middle;
-  }
-  #sale .head .modo.on{display:inline-block;}
-  #sale .head .modo{
-    display:none; margin-left:.9vw; padding:.3vh 1vw; border-radius:999px;
-    background:rgba(69,179,195,.16); color:var(--brand2);
-    font-size:1vw; font-weight:600; vertical-align:middle;
-  }
-  #sale .head .modo.on{display:inline-block;}
-  #sale .head .clock{font-size:1.1vw; color:var(--muted); font-variant-numeric:tabular-nums;}
-  .list{flex:1; overflow:hidden; display:flex; flex-direction:column;}
-  .list .row.h{color:var(--muted); font-size:1vw; font-weight:600; border-bottom:1px solid var(--line); padding-bottom:1.2vh;}
-  .list .items{flex:1; overflow-y:auto;}
-  .row{display:grid; grid-template-columns: 1fr 90px 150px 190px; align-items:center; gap:12px; padding:1.4vh 0;}
-  .row.line{border-bottom:1px solid #1b2c3a; font-size:1.5vw;}
-  .row .name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .row .opts{display:block; margin-top:.3vh; color:var(--brand2); font-size:.95vw; font-weight:500;}
-  .row .qty{text-align:center; color:var(--muted);}
-  .row .pu{text-align:right; color:var(--muted); font-size:1.2vw;}
-  .row .imp{text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
-  .totals{border-top:2px solid var(--line); padding-top:2vh; display:flex; flex-direction:column; gap:1vh;}
-  .totline{display:flex; justify-content:space-between; font-size:1.4vw; color:var(--muted);}
-  .totline b{color:var(--text);}
-  .totline.grand{font-size:3vw; color:var(--text); font-weight:800; margin-top:.5vh;}
-  .totline.grand .amt{color:var(--brand2);}
+  /* =========================================================== VENTA ===
+     El carrito habla el mismo idioma que el resto: lineas con filete y el
+     total como protagonista. No es un ticket impreso ni una tabla de
+     backoffice: es lo que el cliente comprueba de un vistazo.
+     ==================================================================== */
+  #sale .venta{flex:1;display:flex;flex-direction:column;min-height:0;padding-top:calc(2 * var(--u));}
+  /* Sin scroll y sin recortes: `renderSale` decide cuantas filas caben y
+     resume el resto. Una fila cortada por la mitad se lee como un fallo
+     de la pantalla, no como una lista que sigue. */
+  #sale .items{flex:1;min-height:0;overflow:hidden;}
 
-  /* ===== CIERRE ===== */
-  #checkout{flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:1.8vh;}
-  #checkout .label{font-size:1.6vw; color:var(--muted); letter-spacing:2px; text-transform:uppercase;}
-  #checkout .total{font-size:7vw; font-weight:800; color:var(--brand2); line-height:1; font-variant-numeric:tabular-nums;}
-  #checkout .pays{display:flex; gap:5vw; margin-top:2vh;}
-  #checkout .pay .k{font-size:1.2vw; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
-  #checkout .pay .v{font-size:2.6vw; font-weight:700; font-variant-numeric:tabular-nums;}
+  .linea{
+    display:flex;align-items:baseline;gap:calc(2 * var(--u));
+    padding:calc(1.1 * var(--u)) 0;border-bottom:1px solid var(--filete);
+    font-size:var(--t-cuerpo);
+  }
+  .linea__n{flex:1;min-width:0;font-weight:600;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .linea__n .unit{color:var(--humo);font-weight:500;}
+  .linea__imp{font-weight:700;flex:none;}
+  .linea--mas{color:var(--humo);font-weight:500;border-bottom:0;}
+
+  .cierre{flex:none;padding-top:calc(1.6 * var(--u));}
+  .cierre__fila{
+    display:flex;justify-content:space-between;
+    font-size:var(--t-et);color:var(--humo);padding:calc(.4 * var(--u)) 0;
+  }
+  .cierre__total{margin-top:calc(1.2 * var(--u));}
+  .cierre__total .k{font-size:var(--t-et);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);}
+  .cierre__total .amt{
+    display:block;font-size:calc(9.5 * var(--u));font-weight:800;
+    line-height:.92;letter-spacing:-.05em;
+  }
+
+  /* ========================================================== CIERRE === */
+  #checkout .mq__cuerpo{align-items:flex-start;}
+  #checkout .total{font-size:var(--t-numero);font-weight:800;line-height:.9;letter-spacing:-.055em;}
+  #checkout .pays{display:flex;gap:calc(6 * var(--u));margin-top:calc(3 * var(--u));}
+  #checkout .pay .k{font-size:var(--t-et);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);}
+  #checkout .pay .v{font-size:calc(4.4 * var(--u));font-weight:700;}
   #checkout .change .v{color:var(--ok);}
-  #checkout .thanks{
-    margin-top:3vh; font-size:2.6vw; font-weight:800;
-    background:linear-gradient(90deg,var(--brand),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  #checkout .thanks-sub{font-size:1.2vw; color:var(--muted);}
 
-  /* Discreto y al pie: quien fabrica el POS, no quien vende. */
-  .porwybix{
-    position:fixed;right:2vw;bottom:1.6vh;
-    font-size:.85vw;color:var(--muted);opacity:.45;letter-spacing:.04em;
+  /* ========================================================= PREMIOS === */
+  #premios .lista{display:flex;flex-direction:column;margin-top:calc(2 * var(--u));max-width:calc(58 * var(--u));}
+  #premios .item{
+    display:flex;align-items:baseline;gap:calc(1.6 * var(--u));
+    padding:calc(1.6 * var(--u)) 0;border-bottom:1px solid var(--filete);
   }
+  #premios .item .n{flex:1;font-size:var(--t-lista);font-weight:700;letter-spacing:-.01em;}
+  #premios .item .c{font-size:var(--t-cuerpo);font-weight:700;letter-spacing:.08em;color:var(--accent);}
+  #premios .item .k{display:block;font-size:var(--t-micro);color:var(--humo);font-weight:500;letter-spacing:0;text-transform:none;}
 
-  /* ===== MODO VISTA PREVIA =====
-     Un chip pequeno, arriba a la derecha. Tiene que quedar claro para quien
-     administra, pero la pantalla debe seguir pareciendose a la de verdad: si
-     la vista previa se ve distinta, deja de servir para comprobar como se
-     vera. La garantia de que no se entrega nada es del backend, no de una
-     banda naranja. */
-  .previewbadge{
-    position:fixed;right:1.2vw;top:1.2vh;z-index:100;
-    display:none;align-items:center;gap:.5vw;
-    padding:.6vh 1vw;border-radius:999px;
-    background:rgba(180,83,9,.22);border:1px solid rgba(245,158,11,.5);
-    color:#fcd34d;font-size:.95vw;font-weight:700;letter-spacing:.04em;
+  /* =============================================== RESULTADO SUELTO === */
+  #dinres .codigo{margin-top:calc(2.4 * var(--u));font-size:var(--t-cuerpo);font-weight:700;letter-spacing:.12em;color:var(--accent);}
+
+  /* ====================================================== LA DINAMICA ==
+     Misma marquesina, con dos disposiciones:
+
+       TIMING  columna editorial a la izquierda, pulsador anclado abajo a
+               la derecha. El centro es del numero.
+       WHEEL   texto a la izquierda, rueda grande sangrando por el borde
+               derecho. Los nombres largos viven en la lista, no dentro de
+               los sectores.
+     ==================================================================== */
+  #juego{position:relative;overflow:hidden;}
+  .jg{display:flex;flex-direction:column;height:100%;min-height:0;}
+  .jg__cuerpo{flex:1;display:flex;align-items:center;min-height:0;position:relative;}
+  .jg__texto{
+    flex:1;min-width:0;max-width:62%;min-height:0;
+    display:flex;flex-direction:column;justify-content:center;
   }
-  body.es-preview .previewbadge{display:flex;}
+  /* Con rueda la columna arranca arriba y reserva el sitio del pulsador,
+     que en esta disposicion vive abajo a la izquierda. */
+  .jg--rueda .jg__texto{max-width:44%;justify-content:flex-start;height:100%;}
 
-  /* ===== LA DINAMICA =====
-     Poca cosa en pantalla y muy grande: el cliente la mira de pie, a dos
-     metros, mientras alguien le cobra. Todo lo que no sea el reto, el premio
-     y el boton estorba. */
-  #juego{align-items:center;justify-content:center;}
-  .jg{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:2.2vh;text-align:center;width:100%;
-  }
+  .jg--rueda .mq__et{font-size:calc(3.4 * var(--u));letter-spacing:.1em;margin-bottom:calc(2.4 * var(--u));}
 
-  .jg-reto{
-    font-size:2.4vw;font-weight:800;line-height:1.15;letter-spacing:-.01em;
-    max-width:70vw;text-wrap:balance;
-  }
-
-  /* El numero que hay que clavar. Es el protagonista antes de empezar. */
-  .jg-objetivo{
-    display:none;
-    font-size:9vw;font-weight:800;line-height:1;letter-spacing:-.04em;
-    font-variant-numeric:tabular-nums;
-    background:linear-gradient(180deg,var(--brand2),var(--brand));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
+  .jg-objetivo,.jg-crono{
+    display:none;font-size:var(--t-numero);font-weight:800;
+    line-height:.84;letter-spacing:-.055em;
   }
   .jg--objetivo .jg-objetivo{display:block;}
+  .jg--crono .jg-crono{display:block;color:var(--accent-claro);}
 
-  /* Los premios, en fichas. Se leen antes de jugar, que es cuando importan. */
-  .jg-premios{display:none;flex-wrap:wrap;gap:1vh 1vw;justify-content:center;max-width:74vw;}
-  .jg--premios .jg-premios{display:flex;}
-  .jg-premio{
-    display:inline-flex;align-items:center;gap:.6vw;
-    padding:1.1vh 1.6vw;border-radius:999px;
-    background:var(--card);border:1px solid var(--line);
-    font-size:1.5vw;font-weight:700;color:var(--brand2);
-  }
-  .jg-premio::before{content:'★';opacity:.8;}
+  .jg-titular{display:none;font-size:var(--t-gigante);font-weight:800;line-height:.96;letter-spacing:-.04em;max-width:14ch;text-wrap:balance;}
+  .jg--titular .jg-titular{display:block;}
+  .jg--gano .jg-titular{color:var(--hueso);}
 
-  /* ------------------------------------------------------- cronometro */
-  .jg-crono{
-    display:none;
-    font-size:15vw;font-weight:800;line-height:1;letter-spacing:-.05em;
-    font-variant-numeric:tabular-nums;color:var(--accent);
-    text-shadow:0 0 60px rgba(127,212,224,.25);
+  /* "Puedes ganar" y el premio: van ANTES de jugar, que es cuando
+     deciden si merece la pena pulsar. */
+  .jg-gana{display:none;margin-top:calc(2.4 * var(--u));font-size:var(--t-et);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);}
+  .jg--gana .jg-gana{display:block;}
+
+  .jg-premios{display:none;list-style:none;margin-top:calc(1 * var(--u));max-width:calc(36 * var(--u));}
+  .jg--premios .jg-premios{display:block;}
+  .jg--rueda .jg-premios li{font-size:var(--t-cuerpo);padding:calc(.7 * var(--u)) 0;}
+  .jg-premios li{
+    font-size:var(--t-lista);font-weight:700;letter-spacing:-.01em;
+    padding:calc(.9 * var(--u)) 0;border-bottom:1px solid var(--filete);
   }
-  .jg--crono .jg-crono{display:block;}
+  .jg-premios li.mas{font-size:var(--t-cuerpo);font-weight:500;color:var(--humo);border-bottom:0;}
+  .jg-premios li:first-child{border-top:1px solid var(--filete-fuerte);}
+
+  .jg-codigo{display:none;margin-top:calc(2 * var(--u));font-size:var(--t-cuerpo);font-weight:700;letter-spacing:.12em;color:var(--accent);}
+  .jg--codigo .jg-codigo{display:block;}
+
+  .jg__pie{flex:none;min-height:calc(2 * var(--u));}
+  .jg-pie{font-size:var(--t-micro);color:var(--humo);max-width:44ch;}
 
   /* ------------------------------------------------------------ rueda */
-  .jg-rueda{display:none;position:relative;width:min(46vh,46vw);aspect-ratio:1;}
+  .jg-rueda{
+    display:none;position:absolute;z-index:1;
+    right:calc(-4 * var(--u));top:50%;transform:translateY(-50%);
+    width:min(calc(46 * var(--u)), 76vh);aspect-ratio:1;
+  }
   .jg--rueda .jg-rueda{display:block;}
 
   .jg-rueda__aguja{
-    position:absolute;top:-1.4vh;left:50%;transform:translateX(-50%);
+    position:absolute;top:calc(-1.2 * var(--u));left:50%;transform:translateX(-50%);
     width:0;height:0;z-index:3;
-    border-left:1.4vh solid transparent;
-    border-right:1.4vh solid transparent;
-    border-top:2.6vh solid #ef4444;
-    filter:drop-shadow(0 .4vh .6vh rgba(0,0,0,.5));
+    border-left:calc(1.5 * var(--u)) solid transparent;
+    border-right:calc(1.5 * var(--u)) solid transparent;
+    border-top:calc(2.8 * var(--u)) solid var(--hueso);
+    filter:drop-shadow(0 calc(.3 * var(--u)) calc(.6 * var(--u)) rgb(0 0 0 / .55));
   }
   .jg-rueda__disco{
     position:absolute;inset:0;border-radius:50%;
-    /* Aro exterior grueso y sombra profunda: parece una rueda, no un grafico. */
-    border:.9vh solid #0e1c28;
-    box-shadow:0 0 0 .5vh rgba(127,212,224,.35),
-               0 2.4vh 5vh rgba(0,0,0,.5),
-               inset 0 0 6vh rgba(0,0,0,.35);
-    /* Arranca despacio, acelera y frena largo: asi se siente un giro de
-       verdad. Lineal parece un GIF. */
+    border:calc(.7 * var(--u)) solid var(--tinta);
+    box-shadow:0 0 0 calc(.35 * var(--u)) var(--filete),
+               0 calc(2 * var(--u)) calc(4 * var(--u)) rgb(0 0 0 / .45);
+    /* Arranca, acelera y frena largo. Un giro plano parece un GIF.
+       La animacion REPRESENTA un resultado que ya decidio el servidor. */
     transition:transform 5.2s cubic-bezier(.17,.67,.16,1);
   }
   .jg-rueda__centro{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:22%;aspect-ratio:1;border-radius:50%;z-index:2;
-    background:radial-gradient(circle at 35% 30%, #fff, #d7e6ee 60%, #b9cdd8);
-    box-shadow:0 .6vh 1.4vh rgba(0,0,0,.45), inset 0 -.4vh .8vh rgba(0,0,0,.12);
+    width:19%;aspect-ratio:1;border-radius:50%;z-index:2;
+    background:var(--hueso);
+    box-shadow:0 calc(.4 * var(--u)) calc(1 * var(--u)) rgb(0 0 0 / .4);
   }
-  /* Las etiquetas van HORIZONTALES dentro de cada sector: un texto girado 90
-     grados no se lee de pie y a dos metros. */
-  /* Cada etiqueta ocupa TODO el disco y se gira entera; el texto se coloca
-     cerca del borde y se desgira para quedar horizontal.
-
-     Antes se posicionaba con `translate(0,-32%)`, que es relativo al tamano
-     del propio texto y no al radio: con etiquetas cortas apenas se movia y
-     todas acababan amontonadas en el centro. */
-  .jg-rueda__et{
-    position:absolute;inset:0;pointer-events:none;
-  }
+  /* Cada etiqueta ocupa el disco entero y se gira entera; el texto se
+     coloca cerca del borde y se DESGIRA para quedar horizontal. Un texto
+     a 90 grados no se lee de pie y a dos metros. */
+  .jg-rueda__et{position:absolute;inset:0;pointer-events:none;transition:opacity var(--wx-dur-state) var(--wx-ease-out);}
   .jg-rueda__et span{
-    position:absolute;top:7%;left:50%;
+    position:absolute;top:12%;left:50%;
     display:block;max-width:11ch;
-    font-weight:800;line-height:1.05;color:#0b1620;
-    text-shadow:0 1px 2px rgba(255,255,255,.35);
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;
+    font-weight:700;line-height:1.05;text-align:center;white-space:nowrap;
+  }
+  /* Al parar, el sector ganador manda y el resto retrocede. El estado lo
+     cuenta la propia rueda: no hace falta un cartel encima. */
+  .jg-rueda--enfasis .jg-rueda__et{opacity:.35;}
+  .jg-rueda--enfasis .jg-rueda__et.es-ganador{opacity:1;}
+
+  @media (prefers-reduced-motion: reduce){
+    .jg-rueda__disco{transition:transform 400ms var(--wx-ease-out);}
   }
 
-  /* ------------------------------------------------------- el boton --
-     Redondo, rojo y con relieve. Tiene que pedir que lo pulsen desde el otro
-     lado del mostrador. */
+  /* --------------------------------------------------------- pulsador
+     Un objeto fisico: cuerpo con profundidad, se hunde al pulsarlo y el
+     cuerpo se comprime con el. Sin halo, sin rebote, sin estetica de
+     maquina recreativa. Lo unico rojo de la pantalla. */
   .jg-boton{
-    display:none;position:relative;
-    width:min(26vh,26vw);aspect-ratio:1;border-radius:50%;
-    border:0;padding:0;cursor:pointer;
-    background:radial-gradient(circle at 50% 32%, #ff6b6b, #e11d2f 58%, #9f0d1c);
+    display:none;position:absolute;z-index:2;
+    bottom:var(--margen);right:var(--margen);
+    width:calc(13 * var(--u));aspect-ratio:1;border-radius:50%;
+    border:0;padding:0;cursor:pointer;font-family:inherit;
+    background:radial-gradient(circle at 50% 34%, #F0665A, var(--pulsador) 56%, #A6342A);
     box-shadow:
-      0 1.6vh 0 #6d0a14,                 /* el cuerpo del boton */
-      0 2.6vh 4vh rgba(0,0,0,.55),       /* sombra sobre el fondo */
-      inset 0 -.8vh 2vh rgba(0,0,0,.35),
-      inset 0 .8vh 2vh rgba(255,255,255,.28);
-    transition:transform 90ms ease-out, box-shadow 90ms ease-out;
+      0 calc(1.3 * var(--u)) 0 var(--pulsador-cuerpo),
+      0 calc(2 * var(--u)) calc(3.2 * var(--u)) rgb(0 0 0 / .45),
+      inset 0 calc(.6 * var(--u)) calc(1.6 * var(--u)) rgb(255 255 255 / .22);
+    transition:transform var(--wx-dur-press) var(--wx-ease-out),
+               box-shadow var(--wx-dur-press) var(--wx-ease-out);
   }
   .jg--boton .jg-boton{display:block;}
-  .jg-boton:hover{transform:translateY(-.3vh);}
-  /* Al pulsar se HUNDE: el cuerpo se acorta y el boton baja con el. */
-  .jg-boton:active{
-    transform:translateY(1.3vh);
+  /* Con rueda el pulsador deja de estar anclado y entra en la columna,
+     empujado al fondo con `margin-top:auto`. Asi el reparto lo hace el
+     flexbox y no una reserva fija que solo vale para un caso. */
+  .jg--rueda .jg-boton{position:static;margin-top:auto;flex:none;}
+  .jg-boton:hover:not(:disabled){transform:translateY(calc(-.3 * var(--u)));}
+  .jg-boton:focus-visible{outline:calc(.35 * var(--u)) solid var(--accent-claro);outline-offset:calc(.6 * var(--u));}
+  .jg-boton:active:not(:disabled){
+    transform:translateY(calc(1.1 * var(--u)));
     box-shadow:
-      0 .3vh 0 #6d0a14,
-      0 .6vh 1.2vh rgba(0,0,0,.5),
-      inset 0 -.4vh 1.4vh rgba(0,0,0,.4),
-      inset 0 .4vh 1.4vh rgba(255,255,255,.22);
+      0 calc(.2 * var(--u)) 0 var(--pulsador-cuerpo),
+      0 calc(.4 * var(--u)) calc(.9 * var(--u)) rgb(0 0 0 / .4),
+      inset 0 calc(.3 * var(--u)) calc(1 * var(--u)) rgb(255 255 255 / .16);
   }
-  .jg-boton:disabled{filter:saturate(.5) brightness(.7);cursor:default;}
+  .jg-boton:disabled{filter:saturate(.3) brightness(.55);cursor:default;}
   .jg-boton__cara{
     position:absolute;inset:0;display:grid;place-items:center;
-    color:#fff;font-size:2.6vw;font-weight:800;letter-spacing:.06em;
-    text-shadow:0 .3vh .6vh rgba(0,0,0,.45);
-  }
-  /* Late suavemente mientras se puede pulsar: llama sin gritar. */
-  @keyframes jg-latido{50%{box-shadow:
-      0 1.6vh 0 #6d0a14,
-      0 2.6vh 4vh rgba(0,0,0,.55),
-      0 0 0 2.2vh rgba(225,29,47,.14),
-      inset 0 -.8vh 2vh rgba(0,0,0,.35),
-      inset 0 .8vh 2vh rgba(255,255,255,.28);}}
-  .jg-boton.late{animation:jg-latido 1.8s ease-in-out infinite;}
-  @media (prefers-reduced-motion: reduce){
-    .jg-boton.late{animation:none;}
-    .jg-rueda__disco{transition:transform 600ms ease-out;}
+    color:#fff;font-size:calc(2.1 * var(--u));font-weight:800;letter-spacing:.05em;
+    text-shadow:0 calc(.2 * var(--u)) calc(.5 * var(--u)) rgb(0 0 0 / .4);
   }
 
-  .jg-pie{font-size:1.2vw;color:var(--muted);max-width:60vw;}
-
-  /* ------------------------------------------------------- resultado */
-  .jg--gano .jg-reto{color:var(--ok);font-size:5.5vw;}
-  .jg--pierde .jg-reto{font-size:4.5vw;}
-  .jg-codigo{
-    display:none;padding:1.2vh 2vw;border-radius:14px;
-    background:var(--card);border:1px solid var(--line);
-    font-size:2vw;font-weight:800;letter-spacing:.12em;font-variant-numeric:tabular-nums;
+  /* ==================================================== VISTA PREVIA ===
+     Un chip discreto arriba a la derecha. La pantalla tiene que seguir
+     siendo LA MISMA: si la vista previa se viera distinta dejaria de
+     servir para comprobar como se ve de verdad. La garantia de que no se
+     entrega nada la da el backend, no un color. */
+  .previewbadge{
+    position:fixed;right:calc(1.4 * var(--u));top:calc(1.4 * var(--u));z-index:100;
+    display:none;padding:calc(.5 * var(--u)) calc(1.2 * var(--u));
+    border-radius:999px;border:1px solid var(--filete);
+    color:var(--humo);font-size:var(--t-micro);font-weight:600;letter-spacing:.06em;
   }
-  .jg--codigo .jg-codigo{display:block;}
+  body.es-preview .previewbadge{display:block;}
 
-  /* Confeti: unas cuantas piezas cayendo. Nada de librerias. */
-  .jg-confeti{position:fixed;inset:0;pointer-events:none;overflow:hidden;display:none;z-index:40;}
-  .jg--fiesta .jg-confeti{display:block;}
-  .jg-confeti i{
-    position:absolute;top:-6vh;width:.8vw;height:1.4vh;opacity:.9;
-    animation:jg-caer linear forwards;
-  }
-  @keyframes jg-caer{
-    to{transform:translateY(110vh) rotate(720deg);opacity:.15;}
-  }
-  @media (prefers-reduced-motion: reduce){ .jg-confeti{display:none !important;} }
-
-
-  /* ===== FIDELIZACION ===== */
-  /* Tres pantallas mas, con el mismo lenguaje que las tres que ya habia:
-     una cifra grande, una linea que la explica, y nada mas que leer. */
-  #premios,#dinamica,#dinres{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2vh;}
-
-  #premios .kicker{font-size:1.6vw;color:var(--brand2);font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
-  #premios .title{font-size:3.6vw;font-weight:800;letter-spacing:-.5px;}
-  #premios .list{display:flex;flex-direction:column;gap:1.4vh;margin-top:1vh;width:min(70vw,900px);}
-  #premios .item{
-    display:flex;align-items:center;gap:1.4vw;padding:2vh 2vw;
-    background:var(--card);border:1px solid var(--line);border-radius:18px;text-align:left;
-  }
-  #premios .item .ic{font-size:2.6vw;line-height:1;}
-  #premios .item .tx{flex:1;min-width:0;}
-  #premios .item .n{font-size:1.9vw;font-weight:700;}
-  /* El codigo es lo unico que el cliente tiene que apuntar: va aparte. */
-  #premios .item .c{font-size:1.4vw;color:var(--brand2);font-variant-numeric:tabular-nums;letter-spacing:.06em;}
-  #premios .item .k{font-size:1.1vw;color:var(--muted);}
-
-  #dinamica .name{font-size:2.6vw;font-weight:800;}
-  #dinamica .instr{font-size:1.5vw;color:var(--muted);max-width:60vw;}
-  #dinamica .crono{
-    font-size:13vw;font-weight:800;line-height:1;letter-spacing:-.04em;
-    font-variant-numeric:tabular-nums;color:var(--brand2);
-  }
-  #dinamica .crono.parado{color:var(--accent);}
-  #dinamica .meta{font-size:1.4vw;color:var(--muted);}
-
-  #dinres .big{font-size:6vw;font-weight:800;letter-spacing:-1px;}
-  #dinres .big.ok{color:var(--ok);}
-  #dinres .msg{font-size:2.2vw;color:var(--text);max-width:60vw;}
-  #dinres .premio{font-size:1.8vw;color:var(--brand2);font-weight:700;}
-  #dinres .code{
-    margin-top:1vh;padding:1.2vh 2vw;background:var(--card);border:1px solid var(--line);
-    border-radius:14px;font-size:2vw;font-weight:700;letter-spacing:.1em;font-variant-numeric:tabular-nums;
+  /* Quien fabrica el POS, no quien vende. Discreto y al pie. */
+  .porwybix{
+    position:fixed;right:var(--margen);bottom:calc(1.6 * var(--u));
+    font-size:calc(1.15 * var(--u));color:var(--humo);opacity:.4;letter-spacing:.04em;
   }
 </style>
 </head>
 <body>
 
-  <!-- ESPERA -->
+  <!-- ============================================== ESPERA ============
+       El rato en que la pantalla se mira sin que nadie obligue: al
+       entrar, mientras esperan turno, mientras cobran a otro. El mensaje
+       lo construye `pintarGancho` con lo que el negocio tenga de verdad.
+       ================================================================= -->
   <section class="screen on" id="idle">
     <!--
-      La identidad la pone el NEGOCIO, no el POS. `marca` lleva su logo si lo
-      subio, y si no su inicial. Sustituirle la marca al comercio en su propio
-      mostrador es el mismo error que imprimir la marca de otro en el ticket.
+      La identidad la pone el NEGOCIO, no el POS. `idleMarca` lleva su
+      logo si lo subio, y si no su inicial. Sustituirle la marca al
+      comercio en su propio mostrador es el mismo error que imprimir la
+      marca de otro en el ticket.
     -->
-    <div class="idle-marca">
-      <div class="marca" id="idleMarca">
-        <span class="inicial" id="idleInicial"></span>
-      </div>
-      <div class="biz" id="idleBiz">Bienvenido</div>
+    <header class="mq__top">
+      <span class="mq__logo" id="idleMarca"><span class="mq__inicial" id="idleInicial"></span></span>
+      <span class="mq__marca" id="idleBiz">Bienvenido</span>
+      <span class="mq__reloj mono" id="idleClock"></span>
+    </header>
+
+    <div class="mq__cuerpo">
+      <p class="mq__et" id="idleKicker"></p>
+      <h1 class="mq__titular" id="idleTitulo">Bienvenido</h1>
+      <p class="mq__tambien" id="idleTambien"></p>
     </div>
 
-    <!--
-      El gancho. Cambia segun lo que el negocio tenga encendido: si hay algo
-      que ganar, lo dice; si no, saluda. Una pantalla que siempre pone lo
-      mismo deja de mirarse a la semana.
-    -->
-    <div class="idle-gancho">
-      <p class="idle-kicker" id="idleKicker"></p>
-      <h2 class="idle-titulo" id="idleTitulo">Bienvenido</h2>
-      <div class="idle-premios" id="idlePremios"></div>
-      <p class="idle-sub" id="idleSub"></p>
-    </div>
-
-    <div class="idle-pie">
-      <span class="clock" id="idleClock"></span>
-      <span class="bizmsg" id="idleMensaje"></span>
-    </div>
+    <footer class="mq__pie">
+      <span id="idleSub"></span>
+      <span id="idleMensaje"></span>
+    </footer>
   </section>
 
   <!-- ============================================ LA DINAMICA =========
-       Esta pantalla ES la experiencia. No es un espejo del administrador ni
-       un panel de estado: es lo que mira el cliente mientras juega, y lo
-       unico de Wybix que ve alguien que no trabaja aqui.
+       Esta pantalla ES la experiencia. No es un espejo del administrador
+       ni un panel de estado: es lo que mira el cliente mientras juega, y
+       lo unico de Wybix que ve alguien que no trabaja aqui.
        ================================================================= -->
   <section class="screen" id="juego">
-    <div class="jg">
-      <p class="jg-reto" id="jgReto"></p>
+    <div class="jg" id="jgRaiz">
+      <header class="mq__top">
+        <span class="mq__marca" id="jgMarca"></span>
+      </header>
 
-      <!-- El objetivo, enorme. Es el numero que hay que clavar. -->
-      <div class="jg-objetivo" id="jgObjetivo"></div>
+      <div class="jg__cuerpo">
+        <div class="jg__texto">
+          <p class="mq__et" id="jgReto"></p>
 
-      <!-- El premio va ANTES de jugar: es la razon para jugar. -->
-      <div class="jg-premios" id="jgPremios"></div>
+          <!-- El numero que hay que clavar, y el que corre. -->
+          <div class="jg-objetivo mono" id="jgObjetivo"></div>
+          <div class="jg-crono mono" id="jgCrono"></div>
 
-      <!-- ---------------------------------------------------- RULETA -->
-      <div class="jg-rueda" id="jgRueda">
-        <span class="jg-rueda__aguja" aria-hidden="true"></span>
-        <div class="jg-rueda__disco" id="jgDisco"></div>
-        <div class="jg-rueda__centro" id="jgCentro"></div>
+          <!-- El premio, en palabras. Protagonista en el resultado. -->
+          <h2 class="jg-titular" id="jgTitular"></h2>
+
+          <p class="jg-gana" id="jgGana">Puedes ganar</p>
+          <ul class="jg-premios" id="jgPremios"></ul>
+          <p class="jg-codigo mono" id="jgCodigo"></p>
+        </div>
+
+        <!-- ------------------------------------------------- RULETA --
+             Sangra por el borde derecho, pero conserva la forma, el
+             puntero y la lectura del giro. Los nombres completos viven
+             en la lista de la izquierda y en el resultado. -->
+        <div class="jg-rueda" id="jgRueda">
+          <span class="jg-rueda__aguja" aria-hidden="true"></span>
+          <div class="jg-rueda__disco" id="jgDisco"></div>
+          <div class="jg-rueda__centro" aria-hidden="true"></div>
+        </div>
       </div>
 
-      <!-- ------------------------------------------------ CRONOMETRO -->
-      <div class="jg-crono" id="jgCrono"></div>
-
-      <!-- ------------------------------------------------ EL BOTON --
-           Grande, redondo y con relieve: tiene que pedir que lo pulsen
-           desde el otro lado del mostrador. -->
-      <button type="button" class="jg-boton" id="jgBoton">
-        <span class="jg-boton__cara" id="jgBotonTxt">COMENZAR</span>
-      </button>
-
-      <div class="jg-codigo" id="jgCodigo"></div>
-      <p class="jg-pie" id="jgPie"></p>
+      <footer class="jg__pie">
+        <p class="jg-pie" id="jgPie"></p>
+        <button type="button" class="jg-boton" id="jgBoton">
+          <span class="jg-boton__cara" id="jgBotonTxt">EMPEZAR</span>
+        </button>
+      </footer>
     </div>
   </section>
 
-  <div class="jg-confeti" id="jgConfeti" aria-hidden="true"></div>
-
-  <div class="previewbadge"><span aria-hidden="true">●</span> Vista previa</div>
+  <div class="previewbadge">Vista previa</div>
 
   <div class="porwybix">Powered by Wybix</div>
 
-  <!-- VENTA -->
+  <!-- ============================================== VENTA ============= -->
   <section class="screen" id="sale">
-    <div class="head">
-      <!--
-        El nombre y el modo de servicio van en elementos SEPARADOS.
-        Estaban anidados, y `loadBusiness` escribia `saleBiz.textContent`, lo
-        que borraba el <span> del modo: a partir de ahi `renderSale` no lo
-        encontraba y lanzaba, asi que la pantalla del cliente NUNCA llegaba a
-        pintar el carrito.
-      -->
-      <div class="biz"><span id="saleBiz">Tu compra</span><span class="modo" id="saleModo"></span></div>
-      <div class="clock" id="saleClock"></div>
-    </div>
-    <div class="list">
-      <div class="row h"><div>Producto</div><div style="text-align:center;">Cant.</div><div style="text-align:right;">P. unit.</div><div style="text-align:right;">Importe</div></div>
+    <!--
+      El nombre y el modo de servicio van en elementos SEPARADOS.
+      Estaban anidados, y `loadBusiness` escribia `saleBiz.textContent`,
+      lo que borraba el <span> del modo: a partir de ahi `renderSale` no
+      lo encontraba y lanzaba, asi que la pantalla del cliente NUNCA
+      llegaba a pintar el carrito.
+    -->
+    <header class="mq__top">
+      <span class="mq__marca" id="saleBiz">Tu compra</span>
+      <span class="mq__modo" id="saleModo"></span>
+      <span class="mq__reloj mono" id="saleClock"></span>
+    </header>
+
+    <div class="venta">
       <div class="items" id="saleItems"></div>
-    </div>
-    <div class="totals">
-      <div class="totline" id="rowSubtotal"><span>Subtotal</span><b class="amt"></b></div>
-      <div class="totline" id="rowTax"><span>IVA</span><b class="amt"></b></div>
-      <div class="totline" id="rowDiscount" style="display:none;"><span>Descuento</span><b class="amt"></b></div>
-      <div class="totline grand"><span>TOTAL</span><span class="amt">$0.00</span></div>
+
+      <div class="cierre">
+        <div class="cierre__fila" id="rowSubtotal"><span>Subtotal</span><b class="amt mono"></b></div>
+        <div class="cierre__fila" id="rowTax"><span>IVA</span><b class="amt mono"></b></div>
+        <div class="cierre__fila" id="rowDiscount" style="display:none;"><span>Descuento</span><b class="amt mono"></b></div>
+        <div class="cierre__total">
+          <span class="k">Total</span>
+          <span class="amt mono">$0.00</span>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- CIERRE -->
+  <!-- ============================================== CIERRE ============ -->
   <section class="screen" id="checkout">
-    <div class="label">Total a pagar</div>
-    <div class="total" id="coTotal">$0.00</div>
-    <div class="pays">
-      <div class="pay" id="coPaidBox">
-        <div class="k" id="coPaidLabel">Pago recibido</div>
-        <div class="v" id="coPaid">$0.00</div>
-      </div>
-      <div class="pay change" id="coChangeBox">
-        <div class="k">Cambio</div>
-        <div class="v" id="coChange">$0.00</div>
+    <header class="mq__top">
+      <span class="mq__marca" id="coBiz">Total a pagar</span>
+      <span class="mq__reloj mono" id="coClock"></span>
+    </header>
+    <div class="mq__cuerpo">
+      <div class="total mono" id="coTotal">$0.00</div>
+      <div class="pays">
+        <div class="pay" id="coPaidBox">
+          <div class="k" id="coPaidLabel">Pago recibido</div>
+          <div class="v mono" id="coPaid">$0.00</div>
+        </div>
+        <div class="pay change" id="coChangeBox">
+          <div class="k">Cambio</div>
+          <div class="v mono" id="coChange">$0.00</div>
+        </div>
       </div>
     </div>
-    <div class="thanks">¡Gracias por su compra!</div>
-    <div class="thanks-sub">Vuelva pronto</div>
+    <footer class="mq__pie"><span>Gracias por su compra</span><span></span></footer>
   </section>
 
+  <!-- ============================================= PREMIOS ============ -->
   <section class="screen" id="premios">
-    <div class="kicker">Tu compra tiene premio</div>
-    <div class="title" id="prTitle">¡Felicidades!</div>
-    <div class="list" id="prList"></div>
+    <header class="mq__top"><span class="mq__marca">Tu compra tiene premio</span></header>
+    <div class="mq__cuerpo">
+      <h1 class="mq__titular" id="prTitle">Ganaste</h1>
+      <div class="lista" id="prList"></div>
+    </div>
+    <footer class="mq__pie"><span>Muestra el código en caja</span><span></span></footer>
   </section>
 
+  <!-- ================================= RESULTADO DE UNA DINAMICA ====== -->
   <section class="screen" id="dinres">
-    <div class="big" id="drBig"></div>
-    <div class="msg" id="drMsg"></div>
-    <div class="premio" id="drPremio"></div>
-    <div class="code" id="drCode" style="display:none"></div>
+    <header class="mq__top"><span class="mq__marca" id="drBiz"></span></header>
+    <div class="mq__cuerpo">
+      <p class="mq__et" id="drBig"></p>
+      <h1 class="mq__titular" id="drPremio"></h1>
+      <p class="codigo mono" id="drCode" style="display:none"></p>
+      <p class="mq__tambien" id="drMsg"></p>
+    </div>
+    <footer class="mq__pie"><span></span><span></span></footer>
   </section>
 
 <script>
@@ -480,8 +538,8 @@
    * Vista previa.
    *
    * La ventana se abre con `?preview=1`. Es lo UNICO que la distingue: el
-   * resto de la pagina es identica, porque si cambiara dejaria de servir para
-   * comprobar como se vera de verdad.
+   * resto de la pagina es identica, porque si cambiara dejaria de servir
+   * para comprobar como se vera de verdad.
    */
   const esPreview = new URLSearchParams(location.search).get('preview') === '1';
   if (esPreview) document.body.classList.add('es-preview');
@@ -495,25 +553,28 @@
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
     document.getElementById(id).classList.add('on');
   }
+  function texto(id, v){ const e = document.getElementById(id); if (e) e.textContent = v == null ? '' : v; }
 
   // Reloj
   function tick(){
     const d = new Date();
     const fecha = d.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
     const hora = d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
-    const txt = fecha.charAt(0).toUpperCase() + fecha.slice(1) + ' · ' + hora;
-    const a = document.getElementById('idleClock'); if (a) a.textContent = txt;
-    const b = document.getElementById('saleClock'); if (b) b.textContent = hora;
+    const largo = fecha.charAt(0).toUpperCase() + fecha.slice(1) + ', ' + hora;
+    texto('idleClock', largo);
+    texto('saleClock', hora);
+    texto('coClock', hora);
   }
   setInterval(tick, 1000); tick();
 
   /**
    * Identidad del negocio: nombre, logo y mensaje.
    *
-   * Si hay logo, se pinta. Si no, la inicial del negocio sobre placa clara.
-   * Nunca el isotipo del POS: la anterior version ponia `wybie_logo.png` fijo
-   * y ademas escribia la inicial con `.textContent` sobre un `<img>`, que no
-   * renderiza nada; el negocio jamas vio su identidad, viera lo que viera.
+   * Si hay logo, se pinta. Si no, la inicial del negocio sobre placa
+   * clara. Nunca el isotipo del POS: la version anterior ponia
+   * `wybie_logo.png` fijo y ademas escribia la inicial con `.textContent`
+   * sobre un `<img>`, que no renderiza nada; el negocio jamas vio su
+   * identidad, viera lo que viera.
    */
   async function loadBusiness(){
     try {
@@ -523,20 +584,20 @@
       const inicial = document.getElementById('idleInicial');
 
       if (bizName) {
-        document.getElementById('idleBiz').textContent = bizName;
-        document.getElementById('saleBiz').textContent = bizName;
+        texto('idleBiz', bizName);
+        texto('saleBiz', bizName);
+        texto('jgMarca', bizName);
+        texto('drBiz', bizName);
       }
-      // El mensaje del negocio (pie del ticket) cuando lo tenga configurado.
-      const msg = document.getElementById('idleMensaje');
-      if (msg) msg.textContent = (b && b.mensaje) ? String(b.mensaje) : '';
+      texto('idleMensaje', (b && b.mensaje) ? String(b.mensaje) : '');
 
       pintarGancho(b || {});
 
       if (b && b.logoUrl) {
         const img = document.createElement('img');
         img.alt = bizName || 'Logo del negocio';
-        // Si el archivo esta corrupto o desaparecio, se cae al monograma en
-        // vez de dejar el icono de imagen rota delante del cliente.
+        // Si el archivo esta corrupto o desaparecio, se cae al monograma
+        // en vez de dejar el icono de imagen rota delante del cliente.
         img.onerror = function(){ marca.innerHTML = ''; marca.appendChild(inicial); };
         img.src = b.logoUrl;
         marca.innerHTML = '';
@@ -546,69 +607,100 @@
       }
     } catch { /* sin datos: queda el monograma vacio, nunca marca ajena */ }
   }
+
   /**
-   * El gancho de la pantalla de espera.
+   * El mensaje de la pantalla de espera.
    *
-   * Se ELIGE segun lo que el negocio tenga encendido, no se escribe fijo. Una
-   * frase de cortesia -"con gusto te atendemos"- no da ningun motivo para
-   * mirar la segunda pantalla; "hoy puedes ganar un cafe" si.
+   * SE CONSTRUYE CON LO QUE EL NEGOCIO TIENE DE VERDAD. Una frase fija
+   * como "hoy tu compra puede salir gratis" es mentira en cuanto la
+   * campana regala un cafe, y una pantalla que promete de mas se paga en
+   * el mostrador. Si hay un premio destacado, ese premio es el titular;
+   * los demas bajan a una linea secundaria.
    *
-   * Sin nada activo se cae en una bienvenida, que sigue siendo mejor que una
-   * pantalla vacia. El fallback es lo de siempre, no lo de portada.
+   * Sin campana ni premios se cae en una bienvenida. El respaldo es lo de
+   * siempre, no lo de portada.
    */
   function pintarGancho(b) {
-    const kicker = document.getElementById('idleKicker');
     const titulo = document.getElementById('idleTitulo');
-    const sub = document.getElementById('idleSub');
-    const prem = document.getElementById('idlePremios');
     if (!titulo) return;
 
     const premios = Array.isArray(b.premios) ? b.premios.filter(Boolean) : [];
-    prem.innerHTML = '';
 
     if (premios.length) {
-      kicker.textContent = 'Tu compra puede tener premio';
-      titulo.textContent = premios.length > 1 ? 'Hoy puedes ganar' : 'Hoy puedes ganar';
-      premios.slice(0, 4).forEach(function (p) {
-        const d = document.createElement('span');
-        d.className = 'idle-premio';
-        d.textContent = p;
-        prem.appendChild(d);
-      });
-      sub.textContent = 'Pregunta en caja cómo participar.';
+      texto('idleKicker', 'Hoy puedes ganar');
+      titulo.textContent = premios[0];
+      // Como mucho dos acompanantes y un separador por linea: una lista
+      // larga de premios deja de leerse y se convierte en ruido.
+      const resto = premios.slice(1, 3);
+      const mas = premios.length - 1 - resto.length;
+      texto('idleTambien', resto.length
+        ? 'También: ' + resto.join(' · ') + (mas > 0 ? ' y ' + mas + (mas === 1 ? ' premio más' : ' premios más') : '')
+        : '');
+      texto('idleSub', 'Pregunta en caja cómo participar');
       return;
     }
 
     if (b.campana) {
-      kicker.textContent = 'Promoción activa';
+      texto('idleKicker', 'Tu compra puede tener premio');
       titulo.textContent = b.campana;
-      sub.textContent = 'Pregunta en caja cómo participar.';
+      texto('idleTambien', '');
+      texto('idleSub', 'Pregunta en caja cómo participar');
       return;
     }
 
-    kicker.textContent = '';
+    texto('idleKicker', '');
     titulo.textContent = bizName ? ('Bienvenido a ' + bizName) : 'Bienvenido';
-    sub.textContent = 'Con gusto te atendemos.';
+    texto('idleTambien', '');
+    texto('idleSub', 'Con gusto te atendemos');
   }
 
   loadBusiness();
 
+  /** Cuantas filas enteras caben ahora mismo en el hueco de la lista. */
+  function saleCupo(cont) {
+    const alto = cont.clientHeight;
+    // Una fila = texto (1.15 de interlineado) + 2 x 1.1u de relleno + filete.
+    const u = parseFloat(getComputedStyle(document.documentElement)
+      .getPropertyValue('--u')) || (window.innerWidth / 100);
+    const fila = (2.9 * 1.2 + 2.2) * u + 1;
+    return Math.max(1, Math.floor(alto / fila));
+  }
+
   function renderSale(s){
     const cont = document.getElementById('saleItems');
     cont.innerHTML = '';
-    (s.items || []).forEach(it => {
+
+    /* Se pintan las ULTIMAS que caben: lo que el cajero acaba de anadir es
+       lo que el cliente esta comprobando. Las anteriores se resumen en una
+       linea, y el total sigue siendo el mismo. */
+    const todos = (s.items || []);
+    const cupo = saleCupo(cont);
+    const ocultas = Math.max(0, todos.length - cupo);
+    const visibles = ocultas > 0 ? todos.slice(todos.length - (cupo - 1)) : todos;
+
+    if (ocultas > 0) {
+      const mas = document.createElement('div');
+      mas.className = 'linea linea--mas';
+      mas.innerHTML = '<div class="linea__n">y ' + (ocultas + 1) +
+        ' artículos más</div><div class="linea__imp"></div>';
+      cont.appendChild(mas);
+    }
+
+    visibles.forEach(it => {
       const row = document.createElement('div');
-      row.className = 'row line';
+      row.className = 'linea';
+      // La cantidad va PEGADA al nombre, no en una columna suya. A dos
+      // metros, una columna de unos no aporta nada y roba sitio al total.
+      const cant = Number(it.qty) > 1 ? (it.qty + ' × ') : '';
+      const unit = Number(it.qty) > 1 ? (' a ' + money(it.unitPrice)) : '';
       row.innerHTML =
-        '<div class="name">' + escapeHtml(it.name) +
-          (it.options ? '<span class="opts">' + escapeHtml(it.options) + '</span>' : '') +
+        '<div class="linea__n">' + escapeHtml(cant + it.name) +
+          (it.options ? '<span class="unit"> ' + escapeHtml(it.options) + '</span>' : '') +
+          (unit ? '<span class="unit">' + escapeHtml(unit) + '</span>' : '') +
         '</div>' +
-        '<div class="qty">' + it.qty + '</div>' +
-        '<div class="pu">' + money(it.unitPrice) + '</div>' +
-        '<div class="imp">' + money(it.importe) + '</div>';
+        '<div class="linea__imp mono">' + money(it.importe) + '</div>';
       cont.appendChild(row);
     });
-    cont.scrollTop = cont.scrollHeight;
 
     const modo = document.getElementById('saleModo');
     if (modo) {
@@ -622,7 +714,7 @@
     const disc = document.getElementById('rowDiscount');
     if (Number(s.discount) > 0) { disc.style.display = 'flex'; disc.querySelector('.amt').textContent = '-' + money(s.discount); }
     else { disc.style.display = 'none'; }
-    document.querySelector('.totline.grand .amt').textContent = money(s.total);
+    document.querySelector('.cierre__total .amt').textContent = money(s.total);
   }
 
   function renderCheckout(s){
@@ -630,18 +722,18 @@
     const paidBox = document.getElementById('coPaidBox');
     const changeBox = document.getElementById('coChangeBox');
     if (s.credito) {
-      document.getElementById('coPaidLabel').textContent = 'Venta a crédito';
-      document.getElementById('coPaid').textContent = 'Por cobrar';
+      texto('coPaidLabel', 'Venta a crédito');
+      texto('coPaid', 'Por cobrar');
       changeBox.style.display = 'none';
       paidBox.style.display = 'block';
     } else {
       const method = ({EFECTIVO:'Pago en efectivo',TARJETA:'Pago con tarjeta',TRANSFERENCIA:'Transferencia',TERMINAL_MP:'Terminal'})[s.method] || 'Pago recibido';
-      document.getElementById('coPaidLabel').textContent = method;
-      document.getElementById('coPaid').textContent = money(s.paid);
+      texto('coPaidLabel', method);
+      texto('coPaid', money(s.paid));
       paidBox.style.display = 'block';
       if (s.method === 'EFECTIVO' && Number(s.change) >= 0) {
         changeBox.style.display = 'block';
-        document.getElementById('coChange').textContent = money(s.change);
+        texto('coChange', money(s.change));
       } else {
         changeBox.style.display = 'none';
       }
@@ -649,13 +741,6 @@
   }
 
   // ------------------------------------------------------ Fidelizacion
-  // Los iconos van como entidades HTML y no como texto: este archivo lo
-  // tocan scripts de generacion, y un emoji fuera del BMP es justo lo que
-  // se rompe al pasar por una herramienta que no cuida la codificacion.
-  const ICONO_PREMIO = {
-    REWARD: '&#127873;', COUPON: '&#127915;',
-    DYNAMIC: '&#127918;', RAFFLE_ENTRY: '&#127903;',
-  };
   const NOMBRE_PREMIO = {
     REWARD: 'Recompensa', COUPON: 'Cupón para tu próxima visita',
     DYNAMIC: 'Tienes una dinámica por jugar', RAFFLE_ENTRY: 'Boleto de rifa',
@@ -664,217 +749,347 @@
   function renderPremios(s){
     const cont = document.getElementById('prList');
     cont.innerHTML = '';
-    (s.items || []).forEach(function(it){
+    // Caben cuatro a tamano legible. Encoger la lista hasta que quepan
+    // siete seria peor: el cliente no leeria ninguno. Los que no caben se
+    // resumen, y el cajero los tiene completos en su pantalla.
+    const todos = (s.items || []);
+    const resto = Math.max(0, todos.length - 4);
+    todos.slice(0, 4).forEach(function(it){
       const div = document.createElement('div');
       div.className = 'item';
       div.dataset.origen = it.tipo || '';
       // El codigo es lo unico que el cliente necesita apuntar: va en su
-      // propia linea, no escondido dentro de la descripcion.
+      // propia columna, no escondido dentro de la descripcion.
       const codigo = it.codigo ? it.codigo
         : (it.numero != null ? ('Boleto ' + it.numero) : '');
       div.innerHTML =
-        '<div class="ic">' + (ICONO_PREMIO[it.tipo] || '&#11088;') + '</div>' +
-        '<div class="tx">' +
-          '<div class="n">' + escapeHtml(it.nombre || NOMBRE_PREMIO[it.tipo] || 'Premio') + '</div>' +
-          (codigo ? '<div class="c">' + escapeHtml(codigo) + '</div>' : '') +
-          '<div class="k">' + escapeHtml(NOMBRE_PREMIO[it.tipo] || '') + '</div>' +
-        '</div>';
+        '<div class="n">' + escapeHtml(it.nombre || NOMBRE_PREMIO[it.tipo] || 'Premio') +
+          '<span class="k">' + escapeHtml(NOMBRE_PREMIO[it.tipo] || '') + '</span>' +
+        '</div>' +
+        (codigo ? '<div class="c mono">' + escapeHtml(codigo) + '</div>' : '');
       cont.appendChild(div);
     });
-    document.getElementById('prTitle').textContent =
-      (s.items || []).length > 1 ? '¡Ganaste varios premios!' : '¡Felicidades!';
+    if (resto > 0) {
+      const mas = document.createElement('div');
+      mas.className = 'item';
+      mas.innerHTML = '<div class="n">y ' + resto + (resto === 1 ? ' premio más' : ' premios más') +
+        '<span class="k">Pregunta en caja</span></div>';
+      cont.appendChild(mas);
+    }
+    texto('prTitle', todos.length > 1 ? 'Ganaste varios premios' : 'Ganaste');
   }
 
   function renderResultado(s){
-    const big = document.getElementById('drBig');
-    // El origen queda en el DOM: quien mire esta pantalla -o una captura de
-    // ella- puede saber de donde salio el premio sin interpretar el texto.
+    // El origen queda en el DOM: quien mire esta pantalla -o una captura
+    // de ella- puede saber de donde salio el premio sin interpretar el
+    // texto.
     document.getElementById('dinres').dataset.origen = s.origen || 'DYNAMIC';
-    big.textContent = s.gano ? '¡Ganaste!' : 'Casi';
-    big.classList.toggle('ok', !!s.gano);
-    document.getElementById('drMsg').textContent = s.mensaje || '';
-    document.getElementById('drPremio').textContent = s.premio || '';
+    texto('drBig', s.gano ? 'Ganaste' : 'Esta vez no');
+    texto('drPremio', s.gano ? (s.premio || 'Premio') : 'Gracias por jugar');
+    texto('drMsg', s.mensaje || '');
     const code = document.getElementById('drCode');
     if (s.codigo) { code.style.display = 'block'; code.textContent = s.codigo; }
     else { code.style.display = 'none'; }
   }
 
   /* =================================================== LA DINAMICA ====
-     Esta pantalla ES la experiencia del cliente: presenta, anima y recoge lo
-     que el cliente pulsa. NO decide nada.
+     Esta pantalla presenta, anima y recoge lo que el cliente pulsa. NO
+     decide nada.
 
      El cronometro corre AQUI porque aqui esta el boton y aqui se mira el
      numero. Lo que viaja de vuelta es la intencion -STOP_TIMING con las
      centesimas que se estaban mostrando-, nunca "he ganado".
-
-     La accion se separa de su origen a proposito: hoy es un boton en una
-     pantalla tactil, y manana podria ser un pulsador fisico en la pared. El
-     evento seria el mismo.
      ==================================================================== */
   var jgEstado = null;
   var jgT0 = 0;
   var jgRaf = null;
   var jgCentesimas = 0;
 
-  /* Colores de los sectores. Contrastados entre si y legibles con texto
-     oscuro encima: la rueda tiene que leerse de un vistazo. */
+  /* Paleta de la rueda: derivada de la de Wybix, desaturada y alternando
+     claro y oscuro para que dos sectores vecinos nunca se confundan. El
+     rojo NO esta: es del pulsador, que es lo unico que se toca. */
   var JG_COLORES = [
-    '#45B3C3', '#F4B740', '#7FD4E0', '#EF7D57',
-    '#9BD17B', '#C792EA', '#FFD166', '#5EC5D6'
+    '#45B3C3', '#23386E', '#7FD4E0', '#B5892F',
+    '#2F9E68', '#1E7080', '#8FA3BC', '#5E7A3C'
   ];
 
+  /** Tinta legible sobre un color de sector. */
+  function jgTintaSobre(hex) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? '#0A1119' : '#F4F7FA';
+  }
+
+  /** El mismo color, retrocediendo hacia el fondo. */
+  function jgApagar(hex) {
+    var f = [10, 17, 25], m = 0.72;
+    var c = [1, 3, 5].map(function (i, k) {
+      return Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - m) + f[k] * m);
+    });
+    return 'rgb(' + c.join(',') + ')';
+  }
+
   function jgClase(mods) {
-    var jg = document.querySelector('#juego .jg');
+    var jg = document.getElementById('jgRaiz');
     if (!jg) return;
     jg.className = 'jg' + (mods.length ? ' ' + mods.map(function (m) { return 'jg--' + m; }).join(' ') : '');
   }
 
-  function jgBoton(texto, visible, habilitado, late) {
+  function jgBoton(texto, habilitado) {
     var b = document.getElementById('jgBoton');
     var t = document.getElementById('jgBotonTxt');
     if (!b || !t) return;
     t.textContent = texto || '';
     b.disabled = !habilitado;
-    b.classList.toggle('late', !!late);
   }
 
-  function jgPremios(lista) {
+  /**
+   * Lo que se puede ganar.
+   *
+   * Como mucho tres, y el resto se resume. Una lista de siete premios a
+   * tamano de lectura no cabe junto a la rueda, y encogerla hasta que
+   * quepa la vuelve ilegible desde el otro lado del mostrador: son dos
+   * formas distintas de no decir nada.
+   */
+  function jgPremios(lista, tope) {
     var c = document.getElementById('jgPremios');
     if (!c) return;
     c.innerHTML = '';
-    (lista || []).forEach(function (p) {
-      var d = document.createElement('span');
-      d.className = 'jg-premio';
-      d.textContent = p;
-      c.appendChild(d);
+    var todos = (lista || []).filter(Boolean);
+    var max = tope || todos.length;
+    todos.slice(0, max).forEach(function (p) {
+      var li = document.createElement('li');
+      li.textContent = p;
+      c.appendChild(li);
     });
+    var resto = todos.length - Math.min(max, todos.length);
+    if (resto > 0) {
+      var li = document.createElement('li');
+      li.className = 'mas';
+      li.textContent = 'y ' + resto + (resto === 1 ? ' premio más' : ' premios más');
+      c.appendChild(li);
+    }
   }
 
-  /** Dibuja la rueda: sectores, aro y etiquetas horizontales. */
-  function jgDibujarRueda(sectores) {
+  /**
+   * Las etiquetas de los sectores: o caben todas, o no va ninguna.
+   *
+   * "Cambio de aceite completo" no entra en un sexto de rueda, y
+   * recortarlo a "Cambio de ace..." es peor que no ponerlo. La decision
+   * es de la rueda entera, no de cada sector: media rueda con texto y
+   * media sin el se lee como un error.
+   *
+   * Cuando no caben, el sector se distingue por COLOR y por posicion, el
+   * nombre completo se lee en la lista de al lado, y el premio de verdad
+   * lo dice el resultado. El cliente nunca pierde informacion.
+   */
+  function jgEtiquetasCortas(sectores) {
+    var n = sectores.length;
+    var max = n <= 6 ? 12 : n <= 8 ? 9 : 0;
+    if (!max) return null;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var t = String(sectores[i] == null ? '' : sectores[i]).trim();
+      if (t.length <= max) { out.push(t); continue; }
+      var primera = t.split(/\s+/)[0];
+      if (primera.length <= max) { out.push(primera); continue; }
+      return null;               // uno no cabe: no lleva ninguno
+    }
+    // Dos sectores que acaban diciendo lo mismo son peores que ninguno:
+    // "Cambio de aceite" y "Cambio de filtro" se quedarian los dos en
+    // "Cambio", y el cliente veria la rueda pararse en un sector que no
+    // distingue del de al lado.
+    var vistos = {};
+    for (var j = 0; j < out.length; j++) {
+      var k = out[j].toLowerCase();
+      if (vistos[k]) return null;
+      vistos[k] = true;
+    }
+    return out;
+  }
+
+  /**
+   * Dibuja la rueda. IDEMPOTENTE y llamable en cualquier fase.
+   *
+   * ESTE ERA EL FALLO DEL CIRCULO VACIO. Antes solo se dibujaba dentro de
+   * la rama `LISTA`, asi que los sectores existian unicamente como efecto
+   * secundario de que ESA ventana hubiera pintado esa fase. La pantalla
+   * de cliente y la vista previa son documentos independientes: la que se
+   * abriera -o se recargara- a mitad de partida recibia `GIRANDO` o
+   * `RESULTADO` sobre un disco que nadie habia dibujado, y se quedaba en
+   * un circulo vacio.
+   *
+   * Ahora el cambio de fase modifica el ESTADO VISUAL, nunca la
+   * existencia del dibujo. La firma evita repintar sin motivo, que
+   * ademas conservaria el giro acumulado intacto.
+   */
+  function jgDibujarRueda(sectores, ganador) {
     var disco = document.getElementById('jgDisco');
+    var rueda = document.getElementById('jgRueda');
     if (!disco) return;
-    var n = (sectores || []).length;
-    if (!n) { disco.style.background = 'var(--card)'; disco.innerHTML = ''; return; }
+
+    var lista = (sectores || []).map(function (s) { return String(s == null ? '' : s); });
+    var n = lista.length;
+    if (!n) { disco.style.background = 'transparent'; disco.innerHTML = ''; delete disco.dataset.firma; return; }
+
+    var gi = (typeof ganador === 'number' && ganador >= 0) ? ganador : -1;
+    var firma = n + '|' + gi + '|' + lista.join('');
+    if (disco.dataset.firma === firma) return;
+    disco.dataset.firma = firma;
+
+    if (rueda) rueda.classList.toggle('jg-rueda--enfasis', gi >= 0);
 
     var paso = 360 / n;
-    var tramos = sectores.map(function (_, i) {
-      var c = JG_COLORES[i % JG_COLORES.length];
+    var tramos = lista.map(function (_, i) {
+      var base = JG_COLORES[i % JG_COLORES.length];
+      var c = (gi >= 0 && i !== gi) ? jgApagar(base) : base;
       return c + ' ' + (i * paso) + 'deg ' + ((i + 1) * paso) + 'deg';
     });
     disco.style.background = 'conic-gradient(' + tramos.join(',') + ')';
 
-    /* Las etiquetas se colocan girando el CONTENEDOR y desgirando el texto:
-       asi caen dentro de su sector pero se leen horizontales. Un texto a 90
-       grados no se lee de pie y a dos metros. */
     disco.innerHTML = '';
-    var fuente = n <= 5 ? 1.5 : n <= 8 ? 1.15 : 0.95;   // vw
-    sectores.forEach(function (label, i) {
+    var cortas = jgEtiquetasCortas(lista);
+    if (!cortas) return;                       // color y posicion bastan
+
+    var fuente = n <= 5 ? 1.5 : n <= 8 ? 1.2 : 1;   // en unidades de --u
+    lista.forEach(function (_, i) {
       var ang = paso * i + paso / 2;
       var et = document.createElement('div');
-      et.className = 'jg-rueda__et';
+      et.className = 'jg-rueda__et' + (i === gi ? ' es-ganador' : '');
       et.style.transform = 'rotate(' + ang + 'deg)';
       var sp = document.createElement('span');
       // Se desgira lo mismo que se giro el contenedor: el texto queda
       // horizontal aunque su sector este boca abajo.
       sp.style.transform = 'translateX(-50%) rotate(' + (-ang) + 'deg)';
-      sp.style.fontSize = fuente + 'vw';
-      sp.textContent = label;
+      sp.style.fontSize = 'calc(' + fuente + ' * var(--u))';
+      sp.style.color = jgTintaSobre(JG_COLORES[i % JG_COLORES.length]);
+      sp.textContent = cortas[i];
       et.appendChild(sp);
       disco.appendChild(et);
     });
   }
 
-  function jgConfeti() {
-    var c = document.getElementById('jgConfeti');
-    if (!c) return;
-    c.innerHTML = '';
-    for (var i = 0; i < 70; i++) {
-      var p = document.createElement('i');
-      p.style.left = (Math.random() * 100) + 'vw';
-      p.style.background = JG_COLORES[i % JG_COLORES.length];
-      p.style.animationDuration = (2.6 + Math.random() * 2.2) + 's';
-      p.style.animationDelay = (Math.random() * 0.7) + 's';
-      c.appendChild(p);
-    }
+  /** Devuelve el disco a cero sin animarlo: es una preparacion, no un giro. */
+  function jgEnderezarRueda() {
+    var disco = document.getElementById('jgDisco');
+    if (!disco || !Number(disco.dataset.giro || 0)) return;
+    var antes = disco.style.transition;
+    disco.style.transition = 'none';
+    disco.style.transform = 'rotate(0deg)';
+    disco.dataset.giro = '0';
+    // Se lee para forzar el reflujo: sin esto el navegador agrupa el
+    // cambio con el siguiente y anima igualmente desde donde estaba.
+    void disco.offsetWidth;
+    disco.style.transition = antes || '';
   }
 
   function jgPararReloj() {
     if (jgRaf) { cancelAnimationFrame(jgRaf); jgRaf = null; }
   }
 
-  /* Centesimas ENTERAS: de este mismo entero salen el numero que se pinta y
-     el que se manda. Contar en segundos y redondear dos veces es como la
-     pantalla acaba diciendo 10.00 y el servidor juzgando 9.99. */
+  /* Centesimas ENTERAS: de este mismo entero salen el numero que se pinta
+     y el que se manda. Contar en segundos y redondear dos veces es como
+     la pantalla acaba diciendo 10.00 y el servidor juzgando 9.99. */
   function jgTic() {
     jgCentesimas = Math.round((performance.now() - jgT0) / 10);
-    var e = document.getElementById('jgCrono');
-    if (e) e.textContent = (jgCentesimas / 100).toFixed(2);
+    texto('jgCrono', (jgCentesimas / 100).toFixed(2));
     jgRaf = requestAnimationFrame(jgTic);
   }
 
-  function jgPulsar() {
-    if (!jgEstado) return;
-    var f = jgEstado.fase;
+  /* ------------------------------------------------------------------
+     LA INTENCION SE SEPARA DE SU ORIGEN.
 
-    if (f === 'LISTA') {
-      if (jgEstado.tipo === 'TIMING') {
-        // Empieza AQUI: el cronometro vive donde esta el boton.
-        jgCentesimas = 0;
-        jgT0 = performance.now();
-        jgPararReloj();
-        jgTic();
-        jgEstado.fase = 'JUGANDO';
-        jgPintar(jgEstado);
-        api.enviar({ tipo: 'START_TIMING' });
-      } else {
-        jgBoton('GIRANDO…', true, false, false);
-        api.enviar({ tipo: 'SPIN' });
-      }
-      return;
-    }
-
-    if (f === 'JUGANDO' && jgEstado.tipo === 'TIMING') {
+     Hoy el origen es un boton en una pantalla tactil. Manana podria ser
+     un pulsador fisico atornillado a la pared, o un pedal. El evento que
+     viaja seria el mismo, asi que las tres acciones viven aqui y el
+     `click` solo las invoca. `window.wybixDinamica` es el punto de
+     entrada para ese futuro pulsador.
+     ------------------------------------------------------------------ */
+  var Dinamica = {
+    comenzar: function () {
+      if (!jgEstado || jgEstado.fase !== 'LISTA' || jgEstado.tipo !== 'TIMING') return;
+      jgCentesimas = 0;
+      jgT0 = performance.now();
       jgPararReloj();
-      jgBoton('…', true, false, false);
+      jgTic();
+      jgEstado.fase = 'JUGANDO';
+      jgPintar(jgEstado);
+      api.enviar({ tipo: 'START_TIMING' });
+    },
+    parar: function () {
+      if (!jgEstado || jgEstado.fase !== 'JUGANDO' || jgEstado.tipo !== 'TIMING') return;
+      jgPararReloj();
+      jgBoton('…', false);
       // Lo que viaja es CUANDO paro, no si gano.
       api.enviar({ tipo: 'STOP_TIMING', centesimas: jgCentesimas });
+    },
+    girar: function () {
+      if (!jgEstado || jgEstado.fase !== 'LISTA' || jgEstado.tipo !== 'WHEEL') return;
+      jgBoton('GIRANDO', false);
+      api.enviar({ tipo: 'SPIN' });
+    },
+  };
+  window.wybixDinamica = Dinamica;
+
+  /** Un solo pulsador. Lo que hace depende de la fase, no de que boton es. */
+  function jgPulsar() {
+    if (!jgEstado) return;
+    if (jgEstado.fase === 'LISTA') {
+      if (jgEstado.tipo === 'TIMING') Dinamica.comenzar(); else Dinamica.girar();
+      return;
     }
+    if (jgEstado.fase === 'JUGANDO') Dinamica.parar();
   }
 
+  /**
+   * Pinta una fase.
+   *
+   * El objetivo y la instruccion son UNA SOLA FRASE -"detenlo
+   * exactamente en" seguido de 10.00-, porque separados el cliente ve un
+   * numero y un boton sin relacion entre ellos y no sabe que hacer. Ese
+   * fue el fallo real de la primera version.
+   */
   function jgPintar(s) {
     jgEstado = s;
-    var reto = document.getElementById('jgReto');
-    var obj = document.getElementById('jgObjetivo');
-    var pie = document.getElementById('jgPie');
-    var cod = document.getElementById('jgCodigo');
+    var esRueda = s.tipo === 'WHEEL';
+
+    // La rueda se construye SIEMPRE que haya sectores, en cualquier fase.
+    if (esRueda) jgDibujarRueda(s.sectores || [], s.fase === 'RESULTADO' ? s.ganadorIndice : -1);
 
     if (s.fase === 'LISTA') {
       jgPararReloj();
-      reto.textContent = s.reto || s.nombre || '';
-      if (s.tipo === 'TIMING') {
-        obj.textContent = Number(s.objetivo || 0).toFixed(2);
-        jgPremios(s.premios);
-        jgClase(['objetivo', 'premios', 'boton']);
-        jgBoton('COMENZAR', true, true, true);
+      texto('jgPie', '');
+      texto('jgCodigo', '');
+      if (esRueda) {
+        // La rueda vuelve a su sitio ANTES de empezar. Sin esto, la
+        // partida anterior deja el disco girado y las etiquetas, que se
+        // desgiran respecto al disco, aparecen torcidas o boca abajo.
+        jgEnderezarRueda();
+        texto('jgReto', s.reto || 'Prueba tu suerte');
+        texto('jgTitular', '');
+        texto('jgGana', 'Puedes ganar');
+        jgPremios(s.premios, 3);
+        jgClase(['rueda', 'gana', 'premios', 'boton']);
+        jgBoton('GIRAR', true);
       } else {
-        jgDibujarRueda(s.sectores || []);
-        jgPremios(s.premios);
-        jgClase(['premios', 'rueda', 'boton']);
-        jgBoton('GIRAR', true, true, true);
+        texto('jgReto', 'Detenlo exactamente en');
+        texto('jgObjetivo', Number(s.objetivo || 0).toFixed(2));
+        texto('jgGana', 'Puedes ganar');
+        jgPremios(s.premios, 2);
+        jgClase(['objetivo', 'gana', 'premios', 'boton']);
+        jgBoton('EMPEZAR', true);
       }
-      pie.textContent = '';
       return;
     }
 
     if (s.fase === 'JUGANDO') {
-      // Durante el juego no hay nada mas que mirar: el numero y el boton.
-      reto.textContent = s.reto || '';
-      var e = document.getElementById('jgCrono');
-      if (e) e.textContent = (jgCentesimas / 100).toFixed(2);
+      // Mientras corre no hay nada mas que mirar: el numero y el boton.
+      texto('jgReto', 'Objetivo ' + Number(s.objetivo || 0).toFixed(2));
+      texto('jgCrono', (jgCentesimas / 100).toFixed(2));
       jgClase(['crono', 'boton']);
-      jgBoton('¡PARAR!', true, true, false);
-      pie.textContent = '';
+      jgBoton('PARAR', true);
+      texto('jgPie', '');
       return;
     }
 
@@ -883,12 +1098,12 @@
       var n = (s.sectores || []).length || 1;
       var paso = 360 / n;
       var i = typeof s.ganadorIndice === 'number' ? s.ganadorIndice : 0;
-      // Cinco vueltas y para donde ya se decidio. La animacion REPRESENTA el
-      // resultado; no lo produce.
+      // Cinco vueltas y para donde ya se decidio. La animacion
+      // REPRESENTA el resultado; no lo produce.
       var destino = 360 * 5 + (360 - (i * paso + paso / 2));
+      texto('jgReto', s.reto || '');
       jgClase(['rueda', 'boton']);
-      jgBoton('GIRANDO…', true, false, false);
-      reto.textContent = s.reto || '';
+      jgBoton('GIRANDO', false);
       if (disco) {
         var actual = Number(disco.dataset.giro || 0) + destino;
         disco.dataset.giro = actual;
@@ -899,23 +1114,30 @@
 
     if (s.fase === 'RESULTADO') {
       jgPararReloj();
-      reto.textContent = s.mensaje || (s.gano ? '¡GANASTE!' : 'CASI');
-      jgPremios(s.premioGanado ? [s.premioGanado] : []);
-      if (cod) cod.textContent = s.codigo || '';
-      var mods = [s.gano ? 'gano' : 'pierde'];
-      if (s.premioGanado) mods.push('premios');
-      if (s.codigo) mods.push('codigo');
-      if (s.gano) { mods.push('fiesta'); jgConfeti(); }
-      if (s.tipo === 'WHEEL') mods.push('rueda');
+      var mods = [];
+      if (esRueda) mods.push('rueda');     // la rueda SIGUE en pantalla
+      mods.push('titular');
+
+      if (s.gano) {
+        texto('jgReto', 'Ganaste');
+        texto('jgTitular', s.premioGanado || 'Premio');
+        mods.push('gano');
+        if (s.codigo) { texto('jgCodigo', s.codigo); mods.push('codigo'); }
+      } else {
+        texto('jgReto', 'Esta vez no');
+        texto('jgTitular', 'Gracias por jugar');
+      }
+      // Nada de "inténtalo en tu próxima compra": nadie ha dicho que haya
+      // otra oportunidad. Aqui solo se muestra lo que el servidor mando,
+      // que unicamente trae mensaje cuando algo fallo.
+      texto('jgPie', s.mensaje || '');
       jgClase(mods);
-      jgBoton('', false, false, false);
-      pie.textContent = '';
+      jgBoton('', false);
     }
   }
 
   var jgBtn = document.getElementById('jgBoton');
   if (jgBtn) jgBtn.addEventListener('click', jgPulsar);
-
 
   function goIdle(){ show('idle'); }
 
@@ -933,7 +1155,7 @@
       show('checkout');
       checkoutTimer = setTimeout(() => { checkoutTimer = null; goIdle(); }, 8000);
     } else if (s.mode === 'message') {
-      document.getElementById('idleBiz').textContent = s.text || bizName;
+      texto('idleBiz', s.text || bizName);
       show('idle');
     } else if (s.mode === 'premios') {
       // Sustituye al "gracias" y dura mas: es lo que el cliente tiene que
@@ -943,8 +1165,8 @@
       show('premios');
       checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
     } else if (s.mode === 'dinamica') {
-      // Sin temporizador mientras se juega: la pantalla no se va sola a media
-      // partida. Solo el resultado pone cuenta atras.
+      // Sin temporizador mientras se juega: la pantalla no se va sola a
+      // media partida. Solo el resultado pone cuenta atras.
       if (checkoutTimer) { clearTimeout(checkoutTimer); checkoutTimer = null; }
       jgPintar(s);
       show('juego');
