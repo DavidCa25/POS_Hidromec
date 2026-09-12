@@ -101,17 +101,6 @@
             <i class="ph ph-cooking-pot me-2"></i> Recetas y modificadores
           </a>
         </li>
-        <!--
-          UNA entrada, seis secciones dentro. Fidelizacion trae Campanas,
-          Recompensas, Cupones, Dinamicas y Rifas: seis entradas mas en un
-          rail que ya esta lleno habrian sido seis sitios donde perderse.
-        -->
-        <li>
-          <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-gift me-2"></i> Fidelización
-          </a>
-        </li>
       </ul>
     </li>
     <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
@@ -171,6 +160,21 @@
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-seal-check"></i> <span>Facturación</span>
+        </a>
+      </li>
+      <!--
+        Fidelizacion es un dominio de primer nivel, como Venta o Compra. Vivia
+        colgada de Inventario, que es donde nadie buscaria una campana: no
+        tiene mas que ver con el inventario que la facturacion.
+
+        Sigue siendo UNA entrada: las seis secciones -Resumen, Campanas,
+        Recompensas, Cupones, Dinamicas y Rifas- son navegacion interna suya.
+      -->
+      <li class="wx-grp">
+        <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="ph ph-gift"></i> <span>Fidelización</span>
         </a>
       </li>
       <li class="wx-grp wx-grp--sistema">
@@ -371,6 +375,18 @@
         </div>
 
         <ul class="user-dropdown shadow-sm border-0">
+          <!--
+            Aplicaciones vive aqui y no en el rail: se toca dos veces al ano.
+            Una entrada permanente en el menu principal por algo asi es la
+            saturacion que se queria evitar.
+          -->
+          <li>
+            <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones" routerLinkActive="active"
+               (click)="isUserDropdownOpen = false"
+               class="dropdown-item d-flex align-items-center">
+              <i class="ph ph-squares-four me-2"></i> Aplicaciones
+            </a>
+          </li>
           <li>
             <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
               <i class="ph ph-sign-out me-2"></i> Cerrar sesión

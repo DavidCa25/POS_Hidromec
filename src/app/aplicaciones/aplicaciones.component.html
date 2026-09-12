@@ -1,0 +1,57 @@
+<div class="apps">
+
+  <header class="apps-head">
+    <div class="apps-head__ic"><i class="ph ph-squares-four"></i></div>
+    <div class="apps-head__txt">
+      <h1>Aplicaciones</h1>
+      <p>Enciende las capacidades que este negocio quiere usar. Se activan para todas las cajas.</p>
+    </div>
+    <span class="apps-count" *ngIf="activos()">{{ activos() }} activa{{ activos() === 1 ? '' : 's' }}</span>
+  </header>
+
+  <section class="apps-grupo" *ngFor="let g of grupos()">
+    <h2 class="apps-grupo__tit">{{ g.titulo }}</h2>
+
+    <div class="apps-rejilla">
+      <article class="apps-card" *ngFor="let m of g.modulos" [class.on]="encendido(m)">
+        <div class="apps-card__top">
+          <span class="apps-card__ic"><i class="ph ph-{{ m.icon }}"></i></span>
+          <span class="apps-card__estado" [class.si]="encendido(m)">
+            {{ encendido(m) ? 'Activado' : 'Desactivado' }}
+          </span>
+        </div>
+
+        <h3 class="apps-card__nom">{{ m.name }}</h3>
+        <p class="apps-card__desc">{{ m.description }}</p>
+        <p class="apps-card__det" *ngIf="m.detalle">{{ m.detalle }}</p>
+
+        <!-- Se dice DONDE aparece antes de pulsar, no después de buscarlo. -->
+        <p class="apps-card__donde" *ngIf="m.aparece && !encendido(m)">
+          <i class="ph ph-arrow-elbow-down-right"></i> Aparecerá {{ m.aparece }}
+        </p>
+
+        <div class="apps-card__pie">
+          <button class="btn-primary" type="button" *ngIf="!encendido(m)"
+                  (click)="alternar(m)" [disabled]="cambiando() === m.id">
+            <i class="ph ph-power"></i> {{ cambiando() === m.id ? 'Activando…' : 'Activar' }}
+          </button>
+
+          <ng-container *ngIf="encendido(m)">
+            <button class="btn-primary" type="button" *ngIf="m.route" (click)="abrir(m)">
+              <i class="ph ph-arrow-right"></i> Abrir
+            </button>
+            <button class="btn-ghost" type="button"
+                    (click)="alternar(m)" [disabled]="cambiando() === m.id">
+              {{ cambiando() === m.id ? 'Desactivando…' : 'Desactivar' }}
+            </button>
+          </ng-container>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <p class="apps-pie">
+    <i class="ph ph-info"></i>
+    Desactivar una aplicación no borra nada: sus datos quedan guardados y vuelven si la activas otra vez.
+  </p>
+</div>

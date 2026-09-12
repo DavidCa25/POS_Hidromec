@@ -61,6 +61,10 @@ export const routes: Routes = [
       // descarga ni una linea de campanas, dinamicas o rifas.
       { path: 'fidelizacion', loadComponent: () => import('../loyalty/loyalty-admin').then(m => m.LoyaltyAdmin) },
       { path: 'configuracion', loadComponent: () => import('./config-shell/configShell').then(m => m.ConfigShell) },
+      // Aplicaciones: que capacidades opcionales tiene encendidas el negocio.
+      // Vive fuera de Configuracion a proposito: configurar la impresora y
+      // decidir que Wybix tenga Fidelizacion no son la misma clase de cosa.
+      { path: 'aplicaciones', loadComponent: () => import('./aplicaciones/aplicaciones.component').then(m => m.Aplicaciones) },
     ]
   },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
