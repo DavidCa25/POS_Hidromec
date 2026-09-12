@@ -19,9 +19,13 @@ CREATE TABLE dbo.raffle_definitions (
     closed_at DATETIME2(0) NULL,
     closed_entries_count INT NULL,
     closed_max_entry_id INT NULL,
+    tickets_total INT NULL,
     CONSTRAINT PK_raffle_definitions PRIMARY KEY CLUSTERED (id)
 );
 END;
+
+IF OBJECT_ID(N'dbo.CK_raffle_definitions_boletos', 'C') IS NULL
+ALTER TABLE dbo.raffle_definitions WITH CHECK ADD CONSTRAINT CK_raffle_definitions_boletos CHECK ([tickets_total] IS NULL OR [tickets_total]>(0));
 
 IF OBJECT_ID(N'dbo.CK_raffle_definitions_status', 'C') IS NULL
 ALTER TABLE dbo.raffle_definitions WITH CHECK ADD CONSTRAINT CK_raffle_definitions_status CHECK ([status]='DRAWN' OR [status]='CLOSED' OR [status]='OPEN' OR [status]='DRAFT');
