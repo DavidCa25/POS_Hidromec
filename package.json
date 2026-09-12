@@ -46,6 +46,7 @@
     "db:test-backup": "node scripts/db/probar-respaldo.mjs",
     "db:check-template": "node scripts/db/verificar-template.mjs",
     "db:prepare-release": "npm run db:baseline && npm run db:check-template -- --a-fondo && npm run db:test-install",
+    "test:modificadores": "node scripts/pruebas/modificadores-bit.mjs",
     "test:marca": "node scripts/pruebas/customer-display-marca.mjs",
     "test:ruleta": "node scripts/pruebas/customer-display-ruleta.mjs",
     "test:modulos": "node scripts/pruebas/modulos-navegacion.mjs",
