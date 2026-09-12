@@ -1,6 +1,18 @@
+/* ============================================================
+   0027 — cada objeto cierra su lote
+
+   Generada con scripts/db/generar-migracion.mjs desde los archivos
+   canonicos de sql/. No editar a mano: regenerar.
+
+   Idempotente: todos los objetos usan CREATE OR ALTER, y los tipos
+   comprueban su existencia antes de crearse. Se puede reejecutar.
+
+   NO toca tablas ni datos. Solo objetos programables.
+   ============================================================ */
+
+/* ---------- sp_coupon_issue (SQL_STORED_PROCEDURE) ---------- */
 /* sp_coupon_issue
- * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
- * No editar en SSMS: modificar este archivo y crear una migracion.
+ * Definicion canonica. Modificar aqui y generar una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

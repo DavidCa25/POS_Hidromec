@@ -98,8 +98,23 @@ for (const n of orden) {
   if (!existsSync(o.archivo)) { console.error('Falta el archivo', o.archivo); process.exit(1); }
   const texto = readFileSync(o.archivo, 'utf8').split('\r\n').join('\n').trimEnd();
   partes.push(`/* ---------- ${n} (${o.tipo}) ---------- */`);
-  // El archivo canonico ya trae sus SET y sus GO en el sitio correcto.
   partes.push(texto);
+  /*
+   * Cada objeto CIERRA su lote.
+   *
+   * Casi todos los archivos canonicos ya acaban en GO, pero los tipos de
+   * tabla no, y un procedure escrito a mano puede olvidarlo. Cuando falta,
+   * su `CREATE` se junta en el MISMO lote con la cabecera y los SET del
+   * objeto siguiente, y SQL Server guarda el texto entero del lote como
+   * definicion del objeto: `sp_coupon_issue` acabo llevando dentro los
+   * comentarios de `sp_dynamic_play`.
+   *
+   * No rompe nada en ejecucion, pero ensucia la extraccion: cada vez que
+   * alguien extrae, ese ruido entra en Git y parece un cambio real. Cuesta
+   * una linea evitarlo. La condicion es la misma de siempre: solo si no
+   * acaba ya en GO, que dos seguidos es el otro fallo.
+   */
+  if (!/(^|\n)\s*GO\s*$/i.test(texto)) partes.push('GO');
   partes.push('');
 }
 
