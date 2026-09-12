@@ -86,7 +86,7 @@ function crearDom() {
   // prueba lo nota porque el elemento se queda sin escribir.
   for (const id of [
     'jgRaiz', 'jgDisco', 'jgRueda', 'jgBoton', 'jgBotonTxt', 'jgReto',
-    'jgObjetivo', 'jgCrono', 'jgTitular', 'jgGana', 'jgPremios', 'jgCodigo',
+    'jgObjetivo', 'jgCrono', 'jgTitular', 'jgGana', 'jgNota', 'jgPremios', 'jgCodigo',
     'jgPie', 'jgMarca', 'jgClock', 'idleBiz', 'idleClock', 'idleKicker',
     'idleTitulo', 'idleTambien', 'idleSub', 'idleMensaje', 'idleMarca',
     'idleInicial', 'saleBiz', 'saleClock', 'saleItems', 'saleModo',
@@ -309,6 +309,40 @@ seccion('8. Perder no promete nada que nadie haya prometido');
   check(!/pr[oó]xima/i.test(doc.getElementById('jgPie').textContent),
     'y no se invita a volver a intentarlo',
     'el modelo no dice si la campana permite otro intento: no se inventa');
+}
+
+// ===================================================================
+seccion('9. El cronometro dice en que numero se quedo');
+
+/*
+ * Quien acaba de soltar el boton quiere saber donde paro. Un veredicto
+ * sin el numero deja al cliente sin entender por cuanto fallo, y ese dato
+ * lo tiene la pantalla delante: no ensenarlo era esconderselo.
+ */
+{
+  const { doc, jgPintar } = cargarVista();
+  const t = (id) => doc.getElementById(id).textContent;
+  const h = (id) => doc.getElementById(id).innerHTML;
+
+  jgPintar({ tipo: 'TIMING', fase: 'RESULTADO', objetivo: 10, centesimas: 987, gano: false });
+  check(/paraste en/i.test(t('jgReto')), 'al perder, encabeza con donde paro');
+  check(t('jgCrono') === '9.87', 'y ese numero es el protagonista');
+  check(doc.getElementById('jgRaiz')._clases.has('jg--crono'),
+    'se ensena en grande, no escondido en una nota al pie');
+  check(/10\.00/.test(h('jgNota')), 'con el objetivo debajo, para comparar de un golpe');
+
+  jgPintar({
+    tipo: 'TIMING', fase: 'RESULTADO', objetivo: 10, centesimas: 1000,
+    gano: true, premioGanado: 'Café americano', codigo: 'RW-1',
+  });
+  check(/ganaste/i.test(t('jgReto')), 'al ganar manda el premio');
+  check(t('jgTitular') === 'Café americano', 'que pasa a ser el titular');
+  check(/10\.00/.test(h('jgNota')), 'y el numero sigue estando, como linea secundaria');
+
+  /* La ruleta no tiene numero que ensenar: no debe inventarse uno. */
+  jgPintar({ tipo: 'WHEEL', fase: 'RESULTADO', sectores: SECTORES, ganadorIndice: 0, gano: false });
+  check(!doc.getElementById('jgRaiz')._clases.has('jg--crono'),
+    'la ruleta no ensena cronometro');
 }
 
 console.log(`\nRESULTADO: ${fallos.length ? `${fallos.length} FALLO(S) de ${ok + fallos.length}` : `OK (${ok} comprobaciones)`}`);

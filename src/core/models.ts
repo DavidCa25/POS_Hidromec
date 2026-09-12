@@ -328,6 +328,15 @@ export type CustomerDisplayState =
       mensaje?: string;
       premioGanado?: string | null;
       codigo?: string | null;
+      /**
+       * Solo TIMING, en RESULTADO: la centesima en la que el cliente paro.
+       *
+       * Viaja en el estado y no se deja en la ventana que jugo porque el
+       * resultado lo miran las DOS -la del cliente y la vista previa-, y
+       * porque sin este numero el cliente no sabe que le ha pasado: ve
+       * "esta vez no" sin enterarse de por cuanto fallo.
+       */
+      centesimas?: number | null;
     }
   | {
       /** Como acabo la dinamica. Lo decidio SQL, aqui solo se ensena. */

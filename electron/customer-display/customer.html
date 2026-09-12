@@ -247,6 +247,12 @@
 
   /* "Puedes ganar" y el premio: van ANTES de jugar, que es cuando
      deciden si merece la pena pulsar. */
+  /* En que numero se quedo. Sin esto el cliente ve "esta vez no" y no se
+     entera de por cuanto fallo, que es justo lo que quiere saber. */
+  .jg-nota{display:none;margin-top:calc(2 * var(--u));font-size:var(--t-cuerpo);color:var(--humo);}
+  .jg--nota .jg-nota{display:block;}
+  .jg-nota b{color:var(--hueso);font-weight:600;}
+
   .jg-gana{display:none;margin-top:calc(2.4 * var(--u));font-size:var(--t-et);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);}
   .jg--gana .jg-gana{display:block;}
 
@@ -427,6 +433,7 @@
           <!-- El premio, en palabras. Protagonista en el resultado. -->
           <h2 class="jg-titular" id="jgTitular"></h2>
 
+          <p class="jg-nota" id="jgNota"></p>
           <p class="jg-gana" id="jgGana">Puedes ganar</p>
           <ul class="jg-premios" id="jgPremios"></ul>
           <p class="jg-codigo mono" id="jgCodigo"></p>
@@ -1118,11 +1125,31 @@
       if (esRueda) mods.push('rueda');     // la rueda SIGUE en pantalla
       mods.push('titular');
 
+      /* El cronometro tiene que decir EN QUE NUMERO se quedo. Es lo
+         primero que mira quien acaba de soltar el boton, y sin ello el
+         resultado es un veredicto sin explicacion. */
+      var paro = (s.tipo === 'TIMING' && s.centesimas != null)
+        ? (Number(s.centesimas) / 100).toFixed(2) : null;
+      var meta = Number(s.objetivo || 0) > 0 ? Number(s.objetivo).toFixed(2) : null;
+      var nota = document.getElementById('jgNota');
+
       if (s.gano) {
         texto('jgReto', 'Ganaste');
         texto('jgTitular', s.premioGanado || 'Premio');
         mods.push('gano');
+        if (paro && nota) {
+          nota.innerHTML = 'Paraste en <b>' + paro + '</b>';
+          mods.push('nota');
+        }
         if (s.codigo) { texto('jgCodigo', s.codigo); mods.push('codigo'); }
+      } else if (paro) {
+        // Al perder, el numero ES el resultado: se pone grande y el
+        // objetivo debajo, para que se vea de un golpe por cuanto fallo.
+        texto('jgReto', 'Paraste en');
+        texto('jgCrono', paro);
+        mods = mods.filter(function (m) { return m !== 'titular'; });
+        mods.push('crono');
+        if (meta && nota) { nota.innerHTML = 'El objetivo era <b>' + meta + '</b>'; mods.push('nota'); }
       } else {
         texto('jgReto', 'Esta vez no');
         texto('jgTitular', 'Gracias por jugar');

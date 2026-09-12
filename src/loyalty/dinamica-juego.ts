@@ -70,6 +70,9 @@ export class DinamicaJuego implements OnDestroy {
 
   private escuchando = false;
 
+  /** En que centesima paro el cliente. Va al resultado para que lo vea. */
+  private paroEn: number | null = null;
+
   ngOnDestroy(): void {
     // La pantalla del cliente vuelve a lo suyo: dejarla con una partida a
     // medias seria dejar un cronometro parado delante de alguien.
@@ -117,6 +120,7 @@ export class DinamicaJuego implements OnDestroy {
     this.fase.set('LISTA');
     this.resultado.set(null);
     this.ocupado.set(false);
+    this.paroEn = null;
     this.empujar('LISTA');
 
     if (!this.escuchando) {
@@ -143,6 +147,7 @@ export class DinamicaJuego implements OnDestroy {
     if (a?.tipo === 'STOP_TIMING') {
       await this.resolver(async () => {
         const c = Number(a.centesimas) || 0;
+        this.paroEn = c;
         if (this.esPreview) {
           const gana = aciertaTiming(c, this._def!.target_value);
           return this.dePrueba(gana, gana ? (this._def!.reward_name || 'Premio') : null);
@@ -230,6 +235,7 @@ export class DinamicaJuego implements OnDestroy {
       mensaje: r && !r.ok ? r.mensaje : undefined,
       premioGanado: r?.premio ?? null,
       codigo: r?.codigo ?? null,
+      centesimas: fase === 'RESULTADO' ? this.paroEn : null,
     });
   }
 
