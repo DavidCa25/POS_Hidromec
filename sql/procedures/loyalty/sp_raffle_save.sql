@@ -33,7 +33,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_raffle_save]
     @ends_at DATETIME2(0) = NULL,
     @winners_count INT = 1,
     @code_prefix NVARCHAR(8) = NULL,
-    @status NVARCHAR(10) = NULL
+    @status NVARCHAR(10) = NULL,
+    @tickets_total INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -42,11 +43,14 @@ BEGIN
     BEGIN RAISERROR('La rifa necesita un nombre.', 16, 1); RETURN; END
     IF ISNULL(@winners_count, 0) < 1 SET @winners_count = 1;
     IF LTRIM(RTRIM(ISNULL(@code_prefix, N''))) = N'' SET @code_prefix = N'RF';
+    /* Un tope de cero no significa nada: o hay boletos o no hay rifa. Se
+       guarda NULL, que es lo mismo que decir "sin tope". */
+    IF ISNULL(@tickets_total, 0) < 1 SET @tickets_total = NULL;
 
     IF @id IS NULL
     BEGIN
-        INSERT INTO dbo.raffle_definitions (name, description, prize, starts_at, ends_at, status, winners_count, code_prefix)
-        VALUES (@name, @description, @prize, @starts_at, @ends_at, ISNULL(@status, N'DRAFT'), @winners_count, @code_prefix);
+        INSERT INTO dbo.raffle_definitions (name, description, prize, starts_at, ends_at, status, winners_count, code_prefix, tickets_total)
+        VALUES (@name, @description, @prize, @starts_at, @ends_at, ISNULL(@status, N'DRAFT'), @winners_count, @code_prefix, @tickets_total);
         SET @id = SCOPE_IDENTITY();
     END
     ELSE
@@ -83,14 +87,26 @@ BEGIN
             RETURN;
         END
 
+        /* Bajar el tope por debajo de los boletos ya repartidos dejaria a
+           la rifa pasada de su propio limite y a nadie le cuadraria la
+           cuenta. Subirlo, o quitarlo, no rompe nada. */
+        DECLARE @repartidos INT =
+            (SELECT COUNT(*) FROM dbo.raffle_entries WHERE raffle_id = @id AND status = 'VALID');
+        IF @tickets_total IS NOT NULL AND @tickets_total < @repartidos
+        BEGIN
+            RAISERROR('Ya hay %d boletos repartidos: el total no puede quedar por debajo.', 16, 1, @repartidos);
+            RETURN;
+        END
+
         UPDATE dbo.raffle_definitions
            SET name = @name, description = @description, prize = @prize,
                starts_at = @starts_at, ends_at = @ends_at,
                winners_count = @winners_count, code_prefix = @code_prefix,
+               tickets_total = @tickets_total,
                status = ISNULL(@status, status)
          WHERE id = @id;
     END
 
-    SELECT id, name, status, winners_count, code_prefix FROM dbo.raffle_definitions WHERE id = @id;
+    SELECT id, name, status, winners_count, code_prefix, tickets_total FROM dbo.raffle_definitions WHERE id = @id;
 END
 GO

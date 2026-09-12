@@ -256,9 +256,22 @@ BEGIN
     FETCH NEXT FROM cur INTO @raffle_id, @unidades, @campaign_id;
     WHILE @@FETCH_STATUS = 0
     BEGIN
+        /* El tope de boletos de la rifa, si lo tiene. NULL es sin tope. */
+        DECLARE @tope INT = (SELECT tickets_total FROM dbo.raffle_definitions WHERE id = @raffle_id);
+
         DECLARE @i INT = 0;
         WHILE @i < @unidades
         BEGIN
+            /* Se comprueba DENTRO del bucle y con el mismo bloqueo que usa
+               la numeracion: si dos cajas cobran a la vez y quedan tres
+               boletos, no se pueden repartir seis. Al llenarse se deja de
+               repartir sin error: la venta es valida y el resto de premios
+               tambien. */
+            IF @tope IS NOT NULL
+               AND (SELECT COUNT(*) FROM dbo.raffle_entries WITH (UPDLOCK, HOLDLOCK)
+                     WHERE raffle_id = @raffle_id AND status = 'VALID') >= @tope
+                BREAK;
+
             INSERT INTO dbo.raffle_entries
                 (raffle_id, entry_number, customer_id, sale_id, register_id, machine_id, campaign_id, status, created_at)
             SELECT @raffle_id,

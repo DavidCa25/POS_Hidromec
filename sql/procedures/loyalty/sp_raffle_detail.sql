@@ -23,7 +23,7 @@ BEGIN
     SET NOCOUNT ON;
     IF ISNULL(@top_entries, 0) < 1 SET @top_entries = 200;
 
-    SELECT r.id, r.name, r.description, r.prize, r.starts_at, r.ends_at,
+    SELECT r.id, r.name, r.description, r.prize, r.starts_at, r.ends_at, r.tickets_total,
            r.status, r.winners_count, r.code_prefix, r.created_at,
            /* La foto del cierre: cuantos boletos quedaron dentro y cuando. */
            r.closed_at, r.closed_entries_count, r.closed_max_entry_id,

@@ -264,9 +264,21 @@ BEGIN
            en dos cajas no pueden repartir el mismo numero. */
         IF @resultado = 'WIN' AND @segOutcome = 'RAFFLE_ENTRY' AND @segRaffle IS NOT NULL
         BEGIN
+            /* El mismo tope que respeta la venta: una rifa de quinientos
+               boletos no reparte el quinientos uno porque salga en la
+               ruleta. Al llenarse se deja de repartir; el premio que se
+               anuncia despues cuenta los que de verdad entraron. */
+            DECLARE @topeRifa INT = (SELECT tickets_total FROM dbo.raffle_definitions WHERE id = @segRaffle);
+            DECLARE @dados INT = 0;
+
             DECLARE @i INT = 0;
             WHILE @i < ISNULL(@segCantidad, 1)
             BEGIN
+                IF @topeRifa IS NOT NULL
+                   AND (SELECT COUNT(*) FROM dbo.raffle_entries WITH (UPDLOCK, HOLDLOCK)
+                         WHERE raffle_id = @segRaffle AND status = 'VALID') >= @topeRifa
+                    BREAK;
+
                 INSERT INTO dbo.raffle_entries
                     (raffle_id, entry_number, customer_id, sale_id, register_id, machine_id, campaign_id, status, created_at)
                 SELECT @segRaffle,
@@ -274,10 +286,18 @@ BEGIN
                                 WHERE raffle_id = @segRaffle), 0) + 1,
                        @customer, @sale, @register, @machine_id, @campaign, 'VALID', @ahora
                 WHERE EXISTS (SELECT 1 FROM dbo.raffle_definitions WHERE id = @segRaffle AND status = 'OPEN');
+                SET @dados = @dados + @@ROWCOUNT;
                 SET @i = @i + 1;
             END
-            SELECT @premio = CONCAT(@segCantidad, CASE WHEN @segCantidad = 1 THEN N' boleto de ' ELSE N' boletos de ' END, name)
-            FROM dbo.raffle_definitions WHERE id = @segRaffle;
+
+            /* Se anuncian los boletos que de verdad entraron, no los que
+               decia el sector. Prometer cinco y dar dos porque la rifa se
+               lleno es peor que decir dos. */
+            IF @dados = 0
+                SET @resultado = 'LOSE';
+            ELSE
+                SELECT @premio = CONCAT(@dados, CASE WHEN @dados = 1 THEN N' boleto de ' ELSE N' boletos de ' END, name)
+                FROM dbo.raffle_definitions WHERE id = @segRaffle;
         END
 
         COMMIT TRAN;
