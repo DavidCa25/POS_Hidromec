@@ -16,7 +16,7 @@
  *   4. Las condiciones excluyen de verdad: minimo, producto y dia de semana.
  *   5. `per_amount` reparte por escalones, no una vez.
  *   6. Una dinamica se juega UNA vez: el segundo envio no premia otra vez.
- *   7. El acierto y el fallo los decide SQL segun objetivo y margen.
+ *   7. El acierto lo decide SQL: la centesima exacta, sin margen.
  *   8. El sorteo congela los boletos, deja semilla, y no se puede repetir.
  *   9. Un boleto que entra DESPUES del sorteo no participa en el ya hecho.
  */
@@ -237,24 +237,45 @@ check(premiosJuego.some(p => p.tipo === 'DYNAMIC' && p.token),
 
 const pend = row(`EXEC dbo.sp_dynamic_pending @sale_id=${ventaJuego};`);
 check(pend && pend.token, 'sp_dynamic_pending la encuentra');
-check(Number(pend.target_value) === 10 && Number(pend.tolerance) === 0.2,
-  'y trae el objetivo y el margen, para poder anunciarlos antes de jugar');
+check(Number(pend.target_value) === 10,
+  'y trae el objetivo, para poder anunciarlo antes de jugar');
 
-const gana = row(`EXEC dbo.sp_dynamic_play @token=N'${pend.token}', @input_value=10.05, @machine_id=N'PRUEBA';`);
-check(gana.resultado === 'WIN', 'parar en 10.05 con margen 0.20 es ganar',
+/*
+ * EL MARGEN SE RETIRO EN LA MIGRACION 0023.
+ *
+ * Esta prueba pedia que parar en 10.05 con tolerancia 0.20 fuese GANAR, que
+ * era la regla de antes. El juego es "detenlo en 10.00", no "detenlo cerca
+ * de 10": un negocio no deberia tener que decidir una tolerancia, y un
+ * cliente que lee 10.00 en la pantalla y pierde no entenderia por que.
+ *
+ * La columna `tolerance` no se borro porque hay dinamicas guardadas con
+ * ella, pero para TIMING no la mira nadie. Si alguien vuelve a hacer que
+ * importe, estas dos comprobaciones se caen.
+ */
+const cerca = row(`EXEC dbo.sp_dynamic_play @token=N'${pend.token}', @input_value=10.05, @machine_id=N'PRUEBA';`);
+check(cerca.resultado === 'LOSE', 'parar en 10.05 NO es ganar, aunque haya tolerancia guardada',
+  `devolvio ${cerca.resultado}: el margen configurable se retiro en el 0023`);
+check(!cerca.premio, 'y no entrega nada');
+
+// Clavarlo, en cambio, gana. Otra venta: el token anterior ya se gasto.
+const ventaClavada = vender({ cantidad: 1, precio: 20 });
+evaluar(ventaClavada);
+const pendClavada = row(`EXEC dbo.sp_dynamic_pending @sale_id=${ventaClavada};`);
+const gana = row(`EXEC dbo.sp_dynamic_play @token=N'${pendClavada.token}', @input_value=10.00, @machine_id=N'PRUEBA';`);
+check(gana.resultado === 'WIN', 'clavar 10.00 exactos si es ganar',
   `devolvio ${gana.resultado}`);
 check(!!gana.premio, 'y dice que premio se llevo', `premio: ${gana.premio}`);
 check(Number(scalar(`SELECT COUNT(*) FROM dbo.reward_instances WHERE definition_id = ${recompensaId} AND id = (
-        SELECT reward_instance_id FROM dbo.dynamic_attempts WHERE token = N'${pend.token}')`)) === 1,
+        SELECT reward_instance_id FROM dbo.dynamic_attempts WHERE token = N'${pendClavada.token}')`)) === 1,
   'la recompensa ganada existe de verdad y queda ligada al intento');
 
 // --- el mismo token, otra vez: el doble clic
-const repetido = row(`EXEC dbo.sp_dynamic_play @token=N'${pend.token}', @input_value=10.00, @machine_id=N'PRUEBA';`);
+const repetido = row(`EXEC dbo.sp_dynamic_play @token=N'${pendClavada.token}', @input_value=10.00, @machine_id=N'PRUEBA';`);
 check(repetido.ok === false || repetido.resultado === null,
   'jugar el MISMO token otra vez se rechaza',
   'un doble clic no puede premiar dos veces');
 check(Number(scalar(`SELECT COUNT(*) FROM dbo.reward_instances
-        WHERE id IN (SELECT reward_instance_id FROM dbo.dynamic_attempts WHERE token = N'${pend.token}')`)) === 1,
+        WHERE id IN (SELECT reward_instance_id FROM dbo.dynamic_attempts WHERE token = N'${pendClavada.token}')`)) === 1,
   'y sigue habiendo UNA sola recompensa por ese intento');
 
 // --- un fallo
@@ -262,7 +283,7 @@ const ventaFallo = vender({ cantidad: 1, precio: 20 });
 evaluar(ventaFallo);
 const pend2 = row(`EXEC dbo.sp_dynamic_pending @sale_id=${ventaFallo};`);
 const pierde = row(`EXEC dbo.sp_dynamic_play @token=N'${pend2.token}', @input_value=12.50, @machine_id=N'PRUEBA';`);
-check(pierde.resultado === 'LOSE', 'parar en 12.50 con objetivo 10 y margen 0.20 es perder',
+check(pierde.resultado === 'LOSE', 'parar en 12.50 con objetivo 10 es perder',
   `devolvio ${pierde.resultado}`);
 check(!pierde.premio, 'y no entrega ningun premio');
 
