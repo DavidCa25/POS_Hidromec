@@ -214,17 +214,21 @@
   }
   /* Las etiquetas van HORIZONTALES dentro de cada sector: un texto girado 90
      grados no se lee de pie y a dos metros. */
+  /* Cada etiqueta ocupa TODO el disco y se gira entera; el texto se coloca
+     cerca del borde y se desgira para quedar horizontal.
+
+     Antes se posicionaba con `translate(0,-32%)`, que es relativo al tamano
+     del propio texto y no al radio: con etiquetas cortas apenas se movia y
+     todas acababan amontonadas en el centro. */
   .jg-rueda__et{
-    position:absolute;left:50%;top:50%;
-    transform-origin:0 0;
-    pointer-events:none;
-    font-weight:800;line-height:1.05;
-    text-shadow:0 1px 2px rgba(0,0,0,.55);
-    color:#0b1620;
+    position:absolute;inset:0;pointer-events:none;
   }
   .jg-rueda__et span{
-    display:block;transform:translate(-50%,-50%);
-    max-width:15ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    position:absolute;top:7%;left:50%;
+    display:block;max-width:11ch;
+    font-weight:800;line-height:1.05;color:#0b1620;
+    text-shadow:0 1px 2px rgba(255,255,255,.35);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;
   }
 
   /* ------------------------------------------------------- el boton --
@@ -415,7 +419,14 @@
   <!-- VENTA -->
   <section class="screen" id="sale">
     <div class="head">
-      <div class="biz" id="saleBiz">Tu compra<span class="modo" id="saleModo"></span></div>
+      <!--
+        El nombre y el modo de servicio van en elementos SEPARADOS.
+        Estaban anidados, y `loadBusiness` escribia `saleBiz.textContent`, lo
+        que borraba el <span> del modo: a partir de ahi `renderSale` no lo
+        encontraba y lanzaba, asi que la pantalla del cliente NUNCA llegaba a
+        pintar el carrito.
+      -->
+      <div class="biz"><span id="saleBiz">Tu compra</span><span class="modo" id="saleModo"></span></div>
       <div class="clock" id="saleClock"></div>
     </div>
     <div class="list">
@@ -600,9 +611,11 @@
     cont.scrollTop = cont.scrollHeight;
 
     const modo = document.getElementById('saleModo');
-    if (s.serviceMode === 'TAKEAWAY') { modo.textContent = 'Para llevar'; modo.classList.add('on'); }
-    else if (s.serviceMode === 'DINE_IN') { modo.textContent = 'Para consumir aquí'; modo.classList.add('on'); }
-    else { modo.classList.remove('on'); }
+    if (modo) {
+      if (s.serviceMode === 'TAKEAWAY') { modo.textContent = 'Para llevar'; modo.classList.add('on'); }
+      else if (s.serviceMode === 'DINE_IN') { modo.textContent = 'Para consumir aquí'; modo.classList.add('on'); }
+      else { modo.classList.remove('on'); }
+    }
 
     document.querySelector('#rowSubtotal .amt').textContent = money(s.subtotal);
     document.querySelector('#rowTax .amt').textContent = money(s.tax);
@@ -760,10 +773,12 @@
       var ang = paso * i + paso / 2;
       var et = document.createElement('div');
       et.className = 'jg-rueda__et';
-      et.style.transform = 'rotate(' + ang + 'deg) translate(0, -32%)';
-      et.style.fontSize = fuente + 'vw';
+      et.style.transform = 'rotate(' + ang + 'deg)';
       var sp = document.createElement('span');
-      sp.style.transform = 'translate(-50%,-50%) rotate(' + (-ang) + 'deg)';
+      // Se desgira lo mismo que se giro el contenedor: el texto queda
+      // horizontal aunque su sector este boca abajo.
+      sp.style.transform = 'translateX(-50%) rotate(' + (-ang) + 'deg)';
+      sp.style.fontSize = fuente + 'vw';
       sp.textContent = label;
       et.appendChild(sp);
       disco.appendChild(et);
