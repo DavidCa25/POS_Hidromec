@@ -1,0 +1,109 @@
+/* ==========================================================================
+   PREMIOS DE LA VENTA — se muestra en la caja, tras cobrar
+   Los controles (.btn-*) vienen de la hoja global; aqui solo composicion.
+   ========================================================================== */
+
+.pv-velo {
+  position: fixed; inset: 0; z-index: var(--wx-z-dialog);
+  display: grid; place-items: center;
+  padding: 24px;
+  background: var(--wx-dialogo-velo);
+  animation: pv-entrar-velo var(--wx-dur-dialog) var(--wx-ease-out);
+}
+
+.pv {
+  display: flex; flex-direction: column; gap: 16px;
+  width: min(560px, 100%); max-height: 90vh; overflow-y: auto;
+  padding: 28px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg, 18px);
+  box-shadow: var(--wx-shadow-dialog, 0 24px 70px rgba(0,0,0,.28));
+  color: var(--wx-text);
+  /* Desde 0.96 y no desde 0: nada en el mundo real aparece de la nada. */
+  animation: pv-entrar var(--wx-dur-dialog) var(--wx-ease-out);
+}
+
+@keyframes pv-entrar-velo { from { opacity: 0; } }
+@keyframes pv-entrar {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-velo, .pv { animation: none; }
+}
+
+/* ------------------------------------------------------------ cabecera */
+.pv-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.pv-head__ic {
+  width: 58px; height: 58px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 28px;
+}
+.pv-head__ic.gano { background: var(--wx-green-soft, var(--wx-accent-soft)); }
+.pv-head h2 { margin: 0; font-size: var(--wx-text-lg); font-weight: 700; letter-spacing: -0.01em; }
+.pv-head p { margin: 0; max-width: 42ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+/* -------------------------------------------------------------- premios */
+.pv-lista { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pv-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.pv-item__ic {
+  width: 38px; height: 38px; flex: none; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface); color: var(--wx-accent-text); font-size: 19px;
+}
+.pv-item__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pv-item__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.pv-item__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+/* El codigo se lee en voz alta y se apunta: monoespaciado y separado. */
+.pv-item__code {
+  flex: none; padding: 5px 11px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 8px;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ------------------------------------------------------------- dinamica */
+.pv-dinamica {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 15px;
+  background: var(--wx-accent-soft); border-radius: var(--wx-radius-md);
+  color: var(--wx-accent-text);
+}
+.pv-dinamica > i { font-size: 24px; flex: none; }
+.pv-dinamica > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pv-dinamica b { font-size: var(--wx-text-base); font-weight: 600; }
+.pv-dinamica small { opacity: 0.8; font-size: var(--wx-text-xs); }
+
+.pv-objetivo { margin: 0; text-align: center; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.pv-objetivo b { color: var(--wx-text); }
+
+/* ----------------------------------------------------------- cronometro */
+.pv-crono {
+  padding: 10px 0; text-align: center;
+  font-size: 72px; font-weight: 700; line-height: 1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  color: var(--wx-text-muted);
+  /* Sin transicion: es un cronometro. Suavizar el numero seria mentir
+     sobre el instante en que se paro, que es justo lo que se juega. */
+}
+.pv-crono.corriendo { color: var(--wx-accent-text); }
+
+.pv-acciones { justify-content: center; margin-top: 4px; }
+.pv-btn-grande { min-height: 52px; padding: 0 30px; font-size: var(--wx-text-md); font-weight: 600; }
+.pv-btn-parar { background: var(--wx-danger); border-color: var(--wx-danger); }
+
+.pv-enviando {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm);
+}
+.pv-enviando i { animation: pv-girar 900ms linear infinite; }
+@keyframes pv-girar { to { transform: rotate(360deg); } }
+
+.pv-nota {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin: 0; color: var(--wx-text-dim); font-size: var(--wx-text-xs);
+}

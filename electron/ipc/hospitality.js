@@ -24,6 +24,61 @@ async function ejecutar(pool, nombre, construir) {
   }
 }
 
+/**
+ * Un error que se le pueda ensenar a quien esta usando la caja.
+ *
+ * Los procedures hablan el idioma del negocio -"El grupo necesita un
+ * nombre"- y esos mensajes SI deben llegar tal cual: son la validacion, y
+ * quien los lee sabe que corregir. SQL Server los marca con un numero
+ * propio, de 50000 para arriba, porque los levanta un RAISERROR nuestro.
+ *
+ * Todo lo demas es fontaneria: el driver, el protocolo, la conexion. "A
+ * boolean was expected" llego a un usuario en mitad de un QA y no le dijo
+ * absolutamente nada, porque no habla de tamanos ni de opciones: habla de
+ * como este proceso empaqueta un parametro. Eso se registra entero para
+ * quien lo tenga que arreglar, y al usuario se le da una frase suya.
+ */
+function paraElUsuario(e, queSeIntentaba) {
+  const n = Number(e?.number ?? e?.originalError?.info?.number);
+  if (Number.isFinite(n) && n >= 50000) return e.message;
+  return `No se pudo ${queSeIntentaba}. Es un fallo interno, no un dato mal escrito. ` +
+         'Vuelve a intentarlo y, si sigue, avisa a soporte con la hora.';
+}
+
+/**
+ * Lo que llega del formulario -> el booleano que espera `sql.Bit`.
+ *
+ * EL FALLO QUE ESTO EVITA
+ * -----------------------
+ * Guardar un grupo de modificadores con DOS o mas opciones respondia
+ * "A boolean was expected". Con una sola opcion guardaba bien, y por eso
+ * parecia un problema de SCALE o de tamanos cuando no lo era.
+ *
+ * El driver es msnodesqlv8, y su `fromRow` arma cada columna del parametro
+ * de tabla de dos maneras distintas segun cuantas filas haya: con UNA fila
+ * manda el valor suelto, y con dos o mas manda un ARRAY. El nivel nativo
+ * tolera un `1` suelto para una columna BIT, pero al recibir un array exige
+ * booleanos de verdad. Se mandaba `o.active === false ? 0 : 1`, o sea 1, y
+ * con una fila colaba mientras que con dos reventaba.
+ *
+ * Se normaliza AQUI, en la frontera, y no en cada llamada: mientras un
+ * sitio mande 1, otro true y otro "1", el que falle dependera de cuantas
+ * filas tenga el formulario ese dia.
+ *
+ * `null` se conserva: en una columna que admite NULL no es lo mismo "no lo
+ * se" que "falso".
+ */
+function bit(v, pordefecto = null) {
+  if (v === null || v === undefined || v === '') return pordefecto;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  // '0' y 'false' llegan asi desde algunos formularios y ambos son verdaderos
+  // como cadena: convertirlos con Boolean() los daria por ciertos.
+  const s = String(v).trim().toLowerCase();
+  if (s === '0' || s === 'false' || s === 'no') return false;
+  return true;
+}
+
 /** Carpeta de miniaturas cacheadas de ESTA caja. */
 function dirThumbs() {
   const d = path.join(app.getPath('userData'), 'thumbs');
@@ -136,7 +191,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       const p = await pool();
       const r = await p.request()
         .input('product_id', sql.Int, payload.productId ?? null)
-        .input('only_active', sql.Bit, payload.onlyActive ? 1 : 0)
+        .input('only_active', sql.Bit, bit(payload.onlyActive, false))
         .execute('sp_get_modifier_groups');
       const [grupos = [], opciones = []] = r.recordsets || [];
       return { success: true, data: { grupos, opciones } };
@@ -164,7 +219,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
         o.id ?? null, o.name, o.priceDelta ?? 0, o.effect,
         o.ingredientProductId ?? null, o.replacesProductId ?? null,
         o.qtyBase ?? null, o.qtyFactor ?? null,
-        o.active === false ? 0 : 1, o.sortOrder ?? i + 1));
+        bit(o.active, true), o.sortOrder ?? i + 1));
 
       const r = await p.request()
         .input('group_id', sql.Int, payload.groupId ?? null)
@@ -172,15 +227,17 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
         .input('role', sql.NVarChar(15), payload.role)
         .input('min_select', sql.Int, payload.minSelect ?? 0)
         .input('max_select', sql.Int, payload.maxSelect ?? 1)
-        .input('required', sql.Bit, payload.required ? 1 : 0)
-        .input('active', sql.Bit, payload.active === false ? 0 : 1)
+        .input('required', sql.Bit, bit(payload.required, false))
+        .input('active', sql.Bit, bit(payload.active, true))
         .input('sort_order', sql.Int, payload.sortOrder ?? 0)
         .input('Options', tvp)
         .execute('sp_save_modifier_group');
       return { success: true, groupId: r.recordset?.[0]?.group_id ?? null };
     } catch (e) {
-      console.error('[HOSPITALITY] modifiers:save:', e.message);
-      return { success: false, error: e.message };
+      // El stack, no solo el mensaje: "A boolean was expected" sin traza no
+      // dice ni que parametro ni que capa lo produjo.
+      console.error('[HOSPITALITY] modifiers:save:', e.message, '\n', e.stack);
+      return { success: false, error: paraElUsuario(e, 'guardar el grupo') };
     }
   });
 
@@ -196,7 +253,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
   ipcMain.handle('presentations:list', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_get_product_presentations', (r) => r
       .input('product_id', sql.Int, payload.productId ?? null)
-      .input('only_active', sql.Bit, payload.onlyActive === false ? 0 : 1)));
+      .input('only_active', sql.Bit, bit(payload.onlyActive, true))));
 
   ipcMain.handle('presentations:save', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_save_product_presentation', (r) => r
@@ -204,8 +261,8 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       .input('product_id', sql.Int, payload.productId)
       .input('name', sql.NVarChar(60), payload.name)
       .input('factor_to_base', sql.Decimal(14, 4), payload.factorToBase)
-      .input('is_default', sql.Bit, payload.isDefault ? 1 : 0)
-      .input('active', sql.Bit, payload.active === false ? 0 : 1)));
+      .input('is_default', sql.Bit, bit(payload.isDefault, false))
+      .input('active', sql.Bit, bit(payload.active, true))));
 
   ipcMain.handle('presentations:delete', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_delete_product_presentation', (r) => r.input('id', sql.Int, payload.id)));

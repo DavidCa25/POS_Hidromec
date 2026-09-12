@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-11T15:53:47.643Z",
+  "generado": "2026-09-12T20:13:36.060Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -160,6 +160,33 @@
       "checksum": "05d5678b0db84461"
     },
     {
+      "nombre": "sp_coupon_issue",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_coupon_issue.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d4e7d11b9bc6b219"
+    },
+    {
+      "nombre": "sp_coupon_redeem",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_coupon_redeem.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8eb178119a0c551d"
+    },
+    {
+      "nombre": "sp_coupon_validate",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_coupon_validate.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "c455b6e3fc6fa28a"
+    },
+    {
       "nombre": "sp_create_customer",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/customers/sp_create_customer.sql",
@@ -239,6 +266,42 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "b82f986f53bfe1ad"
+    },
+    {
+      "nombre": "sp_dynamic_pending",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_dynamic_pending.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2e1000c36cd7c3ea"
+    },
+    {
+      "nombre": "sp_dynamic_play",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_dynamic_play.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "404573020cc2daa6"
+    },
+    {
+      "nombre": "sp_dynamic_save_segment",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_dynamic_save_segment.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3f4a1652ac2564af"
+    },
+    {
+      "nombre": "sp_dynamic_segments",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_dynamic_segments.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "dbc40ce39d4a5b6f"
     },
     {
       "nombre": "sp_get_active_products",
@@ -736,6 +799,51 @@
       "checksum": "43dce861a256fadf"
     },
     {
+      "nombre": "sp_loyalty_catalog",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_loyalty_catalog.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "fa66190c35fb75a0"
+    },
+    {
+      "nombre": "sp_loyalty_evaluate_sale",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_loyalty_evaluate_sale.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f72fa60ce6511565"
+    },
+    {
+      "nombre": "sp_loyalty_instances",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_loyalty_instances.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8ec4fc11fc06e018"
+    },
+    {
+      "nombre": "sp_loyalty_save_campaign",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_loyalty_save_campaign.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "c774f1506aaf5186"
+    },
+    {
+      "nombre": "sp_loyalty_save_definition",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_loyalty_save_definition.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "23f47aeca4d4cce1"
+    },
+    {
       "nombre": "sp_mig_test",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/_cuarentena/sp_mig_test.sql",
@@ -752,6 +860,51 @@
       "critico": true,
       "clasificacion": "current",
       "checksum": "25dc390ad42e17fc"
+    },
+    {
+      "nombre": "sp_raffle_close",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_raffle_close.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "607fe3140a29cc07"
+    },
+    {
+      "nombre": "sp_raffle_detail",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_raffle_detail.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "81d18db3bb639548"
+    },
+    {
+      "nombre": "sp_raffle_draw",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_raffle_draw.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2fddbfac366f95cf"
+    },
+    {
+      "nombre": "sp_raffle_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_raffle_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4d02750ceda0dd58"
+    },
+    {
+      "nombre": "sp_raffle_winner_status",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/loyalty/sp_raffle_winner_status.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7b538aa851314062"
     },
     {
       "nombre": "sp_reactivate_product",
@@ -1030,7 +1183,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "9c453e1abb7046d8"
+      "checksum": "090dc45b93d0bf2b"
     },
     {
       "nombre": "sp_update_customer",
@@ -1254,20 +1407,20 @@
     }
   ],
   "esquema": {
-    "generado": "2026-09-11T15:53:55.939Z",
+    "generado": "2026-09-12T20:12:23.037Z",
     "base": "Wybix_Production",
     "excluidas": [
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 40,
-      "columnas": 378,
-      "pk": 40,
+      "tablas": 53,
+      "columnas": 539,
+      "pk": 53,
       "unicas": 4,
-      "foraneas": 41,
-      "chequeos": 13,
-      "predeterminados": 100,
-      "indices": 35
+      "foraneas": 52,
+      "chequeos": 22,
+      "predeterminados": 146,
+      "indices": 43
     },
     "objetos": [
       {
@@ -1275,14 +1428,28 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/business_config.sql",
         "origen": "Wybix_Production",
-        "columnas": 14,
+        "columnas": 15,
         "pk": "PK__business__3213E83FD0E9EE33",
         "unicas": 0,
         "foraneas": 0,
         "chequeos": 1,
-        "predeterminados": 4,
+        "predeterminados": 5,
         "indices": 0,
-        "checksum": "876533ca67229fee"
+        "checksum": "b0c8f085c98df53a"
+      },
+      {
+        "nombre": "campaigns",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/campaigns.sql",
+        "origen": "Wybix_Production",
+        "columnas": 22,
+        "pk": "PK_campaigns",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 6,
+        "indices": 0,
+        "checksum": "752952d616920361"
       },
       {
         "nombre": "cash_closures",
@@ -1369,6 +1536,34 @@
         "checksum": "d6ff843b4af1da92"
       },
       {
+        "nombre": "coupon_definitions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/coupon_definitions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_coupon_definitions",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 4,
+        "indices": 0,
+        "checksum": "4d4d82e78310b336"
+      },
+      {
+        "nombre": "coupon_instances",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/coupon_instances.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_coupon_instances",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 4,
+        "indices": 1,
+        "checksum": "2880c7b1520ae24a"
+      },
+      {
         "nombre": "customer_payments",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/customer_payments.sql",
@@ -1395,6 +1590,48 @@
         "predeterminados": 8,
         "indices": 2,
         "checksum": "14bcca7ddd61de99"
+      },
+      {
+        "nombre": "dynamic_attempts",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/dynamic_attempts.sql",
+        "origen": "Wybix_Production",
+        "columnas": 16,
+        "pk": "PK_dynamic_attempts",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "fe164226c697619f"
+      },
+      {
+        "nombre": "dynamic_definitions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/dynamic_definitions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 10,
+        "pk": "PK_dynamic_definitions",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 3,
+        "indices": 0,
+        "checksum": "d101d699fd5a7aee"
+      },
+      {
+        "nombre": "dynamic_segments",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/dynamic_segments.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_dynamic_segments",
+        "unicas": 0,
+        "foraneas": 3,
+        "chequeos": 2,
+        "predeterminados": 6,
+        "indices": 1,
+        "checksum": "a534dd9dee753101"
       },
       {
         "nombre": "fiscal_config",
@@ -1479,6 +1716,20 @@
         "predeterminados": 1,
         "indices": 1,
         "checksum": "1fe4e10258cbcd20"
+      },
+      {
+        "nombre": "loyalty_redemptions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/loyalty_redemptions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 9,
+        "pk": "PK_loyalty_redemptions",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "a4ade536f9729132"
       },
       {
         "nombre": "modifier_groups",
@@ -1607,6 +1858,62 @@
         "checksum": "20495cc138cb955f"
       },
       {
+        "nombre": "raffle_definitions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/raffle_definitions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 14,
+        "pk": "PK_raffle_definitions",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 2,
+        "predeterminados": 4,
+        "indices": 0,
+        "checksum": "3dd2dee1feb5d848"
+      },
+      {
+        "nombre": "raffle_draws",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/raffle_draws.sql",
+        "origen": "Wybix_Production",
+        "columnas": 12,
+        "pk": "PK_raffle_draws",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 4,
+        "indices": 0,
+        "checksum": "622de3a993ad03df"
+      },
+      {
+        "nombre": "raffle_entries",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/raffle_entries.sql",
+        "origen": "Wybix_Production",
+        "columnas": 10,
+        "pk": "PK_raffle_entries",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 2,
+        "checksum": "eeaf73db18cd11d4"
+      },
+      {
+        "nombre": "raffle_winners",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/raffle_winners.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_raffle_winners",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "f4d58267bd4fc5b5"
+      },
+      {
         "nombre": "recipe_lines",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/recipe_lines.sql",
@@ -1661,6 +1968,34 @@
         "predeterminados": 2,
         "indices": 1,
         "checksum": "86973d098d90ffd8"
+      },
+      {
+        "nombre": "reward_definitions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/reward_definitions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_reward_definitions",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 3,
+        "indices": 0,
+        "checksum": "a98d189f99878a7a"
+      },
+      {
+        "nombre": "reward_instances",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/reward_instances.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_reward_instances",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 4,
+        "indices": 2,
+        "checksum": "8ef4f9cb8cf55762"
       },
       {
         "nombre": "sale_detail",

@@ -158,6 +158,23 @@ asignar('hospitality', [
   'sp_resolver_receta_efectiva', 'sp_check_availability',
 ]);
 
+asignar('loyalty', [
+  // Fidelizacion: campanas, recompensas, cupones, dinamicas y rifas.
+  // NO son criticos: un negocio sin la capability activada opera sin ellos, y
+  // `sp_loyalty_evaluate_sale` se llama fuera de la transaccion de la venta.
+  'sp_loyalty_catalog', 'sp_loyalty_save_campaign', 'sp_loyalty_save_definition',
+  'sp_loyalty_evaluate_sale',
+  'sp_dynamic_pending', 'sp_dynamic_play',
+  'sp_raffle_save', 'sp_raffle_detail', 'sp_raffle_draw', 'sp_raffle_winner_status',
+  'sp_raffle_close',
+  // Cupones: emitir a mano, validar antes de cobrar, consumir despues.
+  'sp_coupon_issue', 'sp_coupon_validate', 'sp_coupon_redeem',
+  // Lo repartido de verdad, para poder auditarlo sin abrir SSMS.
+  'sp_loyalty_instances',
+  // Ruleta: sectores y su sorteo, decidido en el servidor.
+  'sp_dynamic_segments', 'sp_dynamic_save_segment',
+]);
+
 asignar('_cuarentena', ['sp_mig_test']);
 
 export function dominioDe(nombre) {

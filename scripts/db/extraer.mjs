@@ -3,7 +3,7 @@
  *
  * SOLO LECTURA contra la base. Escribe unicamente archivos del repositorio.
  *
- *     node scripts/db/extraer.mjs [--dry]
+ *     node scripts/db/extraer.mjs [--dry] [--solo-manifiesto]
  *
  * DE DONDE SALE CADA DEFINICION
  * Hay tres bases y no todas tienen todo, asi que se recorre una lista de
@@ -25,6 +25,30 @@ import { dominioDe, esCritico, NO_INVOCADOS, CRITICOS, TIPOS_CRITICOS } from './
 import { SOLO_REPO, extraerDeArchivo } from './lib/solo-repo.mjs';
 
 const DRY = process.argv.includes('--dry');
+
+/**
+ * Actualizar el INVENTARIO sin reescribir los archivos canonicos.
+ *
+ * CUANDO HACE FALTA
+ * -----------------
+ * `Wybix_Production` es la base autoritativa y debe seguir siendolo. Pero
+ * lo es cuando esta AL DIA. Entre que se escribe una migracion y que se
+ * aplica a esa base, el archivo de Git va por delante, y extraer en esa
+ * ventana no actualiza nada: RETROCEDE.
+ *
+ * Ha pasado dos veces con Fidelizacion. La primera dejo `sp_dynamic_play`
+ * sin las columnas de segmento; la segunda revirtio nueve procedimientos de
+ * golpe. Las dos se cazaron mirando el diff, que es demasiado tarde para
+ * confiar en ello.
+ *
+ * LO CORRECTO sigue siendo aplicar las migraciones pendientes a
+ * Wybix_Production -arrancando la aplicacion contra ella- y extraer
+ * despues. `--solo-manifiesto` es para el otro caso: cuando lo unico que
+ * falta es dar de alta en el inventario un objeto que ya se escribio a
+ * mano, y no se quiere arriesgar ni un archivo canonico.
+ */
+const SOLO_MANIFIESTO = process.argv.includes('--solo-manifiesto');
+const escribirCanonicos = !DRY && !SOLO_MANIFIESTO;
 const RAIZ = 'sql';
 const PREFERENCIA = ['Wybix_Production', 'Hidromec_DataBase', 'Wybix_Template'];
 
@@ -116,7 +140,9 @@ for (const db of PREFERENCIA) {
 
 console.log(`\nObjetos distintos: ${elegido.size} modulos, ${tipoElegido.size} tipos de tabla`);
 
-if (!DRY) {
+// Con `--solo-manifiesto` NO se borra: sin el paso de escritura que viene
+// despues, vaciar el arbol lo dejaria vacio y sin nada que lo repueble.
+if (escribirCanonicos) {
   // Arbol limpio en cada extraccion: asi un objeto renombrado no deja huerfano.
   for (const sub of ['procedures', 'types', 'views', 'functions', 'triggers']) {
     const p = join(RAIZ, sub);
@@ -148,7 +174,7 @@ for (const [nombre, { db, m }] of [...elegido].sort((a, b) => a[0].localeCompare
     nombre, definicion: m.def, ansiNulls: !!m.ansi, quotedIdentifier: !!m.quoted,
   });
 
-  if (!DRY) { mkdirSync(dir, { recursive: true }); writeFileSync(archivo, contenido, 'utf8'); }
+  if (escribirCanonicos) { mkdirSync(dir, { recursive: true }); writeFileSync(archivo, contenido, 'utf8'); }
   escritos++;
 
   manifiesto.objetos.push({
@@ -178,7 +204,7 @@ for (const [nombre, meta] of Object.entries(SOLO_REPO)) {
   // Sin dato de sys.sql_modules se asume el valor por defecto de SQL Server,
   // que es el que tendrian al aplicarse desde una sesion normal.
   const contenido = envolver({ nombre, definicion: def, ansiNulls: true, quotedIdentifier: true });
-  if (!DRY) { mkdirSync(dir, { recursive: true }); writeFileSync(archivo, contenido, 'utf8'); }
+  if (escribirCanonicos) { mkdirSync(dir, { recursive: true }); writeFileSync(archivo, contenido, 'utf8'); }
   escritos++;
   manifiesto.objetos.push({
     nombre,
@@ -196,7 +222,7 @@ for (const [nombre, meta] of Object.entries(SOLO_REPO)) {
 for (const [nombre, { db, t }] of [...tipoElegido].sort((a, b) => a[0].localeCompare(b[0]))) {
   const archivo = join(RAIZ, 'types', `${nombre}.sql`);
   const ddl = ddlTipoTabla(t);
-  if (!DRY) { mkdirSync(join(RAIZ, 'types'), { recursive: true }); writeFileSync(archivo, ddl, 'utf8'); }
+  if (escribirCanonicos) { mkdirSync(join(RAIZ, 'types'), { recursive: true }); writeFileSync(archivo, ddl, 'utf8'); }
   escritos++;
   manifiesto.objetos.push({
     nombre,

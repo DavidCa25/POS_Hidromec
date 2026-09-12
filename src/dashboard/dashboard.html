@@ -162,6 +162,35 @@
           <i class="ph ph-seal-check"></i> <span>Facturación</span>
         </a>
       </li>
+      <!--
+        Fidelizacion es un dominio de primer nivel, como Venta o Compra. Vivia
+        colgada de Inventario, que es donde nadie buscaria una campana: no
+        tiene mas que ver con el inventario que la facturacion.
+
+        Sigue siendo UNA entrada: las seis secciones -Resumen, Campanas,
+        Recompensas, Cupones, Dinamicas y Rifas- son navegacion interna suya.
+      -->
+      <li class="wx-grp">
+        <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="ph ph-gift"></i> <span>Fidelización</span>
+        </a>
+      </li>
+      <!--
+        Aplicaciones es una seccion propia de Wybix, no una preferencia ni una
+        opcion tecnica: es el catalogo de modulos del producto. Por eso no vive
+        dentro de Configuracion ni en el menu del usuario.
+
+        Siempre visible; Fidelizacion, solo cuando esta encendida.
+      -->
+      <li class="wx-grp wx-grp--sistema">
+        <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="ph ph-squares-four"></i> <span>Aplicaciones</span>
+        </a>
+      </li>
       <li class="wx-grp wx-grp--sistema">
         <a *ngIf="auth.esAdmin" routerLink="/dashboard/configuracion"
            routerLinkActive="active"

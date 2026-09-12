@@ -1,0 +1,1009 @@
+<div class="loy">
+
+  <header class="loy-head">
+    <div class="loy-head__ic"><i class="ph ph-gift"></i></div>
+    <div class="loy-head__txt">
+      <h1>Fidelización</h1>
+      <p>Campañas que premian solas al cobrar. Quien decide es la venta, no la caja.</p>
+    </div>
+  </header>
+
+  <!-- Apagada para el negocio: no hay nada que administrar todavia -->
+  <div class="loy-empty" *ngIf="!caps.loyaltyEnabled()">
+    <i class="ph ph-toggle-left"></i>
+    <h3>Fidelización está apagada</h3>
+    <p>Enciéndela en <b>Aplicaciones</b>, en el menú lateral. Se activa para todo el
+       negocio, no para esta caja: una campaña la ven todas.</p>
+  </div>
+
+  <ng-container *ngIf="caps.loyaltyEnabled()">
+
+    <nav class="loy-nav">
+      <button type="button" *ngFor="let s of secciones"
+              [class.on]="seccion() === s.id" (click)="ir(s.id)">
+        <i class="ph {{ s.icono }}"></i> {{ s.label }}
+      </button>
+    </nav>
+
+    <p class="loy-error" *ngIf="loyalty.error() as e">
+      <i class="ph ph-warning-circle"></i> {{ e }}
+    </p>
+
+    <!-- ==================================================== RESUMEN ==== -->
+    <section class="loy-sec" *ngIf="seccion() === 'resumen'">
+
+      <div class="loy-cards">
+        <article class="loy-card">
+          <span class="loy-card__k">Campañas activas</span>
+          <strong class="loy-card__v">{{ resumen().campanasActivas }}</strong>
+          <span class="loy-card__n">de {{ resumen().campanasTotales }} creadas</span>
+        </article>
+        <article class="loy-card">
+          <span class="loy-card__k">Recompensas entregadas</span>
+          <strong class="loy-card__v">{{ resumen().recompensasEmitidas }}</strong>
+          <span class="loy-card__n">desde que se encendió</span>
+        </article>
+        <article class="loy-card">
+          <span class="loy-card__k">Cupones emitidos</span>
+          <strong class="loy-card__v">{{ resumen().cuponesEmitidos }}</strong>
+          <span class="loy-card__n">para gastar en otra visita</span>
+        </article>
+        <article class="loy-card">
+          <span class="loy-card__k">Dinámicas jugadas</span>
+          <strong class="loy-card__v">{{ resumen().intentos }}</strong>
+          <span class="loy-card__n">{{ resumen().ganados }} ganadas</span>
+        </article>
+        <article class="loy-card">
+          <span class="loy-card__k">Rifas abiertas</span>
+          <strong class="loy-card__v">{{ resumen().rifasAbiertas }}</strong>
+          <span class="loy-card__n">{{ resumen().participaciones }} boletos repartidos</span>
+        </article>
+      </div>
+
+      <!--
+        Una campana encendida sin premio no falla: simplemente no reparte
+        nada, en silencio. Es el error mas caro de todos porque nadie lo ve.
+      -->
+      <div class="loy-aviso" *ngIf="campanasHuerfanas().length">
+        <i class="ph ph-warning"></i>
+        <div>
+          <strong>{{ campanasHuerfanas().length }}
+            {{ campanasHuerfanas().length === 1 ? 'campaña activa no entrega nada' : 'campañas activas no entregan nada' }}</strong>
+          <p>Están encendidas pero no tienen premio asignado, así que no repartirán nada al cobrar.</p>
+          <ul class="loy-aviso__lista">
+            <li *ngFor="let c of campanasHuerfanas()">
+              <button type="button" class="btn-ghost btn-sm" (click)="ir('campanas'); editarCampana(c)">
+                {{ c.name }} <i class="ph ph-arrow-right"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="loy-vacio" *ngIf="!loyalty.hayAlgo() && !loyalty.cargando()">
+        <i class="ph ph-megaphone"></i>
+        <h3>Todavía no hay nada configurado</h3>
+        <p>Empieza por una <b>recompensa</b> (qué se regala) y después crea una <b>campaña</b>
+           que diga cuándo se entrega.</p>
+        <div class="btn-row">
+          <button class="btn-primary" type="button" (click)="ir('recompensas'); nuevoPremio('REWARD')">
+            <i class="ph ph-gift"></i> Crear una recompensa
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================== CAMPAÑAS ==== -->
+    <section class="loy-sec" *ngIf="seccion() === 'campanas'">
+      <div class="loy-sec__head">
+        <div>
+          <h2>Campañas</h2>
+          <p class="loy-sub">La regla: qué se entrega y con qué venta.</p>
+        </div>
+        <button class="btn-primary" type="button" (click)="nuevaCampana()">
+          <i class="ph ph-plus"></i> Nueva campaña
+        </button>
+      </div>
+
+      <!-- ---------------------------------------------- formulario ---- -->
+      <form class="loy-form" *ngIf="campana() as d" (ngSubmit)="guardarCampana()">
+        <div class="loy-form__grid">
+          <label class="loy-f loy-f--wide">
+            <span>Nombre</span>
+            <input class="ctl" type="text" [(ngModel)]="d.name" name="cName"
+                   placeholder="Café gratis de martes" maxlength="120">
+          </label>
+
+          <label class="loy-f loy-f--wide">
+            <span>Descripción</span>
+            <input class="ctl" type="text" [(ngModel)]="d.description" name="cDesc"
+                   placeholder="Se ve en el ticket y en la pantalla del cliente" maxlength="400">
+          </label>
+
+          <label class="loy-f">
+            <span>Qué entrega</span>
+            <wx-select [opciones]="[
+                { valor: 'REWARD', etiqueta: 'Una recompensa' },
+                { valor: 'COUPON', etiqueta: 'Un cupón para después' },
+                { valor: 'DYNAMIC', etiqueta: 'Una dinámica para jugar' },
+                { valor: 'RAFFLE_ENTRY', etiqueta: 'Un boleto de rifa' }]"
+              [(ngModel)]="d.outcome" name="cOut"></wx-select>
+          </label>
+
+          <label class="loy-f" *ngIf="d.outcome === 'REWARD'">
+            <span>Recompensa</span>
+            <wx-select [opciones]="opcRecompensas()" [(ngModel)]="d.rewardDefinitionId"
+                       name="cRew" placeholder="Elegir recompensa"></wx-select>
+          </label>
+          <label class="loy-f" *ngIf="d.outcome === 'COUPON'">
+            <span>Cupón</span>
+            <wx-select [opciones]="opcCupones()" [(ngModel)]="d.couponDefinitionId"
+                       name="cCup" placeholder="Elegir cupón"></wx-select>
+          </label>
+          <label class="loy-f" *ngIf="d.outcome === 'DYNAMIC'">
+            <span>Dinámica</span>
+            <wx-select [opciones]="opcDinamicas()" [(ngModel)]="d.dynamicDefinitionId"
+                       name="cDin" placeholder="Elegir dinámica"></wx-select>
+          </label>
+          <label class="loy-f" *ngIf="d.outcome === 'RAFFLE_ENTRY'">
+            <span>Rifa</span>
+            <wx-select [opciones]="opcRifas()" [(ngModel)]="d.raffleId"
+                       name="cRif" placeholder="Elegir rifa abierta"></wx-select>
+          </label>
+
+          <label class="loy-f">
+            <span>Cuántos entrega</span>
+            <input class="ctl" type="number" min="1" [(ngModel)]="d.quantity" name="cQty">
+          </label>
+        </div>
+
+        <fieldset class="loy-fs">
+          <legend>Cuándo se entrega</legend>
+          <div class="loy-form__grid">
+            <label class="loy-f">
+              <span>Compra mínima</span>
+              <input class="ctl" type="number" min="0" step="0.01" [(ngModel)]="d.minTotal"
+                     name="cMin" placeholder="Sin mínimo">
+            </label>
+            <label class="loy-f">
+              <span>Uno por cada</span>
+              <input class="ctl" type="number" min="0" step="0.01" [(ngModel)]="d.perAmount"
+                     name="cPer" placeholder="Sin escalón">
+            </label>
+            <label class="loy-f">
+              <span>Solo si lleva este producto</span>
+              <wx-select [opciones]="productos()" [(ngModel)]="d.productId" name="cProd"
+                         [buscable]="true" placeholder="Cualquier producto"></wx-select>
+            </label>
+            <label class="loy-f">
+              <span>Desde</span>
+              <wx-date [(ngModel)]="d.startsAt" name="cDesde" placeholder="Sin fecha de inicio"></wx-date>
+            </label>
+            <label class="loy-f">
+              <span>Hasta</span>
+              <wx-date [(ngModel)]="d.endsAt" name="cHasta" placeholder="Sin fecha de fin"></wx-date>
+            </label>
+            <label class="loy-f">
+              <span>Horario</span>
+              <span class="loy-horas">
+                <wx-time [(ngModel)]="d.timeFrom" name="cH1" placeholder="Desde"></wx-time>
+                <i class="ph ph-arrow-right"></i>
+                <wx-time [(ngModel)]="d.timeTo" name="cH2" placeholder="Hasta"></wx-time>
+              </span>
+            </label>
+          </div>
+
+          <div class="loy-dias">
+            <span class="loy-f__lbl">Días</span>
+            <div class="loy-dias__set">
+              <button type="button" class="loy-dia" *ngFor="let dia of diasSemana; let i = index"
+                      [class.on]="d.dias[i]" (click)="d.dias[i] = !d.dias[i]">{{ dia }}</button>
+            </div>
+          </div>
+
+          <div class="loy-checks">
+            <label class="loy-check">
+              <input type="checkbox" [(ngModel)]="d.requiresCustomer" name="cCli">
+              <span>Solo con cliente identificado</span>
+            </label>
+            <label class="loy-check">
+              <input type="checkbox" [(ngModel)]="d.firstPurchaseOnly" name="cPri">
+              <span>Solo en la primera compra del cliente</span>
+            </label>
+            <label class="loy-check">
+              <input type="checkbox" [(ngModel)]="d.active" name="cAct">
+              <span>Campaña activa</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="btn-row">
+          <button class="btn-primary" type="submit" [disabled]="guardando()">
+            <i class="ph ph-check"></i> Guardar
+          </button>
+          <button class="btn-ghost" type="button" (click)="campana.set(null)">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- ---------------------------------------------------- lista ---- -->
+      <div class="loy-tabla" *ngIf="loyalty.campanas().length; else sinCampanas">
+        <table class="wx-tabla">
+          <thead>
+            <tr>
+              <th>Campaña</th><th>Entrega</th><th>Cuándo</th>
+              <th class="num">Prioridad</th><th>Estado</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of loyalty.campanas()" [class.apagada]="!c.active">
+              <td>
+                <b>{{ c.name }}</b>
+                <small *ngIf="c.description">{{ c.description }}</small>
+              </td>
+              <td>
+                <span class="loy-pill">{{ queReparte(c) }}</span>
+                <small *ngIf="c.quantity > 1">×{{ c.quantity }}</small>
+              </td>
+              <td><small>{{ condicion(c) }}</small></td>
+              <td class="num">{{ c.priority }}</td>
+              <td>
+                <span class="loy-estado" [class.si]="c.active">{{ c.active ? 'Activa' : 'Apagada' }}</span>
+              </td>
+              <td class="acciones">
+                <button class="btn-ghost btn-sm" type="button" (click)="editarCampana(c)">
+                  <i class="ph ph-pencil-simple"></i>
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="alternarCampana(c)"
+                        [title]="c.active ? 'Apagar' : 'Encender'">
+                  <i class="ph {{ c.active ? 'ph-pause' : 'ph-play' }}"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #sinCampanas>
+        <p class="loy-hint" *ngIf="!campana()">
+          Sin campañas todavía. Una campaña dice qué se entrega y con qué venta.
+        </p>
+      </ng-template>
+    </section>
+
+    <!-- ============================ RECOMPENSAS Y CUPONES (mismo form) == -->
+    <section class="loy-sec" *ngIf="seccion() === 'recompensas' || seccion() === 'cupones'">
+      <div class="loy-sec__head">
+        <div>
+          <h2>{{ seccion() === 'recompensas' ? 'Recompensas' : 'Cupones' }}</h2>
+          <p class="loy-sub">
+            {{ seccion() === 'recompensas'
+               ? 'Lo que se entrega en el momento, en la misma venta.'
+               : 'Un código que el cliente gasta en otra visita.' }}
+          </p>
+        </div>
+        <div class="loy-acciones-head">
+          <!--
+            Dos preguntas distintas sobre lo mismo: que tengo definido y que
+            se ha repartido. La segunda es la que aparece cuando un cliente
+            llega con un codigo en la mano.
+          -->
+          <div class="loy-switch">
+            <button type="button" [class.on]="vista() === 'definiciones'" (click)="verVista('definiciones')">
+              Definiciones
+            </button>
+            <button type="button" [class.on]="vista() === 'emitidas'" (click)="verVista('emitidas')">
+              Emitidas
+            </button>
+          </div>
+          <button class="btn-primary" type="button" *ngIf="vista() === 'definiciones'"
+                  (click)="nuevoPremio(seccion() === 'recompensas' ? 'REWARD' : 'COUPON')">
+            <i class="ph ph-plus"></i> {{ seccion() === 'recompensas' ? 'Nueva recompensa' : 'Nuevo cupón' }}
+          </button>
+        </div>
+      </div>
+
+      <form class="loy-form" *ngIf="premio() as d" (ngSubmit)="guardarPremio()">
+        <div class="loy-form__grid">
+          <label class="loy-f loy-f--wide">
+            <span>Nombre</span>
+            <input class="ctl" type="text" [(ngModel)]="d.name" name="pName"
+                   placeholder="Café americano gratis" maxlength="120">
+          </label>
+
+          <label class="loy-f">
+            <span>Tipo</span>
+            <!--
+              Los tipos ofrecidos dependen de si se pueden CANJEAR.
+
+              En un cupon solo se ofrece producto gratis: el descuento en
+              pesos o en porcentaje no se puede aplicar en caja todavia -la
+              venta no tiene concepto de descuento- y dejarlos elegibles
+              significaba repartir papeles que el cajero luego no podria
+              aceptar. Se marcan como proximamente, no se esconden: quien los
+              busca merece saber que existen y que no estan listos.
+
+              Una recompensa SI admite los tres: se entrega en el momento y no
+              pasa por el canje.
+            -->
+            <wx-select [opciones]="tiposDePremio()"
+              [(ngModel)]="d.kind" name="pKind"></wx-select>
+          </label>
+
+          <label class="loy-f" *ngIf="d.kind === 'FREE_PRODUCT'">
+            <span>Producto</span>
+            <wx-select [opciones]="productos()" [(ngModel)]="d.productId" name="pProd"
+                       [buscable]="true" placeholder="Elegir producto"></wx-select>
+          </label>
+          <label class="loy-f" *ngIf="d.kind === 'AMOUNT'">
+            <span>Importe</span>
+            <input class="ctl" type="number" min="0" step="0.01" [(ngModel)]="d.amount" name="pAmt">
+          </label>
+          <label class="loy-f" *ngIf="d.kind === 'PERCENT'">
+            <span>Porcentaje</span>
+            <input class="ctl" type="number" min="0" max="100" step="0.5"
+                   [(ngModel)]="d.discountPct" name="pPct">
+          </label>
+
+          <label class="loy-f">
+            <span>Días de validez</span>
+            <input class="ctl" type="number" min="0" [(ngModel)]="d.validDays" name="pVal"
+                   placeholder="Sin caducidad">
+          </label>
+          <label class="loy-f">
+            <span>Usos permitidos</span>
+            <input class="ctl" type="number" min="1" [(ngModel)]="d.usesAllowed" name="pUsos">
+          </label>
+          <label class="loy-f" *ngIf="premioDe() === 'COUPON'">
+            <span>Prefijo del código</span>
+            <input class="ctl" type="text" maxlength="8" [(ngModel)]="d.codePrefix" name="pPre"
+                   placeholder="CUP">
+          </label>
+          <label class="loy-f loy-f--wide" *ngIf="premioDe() === 'REWARD'">
+            <span>Nota interna</span>
+            <input class="ctl" type="text" [(ngModel)]="d.description" name="pNota" maxlength="400">
+          </label>
+        </div>
+
+        <!--
+          El motivo se QUEDA aqui. Un modal que se cierra de un clic reflejo
+          deja un formulario de seis campos sin ninguna marca de cual falta, y
+          quien lo cierra deprisa cree que guardo.
+        -->
+        <p class="loy-nota loy-nota--mal" *ngIf="problema() as e">
+          <i class="ph ph-warning-circle"></i> {{ e }}
+        </p>
+
+        <!--
+          Se avisa AL CREARLO, no al intentar canjearlo. Repartir cien papeles
+          que la caja no puede aceptar es peor que no poder crearlos.
+        -->
+        <p class="loy-nota loy-nota--ojo" *ngIf="premioDe() === 'COUPON' && beneficioSinCanje(d.kind)">
+          <i class="ph ph-warning"></i>
+          Este tipo de cupón se emite y se valida, pero <b>la caja todavía no puede aplicarlo</b>:
+          la venta no tiene concepto de descuento. Para canjear en caja usa <b>Producto gratis</b>.
+        </p>
+
+        <div class="loy-checks">
+          <label class="loy-check">
+            <input type="checkbox" [(ngModel)]="d.active" name="pAct">
+            <span>Disponible para las campañas</span>
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" type="submit" [disabled]="guardando()">
+            <i class="ph ph-check"></i> Guardar
+          </button>
+          <button class="btn-ghost" type="button" (click)="premio.set(null)">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- ------------------------------------------- lista recompensas -->
+      <div class="loy-tabla" *ngIf="seccion() === 'recompensas' && vista() === 'definiciones'">
+        <table class="wx-tabla" *ngIf="loyalty.recompensas().length; else sinRecompensas">
+          <thead>
+            <tr><th>Recompensa</th><th>Tipo</th><th>Valor</th>
+                <th class="num">Entregadas</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of loyalty.recompensas()" [class.apagada]="!r.active">
+              <td><b>{{ r.name }}</b><small *ngIf="r.notes">{{ r.notes }}</small></td>
+              <td><span class="loy-pill">{{ etiquetaTipo(r.kind) }}</span></td>
+              <td>{{ valorPremio(r) }}</td>
+              <td class="num">{{ r.emitidas }}</td>
+              <td><span class="loy-estado" [class.si]="r.active">{{ r.active ? 'Activa' : 'Apagada' }}</span></td>
+              <td class="acciones">
+                <button class="btn-ghost btn-sm" type="button" (click)="editarRecompensa(r)">
+                  <i class="ph ph-pencil-simple"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #sinRecompensas>
+          <p class="loy-hint" *ngIf="!premio()">
+            Sin recompensas todavía. Una recompensa es lo que se regala: un producto, unos pesos o un porcentaje.
+          </p>
+        </ng-template>
+      </div>
+
+      <!-- ----------------------------------------------- lista cupones -->
+      <div class="loy-tabla" *ngIf="seccion() === 'cupones' && vista() === 'definiciones'">
+        <table class="wx-tabla" *ngIf="loyalty.cupones().length; else sinCupones">
+          <thead>
+            <tr><th>Cupón</th><th>Tipo</th><th>Valor</th><th>Prefijo</th>
+                <th class="num">Emitidos</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of loyalty.cupones()" [class.apagada]="!c.active">
+              <td><b>{{ c.name }}</b></td>
+              <td><span class="loy-pill">{{ etiquetaTipo(c.kind) }}</span></td>
+              <td>{{ valorPremio(c) }}</td>
+              <td><code>{{ c.code_prefix || '—' }}</code></td>
+              <td class="num">{{ c.emitidos }}</td>
+              <td><span class="loy-estado" [class.si]="c.active">{{ c.active ? 'Activo' : 'Apagado' }}</span></td>
+              <td class="acciones">
+                <!-- Sin esto, definir un cupon no producia ni un codigo: habia
+                     que montar una campana y esperar a que alguien comprase. -->
+                <button class="btn-outline btn-sm" type="button" (click)="emitirCupones(c)"
+                        [disabled]="guardando() || !c.active"
+                        [title]="c.active ? 'Generar códigos para repartir'
+                                          : 'Enciéndelo antes: los códigos no se podrían canjear'">
+                  <i class="ph ph-ticket"></i> Emitir
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="editarCupon(c)">
+                  <i class="ph ph-pencil-simple"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #sinCupones>
+          <p class="loy-hint" *ngIf="!premio()">
+            Sin cupones todavía. Un cupón se entrega hoy y se gasta en otra visita.
+          </p>
+        </ng-template>
+      </div>
+
+      <!-- ================================================ EMITIDAS ==== -->
+      <ng-container *ngIf="vista() === 'emitidas'">
+        <div class="loy-filtros">
+          <input class="ctl" type="search" placeholder="Código, cliente o promoción…"
+                 [(ngModel)]="filtroTexto" (keyup.enter)="cargarInstancias()">
+          <!-- Era un <select> nativo, el unico de esta pantalla: se veia con
+               el aspecto del sistema operativo en medio de controles de
+               Wybix. wx-select ya estaba importado aqui. -->
+          <wx-select [opciones]="opcEstadoInstancia" placeholder="Todas"
+                     [ngModel]="filtroEstado()" name="fEstado"
+                     (ngModelChange)="filtroEstado.set($event); cargarInstancias()"></wx-select>
+          <button class="btn-outline" type="button" (click)="cargarInstancias()">
+            <i class="ph ph-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+
+        <p class="loy-hint" *ngIf="cargandoInstancias()">Cargando…</p>
+
+        <div class="loy-tabla" *ngIf="!cargandoInstancias() && instancias().length">
+          <table class="wx-tabla">
+            <thead>
+              <tr>
+                <th>Código</th><th>Promoción</th><th>Cliente</th><th>Origen</th>
+                <th>Emitida</th><th>Vence</th><th class="num">Usos</th><th>Situación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let i of instancias()" [class.apagada]="!i.vigente">
+                <td><code>{{ i.code }}</code></td>
+                <td>
+                  <b>{{ i.promocion }}</b>
+                  <small>{{ etiquetaTipo(i.kind) }}<span *ngIf="i.product_name"> · {{ i.product_name }}</span></small>
+                </td>
+                <td>{{ i.cliente || '—' }}</td>
+                <td>
+                  <small>{{ i.campana || 'Sin campaña' }}</small>
+                  <!-- La venta que lo genero: es por donde se rastrea cualquier reclamo. -->
+                  <small *ngIf="i.sale_id">Venta #{{ i.sale_id }}<span *ngIf="i.caja"> · {{ i.caja }}</span></small>
+                </td>
+                <td><small>{{ i.issued_at | date:'dd/MM/yyyy HH:mm' }}</small></td>
+                <td><small>{{ i.expires_at ? (i.expires_at | date:'dd/MM/yyyy') : 'Sin caducidad' }}</small></td>
+                <td class="num">{{ i.uses_count }}/{{ i.uses_allowed }}</td>
+                <td>
+                  <span class="loy-estado" [class.si]="i.vigente">{{ i.situacion }}</span>
+                  <small *ngIf="i.ultima_redencion">
+                    Usada {{ i.ultima_redencion | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="i.venta_redencion"> · venta #{{ i.venta_redencion }}</span>
+                  </small>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="loy-hint" *ngIf="!cargandoInstancias() && !instancias().length">
+          Todavía no se ha emitido ninguna. Se generan solas al cobrar, con una campaña activa que las entregue.
+        </p>
+      </ng-container>
+    </section>
+
+    <!-- ================================================== DINÁMICAS ==== -->
+    <section class="loy-sec" *ngIf="seccion() === 'dinamicas'">
+      <div class="loy-sec__head">
+        <div>
+          <h2>Dinámicas</h2>
+          <p class="loy-sub">Un juego de unos segundos al terminar de pagar. Quien acierta, gana.</p>
+        </div>
+        <button class="btn-primary" type="button" (click)="nuevaDinamica()">
+          <i class="ph ph-plus"></i> Nueva dinámica
+        </button>
+      </div>
+
+      <form class="loy-form" *ngIf="dinamica() as d" (ngSubmit)="guardarDinamica()">
+        <div class="loy-form__grid">
+          <label class="loy-f loy-f--wide">
+            <span>Nombre</span>
+            <input class="ctl" type="text" [(ngModel)]="d.name" name="dName"
+                   placeholder="Detén el cronómetro en 10.00" maxlength="120">
+          </label>
+          <label class="loy-f">
+            <span>Tipo</span>
+            <wx-select [opciones]="[
+                { valor: 'TIMING', etiqueta: 'Parar el cronómetro' },
+                { valor: 'WHEEL', etiqueta: 'Ruleta' }]"
+              [(ngModel)]="d.type" name="dType"></wx-select>
+          </label>
+          <label class="loy-f">
+            <span>Premio</span>
+            <wx-select [opciones]="opcRecompensas()" [(ngModel)]="d.rewardDefinitionId"
+                       name="dRew" placeholder="Elegir recompensa"></wx-select>
+          </label>
+
+          <!--
+            Sin margen. El negocio no configura una tolerancia: el juego es
+            "detenlo en 10.00 exactos". Pedir un margen obligaba ademas a
+            ponerlo mayor que cero, asi que la dinamica que se queria era
+            justo la que no se podia guardar.
+          -->
+          <label class="loy-f" *ngIf="d.type === 'TIMING'">
+            <span>Segundo exacto</span>
+            <input class="ctl" type="number" min="0.01" step="0.01" [(ngModel)]="d.targetValue" name="dTar">
+          </label>
+
+          <label class="loy-f">
+            <span>Intentos por venta</span>
+            <input class="ctl" type="number" min="1" [(ngModel)]="d.attemptsAllowed" name="dInt">
+          </label>
+          <label class="loy-f loy-f--wide">
+            <span>Instrucción para el cliente</span>
+            <input class="ctl" type="text" [(ngModel)]="d.description" name="dDesc"
+                   placeholder="Detén el cronómetro exactamente en 10.00" maxlength="400">
+          </label>
+        </div>
+
+        <p class="loy-nota" *ngIf="d.type === 'WHEEL'">
+          <i class="ph ph-info"></i>
+          Guardala y despues usa <b>Sectores</b> para decir que puede salir.
+          El sector ganador lo elige el servidor; la rueda solo lo ensena.
+        </p>
+        <p class="loy-nota" *ngIf="d.type === 'TIMING'">
+          <i class="ph ph-info"></i>
+          Gana quien detenga el contador <b>exactamente</b> cuando muestre
+          <b>{{ (d.targetValue || 0) | number:'1.2-2' }}</b>. Ni una centésima antes ni después.
+          El resultado lo decide el servidor, no la caja.
+        </p>
+
+        <div class="loy-checks">
+          <label class="loy-check">
+            <input type="checkbox" [(ngModel)]="d.active" name="dAct">
+            <span>Disponible para las campañas</span>
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" type="submit" [disabled]="guardando()">
+            <i class="ph ph-check"></i> Guardar
+          </button>
+          <button class="btn-ghost" type="button" (click)="dinamica.set(null)">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- ================================================ SECTORES ==== -->
+      <section class="loy-form" *ngIf="editandoSectores() as d">
+        <div class="loy-sec__head">
+          <div>
+            <h3 class="loy-h3"><i class="ph ph-chart-pie-slice"></i> Sectores de «{{ d.name }}»</h3>
+            <p class="loy-sub">Lo que puede salir al girar. El servidor elige; la rueda lo enseña.</p>
+          </div>
+          <button class="btn-ghost btn-sm" type="button" (click)="cerrarSectores()">
+            <i class="ph ph-x"></i> Cerrar
+          </button>
+        </div>
+
+        <div class="loy-tabla" *ngIf="sectores().length">
+          <table class="wx-tabla">
+            <thead>
+              <tr><th>Sector</th><th>Qué entrega</th><th class="num">Peso</th>
+                  <th class="num">Probabilidad</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let sec of sectores()" [class.apagada]="!sec.active">
+                <td><b>{{ sec.label }}</b></td>
+                <td>
+                  <span class="loy-pill" *ngIf="sec.outcome === 'NONE'">Sin premio</span>
+                  <span *ngIf="sec.outcome === 'REWARD'">{{ sec.reward_name }}</span>
+                  <span *ngIf="sec.outcome === 'RAFFLE_ENTRY'">
+                    {{ sec.quantity }} boleto{{ sec.quantity === 1 ? '' : 's' }} · {{ sec.raffle_name }}
+                  </span>
+                </td>
+                <td class="num">
+                  <input class="ctl loy-peso" type="number" min="0" [value]="sec.weight"
+                         (change)="cambiarPeso(sec, $any($event.target).value)">
+                </td>
+                <!-- La probabilidad la calcula SQL: si la dedujera la pantalla,
+                     dos pantallas podrían anunciar números distintos. -->
+                <td class="num">{{ sec.probabilidad | number:'1.0-1' }}%</td>
+                <td class="acciones">
+                  <button class="btn-ghost btn-sm" type="button" (click)="moverSector(sec, -1)" title="Subir">
+                    <i class="ph ph-arrow-up"></i>
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="moverSector(sec, 1)" title="Bajar">
+                    <i class="ph ph-arrow-down"></i>
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="quitarSector(sec)" title="Quitar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="loy-hint" *ngIf="!sectores().length">
+          Todavía no hay sectores. Añade al menos dos para que la ruleta tenga sentido.
+        </p>
+
+        <fieldset class="loy-fs">
+          <legend>Añadir sector</legend>
+          <div class="loy-form__grid">
+            <label class="loy-f loy-f--wide">
+              <span>Qué dice el sector</span>
+              <input class="ctl" type="text" maxlength="60" [(ngModel)]="sectorNuevo.label"
+                     name="secLabel" placeholder="Bebida gratis">
+            </label>
+            <label class="loy-f">
+              <span>Qué entrega</span>
+              <wx-select [opciones]="opcResultadoSector" [(ngModel)]="sectorNuevo.outcome"
+                         name="secOut"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'REWARD'">
+              <span>Recompensa</span>
+              <wx-select [opciones]="opcRecompensas()" [(ngModel)]="sectorNuevo.rewardDefinitionId"
+                         name="secRew" placeholder="Elegir recompensa"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'RAFFLE_ENTRY'">
+              <span>Rifa</span>
+              <wx-select [opciones]="opcRifas()" [(ngModel)]="sectorNuevo.raffleId"
+                         name="secRif" placeholder="Elegir rifa"></wx-select>
+            </label>
+            <label class="loy-f" *ngIf="sectorNuevo.outcome === 'RAFFLE_ENTRY'">
+              <span>Cuántos boletos</span>
+              <input class="ctl" type="number" min="1" [(ngModel)]="sectorNuevo.quantity" name="secQty">
+            </label>
+            <label class="loy-f">
+              <span>Peso</span>
+              <input class="ctl" type="number" min="0" [(ngModel)]="sectorNuevo.weight" name="secPeso">
+            </label>
+          </div>
+          <!-- Pesos y no porcentajes: añadir un sector no obliga a recalcular
+               los demás para que vuelvan a sumar 100. -->
+          <p class="loy-nota">
+            <i class="ph ph-info"></i>
+            El <b>peso</b> dice cuántas veces sale ese sector comparado con los otros.
+            Peso 1 contra peso 3 significa que el segundo sale tres veces más. Con peso 0 se
+            pinta pero nunca sale.
+          </p>
+          <div class="btn-row">
+            <button class="btn-primary" type="button" (click)="agregarSector()" [disabled]="guardando()">
+              <i class="ph ph-plus"></i> Añadir sector
+            </button>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- ================================================ PROBANDO ==== -->
+      <div class="loy-prueba" *ngIf="probando() as d">
+        <app-dinamica-juego
+          modo="PREVIEW"
+          [definicion]="d"
+          [segmentos]="sectores()"
+          (cerrado)="cerrarPrueba()"></app-dinamica-juego>
+      </div>
+
+      <div class="loy-tabla">
+        <table class="wx-tabla" *ngIf="loyalty.dinamicas().length; else sinDinamicas">
+          <thead>
+            <tr><th>Dinámica</th><th>Tipo</th><th>Objetivo</th><th>Premio</th>
+                <th class="num">Jugadas</th><th class="num">Ganadas</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of loyalty.dinamicas()" [class.apagada]="!d.active">
+              <td><b>{{ d.name }}</b><small *ngIf="d.description">{{ d.description }}</small></td>
+              <td><span class="loy-pill">{{ d.type === 'TIMING' ? 'Cronómetro' : 'Ruleta' }}</span></td>
+              <td>
+                <span *ngIf="d.type === 'TIMING'">Exacto en {{ d.target_value | number:'1.2-2' }}</span>
+                <span *ngIf="d.type !== 'TIMING'">—</span>
+              </td>
+              <td>{{ d.reward_name || '—' }}</td>
+              <td class="num">{{ d.intentos }}</td>
+              <td class="num">{{ d.ganados }}</td>
+              <td><span class="loy-estado" [class.si]="d.active">{{ d.active ? 'Activa' : 'Apagada' }}</span></td>
+              <!--
+                Probar no necesita segundo monitor: abre la pantalla de cliente
+                en una ventana normal y corre el MISMO juego, en modo vista
+                previa. No consume intentos ni entrega premios.
+              -->
+              <td class="acciones">
+                <button class="btn-outline btn-sm" type="button"
+                        (click)="probar(d)" [disabled]="abriendoVentana()">
+                  <i class="ph ph-play-circle"></i> Probar
+                </button>
+                <button class="btn-outline btn-sm" type="button" *ngIf="d.type === 'WHEEL'"
+                        (click)="editarSectores(d)">
+                  <i class="ph ph-chart-pie-slice"></i> Sectores
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="editarDinamica(d)"
+                        title="Editar">
+                  <i class="ph ph-pencil-simple"></i>
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="alternarDinamica(d)"
+                        [disabled]="guardando()" [title]="d.active ? 'Desactivar' : 'Activar'">
+                  <i class="ph {{ d.active ? 'ph-pause' : 'ph-play' }}"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #sinDinamicas>
+          <p class="loy-hint" *ngIf="!dinamica()">
+            Sin dinámicas todavía. Se juegan en la pantalla del cliente justo después de pagar.
+          </p>
+        </ng-template>
+      </div>
+    </section>
+
+    <!-- ====================================================== RIFAS ==== -->
+    <section class="loy-sec" *ngIf="seccion() === 'rifas'">
+
+      <!-- ------------------------------------------------- listado ---- -->
+      <ng-container *ngIf="!rifaSel()">
+        <div class="loy-sec__head">
+          <div>
+            <h2>Rifas</h2>
+            <p class="loy-sub">Cada venta que cumple la campaña reparte un boleto. El sorteo se guarda entero.</p>
+          </div>
+          <button class="btn-primary" type="button" (click)="nuevaRifa()">
+            <i class="ph ph-plus"></i> Nueva rifa
+          </button>
+        </div>
+
+        <form class="loy-form" *ngIf="rifa() as d" (ngSubmit)="guardarRifa()">
+          <div class="loy-form__grid">
+            <label class="loy-f loy-f--wide">
+              <span>Nombre</span>
+              <input class="ctl" type="text" [(ngModel)]="d.name" name="rName"
+                     placeholder="Rifa de diciembre" maxlength="120">
+            </label>
+            <label class="loy-f loy-f--wide">
+              <span>Premio</span>
+              <input class="ctl" type="text" [(ngModel)]="d.prize" name="rPrize"
+                     placeholder="Una pantalla de 50 pulgadas" maxlength="200">
+            </label>
+            <label class="loy-f">
+              <span>Desde</span>
+              <wx-date [(ngModel)]="d.startsAt" name="rDesde" placeholder="Sin fecha de inicio"></wx-date>
+            </label>
+            <label class="loy-f">
+              <span>Hasta</span>
+              <wx-date [(ngModel)]="d.endsAt" name="rHasta" placeholder="Sin fecha de fin"></wx-date>
+            </label>
+            <label class="loy-f">
+              <span>Ganadores</span>
+              <input class="ctl" type="number" min="1" [(ngModel)]="d.winnersCount" name="rWin">
+            </label>
+            <label class="loy-f">
+              <span>Prefijo del boleto</span>
+              <input class="ctl" type="text" maxlength="8" [(ngModel)]="d.codePrefix" name="rPre">
+            </label>
+            <label class="loy-f">
+              <span>Boletos en total</span>
+              <input class="ctl" type="number" min="1" [(ngModel)]="d.ticketsTotal" name="rTot"
+                     placeholder="Sin límite">
+              <small class="loy-ayuda">
+                Déjalo vacío y la rifa reparte boletos sin tope. Con un número, deja de
+                repartir al llenarse. Se puede subir después, pero no bajar por debajo de
+                los que ya salieron.
+              </small>
+            </label>
+            <label class="loy-f loy-f--wide">
+              <span>Bases o descripción</span>
+              <input class="ctl" type="text" [(ngModel)]="d.description" name="rDesc" maxlength="400">
+            </label>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" type="submit" [disabled]="guardando()">
+              <i class="ph ph-check"></i> Guardar
+            </button>
+            <button class="btn-ghost" type="button" (click)="rifa.set(null)">Cancelar</button>
+          </div>
+        </form>
+
+        <div class="loy-tabla">
+          <table class="wx-tabla" *ngIf="loyalty.rifas().length; else sinRifas">
+            <thead>
+              <tr><th>Rifa</th><th>Premio</th><th>Estado</th>
+                  <th class="num">Boletos</th><th class="num">Sorteos</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of loyalty.rifas()">
+                <td>
+                  <b>{{ r.name }}</b>
+                  <small *ngIf="r.ends_at">Hasta {{ r.ends_at | date:'dd/MM/yyyy' }}</small>
+                </td>
+                <td>{{ r.prize || '—' }}</td>
+                <td><span class="loy-estado" [class.si]="r.status === 'OPEN'">{{ estadoRifa(r.status) }}</span></td>
+                <td class="num">
+                  {{ r.closed_entries_count ?? r.participaciones }}<!--
+                  --><span class="loy-de" *ngIf="r.tickets_total">/{{ r.tickets_total }}</span>
+                  <small *ngIf="r.closed_entries_count != null">congelados</small>
+                  <small *ngIf="r.closed_entries_count == null && r.tickets_total">
+                    {{ r.tickets_total - r.participaciones }} sin repartir
+                  </small>
+                </td>
+                <td class="num">{{ r.sorteos }}</td>
+                <!--
+                  Activar, cerrar y sortear son tres actos distintos y en ese
+                  orden. Cada boton aparece solo donde toca: asi el estado de
+                  la rifa se lee en lo que se puede hacer con ella.
+                -->
+                <td class="acciones">
+                  <button class="btn-outline btn-sm" type="button" (click)="abrirRifa(r)">
+                    <i class="ph ph-eye"></i> Ver
+                  </button>
+                  <button class="btn-outline btn-sm" type="button" *ngIf="puedeActivar(r)"
+                          (click)="activarRifa(r)" [disabled]="guardando()">
+                    <i class="ph ph-play"></i> Activar
+                  </button>
+                  <button class="btn-outline btn-sm" type="button" *ngIf="puedeCerrar(r)"
+                          (click)="cerrarRifa(r)" [disabled]="guardando()">
+                    <i class="ph ph-lock-simple"></i> Cerrar
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="editarRifa(r)"
+                          *ngIf="r.status === 'DRAFT' || r.status === 'OPEN'">
+                    <i class="ph ph-pencil-simple"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #sinRifas>
+            <p class="loy-hint" *ngIf="!rifa()">
+              Sin rifas todavía. Crea una y después una campaña que reparta boletos.
+            </p>
+          </ng-template>
+        </div>
+      </ng-container>
+
+      <!-- -------------------------------------------------- detalle ---- -->
+      <ng-container *ngIf="rifaSel() as r">
+        <div class="loy-sec__head">
+          <div>
+            <button class="btn-ghost btn-sm" type="button" (click)="volverALista()">
+              <i class="ph ph-arrow-left"></i> Rifas
+            </button>
+            <h2>{{ r.name }}</h2>
+            <p class="loy-sub">{{ r.prize }}</p>
+          </div>
+          <div class="loy-acciones-head">
+            <button class="btn-outline" type="button" *ngIf="puedeActivar(r)"
+                    (click)="activarRifa(r)" [disabled]="guardando()">
+              <i class="ph ph-play"></i> Activar
+            </button>
+            <button class="btn-outline" type="button" *ngIf="puedeCerrar(r)"
+                    (click)="cerrarRifa(r)" [disabled]="guardando()">
+              <i class="ph ph-lock-simple"></i> Cerrar rifa
+            </button>
+            <button class="btn-primary" type="button" *ngIf="puedeSortear(r)"
+                    (click)="sortear()" [disabled]="guardando() || !(r.closed_entries_count ?? 0)">
+              <i class="ph ph-shuffle"></i> Sortear
+            </button>
+          </div>
+        </div>
+
+        <p class="loy-nota" *ngIf="r.status === 'DRAFT'">
+          <i class="ph ph-pencil-simple"></i>
+          Es un borrador: todavía no reparte boletos. Actívala cuando esté lista.
+        </p>
+        <p class="loy-nota" *ngIf="r.status === 'OPEN' && !r.participaciones">
+          <i class="ph ph-info"></i>
+          Activa y sin boletos aún. Se reparten solos al cobrar, con una campaña que entregue boletos de esta rifa.
+        </p>
+        <p class="loy-nota" *ngIf="r.status === 'CLOSED'">
+          <i class="ph ph-lock-simple"></i>
+          Cerrada el {{ r.closed_at | date:'dd/MM/yyyy HH:mm' }} con
+          <b>{{ r.closed_entries_count }}</b> boletos participando. Ese número ya no cambia,
+          aunque el sorteo se haga más tarde.
+        </p>
+        <p class="loy-nota" *ngIf="r.status === 'DRAWN'">
+          <i class="ph ph-trophy"></i>
+          Sorteada sobre {{ r.closed_entries_count ?? r.participaciones }} boletos. El resultado no cambia.
+        </p>
+
+        <!-- ganadores -->
+        <div class="loy-tabla" *ngIf="ganadores().length">
+          <h3 class="loy-h3"><i class="ph ph-trophy"></i> Ganadores</h3>
+          <table class="wx-tabla">
+            <thead>
+              <tr><th class="num">#</th><th>Boleto</th><th>Cliente</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let g of ganadores()">
+                <td class="num">{{ g.position }}</td>
+                <td><code>{{ g.boleto }}</code></td>
+                <td>{{ g.cliente || 'Sin cliente identificado' }}</td>
+                <td><span class="loy-estado" [class.si]="g.status === 'DELIVERED'">{{ estadoGanador(g.status) }}</span></td>
+                <!-- 'WINNER' es el estado que escribe sp_raffle_draw. Gatear
+                     estos botones por 'PENDING' los dejaba invisibles: nunca
+                     se habria podido entregar un premio desde la pantalla. -->
+                <td class="acciones">
+                  <button class="btn-outline btn-sm" type="button" (click)="entregar(g)"
+                          *ngIf="g.status === 'WINNER'">
+                    <i class="ph ph-hand-heart"></i> Entregado
+                  </button>
+                  <button class="btn-ghost btn-sm" type="button" (click)="descartar(g)"
+                          *ngIf="g.status === 'WINNER'">
+                    <i class="ph ph-x"></i> No reclamado
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- boletos -->
+        <div class="loy-tabla">
+          <h3 class="loy-h3">
+            <i class="ph ph-tickets"></i> Boletos
+            <span class="loy-count">{{ r.participaciones }}<span class="loy-de"
+                  *ngIf="r.tickets_total">/{{ r.tickets_total }}</span></span>
+          </h3>
+          <!-- La barra solo tiene sentido con un tope: sin el, no hay
+               "cuanto falta" que representar. -->
+          <div class="loy-barra" *ngIf="r.tickets_total"
+               [attr.aria-label]="r.participaciones + ' de ' + r.tickets_total + ' boletos repartidos'">
+            <span [style.width.%]="progresoBoletos(r)"></span>
+          </div>
+          <p class="loy-hint" *ngIf="r.tickets_total && r.participaciones >= r.tickets_total"
+             style="padding-top:0">
+            La rifa se llenó: ya no reparte más boletos. Puedes ampliarla editándola.
+          </p>
+          <p class="loy-hint" *ngIf="cargandoDetalle()">Cargando boletos…</p>
+          <table class="wx-tabla" *ngIf="participaciones().length">
+            <thead>
+              <tr><th>Boleto</th><th>Cliente</th><th>Caja</th><th>Campaña</th><th>Fecha</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let e of participaciones()">
+                <td><code>{{ e.boleto }}</code></td>
+                <td>{{ e.cliente || '—' }}</td>
+                <td><small>{{ $any(e).caja || '—' }}</small></td>
+                <td><small>{{ $any(e).campana || '—' }}</small></td>
+                <td><small>{{ e.created_at | date:'dd/MM/yyyy HH:mm' }}</small></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="loy-hint" *ngIf="!cargandoDetalle() && !participaciones().length">
+            Sin boletos repartidos.
+          </p>
+        </div>
+      </ng-container>
+    </section>
+
+  </ng-container>
+</div>

@@ -19,3 +19,6 @@ export * from './customer-display.service';
 export * from './sale.service';
 export * from './menu-catalog.service';
 export * from './hospitality.service';
+export * from './loyalty.service';
+export * from './modulos';
+export * from './dinamicas';

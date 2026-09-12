@@ -1,0 +1,274 @@
+/* ==========================================================================
+   FIDELIZACION — Backoffice
+   Mismos tokens que el resto de Wybix. Aqui solo hay composicion: los
+   controles (.ctl, .btn-*, .wx-tabla) vienen de la hoja global.
+   ========================================================================== */
+
+.loy { display: flex; flex-direction: column; gap: 18px; color: var(--wx-text); }
+
+/* ------------------------------------------------------------- cabecera */
+.loy-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.loy-head__ic {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 22px;
+}
+.loy-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.loy-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+/* ------------------------------------------------- navegacion interna */
+/* Seis secciones en una sola entrada de menu: el rail ya esta lleno. */
+.loy-nav {
+  display: flex; gap: 4px; padding: 4px; flex-wrap: wrap;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.loy-nav button {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: var(--wx-control-h); padding: 0 15px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font); font-size: var(--wx-text-base); font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.loy-nav button:hover { color: var(--wx-text); }
+.loy-nav button:active { transform: scale(0.975); }
+.loy-nav button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+
+/* ------------------------------------------------------------ secciones */
+.loy-sec { display: flex; flex-direction: column; gap: 16px; }
+.loy-sec__head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.loy-sec__head h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 620; }
+.loy-sub { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.loy-h3 {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px; font-size: var(--wx-text-base); font-weight: 600;
+}
+.loy-count {
+  min-width: 24px; padding: 2px 8px; text-align: center;
+  background: var(--wx-sunken); border-radius: 999px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+}
+
+/* --------------------------------------------------------- resumen */
+.loy-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.loy-card {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 16px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+}
+.loy-card__k { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+               text-transform: uppercase; letter-spacing: 0.04em; }
+.loy-card__v { font-size: 30px; font-weight: 650; line-height: 1.1; letter-spacing: -0.02em; }
+.loy-card__n { color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+
+/* Campanas encendidas que no reparten nada: falla en silencio, se avisa alto. */
+.loy-aviso {
+  display: grid; grid-template-columns: auto 1fr; gap: 12px;
+  padding: 14px 16px;
+  background: var(--wx-warning-soft);
+  border: 1px solid var(--wx-warning);
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-warning-ink);
+}
+.loy-aviso > i { font-size: 22px; }
+.loy-aviso strong { display: block; font-size: var(--wx-text-base); }
+.loy-aviso p { margin: 3px 0 0; font-size: var(--wx-text-sm); }
+.loy-aviso__lista { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* --------------------------------------------------- vacios y avisos */
+.loy-empty, .loy-vacio {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 48px 24px; text-align: center;
+  background: var(--wx-surface); border: 1px dashed var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+}
+.loy-empty > i, .loy-vacio > i { font-size: 40px; color: var(--wx-text-dim); }
+.loy-empty h3, .loy-vacio h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
+.loy-empty p, .loy-vacio p { margin: 0; max-width: 46ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.loy-hint { margin: 0; padding: 18px 2px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+/* La linea que explica un campo cuando su nombre no basta. Debajo del
+   control y con su mismo ancho: una ayuda que flota al lado no se lee como
+   parte del campo. */
+/* "412/500": el denominador acompana al numero, no compite con el. */
+.loy-de { color: var(--wx-text-muted); font-weight: 500; }
+
+/* Cuanto lleva repartido una rifa con tope. Sin tope no se pinta: no
+   habria nada que representar. */
+.loy-barra {
+  height: 6px; margin: 2px 0 12px; border-radius: 999px;
+  background: var(--wx-sunken); overflow: hidden;
+}
+.loy-barra > span {
+  display: block; height: 100%; border-radius: inherit;
+  background: var(--wx-accent);
+  transition: width var(--wx-dur-state) var(--wx-ease-out);
+}
+
+.loy-ayuda {
+  display: block; margin-top: 5px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.45;
+}
+
+.loy-nota {
+  display: flex; align-items: center; gap: 9px; margin: 0;
+  padding: 11px 14px;
+  background: var(--wx-info-soft); border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm);
+}
+.loy-nota i { font-size: 17px; color: var(--wx-info); flex: none; }
+
+.loy-error {
+  display: flex; align-items: center; gap: 9px; margin: 0;
+  padding: 11px 14px;
+  background: var(--wx-danger-soft); border-radius: var(--wx-radius-sm);
+  color: var(--wx-danger-ink); font-size: var(--wx-text-sm);
+}
+
+/* ---------------------------------------------------------- formulario */
+.loy-form {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 18px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+}
+.loy-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px 14px;
+}
+.loy-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.loy-f--wide { grid-column: span 2; }
+@media (max-width: 760px) { .loy-f--wide { grid-column: auto; } }
+.loy-f > span, .loy-f__lbl {
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+}
+
+.loy-horas { display: flex; align-items: center; gap: 8px; }
+.loy-horas i { color: var(--wx-text-dim); flex: none; }
+
+.loy-fs {
+  margin: 0; padding: 14px 16px 16px;
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+}
+.loy-fs legend {
+  padding: 0 6px; color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------- dias y checks */
+.loy-dias { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.loy-dias__set { display: flex; gap: 4px; flex-wrap: wrap; }
+.loy-dia {
+  min-width: 48px; min-height: var(--wx-control-h-sm); padding: 0 10px;
+  background: var(--wx-sunken); border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font); font-size: var(--wx-text-sm); font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out),
+              border-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.loy-dia:hover { color: var(--wx-text); }
+.loy-dia:active { transform: scale(0.97); }
+.loy-dia.on {
+  background: var(--wx-accent-soft); border-color: var(--wx-accent-line);
+  color: var(--wx-accent-text); font-weight: 600;
+}
+
+.loy-checks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+.loy-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--wx-text-sm); }
+.loy-check input { width: 16px; height: 16px; accent-color: var(--wx-accent); cursor: pointer; }
+
+/* -------------------------------------------------------------- tablas */
+.loy-tabla { min-width: 0; overflow-x: auto; }
+.loy-tabla table { width: 100%; }
+.loy-tabla td small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.loy-tabla td.num, .loy-tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.loy-tabla td.acciones { text-align: right; white-space: nowrap; }
+.loy-tabla code {
+  padding: 1px 6px; background: var(--wx-sunken); border-radius: 4px;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-xs);
+}
+/* Una fila apagada se ve apagada, pero sigue legible: sigue siendo dato. */
+.loy-tabla tr.apagada td { opacity: 0.55; }
+
+.loy-pill {
+  display: inline-block; padding: 2px 9px;
+  background: var(--wx-sunken); border-radius: 999px;
+  font-size: var(--wx-text-xs); font-weight: 600;
+}
+.loy-estado {
+  display: inline-block; padding: 2px 9px;
+  background: var(--wx-sunken); border-radius: 999px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600;
+}
+.loy-estado.si {
+  background: var(--wx-green-soft, var(--wx-accent-soft));
+  color: var(--wx-accent-text);
+}
+
+/* ------------------------------------------- acciones de cabecera */
+.loy-acciones-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Definiciones / Emitidas: dos preguntas sobre lo mismo. */
+.loy-switch {
+  display: inline-flex; gap: 3px; padding: 3px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-sm);
+}
+.loy-switch button {
+  min-height: var(--wx-control-h-sm); padding: 0 14px;
+  background: transparent; border: 0; border-radius: calc(var(--wx-radius-sm) - 2px);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font); font-size: var(--wx-text-sm); font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.loy-switch button:hover { color: var(--wx-text); }
+.loy-switch button:active { transform: scale(0.97); }
+.loy-switch button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+
+.loy-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.loy-filtros .ctl { max-width: 280px; }
+
+/* Aviso dentro de un formulario: se ve antes de guardar, no despues. */
+.loy-nota--ojo {
+  background: var(--wx-warning-soft);
+  color: var(--wx-warning-ink);
+}
+.loy-nota--ojo i { color: var(--wx-warning-ink); }
+
+/* El motivo de un guardado rechazado, dentro del formulario. */
+.loy-nota--mal { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+.loy-nota--mal i { color: var(--wx-danger-ink); }
+
+/* El panel de prueba de una dinamica, dentro del administrador. */
+.loy-prueba {
+  padding: 22px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-accent-line);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+}
+
+/* El peso se edita en la propia fila: es lo que mas se toca. */
+.loy-peso { width: 78px; text-align: right; }

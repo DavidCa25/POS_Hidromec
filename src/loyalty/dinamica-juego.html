@@ -1,0 +1,53 @@
+<!--
+  El JUEGO no esta aqui: esta en la pantalla del cliente. Esto es su estado,
+  para que quien administra sepa que esta pasando y pueda cortar.
+
+  Antes este componente pintaba el juego completo, y el resultado eran dos
+  ruletas jugables a la vez. La experiencia pertenece a una sola pantalla.
+-->
+<div class="dj">
+  <p class="dj-preview" *ngIf="esPreview">
+    <i class="ph ph-eye"></i> Vista previa · no se entregan premios
+  </p>
+
+  <div class="dj-estado">
+    <span class="dj-estado__ic" [class.activo]="fase() !== 'RESULTADO'">
+      <i class="ph {{ esRuleta ? 'ph-chart-pie-slice' : 'ph-timer' }}"></i>
+    </span>
+    <div class="dj-estado__tx">
+      <b>{{ definicion?.name }}</b>
+      <small [ngSwitch]="fase()">
+        <span *ngSwitchCase="'LISTA'">Esperando al cliente en su pantalla…</span>
+        <span *ngSwitchCase="'JUGANDO'">Jugando…</span>
+        <span *ngSwitchCase="'GIRANDO'">Girando…</span>
+        <span *ngSwitchCase="'RESULTADO'">Terminó</span>
+      </small>
+    </div>
+    <span class="dj-punto" *ngIf="fase() !== 'RESULTADO'" aria-hidden="true"></span>
+  </div>
+
+  <!-- El resultado, en seco: aqui no se celebra nada. La celebración es del
+       cliente, en su pantalla. -->
+  <div class="dj-res" *ngIf="resultado() as r" [class.gano]="r.resultado === 'WIN'">
+    <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : r.ok ? 'ph-hand-heart' : 'ph-warning-circle' }}"></i>
+    <div class="dj-res__tx">
+      <b>{{ r.resultado === 'WIN' ? 'Ganó' : r.ok ? 'No ganó' : 'No se pudo jugar' }}</b>
+      <!-- El cajero es quien responde si el cliente reclama la jugada. -->
+      <small *ngIf="marcador">Paró en {{ marcador }}</small>
+      <small *ngIf="r.segmento">Salió: {{ r.segmento }}</small>
+      <small *ngIf="r.premio">{{ r.premio }}</small>
+      <small *ngIf="r.codigo"><code>{{ r.codigo }}</code></small>
+      <small *ngIf="!r.ok">{{ r.mensaje }}</small>
+    </div>
+  </div>
+
+  <div class="btn-row dj-acciones">
+    <button class="btn-outline" type="button" *ngIf="esPreview && fase() === 'RESULTADO'"
+            (click)="reiniciar()">
+      <i class="ph ph-arrow-counter-clockwise"></i> Probar otra vez
+    </button>
+    <button class="btn-ghost" type="button" (click)="cerrar()">
+      {{ esPreview ? 'Finalizar vista previa' : 'Continuar' }}
+    </button>
+  </div>
+</div>

@@ -10,6 +10,10 @@ GO
 --   + ticket_footer: pie del ticket. La app lo enviaba desde hace tiempo y
 --     el procedure lo rechazaba ("no es un parametro").
 --   + business_profile: RETAIL | HOSPITALITY. NULL conserva el valor actual.
+--   + loyalty_enabled: enciende Fidelizacion. NULL conserva el valor actual,
+--     y eso NO es un detalle: el panel de datos del negocio guarda sin
+--     enviarlo, asi que con un default de 0 cambiar el telefono apagaria
+--     las campanas.
 -- =============================================
 CREATE OR ALTER PROCEDURE dbo.sp_update_business_config
   @business_name      nvarchar(200),
@@ -25,7 +29,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_update_business_config
   @invoicing_provider nvarchar(30) = NULL,
 
   @ticket_footer      nvarchar(300) = NULL,
-  @business_profile   nvarchar(20)  = NULL
+  @business_profile   nvarchar(20)  = NULL,
+  @loyalty_enabled    bit = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
@@ -59,7 +64,7 @@ BEGIN
       business_name, address, phone, rfc,
       fiscal_name, fiscal_zip, fiscal_regime,
       invoicing_enabled, invoicing_provider,
-      ticket_footer, business_profile,
+      ticket_footer, business_profile, loyalty_enabled,
       updated_at
     )
     VALUES (
@@ -67,6 +72,7 @@ BEGIN
       @fiscal_name, @fiscal_zip, @fiscal_regime,
       @invoicing_enabled, @invoicing_provider,
       @ticket_footer, ISNULL(@business_profile, 'RETAIL'),
+      ISNULL(@loyalty_enabled, 0),
       GETDATE()
     );
 
@@ -86,6 +92,7 @@ BEGIN
         invoicing_provider = @invoicing_provider,
         ticket_footer = @ticket_footer,
         business_profile = ISNULL(@business_profile, business_profile),
+        loyalty_enabled = ISNULL(@loyalty_enabled, loyalty_enabled),
         updated_at = GETDATE()
     WHERE id = @id;
   END

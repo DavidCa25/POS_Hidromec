@@ -154,6 +154,8 @@
       </div>
 
       <div class="tp-cart__foot">
+        <!-- El cupon, justo antes del total: es cuando el cliente lo saca. -->
+        <app-cupon-venta *ngIf="lineas().length"></app-cupon-venta>
         <div class="tp-cart__total">
           <span>Total</span>
           <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
@@ -430,5 +432,12 @@
     <i class="ph" [class.ph-check-circle]="a.tipo === 'ok'" [class.ph-warning-circle]="a.tipo === 'error'"></i>
     {{ a.texto }}
   </div>
+
+
+  <!-- Lo que la venta acaba de ganar. Va encima de todo. -->
+  <app-premios-venta
+    [premios]="premiosUltimaVenta()"
+    [saleId]="ultimoFolio()"
+    (cerrado)="cerrarPremios()"></app-premios-venta>
 
 </div>

@@ -60,6 +60,51 @@ export class CustomerDisplayService {
     this.push({ mode: 'message', text }, true);
   }
 
+  // ------------------------------------------------------- Fidelizacion
+  /**
+   * Lo que la venta acaba de ganar.
+   *
+   * Extiende la ventana de "gracias" en lugar de competir con ella: sin esto
+   * el carrito vacio que llega justo despues volveria a idle y el premio
+   * duraria un parpadeo.
+   */
+  showPremios(items: { tipo: string; nombre: string | null; codigo: string | null; numero: number | null }[]): void {
+    if (!items.length) return;
+    this.checkoutHasta = Date.now() + 12000;
+    this.push({ mode: 'premios', items }, true);
+  }
+
+  /**
+   * La dinamica, en la pantalla del cliente.
+   *
+   * Se manda el estado COMPLETO en cada fase. La pantalla no acumula: si
+   * guardara trozos, abrirla a mitad de partida la dejaria sin saber que
+   * estaba pasando.
+   *
+   * La ventana se mantiene viva mucho mas que un "gracias": una partida dura
+   * lo que el cliente tarde en decidirse.
+   */
+  showDinamica(p: Omit<Extract<CustomerDisplayState, { mode: 'dinamica' }>, 'mode'>): void {
+    this.checkoutHasta = Date.now() + 120000;
+    this.push({ mode: 'dinamica', ...p }, true);
+  }
+
+  /**
+   * Lo que el cliente pulso en SU pantalla.
+   *
+   * Llega como intencion -empezar, parar, girar-, nunca como resultado. Quien
+   * la convierte en jugada es quien escucha esto; quien decide, SQL.
+   */
+  alPulsarCliente(cb: (a: { tipo: string; centesimas?: number }) => void): void {
+    try { this.bridge.api?.onCustomerAction?.(cb); } catch { /* sin pantalla, sin acciones */ }
+  }
+
+  showResultadoDinamica(p: { gano: boolean; mensaje: string; premio: string | null; codigo: string | null }): void {
+    this.checkoutHasta = Date.now() + 12000;
+    // `origen` explicito: reutilizar el diseno no puede costar el dato.
+    this.push({ mode: 'dinamica-resultado', origen: 'DYNAMIC', ...p }, true);
+  }
+
   idle(): void {
     this.push({ mode: 'idle' }, true);
   }

@@ -144,6 +144,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customerDisplayOpen: (displayId) => ipcRenderer.invoke('customer-display:open', displayId),
     customerDisplayClose: () => ipcRenderer.invoke('customer-display:close'),
     customerDisplayState: (state) => ipcRenderer.invoke('customer-display:state', state),
+    // La pantalla de cliente en una ventana normal, para probar sin segundo monitor.
+    // Lo que el cliente pulsa en su pantalla llega aqui como intencion.
+    onCustomerAction: (cb) => ipcRenderer.on('customer-display:action', (_e, a) => cb(a)),
+    customerPreviewOpen: () => ipcRenderer.invoke('customer-display:preview-open'),
+    customerPreviewClose: () => ipcRenderer.invoke('customer-display:preview-close'),
     customerDisplayStatus: () => ipcRenderer.invoke('customer-display:status'),
     onCustomerDisplayDisconnected: (cb) => ipcRenderer.on('customer-display:disconnected', () => cb()),
 
@@ -311,6 +316,38 @@ contextBridge.exposeInMainWorld('wybix', {
     images: {
         set: (p) => ipcRenderer.invoke('images:set', p),
         sync: (p) => ipcRenderer.invoke('images:sync', p),
+    },
+    loyalty: {
+        catalog: () => ipcRenderer.invoke('loyalty:catalog'),
+        // Lo repartido de verdad, para auditarlo sin abrir SSMS.
+        instances: (p) => ipcRenderer.invoke('loyalty:instances', p),
+        saveCampaign: (p) => ipcRenderer.invoke('loyalty:save-campaign', p),
+        saveDefinition: (p) => ipcRenderer.invoke('loyalty:save-definition', p),
+        // Se llama DESPUES de cobrar. Si falla, la venta ya esta hecha: el
+        // renderer se lo calla y sigue, no le ensena un error a quien ya pago.
+        evaluateSale: (p) => ipcRenderer.invoke('loyalty:evaluate-sale', p),
+    },
+    dynamics: {
+        pending: (p) => ipcRenderer.invoke('dynamics:pending', p),
+        play: (p) => ipcRenderer.invoke('dynamics:play', p),
+        // Sectores de la ruleta. Quien decide cual sale es SQL, no la rueda.
+        segments: (p) => ipcRenderer.invoke('dynamics:segments', p),
+        saveSegment: (p) => ipcRenderer.invoke('dynamics:save-segment', p),
+    },
+    coupons: {
+        // Mirar sin consumir, antes de cobrar.
+        issue: (p) => ipcRenderer.invoke('coupons:issue', p),
+        validate: (p) => ipcRenderer.invoke('coupons:validate', p),
+        // Consumir, con la venta ya cobrada. Un fallo aqui SI se ensena.
+        redeem: (p) => ipcRenderer.invoke('coupons:redeem', p),
+    },
+    raffles: {
+        save: (p) => ipcRenderer.invoke('raffles:save', p),
+        // Cerrar y sortear son dos actos distintos.
+        close: (p) => ipcRenderer.invoke('raffles:close', p),
+        detail: (p) => ipcRenderer.invoke('raffles:detail', p),
+        draw: (p) => ipcRenderer.invoke('raffles:draw', p),
+        winnerStatus: (p) => ipcRenderer.invoke('raffles:winner-status', p),
     },
 });
 

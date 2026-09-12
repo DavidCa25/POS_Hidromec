@@ -1,0 +1,55 @@
+/* ==========================================================================
+   ESTADO DE UNA DINAMICA — en la caja / administrador
+   El juego vive en la pantalla del cliente. Esto solo cuenta que pasa.
+   ========================================================================== */
+
+.dj { display: flex; flex-direction: column; gap: 12px; }
+
+.dj-preview {
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 7px; margin: 0;
+  padding: 5px 11px; border-radius: 999px;
+  background: var(--wx-warning-soft); color: var(--wx-warning-ink);
+  font-size: var(--wx-text-xs); font-weight: 700;
+}
+
+.dj-estado {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.dj-estado__ic {
+  width: 42px; height: 42px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; background: var(--wx-surface);
+  color: var(--wx-text-muted); font-size: 21px;
+}
+.dj-estado__ic.activo { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.dj-estado__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dj-estado__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.dj-estado__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+
+/* Un punto que late: dice "esto sigue vivo" sin ocupar sitio. */
+.dj-punto {
+  width: 10px; height: 10px; flex: none; border-radius: 50%;
+  background: var(--wx-accent);
+  animation: dj-pulso 1.4s ease-in-out infinite;
+}
+@keyframes dj-pulso { 50% { opacity: 0.25; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .dj-punto { animation: none; } }
+
+.dj-res {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 15px;
+  background: var(--wx-sunken); border-radius: var(--wx-radius-md);
+}
+.dj-res > i { font-size: 21px; color: var(--wx-text-muted); flex: none; }
+.dj-res.gano { background: var(--wx-accent-soft); }
+.dj-res.gano > i { color: var(--wx-accent-text); }
+.dj-res__tx { display: flex; flex-direction: column; min-width: 0; }
+.dj-res__tx b { font-size: var(--wx-text-base); font-weight: 600; }
+.dj-res__tx small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.dj-res code {
+  padding: 1px 6px; background: var(--wx-surface); border-radius: 4px;
+  font-family: var(--wx-font-mono); letter-spacing: 0.06em;
+}
+
+.dj-acciones { justify-content: flex-end; margin-top: 0; }

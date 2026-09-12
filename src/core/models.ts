@@ -166,6 +166,55 @@ export interface CheckoutResult {
   /** Copia de las lineas vendidas (para facturar despues de limpiar). */
   lines?: SoldLine[];
   customer?: CartCustomer | null;
+  /**
+   * Lo que esta venta gano, si Fidelizacion esta encendida.
+   *
+   * Siempre definido cuando la venta salio bien, aunque sea vacio: quien lo
+   * lea no tiene que distinguir "no gano nada" de "no se pudo preguntar",
+   * porque en las dos situaciones no hay nada que ensenar.
+   */
+  premios?: LoyaltyAward[];
+  /**
+   * Como acabo el canje del cupon, si la venta llevaba uno.
+   *
+   * A diferencia de los premios, esto NO se puede callar: si el canje fallo
+   * -otra caja gasto el cupon primero- el cliente se llevo el beneficio y hay
+   * que decirselo a quien cobra.
+   */
+  cupon?: { ok: boolean; motivo: string; mensaje: string } | null;
+}
+
+/**
+ * El cupon que el cajero aplico a ESTA venta, antes de cobrar.
+ *
+ * Vive en el carrito y no en un servicio suelto porque hay varios carritos a
+ * la vez: el cupon pertenece a la cuenta concreta a la que se aplico, no a la
+ * caja. Aparcar una cuenta y atender otra no puede trasladar el descuento.
+ *
+ * `precioOriginal` guarda lo que valia la linea antes de ponerla a cero: es
+ * lo que permite quitar el cupon y dejar el carrito como estaba.
+ */
+export interface AppliedCoupon {
+  code: string;
+  instanceId: number;
+  nombre: string;
+  kind: 'FREE_PRODUCT' | 'AMOUNT' | 'PERCENT';
+  productId: number | null;
+  productName: string | null;
+  /** Lo que rebajo de verdad. Se registra en la redencion. */
+  amountApplied: number;
+  precioOriginal: number | null;
+}
+
+/** Un premio concreto de una venta, tal y como lo devolvio SQL. */
+export interface LoyaltyAward {
+  tipo: 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
+  codigo: string | null;
+  nombre: string | null;
+  numero: number | null;
+  /** Solo en DYNAMIC: identifica el intento que queda por jugar. */
+  token: string | null;
+  detalle: string | null;
 }
 
 export interface SoldLine {
@@ -205,6 +254,8 @@ export interface Capabilities {
   retailPos: boolean;
   /** Pantalla de cliente habilitada en ESTE dispositivo. */
   customerDisplay: boolean;
+  /** Campanas, recompensas, cupones, dinamicas y rifas. */
+  loyalty: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */
@@ -227,4 +278,81 @@ export type CustomerDisplayState =
       method: PaymentMethod;
       credito: boolean;
     }
-  | { mode: 'message'; text: string };
+  | { mode: 'message'; text: string }
+  /*
+   * Fidelizacion en la pantalla del cliente.
+   *
+   * Se anaden modos nuevos en vez de reescribir los que ya hay: 'sale' y
+   * 'checkout' llevan meses funcionando en cajas reales y renombrarlos para
+   * que la lista quede simetrica habria roto lo que ya sirve a cambio de
+   * nada.
+   */
+  | {
+      /** Lo que acaba de ganar esta venta. */
+      mode: 'premios';
+      items: { tipo: string; nombre: string | null; codigo: string | null; numero: number | null }[];
+      negocio?: string | null;
+    }
+  | {
+      /**
+       * La dinamica, en la pantalla del CLIENTE.
+       *
+       * Un solo estado con fases, no cuatro mensajes sueltos: el cliente esta
+       * viviendo UNA cosa -un juego-, y partirla obligaba a la pantalla a
+       * recomponerla.
+       *
+       * QUIEN HACE QUE
+       *   POS / ADMIN     configura, lanza y recibe el veredicto de SQL.
+       *   ESTA PANTALLA   presenta, anima y recoge la intencion del cliente.
+       *
+       * El cronometro lo corre esta pantalla: es donde esta el boton y donde
+       * se mira el numero. Manda de vuelta CUANDO paro -en centesimas
+       * enteras-, nunca si gano.
+       */
+      mode: 'dinamica';
+      tipo: 'TIMING' | 'WHEEL';
+      fase: 'LISTA' | 'JUGANDO' | 'GIRANDO' | 'RESULTADO';
+      nombre: string;
+      /** El reto, en una linea. Lo que se lee antes de jugar. */
+      reto: string;
+      /** Que se puede ganar. Va ANTES del juego: es la razon para jugar. */
+      premios: string[];
+      /** Solo TIMING: la centesima exacta que hay que clavar. */
+      objetivo?: number | null;
+      /** Solo WHEEL: las etiquetas de los sectores, en orden de dibujo. */
+      sectores?: string[];
+      /** Solo en GIRANDO: hacia que sector tiene que parar la rueda. */
+      ganadorIndice?: number | null;
+      /** Solo en RESULTADO. */
+      gano?: boolean;
+      mensaje?: string;
+      premioGanado?: string | null;
+      codigo?: string | null;
+      /**
+       * Solo TIMING, en RESULTADO: la centesima en la que el cliente paro.
+       *
+       * Viaja en el estado y no se deja en la ventana que jugo porque el
+       * resultado lo miran las DOS -la del cliente y la vista previa-, y
+       * porque sin este numero el cliente no sabe que le ha pasado: ve
+       * "esta vez no" sin enterarse de por cuanto fallo.
+       */
+      centesimas?: number | null;
+    }
+  | {
+      /** Como acabo la dinamica. Lo decidio SQL, aqui solo se ensena. */
+      mode: 'dinamica-resultado';
+      /**
+       * De donde viene el resultado.
+       *
+       * Hoy solo una dinamica llega aqui, pero el campo es explicito a
+       * proposito: la pantalla reutiliza el mismo diseno para varios origenes
+       * y reutilizar el aspecto no puede costar la semantica. Sin esto,
+       * distinguir un premio de dinamica de uno de rifa obligaria a leer el
+       * texto del mensaje, que es exactamente como se pierde un dato.
+       */
+      origen: 'DYNAMIC' | 'REWARD' | 'RAFFLE';
+      gano: boolean;
+      mensaje: string;
+      premio: string | null;
+      codigo: string | null;
+    };

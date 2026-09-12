@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { CartCustomer, LineSource, SelectedOption, ServiceMode } from './models';
+import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon } from './models';
 
 /**
  * Linea de carrito. Clase (no interfaz) para que `subtotal` sea un getter y
@@ -65,6 +65,8 @@ export interface Cart {
    * pestanas y al cerrarlo se vuelve al carrito que estaba activo.
    */
   transient: boolean;
+  /** El cupon aplicado a ESTA cuenta, si lo hay. */
+  coupon?: AppliedCoupon | null;
   meta?: Record<string, unknown>;
 }
 
@@ -291,6 +293,18 @@ export class CartService {
 
   adjustQty(line: CartLine, delta: number, min = 1): void {
     this.setQty(line, Number(line.qty || 0) + delta, min);
+  }
+
+  /**
+   * Guarda (o quita) el cupon aplicado a la cuenta activa.
+   *
+   * El carrito solo lo SOSTIENE. Validarlo, decidir el beneficio y canjearlo
+   * son cosa de SQL: aqui no se comprueba nada, porque un carrito que decida
+   * si un cupon vale seria un carrito con opinion sobre el dinero.
+   */
+  setCoupon(c: AppliedCoupon | null): void {
+    this.activeCart().coupon = c;
+    this.touch();
   }
 
   setPrice(line: CartLine, price: number): void {

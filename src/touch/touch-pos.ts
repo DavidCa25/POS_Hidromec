@@ -6,10 +6,12 @@ import { AuthService } from '../services/auth.service';
 import { TecladoPantalla } from './teclado';
 import { RegisterService } from '../services/register.service';
 import {
-  CartLine, CartService, CustomerDisplayService, MenuCatalogService, MenuProduct,
-  ModifierGroup, ModifierOption, PaymentMethod, SaleService, SelectedOption,
-  ServiceMode, ShiftService,
+  CartLine, CartService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
+  MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
+  SelectedOption, ServiceMode, ShiftService,
 } from '../core';
+import { PremiosVenta } from '../loyalty/premios-venta';
+import { CuponVenta } from '../loyalty/cupon-venta';
 import {
   admiteCantidad, faltanPorElegir, gruposPendientes, maximoCantidad,
   opcionesElegibles, resumenDeOpciones,
@@ -38,7 +40,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, TecladoPantalla],
+  imports: [CommonModule, FormsModule, TecladoPantalla, PremiosVenta, CuponVenta],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -555,6 +557,11 @@ export class TouchPos implements OnInit, OnDestroy {
       this.menu.load(true);
       this.mostrarCambio.set(true);
       setTimeout(() => this.mostrarCambio.set(false), cambio > 0 ? 6000 : 2500);
+      // Los premios se pintan encima del aviso de cambio: en Touch el
+      // cliente esta delante de la caja y es AHORA cuando hay que decirselo.
+      this.premiosUltimaVenta.set(res.premios ?? []);
+      // Un canje fallido NO se calla: el cliente ya se llevo el beneficio.
+      if (res.cupon && !res.cupon.ok) this.mostrar(`Cupón: ${res.cupon.mensaje}`, 'error');
     } finally {
       this.cobrando.set(false);
     }
@@ -562,6 +569,9 @@ export class TouchPos implements OnInit, OnDestroy {
 
   ultimoCambio = signal(0);
   ultimoFolio = signal<number | null>(null);
+  /** Lo que gano la ultima venta, si Fidelizacion esta encendida. */
+  premiosUltimaVenta = signal<LoyaltyAward[]>([]);
+  cerrarPremios() { this.premiosUltimaVenta.set([]); }
   mostrarCambio = signal(false);
 
   cerrarCambio() { this.mostrarCambio.set(false); }

@@ -1,0 +1,68 @@
+<div class="pv-velo" *ngIf="premios.length" (click)="cerrar()">
+  <!-- El clic de dentro no cierra: cerrar sin querer con un premio a medias
+       de jugar seria perderlo sin haberlo visto. -->
+  <div class="pv" (click)="$event.stopPropagation()">
+
+    <!-- ================================================= LOS PREMIOS === -->
+    <ng-container *ngIf="!jugando()">
+      <header class="pv-head">
+        <div class="pv-head__ic"><i class="ph ph-confetti"></i></div>
+        <h2>{{ premios.length > 1 ? '¡Esta venta ganó varios premios!' : '¡Esta venta tiene premio!' }}</h2>
+        <p>Díselo al cliente antes de que se vaya. También está en su pantalla.</p>
+      </header>
+
+      <ul class="pv-lista">
+        <li class="pv-item" *ngFor="let p of ganados">
+          <span class="pv-item__ic"><i class="ph {{ icono(p) }}"></i></span>
+          <span class="pv-item__tx">
+            <b>{{ p.nombre || etiqueta(p) }}</b>
+            <small>{{ etiqueta(p) }}</small>
+          </span>
+          <code class="pv-item__code" *ngIf="codigo(p) as c">{{ c }}</code>
+        </li>
+      </ul>
+
+      <div class="pv-dinamica" *ngIf="dinamica as d">
+        <i class="ph ph-game-controller"></i>
+        <div>
+          <b>{{ d.nombre || 'Tiene una dinámica por jugar' }}</b>
+          <small>Se juega aquí y el cliente lo ve en su pantalla.</small>
+        </div>
+        <button class="btn-primary" type="button" (click)="abrirDinamica()" [disabled]="preparando()">
+          <i class="ph ph-play"></i> {{ preparando() ? 'Preparando…' : 'Jugar' }}
+        </button>
+      </div>
+
+      <div class="btn-row pv-acciones">
+        <button class="btn-outline" type="button" (click)="cerrar()">Continuar</button>
+      </div>
+    </ng-container>
+
+    <!-- ================================================= LA DINÁMICA === -->
+    <!--
+      El juego NO se pinta aqui: lo pinta `app-dinamica-juego`, la misma pieza
+      que usa la vista previa del administrador. Dos implementaciones -una "de
+      verdad" y otra "de prueba"- se habrian separado justo cuando mas falta
+      hiciera que se parecieran.
+    -->
+    <ng-container *ngIf="jugando()">
+      <p class="pv-nota" *ngIf="sinIntento() as m">
+        <i class="ph ph-warning-circle"></i> {{ m }}
+      </p>
+
+      <!-- El juego lo ve el CLIENTE en su pantalla. Aqui solo su estado. -->
+      <app-dinamica-juego *ngIf="pendiente() as p"
+        modo="LIVE"
+        [token]="p.token"
+        [definicion]="p"
+        [segmentos]="sectores()"
+        (terminado)="alTerminarJuego()"
+        (cerrado)="cerrar()"></app-dinamica-juego>
+
+      <div class="btn-row pv-acciones" *ngIf="sinIntento()">
+        <button class="btn-primary" type="button" (click)="cerrar()">Continuar</button>
+      </div>
+    </ng-container>
+
+  </div>
+</div>

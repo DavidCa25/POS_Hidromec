@@ -1,0 +1,62 @@
+/* ==========================================================================
+   WX-TIME — hermano de wx-date. Misma primitiva `.wx-pop`, mismos tokens.
+   ========================================================================== */
+
+:host { display: block; min-width: 0; }
+
+.wx-time__campo {
+  display: flex; align-items: center; gap: 7px;
+  min-height: var(--wx-control-h);
+  padding: 0 6px 0 11px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-sm);
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wx-time__campo:focus-within { border-color: var(--wx-accent); box-shadow: var(--wx-focus-ring); }
+.wx-time__campo:hover:not(:focus-within) { border-color: var(--wx-text-dim); }
+.wx-time__campo.is-off { opacity: 0.55; }
+.wx-time__campo > i { flex: none; color: var(--wx-text-dim); font-size: 16px; }
+
+.wx-time__input {
+  flex: 1; min-width: 0;
+  background: transparent; border: 0; outline: 0;
+  color: var(--wx-text);
+  font-family: var(--wx-font); font-size: var(--wx-text-base);
+  font-variant-numeric: tabular-nums;
+}
+.wx-time__input::placeholder { color: var(--wx-text-dim); }
+
+.wx-time__x, .wx-time__abrir {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-dim); cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wx-time__x:hover, .wx-time__abrir:hover { background: var(--wx-hover); color: var(--wx-text); }
+.wx-time__x:active, .wx-time__abrir:active { transform: scale(0.94); }
+
+/* ------------------------------------------------------------- panel */
+.wx-time__panel { padding: 6px; }
+.wx-time__cols { display: flex; gap: 4px; }
+.wx-time__col {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 220px; overflow-y: auto;
+  padding-right: 2px;
+  /* Cada columna se desplaza sola: 24 horas y 12 minutos no caben juntos y
+     una lista unica obligaria a buscar el minuto entre las horas. */
+  scrollbar-width: thin;
+}
+.wx-time__op {
+  min-width: 52px; padding: 6px 12px;
+  background: transparent; border: 0; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-family: var(--wx-font); font-size: var(--wx-text-base);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer; text-align: center;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wx-time__op:hover { background: var(--wx-hover); }
+.wx-time__op.on { background: var(--wx-accent-soft); color: var(--wx-accent-text); font-weight: 600; }

@@ -1,0 +1,91 @@
+/* ==========================================================================
+   APLICACIONES — modulos opcionales de Wybix
+   Mismos tokens que el resto. Los controles (.btn-*) vienen de la global.
+   ========================================================================== */
+
+.apps { display: flex; flex-direction: column; gap: 22px; color: var(--wx-text); }
+
+/* ------------------------------------------------------------- cabecera */
+.apps-head {
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.apps-head__ic {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 22px;
+}
+.apps-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.apps-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.apps-count {
+  padding: 4px 11px; background: var(--wx-accent-soft); border-radius: 999px;
+  color: var(--wx-accent-text); font-size: var(--wx-text-xs); font-weight: 600;
+}
+
+/* -------------------------------------------------------------- grupos */
+.apps-grupo { display: flex; flex-direction: column; gap: 12px; }
+.apps-grupo__tit {
+  margin: 0; color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+.apps-rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* -------------------------------------------------------------- tarjeta */
+.apps-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 18px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  transition: border-color var(--wx-dur-state, 160ms) var(--wx-ease-out);
+}
+/* Encendida se nota por el borde, no por un color de fondo distinto: la
+   tarjeta tiene que seguir siendo legible, no convertirse en un cartel. */
+.apps-card.on { border-color: var(--wx-accent-line); }
+
+.apps-card__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.apps-card__ic {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-sunken); color: var(--wx-text-muted); font-size: 21px;
+}
+.apps-card.on .apps-card__ic { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+
+.apps-card__estado {
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--wx-sunken); color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600;
+}
+.apps-card__estado.si { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+
+.apps-card__nom { margin: 4px 0 0; font-size: var(--wx-text-md); font-weight: 620; }
+.apps-card__desc { margin: 0; color: var(--wx-text); font-size: var(--wx-text-sm); }
+.apps-card__det { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); line-height: 1.5; }
+
+.apps-card__donde {
+  display: flex; align-items: center; gap: 7px; margin: 2px 0 0;
+  color: var(--wx-text-dim); font-size: var(--wx-text-xs);
+}
+
+.apps-card__pie {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 12px;
+}
+
+/* ------------------------------------------------------------------ pie */
+.apps-pie {
+  display: flex; align-items: center; gap: 9px; margin: 0;
+  padding: 12px 14px;
+  background: var(--wx-info-soft); border-radius: var(--wx-radius-sm);
+  color: var(--wx-text-muted); font-size: var(--wx-text-sm);
+}
+.apps-pie i { flex: none; font-size: 17px; color: var(--wx-info); }

@@ -1,0 +1,55 @@
+<div class="cup" *ngIf="disponible">
+
+  <!-- ============================================ YA APLICADO ======== -->
+  <div class="cup-puesto" *ngIf="aplicado() as c; else entrada">
+    <i class="ph ph-ticket"></i>
+    <div class="cup-puesto__tx">
+      <b>{{ c.nombre }}</b>
+      <small>
+        <code>{{ c.code }}</code>
+        <span *ngIf="c.productName"> · {{ c.productName }} gratis</span>
+      </small>
+    </div>
+    <!-- Se puede quitar hasta el momento de cobrar: todavia no se ha gastado. -->
+    <button class="btn-ghost btn-sm" type="button" (click)="quitar()" title="Quitar el cupón">
+      <i class="ph ph-x"></i>
+    </button>
+  </div>
+
+  <!-- ============================================== ENTRADA ========== -->
+  <ng-template #entrada>
+    <div class="cup-form">
+      <i class="ph ph-ticket cup-form__ic"></i>
+      <input class="ctl" type="text" [(ngModel)]="codigo" name="cupCodigo"
+             placeholder="Código de cupón" maxlength="24" autocomplete="off"
+             (keyup.enter)="comprobar()" (input)="revision.set(null)">
+      <button class="btn-outline btn-sm" type="button"
+              (click)="comprobar()" [disabled]="comprobando() || !codigo.trim()">
+        {{ comprobando() ? 'Comprobando…' : 'Comprobar' }}
+      </button>
+    </div>
+
+    <!--
+      El motivo se dice siempre, con las palabras que el cajero le puede
+      repetir al cliente. "No válido" a secas deja a los dos discutiendo.
+    -->
+    <div class="cup-res" *ngIf="revision() as r"
+         [class.ok]="r.ok && r.aplicable" [class.mal]="!r.ok">
+      <i class="ph" [class.ph-check-circle]="r.ok" [class.ph-x-circle]="!r.ok"></i>
+      <div class="cup-res__tx">
+        <b>{{ r.ok ? beneficio(r) : r.mensaje }}</b>
+        <small *ngIf="r.ok">{{ r.mensaje }}</small>
+        <small *ngIf="r.ok && r.cliente">Cliente: {{ r.cliente }}</small>
+        <small *ngIf="r.ok && r.expires_at">Vence el {{ r.expires_at | date:'dd/MM/yyyy' }}</small>
+        <small *ngIf="r.ok && r.uses_allowed">Usos {{ r.uses_count }}/{{ r.uses_allowed }}</small>
+      </div>
+      <button class="btn-primary btn-sm" type="button"
+              *ngIf="r.ok && r.aplicable" (click)="aplicar()">
+        <i class="ph ph-plus"></i> Aplicar
+      </button>
+      <button class="btn-ghost btn-sm" type="button" (click)="limpiar()">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+  </ng-template>
+</div>

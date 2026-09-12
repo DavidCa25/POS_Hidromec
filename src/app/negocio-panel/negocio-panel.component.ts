@@ -16,8 +16,13 @@ export class NegocioPanelComponent implements OnInit {
     private get api() { return (window as any).electronAPI; }
     private readonly caps = inject(CapabilityService);
 
-    form: { business_name: string; rfc: string; address: string; phone: string; ticket_footer: string; business_profile: BusinessProfile } =
-        { business_name: '', rfc: '', address: '', phone: '', ticket_footer: '', business_profile: 'RETAIL' };
+    form: {
+        business_name: string; rfc: string; address: string; phone: string;
+        ticket_footer: string; business_profile: BusinessProfile;
+    } = {
+        business_name: '', rfc: '', address: '', phone: '',
+        ticket_footer: '', business_profile: 'RETAIL',
+    };
     cargando = false;
     guardando = false;
 
