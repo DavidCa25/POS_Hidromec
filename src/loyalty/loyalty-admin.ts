@@ -963,8 +963,29 @@ export class LoyaltyAdmin implements OnInit {
   }
 
   /** `2026-09-11T00:00:00` -> `2026-09-11`, para el input date. */
-  private static fecha(v: string | null | undefined): string {
-    return v ? String(v).slice(0, 10) : '';
+  /**
+   * Lo que devuelve SQL -> 'YYYY-MM-DD', que es lo unico que acepta wx-date.
+   *
+   * El tipo dice `string`, pero en ejecucion NO lo es: mssql convierte
+   * DATETIME2 en un `Date`, y el IPC lo entrega como `Date` al renderer.
+   * `String(fecha).slice(0, 10)` daba "Tue Sep 29", wx-date lo descartaba
+   * por no encajar en su patron, y el campo aparecia vacio aunque la fecha
+   * estuviera guardada. TypeScript no lo ve porque la firma miente.
+   *
+   * Se leen los componentes LOCALES, que son los que el usuario escribio y
+   * los que ensena la lista: tomarlos en UTC retrocederia un dia en
+   * cualquier huso al oeste de Greenwich.
+   */
+  private static fecha(v: string | Date | null | undefined): string {
+    if (!v) return '';
+    const d = v instanceof Date ? v : null;
+    if (d) {
+      if (Number.isNaN(d.getTime())) return '';
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
+    const s = String(v);
+    return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
   }
 
   /** `14:30:00` -> `14:30`, para el input time. */
