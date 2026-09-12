@@ -8,6 +8,8 @@ import {
   RewardDefinition,
 } from '../core';
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
+import { WxDateComponent } from '../app/wx-date/wx-date.component';
+import { WxTimeComponent } from '../app/wx-time/wx-time.component';
 
 /*
  * Administracion de Fidelizacion.
@@ -93,7 +95,7 @@ interface DraftRifa {
 @Component({
   selector: 'app-loyalty-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent],
   templateUrl: './loyalty-admin.html',
   styleUrls: ['./loyalty-admin.css'],
 })

@@ -1,0 +1,42 @@
+<!-- El campo se escribe a mano o se elige del panel. Las dos vias valen: el
+     desplegable es un atajo, no la unica forma de poner una hora. -->
+<div class="wx-time__campo" [class.is-off]="deshabilitado">
+  <i class="ph ph-clock" aria-hidden="true"></i>
+  <input class="wx-time__input" type="text" inputmode="numeric"
+         [value]="borrador"
+         [attr.placeholder]="placeholder"
+         [disabled]="deshabilitado"
+         (input)="alEscribir($any($event.target).value)"
+         (blur)="alSalir()">
+  <button type="button" class="wx-time__x" *ngIf="limpiable && valor"
+          aria-label="Quitar hora" (click)="limpiar($event)">
+    <i class="ph ph-x" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="wx-time__abrir"
+          [id]="idPanel + '-btn'"
+          [style.anchor-name]="ancla"
+          [attr.popovertarget]="idPanel"
+          [disabled]="deshabilitado"
+          aria-label="Elegir hora">
+    <i class="ph ph-caret-down" aria-hidden="true"></i>
+  </button>
+</div>
+
+<div [id]="idPanel" popover data-anclado
+     class="wx-pop wx-time__panel"
+     [style.--wx-anchor]="ancla"
+     role="dialog" aria-label="Elegir hora">
+
+  <div class="wx-time__cols">
+    <div class="wx-time__col" role="listbox" aria-label="Hora">
+      <button type="button" class="wx-time__op" *ngFor="let h of horas"
+              role="option" [attr.aria-selected]="h === horaSel"
+              [class.on]="h === horaSel" (click)="elegirHora(h)">{{ h }}</button>
+    </div>
+    <div class="wx-time__col" role="listbox" aria-label="Minutos">
+      <button type="button" class="wx-time__op" *ngFor="let m of minutos"
+              role="option" [attr.aria-selected]="m === minSel"
+              [class.on]="m === minSel" (click)="elegirMinuto(m)">{{ m }}</button>
+    </div>
+  </div>
+</div>

@@ -177,18 +177,18 @@
             </label>
             <label class="loy-f">
               <span>Desde</span>
-              <input class="ctl" type="date" [(ngModel)]="d.startsAt" name="cDesde">
+              <wx-date [(ngModel)]="d.startsAt" name="cDesde" placeholder="Sin fecha de inicio"></wx-date>
             </label>
             <label class="loy-f">
               <span>Hasta</span>
-              <input class="ctl" type="date" [(ngModel)]="d.endsAt" name="cHasta">
+              <wx-date [(ngModel)]="d.endsAt" name="cHasta" placeholder="Sin fecha de fin"></wx-date>
             </label>
             <label class="loy-f">
               <span>Horario</span>
               <span class="loy-horas">
-                <input class="ctl" type="time" [(ngModel)]="d.timeFrom" name="cH1">
+                <wx-time [(ngModel)]="d.timeFrom" name="cH1" placeholder="Desde"></wx-time>
                 <i class="ph ph-arrow-right"></i>
-                <input class="ctl" type="time" [(ngModel)]="d.timeTo" name="cH2">
+                <wx-time [(ngModel)]="d.timeTo" name="cH2" placeholder="Hasta"></wx-time>
               </span>
             </label>
           </div>
@@ -637,11 +637,11 @@
             </label>
             <label class="loy-f">
               <span>Desde</span>
-              <input class="ctl" type="date" [(ngModel)]="d.startsAt" name="rDesde">
+              <wx-date [(ngModel)]="d.startsAt" name="rDesde" placeholder="Sin fecha de inicio"></wx-date>
             </label>
             <label class="loy-f">
               <span>Hasta</span>
-              <input class="ctl" type="date" [(ngModel)]="d.endsAt" name="rHasta">
+              <wx-date [(ngModel)]="d.endsAt" name="rHasta" placeholder="Sin fecha de fin"></wx-date>
             </label>
             <label class="loy-f">
               <span>Ganadores</span>
