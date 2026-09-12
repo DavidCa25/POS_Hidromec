@@ -49,7 +49,34 @@ const SERVIDOR = process.env.WYBIX_DB_SERVER || 'localhost';
 if (!existsSync(BAK)) { console.error('No existe', BAK); process.exit(1); }
 
 /** Ejecuta SQL con permiso de escritura. Solo lo usa este script de prueba. */
-function ejecutar(db, sql, { permitirFallo = false } = {}) {
+/**
+ * Cuantas veces se ha tenido que repetir un lote porque mataron al proceso.
+ * Se cuenta para poder decirlo al final: un pase limpio y un pase con seis
+ * reintentos no son la misma noticia.
+ */
+let reintentos = 0;
+
+function ejecutar(db, sql, opciones = {}) {
+  const r = ejecutarUnaVez(db, sql, opciones);
+  /*
+   * Un fallo SIN mensaje de SQL significa que powershell murio antes de
+   * hablar con la base: en esta maquina aparece como codigo 143 y cae en
+   * lotes grandes, de forma intermitente y en una migracion distinta cada
+   * vez. Las migraciones aplicadas a mano pasan siempre.
+   *
+   * Se repite UNA vez, y solo en ese caso. Un error de SQL no se reintenta:
+   * volver a ejecutarlo daria exactamente el mismo error y esconderia
+   * cuantas veces ha pasado.
+   */
+  if (!r.ok && r.procesoMuerto) {
+    reintentos++;
+    console.log(`   …      lote repetido: mataron al proceso (codigo ${r.codigo})`);
+    return ejecutarUnaVez(db, sql, opciones);
+  }
+  return r;
+}
+
+function ejecutarUnaVez(db, sql, { permitirFallo = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'wxmig-'));
   const f = join(dir, 'q.sql');
   writeFileSync(f, sql, 'utf8');
@@ -69,9 +96,27 @@ function ejecutar(db, sql, { permitirFallo = false } = {}) {
       { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
     return { ok: true };
   } catch (e) {
-    const msg = (e.stderr?.toString() || e.message).split('\n').slice(0, 6).join('\n');
+    /*
+     * Cuando SQL Server rechaza algo, el error viene por stderr y ese es el
+     * mensaje util. Pero si el que falla es PowerShell -no arranca, lo matan,
+     * se queda sin recursos- stderr llega VACIO, y entonces `e.message` es
+     * solo el eco del comando: media pantalla de conexion y ni una palabra
+     * sobre la causa. Tres ejecuciones se fueron en descubrir que el fallo no
+     * estaba en el SQL. Si stderr no dice nada, se dice al menos con que
+     * codigo murio y que se estaba ejecutando.
+     */
+    const err = (e.stderr?.toString() || '').trim();
+    const msg = err
+      ? err.split('\n').slice(0, 6).join('\n')
+      : [
+          `powershell termino con codigo ${e.status ?? '?'} sin escribir ningun error.`,
+          'Eso apunta al proceso, no al SQL: no llego a hablar con la base.',
+          (e.stdout?.toString() || '').trim().split('\n').slice(0, 3).join('\n'),
+          `--- primeras lineas del lote (${sql.length} caracteres) ---`,
+          sql.split('\n').slice(0, 4).join('\n'),
+        ].filter(Boolean).join('\n');
     if (!permitirFallo) throw new Error(msg);
-    return { ok: false, error: msg };
+    return { ok: false, error: msg, procesoMuerto: !err, codigo: e.status ?? '?' };
   } finally {
     try { rmSync(dir, { recursive: true, force: true }); } catch { /* noop */ }
   }
@@ -241,5 +286,11 @@ try {
   }
 }
 
+// Un pase limpio y un pase con seis lotes repetidos no son la misma
+// noticia, aunque los dos acaben en OK.
+if (reintentos) {
+  console.log(`\nAVISO: ${reintentos} lote(s) hubo que repetirlos porque mataron al ` +
+    'proceso de powershell (codigo 143). No fue SQL: la base no llego a responder.');
+}
 console.log(fallos ? `\nRESULTADO: ${fallos} FALLO(S)` : '\nRESULTADO: OK');
 process.exit(fallos ? 1 : 0);
