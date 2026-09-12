@@ -977,18 +977,45 @@
     });
   }
 
-  /** Devuelve el disco a cero sin animarlo: es una preparacion, no un giro. */
-  function jgEnderezarRueda() {
+  /** Mueve el disco SIN animarlo. Colocar no es girar. */
+  function jgColocar(grados, ganador) {
     var disco = document.getElementById('jgDisco');
-    if (!disco || !Number(disco.dataset.giro || 0)) return;
+    if (!disco) return;
     var antes = disco.style.transition;
     disco.style.transition = 'none';
-    disco.style.transform = 'rotate(0deg)';
-    disco.dataset.giro = '0';
+    disco.style.transform = 'rotate(' + grados + 'deg)';
+    disco.dataset.giro = String(grados);
+    if (ganador == null) delete disco.dataset.ganador;
+    else disco.dataset.ganador = String(ganador);
     // Se lee para forzar el reflujo: sin esto el navegador agrupa el
     // cambio con el siguiente y anima igualmente desde donde estaba.
     void disco.offsetWidth;
     disco.style.transition = antes || '';
+  }
+
+  /** Antes de empezar, la rueda vuelve a cero y las etiquetas se enderezan. */
+  function jgEnderezarRueda() {
+    var disco = document.getElementById('jgDisco');
+    if (!disco) return;
+    if (!Number(disco.dataset.giro || 0) && disco.dataset.ganador == null) return;
+    jgColocar(0, null);
+  }
+
+  /**
+   * Deja el sector ganador debajo de la aguja.
+   *
+   * Solo hace falta cuando esta ventana NO vio el giro: la vista previa
+   * que se abre tarde, o la pantalla que se recarga con la partida ya
+   * resuelta. Dibujar la rueda arreglo el circulo vacio, pero sin
+   * colocarla la aguja senalaba un sector y el resaltado estaba en otro,
+   * que para el cliente es tan confuso como no ver nada.
+   */
+  function jgColocarGanador(i, n) {
+    var disco = document.getElementById('jgDisco');
+    if (!disco || !n || i == null || i < 0) return;
+    if (disco.dataset.ganador === String(i)) return;   // ya lo vio girar
+    var paso = 360 / n;
+    jgColocar(360 - (i * paso + paso / 2), i);
   }
 
   function jgPararReloj() {
@@ -1113,7 +1140,10 @@
       jgBoton('GIRANDO', false);
       if (disco) {
         var actual = Number(disco.dataset.giro || 0) + destino;
-        disco.dataset.giro = actual;
+        disco.dataset.giro = String(actual);
+        // Queda anotado a que sector va: quien vea el giro no necesita
+        // que le recoloquen la rueda al llegar el resultado.
+        disco.dataset.ganador = String(i);
         requestAnimationFrame(function () { disco.style.transform = 'rotate(' + actual + 'deg)'; });
       }
       return;
@@ -1122,7 +1152,10 @@
     if (s.fase === 'RESULTADO') {
       jgPararReloj();
       var mods = [];
-      if (esRueda) mods.push('rueda');     // la rueda SIGUE en pantalla
+      if (esRueda) {
+        mods.push('rueda');                // la rueda SIGUE en pantalla
+        jgColocarGanador(s.ganadorIndice, (s.sectores || []).length);
+      }
       mods.push('titular');
 
       /* El cronometro tiene que decir EN QUE NUMERO se quedo. Es lo

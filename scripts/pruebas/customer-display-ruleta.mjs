@@ -196,18 +196,40 @@ for (const fase of ['GIRANDO', 'RESULTADO']) {
 }
 
 // ===================================================================
-seccion('3. Repintar no borra el giro acumulado');
+seccion('3. La aguja y el sector resaltado dicen lo mismo');
 
+/*
+ * Dibujar la rueda arreglo el circulo vacio, pero dejaba un residuo del
+ * mismo fallo: la ventana que no vio el giro pintaba el resaltado en un
+ * sector y la aguja senalaba otro. Para el cliente eso es tan confuso
+ * como no ver nada.
+ */
 {
+  // La ventana que SI vio girar: la rueda se queda donde freno.
   const { doc, jgPintar } = cargarVista();
   jgPintar({ tipo: 'WHEEL', fase: 'LISTA', sectores: SECTORES, premios: [] });
+  jgPintar({ tipo: 'WHEEL', fase: 'GIRANDO', sectores: SECTORES, ganadorIndice: 1 });
   const disco = doc.getElementById('jgDisco');
-  disco.dataset.giro = '1980';
-  disco.style.transform = 'rotate(1980deg)';
+  const traselGiro = disco.dataset.giro;
+  check(Number(traselGiro) > 1700, 'girar acumula cinco vueltas mas el ajuste');
 
   jgPintar({ tipo: 'WHEEL', fase: 'RESULTADO', sectores: SECTORES, ganadorIndice: 1, gano: false });
-  check(disco.dataset.giro === '1980', 'el giro acumulado sobrevive al repintado',
-    'redibujar no puede devolver la rueda a su posicion inicial de golpe');
+  check(disco.dataset.giro === traselGiro,
+    'y al llegar el resultado NO se la vuelve a mover',
+    'devolverla de golpe borraria el giro que el cliente acaba de ver');
+}
+
+{
+  // La ventana que NO lo vio: hay que colocarla, o la aguja miente.
+  const { doc, jgPintar } = cargarVista();
+  jgPintar({ tipo: 'WHEEL', fase: 'RESULTADO', sectores: SECTORES, ganadorIndice: 4, gano: false });
+  const disco = doc.getElementById('jgDisco');
+  const paso = 360 / SECTORES.length;
+  const esperado = 360 - (4 * paso + paso / 2);
+  check(Number(disco.dataset.giro) === esperado,
+    'entrando directa en RESULT, la rueda se coloca en el sector ganador',
+    'sin esto la aguja senala un sector y el resaltado esta en otro');
+  check(disco.dataset.ganador === '4', 'y queda anotado cual es');
 }
 
 // ===================================================================
