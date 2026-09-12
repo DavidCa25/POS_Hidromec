@@ -39,7 +39,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.check_constraints
         ADD CONSTRAINT CK_raffle_definitions_boletos
         CHECK (tickets_total IS NULL OR tickets_total > 0);
 GO
-GO
 
 /* ---------- sp_coupon_issue (SQL_STORED_PROCEDURE) ---------- */
 /* sp_coupon_issue

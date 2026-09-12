@@ -84,8 +84,12 @@ const partes = [
 
 if (ddlArchivo) {
   partes.push(`/* ========== ESQUEMA: ${barras(ddlArchivo)} ========== */`);
-  partes.push(readFileSync(ddlArchivo, 'utf8').split('\r\n').join('\n').trimEnd());
-  partes.push('GO');
+  const ddl = readFileSync(ddlArchivo, 'utf8').split('\r\n').join('\n').trimEnd();
+  partes.push(ddl);
+  // El GO de cierre SOLO si el bloque no acaba ya en uno. Un archivo de
+  // esquema con varias sentencias termina en GO de forma natural, y
+  // anadirle otro deja dos seguidos. Ver la comprobacion del final.
+  if (!/(^|\n)\s*GO\s*$/i.test(ddl)) partes.push('GO');
   partes.push('');
 }
 
@@ -100,7 +104,42 @@ for (const n of orden) {
 }
 
 const destino = join('electron', 'migrations', `${numero}_${nombre}.sql`);
-writeFileSync(destino, partes.join('\n'), 'utf8');
+const contenido = partes.join('\n');
+
+/*
+ * NUNCA dos GO seguidos.
+ *
+ * `electron/migrationsRunner.js` parte el archivo por lineas GO. Dos
+ * seguidos dejan un lote VACIO, y SQL Server lee un lote que solo contiene
+ * la palabra GO como una llamada a un procedimiento que se llama asi:
+ *
+ *     [2812] Could not find stored procedure 'GO'.
+ *
+ * Lo peor no es el fallo, es CUANDO aparece. Generar la migracion no se
+ * queja. Aplicarla a mano tampoco, porque otros troceadores tratan el lote
+ * vacio como vacio. Salta al ARRANCAR la aplicacion, delante de quien la
+ * abre, y deja el POS sin abrir. Ha pasado tres veces: 0014, 0018 y 0025.
+ *
+ * Por eso se comprueba aqui: es el ultimo punto donde el error todavia no
+ * le ha costado el dia a nadie.
+ */
+const esGo = (t) => /^\s*GO\s*$/i.test(t);
+const lineas = contenido.split('\n');
+const dobles = [];
+for (let i = 1; i < lineas.length; i++) {
+  if (!esGo(lineas[i])) continue;
+  let j = i - 1;
+  while (j >= 0 && lineas[j].trim() === '') j--;   // las lineas en blanco no separan lotes
+  if (j >= 0 && esGo(lineas[j])) dobles.push(i + 1);
+}
+if (dobles.length) {
+  console.error(`GO duplicado en la linea ${dobles.join(', ')}: SQL Server leeria ese lote`);
+  console.error("vacio como una llamada al procedimiento 'GO' y la aplicacion no arrancaria.");
+  console.error(`Quita el GO final de ${ddlArchivo ? barras(ddlArchivo) : 'el archivo de origen'}.`);
+  process.exit(1);
+}
+
+writeFileSync(destino, contenido, 'utf8');
 
 console.log(`${destino}`);
 console.log(`  objetos: ${orden.length}`);
