@@ -21,6 +21,7 @@ CREATE TABLE dbo.dynamic_attempts (
     created_at DATETIME2(0) NOT NULL CONSTRAINT DF_dynamic_attempts_created_at DEFAULT (sysutcdatetime()),
     played_at DATETIME2(0) NULL,
     expires_at DATETIME2(0) NULL,
+    segment_id INT NULL,
     CONSTRAINT PK_dynamic_attempts PRIMARY KEY CLUSTERED (id)
 );
 END;
