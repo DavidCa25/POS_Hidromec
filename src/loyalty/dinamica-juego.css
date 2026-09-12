@@ -1,0 +1,65 @@
+/* ==========================================================================
+   EL JUEGO DE UNA DINAMICA
+   Una sola implementacion para la partida real y para la vista previa: si
+   fueran dos, la de prueba dejaria de parecerse a la de verdad.
+   ========================================================================== */
+
+.dj { display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center; }
+
+/* La vista previa se marca con color, no solo con texto: se tiene que notar
+   de un vistazo que esto no esta repartiendo nada. */
+.dj-preview {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--wx-warning-soft); color: var(--wx-warning-ink);
+  font-size: var(--wx-text-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+.dj-head { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.dj-head__ic {
+  width: 54px; height: 54px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 26px;
+}
+.dj-head__ic.gano { background: var(--wx-green-soft, var(--wx-accent-soft)); }
+.dj-head h3 { margin: 0; font-size: var(--wx-text-lg); font-weight: 700; }
+.dj-head p { margin: 0; max-width: 44ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.dj-objetivo { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.dj-objetivo b { color: var(--wx-text); font-variant-numeric: tabular-nums; }
+
+/* Sin transicion, a proposito: es un cronometro. Suavizar el numero seria
+   mentir sobre el instante en que se paro, que es justo lo que se juega. */
+.dj-crono {
+  padding: 6px 0;
+  font-size: 68px; font-weight: 700; line-height: 1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  color: var(--wx-text-muted);
+}
+.dj-crono.corriendo { color: var(--wx-accent-text); }
+
+.dj-acciones { justify-content: center; margin-top: 2px; }
+.dj-grande { min-height: 50px; padding: 0 28px; font-size: var(--wx-text-md); font-weight: 600; }
+.dj-parar { background: var(--wx-danger); border-color: var(--wx-danger); }
+
+.dj-premio {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 15px;
+  background: var(--wx-accent-soft); border-radius: var(--wx-radius-md);
+  color: var(--wx-accent-text);
+}
+.dj-premio code {
+  padding: 2px 8px; background: var(--wx-surface); border-radius: 6px;
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); letter-spacing: 0.06em;
+}
+
+.dj-enviando { display: inline-flex; align-items: center; gap: 8px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.dj-enviando i { animation: dj-girar 900ms linear infinite; }
+@keyframes dj-girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dj-enviando i { animation: none; } }
+
+.dj-nota {
+  display: flex; align-items: center; gap: 7px; margin: 0;
+  color: var(--wx-text-dim); font-size: var(--wx-text-xs);
+}

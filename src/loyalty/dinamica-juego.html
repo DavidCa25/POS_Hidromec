@@ -1,0 +1,76 @@
+<div class="dj" [class.dj--preview]="esPreview">
+
+  <!-- En vista previa se dice ARRIBA y en todo momento: nadie debe creer que
+       esto acaba de regalar algo. -->
+  <p class="dj-preview" *ngIf="esPreview">
+    <i class="ph ph-eye"></i> Vista previa · no se entregan premios reales
+  </p>
+
+  <!-- ================================================== RESULTADO ==== -->
+  <ng-container *ngIf="resultado() as r; else juego">
+    <header class="dj-head">
+      <div class="dj-head__ic" [class.gano]="r.resultado === 'WIN'">
+        <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : 'ph-hand-heart' }}"></i>
+      </div>
+      <h3>{{ r.resultado === 'WIN' ? '¡Ganó!' : r.ok ? 'Esta vez no' : 'No se pudo jugar' }}</h3>
+      <p>{{ r.mensaje }}</p>
+    </header>
+
+    <div class="dj-premio" *ngIf="r.premio">
+      <i class="ph ph-gift"></i>
+      <span><b>{{ r.premio }}</b></span>
+      <code *ngIf="r.codigo">{{ r.codigo }}</code>
+    </div>
+
+    <div class="btn-row dj-acciones">
+      <button class="btn-outline" type="button" *ngIf="esPreview" (click)="reiniciar()">
+        <i class="ph ph-arrow-counter-clockwise"></i> Probar otra vez
+      </button>
+      <button class="btn-primary" type="button" (click)="cerrar()">Continuar</button>
+    </div>
+  </ng-container>
+
+  <!-- ===================================================== JUEGO ===== -->
+  <ng-template #juego>
+    <header class="dj-head">
+      <div class="dj-head__ic"><i class="ph ph-timer"></i></div>
+      <h3>{{ definicion?.name || 'Dinámica' }}</h3>
+      <p>{{ definicion?.description || 'Detén el cronómetro justo en el segundo exacto.' }}</p>
+    </header>
+
+    <!-- El objetivo con los MISMOS dos decimales que el cronometro: si uno
+         dijera "10" y el otro "10.00", parecerian juegos distintos. -->
+    <p class="dj-objetivo" *ngIf="objetivoTexto">
+      Detenlo exactamente en <b>{{ objetivoTexto }}</b>
+    </p>
+
+    <div class="dj-crono" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
+
+    <div class="btn-row dj-acciones">
+      <button class="btn-primary dj-grande" type="button"
+              *ngIf="!corriendo() && !enviando()" (click)="arrancar()">
+        <i class="ph ph-play"></i> Empezar
+      </button>
+      <button class="btn-primary dj-grande dj-parar" type="button"
+              *ngIf="corriendo()" (click)="parar()">
+        <i class="ph ph-stop"></i> ¡Parar!
+      </button>
+      <span class="dj-enviando" *ngIf="enviando()">
+        <i class="ph ph-spinner"></i> Comprobando…
+      </span>
+      <button class="btn-ghost" type="button" (click)="cerrar()"
+              *ngIf="!corriendo() && !enviando()">
+        {{ esPreview ? 'Cerrar' : 'Dejarlo' }}
+      </button>
+    </div>
+
+    <!-- Se dice en voz alta: es lo que hace creible el juego para quien lo
+         juega y para quien lo cobra. -->
+    <p class="dj-nota">
+      <i class="ph ph-shield-check"></i>
+      {{ esPreview
+         ? 'En una partida real el resultado lo decide el servidor.'
+         : 'El resultado lo decide el servidor.' }}
+    </p>
+  </ng-template>
+</div>

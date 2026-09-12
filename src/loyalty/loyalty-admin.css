@@ -237,3 +237,12 @@
 /* El motivo de un guardado rechazado, dentro del formulario. */
 .loy-nota--mal { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
 .loy-nota--mal i { color: var(--wx-danger-ink); }
+
+/* El panel de prueba de una dinamica, dentro del administrador. */
+.loy-prueba {
+  padding: 22px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-accent-line);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+}

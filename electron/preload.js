@@ -144,6 +144,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     customerDisplayOpen: (displayId) => ipcRenderer.invoke('customer-display:open', displayId),
     customerDisplayClose: () => ipcRenderer.invoke('customer-display:close'),
     customerDisplayState: (state) => ipcRenderer.invoke('customer-display:state', state),
+    // La pantalla de cliente en una ventana normal, para probar sin segundo monitor.
+    customerPreviewOpen: () => ipcRenderer.invoke('customer-display:preview-open'),
+    customerPreviewClose: () => ipcRenderer.invoke('customer-display:preview-close'),
     customerDisplayStatus: () => ipcRenderer.invoke('customer-display:status'),
     onCustomerDisplayDisconnected: (cb) => ipcRenderer.on('customer-display:disconnected', () => cb()),
 

@@ -101,6 +101,21 @@
   }
   .bizmsg{font-size:1.25vw;color:var(--muted);max-width:60vw;}
 
+  /* ===== MODO VISTA PREVIA =====
+     Tiene que verse SIEMPRE y desde lejos. Una pantalla de cliente que
+     parece real y no reparte nada es un malentendido caro: alguien anuncia
+     un premio al cliente que tiene delante y luego no existe. */
+  .previewbadge{
+    position:fixed;left:0;right:0;top:0;z-index:99;
+    display:none;align-items:center;justify-content:center;gap:.8vw;
+    padding:.9vh 1vw;
+    background:repeating-linear-gradient(45deg,#b45309,#b45309 14px,#92400e 14px,#92400e 28px);
+    color:#fff;font-size:1.1vw;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  }
+  body.es-preview .previewbadge{display:flex;}
+  /* El contenido baja para no quedar tapado por la banda. */
+  body.es-preview .screen{padding-top:7vh;}
+
   /* ===== FIDELIZACION ===== */
   /* Tres pantallas mas, con el mismo lenguaje que las tres que ya habia:
      una cifra grande, una linea que la explica, y nada mas que leer. */
@@ -158,6 +173,10 @@
     <div class="clock" id="idleClock"></div>
     <div class="waiting"><span class="dot"></span> Esperando la siguiente compra</div>
   </section>
+
+  <div class="previewbadge">
+    Modo vista previa · no se entregan premios reales
+  </div>
 
   <div class="porwybix">Powered by Wybix</div>
 
@@ -220,6 +239,16 @@
 <script>
   const api = window.customerAPI;
   let bizName = '';
+
+  /*
+   * Vista previa.
+   *
+   * La ventana se abre con `?preview=1`. Es lo UNICO que la distingue: el
+   * resto de la pagina es identica, porque si cambiara dejaria de servir para
+   * comprobar como se vera de verdad.
+   */
+  const esPreview = new URLSearchParams(location.search).get('preview') === '1';
+  if (esPreview) document.body.classList.add('es-preview');
   let checkoutTimer = null;
 
   function money(n){

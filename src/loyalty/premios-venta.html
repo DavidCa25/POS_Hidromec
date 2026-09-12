@@ -39,70 +39,27 @@
     </ng-container>
 
     <!-- ================================================= LA DINÁMICA === -->
+    <!--
+      El juego NO se pinta aqui: lo pinta `app-dinamica-juego`, la misma pieza
+      que usa la vista previa del administrador. Dos implementaciones -una "de
+      verdad" y otra "de prueba"- se habrian separado justo cuando mas falta
+      hiciera que se parecieran.
+    -->
     <ng-container *ngIf="jugando()">
+      <p class="pv-nota" *ngIf="sinIntento() as m">
+        <i class="ph ph-warning-circle"></i> {{ m }}
+      </p>
 
-      <!-- resultado ya resuelto por SQL -->
-      <ng-container *ngIf="resultado() as r; else juego">
-        <header class="pv-head">
-          <div class="pv-head__ic" [class.gano]="r.resultado === 'WIN'">
-            <i class="ph {{ r.resultado === 'WIN' ? 'ph-trophy' : 'ph-hand-heart' }}"></i>
-          </div>
-          <h2>{{ r.resultado === 'WIN' ? '¡Ganó!' : r.ok ? 'Esta vez no' : 'No se pudo jugar' }}</h2>
-          <p>{{ r.mensaje }}</p>
-        </header>
+      <app-dinamica-juego *ngIf="pendiente() as p"
+        modo="LIVE"
+        [token]="p.token"
+        [definicion]="p"
+        (terminado)="alTerminarJuego()"
+        (cerrado)="cerrar()"></app-dinamica-juego>
 
-        <ul class="pv-lista" *ngIf="r.premio">
-          <li class="pv-item">
-            <span class="pv-item__ic"><i class="ph ph-gift"></i></span>
-            <span class="pv-item__tx"><b>{{ r.premio }}</b><small>Recompensa ganada</small></span>
-            <code class="pv-item__code" *ngIf="r.codigo">{{ r.codigo }}</code>
-          </li>
-        </ul>
-
-        <div class="btn-row pv-acciones">
-          <button class="btn-primary" type="button" (click)="cerrar()">Continuar</button>
-        </div>
-      </ng-container>
-
-      <!-- el cronómetro -->
-      <ng-template #juego>
-        <header class="pv-head">
-          <div class="pv-head__ic"><i class="ph ph-timer"></i></div>
-          <h2>{{ pendiente()?.name || 'Dinámica' }}</h2>
-          <p>{{ pendiente()?.description || 'Detén el cronómetro justo en el segundo exacto.' }}</p>
-        </header>
-
-        <!-- El objetivo con los MISMOS dos decimales que el cronometro: si
-             uno dijera "10" y el otro "10.00", el juego pareceria otro. -->
-        <p class="pv-objetivo" *ngIf="objetivo !== null">
-          Detenlo exactamente en <b>{{ objetivoTexto }}</b>
-        </p>
-
-        <div class="pv-crono" [class.corriendo]="corriendo()">{{ textoCrono }}</div>
-
-        <div class="btn-row pv-acciones">
-          <button class="btn-primary pv-btn-grande" type="button"
-                  *ngIf="!corriendo() && !enviando()" (click)="arrancar()">
-            <i class="ph ph-play"></i> Empezar
-          </button>
-          <button class="btn-primary pv-btn-grande pv-btn-parar" type="button"
-                  *ngIf="corriendo()" (click)="parar()">
-            <i class="ph ph-stop"></i> ¡Parar!
-          </button>
-          <span class="pv-enviando" *ngIf="enviando()">
-            <i class="ph ph-spinner"></i> Comprobando…
-          </span>
-          <button class="btn-ghost" type="button" (click)="cerrar()"
-                  *ngIf="!corriendo() && !enviando()">Dejarlo</button>
-        </div>
-
-        <!--
-          El resultado lo decide el servidor, no esta pantalla. Se dice en voz
-          alta: es lo que hace que el juego sea creible para quien lo juega y
-          para quien lo cobra.
-        -->
-        <p class="pv-nota"><i class="ph ph-shield-check"></i> El resultado lo decide el servidor.</p>
-      </ng-template>
+      <div class="btn-row pv-acciones" *ngIf="sinIntento()">
+        <button class="btn-primary" type="button" (click)="cerrar()">Continuar</button>
+      </div>
     </ng-container>
 
   </div>

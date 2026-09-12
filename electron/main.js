@@ -618,6 +618,15 @@ function saveDeviceConfig(cfg) {
 //  PANTALLA DE CLIENTE (segundo monitor)
 // ============================================================
 let customerWindow = null;
+/**
+ * La MISMA pantalla de cliente, en una ventana normal del monitor principal.
+ *
+ * Configurar o probar una dinamica no puede depender de tener un segundo
+ * monitor enchufado: quien la configura suele estar en una laptop. Esta
+ * ventana carga `customer.html` con su mismo preload, asi que no es una
+ * segunda implementacion de nada -es la de siempre, sin pantalla completa-.
+ */
+let previewWindow = null;
 let displayWatchOn = false;
 
 function listMonitors() {
@@ -647,11 +656,14 @@ function pickDisplay(displayId) {
 }
 
 function pushCustomerState(state) {
-  try {
-    if (customerWindow && !customerWindow.isDestroyed()) {
-      customerWindow.webContents.send('customer:state', state);
-    }
-  } catch { /* noop */ }
+  // A las dos: la fisica y la de vista previa. Si solo fuera a una, probar una
+  // dinamica con el segundo monitor puesto ensenaria cosas distintas en cada
+  // pantalla, que es justo lo que no se quiere comprobar.
+  for (const w of [customerWindow, previewWindow]) {
+    try {
+      if (w && !w.isDestroyed()) w.webContents.send('customer:state', state);
+    } catch { /* una ventana caida no puede frenar a la otra */ }
+  }
 }
 
 function watchDisplays() {
@@ -694,6 +706,61 @@ function openCustomerDisplay(displayId) {
   }
 }
 
+/**
+ * Abre la pantalla de cliente en una ventana corriente, sobre el monitor
+ * principal, marcada como vista previa.
+ *
+ * `?preview=1` es lo unico que la distingue: la pagina lee ese parametro y
+ * pinta el distintivo. Nada mas cambia, porque si cambiara ya no serviria
+ * para comprobar como se va a ver de verdad.
+ */
+function openCustomerPreview() {
+  try {
+    if (previewWindow && !previewWindow.isDestroyed()) {
+      previewWindow.show();
+      previewWindow.focus();
+      return { ok: true, yaEstaba: true };
+    }
+    const disp = screen.getPrimaryDisplay().workAreaSize;
+    const ancho = Math.min(1100, Math.round(disp.width * 0.6));
+    const alto = Math.round(ancho * 0.5625);   // 16:9, como un monitor real
+    previewWindow = new BrowserWindow({
+      width: ancho, height: alto,
+      minWidth: 640, minHeight: 360,
+      title: 'Vista previa — Pantalla de cliente',
+      backgroundColor: '#0b1620',
+      // Con marco y cerrable: es una ventana de trabajo, no un kiosco.
+      frame: true, fullscreen: false, skipTaskbar: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'customer-display', 'customer-preload.js'),
+        contextIsolation: true, nodeIntegration: false, sandbox: false
+      }
+    });
+    previewWindow.setMenu(null);
+    previewWindow.loadFile(path.join(__dirname, 'customer-display', 'customer.html'),
+      { query: { preview: '1' } });
+    previewWindow.webContents.on('did-finish-load', () => pushCustomerState({ mode: 'idle' }));
+    previewWindow.on('closed', () => {
+      previewWindow = null;
+      try { mainWindow && mainWindow.webContents.send('customer-display:preview-closed'); } catch { /* noop */ }
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('openCustomerPreview:', e);
+    return { ok: false, error: e.message };
+  }
+}
+
+function closeCustomerPreview() {
+  try {
+    if (previewWindow && !previewWindow.isDestroyed()) previewWindow.close();
+    previewWindow = null;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 function closeCustomerDisplay() {
   try {
     if (customerWindow && !customerWindow.isDestroyed()) customerWindow.close();
@@ -717,7 +784,14 @@ ipcMain.handle('customer-display:list-monitors', async () => listMonitors());
 ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCustomerDisplay(displayId));
 ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
 ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
-ipcMain.handle('customer-display:status', async () => ({ open: !!(customerWindow && !customerWindow.isDestroyed()) }));
+ipcMain.handle('customer-display:status', async () => ({
+  open: !!(customerWindow && !customerWindow.isDestroyed()),
+  preview: !!(previewWindow && !previewWindow.isDestroyed()),
+}));
+// La misma pantalla en una ventana normal: para configurar y probar sin
+// depender de que haya un segundo monitor conectado.
+ipcMain.handle('customer-display:preview-open', async () => openCustomerPreview());
+ipcMain.handle('customer-display:preview-close', async () => closeCustomerPreview());
 /**
  * La identidad del NEGOCIO para la pantalla de cliente.
  *

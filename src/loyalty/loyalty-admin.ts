@@ -10,6 +10,7 @@ import {
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../app/wx-date/wx-date.component';
 import { WxTimeComponent } from '../app/wx-time/wx-time.component';
+import { DinamicaJuego } from './dinamica-juego';
 
 /*
  * Administracion de Fidelizacion.
@@ -94,7 +95,7 @@ interface DraftRifa {
 @Component({
   selector: 'app-loyalty-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent, DinamicaJuego],
   templateUrl: './loyalty-admin.html',
   styleUrls: ['./loyalty-admin.css'],
 })
@@ -149,6 +150,17 @@ export class LoyaltyAdmin implements OnInit {
   /** REWARD o COUPON: el mismo formulario, distinto destino en SQL. */
   premioDe = signal<'REWARD' | 'COUPON'>('REWARD');
   dinamica = signal<DraftDinamica | null>(null);
+
+  /**
+   * La dinamica que se esta PROBANDO, si hay alguna.
+   *
+   * Configurar un juego sin poder verlo es configurar a ciegas, y depender de
+   * un segundo monitor para verlo deja fuera a quien configura desde una
+   * laptop. La vista previa usa el MISMO componente que la partida real y
+   * abre la pantalla de cliente en una ventana corriente.
+   */
+  probando = signal<DynamicDefinition | null>(null);
+  abriendoVentana = signal(false);
   rifa = signal<DraftRifa | null>(null);
 
   /** Rifa abierta en el detalle, con sus boletos y ganadores. */
@@ -445,6 +457,56 @@ export class LoyaltyAdmin implements OnInit {
       await this.exito('Dinámica guardada');
     } catch (e: any) {
       await this.avisar('No se pudo guardar', e?.message || 'Error.');
+    } finally {
+      this.guardando.set(false);
+      this.cd.detectChanges();
+    }
+  }
+
+  // ------------------------------------------------------- vista previa
+  /**
+   * Probar una dinamica sin venta, sin premio y sin segundo monitor.
+   *
+   * Se abre la pantalla de cliente en una ventana normal -la MISMA pagina,
+   * marcada como vista previa- y el juego corre en modo PREVIEW: no consume
+   * intentos, no crea recompensas y no toca ninguna metrica.
+   */
+  async probar(d: DynamicDefinition): Promise<void> {
+    if (d.type !== 'TIMING') {
+      return this.avisar('Todavía no', `La vista previa de ${d.type} llegará con su renderer.`);
+    }
+    this.abriendoVentana.set(true);
+    try {
+      const r = await (window as any).electronAPI?.customerPreviewOpen?.();
+      if (r && r.ok === false) {
+        // Se avisa, pero se juega igual: la ventana es un extra, no el juego.
+        await this.avisar('No se pudo abrir la vista previa',
+          `${r.error || 'Error.'} La dinámica se puede probar igualmente aquí.`);
+      }
+    } catch { /* sin ventana de cliente el juego sigue siendo jugable */ }
+    finally { this.abriendoVentana.set(false); }
+    this.probando.set(d);
+    this.cd.detectChanges();
+  }
+
+  /** Cerrar la prueba, y con ella la ventana que se abrio para verla. */
+  async cerrarPrueba(): Promise<void> {
+    this.probando.set(null);
+    try { await (window as any).electronAPI?.customerPreviewClose?.(); } catch { /* noop */ }
+    this.cd.detectChanges();
+  }
+
+  /** Encender o apagar una dinamica sin abrir su formulario. */
+  async alternarDinamica(d: DynamicDefinition): Promise<void> {
+    this.guardando.set(true);
+    try {
+      await this.loyalty.guardarDefinicion('DYNAMIC', {
+        id: d.id, name: d.name, type: d.type, description: d.description,
+        targetValue: d.target_value, attemptsAllowed: d.attempts_allowed,
+        rewardDefinitionId: d.reward_definition_id, active: !d.active,
+      });
+    } catch (e: any) {
+      await this.avisar('No se pudo cambiar', e?.message || 'Error.');
     } finally {
       this.guardando.set(false);
       this.cd.detectChanges();

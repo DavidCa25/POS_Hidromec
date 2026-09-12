@@ -593,6 +593,14 @@
         </div>
       </form>
 
+      <!-- ================================================ PROBANDO ==== -->
+      <div class="loy-prueba" *ngIf="probando() as d">
+        <app-dinamica-juego
+          modo="PREVIEW"
+          [definicion]="d"
+          (cerrado)="cerrarPrueba()"></app-dinamica-juego>
+      </div>
+
       <div class="loy-tabla">
         <table class="wx-tabla" *ngIf="loyalty.dinamicas().length; else sinDinamicas">
           <thead>
@@ -611,9 +619,23 @@
               <td class="num">{{ d.intentos }}</td>
               <td class="num">{{ d.ganados }}</td>
               <td><span class="loy-estado" [class.si]="d.active">{{ d.active ? 'Activa' : 'Apagada' }}</span></td>
+              <!--
+                Probar no necesita segundo monitor: abre la pantalla de cliente
+                en una ventana normal y corre el MISMO juego, en modo vista
+                previa. No consume intentos ni entrega premios.
+              -->
               <td class="acciones">
-                <button class="btn-ghost btn-sm" type="button" (click)="editarDinamica(d)">
+                <button class="btn-outline btn-sm" type="button"
+                        (click)="probar(d)" [disabled]="abriendoVentana()">
+                  <i class="ph ph-play-circle"></i> Probar
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="editarDinamica(d)"
+                        title="Editar">
                   <i class="ph ph-pencil-simple"></i>
+                </button>
+                <button class="btn-ghost btn-sm" type="button" (click)="alternarDinamica(d)"
+                        [disabled]="guardando()" [title]="d.active ? 'Desactivar' : 'Activar'">
+                  <i class="ph {{ d.active ? 'ph-pause' : 'ph-play' }}"></i>
                 </button>
               </td>
             </tr>
