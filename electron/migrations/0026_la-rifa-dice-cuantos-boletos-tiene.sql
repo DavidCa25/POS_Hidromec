@@ -1,3 +1,16 @@
+/* ============================================================
+   0026 — la rifa dice cuantos boletos tiene
+
+   Generada con scripts/db/generar-migracion.mjs desde los archivos
+   canonicos de sql/. No editar a mano: regenerar.
+
+   Idempotente: todos los objetos usan CREATE OR ALTER, y los tipos
+   comprueban su existencia antes de crearse. Se puede reejecutar.
+
+   NO toca tablas ni datos. Solo objetos programables.
+   ============================================================ */
+
+/* ---------- sp_loyalty_catalog (SQL_STORED_PROCEDURE) ---------- */
 /* sp_loyalty_catalog
  * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
  * No editar en SSMS: modificar este archivo y crear una migracion.
