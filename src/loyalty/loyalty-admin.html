@@ -12,8 +12,8 @@
   <div class="loy-empty" *ngIf="!caps.loyaltyEnabled()">
     <i class="ph ph-toggle-left"></i>
     <h3>Fidelización está apagada</h3>
-    <p>Enciéndela en Configuración › Datos del negocio. Se activa para todo el negocio,
-       no para esta caja: una campaña la ven todas.</p>
+    <p>Enciéndela en <b>Aplicaciones</b>, en el menú lateral. Se activa para todo el
+       negocio, no para esta caja: una campaña la ven todas.</p>
   </div>
 
   <ng-container *ngIf="caps.loyaltyEnabled()">

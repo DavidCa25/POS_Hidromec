@@ -18,11 +18,20 @@ import { AuthService } from '../../services/auth.service';
  * decidir que Wybix tenga una parte que antes no tenia. Estaba dentro de
  * "Datos del negocio", junto al RFC, que es donde nadie la buscaria.
  *
- * POR QUE NO ESTA EN EL MENU LATERAL
+ * POR QUE SI ESTA EN EL MENU LATERAL
  * ----------------------------------
- * Porque se toca dos veces al ano. Una entrada permanente en el rail por algo
- * asi es exactamente la saturacion que se queria evitar; vive en el menu de
- * usuario, junto a las otras acciones administrativas.
+ * Vivio un tiempo en el menu de usuario, con el argumento de que se toca dos
+ * veces al ano y no merecia sitio permanente. El argumento era malo: el menu
+ * de usuario es para la SESION -cerrarla, cambiar de usuario- y un catalogo
+ * de modulos del producto no es una preferencia de quien ha entrado. Quien
+ * busca "que trae Wybix" mira el menu lateral, y ahi no lo encontraba.
+ *
+ * Es de primer nivel y siempre visible para un administrador. No depende de
+ * ningun modulo: es desde donde se encienden, asi que esconderla dejaria sin
+ * forma de activarlos.
+ *
+ * Lo comprueba scripts/pruebas/modulos-navegacion.mjs, porque esta entrada ya
+ * se ha movido de sitio tres veces y cada vez parecia razonable.
  */
 @Component({
   selector: 'app-aplicaciones',
