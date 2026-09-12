@@ -655,16 +655,40 @@ function pickDisplay(displayId) {
   return all.find(d => d.id !== primary.id) || primary;
 }
 
+/**
+ * Lo ultimo que se mando. Existe para que una ventana que llega tarde no se
+ * pierda lo que esta pasando.
+ *
+ * EL FALLO QUE ESTO ARREGLA. `probar()` abria la ventana de vista previa y
+ * acto seguido empujaba la partida. Pero `loadFile` es asincrono: cuando la
+ * ventana terminaba de cargar disparaba `did-finish-load`, que mandaba un
+ * `idle` FIJO encima de la partida recien empezada. El resultado era que
+ * pulsar "Probar" ensenaba la pantalla de espera con los premios, no el
+ * juego; y a veces salia el juego y al acabar reaparecia la espera, que era
+ * el mismo desorden visto al reves.
+ *
+ * Ahora una ventana que acaba de cargar recibe el estado ACTUAL, sea cual
+ * sea. Abrir o recargar la pantalla del cliente a mitad de partida deja de
+ * ser un caso raro y pasa a estar cubierto por definicion.
+ */
+let ultimoEstadoCliente = { mode: 'idle' };
+
+function enviarEstado(w, state) {
+  try {
+    if (w && !w.isDestroyed()) w.webContents.send('customer:state', state);
+  } catch { /* una ventana caida no puede frenar a la otra */ }
+}
+
 function pushCustomerState(state) {
+  if (state && state.mode) ultimoEstadoCliente = state;
   // A las dos: la fisica y la de vista previa. Si solo fuera a una, probar una
   // dinamica con el segundo monitor puesto ensenaria cosas distintas en cada
   // pantalla, que es justo lo que no se quiere comprobar.
-  for (const w of [customerWindow, previewWindow]) {
-    try {
-      if (w && !w.isDestroyed()) w.webContents.send('customer:state', state);
-    } catch { /* una ventana caida no puede frenar a la otra */ }
-  }
+  for (const w of [customerWindow, previewWindow]) enviarEstado(w, state);
 }
+
+/** Poner al dia a una ventana que acaba de cargar. */
+function ponerAlDia(w) { enviarEstado(w, ultimoEstadoCliente); }
 
 function watchDisplays() {
   if (displayWatchOn) return;
@@ -697,7 +721,7 @@ function openCustomerDisplay(displayId) {
       }
     });
     customerWindow.loadFile(path.join(__dirname, 'customer-display', 'customer.html'));
-    customerWindow.webContents.on('did-finish-load', () => pushCustomerState({ mode: 'idle' }));
+    customerWindow.webContents.on('did-finish-load', () => ponerAlDia(customerWindow));
     customerWindow.on('closed', () => { customerWindow = null; });
     return { ok: true, displayId: disp.id };
   } catch (e) {
@@ -739,7 +763,7 @@ function openCustomerPreview() {
     previewWindow.setMenu(null);
     previewWindow.loadFile(path.join(__dirname, 'customer-display', 'customer.html'),
       { query: { preview: '1' } });
-    previewWindow.webContents.on('did-finish-load', () => pushCustomerState({ mode: 'idle' }));
+    previewWindow.webContents.on('did-finish-load', () => ponerAlDia(previewWindow));
     previewWindow.on('closed', () => {
       previewWindow = null;
       try { mainWindow && mainWindow.webContents.send('customer-display:preview-closed'); } catch { /* noop */ }
