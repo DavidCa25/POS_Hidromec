@@ -80,6 +80,10 @@ export class Dashboard {
    * se muestra un texto neutro en vez de un hueco.
    */
   nombreNegocio = 'Wybix POS';
+
+  /* Cuando la base es de demostracion. Se ensena junto al rol, sin tocar el
+     resto de la barra: confundir una demo con datos reales es caro. */
+  esDemo = false;
   appVersion = '';
 
   get rolTexto(): string {
@@ -93,6 +97,10 @@ export class Dashboard {
       const n = (c.business_name ?? c.nombre ?? '').trim();
       if (n) this.nombreNegocio = n;
     } catch { /* silencioso: es contexto, no bloquea nada */ }
+    try {
+      const d = await (window as any).electronAPI?.esDemo?.();
+      this.esDemo = !!d?.demo;
+    } catch { /* si no se puede saber, se asume que NO es demo */ }
     try {
       // El handler devuelve { success, version }, no { data }: sin leer
       // `version` el pie del rail mostraba "v[object Object]".

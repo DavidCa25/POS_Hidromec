@@ -1,0 +1,14 @@
+{
+  "id": "retail",
+  "nombre": "Retail Demo",
+  "descripcion": "Mostrador con productos que se venden tal cual: sin recetas ni modificadores.",
+  "icono": "ph-storefront",
+  "businessProfile": "RETAIL",
+  "orden": 1,
+  "seed": "seed.sql",
+  "prueba": [
+    "Cobrar un producto en efectivo y ver el cambio.",
+    "Ver el descuento de existencias en Inventario.",
+    "Abrir y cerrar un turno con su corte."
+  ]
+}

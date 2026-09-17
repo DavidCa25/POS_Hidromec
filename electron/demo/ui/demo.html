@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Wybix Demo Manager</title>
+<style>
+  /* Herramienta interna: sobria y legible, sin pretender ser el producto.
+     Usa los mismos valores que Wybix -Geist, el cyan, los radios- para no
+     inventar un tercer sistema, pero no comparte hoja de estilos: esta
+     ventana no debe depender del build de Angular. */
+  @font-face{
+    font-family:'Geist Variable'; font-style:normal; font-weight:100 900; font-display:block;
+    src:url(../../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2) format('woff2-variations');
+  }
+  :root{
+    --tinta:#0A1119; --hueso:#F4F7FA; --humo:#94A7BA;
+    --filete:rgb(244 247 250 / .14); --acento:#45B3C3; --peligro:#DC4A3D; --ok:#2F9E68;
+    --r:13px; --ease:cubic-bezier(.23,1,.32,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Geist Variable',ui-sans-serif,system-ui,sans-serif;
+    background:var(--tinta); color:var(--hueso);
+    padding:26px 30px; -webkit-font-smoothing:antialiased;
+  }
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;}
+  h1{font-size:19px;font-weight:800;letter-spacing:-.02em;}
+  .interno{
+    padding:2px 8px;border-radius:999px;border:1px solid var(--filete);
+    color:var(--humo);font-size:11px;font-weight:700;letter-spacing:.08em;
+  }
+  .ruta{color:var(--humo);font-size:11.5px;margin-bottom:22px;word-break:break-all;}
+  .ruta b{color:var(--hueso);font-weight:600;}
+
+  .estado{
+    border-top:1px solid var(--filete);padding-top:16px;margin-bottom:8px;
+    color:var(--humo);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  }
+
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;}
+  .t{border:1px solid var(--filete);border-radius:var(--r);padding:16px 18px;}
+  .t__n{font-size:16px;font-weight:700;letter-spacing:-.01em;}
+  .t__d{color:var(--humo);font-size:12.5px;line-height:1.5;margin-top:4px;}
+  .t__base{color:var(--humo);font-size:11.5px;margin-top:10px;font-variant-numeric:tabular-nums;}
+  .t__base b{color:var(--acento);font-weight:600;}
+  .t__prueba{margin:10px 0 0;padding-left:16px;color:var(--humo);font-size:12px;line-height:1.65;}
+
+  .acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  button{
+    font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+    padding:8px 14px;border-radius:9px;border:1px solid var(--filete);
+    background:transparent;color:var(--hueso);
+    transition:transform 110ms var(--ease),background 150ms var(--ease);
+  }
+  button:hover:not(:disabled){background:rgb(244 247 250 / .06);}
+  button:active:not(:disabled){transform:scale(.98);}
+  button:disabled{opacity:.4;cursor:default;}
+  button.p{background:var(--acento);border-color:var(--acento);color:#06222a;}
+  button.d{border-color:rgb(220 74 61 / .5);color:#F2A79E;}
+
+  .señal{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;}
+  .señal.si{background:var(--ok);}
+  .señal.no{background:var(--humo);opacity:.5;}
+
+  #log{
+    margin-top:22px;border-top:1px solid var(--filete);padding-top:14px;
+    color:var(--humo);font-size:12px;line-height:1.7;white-space:pre-wrap;min-height:22px;
+  }
+  #log .mal{color:#F2A79E;}
+  #log .bien{color:#8ED9B0;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Wybix Demo Manager</h1>
+    <span class="interno">USO INTERNO</span>
+  </header>
+  <p class="ruta">Datos de la demo en <b id="ruta">…</b></p>
+
+  <p class="estado" id="estado">Comprobando…</p>
+  <div class="tarjetas" id="tarjetas"></div>
+
+  <div id="log"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let ocupado = false;
+
+  function decir(texto, clase) {
+    $('log').innerHTML = clase ? `<span class="${clase}">${texto}</span>` : texto;
+  }
+
+  function bloquear(v) {
+    ocupado = v;
+    document.querySelectorAll('button').forEach(b => { b.disabled = v; });
+  }
+
+  function tarjeta(p) {
+    const existe = p.existe;
+    /* Abrir va primero y destacado: es lo que se hace todos los dias con una
+       demo. Restablecer y Eliminar son excepciones, y van despues. */
+    const acciones = existe
+      ? `<button class="p" data-a="abrir" data-p="${p.id}">Abrir demo</button>
+         <button data-a="restablecer" data-p="${p.id}">Restablecer</button>
+         <button class="d" data-a="eliminar" data-p="${p.id}">Eliminar</button>`
+      : `<button class="p" data-a="crear" data-p="${p.id}">Crear demostración</button>`;
+
+    /* Los dos motivos por los que Restablecer y Eliminar van a negarse. Se
+       dicen ANTES de pulsar el boton: enterarse al confirmar una destruccion
+       de que no se puede destruir es la peor forma de enterarse. */
+    const aviso = existe && !p.esDemo
+      ? `<p class="t__base" style="color:#F2A79E">Esa base existe pero no lleva el marcador de demo.
+         El gestor no la va a tocar.</p>`
+      : existe && !p.registrada
+        ? `<p class="t__base" style="color:#F2A79E">Esa demo no la creó este gestor, o se perdió su
+           registro local. Para tocarla desde aquí hay que borrarla a mano y volver a crearla.</p>`
+        : '';
+
+    return `<div class="t">
+      <div class="t__n"><span class="señal ${existe ? 'si' : 'no'}"></span>${p.nombre}</div>
+      <p class="t__d">${p.descripcion || ''}</p>
+      <p class="t__base">Base <b>${p.base}</b>${existe ? ` · creada ${(p.creada || '').slice(0, 10)}` : ' · no existe'}</p>
+      ${aviso}
+      ${p.prueba && p.prueba.length
+        ? `<ul class="t__prueba">${p.prueba.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+      <div class="acciones">${acciones}</div>
+    </div>`;
+  }
+
+  async function pintar() {
+    const r = await window.demo.estado();
+    if (!r.success) { decir('No se pudo leer el estado: ' + r.error, 'mal'); return; }
+    $('ruta').textContent = r.data.datos;
+    const ps = r.data.perfiles;
+    const vivas = ps.filter(p => p.existe);
+    $('estado').textContent = vivas.length
+      ? `${vivas.length} ${vivas.length === 1 ? 'entorno activo' : 'entornos activos'}`
+      : 'No existe ningún entorno demo';
+    $('tarjetas').innerHTML = ps.map(tarjeta).join('');
+  }
+
+  /* Confirmacion explicita antes de cualquier destruccion, y con el nombre
+     de la base delante: quien confirma tiene que ver QUE se va a borrar. */
+  const CONFIRMA = {
+    restablecer: (p) => `Restablecer ${p} borra su base y la vuelve a crear desde cero.\n\n` +
+                        'Todo lo que hayas hecho en esa demo se pierde. ¿Seguir?',
+    eliminar:    (p) => `Eliminar ${p} borra su base y los datos locales de la demo.\n\n` +
+                        'No se toca ninguna instalación real de Wybix. ¿Seguir?',
+  };
+
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-a]');
+    if (!b || ocupado) return;
+    const accion = b.dataset.a, perfil = b.dataset.p;
+
+    if (CONFIRMA[accion] && !confirm(CONFIRMA[accion](perfil))) return;
+
+    bloquear(true);
+    decir(accion === 'crear' ? 'Creando desde la plantilla oficial…'
+        : accion === 'restablecer' ? 'Rehaciendo el entorno…'
+        : accion === 'abrir' ? 'Abriendo Wybix con ese entorno…'
+        : 'Eliminando…');
+    try {
+      const r = await window.demo[accion](perfil);
+      if (r.success) {
+        if (accion === 'eliminar') {
+          decir(`Listo. ${r.data.base} eliminada${r.data.datosLimpiados ? ' y datos locales vaciados' : ''}.`, 'bien');
+        } else if (accion === 'abrir') {
+          decir(`Wybix abierto con ${r.data.base}. Esta ventana se queda aquí: ` +
+                'puedes volver a ella para restablecer o eliminar.', 'bien');
+        } else {
+          /* Recien creada, lo siguiente que quiere hacer cualquiera es verla.
+             El boton permanente sigue en la tarjeta; esto solo ahorra el
+             segundo clic al que acaba de esperar a que se cree. */
+          decir(`Listo. ${r.data.base} preparada. ` +
+                `<button class="p" data-a="abrir" data-p="${perfil}">Abrir ahora</button>`, 'bien');
+        }
+      } else {
+        decir(r.error, 'mal');
+      }
+    } catch (err) {
+      decir(String(err && err.message || err), 'mal');
+    }
+    bloquear(false);
+    /* Abrir no cambia el estado de ningun entorno: repintar borraria el aviso
+       recien puesto sin anadir nada. */
+    if (accion !== 'abrir') await pintar();
+  });
+
+  pintar();
+</script>
+</body>
+</html>
