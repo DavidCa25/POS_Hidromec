@@ -122,13 +122,22 @@ export class Inventario {
    *
    * `factor_to_base` es cuantas unidades base trae la presentacion: una caja
    * de 1 L de leche son 1000 ml. Comprar 5 cajas sube el inventario 5000.
+   *
+   * NO ES DE HOSPITALITY. Lo fue mientras solo se penso en cafeterias, y ese
+   * fue el error: comprar por bulto y vender por unidad es de cualquiera que
+   * compre a un proveedor. Una refaccionaria compra aceite por cajas de 12 y de
+   * 24, lo vende por pieza, y necesita exactamente esto. Lo que decide si
+   * aparece es el DATO -que el producto tenga presentaciones definidas-, no el
+   * giro del negocio: un mostrador que no las use no ve ninguna diferencia.
    */
   presentaciones: { id: number | null; name: string; factorToBase: number | null }[] = [];
   /** Las que habia al abrir: al guardar, lo que ya no este se da de baja. */
   private presentacionesOriginales: number[] = [];
 
+  /* Solo pide que el producto lleve existencias propias: definir cajas de algo
+     que no se inventaria no significa nada. */
   get gestionaPresentaciones(): boolean {
-    return this.caps.hospitality && this.capturaStock;
+    return this.capturaStock;
   }
 
   agregarPresentacion() {
@@ -149,7 +158,7 @@ export class Inventario {
   private async cargarPresentaciones(productId: number) {
     this.presentaciones = [];
     this.presentacionesOriginales = [];
-    if (!productId || !this.caps.hospitality) return;
+    if (!productId) return;
     try {
       const lista = await this.hosp.presentations(productId);
       this.presentaciones = lista.map(p => ({
@@ -168,7 +177,7 @@ export class Inventario {
    * el producto: ya quedo guardado.
    */
   private async guardarPresentaciones(productId: number) {
-    if (!productId || !this.caps.hospitality) return;
+    if (!productId) return;
     const validas = this.presentaciones.filter(p => p.name.trim() && Number(p.factorToBase) > 0);
     try {
       for (const p of validas) {

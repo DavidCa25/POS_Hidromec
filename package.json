@@ -64,7 +64,8 @@
     "dist:demo": "npm run db:check-template && npm run build && electron-builder --config electron-builder.demo.js",
     "test:demo": "node scripts/pruebas/demo-guardas.mjs && node scripts/pruebas/demo-abrir.mjs",
     "test:demo-build": "node scripts/pruebas/demo-build.mjs",
-    "db:test-demo": "node scripts/db/pruebas/demo-entornos.mjs"
+    "db:test-demo": "node scripts/db/pruebas/demo-entornos.mjs",
+    "test:presentaciones": "node scripts/pruebas/presentaciones-compra.mjs"
   },
   "prettier": {
     "overrides": [
