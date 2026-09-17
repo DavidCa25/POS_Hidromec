@@ -682,6 +682,16 @@
    de escritorio: una lista con casilla, precio y cantidad cuando procede. */
 .vo { text-align: left; max-height: 52vh; overflow-y: auto; padding: 2px 4px; }
 .vo-grupo { margin-bottom: 14px; }
+/* "obligatorio", "hasta 3": la regla del grupo, junto a su nombre y sin
+   competir con el. Quien configura tiene que saber el limite ANTES de
+   chocar con el. */
+.vo-regla {
+  margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  background: var(--wx-sunken); color: var(--wx-text-dim);
+  font-size: 11px; font-weight: 600; letter-spacing: .02em;
+}
+.vo-titulo__n { font-weight: 700; }
+.vo-fila input[type=radio] { width: 17px; height: 17px; flex: 0 0 auto; cursor: pointer; }
 .vo-titulo {
   font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--wx-text-muted); margin-bottom: 6px;

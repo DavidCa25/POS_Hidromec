@@ -91,7 +91,11 @@
 .hosp-item__name { flex: 1; min-width: 0; font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .hosp-item__meta { color: var(--wx-text-muted); font-family: var(--wx-font-mono); font-size: var(--wx-text-xs); }
 
+/* El badge va PEGADO al nombre en el HTML y Angular quita los espacios de la
+   plantilla, asi que sin esto se leia "TamanoSIZE". El hueco se pone aqui y
+   no con un &nbsp; en la plantilla: un separador no es contenido. */
 .hosp-role {
+  display: inline-block; margin-left: 7px; vertical-align: 1px;
   padding: 1px 6px; border-radius: 999px;
   background: var(--wx-sunken); color: var(--wx-text-dim);
   font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
