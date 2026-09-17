@@ -83,6 +83,30 @@ export function gruposQuePreguntar(grupos: ModifierGroup[]): GrupoPendiente[] {
   return gruposPendientes(grupos).filter(p => !p.automatico);
 }
 
+/**
+ * TODO lo que hay que enseñar para configurar el producto: lo obligatorio y
+ * lo opcional, en su orden, en una sola lista.
+ *
+ * POR QUE ESTA AQUI Y NO EN CADA PANTALLA
+ * ---------------------------------------
+ * Touch enseñaba todos los grupos del producto; Retail tenia su propia regla
+ * privada -`gruposOpcionales`- y ademas encadenaba un modal por cada grupo
+ * obligatorio antes de llegar a ella. Eran dos motores para la misma
+ * pregunta, y en cuanto un producto tuvo tres grupos dejaron de coincidir.
+ *
+ * Lo unico que NO aparece es lo que ya esta decidido: un grupo obligatorio,
+ * de eleccion unica y con una sola opcion activa no es una decision, es un
+ * dato, y lo resuelve `seleccionAutomatica`.
+ */
+export function gruposAConfigurar(grupos: ModifierGroup[]): ModifierGroup[] {
+  const automaticos = new Set(
+    gruposPendientes(grupos).filter(p => p.automatico).map(p => p.grupo.id));
+  return (grupos || [])
+    .filter(g => (g as { active?: boolean }).active !== false)
+    .filter(g => !automaticos.has(g.id))
+    .filter(g => opcionesElegibles(g).length > 0);
+}
+
 /** Las opciones que se pueden dar por elegidas sin preguntar. */
 export function seleccionAutomatica(grupos: ModifierGroup[]): SelectedOption[] {
   return gruposPendientes(grupos)
@@ -159,10 +183,67 @@ export function admiteCantidad(g: ModifierGroup): boolean {
   return (g.options || []).some(o => o.effect === 'ADD');
 }
 
+/**
+ * El tope de un grupo, en UNIDADES.
+ *
+ * QUE SIGNIFICA `max_select`
+ * --------------------------
+ * Cuenta unidades elegidas, no nombres distintos. Con `max_select = 3`:
+ *
+ *     Espresso x2 + Azucar x1  = 3 unidades   VALIDO
+ *     Espresso x2 + Azucar x1 + Canela x1 = 4 unidades   NO
+ *
+ * Contar nombres dejaba entrar "Espresso x3 + Azucar x3 + Canela x3", nueve
+ * shots en un vaso, porque cada opcion se topaba por separado contra el mismo
+ * maximo. El grupo dice cuanto cabe en total; la cantidad de cada opcion es
+ * como se reparte ese total.
+ *
+ * Un valor ausente o menor que 1 se lee como 1: un grupo sin tope declarado es
+ * de eleccion unica, que es lo que hacia antes.
+ */
+export function topeDeGrupo(g: ModifierGroup): number {
+  const m = Number(g.max_select ?? 1);
+  return Number.isFinite(m) && m > 1 ? Math.floor(m) : 1;
+}
+
 /** El máximo razonable de repeticiones de una opción dentro de su grupo. */
 export function maximoCantidad(g: ModifierGroup): number {
-  const m = Number(g.max_select ?? 1);
-  return m > 1 ? m : 1;
+  return topeDeGrupo(g);
+}
+
+/** Una opción ya elegida, con la cantidad que lleva. */
+export interface Elegida {
+  optionId: number;
+  quantity?: number;
+}
+
+/** Cuántas UNIDADES hay elegidas ya en un grupo. */
+export function unidadesElegidas(elegidas: readonly Elegida[] | undefined): number {
+  return (elegidas || []).reduce((a, e) => a + Math.max(1, Number(e.quantity ?? 1)), 0);
+}
+
+/** Lo que todavía cabe en el grupo. Nunca negativo. */
+export function unidadesLibres(g: ModifierGroup, elegidas: readonly Elegida[] | undefined): number {
+  return Math.max(0, topeDeGrupo(g) - unidadesElegidas(elegidas));
+}
+
+/**
+ * Si cabe una unidad mas de `optionId` en el grupo.
+ *
+ * Es la MISMA pregunta para las dos pantallas: Touch al pulsar el `+` y Retail
+ * al subir el contador. Tenerla escrita dos veces es como se llega a que una
+ * caja acepte cuatro shots y la otra tres.
+ */
+export function cabeOtra(
+  g: ModifierGroup,
+  elegidas: readonly Elegida[] | undefined,
+  optionId: number,
+): boolean {
+  const tope = topeDeGrupo(g);
+  // Un grupo de eleccion unica no acumula: elegir sustituye, y de eso se
+  // encarga quien llama. Aqui solo se responde que NO cabe una segunda.
+  if (tope <= 1) return !(elegidas || []).some(e => e.optionId === optionId);
+  return unidadesLibres(g, elegidas) > 0;
 }
 
 

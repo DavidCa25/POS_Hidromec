@@ -13,8 +13,9 @@ import {
 import { PremiosVenta } from '../loyalty/premios-venta';
 import { CuponVenta } from '../loyalty/cupon-venta';
 import {
-  admiteCantidad, faltanPorElegir, gruposPendientes, maximoCantidad,
-  opcionesElegibles, resumenDeOpciones,
+  Elegida, admiteCantidad, cabeOtra, faltanPorElegir, gruposPendientes,
+  maximoCantidad, opcionesElegibles, resumenDeOpciones, topeDeGrupo,
+  unidadesElegidas,
 } from '../core/opciones';
 
 /*
@@ -318,23 +319,54 @@ export class TouchPos implements OnInit, OnDestroy {
     return (this.seleccion().get(g.id) || []).some(x => x.id === o.id);
   }
 
-  /** Alterna una opcion respetando max_select del grupo. */
+  /**
+   * Lo elegido de un grupo, con su cantidad.
+   *
+   * La seleccion y las cantidades viven en dos mapas distintos -uno por grupo,
+   * otro por opcion- y la regla del tope necesita verlos juntos.
+   */
+  private elegidasDe(g: ModifierGroup): Elegida[] {
+    const conCantidad = admiteCantidad(g);
+    return (this.seleccion().get(g.id) || []).map(o => ({
+      optionId: o.id,
+      quantity: conCantidad ? (this.cantidades().get(o.id) || 1) : 1,
+    }));
+  }
+
+  /**
+   * Alterna una opcion respetando el tope del grupo, contado en UNIDADES.
+   *
+   * Antes se comparaba `actuales.length` contra `max_select`, es decir nombres
+   * distintos contra un tope de unidades. Con `max_select = 3` eso dejaba
+   * entrar Espresso x3 + Azucar x3, nueve shots en un vaso.
+   *
+   * Y el tope se leia crudo: si `max_select` llegaba sin valor, `undefined`
+   * no era 1 ni era mayor que la cuenta, asi que la segunda opcion del grupo
+   * ni sustituia ni se anadia. Se quedaba bloqueado sin decir por que.
+   */
   alternarOpcion(g: ModifierGroup, o: ModifierOption) {
     if (o.available_units <= 0) { this.mostrar(`${o.name} no está disponible`); return; }
+    const tope = topeDeGrupo(g);
     this.seleccion.update(mapa => {
       const n = new Map(mapa);
       const actuales = [...(n.get(g.id) || [])];
       const idx = actuales.findIndex(x => x.id === o.id);
+
       if (idx >= 0) {
+        // Quitarla siempre se puede, y con ella su cantidad.
         actuales.splice(idx, 1);
-      } else if (g.max_select === 1) {
-        // Un solo valor: elegir sustituye.
+        this.cantidades.update(c => { const m = new Map(c); m.delete(o.id); return m; });
+      } else if (tope <= 1) {
+        // Eleccion unica: elegir sustituye.
+        for (const x of actuales) {
+          this.cantidades.update(c => { const m = new Map(c); m.delete(x.id); return m; });
+        }
         actuales.length = 0;
         actuales.push(o);
-      } else if (actuales.length < g.max_select) {
+      } else if (cabeOtra(g, this.elegidasDe(g), o.id)) {
         actuales.push(o);
       } else {
-        this.mostrar(`Máximo ${g.max_select} en ${g.name}`);
+        this.mostrar(`Máximo ${tope} en ${g.name}`);
         return mapa;
       }
       n.set(g.id, actuales);
@@ -360,14 +392,26 @@ export class TouchPos implements OnInit, OnDestroy {
 
   cantidadDe(o: ModifierOption): number { return this.cantidades().get(o.id) || 1; }
 
+  /**
+   * Sube o baja la cantidad de una opcion ya elegida.
+   *
+   * El tope es del GRUPO y se cuenta en unidades: con maximo 3 y Azucar x1 ya
+   * puesto, Espresso llega hasta 2. Antes cada opcion se topaba por separado
+   * contra el mismo maximo, asi que tres opciones podian llegar a nueve.
+   */
   cambiarCantidad(g: ModifierGroup, o: ModifierOption, delta: number) {
     if (!this.elegido(g, o)) return;
-    const max = this.maximoDe(g);
-    this.cantidades.update(m => {
-      const n = new Map(m);
-      n.set(o.id, Math.min(max, Math.max(1, (n.get(o.id) || 1) + delta)));
-      return n;
-    });
+    const actual = this.cantidadDe(o);
+
+    if (delta > 0) {
+      // Lo que cabe ademas de lo que ya hay puesto, esta opcion incluida.
+      const otras = this.elegidasDe(g).filter(e => e.optionId !== o.id);
+      const libre = topeDeGrupo(g) - unidadesElegidas(otras) - actual;
+      if (libre <= 0) { this.mostrar(`Máximo ${topeDeGrupo(g)} en ${g.name}`); return; }
+    }
+
+    const nueva = Math.max(1, actual + delta);
+    this.cantidades.update(m => { const n = new Map(m); n.set(o.id, nueva); return n; });
   }
 
   /** Lo que suman las opciones elegidas, para verlo antes de agregar. */

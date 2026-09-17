@@ -18,8 +18,8 @@ import { CuponVenta } from '../../loyalty/cupon-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
-  GrupoPendiente, ResumenOpcion, aSeleccionada, admiteCantidad, gruposQuePreguntar,
-  maximoCantidad, opcionesElegibles, resumenDeOpciones, seleccionAutomatica,
+  ResumenOpcion, aSeleccionada, admiteCantidad, gruposAConfigurar, minimoDe,
+  opcionesElegibles, resumenDeOpciones, seleccionAutomatica, topeDeGrupo,
 } from '../../core/opciones';
 
 /*
@@ -705,19 +705,16 @@ export class Venta implements OnInit, OnDestroy {
 
     const elegidas = seleccionAutomatica(grupos);
 
-    /* Primero lo obligatorio, en su orden. */
-    for (const pendiente of gruposQuePreguntar(grupos)) {
-      const opcion = await this.preguntarOpcion(p, pendiente);
-      if (!opcion) return null;
-      elegidas.push(opcion);
-    }
-
-    /* Y despues lo opcional: tipo de leche, extras, quitar. Es donde vive la
-       personalizacion de verdad, y Retail no la ofrecia en absoluto. Se
-       pregunta una sola vez, en una lista, para no encadenar diez modales. */
-    const opcionales = this.gruposOpcionales(grupos);
-    if (opcionales.length) {
-      const extra = await this.preguntarOpcionales(p, opcionales, elegidas);
+    /* UNA sola hoja con TODOS los grupos, obligatorios y opcionales.
+       Antes se encadenaba un modal de radio por cada grupo obligatorio y
+       despues una lista con el resto. Con un producto de tres grupos eso eran
+       tres pantallas seguidas, y quien cancelaba en la primera se quedaba sin
+       ver las otras dos: por eso parecia que Retail "solo tenia el modal de
+       tamano". Touch siempre lo enseno todo junto; ahora tambien Retail, y
+       con la MISMA regla de que grupos se muestran. */
+    const aConfigurar = gruposAConfigurar(grupos);
+    if (aConfigurar.length) {
+      const extra = await this.preguntarOpciones(p, aConfigurar);
       if (extra === null) return null;
       elegidas.push(...extra);
     }
@@ -731,66 +728,116 @@ export class Venta implements OnInit, OnDestroy {
     return elegidas;
   }
 
-  /** Los grupos que no son obligatorios pero si configurables. */
-  private gruposOpcionales(grupos: ModifierGroup[]): ModifierGroup[] {
-    const obligatorios = new Set(gruposQuePreguntar(grupos).map(x => x.grupo.id));
-    return (grupos || []).filter(g => !obligatorios.has(g.id) && opcionesElegibles(g).length > 0
-      && seleccionAutomatica([g]).length === 0);
-  }
-
   /**
-   * Una sola hoja con todo lo opcional: sustituciones, extras y quitar.
+   * UNA hoja con todos los grupos del producto.
    *
-   * Con cantidad cuando el grupo suma consumo -dos shots son dos shots- y sin
-   * ella cuando no significaria nada (no existe "dos veces sin azucar").
+   * Es el equivalente de Retail a la hoja de Touch, y usa exactamente la misma
+   * regla para decidir que grupos salen (`gruposAConfigurar`), cuantas
+   * unidades caben (`topeDeGrupo`) y cuanto suma (`precioDeOpciones`). Lo que
+   * cambia es como se pinta, no lo que se decide: dos motores de reglas es
+   * como se llega a que una caja acepte cuatro shots y la otra tres.
+   *
+   * Devuelve `null` si se cancela.
    */
-  private async preguntarOpcionales(
-    p: CatalogProduct, grupos: ModifierGroup[], yaElegidas: SelectedOption[],
+  private async preguntarOpciones(
+    p: CatalogProduct, grupos: ModifierGroup[],
   ): Promise<SelectedOption[] | null> {
+    const esc = (t: string) => String(t ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     const html = grupos.map(g => {
-      const max = admiteCantidad(g) ? maximoCantidad(g) : 1;
+      const min = minimoDe(g);
+      const tope = topeDeGrupo(g);
+      const conCantidad = admiteCantidad(g);
+      /* Radio cuando solo cabe una: asi el control DICE que es excluyente en
+         vez de dejar marcar dos y quejarse despues. */
+      const unico = tope <= 1;
+      const marca = unico ? 'radio' : 'checkbox';
+
+      const reglas = [
+        min > 0 ? 'obligatorio' : null,
+        tope > 1 ? `hasta ${tope}` : null,
+      ].filter(Boolean).join(' · ');
+
       const filas = opcionesElegibles(g).map(o => {
         const extra = Number(o.price_delta || 0);
         const precio = extra ? `<span class="vo-precio">+$${extra.toFixed(2)}</span>` : '';
-        const cantidad = max > 1
-          ? `<input type="number" class="vo-cant" min="1" max="${max}" value="1" data-cant="${o.id}">`
+        const cant = conCantidad && !unico
+          ? `<input type="number" class="vo-cant" min="1" max="${tope}" value="1"
+                    data-cant="${o.id}" title="Cantidad">`
           : '';
         return `<label class="vo-fila">
-                  <input type="checkbox" data-opt="${o.id}" data-grupo="${g.id}">
-                  <span class="vo-nombre">${o.name}</span>${precio}${cantidad}
+                  <input type="${marca}" name="g${g.id}" data-opt="${o.id}" data-grupo="${g.id}">
+                  <span class="vo-nombre">${esc(o.name)}</span>${precio}${cant}
                 </label>`;
       }).join('');
-      return `<div class="vo-grupo"><div class="vo-titulo">${g.name}</div>${filas}</div>`;
+
+      return `<div class="vo-grupo" data-g="${g.id}" data-min="${min}" data-max="${tope}">
+                <div class="vo-titulo">
+                  <span class="vo-titulo__n">${esc(g.name)}</span>
+                  ${reglas ? `<span class="vo-regla">${reglas}</span>` : ''}
+                </div>${filas}
+              </div>`;
     }).join('');
 
     const r = await Swal.fire({
       title: p.product_name,
       html: `<div class="vo">${html}</div>`,
-      width: 520,
+      width: 560,
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#2563eb',
+      /* La validacion vive aqui y no despues de cerrar: cerrar la hoja y
+         recibir un error obliga a reconstruir la seleccion entera. */
       preConfirm: () => {
         const sel: { grupo: number; opcion: number; cant: number }[] = [];
-        document.querySelectorAll<HTMLInputElement>('.vo input[data-opt]').forEach(el => {
-          if (!el.checked) return;
-          const id = Number(el.dataset['opt']);
-          const c = document.querySelector<HTMLInputElement>(`.vo [data-cant="${id}"]`);
-          sel.push({ grupo: Number(el.dataset['grupo']), opcion: id, cant: Math.max(1, Number(c?.value || 1)) });
+        const faltan: string[] = [];
+        const pasados: string[] = [];
+
+        document.querySelectorAll<HTMLElement>('.vo .vo-grupo').forEach(bloque => {
+          const gid = Number(bloque.dataset['g']);
+          const min = Number(bloque.dataset['min'] || 0);
+          const max = Number(bloque.dataset['max'] || 1);
+          const titulo = bloque.querySelector('.vo-titulo__n')?.textContent || '';
+          let unidades = 0;
+          let elegidas = 0;
+
+          bloque.querySelectorAll<HTMLInputElement>('input[data-opt]').forEach(el => {
+            if (!el.checked) return;
+            const id = Number(el.dataset['opt']);
+            const c = bloque.querySelector<HTMLInputElement>(`[data-cant="${id}"]`);
+            const n = Math.max(1, Number(c?.value || 1));
+            unidades += n;
+            elegidas += 1;
+            sel.push({ grupo: gid, opcion: id, cant: n });
+          });
+
+          if (elegidas < min) faltan.push(titulo);
+          // El tope se cuenta en UNIDADES, igual que en Touch.
+          if (unidades > max) pasados.push(`${titulo} (máximo ${max})`);
         });
+
+        if (faltan.length) {
+          Swal.showValidationMessage(`Falta elegir: ${faltan.join(', ')}`);
+          return false;
+        }
+        if (pasados.length) {
+          Swal.showValidationMessage(`Te pasaste en: ${pasados.join(', ')}`);
+          return false;
+        }
         return sel;
       },
     });
 
     if (!r.isConfirmed) return null;
     const elegidas: SelectedOption[] = [];
-    for (const s of (r.value as { grupo: number; opcion: number; cant: number }[] | undefined) || []) {
-      const g = grupos.find(x => x.id === s.grupo);
-      const o = g ? opcionesElegibles(g).find(x => x.id === s.opcion) : null;
-      if (g && o) elegidas.push({ ...aSeleccionada(g, o), quantity: s.cant });
+    for (const x of (r.value as { grupo: number; opcion: number; cant: number }[] | undefined) || []) {
+      const g = grupos.find(y => y.id === x.grupo);
+      const o = g ? opcionesElegibles(g).find(y => y.id === x.opcion) : null;
+      // Sin cantidad donde no significa nada: no existe "dos tamanos".
+      if (g && o) elegidas.push({ ...aSeleccionada(g, o), quantity: admiteCantidad(g) ? x.cant : 1 });
     }
-    void yaElegidas;
     return elegidas;
   }
 
@@ -830,33 +877,6 @@ export class Venta implements OnInit, OnDestroy {
   /** El resumen de opciones de una linea, para el carrito. */
   resumenOpciones(l: CartLine): ResumenOpcion[] {
     return resumenDeOpciones(l.options);
-  }
-
-  /** Un grupo, una pregunta. Sin opción elegida no hay línea. */
-  private async preguntarOpcion(p: CatalogProduct, pendiente: GrupoPendiente): Promise<SelectedOption | null> {
-    const opciones = opcionesElegibles(pendiente.grupo);
-    const inputOptions: Record<string, string> = {};
-    for (const o of opciones) {
-      const extra = Number(o.price_delta || 0);
-      inputOptions[String(o.id)] = extra ? `${o.name}  (+$${extra.toFixed(2)})` : o.name;
-    }
-
-    const r = await Swal.fire({
-      title: pendiente.grupo.name,
-      text: p.product_name,
-      input: 'radio',
-      inputOptions,
-      inputValue: String(opciones[0]?.id ?? ''),
-      showCancelButton: true,
-      confirmButtonText: 'Agregar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#2563eb',
-      inputValidator: (v) => (v ? null : `Elige ${pendiente.grupo.name.toLowerCase()}.`),
-    });
-
-    if (!r.isConfirmed || !r.value) return null;
-    const elegida = opciones.find(o => String(o.id) === String(r.value));
-    return elegida ? aSeleccionada(pendiente.grupo, elegida) : null;
   }
 
   // ==================
