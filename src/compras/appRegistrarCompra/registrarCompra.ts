@@ -6,7 +6,7 @@ import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
 import { AuthService } from '../../services/auth.service';
 import Swal from 'sweetalert2';
-import { CapabilityService, HospitalityService } from '../../core';
+import { HospitalityService } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 
@@ -153,7 +153,6 @@ export class RegistrarCompra implements OnInit {
 
   constructor(
     private authService: AuthService,
-    public caps: CapabilityService,
     private hosp: HospitalityService,
     private register: RegisterService,
   ) {
@@ -309,11 +308,18 @@ export class RegistrarCompra implements OnInit {
   /**
    * Trae las presentaciones del producto para el selector de la fila.
    *
-   * Solo en negocios de alimentos y bebidas: en Retail nadie compra "cajas de
-   * 1 L", y una columna vacia en cada linea seria ruido.
+   * LO QUE DECIDE ES EL PRODUCTO, NO EL GIRO DEL NEGOCIO
+   * ----------------------------------------------------
+   * Esto estuvo limitado a alimentos y bebidas con el razonamiento de que "en
+   * Retail nadie compra cajas de 1 L". Era falso en cuanto se mira cualquier
+   * mostrador: una refaccionaria compra aceite en cajas de 12 y de 24, lo vende
+   * por pieza, y la conversion que necesita es la misma.
+   *
+   * No hace falta ninguna puerta: si el producto no tiene presentaciones
+   * definidas, la lista se queda vacia y el selector no se dibuja. Quien no las
+   * use no ve nada nuevo, y quien las defina las tiene en cualquier perfil.
    */
   private async cargarPresentaciones(item: PurchaseItem) {
-    if (!this.caps.hospitality) return;
     try {
       const lista = await this.hosp.presentations(item.productId);
       if (!lista.length) return;
