@@ -18,6 +18,41 @@ const backup = require('./backupManager');
 const logger = require('./logger');
 const db = require('./db');
 const DB_NAME = 'Wybix_POS';
+
+/* ------------------------------------------------------ GESTOR DE DEMOS
+   Solo existe en el build INTERNO. En el instalador publico esta carpeta no
+   se empaqueta, asi que este `require` falla y `demo` se queda en null: no
+   hay gestor, no hay IPC destructivo y no hay perfiles. No es un boton
+   escondido tras una bandera; es codigo que no esta en el paquete.
+
+   El aislamiento tiene que ocurrir AQUI, antes de que cualquier modulo
+   resuelva su ruta contra `userData`: db-config, install-config,
+   device-config, licencia, registros, cache y miniaturas cuelgan todos de
+   ella. Un solo `setPath` mueve las trece cosas; hacerlo mas tarde dejaria a
+   alguna apuntando a la carpeta de la instalacion real. */
+let demo = null;
+try {
+  const modulo = require('./demo');
+
+  /* EN DESARROLLO NO SE ENCIENDE SOLO.
+     El arbol de Git SIEMPRE tiene esta carpeta, asi que sin esta condicion
+     `npm run electron` abriria el gestor y movería los datos a la carpeta de
+     la demo: quien esta desarrollando perderia de vista su propia
+     configuracion sin entender por que. Empaquetado es distinto, porque ahi
+     la carpeta solo existe si el build es el interno.
+
+         desarrollo    WYBIX_DEMO=1 npm run electron
+         empaquetado   Wybix-Demo-Setup.exe, y ya esta */
+  const encendido = app.isPackaged || process.env.WYBIX_DEMO === '1';
+  if (encendido) {
+    demo = modulo;
+    const raiz = demo.aislarDatos(app);
+    console.log(`[DEMO] gestor interno activo. Datos aislados en ${raiz}`);
+  }
+} catch (e) {
+  if (e && e.code !== 'MODULE_NOT_FOUND') console.error('[DEMO] no se pudo iniciar:', e.message);
+  demo = null;
+}
 const setupServer = require('./setupServer');
 const cloudSync = require('./cloudSync');
 const licenseStore = require('./license');
@@ -379,7 +414,133 @@ async function bootMainApp(poolYaAbierto) {
   autoOpenCustomerDisplay();
 }
 
-app.whenReady().then(() => arranque.arrancar({
+/**
+ * En el build interno la aplicacion NO arranca sola: primero se abre el
+ * gestor, que es quien decide con que entorno se trabaja.
+ *
+ * Si ya hay una demo configurada -db-config apunta a una base demo- se sigue
+ * el arranque normal contra ella, porque a partir de ahi la demo se usa como
+ * se usaria Wybix. El gestor queda disponible en su ventana para restablecer
+ * o eliminar cuando haga falta.
+ */
+/**
+ * Abre Wybix contra una demo que YA existe.
+ *
+ * Sigue el mismo camino que el asistente al terminar una instalacion: apunta
+ * la configuracion de base, deja constancia de la instalacion y arranca. No se
+ * inventa un arranque paralelo, porque entonces la demo probaria un flujo que
+ * ningun cliente ejecuta y dejaria de servir para lo que sirve.
+ *
+ * Todo lo que escribe cae en la carpeta AISLADA: `aislarDatos` movio `userData`
+ * antes de que cualquier modulo resolviera una ruta, asi que `db-config.json` e
+ * `install-config.json` son los de la demo. La instalacion normal no se toca.
+ */
+/**
+ * QUE DEMO ESTA ABIERTA AHORA MISMO.
+ *
+ * Sin esto, "ya hay una ventana" se confundia con "ya esta abierto lo que me
+ * piden", y abrir Retail despues de haber abierto Hospitality se limitaba a
+ * traer al frente la ventana de Hospitality: el gestor decia Retail y la
+ * pantalla ensenaba la otra.
+ */
+let demoAbierta = null;
+
+async function abrirDemoEnWybix({ base, servidor, perfilId }) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    /* La MISMA demo: traerla al frente. Volver a arrancar abriria una segunda
+       ventana principal y dejaria la primera huerfana. */
+    if (demoAbierta === base) {
+      mainWindow.show();
+      mainWindow.focus();
+      return { yaAbierta: true };
+    }
+    /* OTRA demo: la que hay abierta esta conectada a la base anterior y toda
+       su pantalla salio de ella. Se cierra antes de arrancar la pedida. */
+    console.log(`[DEMO] cerrando ${demoAbierta || 'la ventana anterior'} para abrir ${base}`);
+    const anterior = mainWindow;
+    mainWindow = null;
+    demoAbierta = null;
+    anterior.destroy();
+  }
+
+  const r = await db.setConnectionConfig({ server: servidor, database: base, auth: 'windows' });
+  if (!r.success) throw new Error(r.error);
+
+  /* `arranque` exige una instalacion registrada; sin ella abriria el asistente
+     y pediria el alta de un negocio que la semilla ya creo. La demo ES una
+     instalacion, en su propio espacio, y se registra como tal. */
+  saveInstallConfig({
+    role: 'principal',
+    server: servidor,
+    configuredAt: new Date().toISOString(),
+    demo: perfilId || true,
+  });
+
+  /* EL CACHE DE NEGOCIO ES DEL PROCESO, NO DE LA BASE.
+     `ensureBusinessConfig` memoriza la primera respuesta y no vuelve a
+     preguntar. Como el gestor cambia de base sin reiniciar Electron, sin esta
+     linea la demo de Retail arrancaba con el nombre y el `business_profile`
+     que quedaron de la de Hospitality: la base era la correcta y la pantalla
+     era la de antes. */
+  businessConfig = null;
+
+  await bootMainApp();
+  demoAbierta = base;
+  return { yaAbierta: false };
+}
+
+/**
+ * Suelta una demo antes de que la destruyan.
+ *
+ * Restablecer y Eliminar tiran la base. Si esa base es la que Wybix tiene
+ * abierta, lo que queda es una ventana conectada a algo que ya no existe, y
+ * una configuracion local que sigue apuntando ahi: la proxima demo que se cree
+ * heredaria esos restos. Se cierra la ventana y se olvida el cache.
+ *
+ * No toca nada si la abierta es otra: eliminar Retail no cierra la demo de
+ * Hospitality que alguien este ensenando.
+ */
+function soltarDemo(base) {
+  if (demoAbierta !== base) return { cerrada: false };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const anterior = mainWindow;
+    mainWindow = null;
+    anterior.destroy();
+  }
+  demoAbierta = null;
+  businessConfig = null;
+  return { cerrada: true };
+}
+
+function arrancarGestorDemo() {
+  demo.registrar({
+    ipcMain, app, sql,
+    setup: setupServer,
+    runMigrations,
+    abrirApp: abrirDemoEnWybix,
+    soltarApp: soltarDemo,
+    migrationsDir: isDev
+      ? path.join(__dirname, 'migrations')
+      : path.join(process.resourcesPath, 'migrations'),
+    /* La barra va DUPLICADA. Con una sola, JavaScript se come el escape y el
+       nombre queda en `localhostSQLEXPRESS`, que no es ninguna instancia: la
+       demo no se podria ni crear. Es el mismo valor por defecto que usa
+       `setupServer` para una instalacion normal. */
+    servidor: 'localhost\\SQLEXPRESS',
+    log: console.log,
+  });
+  demo.abrirGestor({ BrowserWindow });
+}
+
+app.whenReady().then(() => {
+  /* Sin configuracion de base todavia: no hay nada que arrancar y el gestor
+     es justamente lo que hace falta para crearla. Con configuracion, se
+     arranca normal y el gestor se abre igualmente, en su propia ventana. */
+  if (demo) {
+    arrancarGestorDemo();
+    if (!db.hayConfiguracion()) return { destino: 'gestor-demo' };
+  }
+  return arranque.arrancar({
   cargarInstalacion: () => loadInstallConfig(),
 
   // Se responde leyendo el disco, sin abrir ninguna conexion.
@@ -423,7 +584,8 @@ app.whenReady().then(() => arranque.arrancar({
 
   log: (m) => console.log(m),
   logError: (m) => console.error(m),
-}));
+  });
+});
 
 /**
  * Guarda bytes generados en el renderer como un archivo de verdad.
@@ -1211,6 +1373,37 @@ app.on('before-quit', (e) => {
 ipcMain.handle('getConfig', async () => {
   const cfg = await ensureBusinessConfig();
   return cfg;
+});
+
+/**
+ * Si la base a la que estamos conectados es una demostracion.
+ *
+ * La senal es de la BASE, no del build: `database_metadata.is_demo` lo escribe
+ * la semilla del gestor y el producto normal no lo escribe jamas. Por eso este
+ * handler vive aqui y no en electron/demo, que no viaja en el instalador
+ * publico: si alguien apunta un Wybix normal a una base de demostracion, la
+ * barra tiene que decirlo igual. Confundir una demo con datos reales es
+ * exactamente lo que hay que evitar.
+ *
+ * Es de SOLO LECTURA y no habilita nada: saber que una base es demo no da
+ * acceso a crearla, restablecerla ni borrarla.
+ */
+ipcMain.handle('app:es-demo', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(
+      "SELECT clave, valor FROM dbo.database_metadata WHERE clave IN ('is_demo','demo_profile');");
+    const m = {};
+    for (const f of r.recordset || []) m[f.clave] = f.valor;
+    return {
+      success: true,
+      demo: String(m.is_demo).toLowerCase() === 'true',
+      perfil: m.demo_profile || null,
+    };
+  } catch {
+    // Sin la tabla o sin conexion, no es una demo. Nunca lanza: es contexto.
+    return { success: true, demo: false, perfil: null };
+  }
 });
 
 // Guardar datos del negocio (Configuracion > Datos del negocio)

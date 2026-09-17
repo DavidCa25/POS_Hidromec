@@ -233,13 +233,15 @@
       </span>
       <div class="sidebar-sucursal__txt">
         <span class="sidebar-sucursal__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
-        <span class="sidebar-sucursal__meta">{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span></span>
+        <span class="sidebar-sucursal__meta">
+          <span class="sidebar-demo" *ngIf="esDemo">DEMO</span>{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span></span>
       </div>
     </div>
 
     <!-- Colapsada solo cabe la baldosa, con el nombre en el tooltip. -->
-    <div class="sidebar-sucursal sidebar-sucursal--min" *ngIf="!menuOpen" [title]="nombreNegocio">
-      <span class="sidebar-sucursal__tile" aria-hidden="true">
+    <div class="sidebar-sucursal sidebar-sucursal--min" *ngIf="!menuOpen"
+         [title]="esDemo ? nombreNegocio + ' · DEMO' : nombreNegocio">
+      <span class="sidebar-sucursal__tile" [class.es-demo]="esDemo" aria-hidden="true">
         <i class="ph-fill ph-storefront"></i>
       </span>
     </div>

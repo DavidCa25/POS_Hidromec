@@ -2,6 +2,12 @@
 
 # Compiled output
 /release
+# Cualquier otra salida de electron-builder: el instalador interno
+# (`release-internal`) y las carpetas alternas que hay que usar cuando Windows
+# deja un `app.asar` bloqueado y no se puede escribir encima. Va por patron y no
+# por nombre porque la primera variante que aparezca -y aparecen- se colaria
+# entera en el repositorio: son 560 archivos y casi un giga.
+/release-*
 /dist
 /out
 /tmp

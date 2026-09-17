@@ -68,8 +68,57 @@ const SECRET = crypto.createHash('sha256').update(_seed.join('-') + '::wybix::li
 
 const FORMATO = 3;
 
+/**
+ * EL ESPACIO DE DATOS. Vacio es la instalacion normal.
+ *
+ * POR QUE HACE FALTA
+ * ------------------
+ * La copia principal cuelga de `userData`, que el gestor de demos ya mueve
+ * entero con un `setPath`. El ESPEJO no: cuelga de `appData`, que es
+ * `%APPDATA%` a secas y es el mismo directorio para las dos instalaciones. Con
+ * un solo nombre de archivo, Wybix Demo y Wybix normal escribian y leian el
+ * MISMO `.wxsys.dat` en la misma maquina. Activar una demo pisaba el espejo de
+ * la instalacion real, y a la siguiente lectura las dos copias dejaban de
+ * coincidir en una maquina donde nadie habia manipulado nada.
+ *
+ * POR QUE EL ESPEJO NO SE MUEVE A `userData`
+ * ------------------------------------------
+ * Porque entonces no seria un espejo. Las dos copias viven en carpetas
+ * distintas a proposito: borrar o editar una sola no sirve de nada. Meterlo
+ * dentro de `userData` las juntaria y la proteccion se perderia. Lo que cambia
+ * es el NOMBRE, no la carpeta.
+ *
+ * POR QUE SE DECLARA Y NO SE ADIVINA
+ * ----------------------------------
+ * Este modulo no puede preguntarle a `electron/demo`: esa carpeta no existe en
+ * el instalador publico. Y deducirlo comparando rutas obligaria a reconstruir
+ * cual "seria" la carpeta por defecto, que depende de como Electron resuelve
+ * el nombre de la aplicacion. Se declara: quien mueve los datos lo dice, y
+ * quien no dice nada se queda con el archivo de siempre. El build publico no
+ * llama a esto en ningun sitio, asi que su comportamiento es identico al de
+ * antes, byte por byte.
+ *
+ * NO ES UN CONTROL DE SEGURIDAD. Solo decide DONDE se guarda la licencia. No
+ * salta ninguna validacion, no toca la huella ni el machineId, y apuntar a un
+ * espacio equivocado no regala una licencia: deja de encontrarse la que habia.
+ */
+let espacio = '';
+
+/**
+ * Declara el espacio de datos. Se llama UNA vez, antes de leer nada.
+ *
+ * Se normaliza a lo que puede formar un nombre de archivo sano: cualquier otra
+ * cosa se descarta en vez de acabar en una ruta compuesta a medias.
+ */
+function usarEspacio(nombre) {
+  espacio = String(nombre || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24);
+  return espacio;
+}
+
 function mainPath()   { return path.join(app.getPath('userData'), 'license.json'); }
-function mirrorPath() { return path.join(app.getPath('appData'), '.wxsys.dat'); }
+function mirrorPath() {
+  return path.join(app.getPath('appData'), espacio ? `.wxsys-${espacio}.dat` : '.wxsys.dat');
+}
 
 /** Llave del formato v3: sal por instalacion, no hardware. */
 function claveDeSal(salt) {
@@ -342,7 +391,7 @@ function clearLicense() {
 }
 
 module.exports = {
-  saveLicense, readLicense, computeStatus, clearLicense, machineIdEstable,
+  saveLicense, readLicense, computeStatus, clearLicense, machineIdEstable, usarEspacio,
   // Expuestos para las pruebas: permiten ejercitar el formato sin Electron.
   _internos: { cifrarV3, descifrarV3, cifrarV2, descifrarV2, claveDeMaquina, FORMATO, mainPath, mirrorPath },
 };

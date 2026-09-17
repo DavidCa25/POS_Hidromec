@@ -1,0 +1,14 @@
+{
+  "id": "hospitality",
+  "nombre": "Hospitality Demo",
+  "descripcion": "Cafetería: receta por tamaño, sustitución de leche y extras. Para probar Touch e inventario por ingrediente.",
+  "icono": "ph-coffee",
+  "businessProfile": "HOSPITALITY",
+  "orden": 2,
+  "seed": "seed.sql",
+  "prueba": [
+    "Vender un Latte Grande y ver el descuento por ingrediente.",
+    "Cambiar la leche por la de avena y comprobar que el origen no baja.",
+    "Añadir dos shots de espresso y ver el precio y el consumo por dos."
+  ]
+}

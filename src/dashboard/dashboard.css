@@ -837,6 +837,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ENTORNO DE DEMOSTRACION.
+   Una marca pequena junto al rol, no un rediseno de la barra. Tiene que
+   bastar para no confundir una demo con los datos de un negocio, y nada mas:
+   quien la usa para ensenar Wybix no quiere una pantalla llena de avisos.
+   Se pinta con el ambar de advertencia del propio sistema, no con un color
+   nuevo. */
+.sidebar-demo {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--wx-warning-soft, rgb(200 135 27 / 0.18));
+  color: var(--wx-warning-ink, #E0A63A);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  vertical-align: 1px;
+}
+
+/* Con el menu plegado solo queda la baldosa: la marca pasa a ella. */
+.sidebar-sucursal__tile.es-demo {
+  background: var(--wx-warning-soft, rgb(200 135 27 / 0.18));
+  color: var(--wx-warning-ink, #E0A63A);
+}
+
 .sidebar-sucursal__meta {
   font-size: 11.5px;
   color: var(--wx-rail-text-dim);

@@ -99,6 +99,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-register-cash-out', payload),
     generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
     getConfig: () => ipcRenderer.invoke("getConfig"),
+    // Solo lectura: dice si la BASE es de demostracion, para poder marcarlo en
+    // pantalla. No habilita ninguna operacion del gestor.
+    esDemo: () => ipcRenderer.invoke("app:es-demo"),
     updateBusinessConfig: (p) => ipcRenderer.invoke('update-business-config', p),
     paymentsGet: () => ipcRenderer.invoke('payments:get'),
     paymentsSet: (c) => ipcRenderer.invoke('payments:set', c),
