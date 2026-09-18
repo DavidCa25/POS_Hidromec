@@ -712,3 +712,43 @@
   border: 1px solid var(--wx-edge-strong); border-radius: 8px;
   font-size: 13px; background: var(--wx-surface); color: var(--wx-text);
 }
+
+/* ============================================================
+   COBRANDO UNA ORDEN DE SERVICIO.
+
+   Una franja, no un modal: quien cobra tiene que verla mientras trabaja, no
+   descartarla antes de empezar. Toma el color que el negocio eligió, igual
+   que el resto de la pantalla.
+   ============================================================ */
+.venta-orden-servicio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+  padding: 10px 14px;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft));
+  border: 1px solid var(--wx-user-accent-line, var(--wx-accent-line));
+  color: var(--wx-text);
+  font-size: var(--wx-text-sm);
+}
+.venta-orden-servicio i { color: var(--wx-user-accent-text, var(--wx-accent-text)); font-size: 1.1rem; }
+.venta-orden-servicio b { font-family: var(--wx-font-mono); font-weight: 600; }
+.venta-orden-ver {
+  margin-left: auto;
+  height: var(--wx-control-h-sm);
+  padding: 0 12px;
+  border: 1px solid var(--wx-user-accent, var(--wx-accent));
+  background: transparent;
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+  border-radius: var(--wx-radius-sm);
+  font: inherit;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+}
+.venta-orden-ver:hover { background: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+
+@media (max-width: 720px) {
+  .venta-orden-ver { margin-left: 0; }
+}

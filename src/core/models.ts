@@ -256,6 +256,15 @@ export interface Capabilities {
   customerDisplay: boolean;
   /** Campanas, recompensas, cupones, dinamicas y rifas. */
   loyalty: boolean;
+  /**
+   * Ordenes de servicio, profesionales y agenda.
+   *
+   * Convive con Retail y con Hospitality: un taller vende refacciones y cobra
+   * mano de obra, y una cafeteria con salon de belleza hace las dos cosas. Por
+   * eso es un modulo y no un perfil: los perfiles se excluyen entre si, los
+   * modulos se suman.
+   */
+  servicios: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */

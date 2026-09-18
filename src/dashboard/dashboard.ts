@@ -3,7 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf, NgFor, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { AuthService } from '../services/auth.service';
+import { AuthService, PAQUETES } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
@@ -86,9 +86,39 @@ export class Dashboard {
   esDemo = false;
   appVersion = '';
 
-  get rolTexto(): string {
-    return this.auth.esAdmin ? 'Administrador' : 'Cajero';
-  }
+  /**
+   * El rol, con el nombre que el producto usa en pantalla.
+   *
+   * Antes esto era `esAdmin ? 'Administrador' : 'Cajero'`, con dos
+   * consecuencias: un Encargado aparecía como «Cajero», y el día que hubiera
+   * un rol más seguiría apareciendo como «Cajero». La etiqueta la da el
+   * catálogo, que es quien sabe cuántos roles existen.
+   */
+  get rolTexto(): string { return this.auth.rolEtiqueta(); }
+
+  /**
+   * QUÉ SE DIBUJA EN EL MENÚ.
+   *
+   * Cada entrada preguntaba `auth.esAdmin`, y eso dejaba al Encargado con una
+   * barra lateral casi vacía: ni inventario, ni compras, ni el corte del día,
+   * aunque el proceso principal sí le deja hacer esas tres cosas. La interfaz
+   * y la autorización decían cosas distintas, y la que se veía era la
+   * equivocada.
+   *
+   * Ahora cada entrada pregunta por el PAQUETE que exige la operación a la que
+   * lleva. Son los mismos nombres que usa el proceso principal para autorizar,
+   * así que el menú no puede ofrecer lo que después se rechaza ni esconder lo
+   * que sí se permite.
+   */
+  get verNumeros(): boolean { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  get supervisarVentas(): boolean { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
+  get operarVentas(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
+  get operarInventario(): boolean { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
+  get administrarNegocio(): boolean { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
+  get operarServicios(): boolean { return this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
+
+  /** Su rol viene de una versión que este binario no conoce: no ofrece nada. */
+  get sinRol(): boolean { return this.auth.sinRol(); }
 
   private async cargarContexto() {
     try {

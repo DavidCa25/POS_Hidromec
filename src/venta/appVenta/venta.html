@@ -68,6 +68,25 @@
     </button>
   </div>
 
+  <!--
+    Se está cobrando una orden de servicio.
+
+    Tiene que verse: quien cobra necesita saber que este ticket no es una venta
+    de mostrador, que los precios son los que el cliente autorizó y que al
+    cobrar la orden quedará cerrada. Sin esto, la pantalla es idéntica a
+    cualquier otra venta y el enlace ocurre por sorpresa.
+  -->
+  <div class="venta-orden-servicio" *ngIf="ordenServicio as os">
+    <i class="ph ph-wrench"></i>
+    <span>
+      Cobrando la orden <b>{{ os.folio }}</b> · los precios son los que se
+      cotizaron, no los del catálogo de hoy.
+    </span>
+    <button type="button" class="venta-orden-ver" (click)="verOrdenDeServicio(os.id)">
+      Ver la orden
+    </button>
+  </div>
+
   <!-- ===== CARD PRINCIPAL: layout horizontal de 2 columnas ===== -->
   <div class="card shadow-lg border-0 venta-card">
     <div class="card-body pos-grid">

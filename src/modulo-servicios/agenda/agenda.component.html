@@ -1,0 +1,117 @@
+<div class="ag">
+
+  <!-- ============================================================ cabecera -->
+  <header class="ag-cab">
+    <div class="ag-titulo">
+      <h1>Agenda</h1>
+      <!-- El locale va en el pipe, como en el resto de la app: `LOCALE_ID` no
+           está fijado globalmente y sin esto la fecha sale en inglés. -->
+      <span class="ag-fecha">{{ dia() + 'T12:00:00' | date:'EEEE d \'de\' MMMM':undefined:'es-MX' }}</span>
+    </div>
+
+    <div class="ag-nav">
+      <button class="btn srv-sm" (click)="mover(-1)" aria-label="Día anterior">←</button>
+      <input class="ctl srv-sm" type="date" [ngModel]="dia()" (ngModelChange)="irA($event)"
+             aria-label="Día de la agenda" style="min-width:0;width:150px" />
+      <button class="btn srv-sm" (click)="mover(1)" aria-label="Día siguiente">→</button>
+      <button class="btn srv-sm" (click)="irA(hoy)" [disabled]="dia() === hoy">Hoy</button>
+    </div>
+
+    <!-- A pantalla estrecha, una persona a la vez: tres columnas dejarían
+         cada cita ilegible. -->
+    <select class="ctl srv-sm" [ngModel]="profesionalId()" (ngModelChange)="filtrarPor($event)"
+            aria-label="Filtrar por profesional">
+      <option [ngValue]="null">Todas las personas</option>
+      <option *ngFor="let p of profesionales()" [ngValue]="p.id">{{ p.full_name }}</option>
+    </select>
+
+    <span class="ag-resumen" *ngIf="!cargando()">{{ resumen() }}</span>
+    <span class="srv-hint" *ngIf="cargando()">Cargando…</span>
+
+    <div class="ag-der">
+      <button class="btn btn-primary srv-sm" (click)="nuevaCita()" *ngIf="puedeOperar">
+        Nueva cita
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================== cuerpo -->
+  <div class="ag-cuerpo">
+    <div class="ag-rejilla">
+
+      <!-- una columna por persona -->
+      <div class="ag-cols" [style.grid-template-columns]="plantillaColumnas()">
+        <div class="ag-cols-hueco"></div>
+        <div class="ag-col-cab" *ngFor="let p of columnas(); trackBy: porProfesional">
+          <span class="ag-punto ag-punto--claro" [style.background]="colorDe(p)"></span>
+          <span class="ag-col-nombre">{{ p.full_name }}</span>
+          <span class="ag-col-n">{{ cuantas(p.id) }}</span>
+        </div>
+      </div>
+
+      <div class="ag-scroll">
+        <div class="ag-lienzo" [style.grid-template-columns]="plantillaColumnas()"
+             [style.height.px]="altoLienzo()">
+
+          <!-- horas -->
+          <div class="ag-horas">
+            <div class="ag-hora" *ngFor="let h of horas()" [style.height.px]="altoHora">
+              {{ h }}
+            </div>
+          </div>
+
+          <!-- columnas -->
+          <div class="ag-col" *ngFor="let p of columnas(); trackBy: porProfesional"
+               [style.background-size]="'100% ' + altoHora + 'px'">
+
+            <!-- ausencias, detrás de todo -->
+            <div class="ag-ausencia" *ngFor="let a of ausenciasDe(p.id)"
+                 [style.top.px]="a.top" [style.height.px]="a.alto">
+              <b>No está</b>{{ a.motivo ? ' · ' + a.motivo : '' }}
+            </div>
+
+            <!-- citas -->
+            <button class="ag-bloque" type="button"
+                    *ngFor="let c of citasDe(p.id); trackBy: porCita"
+                    [style.top.px]="c.top" [style.height.px]="c.alto"
+                    [style.--ag-color]="c.color" [style.--ag-suave]="c.suave"
+                    [class.ag-bloque--corto]="c.alto < 46"
+                    [class.ag-bloque--cerrado]="!enPie(c.cita)"
+                    [class.ag-bloque--cancelado]="c.cita.status === 'CANCELADA'"
+                    (click)="abrirCita(c.cita)">
+              <span class="ag-bloque-quien">{{ c.cita.customer_name }}</span>
+              <span class="ag-bloque-que">
+                {{ c.cita.starts_at | date:'HH:mm':undefined:'es-MX' }}–{{ c.cita.ends_at | date:'HH:mm':undefined:'es-MX' }}
+                <ng-container *ngIf="c.cita.service_name"> · {{ c.cita.service_name }}</ng-container>
+                <ng-container *ngIf="c.cita.asset_label"> · {{ c.cita.asset_label }}</ng-container>
+              </span>
+            </button>
+          </div>
+
+          <!-- la hora actual, solo si el día que se mira es hoy -->
+          <ng-container *ngIf="lineaAhora() as y">
+            <div class="ag-ahora" [style.top.px]="y" [style.left.px]="anchoHoras"></div>
+            <div class="ag-ahora-hora" [style.top.px]="y">{{ horaAhora() }}</div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Con más de seis personas, las que no caben se dicen en vez de
+           desaparecer: una agenda que esconde a alguien sin avisar hace que
+           el mostrador prometa una hora que ya estaba tomada. -->
+      <p class="ag-aviso" *ngIf="ocultas() as n">
+        Se muestran {{ columnas().length }} de {{ profesionales().length }} personas
+        —primero las que tienen algo hoy—. Elige una arriba para verla sola.
+      </p>
+
+      <p class="ag-aviso" *ngIf="sinHorario()">
+        Nadie tiene horario declarado, así que la agenda no puede proponer huecos.
+        Se declara en <b>Servicios › Profesionales › Horario</b>.
+      </p>
+      <p class="ag-aviso" *ngIf="!sinHorario() && columnas().length === 0">
+        Todavía no hay profesionales dados de alta.
+        Añádelos en <b>Servicios › Profesionales</b>.
+      </p>
+    </div>
+  </div>
+</div>

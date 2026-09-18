@@ -9,6 +9,11 @@
  * Nombres por dominio: loyalty:*, dynamics:*, raffles:*.
  */
 
+/* La puerta de autorizacion es la misma que usa el proceso principal: el
+ * paquete que exige cada canal sale de electron/seguridad/canales.js. */
+const sesion = require('../seguridad/sesion');
+
+
 /** Envoltorio uniforme: nunca lanza al renderer, siempre {success, ...}. */
 async function ejecutar(pool, nombre, construir) {
   try {
@@ -60,7 +65,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
   });
 
   // -------------------------------------------------------------- campanas
-  ipcMain.handle('loyalty:save-campaign', async (_e, p = {}) =>
+  ipcMain.handle('loyalty:save-campaign', sesion.proteger('loyalty:save-campaign', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_loyalty_save_campaign', (r) => r
       .input('id', sql.Int, num(p.id))
       .input('name', sql.NVarChar(120), txt(p.name))
@@ -82,7 +87,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('starts_at', sql.DateTime2, p.startsAt ? new Date(p.startsAt) : null)
       .input('ends_at', sql.DateTime2, p.endsAt ? new Date(p.endsAt) : null)
       .input('priority', sql.Int, num(p.priority) ?? 100)
-      .input('active', sql.Bit, p.active === false ? 0 : 1)));
+      .input('active', sql.Bit, p.active === false ? 0 : 1))));
 
   // --------------------------------- recompensas, cupones y dinamicas
   /**
@@ -92,7 +97,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * SQL. Tres handlers identicos habrian sido tres sitios donde olvidarse de
    * anadir el mismo campo.
    */
-  ipcMain.handle('loyalty:save-definition', async (_e, p = {}) =>
+  ipcMain.handle('loyalty:save-definition', sesion.proteger('loyalty:save-definition', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_loyalty_save_definition', (r) => r
       .input('kind_of', sql.NVarChar(10), txt(p.kindOf))
       .input('id', sql.Int, num(p.id))
@@ -110,7 +115,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('tolerance', sql.Decimal(12, 4), num(p.tolerance))
       .input('attempts_allowed', sql.Int, num(p.attemptsAllowed) ?? 1)
       .input('reward_definition_id', sql.Int, num(p.rewardDefinitionId))
-      .input('active', sql.Bit, p.active === false ? 0 : 1)));
+      .input('active', sql.Bit, p.active === false ? 0 : 1))));
 
   // ------------------------------------------------------- venta -> premios
   /**
@@ -121,10 +126,10 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * procedure es idempotente por venta, asi que reintentar no premia dos
    * veces.
    */
-  ipcMain.handle('loyalty:evaluate-sale', async (_e, p = {}) =>
+  ipcMain.handle('loyalty:evaluate-sale', sesion.proteger('loyalty:evaluate-sale', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_loyalty_evaluate_sale', (r) => r
       .input('sale_id', sql.Int, num(p.saleId))
-      .input('machine_id', sql.NVarChar(64), equipo())));
+      .input('machine_id', sql.NVarChar(64), equipo()))));
 
   // -------------------------------------------------------------- dinamicas
   ipcMain.handle('dynamics:pending', async (_e, p = {}) =>
@@ -137,11 +142,11 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * El token identifica el intento concreto: sin el no se puede jugar una
    * dinamica que no salio de una venta.
    */
-  ipcMain.handle('dynamics:play', async (_e, p = {}) =>
+  ipcMain.handle('dynamics:play', sesion.proteger('dynamics:play', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_dynamic_play', (r) => r
       .input('token', sql.NVarChar(32), txt(p.token))
       .input('input_value', sql.Decimal(12, 4), num(p.inputValue) ?? 0)
-      .input('machine_id', sql.NVarChar(64), equipo())));
+      .input('machine_id', sql.NVarChar(64), equipo()))));
 
   // ----------------------------------------------------------- la ruleta
   /** Los sectores de una ruleta, en orden y con su probabilidad real. */
@@ -153,7 +158,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * Crear, cambiar o quitar un sector. Devuelve la lista completa ya
    * recalculada, asi que la pantalla no tiene que volver a pedirla.
    */
-  ipcMain.handle('dynamics:save-segment', async (_e, p = {}) =>
+  ipcMain.handle('dynamics:save-segment', sesion.proteger('dynamics:save-segment', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_dynamic_save_segment', (r) => r
       .input('id', sql.Int, num(p.id))
       .input('definition_id', sql.Int, num(p.definitionId))
@@ -164,10 +169,10 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('quantity', sql.Int, num(p.quantity) ?? 1)
       .input('weight', sql.Int, num(p.weight) ?? 1)
       .input('sort_order', sql.Int, num(p.sortOrder))
-      .input('borrar', sql.Bit, p.borrar ? 1 : 0)));
+      .input('borrar', sql.Bit, p.borrar ? 1 : 0))));
 
   // ------------------------------------------------------------------ rifas
-  ipcMain.handle('raffles:save', async (_e, p = {}) =>
+  ipcMain.handle('raffles:save', sesion.proteger('raffles:save', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_raffle_save', (r) => r
       .input('id', sql.Int, num(p.id))
       .input('name', sql.NVarChar(120), txt(p.name))
@@ -178,7 +183,7 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
       .input('winners_count', sql.Int, num(p.winnersCount) ?? 1)
       .input('code_prefix', sql.NVarChar(8), txt(p.codePrefix))
       .input('status', sql.NVarChar(10), txt(p.status))
-      .input('tickets_total', sql.Int, num(p.ticketsTotal))));
+      .input('tickets_total', sql.Int, num(p.ticketsTotal)))));
 
   ipcMain.handle('raffles:detail', async (_e, p = {}) => {
     try {
@@ -202,23 +207,23 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * deja constancia del algoritmo, su version y la semilla. Quien pregunte
    * dentro de seis meses si el sorteo fue limpio tiene con que comprobarlo.
    */
-  ipcMain.handle('raffles:draw', async (_e, p = {}) =>
+  ipcMain.handle('raffles:draw', sesion.proteger('raffles:draw', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_raffle_draw', (r) => r
       .input('raffle_id', sql.Int, num(p.raffleId))
       .input('user_id', sql.Int, num(p.userId))
       .input('register_id', sql.Int, num(p.registerId))
       .input('machine_id', sql.NVarChar(64), equipo())
       .input('winners', sql.Int, num(p.winners))
-      .input('alternates', sql.Int, num(p.alternates) ?? 0)));
+      .input('alternates', sql.Int, num(p.alternates) ?? 0))));
 
   /**
    * Cerrar una rifa: deja de admitir boletos y congela cuantos habia.
    * Es un acto propio, distinto de sortear.
    */
-  ipcMain.handle('raffles:close', async (_e, p = {}) =>
+  ipcMain.handle('raffles:close', sesion.proteger('raffles:close', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_raffle_close', (r) => r
       .input('raffle_id', sql.Int, num(p.raffleId))
-      .input('user_id', sql.Int, num(p.userId))));
+      .input('user_id', sql.Int, num(p.userId)))));
 
   // ------------------------------------------------------------- cupones
   /** Mirar, sin consumir. Se llama cuando el cajero teclea el codigo. */
@@ -228,13 +233,13 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * Es el unico camino para convertir una definicion en codigos repartibles
    * sin montar una campana y esperar a que alguien compre.
    */
-  ipcMain.handle('coupons:issue', async (_e, p = {}) =>
+  ipcMain.handle('coupons:issue', sesion.proteger('coupons:issue', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_coupon_issue', (r) => r
       .input('definition_id', sql.Int, num(p.definitionId))
       .input('quantity', sql.Int, num(p.quantity) ?? 1)
       .input('customer_id', sql.Int, num(p.customerId))
       .input('machine_id', sql.NVarChar(64), txt(p.machineId))
-      .input('register_id', sql.Int, num(p.registerId))));
+      .input('register_id', sql.Int, num(p.registerId)))));
 
   ipcMain.handle('coupons:validate', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_coupon_validate', (r) =>
@@ -247,13 +252,13 @@ function registrar({ ipcMain, sql, poolPromise, machineId }) {
    * cual: el cliente se llevo un beneficio y el cupon tiene que quedar
    * gastado. Quien llama debe ensenar el motivo, no callarselo.
    */
-  ipcMain.handle('coupons:redeem', async (_e, p = {}) =>
+  ipcMain.handle('coupons:redeem', sesion.proteger('coupons:redeem', async (_e, p = {}) =>
     ejecutar(await pool(), 'sp_coupon_redeem', (r) => r
       .input('code', sql.NVarChar(24), txt(p.code))
       .input('sale_id', sql.Int, num(p.saleId))
       .input('register_id', sql.Int, num(p.registerId))
       .input('machine_id', sql.NVarChar(64), equipo())
-      .input('amount_applied', sql.Decimal(12, 2), num(p.amountApplied) ?? 0)));
+      .input('amount_applied', sql.Decimal(12, 2), num(p.amountApplied) ?? 0))));
 
   /** Lo repartido de verdad: recompensas o cupones emitidos. */
   ipcMain.handle('loyalty:instances', async (_e, p = {}) =>

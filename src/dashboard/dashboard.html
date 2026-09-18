@@ -10,14 +10,14 @@
     </div>
     <ul class="sidebar-menu list-unstyled">
       <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/estadisticas"
+        <a *ngIf="verNumeros" routerLink="/dashboard/estadisticas"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-chart-line"></i> <span>Estadisticas</span>
         </a>
       </li>
       <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/alertas"
+        <a *ngIf="verNumeros" routerLink="/dashboard/alertas"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-bell"></i> <span>Alertas</span>
@@ -47,19 +47,19 @@
           </a>
         </li>
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
+          <a *ngIf="supervisarVentas" routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-vault me-2"></i> Abrir cajón
           </a>
         </li>
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/corte-dia" routerLinkActive="active"
+          <a *ngIf="verNumeros" routerLink="/dashboard/corte-dia" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-calendar-check me-2"></i> Corte del día
           </a>
         </li>
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaVenta" routerLinkActive="active"
+          <a *ngIf="supervisarVentas" routerLink="/dashboard/tablaVenta" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-receipt me-2"></i> Tabla de Ventas
           </a>
@@ -83,20 +83,20 @@
         class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
         style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario" routerLinkActive="active"
+          <a *ngIf="operarInventario" routerLink="/dashboard/inventario" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-package me-2"></i> Ver inventario
           </a>
         </li>
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/conteo" routerLinkActive="active"
+          <a *ngIf="operarInventario" routerLink="/dashboard/conteo" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-clipboard-text me-2"></i> Conteo físico
           </a>
         </li>
         <!-- Solo en negocios de alimentos y bebidas (business_profile). -->
         <li>
-          <a *ngIf="auth.esAdmin && caps.hospitality" routerLink="/dashboard/recetas" routerLinkActive="active"
+          <a *ngIf="operarInventario && caps.hospitality" routerLink="/dashboard/recetas" routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-cooking-pot me-2"></i> Recetas y modificadores
           </a>
@@ -118,7 +118,7 @@
       <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
         style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
         <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaCompra"
+          <a *ngIf="operarInventario" routerLink="/dashboard/tablaCompra"
             routerLinkActive="active"
             class="dropdown-item d-flex align-items-center">
             <i class="ph ph-table me-2"></i> Tabla de compras
@@ -134,14 +134,14 @@
       </ul>
     </li>
       <li class="wx-grp wx-grp--gestion">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/proveedores"
+        <a *ngIf="operarInventario" routerLink="/dashboard/proveedores"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-truck me-2"></i> <span>Proveedores</span>
         </a>
       </li>
       <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/clientes"
+        <a *ngIf="operarVentas" routerLink="/dashboard/clientes"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-users me-2"></i> <span>Clientes</span>
@@ -156,7 +156,7 @@
         </a>
       </li>
       <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/facturacion"
+        <a *ngIf="operarVentas" routerLink="/dashboard/facturacion"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-seal-check"></i> <span>Facturación</span>
@@ -171,10 +171,28 @@
         Recompensas, Cupones, Dinamicas y Rifas- son navegacion interna suya.
       -->
       <li class="wx-grp">
-        <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion"
+        <a *ngIf="administrarNegocio && caps.loyalty" routerLink="/dashboard/fidelizacion"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-gift"></i> <span>Fidelización</span>
+        </a>
+      </li>
+      <!--
+        Servicios: el trabajo que el negocio cobra además de lo que vende.
+
+        UNA sola entrada, como Fidelización: las cinco pantallas —Órdenes,
+        Agenda, Catálogo, Profesionales y Comisiones— son navegación interna
+        suya. El rail ya tiene dieciocho entradas y cinco más lo convertirían
+        en una lista que hay que leer entera para encontrar nada.
+
+        La ruta es `ordenes-de-servicio` y no `servicios` porque esa última ya
+        es la de «Pago de servicios», que lleva tiempo en producción.
+      -->
+      <li class="wx-grp">
+        <a *ngIf="operarServicios && caps.servicios" routerLink="/dashboard/ordenes-de-servicio"
+           routerLinkActive="active"
+           class="sidebar-link d-flex align-items-center px-4 py-3">
+          <i class="ph ph-wrench"></i> <span>Servicios</span>
         </a>
       </li>
       <!--
@@ -185,14 +203,14 @@
         Siempre visible; Fidelizacion, solo cuando esta encendida.
       -->
       <li class="wx-grp wx-grp--sistema">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones"
+        <a *ngIf="administrarNegocio" routerLink="/dashboard/aplicaciones"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-squares-four"></i> <span>Aplicaciones</span>
         </a>
       </li>
       <li class="wx-grp wx-grp--sistema">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/configuracion"
+        <a *ngIf="administrarNegocio" routerLink="/dashboard/configuracion"
            routerLinkActive="active"
            class="sidebar-link d-flex align-items-center px-4 py-3">
           <i class="ph ph-gear"></i> <span>Configuracion</span>
@@ -209,13 +227,13 @@
         <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
             style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
           <li>
-            <a *ngIf="auth.esAdmin" routerLink="/dashboard/importador" routerLinkActive="active"
+            <a *ngIf="administrarNegocio" routerLink="/dashboard/importador" routerLinkActive="active"
                class="dropdown-item d-flex align-items-center">
               <i class="ph ph-file-arrow-up me-2"></i> Importar productos
             </a>
           </li>
           <li>
-            <a *ngIf="auth.esAdmin" routerLink="/dashboard/migracion" routerLinkActive="active"
+            <a *ngIf="administrarNegocio" routerLink="/dashboard/migracion" routerLinkActive="active"
                class="dropdown-item d-flex align-items-center">
               <i class="ph ph-database me-2"></i> Migracion
             </a>

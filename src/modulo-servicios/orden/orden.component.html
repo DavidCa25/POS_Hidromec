@@ -1,0 +1,258 @@
+<div class="os" [attr.data-cajon]="cajon() ? 'abierto' : 'cerrado'" *ngIf="orden() as o">
+
+  <!-- ============================================================ cabecera -->
+  <header class="os-cab">
+    <div class="l1">
+      <button class="volver" (click)="volver()">← Órdenes</button>
+      <span class="sep">/</span>
+      <span class="folio">{{ o.cabecera.folio }}</span>
+      <span class="srv-badge" [class]="'srv-badge--' + claseEstado(o.cabecera.status)">
+        {{ etiquetaEstado(o.cabecera.status) }}
+      </span>
+      <span class="srv-badge srv-badge--warn"
+            *ngIf="o.cabecera.needs_reauthorization && o.cabecera.status !== 'CANCELADA'">
+        Sin autorizar
+      </span>
+      <span class="srv-badge" [class]="'srv-badge--' + claseCobro(o.cabecera.economic_status)">
+        {{ etiquetaCobro(o.cabecera.economic_status) }}
+      </span>
+    </div>
+    <div class="l2">
+      <b>{{ o.cabecera.customer_name }}</b>
+      <ng-container *ngIf="o.cabecera.asset_label">
+        <span class="punto">·</span>
+        <b>{{ o.cabecera.asset_label }}</b>
+        <span class="mono" *ngIf="o.cabecera.asset_identifier">{{ o.cabecera.asset_identifier }}</span>
+      </ng-container>
+      <ng-container *ngIf="o.cabecera.customer_phone || o.cabecera.customer_mobile">
+        <span class="punto">·</span>
+        <span class="mono">{{ o.cabecera.customer_mobile || o.cabecera.customer_phone }}</span>
+      </ng-container>
+      <span class="punto">·</span>
+      Recibida <b>{{ o.cabecera.opened_at | date:'d MMM, HH:mm':undefined:'es-MX' }}</b>
+      <ng-container *ngIf="o.cabecera.opened_by_name">
+        por <b>{{ o.cabecera.opened_by_name }}</b>
+      </ng-container>
+    </div>
+  </header>
+
+  <!-- Solo a partir de 1180px hacia abajo: las dos cifras que deciden todo no
+       pueden quedarse escondidas detrás del botón del cajón. -->
+  <div class="os-barra">
+    <span class="cifra">Total <b class="mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</b></span>
+    <span class="cifra" *ngIf="o.cabecera.needs_reauthorization" style="color:var(--wx-warning)">
+      Sin autorizar
+    </span>
+    <div class="der">
+      <button class="btn srv-sm" (click)="cajon.set(true)">Avance y acciones</button>
+    </div>
+  </div>
+
+  <!-- ============================================================== cuerpo -->
+  <div class="os-cuerpo">
+    <main class="os-main">
+      <div class="os-lineas">
+        <div class="os-scroll">
+          <table class="os-t">
+            <thead>
+              <tr>
+                <th style="width:92px">Tipo</th>
+                <th>Concepto</th>
+                <th style="width:132px">Estado</th>
+                <th class="ta-c" style="width:74px">Cant.</th>
+                <th class="ta-r" style="width:104px">Precio</th>
+                <th class="ta-r" style="width:110px">Importe</th>
+                <th style="width:44px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let l of o.lineas; trackBy: porLinea"
+                  [class.cancelada]="l.status === 'CANCELADA'">
+                <td>
+                  <span class="ln-tipo" [class.ln-tipo--s]="l.line_kind === 'SERVICIO'"
+                        [class.ln-tipo--p]="l.line_kind === 'PRODUCTO'">
+                    {{ l.line_kind === 'SERVICIO' ? 'SERVICIO' : 'REFACCIÓN' }}
+                  </span>
+                </td>
+                <td>
+                  {{ l.name_snapshot }}
+                  <div class="ln-quien" *ngIf="l.professional_name">{{ l.professional_name }}</div>
+                  <div class="ln-quien" *ngIf="l.notes">{{ l.notes }}</div>
+                </td>
+                <td>
+                  <select class="ctl srv-sm" [ngModel]="l.status"
+                          (ngModelChange)="cambiarEstadoLinea(l, $event)"
+                          [disabled]="!editable(o) || !puedeOperar"
+                          [attr.aria-label]="'Estado de ' + l.name_snapshot">
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="EN_PROCESO">En proceso</option>
+                    <option value="HECHA">Hecha</option>
+                    <option value="CANCELADA">Cancelada</option>
+                  </select>
+                </td>
+                <td class="ta-c mono">{{ l.quantity }}</td>
+                <td class="ta-r mono">
+                  {{ l.unit_price_snapshot | currency:'MXN':'symbol-narrow' }}
+                  <div class="ln-precio-viejo" *ngIf="precioCambio(l)">
+                    hoy {{ l.current_price | currency:'MXN':'symbol-narrow' }}
+                  </div>
+                </td>
+                <td class="ta-r mono" style="font-weight:500">
+                  {{ l.line_total | currency:'MXN':'symbol-narrow' }}
+                </td>
+                <td class="ta-c">
+                  <button class="btn srv-sm srv-ghost"
+                          *ngIf="editable(o) && puedeOperar && l.status !== 'CANCELADA'"
+                          (click)="quitarLinea(l)"
+                          [attr.aria-label]="'Quitar ' + l.name_snapshot">×</button>
+                </td>
+              </tr>
+              <tr class="os-sin-lineas" *ngIf="o.lineas.length === 0">
+                <td colspan="7" class="srv-vacio" style="padding:26px">
+                  <p><b>Todavía no hay nada cotizado.</b></p>
+                  <p class="srv-sub">Añade el trabajo y las refacciones cuando sepas qué hay que hacer.</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="os-add" *ngIf="editable(o) && puedeOperar">
+          <button class="btn srv-sm" (click)="agregar('SERVICIO')">+ Servicio</button>
+          <button class="btn srv-sm" (click)="agregar('PRODUCTO')">+ Refacción</button>
+        </div>
+
+        <div class="os-resumen">
+          <span class="menor">Servicios <span class="mono">{{ o.cabecera.total_servicios | currency:'MXN':'symbol-narrow' }}</span></span>
+          <span class="menor">·</span>
+          <span class="menor">Refacciones <span class="mono">{{ o.cabecera.total_productos | currency:'MXN':'symbol-narrow' }}</span></span>
+          <span class="total">Total <span class="mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</span></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================== carril -->
+    <aside class="os-rail" aria-label="Avance, autorización y acciones">
+      <div class="os-rail-scroll">
+        <section>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h3 style="margin:0">Avance</h3>
+            <button class="btn srv-sm srv-ghost cerrar-cajon" style="margin-left:auto"
+                    (click)="cajon.set(false)" aria-label="Cerrar panel">×</button>
+          </div>
+          <div style="margin-top:8px">
+            <div class="paso" *ngFor="let p of pasos(o); let i = index"
+                 [class.paso--hecho]="p.estado === 'hecho'"
+                 [class.paso--activo]="p.estado === 'activo'"
+                 [class.paso--pend]="p.estado === 'pendiente'">
+              <span class="p">{{ p.estado === 'hecho' ? '✓' : (i + 1) }}</span> {{ p.nombre }}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Autorización</h3>
+          <div class="aut">
+            <div class="aut-cifras">
+              <div>
+                <span class="k">Total</span>
+                <span class="v mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</span>
+              </div>
+              <div>
+                <span class="k">Estado</span>
+                <span class="v" [class.v--pend]="o.cabecera.needs_reauthorization">
+                  {{ o.cabecera.needs_reauthorization ? 'Pendiente' : 'Autorizado' }}
+                </span>
+              </div>
+            </div>
+            <div class="aut-meta" *ngIf="o.cabecera.authorized_at">
+              Versión {{ o.cabecera.authorized_version }} ·
+              {{ o.cabecera.authorized_at | date:'d MMM HH:mm':undefined:'es-MX' }} ·
+              {{ viaTexto(o.cabecera.authorized_channel) }}<br>
+              Autorizó <b>{{ o.cabecera.authorized_by_name }}</b>
+            </div>
+            <div class="aut-meta" *ngIf="!o.cabecera.authorized_at">
+              El cliente todavía no ha aprobado ningún presupuesto.
+            </div>
+            <div class="aut-meta" *ngIf="o.cabecera.authorized_at && o.cabecera.needs_reauthorization">
+              El presupuesto cambió después de que lo autorizara: lo que aprobó
+              ya no es lo que se le va a cobrar.
+            </div>
+          </div>
+        </section>
+
+        <section *ngIf="o.cabecera.reported_issue || o.cabecera.diagnosis">
+          <h3>Qué pasa</h3>
+          <p class="srv-sub" *ngIf="o.cabecera.reported_issue" style="margin:0 0 8px">
+            <b>Dijo el cliente:</b> {{ o.cabecera.reported_issue }}
+          </p>
+          <p class="srv-sub" *ngIf="o.cabecera.diagnosis" style="margin:0">
+            <b>Encontramos:</b> {{ o.cabecera.diagnosis }}
+          </p>
+        </section>
+
+        <section>
+          <h3>Historial</h3>
+          <div class="os-evento" *ngFor="let e of o.eventos">
+            <span class="cuando">{{ e.happened_at | date:'d MMM HH:mm':undefined:'es-MX' }}</span>
+            <span class="que">
+              {{ textoEvento(e) }}
+              <ng-container *ngIf="e.user_name"> · {{ e.user_name }}</ng-container>
+            </span>
+          </div>
+        </section>
+      </div>
+
+      <div class="os-rail-acc">
+        <button class="btn btn-primary"
+                *ngIf="editable(o) && puedeOperar && o.cabecera.total > 0"
+                (click)="autorizar()">
+          Registrar autorización
+        </button>
+
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'ABIERTA'"
+                (click)="cambiarEstado('EN_PROCESO')">
+          Marcar en proceso
+        </button>
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'EN_PROCESO'"
+                (click)="cambiarEstado('TERMINADA')">
+          Marcar terminada
+        </button>
+
+        <button class="btn" (click)="editarDatos()" *ngIf="editable(o) && puedeOperar">
+          Diagnóstico y datos
+        </button>
+
+        <!-- Sobre qué se trabaja. El texto dice si ya hay algo o si falta:
+             una orden sin coche en un taller es una orden a medias. -->
+        <button class="btn" (click)="cambiarActivo()" *ngIf="editable(o) && puedeOperar">
+          {{ o.cabecera.customer_asset_id ? 'Cambiar sobre qué' : 'Indicar sobre qué' }}
+        </button>
+
+        <button class="btn btn-primary" *ngIf="puedeOperar"
+                [disabled]="!puedeCobrar(o)"
+                [attr.aria-describedby]="puedeCobrar(o) ? null : 'os-porque'"
+                (click)="cobrar()">
+          Cobrar · {{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}
+        </button>
+        <span class="os-nota" id="os-porque" *ngIf="!puedeCobrar(o)">{{ porQueNoCobrar(o) }}</span>
+
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'TERMINADA' && o.cabecera.sale_id"
+                (click)="cambiarEstado('ENTREGADA')">
+          Entregar
+        </button>
+
+        <button class="btn srv-danger" *ngIf="editable(o) && puedeOperar" (click)="cancelar()">
+          Cancelar orden
+        </button>
+      </div>
+    </aside>
+
+    <div class="os-velo" (click)="cajon.set(false)"></div>
+  </div>
+</div>
+
+<div class="srv-vacio" *ngIf="!orden() && !cargando()">
+  <p>No se encontró la orden.</p>
+  <button class="btn" (click)="volver()">Volver a órdenes</button>
+</div>

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
+import { puedeVerServicios } from './servicios.guard';
 
 /*
  * Rutas de Wybix.
@@ -60,6 +61,43 @@ export const routes: Routes = [
       // Fidelizacion es un chunk aparte: un negocio que no la enciende no
       // descarga ni una linea de campanas, dinamicas o rifas.
       { path: 'fidelizacion', loadComponent: () => import('../loyalty/loyalty-admin').then(m => m.LoyaltyAdmin) },
+
+      /*
+       * Servicios: el negocio que ademas de vender cobra por trabajo.
+       *
+       * El guard pregunta dos cosas en CADA navegacion: si el negocio tiene el
+       * modulo encendido y si esta persona puede operarlo. Apagarlo desde otra
+       * caja tiene que surtir efecto sin que nadie cierre sesion.
+       *
+       * Las pantallas son hijas de una carcasa con pestanas propias: cuatro
+       * entradas sueltas en el rail lateral -que ya tiene dieciocho- lo
+       * convertirian en una lista que hay que leer entera.
+       */
+      {
+        /*  YA estaba ocupado por Pago de servicios -recargas y recibos-,
+           que lleva tiempo en produccion. Reutilizar la ruta habria dejado el
+           modulo nuevo inalcanzable: Angular resuelve la primera que coincide. */
+        path: 'ordenes-de-servicio',
+        canActivate: [puedeVerServicios],
+        loadComponent: () => import('../modulo-servicios/servicios-shell.component').then(m => m.ServiciosShell),
+        children: [
+          { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
+          { path: 'ordenes', loadComponent: () => import('../modulo-servicios/ordenes/ordenes.component').then(m => m.ServiciosOrdenes) },
+          { path: 'agenda', loadComponent: () => import('../modulo-servicios/agenda/agenda.component').then(m => m.ServiciosAgenda) },
+          { path: 'activos', loadComponent: () => import('../modulo-servicios/activos/activos.component').then(m => m.ServiciosActivos) },
+          { path: 'catalogo', loadComponent: () => import('../modulo-servicios/catalogo/catalogo.component').then(m => m.ServiciosCatalogo) },
+          { path: 'profesionales', loadComponent: () => import('../modulo-servicios/profesionales/profesionales.component').then(m => m.ServiciosProfesionales) },
+          { path: 'comisiones', loadComponent: () => import('../modulo-servicios/comisiones/comisiones.component').then(m => m.ServiciosComisiones) },
+        ],
+      },
+      /* El detalle va FUERA de la carcasa: ocupa la pantalla entera y su propio
+         carril lateral ya lleva la navegacion que hace falta. Meterlo dentro
+         habria dejado dos filas de pestanas compitiendo por el mismo sitio. */
+      {
+        path: 'ordenes-de-servicio/orden/:id',
+        canActivate: [puedeVerServicios],
+        loadComponent: () => import('../modulo-servicios/orden/orden.component').then(m => m.ServiciosOrden),
+      },
       { path: 'configuracion', loadComponent: () => import('./config-shell/configShell').then(m => m.ConfigShell) },
       // Aplicaciones: que capacidades opcionales tiene encendidas el negocio.
       // Vive fuera de Configuracion a proposito: configurar la impresora y

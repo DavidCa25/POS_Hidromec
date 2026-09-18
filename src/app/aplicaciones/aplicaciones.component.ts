@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import {
   CATEGORIAS, CapabilityService, Capabilities, MODULOS, ModuleCategory, ModuleDefinition,
 } from '../../core';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, PAQUETES } from '../../services/auth.service';
 
 /*
  * Aplicaciones de Wybix: que capacidades opcionales tiene encendidas el
@@ -56,7 +56,7 @@ export class Aplicaciones implements OnInit {
    * boton no es un permiso: quien llegue por la URL se encuentra la puerta
    * cerrada igual.
    */
-  get puedeAdministrar(): boolean { return this.auth.esAdmin; }
+  get puedeAdministrar(): boolean { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
 
   /** Cual se esta cambiando ahora mismo, para bloquear solo ese. */
   cambiando = signal<string | null>(null);

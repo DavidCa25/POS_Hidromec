@@ -12,7 +12,15 @@ const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./sc
 const { runMigrations } = require('./migrationsRunner');
 const ipcHospitality = require('./ipc/hospitality');
 const ipcLoyalty = require('./ipc/loyalty');
+const ipcServicios = require('./ipc/servicios');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
+/* FASE CORE 0 — seguridad real.
+   `permisos` es el catalogo que viaja con el binario; `sesion` guarda quien
+   opera cada ventana y es la UNICA puerta de autorizacion del proceso
+   principal. Ver electron/seguridad/. */
+const permisos = require('./seguridad/permisos');
+const sesion = require('./seguridad/sesion');
+const canales = require('./seguridad/canales');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
 const logger = require('./logger');
@@ -96,6 +104,11 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
 ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEsteEquipo() });
+
+// IPC del dominio Servicios (catalogo, activos del cliente, profesionales,
+// ordenes de servicio, agenda y comisiones). El prefijo es `servicios:` y no
+// `services:`: ese ya significa los servicios de Windows del panel de red.
+ipcServicios.registrar({ ipcMain, sql, poolPromise });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -628,7 +641,7 @@ ipcMain.handle('files:save-bytes', async (_e, payload = {}) => {
   }
 });
 
-ipcMain.handle('export-database', async () => {
+ipcMain.handle('export-database', sesion.proteger('export-database', async () => {
   try {
     const dbName = await getCurrentDbName();
 
@@ -685,9 +698,9 @@ ipcMain.handle('export-database', async () => {
         'No se pudo exportar. Asegura permisos para SQL Server en C:\\POS_Backups (o SQL_BACKUP_DIR).'
     };
   }
-});
+}));
 
-ipcMain.handle('import-database', async () => {
+ipcMain.handle('import-database', sesion.proteger('import-database', async () => {
   try {
     const dbName = await getCurrentDbName();
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
@@ -739,7 +752,7 @@ ipcMain.handle('import-database', async () => {
         'No se pudo importar. Revisa que SQL Server pueda acceder a la ruta del .bak.'
     };
   }
-});
+}));
 
 function getDeviceConfigPath() {
   return path.join(app.getPath('userData'), 'device-config.json');
@@ -1092,7 +1105,7 @@ ipcMain.handle('services:validate', async (_e, payload = {}) => {
   } catch (e) { return { ok: false, error: e.message }; }
 });
 
-ipcMain.handle('services:set-config', async (_e, cfg = {}) => {
+ipcMain.handle('services:set-config', sesion.proteger('services:set-config', async (_e, cfg = {}) => {
   try {
     const current = loadServicesConfig();
     const merged = {
@@ -1102,38 +1115,85 @@ ipcMain.handle('services:set-config', async (_e, cfg = {}) => {
     saveServicesConfig(merged);
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('services:clear', async () => {
+ipcMain.handle('services:clear', sesion.proteger('services:clear', async () => {
   try {
     saveServicesConfig({ provider: null, enabled: false, credentials: {} });
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 // Ejecuta una operacion (recarga / pago de servicio). Pendiente de conectar TAECEL.
-ipcMain.handle('services:operate', async (_e, op = {}) => {
+ipcMain.handle('services:operate', sesion.proteger('services:operate', async (_e, op = {}) => {
   try {
     const c = loadServicesConfig();
     if (!c.enabled || c.provider !== 'taecel') return { ok: false, error: 'El modulo no esta configurado.' };
     // === PUNTO DE INTEGRACION TAECEL: aqui va la recarga/pago real ===
     return { ok: false, pendingApi: true, error: 'Conecta tu cuenta TAECEL para operar (falta la API real).' };
   } catch (e) { return { ok: false, error: e.message }; }
-});
+}));
 
 // ============================================================
 //  BLINDAJE / SEGURIDAD (anti robo hormiga)
 // ============================================================
-ipcMain.handle('security:authorize', async (_e, p = {}) => {
+/**
+ * «¿Otra persona autoriza esto?», que no es «¿puede quien está operando?».
+ *
+ * La primera es presencial: alguien DISTINTO teclea sus credenciales delante
+ * de la caja. La segunda es silenciosa y la resuelve la sesión. Las dos
+ * comparten la misma definición de quién puede —el mismo paquete— y por eso
+ * no hay dos sistemas de permisos conviviendo.
+ *
+ * SE EXIGE UN PAQUETE, NO UN ROL
+ * ------------------------------
+ * El procedimiento ya no filtra por `rol IN ('admin','supervisor')`: valida
+ * credenciales y devuelve quién es. Quién puede autorizar lo decide aquí el
+ * catálogo, así que el día que exista un rol nuevo no hay que tocar SQL.
+ *
+ * QUEDAN LAS DOS IDENTIDADES
+ * --------------------------
+ * Una autorización presencial sin el nombre de quien opera no sirve de nada:
+ * el registro diría que el encargado hizo la devolución, cuando lo que hizo
+ * fue permitirla. `performed_by` sale de la sesión de esta ventana —no del
+ * renderer— y `authorized_by` de las credenciales recién tecleadas. Si
+ * resultan ser la misma persona se rechaza: eso no es autorización presencial,
+ * es alguien saltándose el control con su propia contraseña.
+ */
+ipcMain.handle('security:authorize', async (evento, p = {}) => {
   try {
+    const exigido = canales.exigePara(String(p.canal || '')) || permisos.BUNDLES.VENTAS_SUPERVISAR;
+
+    /* Quién opera sale de la sesión de la ventana. Si nadie inició sesión no
+       hay nada que autorizar: la operación ni siquiera debería haber llegado. */
+    const actor = sesion.de(evento?.sender?.id);
+    if (!actor) return { ok: false, error: sesion.MENSAJES.SIN_SESION };
+
     const pool = await poolPromise;
     const r = await pool.request()
       .input('usuario', sql.NVarChar(50), String(p.usuario || '').trim())
       .input('password', sql.NVarChar(255), String(p.password || ''))
       .execute('sp_authorize_supervisor');
+
     const row = r.recordset?.[0];
-    if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos, o sin permisos de supervisor.' };
-    return { ok: true, userId: row.id, name: row.usuario, rol: row.rol };
+    if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+
+    if (Number(row.id) === Number(actor.userId)) {
+      return { ok: false, error: 'La autorización tiene que darla otra persona.' };
+    }
+    if (!permisos.permisosDeRol(row.rol).has(exigido)) {
+      return { ok: false, error: 'Ese usuario no puede autorizar esta operación.' };
+    }
+
+    return {
+      ok: true,
+      userId: row.id, name: row.usuario, rol: row.rol,
+      rolEtiqueta: permisos.etiquetaDeRol(row.rol),
+      /* Las dos identidades, para que quien registre el evento no tenga que
+         inventárselas ni pueda mandar una sola. */
+      performedBy: actor.userId, performedByName: actor.usuario,
+      authorizedBy: row.id, authorizedByName: row.usuario,
+    };
   } catch (e) { return { ok: false, error: e.message }; }
 });
 
@@ -1173,7 +1233,7 @@ ipcMain.handle('security:log', async (_e, p = {}) => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
-ipcMain.handle('security:by-cashier', async (_e, p = {}) => {
+ipcMain.handle('security:by-cashier', sesion.proteger('security:by-cashier', async (_e, p = {}) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -1181,9 +1241,9 @@ ipcMain.handle('security:by-cashier', async (_e, p = {}) => {
       .execute('sp_security_by_cashier');
     return { success: true, data: r.recordset };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('security:risk', async (_e, p = {}) => {
+ipcMain.handle('security:risk', sesion.proteger('security:risk', async (_e, p = {}) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -1191,7 +1251,7 @@ ipcMain.handle('security:risk', async (_e, p = {}) => {
       .execute('sp_cashier_risk');
     return { success: true, data: r.recordset };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 function setupAutoUpdater(win) {
   if (isDev) {
@@ -1264,7 +1324,7 @@ function setupAutoUpdater(win) {
   });
 }
 
-ipcMain.handle('download-update', async () => {
+ipcMain.handle('download-update', sesion.proteger('download-update', async () => {
   try {
     await autoUpdater.downloadUpdate();
     return { success: true };
@@ -1272,12 +1332,12 @@ ipcMain.handle('download-update', async () => {
     console.error('Error descargando actualización:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('install-update', () => {
+ipcMain.handle('install-update', sesion.proteger('install-update', () => {
   autoUpdater.quitAndInstall(false, true);
   return { success: true };
-});
+}));
 
 ipcMain.handle('check-for-updates', async () => {
   try {
@@ -1313,10 +1373,19 @@ function createWindow() {
     }
   });
 
-  if (isDev) {
-    win.loadURL('http://localhost:4200');
-  } else {
+  /* En desarrollo la interfaz viene del servidor de Angular, que recompila al
+     guardar. Empaquetada, del bundle que viaja dentro de la aplicacion.
+
+     `WYBIX_UI_DIST` fuerza el bundle con un proceso principal sin empaquetar.
+     Lo usan las pruebas de extremo a extremo: levantar `ng serve` solo para
+     ellas anadiria un minuto largo a cada ejecucion y una fuente de fallos
+     -el puerto ocupado, la recompilacion a medias- que no tiene nada que ver
+     con lo que se esta probando. */
+  const desdeBundle = !isDev || process.env.WYBIX_UI_DIST === '1';
+  if (desdeBundle) {
     win.loadFile(path.join(__dirname, '../dist/filtros_lubs_rios/browser/index.html'));
+  } else {
+    win.loadURL('http://localhost:4200');
   }
 
   setupAutoUpdater(win);
@@ -1407,7 +1476,7 @@ ipcMain.handle('app:es-demo', async () => {
 });
 
 // Guardar datos del negocio (Configuracion > Datos del negocio)
-ipcMain.handle('update-business-config', async (_e, payload = {}) => {
+ipcMain.handle('update-business-config', sesion.proteger('update-business-config', async (_e, payload = {}) => {
   try {
     const pool = await poolPromise;
     await pool.request()
@@ -1431,7 +1500,7 @@ ipcMain.handle('update-business-config', async (_e, payload = {}) => {
     console.error('update-business-config:', e);
     return { success: false, error: e.message };
   }
-});
+}));
 
 // Formas de pago (config local por caja)
 function paymentsConfigPath() { return path.join(app.getPath('userData'), 'payments-config.json'); }
@@ -1444,7 +1513,7 @@ function loadPaymentsConfig() {
   return defaultPayments();
 }
 ipcMain.handle('payments:get', async () => ({ success: true, data: loadPaymentsConfig() }));
-ipcMain.handle('payments:set', async (_e, cfg = {}) => {
+ipcMain.handle('payments:set', sesion.proteger('payments:set', async (_e, cfg = {}) => {
   try {
     const merged = { ...loadPaymentsConfig(), ...cfg };
     fs.writeFileSync(paymentsConfigPath(), JSON.stringify(merged, null, 2), 'utf8');
@@ -1452,12 +1521,192 @@ ipcMain.handle('payments:set', async (_e, cfg = {}) => {
   } catch (e) {
     return { success: false, error: e.message };
   }
-});
+}));
 
 // Version de la app (Configuracion > Actualizaciones)
 ipcMain.handle('app:get-version', async () => {
   try { return { success: true, version: app.getVersion() }; }
   catch (e) { return { success: false, error: e.message }; }
+});
+
+/* ============================================================
+   FASE CORE 0 — de donde saca la sesion lo que necesita.
+
+   Se inyecta en vez de que `sesion.js` conozca SQL: asi el mecanismo se
+   puede ejercitar entero sin Electron ni servidor, que es como estan
+   escritas sus pruebas.
+   ============================================================ */
+/**
+ * QUE INTERPRETACION DE LOS ROLES ENTIENDE ESTE BINARIO.
+ *
+ * Sube solo cuando cambia el SIGNIFICADO de un rol -permisos que entran o
+ * salen de un paquete-, no cuando se anade una pantalla.
+ *
+ * MULTICAJA CON VERSIONES MEZCLADAS
+ * ---------------------------------
+ * Durante una actualizacion siempre hay un rato con cajas en dos versiones.
+ * Lo que se decidio es lo minimo que evita el dano real, y nada mas:
+ *
+ *   ADMINISTRAR modulos exige una caja al dia. Una caja atrasada interpreta
+ *   los paquetes con reglas viejas; si ademas pudiera reescribir la
+ *   configuracion, la dejaria como la entiende ella y las demas verian otra
+ *   cosa. Se le bloquea eso, y solo eso.
+ *
+ *   VENDER no se bloquea. Impedir cobrar a media manana porque la caja del
+ *   fondo tiene la version de ayer es un dano mucho mayor que el que se
+ *   intenta evitar, y ademas es el momento en que menos se puede actualizar.
+ *
+ *   La caja vieja sigue escribiendo `business_config` como siempre, y
+ *   `sp_update_business_config` mantiene el registro al dia por ella. No hay
+ *   sincronizacion bidireccional continua: cada procedimiento escribe la copia
+ *   del otro y para ahi.
+ */
+const MODELO_SEGURIDAD = 1;
+
+async function comprobarModeloDeSeguridad() {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_security_state');
+    const enBase = Number(r.recordset?.[0]?.security_model_version ?? MODELO_SEGURIDAD);
+    if (enBase > MODELO_SEGURIDAD) {
+      return {
+        ok: false,
+        enBase, enBinario: MODELO_SEGURIDAD,
+        mensaje: 'Esta caja tiene una versión anterior de Wybix y no puede cambiar los ' +
+                 'módulos del negocio. Puede seguir vendiendo con normalidad; para ' +
+                 'administrar los módulos, actualízala.',
+      };
+    }
+    return { ok: true, enBase, enBinario: MODELO_SEGURIDAD };
+  } catch {
+    /* Base anterior a la migracion: no existe el procedimiento todavia. Se
+       deja pasar, que es exactamente el comportamiento de hoy. */
+    return { ok: true, enBase: null, enBinario: MODELO_SEGURIDAD };
+  }
+}
+
+ipcMain.handle('security:modelo', async () => comprobarModeloDeSeguridad());
+
+sesion.configurar({
+  leerRevision: async () => {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_security_state');
+    return r.recordset?.[0]?.security_revision ?? 1;
+  },
+  leerUsuario: async (userId) => {
+    const pool = await poolPromise;
+    const r = await pool.request().input('id', sql.Int, userId)
+      .query('SELECT id, usuario, rol, active FROM dbo.users WHERE id = @id');
+    return r.recordset?.[0] ?? null;
+  },
+  /* Las capacidades del NEGOCIO, con su propia cache. No viven en la sesion
+     a proposito: apagar un modulo desde otra caja tiene que surtir efecto sin
+     que nadie cierre sesion. */
+  modulosActivos: async () => modulosActivos(),
+  registrar: (e) => console.warn(`[ACCESO] ${e.motivo} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`),
+});
+
+/* La sesion muere con su ventana. Sin esto, el id de un webContents
+   destruido podria reutilizarse y heredar permisos ajenos. */
+app.on('web-contents-created', (_e, wc) => {
+  wc.on('destroyed', () => sesion.cerrar(wc.id));
+});
+
+/* ---------------------------------------------- modulos activos del negocio
+   Cache corta y comun. Se relee sola: no hace falta tiempo real para que una
+   caja deje de permitir acciones de un modulo que se apago en otra. */
+let modulosCache = { valor: null, leidoEn: 0 };
+const TTL_MODULOS_MS = 5000;
+
+async function modulosActivos(forzar = false) {
+  const ahora = Date.now();
+  if (!forzar && modulosCache.valor && (ahora - modulosCache.leidoEn) < TTL_MODULOS_MS) {
+    return modulosCache.valor;
+  }
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_business_modules');
+    const activos = new Set();
+    for (const f of r.recordset || []) {
+      if (f.enabled === true || f.enabled === 1) activos.add(String(f.module_key));
+    }
+    modulosCache = { valor: activos, leidoEn: ahora };
+  } catch (e) {
+    /* Sin registro todavia -base anterior a la migracion- no hay modulos
+       encendidos por este camino. El dual-write mantiene las columnas
+       antiguas al dia, asi que nadie pierde nada mientras tanto. */
+    if (!modulosCache.valor) modulosCache = { valor: new Set(), leidoEn: ahora };
+    else modulosCache.leidoEn = ahora;
+  }
+  return modulosCache.valor;
+}
+
+/** Quien opera esta ventana. Para que el renderer se repinte tras un F5. */
+/**
+ * Quien hay dentro de ESTA ventana, con los permisos al dia.
+ *
+ * `vigente` devuelve `{ sesion, fiable }` y no la sesion a secas, porque quien
+ * autoriza necesita distinguir «la base dice que nada cambio» de «no pude
+ * preguntarle». Aqui solo se pinta, asi que basta con la sesion —pero hay que
+ * sacarla del sobre: pasarle el sobre entero a `retrato` reventaba al
+ * recorrer unos permisos que no existian.
+ */
+ipcMain.handle('auth:sesion', async (event) => {
+  const { sesion: s } = await sesion.vigente(event.sender.id);
+  return { success: true, data: sesion.retrato(s) };
+});
+
+ipcMain.handle('auth:cerrar-sesion', async (event) => {
+  sesion.cerrar(event.sender.id);
+  return { success: true };
+});
+
+/* ------------------------------------------------- modulos del negocio
+   Lectura abierta: saber si Fidelizacion esta encendida no es una accion
+   sensible, y el menu lo necesita antes de que nadie pulse nada.
+   Escritura, no: encender o apagar un modulo es configurar el negocio. */
+ipcMain.handle('modules:list', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_business_modules');
+    return { success: true, data: r.recordset ?? [] };
+  } catch (e) { return { success: false, error: e.message, data: [] }; }
+});
+
+ipcMain.handle('modules:set', sesion.proteger('modules:set', async (_e, p = {}, s) => {
+  try {
+    const clave = String(p.moduleKey ?? '').trim();
+    if (!clave) return { success: false, error: 'Falta el módulo.' };
+
+    /* Estrategia A: administrar módulos exige una caja al día. Vender no. */
+    const modelo = await comprobarModeloDeSeguridad();
+    if (!modelo.ok) return { success: false, error: modelo.mensaje, motivo: 'VERSION_ATRASADA' };
+
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('module_key', sql.NVarChar(40), clave)
+      .input('enabled', sql.Bit, p.enabled ? 1 : 0)
+      .input('user_id', sql.Int, s?.userId ?? null)
+      .execute('sp_set_business_module');
+    modulosCache = { valor: null, leidoEn: 0 };   // que la proxima lectura sea fresca
+    businessConfig = null;                        // el perfil pudo cambiar con hospitality
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
+/**
+ * El catalogo de paquetes y el mapa de canales protegidos.
+ *
+ * El renderer lo usa para saber que ofrecer; la autoridad sigue siendo el
+ * proceso principal. Sale del mismo sitio que la autorizacion, asi que la
+ * interfaz y el backend no pueden contradecirse.
+ */
+ipcMain.handle('security:catalogo', async () => {
+  return { success: true, data: {
+    paquetes: permisos.PERMISOS,
+    roles: permisos.ETIQUETAS,
+    canales: canales.EXIGE,
+  } };
 });
 
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
@@ -1476,7 +1725,13 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
         message: 'Usuario o contraseña incorrectos'
       };
     }
-  
+
+    /* AQUI, Y SOLO AQUI, NACE UNA SESION.
+       Lo que se le pasa es la fila que devolvio SQL, no lo que mando el
+       renderer: el identificador y el rol salen de la consulta. No existe
+       ningun canal por el que una ventana pueda declarar quien es. */
+    const s = await sesion.abrir(event.sender.id, row);
+
     return {
       success: true,
       data: {
@@ -1484,7 +1739,10 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
         usuario: row.usuario,
         rol: row.rol,
         active: row.active,
-        creation_date: row.creation_date
+        creation_date: row.creation_date,
+        /* Para pintar: el renderer esconde lo que no aplica. Ninguna
+           decision del proceso principal consulta esta copia. */
+        acceso: sesion.retrato(s),
       }
     };
   } catch (err) {
@@ -1529,7 +1787,7 @@ ipcMain.handle('sp-Consultar-Detalle-Productos', async (event, CategoryID) => {
     }
 });
 
-ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name, price, stock,
+ipcMain.handle('sp-add-product', sesion.proteger('sp-add-product', async (event, brand, category, partNumber, name, price, stock,
                                         claveProdServ, claveUnidad, objetoImpuesto, tasaIva, barCode,
                                         control = null) => {
     try {
@@ -1568,9 +1826,9 @@ ipcMain.handle('sp-add-product', async (event, brand, category, partNumber, name
         };
     }
  
-});
+}));
  
-ipcMain.handle('sp-delete-product', async (_event, productId) => {
+ipcMain.handle('sp-delete-product', sesion.proteger('sp-delete-product', async (_event, productId) => {
   try {
     const id = Number(productId);
     if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'product_id invalido.' };
@@ -1621,9 +1879,9 @@ ipcMain.handle('sp-delete-product', async (_event, productId) => {
 
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-update-product', async (event, payload = {}) => {
+ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (event, payload = {}) => {
   try {
     const productId = Number(payload?.product_id ?? payload?.productId ?? 0);
     const nombre = String(payload?.nombre ?? payload?.name ?? '').trim();
@@ -1672,7 +1930,7 @@ ipcMain.handle('sp-update-product', async (event, payload = {}) => {
     console.error('sp-update-product:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 ipcMain.handle('sp-get-categories', async (event, data) => {
     try {   
@@ -1763,7 +2021,7 @@ function esDeadlock(err) {
   return err && (err.number === 1205 || /\[1205\]|deadlock|interbloqueo/i.test(String(err.message || '')));
 }
 
-ipcMain.handle('sp-register-sale', async (event, a, b, c, d, e, f) => {
+ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (event, a, b, c, d, e, f) => {
   // Normaliza las dos formas de llamada.
   const p = (a && typeof a === 'object' && !Array.isArray(a))
     ? a
@@ -1832,7 +2090,7 @@ ipcMain.handle('sp-register-sale', async (event, a, b, c, d, e, f) => {
       return { success: false, error: err.message };
     }
   }
-});
+}));
 
 
     
@@ -1861,7 +2119,7 @@ ipcMain.handle('get-next-purchase-folio', async () => {
   }
 });
 
-ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id }) => {
+ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id }) => {
   try {
     const pool = await poolPromise;
 
@@ -1932,7 +2190,7 @@ ipcMain.handle('sp-register-purchase', async (event, { user_id, supplier_id, tax
     console.error('❌ Error sp_register_purchase:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 
 ipcMain.handle('sp-get-top-selling-products', async (event, data) => {
@@ -2026,7 +2284,7 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
 
 // CREATE
 ipcMain.handle(
-  'sp-create-customer',
+  'sp-create-customer', sesion.proteger('sp-create-customer',
   async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
     try {
       const pool = await poolPromise;
@@ -2058,7 +2316,7 @@ ipcMain.handle(
       return { success: false, error: err.message };
     }
   }
-);
+));
 
 
 
@@ -2130,7 +2388,7 @@ ipcMain.handle('sp-get-customers-summary', async () => {
 
 
 ipcMain.handle(
-  'sp-update-customer', 
+  'sp-update-customer', sesion.proteger('sp-update-customer', 
   async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
     try {
       const pool = await poolPromise;
@@ -2165,7 +2423,7 @@ ipcMain.handle(
       return { success: false, error: err.message };
     }
   }
-);
+));
 
 ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
   try {
@@ -2188,7 +2446,7 @@ ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
 });
 
 ipcMain.handle(
-  'sp-register-customer-payment',
+  'sp-register-customer-payment', sesion.proteger('sp-register-customer-payment',
   async (event, customerId, saleId, amount, userId, paymentMethod, note) => {
     try {
       const pool = await poolPromise;
@@ -2213,7 +2471,7 @@ ipcMain.handle(
       };
     }
   }
-);
+));
 
 // Envia bytes crudos (ESC/POS) directamente a una impresora de Windows via el spooler.
 // Se usa para el pulso de apertura del cajon conectado a la impresora de tickets (RJ11).
@@ -2272,7 +2530,7 @@ if([WybixRaw]::Send('${pName}', $src)){ 'OK' } else { throw 'WritePrinter fallo'
   });
 }
 
-ipcMain.handle('open-cash-drawer', async (_event, payload = {}) => {
+ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_event, payload = {}) => {
   try {
     const dcfg = loadDeviceConfig();
     const d = (dcfg && dcfg.drawer) || {};
@@ -2339,7 +2597,7 @@ ipcMain.handle('open-cash-drawer', async (_event, payload = {}) => {
     console.error('open-cash-drawer:', err);
     return { success: false, error: err?.message || String(err) };
   }
-});
+}));
 
 ipcMain.handle('sp-get-daily-sales-last-7-days', async () => {
   try {
@@ -2375,7 +2633,7 @@ ipcMain.handle('sp-get-daily-sales-current-month', async () => {
   }
 });
 
-ipcMain.handle('sp-get-profit-overview', async (event, { fromDate, toDate }) => {
+ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview', async (event, { fromDate, toDate }) => {
   try {
     const pool = await poolPromise;
     const request = pool.request();
@@ -2400,11 +2658,11 @@ ipcMain.handle('sp-get-profit-overview', async (event, { fromDate, toDate }) => 
       error: err.message
     };
   }
-});
+}));
 
 //CIERRE DE CAJA
 
-ipcMain.handle('sp-close-shift', async (event, payload) => {
+ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event, payload) => {
   try {
     console.log('sp-close-shift payload RAW:', payload);
 
@@ -2453,7 +2711,7 @@ ipcMain.handle('sp-close-shift', async (event, payload) => {
     console.error('Error en sp_close_shift:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 ipcMain.handle('sp-get-actual-folio', async () => {
   try {
@@ -2486,7 +2744,36 @@ ipcMain.handle('sp-get-active-users', async () => {
 });
 
 // ===== Usuarios y permisos =====
-const ROLES_VALIDOS = ['admin', 'supervisor', 'cajero'];
+/**
+ * Los roles que se pueden guardar en `users.rol`.
+ *
+ * Sale del catálogo y no de una lista escrita aquí a mano: dos listas de roles
+ * en dos archivos distintos se separan en la primera prisa, y la que decide los
+ * permisos es la del catálogo. Si alguna vez hubiera un rol más, esta pantalla
+ * lo ofrecería sola.
+ */
+const ROLES_VALIDOS = Object.keys(permisos.ROLES);
+
+/**
+ * EL ÚLTIMO ADMINISTRADOR NO SE QUEDA SIN SER NADIE.
+ *
+ * No hay un usuario raíz intocable —eso sería una puerta trasera con otro
+ * nombre—, pero sí un invariante: el negocio nunca puede quedarse sin ningún
+ * administrador activo. Se comprueba antes de degradar y antes de desactivar,
+ * porque las dos cosas dejan el mismo agujero.
+ *
+ * Y NO, RESTAURAR UN RESPALDO NO ES LA SALIDA
+ * -------------------------------------------
+ * Es tentador decir «si se quedan fuera, que restauren». No sirve: un respaldo
+ * de la semana pasada trae exactamente las mismas credenciales olvidadas, y
+ * además tira la semana de ventas. Por eso el agujero se impide, no se repara.
+ */
+async function quedaOtroAdministrador(pool, idExcluido) {
+  const r = await pool.request()
+    .input('id', sql.Int, idExcluido)
+    .query("SELECT COUNT(*) c FROM users WHERE active = 1 AND rol = 'admin' AND id <> @id");
+  return Number(r.recordset[0]?.c ?? 0) > 0;
+}
 
 // ===== Alertas: productos agotados (stock 0) =====
 ipcMain.handle('alerts:out-of-stock', async () => {
@@ -2542,7 +2829,7 @@ ipcMain.handle('alerts:cash-closures', async (_e, p = {}) => {
 });
 
 // ===== Alertas: devoluciones por cajero (robo hormiga) =====
-ipcMain.handle('alerts:refunds-by-cashier', async () => {
+ipcMain.handle('alerts:refunds-by-cashier', sesion.proteger('alerts:refunds-by-cashier', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().query(`
@@ -2554,7 +2841,7 @@ ipcMain.handle('alerts:refunds-by-cashier', async () => {
     `);
     return { success: true, data: r.recordset || [] };
   } catch (e) { console.error('alerts:refunds-by-cashier:', e); return { success: false, error: e.message }; }
-});
+}));
 
 // ===== Alertas: credito vencido (cobranza) =====
 ipcMain.handle('alerts:overdue-credit', async () => {
@@ -2624,7 +2911,7 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
 });
 
 // ===== Conteo fisico: aplicar ajustes de inventario =====
-ipcMain.handle('inventory:apply-count', async (_e, p = {}) => {
+ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}) => {
   try {
     const items = Array.isArray(p.items) ? p.items : [];
     if (!items.length) return { success: false, error: 'No hay conteos para aplicar.' };
@@ -2651,7 +2938,7 @@ ipcMain.handle('inventory:apply-count', async (_e, p = {}) => {
     }
     return { success: true, ajustados };
   } catch (e) { console.error('inventory:apply-count:', e); return { success: false, error: e.message }; }
-});
+}));
 
 // ===== Alertas: reorden inteligente =====
 ipcMain.handle('alerts:reorder', async (_e, p = {}) => {
@@ -2669,7 +2956,7 @@ ipcMain.handle('alerts:reorder', async (_e, p = {}) => {
   }
 });
 
-ipcMain.handle('users:list', async () => {
+ipcMain.handle('users:list', sesion.proteger('users:list', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().query(`
@@ -2679,9 +2966,9 @@ ipcMain.handle('users:list', async () => {
     `);
     return { success: true, data: r.recordset };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('users:create', async (_e, p = {}) => {
+ipcMain.handle('users:create', sesion.proteger('users:create', async (_e, p = {}) => {
   try {
     const usuario = String(p.usuario ?? '').trim();
     const password = String(p.password ?? '');
@@ -2702,9 +2989,9 @@ ipcMain.handle('users:create', async (_e, p = {}) => {
               VALUES (@usuario, CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2), @rol, 1, GETDATE())`);
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('users:update-role', async (_e, p = {}) => {
+ipcMain.handle('users:update-role', sesion.proteger('users:update-role', async (_e, p = {}) => {
   try {
     const id = Number(p.id);
     const rol = String(p.rol ?? '').trim().toLowerCase();
@@ -2712,19 +2999,25 @@ ipcMain.handle('users:update-role', async (_e, p = {}) => {
     if (!ROLES_VALIDOS.includes(rol)) return { success: false, error: 'Rol invalido.' };
     const pool = await poolPromise;
     if (rol !== 'admin') {
-      const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
-      if (t.recordset[0]?.rol === 'admin') {
-        const c = await pool.request().query("SELECT COUNT(*) c FROM users WHERE active = 1 AND rol = 'admin'");
-        if (c.recordset[0].c <= 1) return { success: false, error: 'Debe quedar al menos un administrador.' };
+      const t = await pool.request().input('id', sql.Int, id)
+        .query('SELECT rol, active FROM users WHERE id = @id');
+      const antes = t.recordset[0];
+      if (antes?.rol === 'admin' && antes?.active && !(await quedaOtroAdministrador(pool, id))) {
+        return { success: false, error: 'Debe quedar al menos un administrador.' };
       }
     }
     await pool.request().input('id', sql.Int, id).input('rol', sql.NVarChar(20), rol)
       .query('UPDATE users SET rol = @rol WHERE id = @id');
+    /* Sube la revision: las sesiones abiertas en otras cajas recalculan sus
+       permisos en segundos, sin que nadie cierre sesion. Y esta caja no espera
+       ni esos segundos, porque el cambio lo acaba de hacer ella. */
+    await pool.request().execute('sp_bump_security_revision');
+    sesion.invalidarRevision();
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('users:reset-password', async (_e, p = {}) => {
+ipcMain.handle('users:reset-password', sesion.proteger('users:reset-password', async (_e, p = {}) => {
   try {
     const id = Number(p.id);
     const password = String(p.password ?? '');
@@ -2735,9 +3028,9 @@ ipcMain.handle('users:reset-password', async (_e, p = {}) => {
       .query(`UPDATE users SET password_hash = CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2) WHERE id = @id`);
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('users:set-active', async (_e, p = {}) => {
+ipcMain.handle('users:set-active', sesion.proteger('users:set-active', async (_e, p = {}) => {
   try {
     const id = Number(p.id);
     const active = p.active ? 1 : 0;
@@ -2745,20 +3038,24 @@ ipcMain.handle('users:set-active', async (_e, p = {}) => {
     const pool = await poolPromise;
     if (!active) {
       const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
-      if (t.recordset[0]?.rol === 'admin') {
-        const c = await pool.request().query("SELECT COUNT(*) c FROM users WHERE active = 1 AND rol = 'admin'");
-        if (c.recordset[0].c <= 1) return { success: false, error: 'No puedes desactivar al unico administrador.' };
+      if (t.recordset[0]?.rol === 'admin' && !(await quedaOtroAdministrador(pool, id))) {
+        return { success: false, error: 'No puedes desactivar al único administrador.' };
       }
     }
     await pool.request().input('id', sql.Int, id).input('a', sql.Bit, active)
       .query('UPDATE users SET active = @a WHERE id = @id');
+    /* Desactivar a alguien tiene que cortarle las acciones AHORA, no cuando
+       cierre sesión. La revisión hace que su propia sesión se descarte en la
+       siguiente comprobación. */
+    await pool.request().execute('sp_bump_security_revision');
+    sesion.invalidarRevision();
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 // Pago a Proveedores
 
-ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
+ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supplier-payment', async (event, payload) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -2776,9 +3073,9 @@ ipcMain.handle('sp-register-supplier-payment', async (event, payload) => {
     console.error('sp_register_supplier_payment:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-register-cash-out', async (event, payload) => {
+ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', async (event, payload) => {
   try {
     const pool = await poolPromise;
 
@@ -2794,7 +3091,7 @@ ipcMain.handle('sp-register-cash-out', async (event, payload) => {
     console.error('sp_register_cash_out:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 
 async function loadSaleFromDbWithSp(saleId) {
@@ -2872,7 +3169,7 @@ async function generateSaleTicketPdf(header, lines, extras = {}) {
   return pdfPath;
 }
 
-ipcMain.handle("generate-sale-pdf", async (event, payload) => {
+ipcMain.handle("generate-sale-pdf", sesion.proteger("generate-sale-pdf", async (event, payload) => {
   try {
     const { saleId, pagado, cambio } =
       typeof payload === "object"
@@ -2896,7 +3193,7 @@ ipcMain.handle("generate-sale-pdf", async (event, payload) => {
     console.error("❌ Error generate-sale-pdf:", err);
     return { success: false, error: err.message || "Error al generar PDF" };
   }
-});
+}));
 
 ipcMain.handle('sp-get-sales', async (_event, payload = {}) => {
   try {
@@ -2916,7 +3213,7 @@ ipcMain.handle('sp-get-sales', async (_event, payload = {}) => {
 });
 
 
-ipcMain.handle('export-sales-pdf', async (_event, payload = {}) => {
+ipcMain.handle('export-sales-pdf', sesion.proteger('export-sales-pdf', async (_event, payload = {}) => {
   try {
     const { start_date = null, end_date = null } = payload;
 
@@ -2947,7 +3244,7 @@ ipcMain.handle('export-sales-pdf', async (_event, payload = {}) => {
     console.error('export-sales-pdf:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 ipcMain.handle('sp-get-open-shift', async (event, payload) => {
   try {
@@ -2965,7 +3262,7 @@ ipcMain.handle('sp-get-open-shift', async (event, payload) => {
   }
 });
 
-ipcMain.handle('sp-open-shift', async (event, payload) => {
+ipcMain.handle('sp-open-shift', sesion.proteger('sp-open-shift', async (event, payload) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -2988,9 +3285,9 @@ ipcMain.handle('sp-open-shift', async (event, payload) => {
     console.error('sp_open_shift:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-update-sale', async (event, payload) => {
+ipcMain.handle('sp-update-sale', sesion.proteger('sp-update-sale', async (event, payload) => {
   try {
     const saleId = Number(payload?.sale_id ?? payload?.saleId ?? 0);
     const userId = Number(payload?.user_id ?? payload?.userId ?? 0);
@@ -3040,7 +3337,7 @@ ipcMain.handle('sp-update-sale', async (event, payload) => {
     console.error('❌ Error en sp_update_sale:', err);
     return { success: false, error: err?.message || String(err) };
   }
-});
+}));
 
 ipcMain.handle('sp-get-sale-by-folio', async (event, payload) => {
   try {
@@ -3073,7 +3370,7 @@ ipcMain.handle('sp-get-sale-by-folio', async (event, payload) => {
   }
 });
 
-ipcMain.handle('sp-refund-sale', async (event, payload) => {
+ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event, payload) => {
   try {
     const saleId = Number(payload?.sale_id ?? payload?.saleId ?? 0);
     const userId = Number(payload?.user_id ?? payload?.userId ?? 0);
@@ -3126,7 +3423,7 @@ ipcMain.handle('sp-refund-sale', async (event, payload) => {
     console.error('❌ Error en sp_refund_sale:', err);
     return { success: false, error: err?.message || String(err) };
   }
-});
+}));
 
 async function loadSaleByFolioFromDb(saleId) {
   const pool = await poolPromise;
@@ -3205,7 +3502,7 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
   });
 }
 
-ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
+ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   let printWin = null;
 
   try {
@@ -3290,7 +3587,7 @@ ipcMain.handle('print-sale-ticket', async (_event, payload = {}) => {
     try { if (printWin) printWin.close(); } catch {}
     return { success: false, error: err?.message || String(err) };
   }
-});
+}));
 
 ipcMain.handle('devices:list-serial-ports', async () => {
   try {
@@ -3335,7 +3632,7 @@ ipcMain.handle('devices:get-config', async () => {
   }
 });
 
-ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
+ipcMain.handle('devices:set-config', sesion.proteger('devices:set-config', async (_event, partialCfg = {}) => {
   try {
     const current = loadDeviceConfig();
     const merged = {
@@ -3365,7 +3662,7 @@ ipcMain.handle('devices:set-config', async (_event, partialCfg = {}) => {
     console.error('devices:set-config:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 ipcMain.handle('sp-get-purchases', async (event) => {
     try {
@@ -3423,7 +3720,7 @@ ipcMain.handle('sp-get-product-suppliers', async (_event, payload) => {
 });
 
 // Agrega/actualiza vínculo producto-proveedor
-ipcMain.handle('sp-upsert-product-supplier', async (_event, payload) => {
+ipcMain.handle('sp-upsert-product-supplier', sesion.proteger('sp-upsert-product-supplier', async (_event, payload) => {
   try {
     const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
     const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
@@ -3456,10 +3753,10 @@ ipcMain.handle('sp-upsert-product-supplier', async (_event, payload) => {
     console.error('❌ sp-upsert-product-supplier:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Poner proveedor default
-ipcMain.handle('sp-set-product-default-supplier', async (_event, payload) => {
+ipcMain.handle('sp-set-product-default-supplier', sesion.proteger('sp-set-product-default-supplier', async (_event, payload) => {
   try {
     const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
     const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
@@ -3478,10 +3775,10 @@ ipcMain.handle('sp-set-product-default-supplier', async (_event, payload) => {
     console.error('❌ sp-set-product-default-supplier:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Quitar (desactivar) proveedor de producto
-ipcMain.handle('sp-remove-product-supplier', async (_event, payload) => {
+ipcMain.handle('sp-remove-product-supplier', sesion.proteger('sp-remove-product-supplier', async (_event, payload) => {
   try {
     const product_id  = Number(payload?.product_id ?? payload?.productId ?? 0);
     const supplier_id = Number(payload?.supplier_id ?? payload?.supplierId ?? 0);
@@ -3500,7 +3797,7 @@ ipcMain.handle('sp-remove-product-supplier', async (_event, payload) => {
     console.error('❌ sp-remove-product-supplier:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Obtener default (rápido)
 ipcMain.handle('sp-get-product-default-supplier', async (_event, payload) => {
@@ -3522,7 +3819,7 @@ ipcMain.handle('sp-get-product-default-supplier', async (_event, payload) => {
   }
 });
 
-ipcMain.handle('sp-add-supplier', async (_event, payload) => {
+ipcMain.handle('sp-add-supplier', sesion.proteger('sp-add-supplier', async (_event, payload) => {
   try {
     const nombre = String(payload?.nombre ?? payload?.name ?? '').trim();
     if (!nombre) return { success: false, error: 'nombre requerido' };
@@ -3538,7 +3835,7 @@ ipcMain.handle('sp-add-supplier', async (_event, payload) => {
     console.error('❌ sp-add-supplier:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 function pickName(payload) {
   if (typeof payload === 'string') return payload.trim();
@@ -3548,7 +3845,7 @@ function pickName(payload) {
   return v.trim();
 }
 
-ipcMain.handle('sp-add-brand', async (_event, payload) => {
+ipcMain.handle('sp-add-brand', sesion.proteger('sp-add-brand', async (_event, payload) => {
   try {
     const nombre = pickName(payload);
     if (!nombre) return { success: false, error: 'nombre requerido' };
@@ -3564,9 +3861,9 @@ ipcMain.handle('sp-add-brand', async (_event, payload) => {
     console.error('sp-add-brand:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-add-category', async (_event, payload) => {
+ipcMain.handle('sp-add-category', sesion.proteger('sp-add-category', async (_event, payload) => {
   try {
     const nombre = pickName(payload);
     if (!nombre) return { success: false, error: 'nombre requerido' };
@@ -3583,10 +3880,10 @@ ipcMain.handle('sp-add-category', async (_event, payload) => {
     return { success: false, error: err.message };
   }
 
-});
+}));
 
 // Importacion masiva de productos desde Excel (catalogo por giro / migracion)
-ipcMain.handle('sp-import-products', async (_event, payload = {}) => {
+ipcMain.handle('sp-import-products', sesion.proteger('sp-import-products', async (_event, payload = {}) => {
   try {
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
@@ -3635,10 +3932,10 @@ ipcMain.handle('sp-import-products', async (_event, payload = {}) => {
     console.error('sp-import-products:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Migracion: clientes (reusa sp_create_customer, de-dup en Node)
-ipcMain.handle('sp-import-customers', async (_event, payload = {}) => {
+ipcMain.handle('sp-import-customers', sesion.proteger('sp-import-customers', async (_event, payload = {}) => {
   try {
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
@@ -3684,10 +3981,10 @@ ipcMain.handle('sp-import-customers', async (_event, payload = {}) => {
     console.error('sp-import-customers:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Migracion: proveedores (reusa sp_add_supplier, de-dup en Node)
-ipcMain.handle('sp-import-suppliers', async (_event, payload = {}) => {
+ipcMain.handle('sp-import-suppliers', sesion.proteger('sp-import-suppliers', async (_event, payload = {}) => {
   try {
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
@@ -3724,10 +4021,10 @@ ipcMain.handle('sp-import-suppliers', async (_event, payload = {}) => {
     console.error('sp-import-suppliers:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Migracion: ventas historicas (TVP + sp_import_sales)
-ipcMain.handle('sp-import-sales', async (_event, payload = {}) => {
+ipcMain.handle('sp-import-sales', sesion.proteger('sp-import-sales', async (_event, payload = {}) => {
   try {
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
     const userId = Number(payload?.user_id) || null;
@@ -3762,7 +4059,7 @@ ipcMain.handle('sp-import-sales', async (_event, payload = {}) => {
     console.error('sp-import-sales:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Proveedores: cuenta (lo que se debe) y detalle
 ipcMain.handle('sp-get-suppliers-account', async () => {
@@ -3792,7 +4089,7 @@ ipcMain.handle('sp-get-supplier-account-detail', async (_event, payload = {}) =>
 });
 
 // Alta / edicion de proveedor
-ipcMain.handle('sp-supplier-save', async (_event, payload = {}) => {
+ipcMain.handle('sp-supplier-save', sesion.proteger('sp-supplier-save', async (_event, payload = {}) => {
   try {
     const nombre = String(payload?.nombre ?? '').trim();
     if (!nombre) return { success: false, error: 'El nombre es obligatorio.' };
@@ -3809,10 +4106,10 @@ ipcMain.handle('sp-supplier-save', async (_event, payload = {}) => {
     console.error('sp-supplier-save:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Pago a proveedor (desde salida de efectivo): registra en supplier_payments
-ipcMain.handle('sp-pay-supplier', async (_event, payload = {}) => {
+ipcMain.handle('sp-pay-supplier', sesion.proteger('sp-pay-supplier', async (_event, payload = {}) => {
   try {
     const supplierId = Number(payload?.supplier_id) || null;
     const amount = Number(payload?.amount) || 0;
@@ -3832,7 +4129,7 @@ ipcMain.handle('sp-pay-supplier', async (_event, payload = {}) => {
     console.error('sp-pay-supplier:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // ===== Estadisticas =====
 ipcMain.handle('sp-top-customers', async (_e, payload = {}) => {
@@ -3851,21 +4148,21 @@ ipcMain.handle('sp-sales-by-payment', async (_e, payload = {}) => {
   } catch (err) { console.error('sp-sales-by-payment:', err); return { success: false, error: err.message }; }
 });
 
-ipcMain.handle('sp-dead-products', async (_e, payload = {}) => {
+ipcMain.handle('sp-dead-products', sesion.proteger('sp-dead-products', async (_e, payload = {}) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().input('limit', sql.Int, Number(payload?.limit) || 20).execute('sp_dead_products');
     return { success: true, data: r.recordset };
   } catch (err) { console.error('sp-dead-products:', err); return { success: false, error: err.message }; }
-});
+}));
 
-ipcMain.handle('sp-cash-summary', async (_e, payload = {}) => {
+ipcMain.handle('sp-cash-summary', sesion.proteger('sp-cash-summary', async (_e, payload = {}) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().input('days', sql.Int, Number(payload?.days) || 30).execute('sp_cash_summary');
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (err) { console.error('sp-cash-summary:', err); return { success: false, error: err.message }; }
-});
+}));
 
 ipcMain.handle('sp-customers-kpis', async () => {
   try {
@@ -3877,51 +4174,51 @@ ipcMain.handle('sp-customers-kpis', async () => {
 
  //Mercado Pago
 
-  ipcMain.handle('mp-create-order', async (_event, payload = {}) => {
+  ipcMain.handle('mp-create-order', sesion.proteger('mp-create-order', async (_event, payload = {}) => {
     return mpPoint.createPointOrder({
       amount: payload?.amount,
       externalReference: payload?.externalReference,
       expirationTime: payload?.expirationTime,        
       printOnTerminal: payload?.printOnTerminal      
     });
-  });
+  }));
 
   ipcMain.handle('mp-get-order', async (_event, orderId) => {
     return mpPoint.getOrder(orderId);
   });
 
-  ipcMain.handle('mp-cancel-order', async (_event, orderId) => {
+  ipcMain.handle('mp-cancel-order', sesion.proteger('mp-cancel-order', async (_event, orderId) => {
     return mpPoint.cancelOrder(orderId);
-  });
+  }));
 
   ipcMain.handle('mp-list-terminals', async () => {
     return mpPoint.listTerminals();
   });
 
   ipcMain.handle('mp-get-config', async () => mpPoint.getPublicConfig());
-  ipcMain.handle('mp-set-config', async (_event, cfg = {}) => mpPoint.setConfig(cfg));
+  ipcMain.handle('mp-set-config', sesion.proteger('mp-set-config', async (_event, cfg = {}) => mpPoint.setConfig(cfg)));
 
-  ipcMain.handle('mp-simulate-order', async (_event, payload = {}) => {
+  ipcMain.handle('mp-simulate-order', sesion.proteger('mp-simulate-order', async (_event, payload = {}) => {
     const orderId = typeof payload === 'string' ? payload : payload?.orderId;
     const status  = (typeof payload === 'object' ? payload?.status : null) || 'processed';
     return mpPoint.simulateOrderEvent(orderId, status, payload?.opts || {});
-  });
+  }));
 
-  ipcMain.handle('mp-validate-token', async () => mpPoint.validateToken());
-  ipcMain.handle('mp-create-store', async (_event, payload = {}) => mpPoint.createStore(payload));
-  ipcMain.handle('mp-create-pos', async (_event, payload = {}) => mpPoint.createPos(payload));
-  ipcMain.handle('mp-set-pdv', async (_event, terminalId) => mpPoint.setPdv(terminalId));
+  ipcMain.handle('mp-validate-token', sesion.proteger('mp-validate-token', async () => mpPoint.validateToken()));
+  ipcMain.handle('mp-create-store', sesion.proteger('mp-create-store', async (_event, payload = {}) => mpPoint.createStore(payload)));
+  ipcMain.handle('mp-create-pos', sesion.proteger('mp-create-pos', async (_event, payload = {}) => mpPoint.createPos(payload)));
+  ipcMain.handle('mp-set-pdv', sesion.proteger('mp-set-pdv', async (_event, terminalId) => mpPoint.setPdv(terminalId)));
 
   //Backups
   ipcMain.handle('backup-get-config', async () => ({ success: true, data: backup.loadBackupConfig() }));
 
-  ipcMain.handle('backup-set-config', async (_event, partial = {}) => {
+  ipcMain.handle('backup-set-config', sesion.proteger('backup-set-config', async (_event, partial = {}) => {
     const saved = backup.saveBackupConfig(partial);
     backup.startScheduler();   
     return { success: true, data: saved };
-  });
+  }));
 
-  ipcMain.handle('backup-run-now', async () => backup.runBackup('manual'));
+  ipcMain.handle('backup-run-now', sesion.proteger('backup-run-now', async () => backup.runBackup('manual')));
   ipcMain.handle('backup-list', async () => ({ success: true, data: backup.listBackups() }));
 
   ipcMain.handle('backup-open-folder', async () => {
@@ -3957,7 +4254,7 @@ ipcMain.handle('sp-customers-kpis', async () => {
     }
   });
 
-  ipcMain.handle('registers-add', async (_event, payload = {}) => {
+  ipcMain.handle('registers-add', sesion.proteger('registers-add', async (_event, payload = {}) => {
     try {
       const name = String(payload?.name ?? '').trim();
       const code = payload?.code ? String(payload.code).trim() : null;
@@ -3973,9 +4270,9 @@ ipcMain.handle('sp-customers-kpis', async () => {
       console.error('registers-add:', err);
       return { success: false, error: err.message };
     }
-  });
+  }));
 
-  ipcMain.handle('registers-set-active', async (_event, payload = {}) => {
+  ipcMain.handle('registers-set-active', sesion.proteger('registers-set-active', async (_event, payload = {}) => {
     try {
       const id = Number(payload?.id);
       const isActive = payload?.is_active ? 1 : 0;
@@ -3991,7 +4288,7 @@ ipcMain.handle('sp-customers-kpis', async () => {
       console.error('registers-set-active:', err);
       return { success: false, error: err.message };
     }
-  });
+  }));
 
   // ===== IDENTIDAD DE ESTA MÁQUINA (qué caja soy) =====
 
@@ -4004,7 +4301,7 @@ ipcMain.handle('sp-customers-kpis', async () => {
     }
   });
 
-  ipcMain.handle('register-set-current', async (_event, payload = {}) => {
+  ipcMain.handle('register-set-current', sesion.proteger('register-set-current', async (_event, payload = {}) => {
     try {
       const id = Number(payload?.id);
       if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
@@ -4042,7 +4339,7 @@ ipcMain.handle('sp-customers-kpis', async () => {
       console.error('register-set-current:', err);
       return { success: false, error: err.message };
     }
-  });
+  }));
 
   // ===== ARRIENDO DE CAJA (una caja, un equipo) =====
 
@@ -4065,10 +4362,10 @@ ipcMain.handle('sp-customers-kpis', async () => {
   ipcMain.handle('register-lease-status', async () => ({ success: true, data: cajaArrendada.instantanea() }));
 
   /** Soltar la caja de esta maquina a proposito. */
-  ipcMain.handle('register-release', async () => {
+  ipcMain.handle('register-release', sesion.proteger('register-release', async () => {
     const r = await cajaArrendada.soltar('EQUIPO');
     return { success: r.ok, data: r.data ?? null, error: r.error ?? null };
-  });
+  }));
 
   /**
    * La escotilla: liberar la caja de un equipo que ya no existe.
@@ -4077,12 +4374,12 @@ ipcMain.handle('sp-customers-kpis', async () => {
    * caduque el arriendo. Con esto es inmediato, y queda registrado que lo hizo
    * un administrador y no el propio equipo.
    */
-  ipcMain.handle('register-release-admin', async (_event, payload = {}) => {
+  ipcMain.handle('register-release-admin', sesion.proteger('register-release-admin', async (_event, payload = {}) => {
     const id = Number(payload?.id);
     if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id inválido.' };
     const r = await cajaArrendada.liberarComoAdmin(id);
     return { success: r.ok, data: r.data ?? null, error: r.error ?? null };
-  });
+  }));
 
   // ===== RED MULTICAJA (prueba / MonoCaja -> MultiCaja) =====
 
@@ -4094,7 +4391,7 @@ ipcMain.handle('sp-customers-kpis', async () => {
     }
   });
 
-  ipcMain.handle('network:prepare', async (_event, payload = {}) => {
+  ipcMain.handle('network:prepare', sesion.proteger('network:prepare', async (_event, payload = {}) => {
     try {
       const r = await redMulticaja.preparar({ rotar: !!payload?.rotar });
       return r.ok ? { success: true, data: r } : { success: false, error: r.error, data: r };
@@ -4102,16 +4399,16 @@ ipcMain.handle('sp-customers-kpis', async () => {
       console.error('network:prepare:', err);
       return { success: false, error: err.message };
     }
-  });
+  }));
 
-  ipcMain.handle('network:reveal-password', async () => {
+  ipcMain.handle('network:reveal-password', sesion.proteger('network:reveal-password', async () => {
     try {
       const r = redMulticaja.revelarContrasena();
       return r.ok ? { success: true, data: r } : { success: false, error: r.error };
     } catch (err) {
       return { success: false, error: err.message };
     }
-  });
+  }));
 
 
   ipcMain.handle('setup-run', async (_event, payload = {}) => {
@@ -4225,18 +4522,18 @@ ipcMain.handle('setup-normalizar-servidor', async (_event, texto) => {
 
 ipcMain.handle('cloud-get-config', async () => ({ success: true, data: cloudSync.getCloudConfig() }));
 
-ipcMain.handle('cloud-set-config', async (_event, partial = {}) => {
+ipcMain.handle('cloud-set-config', sesion.proteger('cloud-set-config', async (_event, partial = {}) => {
   const res = cloudSync.setCloudConfig(partial);
   cloudSync.startScheduler();  
   return res;
-});
+}));
 
-ipcMain.handle('cloud-push-now', async () => cloudSync.pushNow());
+ipcMain.handle('cloud-push-now', sesion.proteger('cloud-push-now', async () => cloudSync.pushNow()));
 
-ipcMain.handle('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre));
+ipcMain.handle('cloud-ensure-provisioned', sesion.proteger('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre)));
 ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
-ipcMain.handle('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key));
-ipcMain.handle('cloud-delete-account', async () => cloudSync.deleteAccount());
+ipcMain.handle('cloud-set-anon-key', sesion.proteger('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key)));
+ipcMain.handle('cloud-delete-account', sesion.proteger('cloud-delete-account', async () => cloudSync.deleteAccount()));
 
 
 //FACTURACION
@@ -4249,7 +4546,7 @@ ipcMain.handle('fiscal-get-config', async () => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
-ipcMain.handle('fiscal-save-config', async (_e, cfg) => {
+ipcMain.handle('fiscal-save-config', sesion.proteger('fiscal-save-config', async (_e, cfg) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -4261,9 +4558,9 @@ ipcMain.handle('fiscal-save-config', async (_e, cfg) => {
       .execute('sp_save_fiscal_config');
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
-ipcMain.handle('fiscal-set-issuer-ref', async (_e, issuerId) => {
+ipcMain.handle('fiscal-set-issuer-ref', sesion.proteger('fiscal-set-issuer-ref', async (_e, issuerId) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -4271,7 +4568,7 @@ ipcMain.handle('fiscal-set-issuer-ref', async (_e, issuerId) => {
       .execute('sp_set_fiscal_issuer_ref');
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 ipcMain.handle('fiscal-get-invoices', async (_e, filtros) => {
   try {
@@ -4292,7 +4589,7 @@ ipcMain.handle('fiscal-get-invoices-counts', async () => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
-ipcMain.handle('fiscal-save-invoice', async (_e, inv) => {
+ipcMain.handle('fiscal-save-invoice', sesion.proteger('fiscal-save-invoice', async (_e, inv) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -4319,7 +4616,7 @@ ipcMain.handle('fiscal-save-invoice', async (_e, inv) => {
       .execute('sp_save_invoice');
     return { success: true, id: r.recordset?.[0]?.id ?? null };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 ipcMain.handle('fiscal-get-invoice-files-data', async (_e, id) => {
   try {
@@ -4329,7 +4626,7 @@ ipcMain.handle('fiscal-get-invoice-files-data', async (_e, id) => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
-ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
+ipcMain.handle('fiscal-cancel-invoice', sesion.proteger('fiscal-cancel-invoice', async (_e, p) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request()
@@ -4339,7 +4636,7 @@ ipcMain.handle('fiscal-cancel-invoice', async (_e, p) => {
       .execute('sp_cancel_invoice');
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) { return { success: false, error: e.message }; }
-});
+}));
 
 //LICENCIA
 ipcMain.handle('get-machine-id', async () => {

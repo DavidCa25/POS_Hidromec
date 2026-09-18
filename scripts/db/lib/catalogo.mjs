@@ -125,7 +125,31 @@ asignar('security', [
   'sp_login_user', 'sp_authorize_supervisor', 'sp_log_security_event',
   'sp_security_by_cashier', 'sp_cashier_risk', 'sp_get_user_by_id',
   'sp_add_user', 'sp_update_user', 'sp_delete_user', 'sp_reactivate_user',
+  // Fase Core 0: sesion con permisos reales.
+  'sp_get_security_state', 'sp_bump_security_revision',
 ]);
+
+
+// El dominio Servicios: el negocio que cobra por trabajo y no solo por
+// producto. Un servicio es un producto con ficha propia, no un catalogo
+// aparte, asi que aqui solo esta lo que ese catalogo aparte habria tenido.
+asignar('servicios', [
+  'sp_appointment_get', 'sp_appointment_list', 'sp_appointment_reschedule',
+  'sp_appointment_save', 'sp_appointment_set_status', 'sp_appointment_to_order',
+  'sp_commissions_report', 'sp_customer_asset_save', 'sp_customer_asset_set_active',
+  'sp_get_customer_assets', 'sp_get_professionals', 'sp_get_professional_schedule',
+  'sp_get_services', 'sp_professional_availability', 'sp_professional_save',
+  'sp_professional_set_active', 'sp_professional_time_off_delete', 'sp_professional_time_off_save',
+  'sp_service_order_add_line', 'sp_service_order_authorize', 'sp_service_order_cancel',
+  'sp_service_order_charge_preview', 'sp_service_order_create', 'sp_service_order_get',
+  'sp_service_order_link_sale', 'sp_service_order_list', 'sp_service_order_set_status',
+  'sp_service_order_update', 'sp_service_order_update_line', 'sp_service_save',
+  'sp_service_set_active', 'sp_set_professional_schedule', 'sp_set_service_professionals',
+]);
+
+// Infraestructura del Core que no pertenece a un dominio de negocio: el
+// registro de que modulos tiene encendidos la empresa.
+asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);
 
 asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit']);
 

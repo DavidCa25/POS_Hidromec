@@ -65,7 +65,16 @@
     "test:demo": "node scripts/pruebas/demo-guardas.mjs && node scripts/pruebas/demo-abrir.mjs",
     "test:demo-build": "node scripts/pruebas/demo-build.mjs",
     "db:test-demo": "node scripts/db/pruebas/demo-entornos.mjs",
-    "test:presentaciones": "node scripts/pruebas/presentaciones-compra.mjs"
+    "test:presentaciones": "node scripts/pruebas/presentaciones-compra.mjs",
+    "test:seguridad": "node scripts/pruebas/sesion-permisos.mjs",
+    "db:test-core": "node scripts/db/pruebas/core-modulos.mjs",
+    "e2e:preparar": "node e2e/preparar-bases.mjs",
+    "e2e:limpiar": "node e2e/preparar-bases.mjs limpiar",
+    "e2e:core": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/core0.spec.js",
+    "e2e": "npm run build && node e2e/preparar-bases.mjs && playwright test",
+    "db:test-servicios": "node scripts/db/pruebas/servicios.mjs",
+    "test:servicios": "node scripts/pruebas/servicios-modulo.mjs",
+    "e2e:servicios": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/servicios.spec.js"
   },
   "prettier": {
     "overrides": [
@@ -218,6 +227,7 @@
     "@angular/build": "^20.0.4",
     "@angular/cli": "^20.0.4",
     "@angular/compiler-cli": "^20.0.0",
+    "@playwright/test": "^1.63.0",
     "@types/jasmine": "~5.1.0",
     "@types/qrcode": "^1.5.6",
     "concurrently": "^9.2.0",

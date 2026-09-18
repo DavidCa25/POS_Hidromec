@@ -14,7 +14,7 @@ export class CrearUsuarioComponent {
   usuario = '';
   contrasena = '';
   confirmarContrasena = '';
-  rol: 'admin' | 'cajero' | 'consulta' = 'cajero';
+  rol: 'admin' | 'supervisor' | 'cajero' = 'cajero';
 
   mensaje = '';
   advertencia = '';
@@ -22,10 +22,13 @@ export class CrearUsuarioComponent {
   mostrarConfirmacion = false;
   cargando = false;
 
+  /* Los tres roles que el backend acepta. "Solo consulta" estaba aqui y no
+     existia en ninguna otra capa: su canal no tenia handler, asi que nunca
+     llego a crearse ninguno. */
   rolesOpciones = [
-    { value: 'admin',   label: 'Administrador' },
-    { value: 'cajero',  label: 'Cajero' },
-    { value: 'consulta', label: 'Solo consulta' }
+    { value: 'admin',      label: 'Administrador' },
+    { value: 'supervisor', label: 'Encargado' },
+    { value: 'cajero',     label: 'Operador' }
   ];
 
   constructor(

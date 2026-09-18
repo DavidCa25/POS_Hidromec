@@ -105,23 +105,72 @@ check(/business_config/.test(caps) || /updateBusinessConfig/.test(caps),
 seccion('4. El catalogo describe el producto, no inventa modulos');
 
 check(/id: 'loyalty'/.test(modulos), 'Fidelizacion esta en el catalogo');
-const entradas = (modulos.match(/^\s{4}id: '/gm) || []).length;
-check(entradas === 1,
-  'y es el UNICO modulo declarado',
-  `hay ${entradas}: una tarjeta "proximamente" que lleva dos anos ahi deja de leerse`);
-check(/capability: 'loyalty'/.test(modulos),
-  'apunta a una capacidad real de Capabilities');
+check(/id: 'servicios'/.test(modulos), 'y Servicios tambien');
+
+/*
+ * La regla NO es "hay un solo modulo": es que TODOS los declarados existan de
+ * verdad.
+ *
+ * Esta comprobacion decia `entradas === 1`, que era cierto el dia que se
+ * escribio y dejo de serlo en cuanto el producto crecio. Lo que se queria
+ * proteger es otra cosa: que no aparezcan tarjetas "proximamente", que llevan
+ * dos anos ahi y dejan de leerse. Un modulo real tiene capacidad y tiene ruta;
+ * uno inventado, no.
+ */
+const entradas = (modulos.match(/^\s{4}id: '([a-z-]+)'/gm) || [])
+  .map(l => l.replace(/^\s+id: '/, '').replace(/'$/, ''));
+const capacidades = (modulos.match(/capability: '([A-Za-z]+)'/g) || []).length;
+const conRuta = (modulos.match(/route: '/g) || []).length;
+
+check(entradas.length >= 1, 'el catalogo declara modulos', entradas.join(', '));
+check(capacidades === entradas.length,
+  'cada modulo apunta a una capacidad real de Capabilities',
+  `${capacidades} capacidades para ${entradas.length} modulos`);
+check(conRuta === entradas.length,
+  'y cada uno lleva a una pantalla que existe',
+  'una tarjeta sin destino es una tarjeta "proximamente"');
+/* Sin los comentarios: el propio `modulos.ts` EXPLICA por que no debe haber
+   tarjetas "proximamente", y esa frase encajaba con la busqueda. Ya paso antes
+   con `rol IN (` en sp_authorize_supervisor: una prueba que encuentra su propia
+   explicacion da un falso rojo. */
+const declaraciones = modulos
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+check(!/proximamente|próximamente|coming soon/i.test(declaraciones),
+  'sin tarjetas "proximamente"');
+
+for (const id of entradas) {
+  check(new RegExp(`'${id}'`).test(caps),
+    `la capacidad de ${id} existe en CapabilityService`);
+}
 
 // ===================================================================
-seccion('5. Encender modulos exige ser administrador');
+seccion('5. Encender modulos exige el paquete de configuracion');
 
-check(/esAdmin/.test(comp),
-  'la pantalla comprueba el rol');
+/* Antes esto preguntaba `esAdmin`. El problema no era que fuera laxo -lo era
+   al reves-, sino que el nombre del rol y lo que la operacion exige eran dos
+   cosas distintas escritas en dos sitios. Ahora las dos preguntan por el mismo
+   paquete, y el de verdad lo comprueba el proceso principal. */
+check(/CONFIGURACION_ADMINISTRAR/.test(comp),
+  'la pantalla pregunta por el paquete, no por el nombre del rol');
 check(/puedeAdministrar/.test(comp) && /if \(!this\.puedeAdministrar\) return;/.test(comp),
   'y tambien al pulsar, no solo al entrar',
   'esconder un boton no es un permiso');
-check(!!apps && /auth\.esAdmin/.test(apps),
+check(!!apps && /administrarNegocio/.test(apps),
   'y el enlace no se ofrece a quien no puede usarlo');
+
+/* Lo anterior es cortesia. Esto es la seguridad: el canal que enciende un
+   modulo esta en el mapa del proceso principal y exige el paquete. Sin esto,
+   cualquiera con la consola abierta encenderia Hospitality a mano. */
+const canales = readFileSync(join('electron', 'seguridad', 'canales.js'), 'utf8');
+check(/'modules:set': CONFIGURACION_ADMINISTRAR/.test(canales),
+  'y el proceso principal lo exige de verdad, no solo la pantalla');
+const main = readFileSync(join('electron', 'main.js'), 'utf8');
+check(/ipcMain\.handle\('modules:set', sesion\.proteger\('modules:set'/.test(main),
+  'el handler pasa por la puerta de autorizacion');
+check(/VERSION_ATRASADA/.test(main),
+  'y una caja con version anterior no puede administrar modulos',
+  'interpretaria los paquetes con reglas viejas; vender si puede');
 
 console.log(`\nRESULTADO: ${fallos.length ? `${fallos.length} FALLO(S) de ${ok + fallos.length}` : `OK (${ok} comprobaciones)`}`);
 process.exit(fallos.length ? 1 : 0);

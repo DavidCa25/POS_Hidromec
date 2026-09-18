@@ -64,3 +64,9 @@ Thumbs.db
 !/installer/sql-servicing.json
 
 .env
+
+# Salida de Playwright: informes, trazas y capturas de una ejecucion concreta.
+# No describen el producto, pesan y cambian en cada corrida.
+/test-results
+/playwright-report
+/blob-report
