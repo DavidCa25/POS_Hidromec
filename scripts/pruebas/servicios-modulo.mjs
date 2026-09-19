@@ -85,10 +85,32 @@ const protegidos = mios.filter(c => canales.EXIGE[c]);
 check(protegidos.length >= 23, 'las escrituras del modulo estan protegidas',
   `${protegidos.length} de ${mios.length}`);
 
+/*
+ * UNA excepcion, y con nombre.
+ *
+ * `servicios:elegir-giro` es el canal que ENCIENDE el modulo: exigirle que el
+ * modulo ya este encendido lo haria imposible de usar la primera vez, que es
+ * justo para lo que existe. Se lista aqui en vez de aflojar la regla para que
+ * la proxima excepcion tenga que escribirse tambien, y con su motivo.
+ */
+const SIN_MODULO_A_PROPOSITO = {
+  'servicios:elegir-giro': 'es el canal que enciende Servicios; pedirle el modulo seria un bucle',
+};
+
 /* El handler declara `CON_MODULO` como tercer argumento de `proteger`. */
-const sinModulo = protegidos.filter(c => !cuerpoDe(c).includes('CON_MODULO'));
+const sinModulo = protegidos
+  .filter(c => !SIN_MODULO_A_PROPOSITO[c])
+  .filter(c => !cuerpoDe(c).includes('CON_MODULO'));
 check(sinModulo.length === 0,
   'y ademas exigen que el modulo este encendido', sinModulo.join(' ') || 'todas');
+
+/* Y la excepcion tiene que seguir siendo una excepcion: si manana alguien le
+   pone CON_MODULO al canal del giro, esto avisa en vez de quedarse callado. */
+const excepcionesQueYaNoLoSon = Object.keys(SIN_MODULO_A_PROPOSITO)
+  .filter(c => cuerpoDe(c).includes('CON_MODULO'));
+check(excepcionesQueYaNoLoSon.length === 0,
+  'y la unica excepcion sigue siendo deliberada',
+  excepcionesQueYaNoLoSon.join(' ') || Object.keys(SIN_MODULO_A_PROPOSITO).join(' '));
 
 check(/const CON_MODULO = \{ modulo: 'servicios' \}/.test(ipc),
   'la capacidad se pide por su clave del registro, no por el perfil del negocio');
@@ -393,7 +415,10 @@ check(/queryParams: \{ ordenServicio: o\.cabecera\.id \}/.test(ordenTs),
 const activos = leer('src', 'modulo-servicios', 'activos', 'activos.component.ts');
 check(/guardarActivo/.test(activos) && /async asistente\(\)/.test(activos),
   'los activos tienen pantalla, con su asistente de vinculacion');
-check(/elegirActivo\(/.test(ordenTs),
+/* El nombre cambio al pasar de la cadena de avisos al modal: ahora es
+   `cambiarActivo` y su `confirmarActivo`. Se comprueba lo que importa -que la
+   orden puede decir sobre que se trabaja- y no como se llama el metodo. */
+check(/cambiarActivo\(/.test(ordenTs) && /confirmarActivo\(/.test(ordenTs),
   'y una orden puede decir sobre que se trabaja',
   'en un taller, una orden sin coche es una orden a medias');
 
@@ -469,10 +494,19 @@ const faltan = archivos.filter(n => !catalogo.includes(`'${n}'`));
 check(faltan.length === 0, 'cada procedimiento esta declarado en el catalogo',
   faltan.join(' ') || `${archivos.length} procedimientos`);
 
-const migracion = leer('electron', 'migrations', '0031_servicios.sql');
-const sinMigrar = archivos.filter(n => !migracion.includes(`[${n}]`) && !migracion.includes(`dbo.${n}`));
-check(sinMigrar.length === 0, 'y viaja en la migracion 0031',
+/* Se miran TODAS las migraciones del modulo, no solo la 0031. Un
+   procedimiento que llegue despues -el giro llego en la 0032- viaja en la
+   suya, y exigir que todo este en la primera habria obligado a reescribir una
+   migracion ya aplicada, que es lo unico que no se hace nunca. */
+const migraciones = readdirSync(join(raiz, 'electron', 'migrations'))
+  .filter(f => f.endsWith('.sql'))
+  .map(f => readFileSync(join(raiz, 'electron', 'migrations', f), 'utf8'))
+  .join('\n');
+const sinMigrar = archivos.filter(n => !migraciones.includes(`[${n}]`) && !migraciones.includes(`dbo.${n}`));
+check(sinMigrar.length === 0, 'y cada uno viaja en su migracion',
   sinMigrar.join(' ') || 'todos');
+
+const migracion = leer('electron', 'migrations', '0031_servicios.sql');
 check(!/\nGO\s*\nGO\s*\n/.test(migracion.replace(/\r\n/g, '\n')),
   'la migracion no tiene dos GO seguidos',
   'el runner los parte y SQL Server busca un procedimiento llamado GO');

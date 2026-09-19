@@ -222,3 +222,18 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-bloque { transition: none; }
 }
+
+/* Una cita que ya no promete horario: banda fina, detrás de las vivas y sin
+   el relleno de color que las hace leerse como reserva. No se borra —saber
+   que ese cliente no llegó es la mitad de la razón de tenerlo apuntado— pero
+   deja de tapar el hueco que acaba de quedar libre. */
+.ag-bloque--pasada {
+  z-index: 1;
+  background: var(--wx-sunken) !important;
+  border-left-style: dashed;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  opacity: .72;
+}
+.ag-bloque--pasada .ag-bloque-que { display: none; }
+.ag-bloque--pasada .ag-bloque-quien { font-weight: 450; font-size: 12px; }

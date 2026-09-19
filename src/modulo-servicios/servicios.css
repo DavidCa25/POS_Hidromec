@@ -282,3 +282,53 @@
   font-weight: 500;
 }
 .srv-pasos a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------- los modales del módulo
+   Mismo marcado que Clientes y el punto de venta; aquí sólo va lo propio del
+   contenido: la rejilla de campos, el importe en vivo y el error. */
+.srv-modal { background: rgba(0, 0, 0, .18); z-index: 12000; }
+.srv-modal .modal-content { border: 1px solid var(--wx-edge); }
+.srv-modal .form-label {
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  color: var(--wx-text);
+  margin-bottom: 5px;
+}
+.srv-modal .hint { font-size: 12.5px; color: var(--wx-text-muted); margin-top: 5px; }
+.srv-opcional { font-weight: 400; color: var(--wx-text-muted); }
+.srv-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.srv-alta {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--wx-edge);
+  border-radius: 10px;
+  background: var(--wx-sunken);
+}
+.srv-importe {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--wx-user-accent-soft, var(--wx-sunken));
+  font-size: var(--wx-text-sm);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.srv-importe b { font-size: 1.05rem; color: var(--wx-text); }
+.srv-error {
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--wx-danger-soft, #fee2e2);
+  color: var(--wx-danger, #b91c1c);
+  font-size: var(--wx-text-sm);
+}
+@media (max-width: 560px) { .srv-campos { grid-template-columns: 1fr; } }
+
+/* El contador del asistente: en qué cliente vamos y cuántos llevamos. */
+.srv-paso {
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--wx-sunken);
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}

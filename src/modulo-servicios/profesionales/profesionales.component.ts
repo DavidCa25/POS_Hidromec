@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { Ausencia, Franja, horaDeFranja, Profesional, ServiciosService } from '../servicios.service';
+import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
+import { WxTimeComponent } from '../../app/wx-time/wx-time.component';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -24,7 +27,7 @@ const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes
 @Component({
   selector: 'app-servicios-profesionales',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxTimeComponent, WxDateComponent],
   styleUrls: ['../servicios.css'],
   template: `
   <div class="srv-pagina">
@@ -45,7 +48,7 @@ const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes
             <th>Nombre</th>
             <th style="width:150px">Puesto</th>
             <th style="width:160px">Usuario de Wybix</th>
-            <th class="ta-c" style="width:110px">Comisión</th>
+            <th class="ta-c" style="width:150px" title="Se aplica cuando el servicio no tiene una propia.">Comisión predeterminada</th>
             <th class="ta-c" style="width:130px">Servicios</th>
             <th class="ta-c" style="width:120px">Trabajo abierto</th>
             <th style="width:210px"></th>
@@ -100,12 +103,10 @@ const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes
           <tbody>
             <tr *ngFor="let f of franjas(); let i = index">
               <td>
-                <select class="ctl srv-sm" [(ngModel)]="f.weekday">
-                  <option *ngFor="let d of dias; let n = index" [value]="n" [hidden]="n === 0">{{ d }}</option>
-                </select>
+                <wx-select class="wx-sel-compacto" [opciones]="opcDias" [(ngModel)]="f.weekday"></wx-select>
               </td>
-              <td><input class="ctl srv-sm" type="time" [(ngModel)]="f.starts_at"></td>
-              <td><input class="ctl srv-sm" type="time" [(ngModel)]="f.ends_at"></td>
+              <td><wx-time class="wx-sel-compacto" [(ngModel)]="f.starts_at" [limpiable]="false"></wx-time></td>
+              <td><wx-time class="wx-sel-compacto" [(ngModel)]="f.ends_at" [limpiable]="false"></wx-time></td>
               <td><button class="btn srv-sm srv-ghost" (click)="quitarFranja(i)" aria-label="Quitar franja">×</button></td>
             </tr>
             <tr *ngIf="franjas().length === 0">
@@ -135,12 +136,158 @@ const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes
       </div>
     </section>
   </div>
+
+  <!-- ---------------------------------------------- alta de profesional -->
+  <div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'profesional'"
+       role="dialog" aria-modal="true" aria-labelledby="pr-t">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-bold m-0" id="pr-t">{{ tituloProfesional }}</h5>
+          <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body px-4 pt-1 pb-4">
+
+          <div class="srv-campos">
+            <div>
+              <label class="form-label" for="pr-n">Nombre completo</label>
+              <input id="pr-n" class="form-control" [(ngModel)]="form.nombre" placeholder="Quién atiende">
+            </div>
+            <div>
+              <label class="form-label" for="pr-p">Puesto</label>
+              <input id="pr-p" class="form-control" [(ngModel)]="form.puesto"
+                     placeholder="Mecánico, estilista, técnico…">
+            </div>
+            <div>
+              <label class="form-label" for="pr-t2">Teléfono</label>
+              <input id="pr-t2" class="form-control" [(ngModel)]="form.telefono">
+            </div>
+            <div>
+              <label class="form-label" for="pr-c">Comisión predeterminada</label>
+              <div class="srv-conunidad">
+                <input id="pr-c" class="form-control" type="number" min="0" max="100" step="0.01"
+                       [(ngModel)]="form.comisionPct">
+                <span class="srv-unidad">%</span>
+              </div>
+              <div class="hint">La usa un servicio que no tenga la suya.</div>
+            </div>
+          </div>
+
+          <label class="form-label mt-3" for="pr-u">Usuario de Wybix</label>
+          <wx-select id="pr-u" [opciones]="opcUsuarios" placeholder="Sin usuario de Wybix"
+                     [(ngModel)]="form.usuarioId"></wx-select>
+          <div class="hint">
+            Enlazarlo sirve para saber quién atendió. <b>No le da ningún permiso</b>:
+            eso lo sigue decidiendo su rol. Un profesional sin usuario es lo normal.
+          </div>
+
+          <label class="form-label mt-3" for="pr-col">Color en la agenda</label>
+          <input id="pr-col" class="form-control srv-color" type="color" [(ngModel)]="form.color">
+
+          <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+            <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                    (click)="confirmarProfesional()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------- ausencia -->
+  <div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'ausencia'"
+       role="dialog" aria-modal="true" aria-labelledby="au-t">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-bold m-0" id="au-t">Ausencia de {{ nombreAusencia }}</h5>
+          <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body px-4 pt-1 pb-4">
+
+          <div class="srv-campos">
+            <div>
+              <label class="form-label" for="au-d1">Desde el día</label>
+              <wx-date id="au-d1" [(ngModel)]="formAusencia.desde" [limpiable]="false"></wx-date>
+            </div>
+            <div>
+              <label class="form-label" for="au-h1">A las</label>
+              <wx-time id="au-h1" [(ngModel)]="formAusencia.horaDesde" [limpiable]="false"></wx-time>
+            </div>
+            <div>
+              <label class="form-label" for="au-d2">Hasta el día</label>
+              <wx-date id="au-d2" [(ngModel)]="formAusencia.hasta" [limpiable]="false"></wx-date>
+            </div>
+            <div>
+              <label class="form-label" for="au-h2">A las</label>
+              <wx-time id="au-h2" [(ngModel)]="formAusencia.horaHasta" [limpiable]="false"></wx-time>
+            </div>
+          </div>
+
+          <label class="form-label mt-3" for="au-m2">Motivo</label>
+          <input id="au-m2" class="form-control" [(ngModel)]="formAusencia.motivo"
+                 placeholder="Vacaciones, incapacidad…">
+          <div class="hint">Las citas que queden dentro no se cancelan solas: se avisan para llamar.</div>
+
+          <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+            <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                    (click)="confirmarAusencia()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   `,
   styles: [`
     .prof-color { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
   `],
 })
 export class ServiciosProfesionales {
+  /**
+   * Los días, con el número que usa SQL Server: 1 = domingo.
+   *
+   * No se renumera aquí: `DATEPART(WEEKDAY)` los devuelve así y el horario se
+   * guarda con ese número. Traducirlo en la pantalla y no en la base es cómo
+   * un horario acaba corrido un día.
+   */
+  /* Los modales, con el mismo marcado que el resto de Wybix. */
+  readonly dialogo = signal<'profesional' | 'ausencia' | null>(null);
+  readonly guardando = signal(false);
+  readonly errorModal = signal('');
+  private editando: Profesional | null = null;
+  private ausenciaDe: Profesional | null = null;
+  opcUsuarios: WxOpcion[] = [];
+  form = {
+    nombre: '', puesto: '', telefono: '',
+    comisionPct: 0 as number, usuarioId: null as number | null, color: '#45B3C3',
+  };
+  formAusencia = { desde: '', horaDesde: '09:00', hasta: '', horaHasta: '18:00', motivo: '' };
+
+  get tituloProfesional(): string {
+    return this.editando ? 'Editar profesional' : 'Nuevo profesional';
+  }
+  get nombreAusencia(): string { return this.ausenciaDe?.full_name ?? ''; }
+
+  cerrarDialogo() {
+    this.dialogo.set(null);
+    this.errorModal.set('');
+    this.guardando.set(false);
+    this.editando = null;
+    this.ausenciaDe = null;
+  }
+
+  readonly opcDias = [
+    { valor: 1, etiqueta: 'Domingo' }, { valor: 2, etiqueta: 'Lunes' },
+    { valor: 3, etiqueta: 'Martes' }, { valor: 4, etiqueta: 'Miércoles' },
+    { valor: 5, etiqueta: 'Jueves' }, { valor: 6, etiqueta: 'Viernes' },
+    { valor: 7, etiqueta: 'Sábado' },
+  ];
+
   private readonly srv = inject(ServiciosService);
   private readonly auth = inject(AuthService);
 
@@ -164,47 +311,53 @@ export class ServiciosProfesionales {
     this.profesionales.set(r.datos);
   }
 
+  /**
+   * Alta y edición de quien hace el trabajo.
+   *
+   * La distinción que esta pantalla tiene que dejar clara: PROFESIONAL no es
+   * USUARIO. El profesional es quien atiende; el usuario es quien opera Wybix.
+   * Enlazarlos sirve para saber quién hizo qué, y no da ni un permiso. Un
+   * profesional sin usuario es lo normal, no un dato incompleto.
+   */
   async editar(p: Profesional | null) {
     const usuarios = await (window as any).electronAPI?.usersList?.();
-    const listaUsuarios: any[] = usuarios?.data ?? [];
-    const opciones = ['<option value="">Sin usuario de Wybix</option>']
-      .concat(listaUsuarios.map(u =>
-        `<option value="${u.id}" ${p?.user_id === u.id ? 'selected' : ''}>${u.usuario}</option>`))
-      .join('');
+    const lista: any[] = usuarios?.data ?? [];
+    this.opcUsuarios = [
+      { valor: null, etiqueta: 'Sin usuario de Wybix', nota: 'No entra al sistema' },
+      ...lista.map(u => ({ valor: u.id, etiqueta: u.usuario ?? '(sin nombre)', nota: u.rol || undefined })),
+    ];
 
-    const { value } = await Swal.fire({
-      title: p ? 'Editar profesional' : 'Nuevo profesional',
-      html: `
-        <input id="pr-nombre" class="swal2-input" placeholder="Nombre completo" value="${p?.full_name ?? ''}">
-        <input id="pr-puesto" class="swal2-input" placeholder="Puesto: Mecánico, Estilista…" value="${p?.title ?? ''}">
-        <input id="pr-tel" class="swal2-input" placeholder="Teléfono" value="${p?.phone ?? ''}">
-        <input id="pr-com" class="swal2-input" type="number" min="0" max="100" step="0.01"
-               placeholder="Comisión %" value="${p?.default_commission_pct ?? 0}">
-        <select id="pr-user" class="swal2-select">${opciones}</select>
-        <p style="font-size:12px;color:#617284;margin:8px 12px 0;text-align:left">
-          Enlazar un usuario sirve para saber quién atendió. No le da ningún permiso:
-          eso lo sigue decidiendo su rol.
-        </p>
-        <input id="pr-color" class="swal2-input" type="color" value="${p?.color ?? '#45B3C3'}"
-               style="height:38px;padding:3px">`,
-      focusConfirm: false, showCancelButton: true, confirmButtonText: 'Guardar',
-      preConfirm: () => {
-        const nombre = (document.getElementById('pr-nombre') as HTMLInputElement)?.value.trim();
-        if (!nombre) { Swal.showValidationMessage('Ponle un nombre'); return false; }
-        const u = (document.getElementById('pr-user') as HTMLSelectElement)?.value;
-        return {
-          id: p?.id ?? null, nombre,
-          puesto: (document.getElementById('pr-puesto') as HTMLInputElement)?.value.trim() || null,
-          telefono: (document.getElementById('pr-tel') as HTMLInputElement)?.value.trim() || null,
-          comisionPct: Number((document.getElementById('pr-com') as HTMLInputElement)?.value) || 0,
-          usuarioId: u ? Number(u) : null,
-          color: (document.getElementById('pr-color') as HTMLInputElement)?.value || null,
-        };
-      },
+    this.editando = p;
+    this.form = {
+      nombre: p?.full_name ?? '',
+      puesto: p?.title ?? '',
+      telefono: p?.phone ?? '',
+      comisionPct: p?.default_commission_pct ?? 0,
+      usuarioId: p?.user_id ?? null,
+      color: p?.color ?? '#45B3C3',
+    };
+    this.errorModal.set('');
+    this.dialogo.set('profesional');
+  }
+
+  async confirmarProfesional() {
+    if (!this.form.nombre.trim()) { this.errorModal.set('Ponle un nombre.'); return; }
+    const pct = Number(this.form.comisionPct);
+    if (!(pct >= 0 && pct <= 100)) { this.errorModal.set('La comisión va de 0 a 100.'); return; }
+
+    this.guardando.set(true);
+    const r = await this.srv.guardarProfesional({
+      id: this.editando?.id ?? null,
+      nombre: this.form.nombre.trim(),
+      puesto: this.form.puesto.trim() || null,
+      telefono: this.form.telefono.trim() || null,
+      comisionPct: pct,
+      usuarioId: this.form.usuarioId ? Number(this.form.usuarioId) : null,
+      color: this.form.color || null,
     });
-    if (!value) return;
-    const r = await this.srv.guardarProfesional(value);
-    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: r.error }); return; }
+    this.guardando.set(false);
+    if (!r.ok) { this.errorModal.set(r.error || 'No se pudo guardar.'); return; }
+    this.cerrarDialogo();
     await this.cargar();
   }
 
@@ -251,25 +404,30 @@ export class ServiciosProfesionales {
     await this.verHorario(p);
   }
 
-  async nuevaAusencia(p: Profesional) {
-    const { value } = await Swal.fire({
-      title: 'Ausencia de ' + p.full_name,
-      html: `<input id="au-d" class="swal2-input" type="datetime-local">
-             <input id="au-h" class="swal2-input" type="datetime-local">
-             <input id="au-m" class="swal2-input" placeholder="Motivo: vacaciones, incapacidad…">`,
-      focusConfirm: false, showCancelButton: true, confirmButtonText: 'Guardar',
-      preConfirm: () => {
-        const d = (document.getElementById('au-d') as HTMLInputElement)?.value;
-        const h = (document.getElementById('au-h') as HTMLInputElement)?.value;
-        if (!d || !h) { Swal.showValidationMessage('Pon las dos fechas'); return false; }
-        if (h <= d) { Swal.showValidationMessage('Tiene que terminar después de empezar'); return false; }
-        return { profesionalId: p.id, desde: d, hasta: h,
-                 motivo: (document.getElementById('au-m') as HTMLInputElement)?.value.trim() || null };
-      },
-    });
-    if (!value) return;
+  /** Ausencia: vacaciones, incapacidad, un día fuera. */
+  nuevaAusencia(p: Profesional) {
+    this.ausenciaDe = p;
+    const hoy = new Date().toISOString().slice(0, 10);
+    this.formAusencia = { desde: hoy, horaDesde: '09:00', hasta: hoy, horaHasta: '18:00', motivo: '' };
+    this.errorModal.set('');
+    this.dialogo.set('ausencia');
+  }
+
+  async confirmarAusencia() {
+    const p = this.ausenciaDe;
+    if (!p) return;
+    const a = this.formAusencia;
+    if (!a.desde || !a.hasta) { this.errorModal.set('Pon las dos fechas.'); return; }
+    const desde = `${a.desde}T${a.horaDesde}`;
+    const hasta = `${a.hasta}T${a.horaHasta}`;
+    if (hasta <= desde) { this.errorModal.set('Tiene que terminar después de empezar.'); return; }
+
+    const value = { profesionalId: p.id, desde, hasta, motivo: a.motivo.trim() || null };
+    this.guardando.set(true);
     const r = await this.srv.guardarAusencia(value);
-    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: r.error }); return; }
+    this.guardando.set(false);
+    if (!r.ok) { this.errorModal.set(r.error || 'No se pudo guardar.'); return; }
+    this.cerrarDialogo();
 
     /* Las citas que quedan dentro NO se cancelan: se avisan. A esas personas
        hay que llamarlas, y decidirlo por el negocio sería peor. */

@@ -108,7 +108,11 @@ ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEs
 // IPC del dominio Servicios (catalogo, activos del cliente, profesionales,
 // ordenes de servicio, agenda y comisiones). El prefijo es `servicios:` y no
 // `services:`: ese ya significa los servicios de Windows del panel de red.
-ipcServicios.registrar({ ipcMain, sql, poolPromise });
+/* `olvidarModulos` porque elegir giro ENCIENDE Servicios: sin tirar la cache,
+   la pantalla que se abre a continuacion pregunta por un modulo que ya esta
+   encendido y recibe la respuesta de hace cinco segundos. */
+ipcServicios.registrar({ ipcMain, sql, poolPromise,
+  olvidarModulos: () => { modulosCache = { valor: null, leidoEn: 0 }; } });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 

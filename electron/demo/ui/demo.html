@@ -38,6 +38,21 @@
   }
 
   .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;}
+
+  /* EL GIRO. Una sola tarjeta «Servicios», y el giro se elige dentro de ella.
+     Una tarjeta por giro habria llenado la ventana de cinco Servicios casi
+     iguales, y elegir entre cinco tarjetas parecidas es peor que elegir en
+     una lista donde se leen las diferencias. */
+  .giro{margin:10px 0 2px;}
+  .giro__t{font-size:12px;color:#8FA3B8;margin:0 0 6px;}
+  .giro__ops{display:flex;flex-direction:column;gap:5px;}
+  .giro__op{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid #1E2C3A;
+            border-radius:8px;cursor:pointer;font-size:13px;}
+  .giro__op:hover{border-color:#2F4A63;}
+  .giro__op input{accent-color:#3FA9F5;flex:none;margin:0;}
+  .giro__op small{display:block;color:#7D8FA3;font-size:11.5px;}
+  .giro__actual{font-size:12.5px;color:#9BB3C9;margin:8px 0 2px;}
+  .giro__actual b{color:#D8E6F2;}
   .t{border:1px solid var(--filete);border-radius:var(--r);padding:16px 18px;}
   .t__n{font-size:16px;font-weight:700;letter-spacing:-.01em;}
   .t__d{color:var(--humo);font-size:12.5px;line-height:1.5;margin-top:4px;}
@@ -105,6 +120,24 @@
          <button class="d" data-a="eliminar" data-p="${p.id}">Eliminar</button>`
       : `<button class="p" data-a="crear" data-p="${p.id}">Crear demostración</button>`;
 
+    /* El giro. Si la demo ya existe se DICE cual es -saber que estas a punto
+       de abrir es el punto-, y si no existe se ofrece elegirlo aqui mismo,
+       antes de crear. Ninguna opcion viene marcada: un giro preseleccionado se
+       acepta sin leerlo y la demo sale siendo otra cosa. */
+    const giro = !p.giros ? ''
+      : existe
+        ? `<p class="giro__actual">Giro: <b>${p.presetNombre || '(sin anotar)'}</b></p>`
+        : `<div class="giro">
+             <p class="giro__t">¿Qué tipo de negocio quieres que sea esta demo?</p>
+             <div class="giro__ops">
+               ${p.giros.map(g => `
+                 <label class="giro__op">
+                   <input type="radio" name="giro-${p.id}" value="${g.id}">
+                   <span><b>${g.nombre}</b><small>${g.ejemplos}</small></span>
+                 </label>`).join('')}
+             </div>
+           </div>`;
+
     /* Los dos motivos por los que Restablecer y Eliminar van a negarse. Se
        dicen ANTES de pulsar el boton: enterarse al confirmar una destruccion
        de que no se puede destruir es la peor forma de enterarse. */
@@ -123,6 +156,7 @@
       ${aviso}
       ${p.prueba && p.prueba.length
         ? `<ul class="t__prueba">${p.prueba.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+      ${giro}
       <div class="acciones">${acciones}</div>
     </div>`;
   }
@@ -142,8 +176,12 @@
   /* Confirmacion explicita antes de cualquier destruccion, y con el nombre
      de la base delante: quien confirma tiene que ver QUE se va a borrar. */
   const CONFIRMA = {
-    restablecer: (p) => `Restablecer ${p} borra su base y la vuelve a crear desde cero.\n\n` +
-                        'Todo lo que hayas hecho en esa demo se pierde. ¿Seguir?',
+    /* Restablecer rehace EL MISMO giro, y se dice: quien quiera otro tiene
+       que eliminar y crear, que es donde se vuelve a preguntar. */
+    restablecer: (p) => `Restablecer ${p} borra su base y la vuelve a crear desde cero, ` +
+                        'con el mismo giro.\n\n' +
+                        'Todo lo que hayas hecho en esa demo se pierde. Para cambiar de giro, ' +
+                        'elimínala y créala otra vez. ¿Seguir?',
     eliminar:    (p) => `Eliminar ${p} borra su base y los datos locales de la demo.\n\n` +
                         'No se toca ninguna instalación real de Wybix. ¿Seguir?',
   };
@@ -153,6 +191,19 @@
     if (!b || ocupado) return;
     const accion = b.dataset.a, perfil = b.dataset.p;
 
+    /* El giro elegido en la tarjeta, si esa tarjeta lo pide. Se lee del DOM
+       en el momento de pulsar y no se guarda en ningun sitio: asi no existe
+       «el ultimo giro usado», que es la manera de crear un taller creyendo
+       que creabas una barberia. */
+    const marcado = document.querySelector(`input[name="giro-${perfil}"]:checked`);
+    const presetId = marcado ? marcado.value : null;
+    const pideGiro = !!document.querySelector(`input[name="giro-${perfil}"]`);
+
+    if (accion === 'crear' && pideGiro && !presetId) {
+      decir('Elige el giro antes de crear la demostración.', 'mal');
+      return;
+    }
+
     if (CONFIRMA[accion] && !confirm(CONFIRMA[accion](perfil))) return;
 
     bloquear(true);
@@ -161,7 +212,9 @@
         : accion === 'abrir' ? 'Abriendo Wybix con ese entorno…'
         : 'Eliminando…');
     try {
-      const r = await window.demo[accion](perfil);
+      const r = accion === 'crear'
+        ? await window.demo.crear(perfil, presetId)
+        : await window.demo[accion](perfil);
       if (r.success) {
         if (accion === 'eliminar') {
           decir(`Listo. ${r.data.base} eliminada${r.data.datosLimpiados ? ' y datos locales vaciados' : ''}.`, 'bien');
@@ -172,7 +225,8 @@
           /* Recien creada, lo siguiente que quiere hacer cualquiera es verla.
              El boton permanente sigue en la tarjeta; esto solo ahorra el
              segundo clic al que acaba de esperar a que se cree. */
-          decir(`Listo. ${r.data.base} preparada. ` +
+          const comoQue = r.data.preset ? ` como ${r.data.preset.toLowerCase().replace(/_/g, ' ')}` : '';
+          decir(`Listo. ${r.data.base} preparada${comoQue}. ` +
                 `<button class="p" data-a="abrir" data-p="${perfil}">Abrir ahora</button>`, 'bien');
         }
       } else {

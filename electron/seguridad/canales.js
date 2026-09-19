@@ -199,6 +199,12 @@ const EXIGE = {
   'servicios:guardar-ausencia': SERVICIOS_ADMINISTRAR,
   'servicios:borrar-ausencia': SERVICIOS_ADMINISTRAR,
 
+  // Elegir el giro ENCIENDE el modulo, y encender modulos ya exigia
+  // CONFIGURACION_ADMINISTRAR en 'modules:set'. Bajarlo aqui a
+  // SERVICIOS_ADMINISTRAR no seria un permiso mas fino: seria la misma
+  // puerta con una cerradura peor, abierta a quien no puede usar la otra.
+  'servicios:elegir-giro': CONFIGURACION_ADMINISTRAR,
+
   // Cuanto gano cada persona es dinero del negocio, y va con los reportes.
   'servicios:comisiones': REPORTES_VER,
 };
@@ -354,6 +360,8 @@ const ABIERTOS = {
   // delante. Exigirles permiso convertiría la pantalla de un Operador con
   // SERVICIOS_OPERAR en una pantalla de errores justo donde trabaja.
   'servicios:catalogo': 'lectura del catálogo de servicios',
+  'servicios:giros': 'el catálogo de giros no toca la base: sale de presets.json, y la pantalla que ofrece elegir uno lo necesita antes de que nadie pulse nada',
+  'servicios:config': 'saber si este negocio es un taller o una estética no es información sensible, y el módulo necesita cómo llamarse para dibujarse',
   'servicios:activos': 'lectura de los activos del cliente: el coche, la mascota',
   'servicios:profesionales': 'lectura de quién hace el trabajo',
   'servicios:horario': 'lectura de horarios y ausencias',

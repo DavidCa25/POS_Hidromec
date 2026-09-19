@@ -25,6 +25,11 @@
 const fs = require('fs');
 const path = require('path');
 const { sePuedeDestruir, nombreDeBase, PATRON_INSTANCIA } = require('./guardas');
+/* Los giros, de la MISMA lista que usa el onboarding real. El gestor de
+   demos no define sus propios giros: si lo hiciera, la demo y la
+   instalacion de un cliente acabarian ofreciendo cosas distintas, y el
+   sintoma aparece en una demostracion delante de ese cliente. */
+const presetsServicios = require('../servicios/presets');
 
 /**
  * Donde viven los perfiles. UNA sola carpeta, nunca las dos.
@@ -74,7 +79,17 @@ function leerPerfiles(app) {
                      `Ya lo aporto ${path.basename(porId.get(p.id).dir)}.`);
         continue;
       }
-      porId.set(p.id, { ...p, dir: path.join(base, carpeta), base: nombreDeBase(p.id) });
+      /* Un perfil puede pedir que se elija GIRO antes de crearse. No es una
+         lista suya: nombra un catalogo del producto -hoy solo `servicios`- y
+         de ahi salen las opciones. Asi el gestor ofrece exactamente los giros
+         que existen, ni uno mas, sin tener que enterarse de cuales son. */
+      const giros = p.presets === 'servicios' ? presetsServicios.PRESETS : null;
+      porId.set(p.id, {
+        ...p,
+        dir: path.join(base, carpeta),
+        base: nombreDeBase(p.id),
+        giros,
+      });
     } catch (e) {
       console.error(`[DEMO] ${carpeta}/profile.json no se pudo leer:`, e.message);
     }
@@ -161,9 +176,42 @@ async function eliminarBase({ masterPool, sql, perfil, perfiles, instanciaLocal 
  *   ensureServerReady  restaura template.bak y deja rol y permisos
  *   runMigrations      aplica lo pendiente, igual que al arrancar
  */
-async function crearBase({ perfil, deps, log = () => {} }) {
+/**
+ * La semilla que le toca a esta demo.
+ *
+ * Un perfil normal tiene UNA -`seed.sql`- y se acabo. Uno con giros tiene una
+ * por giro, en su carpeta `seeds/`, y el nombre del archivo es el
+ * identificador del giro. El identificador NO se interpola tal cual: se
+ * resuelve antes contra el catalogo del producto, asi que lo que llega aqui
+ * es siempre uno de los cinco que existen y nunca un trozo de ruta.
+ */
+function semillasDe(perfil, presetId) {
+  if (!perfil.giros) return [path.join(perfil.dir, perfil.seed || 'seed.sql')];
+
+  const giro = presetsServicios.exigir(presetId);
+  const archivo = path.join(perfil.dir, perfil.seeds || 'seeds', `${giro.id}.sql`);
+  if (!fs.existsSync(archivo)) {
+    throw new Error(`El giro ${giro.id} no tiene semilla de demostracion: ${archivo}`);
+  }
+
+  /* Lo que TODOS los giros comparten -el marcador de demo, el alta del
+     negocio, la caja- va una sola vez en `comun.sql`. Repetirlo en los cinco
+     archivos habria sido cincuenta lineas identicas que se separan en cuanto
+     alguien corrige una: la que corrigio queda bien y las otras cuatro no, y
+     el sintoma es una demo que se comporta distinto que las demas sin que
+     nadie sepa por que. */
+  const comun = path.join(perfil.dir, 'comun.sql');
+  return fs.existsSync(comun) ? [comun, archivo] : [archivo];
+}
+
+async function crearBase({ perfil, presetId = null, deps, log = () => {} }) {
   const { ensureServerReady, runMigrations, conectarBase, sql, servidor } = deps;
   const nombre = nombreDeBase(perfil.id);
+
+  /* Se resuelve ANTES de tocar nada. Si el giro no existe, la demo no llega a
+     crearse a medias: el fallo ocurre antes del primer CREATE DATABASE, no
+     despues de haber restaurado la plantilla y aplicado 32 migraciones. */
+  const semillas = semillasDe(perfil, presetId);
 
   log(`[DEMO] preparando ${nombre} desde la plantilla oficial`);
   await ensureServerReady({ role: 'principal', server: servidor, dbName: nombre });
@@ -174,16 +222,18 @@ async function crearBase({ perfil, deps, log = () => {} }) {
     const r = await runMigrations({ pool, sql, migrationsDir: deps.migrationsDir });
     log(`[DEMO] migraciones aplicadas: ${(r.applied || []).length}`);
 
-    const semilla = path.join(perfil.dir, perfil.seed || 'seed.sql');
-    if (!fs.existsSync(semilla)) throw new Error(`El perfil ${perfil.id} no tiene semilla: ${semilla}`);
-    log(`[DEMO] sembrando ${perfil.id}`);
+    log(`[DEMO] sembrando ${perfil.id}${presetId ? ` (${presetId})` : ''}`);
 
-    const trozos = lotes(fs.readFileSync(semilla, 'utf8'));
-    for (const [i, t] of trozos.entries()) {
-      try {
-        await pool.request().batch(t);
-      } catch (e) {
-        throw new Error(`La semilla de ${perfil.id} fallo en el lote ${i + 1}/${trozos.length}: ${e.message}`);
+    for (const semilla of semillas) {
+      if (!fs.existsSync(semilla)) throw new Error(`El perfil ${perfil.id} no tiene semilla: ${semilla}`);
+      const cual = path.basename(semilla);
+      const trozos = lotes(fs.readFileSync(semilla, 'utf8'));
+      for (const [i, t] of trozos.entries()) {
+        try {
+          await pool.request().batch(t);
+        } catch (e) {
+          throw new Error(`La semilla ${cual} de ${perfil.id} fallo en el lote ${i + 1}/${trozos.length}: ${e.message}`);
+        }
       }
     }
 
@@ -192,7 +242,7 @@ async function crearBase({ perfil, deps, log = () => {} }) {
        base huerfana que el gestor se negaria a tocar. */
     const m = await pool.request().query(
       "SELECT clave, valor FROM dbo.database_metadata " +
-      "WHERE clave IN ('is_demo','demo_instance_id');");
+      "WHERE clave IN ('is_demo','demo_instance_id','demo_preset');");
     const meta = {};
     for (const f of m.recordset || []) meta[f.clave] = f.valor;
 
@@ -208,10 +258,22 @@ async function crearBase({ perfil, deps, log = () => {} }) {
       throw new Error(`La semilla de ${perfil.id} no dejo un demo_instance_id valido ` +
         `(${JSON.stringify(instancia)}). Sin el, esta base no se podria restablecer ni eliminar.`);
     }
-    return { ok: true, base: nombre, instancia };
+
+    /* El giro tiene que haber quedado ESCRITO en la base, y no solo elegido en
+       la ventana. Es lo que lee «Restablecer» para rehacer la misma demo sin
+       volver a preguntar, y lo que lee la tarjeta para decir que estas a punto
+       de abrir. Si la semilla se lo salto, la demo saldria bien hoy y se
+       restableceria como otra cosa manana. */
+    if (presetId && String(meta.demo_preset || '') !== String(presetId)) {
+      throw new Error(`La semilla de ${perfil.id} no dejo anotado el giro ${presetId} ` +
+        `(quedo ${JSON.stringify(meta.demo_preset || null)}). Sin el, restablecer no sabria ` +
+        'cual rehacer.');
+    }
+    return { ok: true, base: nombre, instancia, preset: presetId };
   } finally {
     try { await pool.close(); } catch { /* noop */ }
   }
 }
 
-module.exports = { leerPerfiles, dirPerfiles, radiografia, eliminarBase, crearBase, lotes };
+module.exports = { leerPerfiles, dirPerfiles, radiografia, eliminarBase, crearBase,
+                   semillasDe, lotes };

@@ -87,15 +87,30 @@ BEGIN
 
     /* El choque se comprueba DESPUES de crear la nueva y con la original ya
        cancelada: si se comprobara antes, la cita se chocaria consigo misma. */
+    DECLARE @otra_id INT = NULL, @otra_desde DATETIME2(0), @otra_hasta DATETIME2(0);
     IF ISNULL(@professional_id, @prof_actual) IS NOT NULL AND @permitir_encimar = 0
-       AND EXISTS (SELECT 1 FROM dbo.appointments b
-                    WHERE b.professional_id = ISNULL(@professional_id, @prof_actual)
-                      AND b.id <> @nueva
-                      AND b.status IN ('AGENDADA', 'CONFIRMADA')
-                      AND b.starts_at < @ends_at AND @starts_at < b.ends_at)
+        SELECT TOP 1 @otra_id = b.id, @otra_desde = b.starts_at, @otra_hasta = b.ends_at
+          FROM dbo.appointments b
+         WHERE b.professional_id = ISNULL(@professional_id, @prof_actual)
+           AND b.id <> @nueva
+           AND b.status IN ('AGENDADA', 'CONFIRMADA')
+           AND b.starts_at < @ends_at AND @starts_at < b.ends_at
+         ORDER BY b.starts_at;
+
+    IF @otra_id IS NOT NULL
     BEGIN
         ROLLBACK TRAN;
-        RAISERROR('Ya hay una cita a esa hora.', 16, 1);
+        /* Los mismos tres datos que en sp_appointment_save, y por lo mismo:
+           mover una cita y crearla chocan igual, asi que la pantalla no puede
+           tener que entender dos formatos para decir la misma frase. */
+        DECLARE @quien2 NVARCHAR(120) =
+            ISNULL((SELECT full_name FROM dbo.professionals
+                     WHERE id = ISNULL(@professional_id, @prof_actual)), '');
+        DECLARE @msg2 NVARCHAR(400) =
+            'CITA_ENCIMADA|' + @quien2
+            + '|' + CONVERT(NVARCHAR(5), @otra_desde, 108)
+            + '|' + CONVERT(NVARCHAR(5), @otra_hasta, 108);
+        RAISERROR(@msg2, 16, 1);
         RETURN;
     END
 

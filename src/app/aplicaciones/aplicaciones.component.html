@@ -30,6 +30,16 @@
           <i class="ph ph-arrow-elbow-down-right"></i> Aparecerá {{ m.aparece }}
         </p>
 
+        <!-- El giro, solo donde significa algo. Se ensena para que quien mira
+             la tarjeta sepa como esta configurado el modulo ANTES de abrirlo,
+             y para que cambiarlo no exija adivinar donde se cambia. -->
+        <p class="apps-card__giro" *ngIf="m.id === 'servicios' && encendido(m)">
+          <i class="ph ph-storefront"></i>
+          Giro: <b>{{ giro.giro().nombre }}</b>
+          <button type="button" class="apps-card__cambiar" (click)="cambiarGiro()"
+                  [disabled]="cambiando() === m.id">Cambiar</button>
+        </p>
+
         <div class="apps-card__pie">
           <button class="btn-primary" type="button" *ngIf="!encendido(m)"
                   (click)="alternar(m)" [disabled]="cambiando() === m.id">

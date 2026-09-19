@@ -481,8 +481,20 @@ try {
   const choque = debeFallar(`EXEC dbo.sp_appointment_save
       @customer_id = ${cli2}, @professional_id = ${profId},
       @service_product_id = ${servicioId}, @starts_at = '2026-10-05T10:30:00'`);
-  check(!!choque && /ya hay una cita/i.test(choque),
-    'dos citas encimadas se impiden: alguien iba a esperar');
+  /* El procedimiento ya no devuelve una frase: devuelve los HECHOS -quien y
+     de cuando a cuando- para que la pantalla pueda decirlo en castellano en
+     vez de ensenar una marca de tiempo de base de datos. Se comprueba que el
+     choque se impida Y que traiga con que explicarlo. */
+  /* El codigo viene ENVUELTO: PowerShell adorna la excepcion de SQL con su
+     propia traza, asi que anclar al principio de la cadena fallaba aunque el
+     procedimiento devolviera justo lo que debia. Se busca el codigo donde
+     este, que es lo que hace la pantalla tambien. */
+  const codigo = /CITA_ENCIMADA\|([^|]*)\|(\d{2}:\d{2})\|(\d{2}:\d{2})/.exec(String(choque || ''));
+  check(!!codigo, 'dos citas encimadas se impiden: alguien iba a esperar',
+    String(choque || '').slice(0, 90));
+  check(!!codigo && !!codigo[1],
+    'y dice de quien es la cita que estorba y su horario',
+    codigo ? `${codigo[1]} ${codigo[2]}-${codigo[3]}` : '');
 
   const forzada = fila(`EXEC dbo.sp_appointment_save
       @customer_id = ${cli2}, @professional_id = ${profId},

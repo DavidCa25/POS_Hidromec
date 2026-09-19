@@ -345,3 +345,78 @@ html.dark .cs-drawer-body b,
 html.dark .cs-drawer-body strong { color: var(--wx-text); }
 html.dark .cs-drawer-body small,
 html.dark .cs-drawer-body .hint { color: var(--wx-text-muted); }
+
+/* ==========================================================================
+   LA PREGUNTA DEL GIRO DE SERVICIOS
+
+   Vive aqui y no en el componente porque SweetAlert monta su dialogo fuera
+   del arbol de Angular: una regla con encapsulacion de componente nunca lo
+   alcanza. Ya paso con otros dialogos y el sintoma es siempre el mismo -el
+   HTML correcto sin una sola de sus reglas-, asi que se deja dicho.
+
+   Toma el color del negocio como el resto: la marca del cliente tambien
+   manda en las decisiones importantes, y elegir el giro es una de ellas.
+   ========================================================================== */
+.giro-intro {
+  margin: 0 0 14px;
+  font-size: .92rem;
+  line-height: 1.5;
+  color: var(--wx-text-muted, #64748b);
+  text-align: left;
+}
+.giro-lista { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.giro-op {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1.5px solid var(--wx-edge, #e2e8f0);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+.giro-op:hover { border-color: var(--inv-main, var(--wx-accent, #0891b2)); }
+.giro-op input { accent-color: var(--inv-main, var(--wx-accent, #0891b2)); flex: none; }
+.giro-op:has(input:checked) {
+  border-color: var(--inv-main, var(--wx-accent, #0891b2));
+  background: var(--wx-user-accent-soft, rgba(8, 145, 178, .07));
+}
+.giro-op__ic {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--wx-user-accent-soft, rgba(8, 145, 178, .1));
+  color: var(--inv-main, var(--wx-accent, #0891b2));
+  font-size: 1.15rem;
+}
+.giro-op__txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.giro-op__txt b { font-weight: 600; font-size: .95rem; color: var(--wx-text, #0f172a); }
+.giro-op__txt small { font-size: .8rem; color: var(--wx-text-muted, #64748b); }
+
+/* La linea del giro en la tarjeta de Aplicaciones. */
+.apps-card__giro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: .85rem;
+  color: var(--wx-text-muted, #64748b);
+}
+.apps-card__giro b { color: var(--wx-text, #0f172a); font-weight: 600; }
+.apps-card__cambiar {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--inv-main, var(--wx-accent, #0891b2));
+  cursor: pointer;
+}
+.apps-card__cambiar:hover { text-decoration: underline; }
+.apps-card__cambiar:disabled { opacity: .5; cursor: default; text-decoration: none; }
+
+html.dark .giro-op { border-color: var(--wx-edge, #1e293b); }
+html.dark .giro-op__txt b { color: var(--wx-text); }

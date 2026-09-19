@@ -1004,3 +1004,7 @@
   font-weight: 500;
 }
 .stock-receta { font-variant-numeric: tabular-nums; }
+
+/* Lo que no lleva existencias. Gris y sin número: dice que la pregunta no
+   aplica, en vez de responderla con un cero que se lee como «agotado». */
+.stock-na { color: var(--wx-text-muted); font-size: .86rem; font-style: normal; }

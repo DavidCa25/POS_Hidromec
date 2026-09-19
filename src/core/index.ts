@@ -15,6 +15,8 @@ export * from './cart.service';
 export * from './catalog.service';
 export * from './shift.service';
 export * from './capability.service';
+export * from './presets-servicios';
+export * from './giro-servicios.service';
 export * from './customer-display.service';
 export * from './sale.service';
 export * from './menu-catalog.service';

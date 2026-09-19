@@ -6,7 +6,7 @@ import { AuthService } from '../services/auth.service';
 import { TecladoPantalla } from './teclado';
 import { RegisterService } from '../services/register.service';
 import {
-  CartLine, CartService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
+  CapabilityService, CartLine, CartService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
   SelectedOption, ServiceMode, ShiftService,
 } from '../core';
@@ -46,6 +46,9 @@ interface Aviso {
   styleUrls: ['./touch-pos.css'],
 })
 export class TouchPos implements OnInit, OnDestroy {
+  /** Si este negocio tiene Servicios encendido. Decide si la agenda existe. */
+  readonly caps = inject(CapabilityService);
+
   private readonly menu = inject(MenuCatalogService);
   private readonly cart = inject(CartService);
   private readonly sale = inject(SaleService);
@@ -54,6 +57,9 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly registro = inject(RegisterService);
   private readonly router = inject(Router);
+
+  /** A la agenda del día, que en Touch es la pantalla de Servicios. */
+  aServicios() { void this.router.navigate(['/touch/servicios']); }
 
   vista = signal<Vista>('menu');
   categoriaSel = signal<number | null>(null);

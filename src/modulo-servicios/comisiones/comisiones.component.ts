@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ServiciosService } from '../servicios.service';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
 /**
  * COMISIONES: CUÁNTO GENERÓ CADA PERSONA.
@@ -26,7 +27,7 @@ import { ServiciosService } from '../servicios.service';
 @Component({
   selector: 'app-servicios-comisiones',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WxDateComponent],
   styleUrls: ['../servicios.css'],
   template: `
   <div class="srv-pagina">
@@ -40,11 +41,11 @@ import { ServiciosService } from '../servicios.service';
     <div class="srv-barra">
       <div class="srv-campo">
         <label for="com-d">Desde</label>
-        <input id="com-d" class="ctl" type="date" [(ngModel)]="desde">
+        <wx-date id="com-d" [(ngModel)]="desde" placeholder="Desde" [limpiable]="false"></wx-date>
       </div>
       <div class="srv-campo">
         <label for="com-h">Hasta</label>
-        <input id="com-h" class="ctl" type="date" [(ngModel)]="hasta">
+        <wx-date id="com-h" [(ngModel)]="hasta" placeholder="Hasta" [limpiable]="false"></wx-date>
       </div>
       <button class="btn btn-primary" (click)="cargar()" style="align-self:flex-end">Ver</button>
       <span class="srv-hint" *ngIf="cargando()">Calculando…</span>

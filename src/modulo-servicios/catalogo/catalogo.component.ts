@@ -54,7 +54,7 @@ import { Servicio, ServiciosService } from '../servicios.service';
             <th style="width:110px">Clave</th>
             <th class="ta-r" style="width:110px">Precio</th>
             <th class="ta-c" style="width:96px">Dura</th>
-            <th class="ta-c" style="width:110px">Comisión</th>
+            <th class="ta-c" style="width:130px" title="La de este servicio. Si está vacía, se usa la predeterminada de la persona.">Comisión del servicio</th>
             <th style="width:150px">Quién lo hace</th>
             <th class="ta-c" style="width:100px">Agenda</th>
             <th style="width:190px"></th>
@@ -150,7 +150,7 @@ export class ServiciosCatalogo {
         <input id="sv-dura" class="swal2-input" type="number" min="1" max="1440"
                placeholder="Duración en minutos" value="${s?.duration_minutes ?? 30}">
         <input id="sv-com" class="swal2-input" type="number" min="0" max="100" step="0.01"
-               placeholder="Comisión % (vacío: la de la persona)"
+               placeholder="Comisión de este servicio, % — vacío: usa la de la persona"
                value="${s?.default_commission_pct ?? ''}">
         <label style="display:flex;gap:8px;align-items:center;justify-content:center;font-size:14px;margin-top:8px">
           <input id="sv-agenda" type="checkbox" ${s?.schedulable ?? true ? 'checked' : ''}> Se puede agendar

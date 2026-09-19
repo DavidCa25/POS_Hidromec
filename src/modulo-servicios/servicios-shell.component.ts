@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, PAQUETES } from '../services/auth.service';
+import { GiroServiciosService } from '../core';
 
 /**
  * LA CARCASA DEL MÓDULO.
@@ -17,6 +18,14 @@ import { AuthService, PAQUETES } from '../services/auth.service';
  * Un Operador ve Órdenes y Agenda —su trabajo—, y no ve Catálogo ni
  * Profesionales, que son la estructura del módulo. Es cortesía: el proceso
  * principal lo vuelve a comprobar antes de ejecutar cada canal.
+ *
+ * Y CADA PESTAÑA PREGUNTA POR EL GIRO
+ * -----------------------------------
+ * Una barbería no tiene nada que registrar aparte de la persona que viene, y
+ * una pestaña «Vehículos» en su menú es ruido permanente. Un taller que no da
+ * citas no necesita la agenda. El giro decide cuáles se ofrecen y cómo se
+ * llaman —«Vehículos» o «Equipos», no «Sobre qué»—, y ninguna de las dos
+ * decisiones borra nada: cambiar de giro las devuelve.
  */
 @Component({
   selector: 'app-servicios-shell',
@@ -29,11 +38,11 @@ import { AuthService, PAQUETES } from '../services/auth.service';
       <a routerLink="ordenes" routerLinkActive="activo" class="srv-nav-a">
         <i class="ph ph-clipboard-text"></i> Órdenes
       </a>
-      <a routerLink="agenda" routerLinkActive="activo" class="srv-nav-a">
+      <a routerLink="agenda" routerLinkActive="activo" class="srv-nav-a" *ngIf="giro.usaAgenda">
         <i class="ph ph-calendar-blank"></i> Agenda
       </a>
-      <a routerLink="activos" routerLinkActive="activo" class="srv-nav-a">
-        <i class="ph ph-car"></i> Sobre qué
+      <a routerLink="activos" routerLinkActive="activo" class="srv-nav-a" *ngIf="giro.usaActivos">
+        <i class="ph {{ giro.giro().icono }}"></i> {{ giro.activoPlural }}
       </a>
       <a routerLink="catalogo" routerLinkActive="activo" class="srv-nav-a" *ngIf="puedeAdministrar">
         <i class="ph ph-list-checks"></i> Catálogo
@@ -74,6 +83,8 @@ import { AuthService, PAQUETES } from '../services/auth.service';
   `],
 })
 export class ServiciosShell {
+  readonly giro = inject(GiroServiciosService);
+
   private readonly auth = inject(AuthService);
   get puedeAdministrar(): boolean { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
   get puedeVerReportes(): boolean { return this.auth.puede(PAQUETES.REPORTES_VER); }

@@ -73,6 +73,40 @@ async function pasoSiAparece(ventana, titulo) {
   return true;
 }
 
+/**
+ * Los diálogos de captura ya no son avisos del sistema: son modales de Wybix
+ * con `wx-select` dentro. Eso cambia cómo se conducen, y aquí está el cómo en
+ * un solo sitio en vez de repetido por toda la prueba.
+ */
+
+/** Espera a que el modal con ese título esté delante. */
+async function modal(ventana, titulo) {
+  await expect.poll(async () => {
+    try { return await ventana.locator('.srv-modal .modal-title').innerText(); } catch { return ''; }
+  }, { timeout: 20000, message: `no apareció el modal «${titulo}»` }).toContain(titulo);
+}
+
+/**
+ * Elige una opción en un `wx-select`.
+ *
+ * Se abre por su etiqueta —el `<label for>` que ahora existe— y se elige por
+ * el texto de la opción. No hay `selectOption` que valga: no es un `<select>`
+ * del sistema, y ese es justamente el cambio.
+ */
+async function elegir(ventana, id, texto) {
+  await ventana.click(`#${id} .wx-sel__campo`);
+  const opcion = ventana.locator('.wx-pop [role="option"]', { hasText: texto }).first();
+  await opcion.waitFor({ state: 'visible', timeout: 15000 });
+  await opcion.click();
+}
+
+/** Cierra el modal que está delante con su botón principal. */
+async function confirmar(ventana, texto) {
+  await ventana.click(`.srv-modal .btn-primary:has-text("${texto}")`);
+  await expect.poll(async () =>
+    ventana.locator('.srv-modal').count(), { timeout: 20000 }).toBe(0);
+}
+
 test.describe('De la recepción a la entrega', () => {
 
   test('el coche entra, se cotiza, se autoriza, se cobra y se entrega',
@@ -109,20 +143,15 @@ test.describe('De la recepción a la entrega', () => {
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
     await ventana.click('button:has-text("Nueva orden")');
 
-    await paso(ventana, { titulo: 'Nueva orden', elegir: { label: 'Cliente Ciclo' } });
-
-    /* Sobre qué se trabaja. El cliente es nuevo y no tiene nada registrado:
-       se registra aquí mismo, sin salir de la orden. */
-    await paso(ventana, { titulo: 'Sobre qué se trabaja', elegir: '__nuevo__' });
-    await paso(ventana, {
-      titulo: 'Registrar',
-      campos: { '#ac-label': 'Jetta 2018 gris', '#ac-id': 'CIC-123-A' },
-    });
-
-    await paso(ventana, {
-      titulo: 'dijo el cliente',
-      campos: { '.swal2-textarea': 'Hace un ruido al frenar' },
-    });
+    /* TODO en una sola pantalla: cliente, sobre qué se trabaja y qué reporta.
+       Antes eran cuatro avisos encadenados y no se podía volver atrás. */
+    await modal(ventana, 'Recibir trabajo');
+    await elegir(ventana, 'srv-cliente', 'Cliente Ciclo');
+    await elegir(ventana, 'srv-activo-n', 'Registrar');
+    await ventana.fill('#srv-an-label', 'Jetta 2018 gris');
+    await ventana.fill('#srv-an-id', 'CIC-123-A');
+    await ventana.fill('#srv-reportado', 'Hace un ruido al frenar');
+    await confirmar(ventana, 'Abrir orden');
 
     await ventana.waitForSelector('.os-lineas', { timeout: 30000 });
 
@@ -136,15 +165,14 @@ test.describe('De la recepción a la entrega', () => {
 
     // ---------------------------------------------------------- se cotiza
     await ventana.click('button:has-text("+ Servicio")');
-    /* Por identificador y no por nombre: con varias pruebas sembrando el mismo
-       catalogo, el nombre deja de ser unico y se elige otro servicio. */
-    await paso(ventana, { titulo: 'Añadir servicio', elegir: servicioId });
-    await paso(ventana, { titulo: 'Cantidad', campos: { '.swal2-input[type="number"]': '1' } });
-
-    /* «¿Quién lo hace?» sólo aparece si hay profesionales dados de alta, y eso
-       depende de qué otras pruebas corrieron antes sobre la misma base. Se
-       responde si está —sin asignar a nadie— y si no, se sigue. */
-    await pasoSiAparece(ventana, 'Quién lo hace');
+    /* Un modal, no tres avisos: el servicio, la cantidad y quién lo hace en la
+       misma pantalla, con el importe calculándose mientras se escribe. */
+    await modal(ventana, 'Añadir trabajo');
+    await elegir(ventana, 'srv-prod', 'Afinación ciclo');
+    await ventana.fill('#srv-cant', '1');
+    /* El importe en vivo: es lo que antes no se veía hasta después de guardar. */
+    await expect(ventana.locator('.srv-importe')).toContainText('800');
+    await confirmar(ventana, 'Añadir a la orden');
 
     /* Se mira el TOTAL, no el numero de filas: la fila de «todavia no hay nada
        cotizado» tambien es un <tr>, y contarla daba verde con la orden vacia. */
@@ -155,7 +183,13 @@ test.describe('De la recepción a la entrega', () => {
 
     // ------------------------------------------------------- el cliente aprueba
     await ventana.click('button:has-text("Registrar autorización")');
-    await paso(ventana, { titulo: 'Registrar autorización' });
+    await modal(ventana, 'Registrar autorización');
+    await confirmar(ventana, 'Registrar');
+
+    /* Y el botón se va: verlo debajo de una orden ya autorizada invita a
+       autorizar dos veces la misma cosa. */
+    await expect(ventana.locator('.os-rail-acc button:has-text("Registrar autorización")'))
+      .toHaveCount(0);
 
     await expect.poll(async () =>
       (await ventana.locator('.os-cab').innerText()).includes('Sin autorizar'),
@@ -218,7 +252,17 @@ test.describe('De la recepción a la entrega', () => {
 
     await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
-    await ventana.click('button:has-text("Por cobrar"), .srv-tab:has-text("Por cobrar")');
+    /* «POR COBRAR» YA NO LA TIENE, Y ESO ES EL ARREGLO.
+       Esta orden se acaba de cobrar. Antes seguía apareciendo ahí porque el
+       tablero filtraba sólo por el estado operativo —TERMINADA— e ignoraba el
+       económico. Ahora «Por cobrar» son las terminadas SIN venta, y lo cobrado
+       y sin entregar vive en «Por entregar», que es lo que de verdad le falta. */
+    await ventana.click('.srv-tab:has-text("Por cobrar")');
+    await ventana.waitForTimeout(800);
+    await expect(ventana.locator(`tr:has-text("${folio}")`),
+      'una orden cobrada no puede seguir en «Por cobrar»').toHaveCount(0);
+
+    await ventana.click('.srv-tab:has-text("Por entregar")');
     await ventana.waitForTimeout(800);
     await ventana.click(`tr:has-text("${folio}")`);
 

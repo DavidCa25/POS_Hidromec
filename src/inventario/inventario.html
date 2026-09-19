@@ -125,13 +125,21 @@
                mililitros, no cajas. Y una receta no tiene stock propio: lo
                que importa de ella es cuantas se pueden preparar. -->
           <td *ngIf="tabla.esVisible('stock')" class="num">
-            <ng-container *ngIf="esReceta(item); else stockPropio">
-              <span class="stock-receta">{{ disponibles(item) }}</span>
-              <span class="stock-uom">por preparar</span>
+            <!-- Un SERVICIO no tiene existencias, y decir «0 pza» de una
+                 afinacion no es un dato: es informacion falsa con formato de
+                 dato, que ademas se lee como «agotado». Se dice lo que es. -->
+            <ng-container *ngIf="sinInventario(item); else conInventario">
+              <span class="stock-na">Servicio</span>
             </ng-container>
-            <ng-template #stockPropio>
-              <span>{{ item.stock ?? '-' }}</span>
-              <span class="stock-uom" *ngIf="item.stock != null">{{ item.base_uom || 'pza' }}</span>
+            <ng-template #conInventario>
+              <ng-container *ngIf="esReceta(item); else stockPropio">
+                <span class="stock-receta">{{ disponibles(item) }}</span>
+                <span class="stock-uom">por preparar</span>
+              </ng-container>
+              <ng-template #stockPropio>
+                <span>{{ item.stock ?? '-' }}</span>
+                <span class="stock-uom" *ngIf="item.stock != null">{{ item.base_uom || 'pza' }}</span>
+              </ng-template>
             </ng-template>
           </td>
           <td *ngIf="tabla.esVisible('category_name')">{{ item.category_name ?? '-' }}</td>

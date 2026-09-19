@@ -1,4 +1,6 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
+import { GiroServiciosService } from '../core';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
@@ -29,6 +31,15 @@ export const routes: Routes = [
     path: 'touch',
     canActivate: [experienciaDeVenta],
     loadComponent: () => import('../touch/touch-pos').then(m => m.TouchPos),
+  },
+  {
+    /* Servicios en Touch: el mismo modulo, la misma base y el mismo servicio;
+       lo unico propio es la ergonomia. Pasa por el MISMO guard que la version
+       de escritorio -modulo encendido y paquete- porque son la misma puerta:
+       tener otra aqui seria tener dos sitios donde equivocarse. */
+    path: 'touch/servicios',
+    canActivate: [puedeVerServicios],
+    loadComponent: () => import('../touch/servicios/touch-servicios').then(m => m.TouchServicios),
   },
   {
     path: 'dashboard',
@@ -81,7 +92,16 @@ export const routes: Routes = [
         canActivate: [puedeVerServicios],
         loadComponent: () => import('../modulo-servicios/servicios-shell.component').then(m => m.ServiciosShell),
         children: [
-          { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
+          /* La pestaña de entrada la decide el GIRO, no una constante.
+             Una barbería abre en la agenda porque su día es la agenda; un
+             taller abre en órdenes porque su día son las órdenes. El guard de
+             arriba ya dejó el giro cargado, así que esto puede ser síncrono,
+             que es lo único que Angular admite aquí. */
+          {
+            path: '',
+            pathMatch: 'full',
+            redirectTo: () => inject(GiroServiciosService).inicio,
+          },
           { path: 'ordenes', loadComponent: () => import('../modulo-servicios/ordenes/ordenes.component').then(m => m.ServiciosOrdenes) },
           { path: 'agenda', loadComponent: () => import('../modulo-servicios/agenda/agenda.component').then(m => m.ServiciosAgenda) },
           { path: 'activos', loadComponent: () => import('../modulo-servicios/activos/activos.component').then(m => m.ServiciosActivos) },

@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { OrdenResumen, ServiciosService } from '../servicios.service';
+import { GiroServiciosService } from '../../core';
 
 /**
  * EL TABLERO DE ÓRDENES.
@@ -49,7 +50,8 @@ import { OrdenResumen, ServiciosService } from '../servicios.service';
     </nav>
 
     <div class="srv-barra">
-      <input class="ctl" type="search" placeholder="Folio, cliente, placa…"
+      <input class="ctl" type="search"
+             [placeholder]="'Folio, cliente, ' + giro.activoIdentificador.toLowerCase() + '…'"
              [ngModel]="busqueda()" (ngModelChange)="buscar($event)"
              aria-label="Buscar órdenes" />
       <span class="srv-hint" *ngIf="cargando()">Buscando…</span>
@@ -61,7 +63,7 @@ import { OrdenResumen, ServiciosService } from '../servicios.service';
           <tr>
             <th style="width:104px">Folio</th>
             <th>Cliente</th>
-            <th>Sobre qué</th>
+            <th>{{ giro.activoSingular }}</th>
             <th style="width:150px">Estado</th>
             <th style="width:104px">Avance</th>
             <th class="ta-r" style="width:110px">Total</th>
@@ -131,8 +133,9 @@ import { OrdenResumen, ServiciosService } from '../servicios.service';
 
         <ng-container *ngIf="!busqueda() && !sinCatalogo()">
           <p><b>Aquí aparece el trabajo que entra.</b></p>
-          <p class="srv-sub">Abre una orden cuando recibas algo: el coche, la mascota, el equipo.
-             Podrás cotizarlo después, cuando sepas qué hay que hacerle.</p>
+          <!-- El ejemplo lo pone el giro. «El coche, la mascota, el equipo»
+               estaba escrito aquí, y en una barbería no nombra nada que exista. -->
+          <p class="srv-sub">{{ giro.textos.ordenVacia }}</p>
           <button class="btn btn-primary" (click)="nueva()" *ngIf="puedeOperar">Abrir la primera orden</button>
         </ng-container>
       </div>
@@ -144,6 +147,7 @@ export class ServiciosOrdenes {
   private readonly srv = inject(ServiciosService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  readonly giro = inject(GiroServiciosService);
 
   readonly ordenes = signal<OrdenResumen[]>([]);
   readonly cargando = signal(false);
@@ -171,9 +175,30 @@ export class ServiciosOrdenes {
     { id: 'dentro', label: 'Dentro', estados: ['ABIERTA', 'EN_PROCESO'] },
     { id: 'sin-autorizar', label: 'Sin autorizar', estados: ['ABIERTA', 'EN_PROCESO'] },
     { id: 'terminadas', label: 'Por cobrar', estados: ['TERMINADA'] },
+    { id: 'por-entregar', label: 'Por entregar', estados: ['TERMINADA'] },
     { id: 'entregadas', label: 'Entregadas', estados: ['ENTREGADA'] },
     { id: 'todas', label: 'Todas', estados: [] as string[] },
   ];
+
+  /**
+   * EL ESTADO OPERATIVO NO ES EL ESTADO ECONOMICO.
+   *
+   * Una orden cobrada se queda en TERMINADA hasta que se entrega: eso lo hace
+   * `sp_service_order_link_sale` a proposito, porque cobrar no es entregar.
+   * Pero el tablero filtraba solo por el estado operativo, asi que despues de
+   * cobrar la orden seguia apareciendo bajo «Por cobrar». No era cache ni
+   * refresco: el filtro preguntaba otra cosa de la que decia.
+   *
+   * Ahora «Por cobrar» son las terminadas SIN venta enlazada, y las que ya se
+   * cobraron pasan a «Por entregar», que es lo que de verdad falta hacerles.
+   * Sin esa segunda pestana no habria donde ponerlas y desaparecerian del
+   * tablero hasta entregarse, que es el otro modo de perderlas de vista.
+   */
+  private economico(o: OrdenResumen, filtro: string): boolean {
+    if (filtro === 'terminadas') return o.economic_status === 'SIN_COBRAR';
+    if (filtro === 'por-entregar') return o.economic_status !== 'SIN_COBRAR';
+    return true;
+  }
 
   porId = (_: number, o: OrdenResumen) => o.id;
   conteo(id: string): number { return this.conteos()[id] ?? 0; }
@@ -217,9 +242,9 @@ export class ServiciosOrdenes {
       await Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: r.error });
       return;
     }
-    const filas = this.filtro() === 'sin-autorizar'
+    const filas = (this.filtro() === 'sin-autorizar'
       ? r.datos.filter(o => o.needs_reauthorization)
-      : r.datos;
+      : r.datos).filter(o => this.economico(o, this.filtro()));
     this.ordenes.set(filas);
     if (filas.length === 0 && !this.busqueda()) void this.mirarCatalogo();
     void this.recontar();
@@ -233,7 +258,10 @@ export class ServiciosOrdenes {
     this.conteos.set({
       dentro: t.filter(o => o.status === 'ABIERTA' || o.status === 'EN_PROCESO').length,
       'sin-autorizar': t.filter(o => o.needs_reauthorization && o.status !== 'CANCELADA' && o.status !== 'ENTREGADA').length,
-      terminadas: t.filter(o => o.status === 'TERMINADA').length,
+      /* Los conteos cuentan lo MISMO que ensena cada pestana. Un numero que no
+         corresponde a la lista que abre debajo es peor que no tener numero. */
+      terminadas: t.filter(o => o.status === 'TERMINADA' && o.economic_status === 'SIN_COBRAR').length,
+      'por-entregar': t.filter(o => o.status === 'TERMINADA' && o.economic_status !== 'SIN_COBRAR').length,
       entregadas: t.filter(o => o.status === 'ENTREGADA').length,
       todas: t.length,
     });

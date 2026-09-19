@@ -28,6 +28,13 @@
         <span class="tp-turno__dot" [class.on]="hayTurno()"></span>
         <span class="tp-turno__txt">{{ hayTurno() ? 'Turno abierto' : 'Abrir turno' }}</span>
       </button>
+      <!-- La agenda del dia, cuando el negocio la tiene. Va aqui y no en un
+           menu: en una estetica es a donde se vuelve entre cliente y cliente,
+           no una pantalla que se visita dos veces al dia. -->
+      <button type="button" class="tp-iconbtn" *ngIf="caps.servicios"
+              (click)="aServicios()" aria-label="Agenda del día">
+        <i class="ph ph-calendar-blank"></i>
+      </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
         <i class="ph ph-magnifying-glass"></i>

@@ -1151,6 +1151,17 @@ export class Inventario {
   ]);
 
   /** Un producto por receta no tiene existencias propias: su stock es 0. */
+  /**
+   * Un producto que NO lleva inventario: los servicios, sobre todo.
+   *
+   * No esta agotado -la pregunta no aplica-, y la diferencia importa: una
+   * columna de existencias en cero invita a «surtir» algo que no se surte, y
+   * al que mira la lista le dice que su taller no puede afinar coches.
+   */
+  sinInventario(item: any): boolean {
+    return String(item?.inventory_mode ?? '') === 'NONE';
+  }
+
   esReceta(item: any): boolean {
     return (item?.inventory_mode ?? 'DIRECT') === 'RECIPE';
   }

@@ -403,7 +403,9 @@
           class="dashboard-user d-flex align-items-center user-trigger"
           (click)="toggleUserDropdown()"
         >
-          <img src="assets/user.png" alt="User" class="rounded-circle me-2">
+          <!-- La misma figura que en Clientes: quien opera la caja se
+               reconoce igual que se reconoce a un cliente en la lista. -->
+          <wx-avatar class="me-2" [semilla]="'u:' + userName" [nombre]="userName" [size]="32"></wx-avatar>
           <span class="fw-semibold text-secondary">{{ userName }}</span>
           <i class="ph ph-caret-down ms-2 chevron" [class.rotate-180]="isUserDropdownOpen"></i>
         </div>

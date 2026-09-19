@@ -74,7 +74,12 @@
     "e2e": "npm run build && node e2e/preparar-bases.mjs && playwright test",
     "db:test-servicios": "node scripts/db/pruebas/servicios.mjs",
     "test:servicios": "node scripts/pruebas/servicios-modulo.mjs",
-    "e2e:servicios": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/servicios.spec.js"
+    "e2e:servicios": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/servicios.spec.js",
+    "db:test-giros": "node scripts/db/pruebas/servicios-giros.mjs",
+    "test:giros": "node scripts/pruebas/giros-servicios.mjs",
+    "e2e:giro": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/giro.spec.js",
+    "test:servicios-ui": "node scripts/pruebas/servicios-ui.mjs",
+    "e2e:giros": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/giros-recorridos.spec.js"
   },
   "prettier": {
     "overrides": [
@@ -205,6 +210,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@phosphor-icons/web": "^2.1.2",
     "apexcharts": "^4.7.0",
+    "blobatar": "^2.7.0",
     "bootstrap": "^5.3.2",
     "dotenv": "^17.2.1",
     "electron-log": "^5.4.4",

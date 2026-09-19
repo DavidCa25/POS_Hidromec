@@ -88,8 +88,13 @@ USING (VALUES
       UPDATE SET nombre = s.nombre, price = s.price, stock = s.stock, active = 1
  WHEN NOT MATCHED THEN
       INSERT (part_number, nombre, price, stock, active, registrated_date, category_id,
-              inventory_mode, sellable, base_uom)
+              brand_id, inventory_mode, sellable, base_uom)
+      /* CON MARCA. `sp_get_active_products` une con CAT_brands por INNER JOIN,
+         asi que un producto sin marca no aparece en ninguna lista: ni en el
+         punto de venta ni en «anadir refaccion». Nacian sin ella y por eso la
+         demo se veia vacia donde deberia haber refacciones. */
       VALUES (s.part_number, s.nombre, s.price, s.stock, 1, GETDATE(), @cat,
+              (SELECT TOP 1 id FROM dbo.CAT_brands WHERE namee = N'General'),
               N'DIRECT', 1, N'pza');
 GO
 

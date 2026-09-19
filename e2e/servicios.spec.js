@@ -212,7 +212,14 @@ test.describe('Servicios, con la aplicacion en marcha', () => {
       clienteId, servicioId: deUnaHora, profesionalId, desde: '2027-03-08T10:30:00',
     });
     expect(choque.success).toBeFalsy();
-    expect(String(choque.error)).toMatch(/ya hay una cita/i);
+    /* El procedimiento ya no devuelve una frase: devuelve los HECHOS, para que
+       la pantalla pueda decir «Ana Torres ya tiene una cita de 13:30 a 14:00»
+       en vez de enseñar una marca de tiempo de base de datos. */
+    expect(String(choque.error)).toMatch(/^CITA_ENCIMADA\|/);
+    const [, quien, desde, hasta] = String(choque.error).split('|');
+    expect(quien, 'dice de quién es la cita que estorba').toBeTruthy();
+    expect(desde, 'y desde qué hora').toMatch(/^\d{2}:\d{2}$/);
+    expect(hasta, 'y hasta cuál').toMatch(/^\d{2}:\d{2}$/);
 
     /* Y una consecutiva NO es un choque: a las 11:00 en punto cabe. */
     const pegada = await app.invocar('serviciosCitaGuardar', {

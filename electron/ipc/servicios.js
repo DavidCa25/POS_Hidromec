@@ -24,6 +24,8 @@
 /* La puerta de autorizacion es la misma que usa el proceso principal: el
  * paquete que exige cada canal sale de electron/seguridad/canales.js. */
 const sesion = require('../seguridad/sesion');
+/* Los giros. Misma lista que lee la interfaz y que lee el gestor de demos. */
+const presets = require('../servicios/presets');
 
 /** Envoltorio uniforme: nunca lanza al renderer, siempre {success, ...}. */
 async function ejecutar(pool, nombre, construir) {
@@ -52,7 +54,7 @@ async function ejecutar(pool, nombre, construir) {
 /** Solo el modulo: la capacidad del negocio, sin exigir paquete. */
 const CON_MODULO = { modulo: 'servicios' };
 
-function registrar({ ipcMain, sql, poolPromise }) {
+function registrar({ ipcMain, sql, poolPromise, olvidarModulos }) {
   const pool = () => poolPromise;
 
   const txt = (v, n = 400) => (v == null || v === '' ? null : String(v).slice(0, n));
@@ -79,6 +81,66 @@ function registrar({ ipcMain, sql, poolPromise }) {
     const hex = String(v).trim().replace(/^0x/i, '');
     return /^[0-9a-f]{16}$/i.test(hex) ? Buffer.from(hex, 'hex') : null;
   };
+
+  // =====================================================================
+  //  EL GIRO: QUE CLASE DE NEGOCIO DE SERVICIOS ES ESTE
+  // =====================================================================
+
+  /* El catalogo de giros. No toca la base: sale de presets.json, que es la
+     misma lista que lee el gestor de demos. Se sirve por un canal en vez de
+     dejar que la interfaz lo importe y ya, porque asi hay UN sitio donde se
+     valida lo que existe, y ese sitio es el que decide si un giro que llega
+     del renderer es real. */
+  ipcMain.handle('servicios:giros', async () => ({
+    success: true,
+    data: presets.PRESETS,
+    version: presets.version,
+  }));
+
+  /* El giro elegido. Lectura abierta, igual que el catalogo de servicios: el
+     modulo necesita saber como llamarse ANTES de que nadie pulse nada, y que
+     un taller se llame taller no es informacion sensible. */
+  ipcMain.handle('servicios:config', async () =>
+    ejecutar(await pool(), 'sp_get_services_config'));
+
+  /**
+   * Elegir giro. Es tambien lo que ENCIENDE el modulo.
+   *
+   * POR QUE EXIGE CONFIGURACION_ADMINISTRAR Y NO SERVICIOS_ADMINISTRAR
+   * ------------------------------------------------------------------
+   * Porque enciende un modulo del negocio, y encender modulos ya exigia ese
+   * paquete en `modules:set`. Si aqui bastara con SERVICIOS_ADMINISTRAR, un
+   * Encargado podria encender Servicios por esta puerta sin poder hacerlo por
+   * la otra: no seria un permiso mas fino, seria la misma puerta con una
+   * cerradura peor.
+   *
+   * Y NO LLEVA `CON_MODULO`
+   * -----------------------
+   * Seria una trampa: este es el canal que enciende el modulo, asi que
+   * exigirle que el modulo ya este encendido lo haria imposible de usar la
+   * primera vez, que es justamente para lo que existe.
+   */
+  ipcMain.handle('servicios:elegir-giro', sesion.proteger('servicios:elegir-giro',
+    async (_e, p = {}, s) => {
+      let giro;
+      try {
+        giro = presets.exigir(p.preset);
+      } catch (e) {
+        return { success: false, error: e.message, motivo: 'GIRO_DESCONOCIDO' };
+      }
+
+      const r = await ejecutar(await pool(), 'sp_set_services_preset', (req) => req
+        .input('preset', sql.NVarChar(40), giro.id)
+        .input('user_id', sql.Int, s?.userId ?? null));
+
+      /* El modulo acaba de encenderse: la cache de modulos del proceso
+         principal tiene la respuesta anterior y la daria por buena durante
+         los proximos segundos. Sin esto, la primera pantalla de Servicios
+         que se abriera despues de elegir giro se encontraria la puerta
+         cerrada por un modulo que ya esta abierto. */
+      if (r.success && typeof olvidarModulos === 'function') olvidarModulos();
+      return r.success ? { ...r, giro: giro.id } : r;
+    }));
 
   // =====================================================================
   //  CATALOGO DE SERVICIOS

@@ -145,6 +145,8 @@ asignar('servicios', [
   'sp_service_order_link_sale', 'sp_service_order_list', 'sp_service_order_set_status',
   'sp_service_order_update', 'sp_service_order_update_line', 'sp_service_save',
   'sp_service_set_active', 'sp_set_professional_schedule', 'sp_set_service_professionals',
+  // El giro del modulo: que clase de negocio de servicios es este.
+  'sp_get_services_config', 'sp_set_services_preset',
 ]);
 
 // Infraestructura del Core que no pertenece a un dominio de negocio: el

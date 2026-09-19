@@ -1,0 +1,15 @@
+{
+  "id": "servicios",
+  "nombre": "Servicios Demo",
+  "descripcion": "El negocio que cobra por trabajo: órdenes, agenda y quién lo hizo. Se elige el giro al crearla.",
+  "icono": "ph-wrench",
+  "businessProfile": "RETAIL",
+  "orden": 3,
+  "presets": "servicios",
+  "seeds": "seeds",
+  "prueba": [
+    "Abrir una orden, cotizarla y registrar la autorización del cliente.",
+    "Cobrarla desde el punto de venta y entregarla.",
+    "Ver la agenda del día y las comisiones de quien trabajó."
+  ]
+}

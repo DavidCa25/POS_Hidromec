@@ -73,9 +73,53 @@ BEGIN
         RETURN;
     END
 
+    /* ------------------------------------------------------------------
+       SOBRE QUE SE TRABAJA NO SE CAMBIA A MITAD DE LA ORDEN.
+
+       Una orden es un compromiso sobre una cosa concreta: este coche, este
+       equipo. Cambiar esa cosa cuando el cliente ya autorizo un presupuesto,
+       cuando alguien ya empezo a trabajar o cuando la orden ya se cobro no es
+       una correccion: es reescribir la historia de un trabajo que ya ocurrio,
+       y deja un presupuesto autorizado que no corresponde a nada y una
+       comision cobrada sobre otra cosa.
+
+       Mientras la orden esta RECIBIDA y nadie se ha comprometido -sin
+       autorizar, sin trabajo empezado, sin cobrar- cambiarlo es corregir un
+       error de captura, y eso si se permite: es el caso real de recibir dos
+       coches del mismo cliente y equivocarse de fila.
+
+       Se comprueba AQUI y no solo en la pantalla porque la pantalla es una
+       cortesia: el canal esta abierto a cualquiera que tenga el paquete, y
+       una regla que solo vive en el renderer no es una regla.
+       ------------------------------------------------------------------ */
+    IF @customer_asset_id IS NOT NULL
+    BEGIN
+        DECLARE @activo_actual INT = (SELECT customer_asset_id FROM dbo.service_orders WHERE id = @id);
+
+        IF ISNULL(@activo_actual, 0) <> @customer_asset_id
+        BEGIN
+            DECLARE @autorizada DATETIME2(0) =
+                (SELECT authorized_at FROM dbo.service_orders WHERE id = @id);
+            DECLARE @con_trabajo INT =
+                (SELECT COUNT(*) FROM dbo.service_order_lines
+                  WHERE order_id = @id AND status IN ('EN_PROCESO', 'HECHA'));
+
+            IF @sale_id IS NOT NULL OR @autorizada IS NOT NULL OR @con_trabajo > 0
+               OR @status NOT IN ('BORRADOR', 'ABIERTA')
+            BEGIN
+                /* Un codigo propio: la pantalla lo traduce a una frase que
+                   dice POR QUE no se puede, que es lo unico que ayuda a quien
+                   lo intenta. */
+                RAISERROR('ACTIVO_BLOQUEADO', 16, 1);
+                RETURN;
+            END
+        END
+    END
+
     BEGIN TRAN;
 
     DECLARE @diag_antes NVARCHAR(1000) = (SELECT diagnosis FROM dbo.service_orders WHERE id = @id);
+    DECLARE @activo_antes INT = (SELECT customer_asset_id FROM dbo.service_orders WHERE id = @id);
 
     UPDATE dbo.service_orders
        SET customer_asset_id = ISNULL(@customer_asset_id, customer_asset_id),
@@ -91,6 +135,15 @@ BEGIN
     IF @diagnosis IS NOT NULL AND ISNULL(@diag_antes, '') <> @diagnosis
         INSERT INTO dbo.service_order_events (order_id, event_type, detail, user_id)
         VALUES (@id, 'DIAGNOSTICO', LEFT(@diagnosis, 400), @user_id);
+
+    /* Y sobre que se trabaja tambien. Es un dato que sale en el presupuesto y
+       en la entrega, asi que cambiarlo sin dejar constancia convierte una
+       correccion legitima en algo indistinguible de un error. */
+    IF @customer_asset_id IS NOT NULL AND ISNULL(@activo_antes, 0) <> @customer_asset_id
+        INSERT INTO dbo.service_order_events (order_id, event_type, detail, user_id)
+        VALUES (@id, 'ACTIVO_CAMBIADO',
+                LEFT(ISNULL((SELECT label FROM dbo.customer_assets WHERE id = @customer_asset_id), ''), 400),
+                @user_id);
 
     COMMIT TRAN;
 

@@ -1,6 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { WxTimeComponent } from '../../app/wx-time/wx-time.component';
+import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
@@ -8,6 +11,8 @@ import { Ausencia, Cita, horaDeFranja, Profesional, ServiciosService } from '../
 
 /** Una cita ya colocada: dónde va y de qué color. */
 interface Bloque {
+  /** Si sigue prometiendo ese horario. Cancelada y no-llego no lo prometen. */
+  viva: boolean;
   cita: Cita;
   top: number;
   alto: number;
@@ -44,7 +49,7 @@ interface Bloque {
 @Component({
   selector: 'app-servicios-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WxDateComponent, WxSelectComponent, WxTimeComponent],
   templateUrl: './agenda.component.html',
   styleUrls: ['../servicios.css', './agenda.component.css'],
 })
@@ -71,6 +76,45 @@ export class ServiciosAgenda {
   get puedeOperar(): boolean { return this.auth.puede(PAQUETES.SERVICIOS_OPERAR); }
 
   porProfesional = (_: number, p: Profesional) => p.id;
+  /**
+   * Las personas, en el formato del selector de Wybix.
+   *
+   * Se deriva de lo que ya está cargado en vez de pedirlo otra vez: es la
+   * misma lista que dibuja las columnas, y dos consultas para lo mismo se
+   * desincronizan en cuanto una falla.
+   */
+  /* Los diálogos de captura de la agenda, con el mismo marcado que la orden
+     y que el resto de Wybix. */
+  readonly dialogo = signal<'cita' | 'mover' | null>(null);
+  readonly guardando = signal(false);
+  readonly errorModal = signal('');
+
+  opcClientes: WxOpcion[] = [];
+  opcServicios: WxOpcion[] = [];
+  formCita = {
+    clienteId: null as number | null,
+    servicioId: null as number | null,
+    profesionalId: null as number | null,
+    dia: '',
+    hora: '09:00',
+    motivo: '',
+  };
+  private citaAMover: Cita | null = null;
+
+  cerrarDialogo() {
+    this.dialogo.set(null);
+    this.errorModal.set('');
+    this.guardando.set(false);
+    this.citaAMover = null;
+  }
+
+  readonly opcProfesionales = computed<WxOpcion[]>(() => [
+    { valor: null, etiqueta: 'Todas las personas' },
+    ...this.profesionales().map(p => ({
+      valor: p.id, etiqueta: p.full_name ?? '(sin nombre)', nota: p.title || undefined,
+    })),
+  ]);
+
   porCita = (_: number, b: Bloque) => b.cita.id;
 
   constructor() { void this.arrancar(); }
@@ -180,12 +224,29 @@ export class ServiciosAgenda {
         const ini = this.minutosDe(c.starts_at);
         const fin = this.minutosDe(c.ends_at);
         const color = c.professional_color || 'var(--wx-accent)';
+        /* ------------------------------------------------------------
+           UNA CITA CANCELADA NO OCUPA HORARIO, Y NO PUEDE PARECER QUE SÍ.
+
+           Funcionalmente el hueco ya se libera: el motor de solapes ignora
+           CANCELADA y NO_ASISTIO, y se puede agendar encima sin que proteste.
+           Pero seguía dibujándose con la altura completa de su intervalo, y
+           una banda tachada de dos horas encima de la agenda se lee como una
+           reserva: tapa el hueco que acaba de quedar libre y compite con las
+           citas vivas justo donde hay que mirar para reagendar.
+
+           No se borra —el historial importa: saber que ese cliente no llegó
+           es la mitad de la razón de tenerlo apuntado— sino que se encoge a
+           una banda fina anclada en su hora de inicio. Sigue ahí, sigue
+           pulsable, y ya no promete un horario que no está ocupado. */
+        const viva = this.enPie(c);
         return {
           cita: c,
           top: this.aY(ini),
           /* 22 px es lo mínimo que deja leer un nombre: una cita de diez
              minutos tiene que poder pulsarse. */
-          alto: Math.max(22, ((fin - ini) / 60) * this.altoHora - 2),
+          alto: viva ? Math.max(22, ((fin - ini) / 60) * this.altoHora - 2) : 24,
+          /* Y detrás de las vivas, para no taparlas al empezar a la misma hora. */
+          viva,
           color,
           suave: this.suavizar(color),
         };
@@ -392,35 +453,61 @@ export class ServiciosAgenda {
     await this.cargar();
   }
 
-  async reprogramar(c: Cita) {
-    const { value } = await Swal.fire({
-      title: 'Mover la cita',
-      html: `<input id="ag-new" class="swal2-input" type="datetime-local" value="${this.paraInput(c.starts_at)}">
-             <input id="ag-why" class="swal2-input" placeholder="Motivo: el cliente no puede…">`,
-      focusConfirm: false, showCancelButton: true, confirmButtonText: 'Mover',
-      preConfirm: () => {
-        const d = (document.getElementById('ag-new') as HTMLInputElement)?.value;
-        if (!d) { Swal.showValidationMessage('Pon la nueva hora'); return false; }
-        return { id: c.id, desde: d,
-                 motivo: (document.getElementById('ag-why') as HTMLInputElement)?.value.trim() || null };
-      },
-    });
-    if (!value) return;
+  /** Mover la cita: el mismo día y hora de Wybix, y el motivo a la vista. */
+  reprogramar(c: Cita) {
+    const d = new Date(c.starts_at);
+    this.citaAMover = c;
+    this.formCita = {
+      clienteId: null, servicioId: null, profesionalId: null,
+      dia: this.paraInput(c.starts_at).slice(0, 10),
+      hora: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+      motivo: '',
+    };
+    this.errorModal.set('');
+    this.dialogo.set('mover');
+  }
 
+  async confirmarMover() {
+    const c = this.citaAMover;
+    if (!c) return;
+    if (!this.formCita.dia || !this.formCita.hora) { this.errorModal.set('Pon la nueva hora.'); return; }
+    const value = {
+      id: c.id,
+      desde: `${this.formCita.dia}T${this.formCita.hora}`,
+      motivo: this.formCita.motivo.trim() || null,
+    };
+    this.guardando.set(true);
     let r = await this.srv.reprogramar(value);
-    if (!r.ok && /ya hay una cita/i.test(r.error ?? '')) {
+    const choque = this.choque(r.error);
+    if (!r.ok && choque) {
       const conf = await Swal.fire({
-        icon: 'warning', title: 'Esa hora ya está ocupada', text: r.error,
-        showCancelButton: true, confirmButtonText: 'Mover igual',
+        icon: 'warning',
+        title: 'Se encima con otra cita',
+        text: this.textoDeChoque(choque),
+        showCancelButton: true,
+        confirmButtonText: 'Mover igual',
+        cancelButtonText: 'Elegir otra hora',
       });
       if (!conf.isConfirmed) return;
       r = await this.srv.reprogramar({ ...(value as any), permitirEncimar: true });
     }
-    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se pudo mover', text: r.error }); return; }
+    this.guardando.set(false);
+    if (!r.ok) { this.errorModal.set(r.error || 'No se pudo mover.'); return; }
+    this.cerrarDialogo();
     await this.cargar();
   }
 
-  async nuevaCita() {
+  /**
+   * NUEVA CITA, EN UNA PANTALLA CON SUS ETIQUETAS.
+   *
+   * Era una cadena de cuatro controles del sistema operativo dentro de un
+   * aviso: tres `<select>` prestados y un `datetime-local` del navegador, que
+   * cambia de aspecto y de idioma en cada equipo. Nada tenía etiqueta —sólo la
+   * primera opción hacía de título, y desaparecía al elegir— y la duración del
+   * servicio, que es lo que decide a qué hora termina, no se veía por ningún
+   * lado hasta después de guardar.
+   */
+  async nuevaCita(hora?: string, profesionalId?: number | null) {
     const clientes = await (window as any).electronAPI?.getCustomers?.();
     const lista: any[] = clientes?.data ?? clientes ?? [];
     if (!lista.length) {
@@ -429,50 +516,89 @@ export class ServiciosAgenda {
       return;
     }
 
-    const opsCli = lista.map(c => `<option value="${c.id}">${c.customerName}</option>`).join('');
-    const opsSrv = this.servicios().map(s =>
-      `<option value="${s.product_id}">${s.nombre} · ${s.duration_minutes} min</option>`).join('');
-    const opsPro = this.profesionales().map(p =>
-      `<option value="${p.id}">${p.full_name}</option>`).join('');
+    this.opcClientes = lista.map(c => ({
+      valor: c.id,
+      etiqueta: c.customerName ?? '(sin nombre)',
+      nota: c.mobile || c.phone || undefined,
+    }));
+    this.opcServicios = [
+      { valor: null, etiqueta: 'Sin servicio concreto', nota: 'Se decide al llegar' },
+      ...this.servicios().map(x => ({
+        valor: x.product_id,
+        etiqueta: x.nombre ?? '(sin nombre)',
+        /* La duración a la vista: es lo que decide a qué hora queda libre. */
+        nota: `${x.duration_minutes} min`,
+      })),
+    ];
+    this.formCita = {
+      clienteId: null,
+      servicioId: null,
+      profesionalId: profesionalId ?? this.profesionalId() ?? null,
+      dia: this.dia(),
+      hora: hora ?? '09:00',
+      motivo: '',
+    };
+    this.errorModal.set('');
+    this.dialogo.set('cita');
+  }
 
-    const { value } = await Swal.fire({
-      title: 'Nueva cita',
-      html: `
-        <select id="ag-cli" class="swal2-select"><option value="">Cliente…</option>${opsCli}</select>
-        <select id="ag-srv" class="swal2-select"><option value="">Servicio (opcional)</option>${opsSrv}</select>
-        <select id="ag-pro" class="swal2-select"><option value="">Sin asignar</option>${opsPro}</select>
-        <input id="ag-ini" class="swal2-input" type="datetime-local" value="${this.dia()}T09:00">`,
-      focusConfirm: false, showCancelButton: true, confirmButtonText: 'Agendar',
-      preConfirm: () => {
-        const cli = (document.getElementById('ag-cli') as HTMLSelectElement)?.value;
-        const ini = (document.getElementById('ag-ini') as HTMLInputElement)?.value;
-        if (!cli) { Swal.showValidationMessage('Elige el cliente'); return false; }
-        if (!ini) { Swal.showValidationMessage('Pon la hora'); return false; }
-        const s = (document.getElementById('ag-srv') as HTMLSelectElement)?.value;
-        const p = (document.getElementById('ag-pro') as HTMLSelectElement)?.value;
-        return {
-          clienteId: Number(cli), desde: ini,
-          servicioId: s ? Number(s) : null,
-          profesionalId: p ? Number(p) : null,
-        };
-      },
+  async confirmarCita() {
+    if (!this.formCita.clienteId) { this.errorModal.set('Elige el cliente.'); return; }
+    if (!this.formCita.dia || !this.formCita.hora) { this.errorModal.set('Pon el día y la hora.'); return; }
+
+    this.guardando.set(true);
+    await this.guardarCita({
+      clienteId: Number(this.formCita.clienteId),
+      desde: `${this.formCita.dia}T${this.formCita.hora}`,
+      servicioId: this.formCita.servicioId ? Number(this.formCita.servicioId) : null,
+      profesionalId: this.formCita.profesionalId ? Number(this.formCita.profesionalId) : null,
     });
-    if (!value) return;
-    await this.guardarCita(value);
+    this.guardando.set(false);
+  }
+
+  /**
+   * EL CHOQUE, CONTADO COMO SE LO CONTARÍAS A ALGUIEN.
+   *
+   * El procedimiento devuelve los hechos —quién, desde cuándo, hasta cuándo—
+   * y aquí se convierten en una frase. Antes se enseñaba el error crudo:
+   * «Ya hay una cita a esa hora (2026-09-19 19:30)», una marca de tiempo en
+   * formato de base de datos, con la fecha que no hacía falta y sin decir de
+   * quién era la cita ni cuándo termina, que es justo lo que hay que saber
+   * para ofrecerle otra hora al cliente que está al teléfono.
+   */
+  private choque(error: string | undefined): { quien: string; desde: string; hasta: string } | null {
+    const m = /CITA_ENCIMADA\|([^|]*)\|([^|]*)\|([^|]*)/.exec(String(error ?? ''));
+    if (!m) return null;
+    return { quien: m[1] || 'Esa persona', desde: m[2], hasta: m[3] };
+  }
+
+  private textoDeChoque(c: { quien: string; desde: string; hasta: string }): string {
+    return `${c.quien} ya tiene una cita de ${c.desde} a ${c.hasta}. `
+         + 'La nueva se traslapa con ese horario.';
   }
 
   /** Si choca, se dice con quién y se ofrece encimarla a propósito. */
   private async guardarCita(datos: any) {
     let r = await this.srv.guardarCita(datos);
-    if (!r.ok && /ya hay una cita/i.test(r.error ?? '')) {
-      const c = await Swal.fire({
-        icon: 'warning', title: 'Esa hora ya está ocupada', text: r.error,
-        showCancelButton: true, confirmButtonText: 'Agendar igual', cancelButtonText: 'Elegir otra hora',
+    const c = this.choque(r.error);
+    if (!r.ok && c) {
+      const conf = await Swal.fire({
+        icon: 'warning',
+        title: 'Se encima con otra cita',
+        text: this.textoDeChoque(c),
+        showCancelButton: true,
+        confirmButtonText: 'Agendar igual',
+        cancelButtonText: 'Elegir otra hora',
       });
-      if (!c.isConfirmed) return;
+      if (!conf.isConfirmed) return;
+      /* Encimar sigue permitido a propósito: dos personas en la misma silla a
+         la misma hora pasa de verdad —un retoque rápido entre dos citas— y el
+         procedimiento lo deja anotado en la cita. Lo que no puede pasar es
+         que ocurra sin que nadie lo haya decidido. */
       r = await this.srv.guardarCita({ ...datos, permitirEncimar: true });
     }
-    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se pudo agendar', text: r.error }); return; }
+    if (!r.ok) { this.errorModal.set(r.error || 'No se pudo agendar.'); return; }
+    this.cerrarDialogo();
     await this.cargar();
   }
 

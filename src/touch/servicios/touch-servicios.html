@@ -1,0 +1,192 @@
+<div class="tp ts">
+
+  <!-- ===================================================== BARRA SUPERIOR
+       La misma del punto de venta Touch: marca, secciones y turno. Quien ya
+       usa Wybix en tableta no aprende una barra nueva. -->
+  <header class="tp-top">
+    <div class="tp-top__marca">
+      <img class="tp-top__logo" src="assets/wybie_logo.png" alt="Wybix" />
+      <span class="tp-top__nombre">Wybix</span>
+    </div>
+
+    <nav class="ts-secciones" aria-label="Secciones">
+      <button type="button" class="ts-seccion on" aria-current="page">Agenda</button>
+      <button type="button" class="ts-seccion" (click)="aOrdenes()">Órdenes</button>
+      <button type="button" class="ts-seccion" (click)="aVender()">Vender</button>
+    </nav>
+
+    <div class="tp-top__acciones">
+      <span class="ts-dia-txt">{{ dia() | date:'EEEE d LLLL':undefined:'es-MX' }}</span>
+    </div>
+  </header>
+
+  <!-- ============================================================ CUERPO -->
+  <div class="ts-cuerpo">
+
+    <!-- ------------------------------------------------------- LA AGENDA -->
+    <section class="ts-agenda" aria-label="Agenda del día">
+
+      <div class="ts-nav">
+        <button type="button" class="ts-iconbtn" (click)="mover(-1)" aria-label="Día anterior">
+          <i class="ph ph-caret-left" aria-hidden="true"></i>
+        </button>
+        <div class="ts-nav__txt">
+          <span class="ts-nav__dia">{{ dia() | date:'EEEE d':undefined:'es-MX' }}</span>
+          <span class="ts-nav__sub">
+            {{ citas().length }} {{ citas().length === 1 ? 'cita' : 'citas' }}
+            · {{ columnas().length }} {{ columnas().length === 1 ? 'persona' : 'personas' }}
+          </span>
+        </div>
+        <button type="button" class="ts-iconbtn" (click)="mover(1)" aria-label="Día siguiente">
+          <i class="ph ph-caret-right" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="ts-hoy" (click)="irA(hoy)" [disabled]="dia() === hoy">Hoy</button>
+      </div>
+
+      <!-- Cabecera de columnas: quién trabaja hoy. -->
+      <div class="ts-cabeceras" [style.grid-template-columns]="'64px repeat(' + columnas().length + ', minmax(0, 1fr))'">
+        <div></div>
+        <div class="ts-quien" *ngFor="let p of columnas()">
+          <span class="ts-avatar" [style.background]="p.color || '#45B3C3'">{{ iniciales(p.full_name) }}</span>
+          <span class="ts-quien__txt">
+            <span class="ts-quien__n">{{ p.full_name }}</span>
+            <span class="ts-quien__t" *ngIf="p.title">{{ p.title }}</span>
+          </span>
+        </div>
+      </div>
+
+      <p class="ts-ocultas" *ngIf="ocultas()">
+        Hay {{ ocultas() }} persona(s) más. En la tableta caben tres columnas legibles;
+        el resto se ve en el Backoffice.
+      </p>
+
+      <!-- La rejilla del día. -->
+      <div class="ts-rejilla-wrap">
+        <div class="ts-rejilla"
+             [style.grid-template-columns]="'64px repeat(' + columnas().length + ', minmax(0, 1fr))'"
+             [style.height.px]="alto()">
+
+          <div class="ts-horas">
+            <div class="ts-hora" *ngFor="let h of horas()" [style.height.px]="altoHora">
+              {{ etiquetaHora(h) }}
+            </div>
+          </div>
+
+          <div class="ts-col" *ngFor="let p of columnas()"
+               [style.background-size]="'100% ' + altoHora + 'px'">
+
+            <button type="button" class="ts-cita"
+                    *ngFor="let b of citasDe(p.id)"
+                    [class.ts-cita--pasada]="!b.viva"
+                    [style.top.px]="b.top" [style.height.px]="b.alto"
+                    [style.border-left-color]="p.color || '#45B3C3'"
+                    (click)="abrir(b.cita)">
+              <span class="ts-cita__quien">{{ b.cita.customer_name }}</span>
+              <span class="ts-cita__que" *ngIf="b.alto > 52">
+                {{ b.cita.service_name || 'Sin servicio' }}
+              </span>
+              <span class="ts-cita__hora" *ngIf="b.alto > 78">{{ rango(b.cita) }}</span>
+              <span class="ts-cita__estado" *ngIf="!b.viva">{{ etiquetaEstado(b.cita.status) }}</span>
+            </button>
+
+            <!-- Dónde estamos ahora. -->
+            <div class="ts-ahora" *ngIf="lineaAhora() !== null" [style.top.px]="lineaAhora()">
+              <span class="ts-ahora__punto"></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="ts-vacio" *ngIf="!cargando() && !columnas().length">
+          Todavía no hay nadie dado de alta. La agenda necesita saber quién hace el trabajo.
+        </p>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------- AHORA -->
+    <aside class="ts-lado" aria-label="Ahora y lo que sigue">
+
+      <div class="ts-tarjeta" *ngIf="enCurso() as c; else sinCurso">
+        <span class="ts-lbl">En curso</span>
+        <p class="ts-lado__quien">{{ c.customer_name }}</p>
+        <p class="ts-lado__que">{{ c.service_name || 'Sin servicio' }} · {{ nombreDe(c.professional_id) }}</p>
+        <p class="ts-lado__hora">{{ rango(c) }}</p>
+        <button type="button" class="ts-primaria" (click)="abrir(c)" *ngIf="puedeOperar">
+          Qué hacer con esta cita
+        </button>
+      </div>
+      <ng-template #sinCurso>
+        <div class="ts-tarjeta ts-tarjeta--tenue">
+          <span class="ts-lbl">En curso</span>
+          <p class="ts-lado__que">Ahora mismo no hay nadie sentado.</p>
+        </div>
+      </ng-template>
+
+      <div class="ts-tarjeta ts-tarjeta--crece">
+        <span class="ts-lbl">Siguiente</span>
+        <div class="ts-siguientes" *ngIf="siguientes().length; else sinSiguientes">
+          <button type="button" class="ts-siguiente" *ngFor="let c of siguientes()"
+                  (click)="abrir(c)">
+            <span class="ts-siguiente__h">{{ rango(c).split(' – ')[0] }}</span>
+            <span class="ts-siguiente__txt">
+              <span class="ts-siguiente__n">{{ c.customer_name }}</span>
+              <span class="ts-siguiente__s">
+                {{ c.service_name || 'Sin servicio' }} · {{ nombreDe(c.professional_id) }}
+              </span>
+            </span>
+          </button>
+        </div>
+        <ng-template #sinSiguientes>
+          <p class="ts-lado__que">No queda nada agendado para hoy.</p>
+        </ng-template>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ======================================================= HOJA INFERIOR
+       Las acciones de una cita. En una tableta un menú desplegable se toca
+       mal: la hoja sube desde abajo, donde está el pulgar, y cada acción
+       mide lo que mide un dedo. -->
+  <div class="ts-velo" *ngIf="hoja()" (click)="cerrarHoja()"></div>
+
+  <div class="ts-hoja" *ngIf="hoja() as c" role="dialog" aria-modal="true" aria-labelledby="ts-hoja-t">
+    <div class="ts-hoja__asa" aria-hidden="true"></div>
+
+    <div class="ts-hoja__cab">
+      <div>
+        <p class="ts-hoja__quien" id="ts-hoja-t">{{ c.customer_name }}</p>
+        <p class="ts-hoja__que">
+          {{ c.service_name || 'Sin servicio' }} · {{ nombreDe(c.professional_id) }} · {{ rango(c) }}
+        </p>
+      </div>
+      <span class="ts-badge">{{ etiquetaEstado(c.status) }}</span>
+    </div>
+
+    <div class="ts-hoja__acciones">
+      <button type="button" class="ts-primaria" (click)="llego(c)"
+              *ngIf="c.status === 'AGENDADA' || c.status === 'CONFIRMADA'">
+        Llegó · abrir su orden
+      </button>
+
+      <button type="button" class="ts-secundaria" (click)="marcar(c, 'CONFIRMADA')"
+              *ngIf="c.status === 'AGENDADA'">
+        Confirmar la cita
+      </button>
+
+      <button type="button" class="ts-secundaria" (click)="marcar(c, 'NO_ASISTIO')"
+              *ngIf="c.status === 'AGENDADA' || c.status === 'CONFIRMADA'">
+        No llegó
+      </button>
+
+      <button type="button" class="ts-peligro" (click)="marcar(c, 'CANCELADA')"
+              *ngIf="c.status === 'AGENDADA' || c.status === 'CONFIRMADA'">
+        Cancelar la cita
+      </button>
+
+      <p class="ts-hoja__nota" *ngIf="c.status !== 'AGENDADA' && c.status !== 'CONFIRMADA'">
+        Esta cita ya está cerrada. Se queda en el día para saber qué pasó, y no ocupa horario.
+      </p>
+
+      <button type="button" class="ts-secundaria" (click)="cerrarHoja()">Cerrar</button>
+    </div>
+  </div>
+</div>

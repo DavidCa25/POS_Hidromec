@@ -11,19 +11,19 @@
 
     <div class="ag-nav">
       <button class="btn srv-sm" (click)="mover(-1)" aria-label="Día anterior">←</button>
-      <input class="ctl srv-sm" type="date" [ngModel]="dia()" (ngModelChange)="irA($event)"
-             aria-label="Día de la agenda" style="min-width:0;width:150px" />
+      <!-- El calendario de Wybix, no el del sistema operativo: es el mismo
+           que usan Compras y los reportes, con su teclado y su formato. -->
+      <wx-date style="width:170px" [ngModel]="dia()" (ngModelChange)="irA($event)"
+               placeholder="Día de la agenda" [limpiable]="false"></wx-date>
       <button class="btn srv-sm" (click)="mover(1)" aria-label="Día siguiente">→</button>
       <button class="btn srv-sm" (click)="irA(hoy)" [disabled]="dia() === hoy">Hoy</button>
     </div>
 
     <!-- A pantalla estrecha, una persona a la vez: tres columnas dejarían
          cada cita ilegible. -->
-    <select class="ctl srv-sm" [ngModel]="profesionalId()" (ngModelChange)="filtrarPor($event)"
-            aria-label="Filtrar por profesional">
-      <option [ngValue]="null">Todas las personas</option>
-      <option *ngFor="let p of profesionales()" [ngValue]="p.id">{{ p.full_name }}</option>
-    </select>
+    <wx-select style="min-width:190px" [opciones]="opcProfesionales()"
+               placeholder="Todas las personas"
+               [ngModel]="profesionalId()" (ngModelChange)="filtrarPor($event)"></wx-select>
 
     <span class="ag-resumen" *ngIf="!cargando()">{{ resumen() }}</span>
     <span class="srv-hint" *ngIf="cargando()">Cargando…</span>
@@ -78,6 +78,7 @@
                     [class.ag-bloque--corto]="c.alto < 46"
                     [class.ag-bloque--cerrado]="!enPie(c.cita)"
                     [class.ag-bloque--cancelado]="c.cita.status === 'CANCELADA'"
+                    [class.ag-bloque--pasada]="!c.viva"
                     (click)="abrirCita(c.cita)">
               <span class="ag-bloque-quien">{{ c.cita.customer_name }}</span>
               <span class="ag-bloque-que">
@@ -112,6 +113,98 @@
         Todavía no hay profesionales dados de alta.
         Añádelos en <b>Servicios › Profesionales</b>.
       </p>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     LOS MODALES DE LA AGENDA
+     Mismo marcado que la orden y que el resto de Wybix. Lo que había era
+     una cadena de controles del sistema operativo dentro de un aviso.
+     ==================================================================== -->
+
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'cita'"
+     role="dialog" aria-modal="true" aria-labelledby="ag-t-cita">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="ag-t-cita">Nueva cita</h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <label class="form-label" for="ag-cliente">Cliente</label>
+        <wx-select id="ag-cliente" [opciones]="opcClientes" [buscable]="true"
+                   placeholder="¿Quién viene?" textoBusqueda="Buscar cliente…"
+                   [(ngModel)]="formCita.clienteId"></wx-select>
+
+        <label class="form-label mt-3" for="ag-servicio">Servicio</label>
+        <wx-select id="ag-servicio" [opciones]="opcServicios" [buscable]="true"
+                   placeholder="Sin servicio concreto"
+                   [(ngModel)]="formCita.servicioId"></wx-select>
+        <div class="hint">La duración del servicio decide a qué hora vuelve a quedar libre.</div>
+
+        <label class="form-label mt-3" for="ag-quien">Quién lo hace</label>
+        <wx-select id="ag-quien" [opciones]="opcProfesionales()" placeholder="Sin asignar"
+                   [(ngModel)]="formCita.profesionalId"></wx-select>
+
+        <div class="srv-campos mt-3">
+          <div>
+            <label class="form-label" for="ag-dia">Día</label>
+            <wx-date id="ag-dia" [(ngModel)]="formCita.dia" [limpiable]="false"></wx-date>
+          </div>
+          <div>
+            <label class="form-label" for="ag-hora">Hora</label>
+            <wx-time id="ag-hora" [(ngModel)]="formCita.hora" [limpiable]="false"></wx-time>
+          </div>
+        </div>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarCita()">{{ guardando() ? 'Agendando…' : 'Agendar' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'mover'"
+     role="dialog" aria-modal="true" aria-labelledby="ag-t-mover">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="ag-t-mover">Mover la cita</h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <div class="srv-campos">
+          <div>
+            <label class="form-label" for="ag-m-dia">Nuevo día</label>
+            <wx-date id="ag-m-dia" [(ngModel)]="formCita.dia" [limpiable]="false"></wx-date>
+          </div>
+          <div>
+            <label class="form-label" for="ag-m-hora">Nueva hora</label>
+            <wx-time id="ag-m-hora" [(ngModel)]="formCita.hora" [limpiable]="false"></wx-time>
+          </div>
+        </div>
+
+        <label class="form-label mt-3" for="ag-m-motivo">Motivo</label>
+        <input id="ag-m-motivo" class="form-control" [(ngModel)]="formCita.motivo"
+               placeholder="El cliente no puede a esa hora…">
+        <div class="hint">Queda en el historial de la cita: es lo que explica el cambio después.</div>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarMover()">{{ guardando() ? 'Moviendo…' : 'Mover' }}</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

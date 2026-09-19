@@ -98,9 +98,9 @@ BEGIN
     END
 
     -- --------------------------------------------------------- se encima?
-    DECLARE @choque INT = NULL, @choque_desde DATETIME2(0);
+    DECLARE @choque INT = NULL, @choque_desde DATETIME2(0), @choque_hasta DATETIME2(0);
     IF @professional_id IS NOT NULL
-        SELECT TOP 1 @choque = a.id, @choque_desde = a.starts_at
+        SELECT TOP 1 @choque = a.id, @choque_desde = a.starts_at, @choque_hasta = a.ends_at
           FROM dbo.appointments a
          WHERE a.professional_id = @professional_id
            AND a.status IN ('AGENDADA', 'CONFIRMADA')
@@ -111,8 +111,20 @@ BEGIN
 
     IF @choque IS NOT NULL AND @permitir_encimar = 0
     BEGIN
-        DECLARE @msg NVARCHAR(200) =
-            'Ya hay una cita a esa hora (' + CONVERT(NVARCHAR(16), @choque_desde, 120) + ').';
+        /* LOS HECHOS, NO LA FRASE.
+           Esto devolvia '(2026-09-19 19:30)', que es la marca de tiempo tal
+           como la escribe SQL Server: la lee un programador, no quien esta
+           agendando con el cliente al telefono. La pantalla necesita saber
+           QUIEN y DE CUANDO A CUANDO para poder decirlo en castellano, asi
+           que se le mandan los tres datos separados y ella compone la frase.
+           Es el mismo trato que ya tienen CONFLICTO_DE_VERSION y
+           ACTIVO_BLOQUEADO: un codigo con lo necesario, no un texto. */
+        DECLARE @quien NVARCHAR(120) =
+            ISNULL((SELECT full_name FROM dbo.professionals WHERE id = @professional_id), '');
+        DECLARE @msg NVARCHAR(400) =
+            'CITA_ENCIMADA|' + @quien
+            + '|' + CONVERT(NVARCHAR(5), @choque_desde, 108)
+            + '|' + CONVERT(NVARCHAR(5), @choque_hasta, 108);
         RAISERROR(@msg, 16, 1);
         RETURN;
     END

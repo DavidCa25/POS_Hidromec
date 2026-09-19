@@ -34,6 +34,25 @@ function proximoLunes() {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Lleva la agenda a un dia concreto pulsando la flecha de "dia siguiente".
+ *
+ * Antes se escribia la fecha en un `input[type=date]`. Ese control ya no
+ * existe: la agenda usa `wx-date`, el calendario de Wybix, como el resto de
+ * la aplicacion. Se conduce como lo conduce una persona -avanzando dias- en
+ * vez de buscarle un hueco donde escribir, que seria conducir el control y no
+ * la pantalla.
+ */
+async function irAlDia(ventana, destino) {
+  const hoy = new Date(); hoy.setHours(12, 0, 0, 0);
+  const fin = new Date(destino + 'T12:00:00');
+  const dias = Math.round((fin - hoy) / 86400000);
+  for (let i = 0; i < dias; i++) {
+    await ventana.click('button[aria-label="Día siguiente"]');
+  }
+  await ventana.waitForTimeout(600);
+}
+
 test.describe('Agenda', () => {
 
   test('columnas por persona, con el color del negocio', async ({ appServicios: app }) => {
@@ -112,8 +131,7 @@ test.describe('Agenda', () => {
     await ventana.click('a[href$="/agenda"]');
     await ventana.waitForSelector('.ag-rejilla', { timeout: 30000 });
 
-    await ventana.fill('input[type="date"]', dia);
-    await ventana.waitForTimeout(1200);
+    await irAlDia(ventana, dia);
 
     // -------------------------------------------- hay una columna por persona
     expect(await ventana.locator('.ag-col').count(), 'la agenda es de columnas')
@@ -122,7 +140,12 @@ test.describe('Agenda', () => {
     /* Se filtra por la persona de esta prueba. La base la comparten todas las
        pruebas, y sin filtrar habría que suponer cuánta gente más hay: una
        suposición que el tope de seis columnas rompe en cuanto la base crece. */
-    await ventana.selectOption('.ag-cab select', { label: gente[0].nombre });
+    /* El filtro es `wx-select`, no un `<select>` del sistema: se abre y se
+       elige, como lo hace una persona. Conducir el control nativo era
+       conducir algo que ya no existe en esta pantalla. */
+    await ventana.click('.ag-cab wx-select .wx-sel__campo');
+    await ventana.locator('.wx-pop [role="option"]', { hasText: gente[0].nombre })
+      .first().click();
     await ventana.waitForTimeout(1200);
 
     const cabeceras = await ventana.locator('.ag-col-nombre').allInnerTexts();
@@ -144,7 +167,9 @@ test.describe('Agenda', () => {
     expect(once.top, 'las 11:00 van por debajo de las 09:00').toBeGreaterThan(nueve.top);
 
     // ------------------------------------------------------------ la ausencia
-    await ventana.selectOption('.ag-cab select', { label: gente[2].nombre });
+    await ventana.click('.ag-cab wx-select .wx-sel__campo');
+    await ventana.locator('.wx-pop [role="option"]', { hasText: gente[2].nombre })
+      .first().click();
     await ventana.waitForTimeout(1200);
     await expect.poll(async () => ventana.locator('.ag-ausencia').count(),
       { timeout: 15000, message: 'la ausencia no se dibuja' }).toBeGreaterThanOrEqual(1);
@@ -185,8 +210,7 @@ test.describe('Evidencia visual', () => {
     await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
     await ventana.click('a[href$="/agenda"]');
     await ventana.waitForSelector('.ag-rejilla', { timeout: 30000 });
-    await ventana.fill('input[type="date"]', proximoLunes());
-    await ventana.waitForTimeout(1500);
+    await irAlDia(ventana, proximoLunes());
 
     await ventana.screenshot({ path: 'test-results/agenda-A.png', fullPage: false });
 

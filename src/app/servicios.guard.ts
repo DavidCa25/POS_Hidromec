@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { CapabilityService } from '../core';
+import { CapabilityService, GiroServiciosService } from '../core';
 import { AuthService, PAQUETES } from '../services/auth.service';
 
 /**
@@ -28,6 +28,7 @@ import { AuthService, PAQUETES } from '../services/auth.service';
  */
 export const puedeVerServicios: CanActivateFn = async () => {
   const caps = inject(CapabilityService);
+  const giro = inject(GiroServiciosService);
   const auth = inject(AuthService);
   const router = inject(Router);
 
@@ -39,5 +40,13 @@ export const puedeVerServicios: CanActivateFn = async () => {
   if (!auth.puede(PAQUETES.SERVICIOS_OPERAR) && !auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) {
     return router.createUrlTree(['/dashboard/estadisticas']);
   }
+
+  /* El giro, ANTES de que se resuelva a qué pestaña se entra.
+     La redirección de la ruta vacía es síncrona —así la define Angular— y
+     pregunta por el giro. Si se cargara dentro del módulo, la primera entrada
+     de cada sesión caería en Órdenes aunque el negocio sea una barbería, y a
+     la segunda ya estaría bien: el peor tipo de fallo, el que no se reproduce
+     cuando lo vas a mirar. */
+  await giro.cargar();
   return true;
 };

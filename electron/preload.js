@@ -189,6 +189,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
        Los nombres van en espanol como el resto del dominio, y el canal lleva
        el prefijo `servicios:` y no `services:`, que ya significa los servicios
        de Windows del panel de red. */
+    /* El giro: que clase de negocio de servicios es este. `serviciosGiros`
+       es el catalogo (no toca la base), `serviciosConfig` lo que eligio este
+       negocio y `serviciosElegirGiro` la eleccion, que ademas enciende el
+       modulo. */
+    serviciosGiros: () => ipcRenderer.invoke('servicios:giros'),
+    serviciosConfig: () => ipcRenderer.invoke('servicios:config'),
+    serviciosElegirGiro: (preset) => ipcRenderer.invoke('servicios:elegir-giro', { preset }),
     serviciosCatalogo: (p) => ipcRenderer.invoke('servicios:catalogo', p),
     serviciosGuardarServicio: (p) => ipcRenderer.invoke('servicios:guardar-servicio', p),
     serviciosActivarServicio: (p) => ipcRenderer.invoke('servicios:activar-servicio', p),

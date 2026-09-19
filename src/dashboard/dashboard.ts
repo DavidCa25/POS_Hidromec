@@ -9,7 +9,8 @@ import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
-import { CapabilityService } from '../core';
+import { CapabilityService, GiroServiciosService } from '../core';
+import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
 
 type AppNotification = {
   id: string;
@@ -27,7 +28,8 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor, DecimalPipe],
+  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor, DecimalPipe,
+            WxAvatarComponent],
   styleUrls: ['./dashboard.css']
 })
 
@@ -65,7 +67,8 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService) {}
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
+              private giroServicios: GiroServiciosService) {}
 
   @HostListener('window:resize')
   onResize() {
@@ -142,7 +145,19 @@ export class Dashboard {
 
   ngOnInit() { this.onResize(); this.cargarContexto();
     // Perfil de negocio y de dispositivo: deciden que se ve en el menu.
-    this.caps.load();if (this.auth.usuarioActual?.nombre) {
+    this.caps.load();
+    /* EL GIRO SE CARGA AQUI, NO SOLO EN EL GUARD.
+       La redireccion de la ruta vacia de Servicios es sincrona -asi la define
+       Angular- y Angular RESUELVE LAS REDIRECCIONES ANTES DE EJECUTAR LOS
+       GUARDS. Con el giro cargandose solo en el guard, la primera entrada de
+       cada sesion se resolvia con el generico y una barberia caia en Ordenes
+       en vez de en su agenda; a la segunda ya estaba bien, que es el peor
+       tipo de fallo: el que no se reproduce cuando vas a mirarlo.
+       Cargandolo al entrar al panel, cuando alguien pulsa Servicios el dato
+       ya esta. El guard conserva su await como red para un enlace directo. */
+    void this.giroServicios.cargar();
+
+    if (this.auth.usuarioActual?.nombre) {
       this.registerService.load();
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();

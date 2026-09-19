@@ -46,6 +46,17 @@ export const BASES = {
   /* La levanta y la borra e2e/primer-uso.spec.js. Figura aqui para que
      'npm run e2e:limpiar' se la lleve si una ejecucion se corto en medio. */
   PrimerUso: 'Wybix_E2E_PrimerUso',
+  /* La levanta y la borra e2e/giro.spec.js: es la unica con Servicios
+     APAGADO, que es de donde parte un cliente recien instalado. */
+  Giro: 'Wybix_E2E_Giro',
+  /* Una por giro: el giro se guarda por NEGOCIO, asi que dos no caben en
+     la misma instalacion. Las levanta y las borra giros-recorridos.spec.js;
+     figuran aqui para que 'e2e:limpiar' se las lleve si algo se corta. */
+  GiroTaller: 'Wybix_E2E_GiroTaller',
+  GiroBelleza: 'Wybix_E2E_GiroBelleza',
+  GiroElectronica: 'Wybix_E2E_GiroElectronica',
+  GiroMantenimiento: 'Wybix_E2E_GiroMantenimiento',
+  GiroOtro: 'Wybix_E2E_GiroOtro',
 };
 
 function lotesDe(ruta) {
@@ -65,7 +76,7 @@ function aplicar(db, lotes, origen) {
 /** Escapa una cadena para un literal de SQL Server. */
 const lit = (s) => `N'${String(s).replace(/'/g, "''")}'`;
 
-export function prepararBase(db, { perfil = 'RETAIL', modulos = [] } = {}) {
+export function prepararBase(db, { perfil = 'RETAIL', modulos = [], giroServicios = null } = {}) {
   exigirTemporal(db);   // por si alguien llama a esto con otro nombre
   console.log(`\n== ${db} (${perfil})`);
 
@@ -111,6 +122,16 @@ export function prepararBase(db, { perfil = 'RETAIL', modulos = [] } = {}) {
   }
   if (modulos.length) console.log(`   modulos encendidos: ${modulos.join(', ')}`);
 
+  /* El giro de Servicios, si esta base lo necesita. Se pone con el MISMO
+     procedimiento que usa el onboarding real -el que tambien enciende el
+     modulo- y no con un UPDATE: una base de pruebas montada por un camino
+     propio deja de probar el camino de verdad. */
+  if (giroServicios) {
+    aplicar(db, [`EXEC dbo.sp_set_services_preset @preset = ${lit(giroServicios)}`],
+      `giro de servicios ${giroServicios}`);
+    console.log(`   giro de Servicios: ${giroServicios}`);
+  }
+
   console.log(`   usuarios: ${Object.values(CUENTAS).map(c => `${c.usuario} (${c.rol})`).join(', ')}`);
   return db;
 }
@@ -129,7 +150,13 @@ if (esPrincipal) {
   else {
     if (cual === 'todas' || cual === 'core') prepararBase(BASES.Core, { perfil: 'RETAIL' });
     if (cual === 'todas' || cual === 'servicios')
-      prepararBase(BASES.Servicios, { perfil: 'RETAIL', modulos: ['servicios'] });
+      prepararBase(BASES.Servicios, {
+        /* MANTENIMIENTO y no TALLER: es el unico giro que trae las dos cosas
+           a la vez -agenda Y algo sobre lo que se trabaja-, asi que una sola
+           base sirve para la prueba de la agenda y para la del ciclo
+           completo. El taller y la barberia los recorre giro.spec.js, que
+           levanta su propia base para eso. */
+        perfil: 'RETAIL', modulos: ['servicios'], giroServicios: 'MANTENIMIENTO' });
   }
   console.log('\nlisto.');
 }
