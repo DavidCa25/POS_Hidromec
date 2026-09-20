@@ -21,6 +21,16 @@
      azul de 20px: justo el aspecto de plantilla que hay que quitar.
    ========================================================================== */
 
+/* La animacion de las figuras de blobatar: respiracion, balanceo, parpadeo,
+   micro-sacadas de la mirada y el morfeo entre expresiones. Son 8 KB y es lo
+   UNICO de la libreria que viaja siempre; el resto -el nucleo y las poses- se
+   descarga bajo demanda desde `wx-avatar` y `wx-mascota`.
+
+   Va aqui y no en un componente porque las custom properties que registra
+   (`@property --mo-*`) son de documento: dentro de un componente con estilos
+   encapsulados no se registrarian y las figuras saldrian quietas. */
+@import "blobatar/motion.css";
+
 @import "./styles/tokens.css";
 @import "./styles/refinamiento.css";
 @import "./styles/table.css";

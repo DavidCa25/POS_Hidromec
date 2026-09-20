@@ -74,8 +74,18 @@ test.describe('Elegir el giro de Servicios', () => {
     return { ventana, cerrar };
   }
 
-  /** Va a Aplicaciones y deja la tarjeta de Servicios delante. */
+  /**
+   * Va a Aplicaciones y deja la tarjeta de Servicios delante.
+   *
+   * Aplicaciones vive en el cajon "Mas" del dock, no en un rail siempre
+   * desplegado: primero se abre el cajon y despues se pulsa la entrada. Es el
+   * mismo recorrido que hace una persona, y por eso se prueba asi y no
+   * saltando a la ruta a mano.
+   */
   async function irAAplicaciones(ventana) {
+    /* Se localiza por su papel, no por su etiqueta: "Mas" lleva tilde y una
+       prueba no deberia romperse por como se escriba una palabra. */
+    await ventana.click('.wxdock__btn[aria-haspopup="menu"]');
     await ventana.click('a[href$="/dashboard/aplicaciones"]');
     await ventana.waitForSelector('.apps-card', { timeout: 30000 });
   }

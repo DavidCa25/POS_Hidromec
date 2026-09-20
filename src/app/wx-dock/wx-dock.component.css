@@ -1,0 +1,425 @@
+/* ==========================================================================
+   WX-DOCK
+   --------------------------------------------------------------------------
+   El dock es navy en los dos temas, igual que lo era el rail: es la silueta
+   que hace reconocible a Wybix aunque no se vea el logo. Lo unico que cambio
+   de sitio es donde esta.
+
+   CAPAS: todo vive en `--wx-z-rail` (40), que es donde vivia el rail. Un modal
+   de pantalla completa lo tapa, que es lo correcto: mientras hay un dialogo
+   abierto no se navega.
+   ========================================================================== */
+
+:host { display: contents; }
+
+.wxdock {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: var(--wx-z-rail, 40);
+
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 11px;
+
+  background: var(--wx-rail);
+  border: 1px solid var(--wx-rail-edge);
+  border-radius: 22px;
+  box-shadow: 0 18px 44px rgb(6 11 17 / 0.34);
+}
+
+/* EN OSCURO EL DOCK SE PIERDE.
+   `--wx-rail` es #080E17 y el lienzo #0A1119: sobre claro el dock es una
+   silueta oscura que flota, pero sobre oscuro son el mismo color y el dock
+   deja de ser un objeto. La elevacion en oscuro no se comunica con sombra
+   -negro sobre negro no se ve- sino con luz: una superficie mas clara y un
+   borde que la recorta. */
+:host-context(html.dark) .wxdock {
+  background: var(--wx-navy-600);
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.5), 0 20px 48px rgb(0 0 0 / 0.55);
+}
+:host-context(html.dark) .wxdock__btn.is-on,
+:host-context(html.dark) .wxdock__buscar { background: rgb(255 255 255 / 0.09); }
+:host-context(html.dark) .wxdock__kbd { background: rgb(0 0 0 / 0.30); }
+:host-context(html.dark) .wxdock__punto { box-shadow: 0 0 0 2.5px var(--wx-navy-600); }
+
+@media (hover: hover) and (pointer: fine) {
+  :host-context(html.dark) .wxdock__btn:hover { background: rgb(255 255 255 / 0.09); }
+}
+
+/* ------------------------------------------------------------------ area */
+.wxdock__item { position: relative; display: inline-flex; }
+
+.wxdock__btn {
+  position: relative;
+  width: 72px;
+  height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
+  border: 0;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--wx-rail-text-dim);
+  text-decoration: none;
+
+  transition: transform var(--wx-dur-press, 110ms) var(--wx-ease-out),
+              background-color var(--wx-dur-micro, 150ms) var(--wx-ease-out),
+              color var(--wx-dur-micro, 150ms) var(--wx-ease-out);
+}
+.wxdock__btn:active { transform: scale(0.97); }
+.wxdock__btn.is-on { background: var(--wx-rail-raised); color: var(--wx-rail-text-strong); }
+.wxdock__btn i { font-size: 21px; line-height: 1; }
+.wxdock__txt { font-size: 11px; font-weight: 550; letter-spacing: -0.005em; }
+
+@media (hover: hover) and (pointer: fine) {
+  .wxdock__btn:hover { background: var(--wx-rail-raised); color: var(--wx-rail-text-strong); }
+}
+
+.wxdock__btn:focus-visible,
+.wxdock__crear:focus-visible,
+.wxdock__buscar:focus-visible,
+.wxdock__yo:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+/* El punto de aviso, sobre el icono. El anillo del color del dock es lo que
+   lo separa del icono en lugar de mancharlo. */
+.wxdock__punto {
+  position: absolute;
+  top: 8px; right: 16px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5px var(--wx-rail);
+}
+.wxdock__punto.es-peligro { background: var(--wx-red-500); }
+.wxdock__punto.es-aviso   { background: var(--wx-amber-500); }
+
+/* --------------------------------------------------------------- ventana */
+.wxdock__ventana {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 14px;
+  width: 268px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-menu);
+  color: var(--wx-text);
+
+  /* Nunca desde scale(0): nada en el mundo real aparece de la nada. Y el
+     origen es abajo al centro, que es de donde sale. */
+  transform: translateX(-50%) translateY(6px) scale(0.97);
+  transform-origin: bottom center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition: opacity var(--wx-dur-menu, 170ms) var(--wx-ease-out),
+              transform var(--wx-dur-menu, 170ms) var(--wx-ease-out),
+              visibility 0s linear var(--wx-dur-menu, 170ms);
+}
+
+/*
+ * EL PUENTE.
+ *
+ * Entre el borde de arriba del boton y el de abajo de la ventana hay 14 px de
+ * separacion, que es lo que hace que la ventana se lea como una cosa aparte y
+ * no como una lengueta pegada. El problema es que ese hueco no pertenece a
+ * nadie: al mover el raton del boton hacia una opcion se cruza, se pierde el
+ * `:hover`, y la ventana se cierra justo cuando ibas a pulsar.
+ *
+ * Esto lo rellena con una franja invisible que SI es parte de la ventana, asi
+ * que el recorrido del raton nunca sale del area sensible. El hueco se sigue
+ * viendo igual; lo que cambia es que ya se puede atravesar.
+ *
+ * Va un pixel por debajo del hueco a proposito: dejar el borde justo permite
+ * que un movimiento rapido se cuele por la juntura.
+ */
+.wxdock__ventana::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 15px;
+}
+
+/* Con el teclado tambien, para que la ventana no sea una funcion exclusiva
+   del raton. Pero `:focus-within` a secas NO vale: al PULSAR un area el enlace
+   se queda con el foco, y al pasar el cursor por la de al lado quedaban DOS
+   ventanas abiertas a la vez. `:has(:focus-visible)` solo responde al foco que
+   llega por teclado, que es justo el caso que habia que cubrir. */
+.wxdock__item:has(:focus-visible) .wxdock__ventana {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+  transition-delay: 0s, 0s, 0s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wxdock__item:hover .wxdock__ventana {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+    transition-delay: 0s, 0s, 0s;
+  }
+}
+
+.wxdock__vcab { display: flex; align-items: baseline; gap: 8px; }
+.wxdock__vnom { font-weight: 650; font-size: var(--wx-text-md); }
+.wxdock__vtecla {
+  margin-left: auto;
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  padding: 2px 6px;
+  border-radius: var(--wx-radius-xs);
+  background: var(--wx-sunken);
+  color: var(--wx-text-muted);
+}
+
+.wxdock__vcifra { display: flex; flex-direction: column; }
+.wxdock__vcifra b {
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.wxdock__vcifra span { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+
+.wxdock__vaviso { font-size: var(--wx-text-sm); }
+.wxdock__vaviso.es-peligro { color: var(--wx-danger-ink); }
+.wxdock__vaviso.es-aviso   { color: var(--wx-warning-ink); }
+.wxdock__vaviso.es-ok      { color: var(--wx-text-muted); }
+
+.wxdock__vlista {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 9px;
+  border-top: 1px solid var(--wx-edge);
+}
+.wxdock__vira {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  text-decoration: none;
+  font-size: var(--wx-text-sm);
+  font-weight: 550;
+  transition: background-color var(--wx-dur-micro, 150ms) var(--wx-ease-out);
+}
+.wxdock__vira i { font-size: 16px; color: var(--wx-text-muted); }
+.wxdock__vira.is-on { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.wxdock__vira:hover { background: var(--wx-hover); }
+.wxdock__vira:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+/* ----------------------------------------------------------------- crear */
+/* Elevado y siempre en el mismo pixel: la accion que mas se repite en el dia
+   no deberia tener que buscarse. */
+.wxdock__hueco { position: relative; width: 76px; display: flex; justify-content: center; }
+.wxdock__crear {
+  position: absolute;
+  bottom: -6px;
+  width: 62px; height: 62px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0;
+  border-radius: 22px;
+  background: var(--wx-accent);
+  color: var(--wx-accent-ink);
+  box-shadow: 0 8px 20px rgb(69 179 195 / 0.42);
+  transition: transform var(--wx-dur-press, 110ms) var(--wx-ease-out),
+              background-color var(--wx-dur-micro, 150ms) var(--wx-ease-out);
+}
+.wxdock__crear i { font-size: 26px; }
+.wxdock__crear:hover { background: var(--wx-accent-hover); }
+.wxdock__crear:active { transform: scale(0.97); }
+
+/* ------------------------------------------------------- separador y pie */
+.wxdock__sep {
+  width: 1px; height: 28px; margin: 0 6px;
+  background: var(--wx-rail-edge);
+}
+
+.wxdock__buscar {
+  height: 42px;
+  padding: 0 12px;
+  display: flex; align-items: center; gap: 8px;
+  border: 0;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-rail-raised);
+  color: var(--wx-rail-text);
+  transition: transform var(--wx-dur-press, 110ms) var(--wx-ease-out);
+}
+.wxdock__buscar:active { transform: scale(0.97); }
+.wxdock__buscar i { font-size: 17px; }
+.wxdock__kbd {
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  padding: 2px 6px;
+  border-radius: var(--wx-radius-xs);
+  background: var(--wx-rail);
+  color: var(--wx-rail-text-dim);
+}
+
+.wxdock__yo {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0;
+  border-radius: var(--wx-radius-md);
+  background: transparent;
+  transition: transform var(--wx-dur-press, 110ms) var(--wx-ease-out),
+              background-color var(--wx-dur-micro, 150ms) var(--wx-ease-out);
+}
+.wxdock__yo:hover { background: var(--wx-rail-raised); }
+.wxdock__yo:active { transform: scale(0.97); }
+
+/* ============================================================== popovers */
+.wxdock-pop {
+  position: fixed;
+  z-index: var(--wx-z-menu, 60);
+  width: 284px;
+  padding: 7px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-menu);
+  animation: wxdock-sube var(--wx-dur-menu, 170ms) var(--wx-ease-out) both;
+}
+/* Cada uno sale de SU boton, no del centro de la pantalla. */
+.wxdock-pop--crear { left: 50%; bottom: 96px; margin-left: -142px; transform-origin: bottom center; }
+.wxdock-pop--yo    { right: 24px; bottom: 96px; transform-origin: bottom right; }
+/* El cajon sale de su boton, que esta a la derecha del centro. */
+.wxdock-pop--mas   { left: 50%; bottom: 96px; margin-left: 40px; transform-origin: bottom left; }
+
+@keyframes wxdock-sube {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+
+.wxdock-pop__quien {
+  margin: 4px 10px 8px;
+  font-weight: 650;
+  display: flex; flex-direction: column;
+}
+.wxdock-pop__quien span {
+  font-weight: 400;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}
+
+.wxdock-pop__fila {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: var(--wx-radius-md);
+  background: transparent;
+  color: var(--wx-text);
+  text-align: left;
+  font-weight: 550;
+  transition: background-color var(--wx-dur-micro, 150ms) var(--wx-ease-out),
+              transform var(--wx-dur-press, 110ms) var(--wx-ease-out);
+}
+.wxdock-pop__fila { text-decoration: none; }
+.wxdock-pop__fila i { font-size: 18px; color: var(--wx-text-muted); }
+.wxdock-pop__fila.is-on { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+/* `.is-on` es "esta es la pantalla en la que estas" y lleva acento.
+   `.es-primero` es "Enter te lleva aqui" en el buscador, que es otra cosa: se
+   marca como un hover, no como un destino actual. */
+.wxdock-pop__fila:hover, .wxdock-pop__fila.es-primero { background: var(--wx-hover); }
+.wxdock-pop__fila:active { transform: scale(0.98); }
+.wxdock-pop__fila:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+/* ============================================================= buscador */
+.wxdock-buscar {
+  position: fixed;
+  inset: 0;
+  z-index: var(--wx-z-dialog, 80);
+  background: var(--wx-scrim);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.wxdock-buscar__caja {
+  width: min(620px, calc(100vw - 32px));
+  background: var(--wx-surface);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+  overflow: hidden;
+  /* Un dialogo NO se centra con transform: crearia bloque contenedor y
+     descolocaria cualquier menu anclado que viviera dentro. */
+  animation: wxdock-sube var(--wx-dur-dialog, 230ms) var(--wx-ease-out) both;
+}
+.wxdock-buscar__cab {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 17px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.wxdock-buscar__cab i { font-size: 18px; color: var(--wx-text-muted); }
+.wxdock-buscar__cab input {
+  flex-grow: 1;
+  border: 0;
+  background: transparent;
+  color: var(--wx-text);
+  font-size: var(--wx-text-md);
+  font-family: inherit;
+}
+.wxdock-buscar__cab input:focus { outline: none; }
+.wxdock-buscar__esc {
+  padding: 3px 9px;
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-xs);
+  background: var(--wx-surface);
+  color: var(--wx-text-muted);
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+}
+.wxdock-buscar__lista { padding: 7px; max-height: 52vh; overflow-y: auto; }
+.wxdock-buscar__enter {
+  margin-left: auto;
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-muted);
+}
+.wxdock-buscar__vacio {
+  margin: 0;
+  padding: 18px 13px;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+  line-height: var(--wx-leading);
+}
+
+/* ============================================================== estrecho */
+/* Por debajo de 1100px las etiquetas se van y quedan los iconos: seis iconos
+   caben donde seis iconos con texto no. */
+@media (max-width: 1100px) {
+  .wxdock__btn { width: 56px; }
+  .wxdock__txt { display: none; }
+  .wxdock__kbd { display: none; }
+  .wxdock__punto { right: 11px; }
+}
+@media (max-width: 720px) {
+  .wxdock { left: 12px; right: 12px; transform: none; justify-content: space-between; }
+  .wxdock__hueco { width: 64px; }
+  .wxdock__ventana { display: none; }
+}

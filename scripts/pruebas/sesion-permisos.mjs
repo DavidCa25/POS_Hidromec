@@ -419,17 +419,24 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
   check(/auth:sesion|api\?\.sesion/.test(auth),
     'los pide al proceso principal');
 
-  const rail = readFileSync(join(raiz, 'src/dashboard/dashboard.html'), 'utf8');
-  check(!/auth\.esAdmin/.test(rail),
+  /* EL MENU SE MUDO AL DOCK.
+     El rail lateral ya no existe: la navegacion vive en `wx-dock`, y ahi se
+     DECLARA como datos en vez de como marcado. Lo que esta prueba protege no
+     cambia ni un apice -que lo que se ofrece salga del paquete que exige la
+     operacion, y no del nombre del rol-, solo cambia el archivo donde mirar. */
+  const menu = readFileSync(join(raiz, 'src/app/wx-dock/wx-dock.component.ts'), 'utf8');
+  check(!/auth\.esAdmin/.test(menu),
     'el menu ya no se dibuja preguntando si es administrador',
     'eso dejaba al Encargado sin inventario, sin compras y sin el corte del dia');
 
-  const tablero = readFileSync(join(raiz, 'src/dashboard/dashboard.ts'), 'utf8');
   for (const g of ['verNumeros', 'supervisarVentas', 'operarVentas',
                    'operarInventario', 'administrarNegocio']) {
-    check(tablero.includes(`get ${g}(`) && rail.includes(`"${g}`),
+    check(menu.includes(`get ${g}(`) && menu.includes(`this.${g}`),
       `el menu pregunta por ${g}`);
   }
+  /* El rol se sigue escribiendo en la cabecera del panel, junto al nombre del
+     negocio: eso no era navegacion y no se mudo al dock. */
+  const tablero = readFileSync(join(raiz, 'src/dashboard/dashboard.ts'), 'utf8');
   check(/rolEtiqueta\(\)/.test(tablero),
     'y el rol se escribe con la etiqueta del catalogo, no con un ternario');
 
@@ -440,6 +447,22 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
     'la autorizacion presencial manda el canal y registra las dos identidades');
   check(!/this\.auth\.esAdmin/.test(sup),
     'y ya no se salta el candado por ser administrador, sino por tener el paquete');
+
+  /*
+   * CERRAR SESION TIENE QUE CERRAR LA SESION.
+   *
+   * El boton del rail solo navegaba a `/login`. La sesion seguia abierta en el
+   * proceso principal -que es quien autoriza-, asi que quien llegara despues a
+   * esa ventana heredaba los permisos del anterior sin identificarse, y un
+   * canal sensible invocado desde la consola se ejecutaba con ellos.
+   *
+   * `auth.salir()` ya existia y hacia lo correcto. No la llamaba nadie.
+   */
+  check(/await this\.auth\.salir\(\)/.test(menu),
+    'cerrar sesion avisa al proceso principal, no solo cambia de pantalla',
+    'si no, la ventana se queda con los permisos del anterior');
+  check(/async salir\(\)/.test(auth) && /api\?\.cerrarSesion\?\.\(\)/.test(auth),
+    'y el servicio lo pide por su canal');
 
   const cajon = readFileSync(join(raiz, 'src/venta/appCajon/abrirCajon.ts'), 'utf8');
   check(/'open-cash-drawer', PAQUETES\.VENTAS_SUPERVISAR/.test(cajon),

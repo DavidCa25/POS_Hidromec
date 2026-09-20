@@ -1,16 +1,15 @@
 import { Component, HostListener  } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf, NgFor, DecimalPipe } from '@angular/common';
-import { Router } from '@angular/router';
-import { AuthService, PAQUETES } from '../services/auth.service';
+import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
 import { CapabilityService, GiroServiciosService } from '../core';
-import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
+import { WxDockComponent } from '../app/wx-dock/wx-dock.component';
 
 type AppNotification = {
   id: string;
@@ -28,20 +27,20 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor, DecimalPipe,
-            WxAvatarComponent],
+  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, WxDockComponent],
   styleUrls: ['./dashboard.css']
 })
 
 export class Dashboard {
-  menuOpen = true;
-  isMobile = false;
-  showOverlay = false;
-  isOperacionesOpen = false;
-  isUserDropdownOpen = false;
-  isOperacionesCompraOpen = false;
-  isInventarioOpen = false;
-  isDatosOpen = false;
+  /*
+   * Lo que quedaba aqui de NAVEGACION se fue con el rail: `menuOpen`,
+   * `isMobile`, los cuatro desplegables y el menu de usuario vivian para
+   * abrir y cerrar partes de una columna que ya no existe. Ahora esa
+   * responsabilidad es de `wx-dock`, que la tiene entera y en un solo sitio.
+   *
+   * Lo que se queda es lo que NUNCA fue navegacion: el color de tablas, el
+   * modo oscuro, las notificaciones del producto y el contexto del negocio.
+   */
   themeOpen = false;
 
   /** Paleta de acentos. Vive en ThemeService para no duplicarla. */
@@ -54,12 +53,14 @@ export class Dashboard {
 
   currentInvColor = '#1f2e86';
 
+  /* Quien esta operando. Lo pinta el dock, pero se resuelve aqui: la sesion
+     trae un nombre y la base puede traer otro mas correcto, y esa correccion
+     ya vivia en esta pantalla. */
   userName: string = 'Usuario';
 
   notifOpen = false;
   notifications: AppNotification[] = [];
   unreadCount = 0;
-  alertasCount = 0;
 
   // Módulos opcionales activos (controlan qué se ve en el menú)
   modulesState: ModulesState = { pagoServicios: false };
@@ -67,15 +68,8 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
+  constructor(public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
               private giroServicios: GiroServiciosService) {}
-
-  @HostListener('window:resize')
-  onResize() {
-    this.isMobile = window.innerWidth < 900;
-    this.menuOpen = !this.isMobile; 
-    this.showOverlay = this.isMobile && this.menuOpen;
-  }
 
   /**
    * Contexto del negocio para el pie del rail. Se lee de la misma
@@ -98,27 +92,6 @@ export class Dashboard {
    * catálogo, que es quien sabe cuántos roles existen.
    */
   get rolTexto(): string { return this.auth.rolEtiqueta(); }
-
-  /**
-   * QUÉ SE DIBUJA EN EL MENÚ.
-   *
-   * Cada entrada preguntaba `auth.esAdmin`, y eso dejaba al Encargado con una
-   * barra lateral casi vacía: ni inventario, ni compras, ni el corte del día,
-   * aunque el proceso principal sí le deja hacer esas tres cosas. La interfaz
-   * y la autorización decían cosas distintas, y la que se veía era la
-   * equivocada.
-   *
-   * Ahora cada entrada pregunta por el PAQUETE que exige la operación a la que
-   * lleva. Son los mismos nombres que usa el proceso principal para autorizar,
-   * así que el menú no puede ofrecer lo que después se rechaza ni esconder lo
-   * que sí se permite.
-   */
-  get verNumeros(): boolean { return this.auth.puede(PAQUETES.REPORTES_VER); }
-  get supervisarVentas(): boolean { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
-  get operarVentas(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
-  get operarInventario(): boolean { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
-  get administrarNegocio(): boolean { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
-  get operarServicios(): boolean { return this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
 
   /** Su rol viene de una versión que este binario no conoce: no ofrece nada. */
   get sinRol(): boolean { return this.auth.sinRol(); }
@@ -143,7 +116,7 @@ export class Dashboard {
     } catch { /* silencioso */ }
   }
 
-  ngOnInit() { this.onResize(); this.cargarContexto();
+  ngOnInit() { this.cargarContexto();
     // Perfil de negocio y de dispositivo: deciden que se ve en el menu.
     this.caps.load();
     /* EL GIRO SE CARGA AQUI, NO SOLO EN EL GUARD.
@@ -180,18 +153,9 @@ export class Dashboard {
       this.handleUpdateNotification(status);
     });
 
-    this.cargarAlertas();
-
     // Módulos opcionales: refresca y escucha cambios (se actualiza al configurar).
     this.modSub = this.modules.mods$.subscribe(m => this.modulesState = m);
     this.modules.refresh();
-  }
-
-  async cargarAlertas() {
-    try {
-      const r = await (window as any).electronAPI?.alertsCounts?.({ min: 3 });
-      if (r?.success) this.alertasCount = Number(r.data?.total || 0);
-    } catch { /* silencioso */ }
   }
 
   /**
@@ -380,55 +344,8 @@ export class Dashboard {
     }
   }
 
-  toggleMenu() {
-    this.menuOpen = !this.menuOpen;
-    this.showOverlay = this.isMobile && this.menuOpen;
-  }
-
-  
-  toggleOperaciones() {
-    this.isOperacionesOpen = !this.isOperacionesOpen;
-  }
-
-  toggleOperacionesCompra() {
-    this.isOperacionesCompraOpen = !this.isOperacionesCompraOpen;
-  }
-
-  toggleInventario() {
-    this.isInventarioOpen = !this.isInventarioOpen;
-  }
-
-  toggleDatos() {
-    this.isDatosOpen = !this.isDatosOpen;
-  }
-
-  toggleUserDropdown() {
-    this.isUserDropdownOpen = !this.isUserDropdownOpen;
-  }
-
-  cerrarSesion() {
-    this.router.navigate(['/login']);
-  }
-
-  crearUsuario() {
-    this.router.navigate(['/sign_up']);
-  }
-
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
-    const dropdown = document.getElementById('operaciones-dropdown');
-    const comprasDropdown = document.getElementById('operaciones-compra-dropdown');
-    const userWrapper = document.querySelector('.dashboard-user-wrapper');
-    if (!dropdown) return;
-    if (!dropdown.contains(event.target as Node)) {
-      this.isOperacionesOpen = false;
-    }
-    if (comprasDropdown && !comprasDropdown.contains(event.target as Node)) {
-      this.isOperacionesCompraOpen = false;
-    }
-    if (userWrapper && !userWrapper.contains(event.target as Node)) {
-      this.isUserDropdownOpen = false;
-    }
     const themeWrapper = document.getElementById('theme-wrapper');
     if (themeWrapper && !themeWrapper.contains(event.target as Node)) {
       this.cerrarPaleta();

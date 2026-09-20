@@ -261,12 +261,21 @@ check(/await caps\.load\(\)/.test(guard),
   'y lo comprueba en cada navegacion',
   'apagar el modulo desde otra caja surte efecto sin cerrar sesion');
 
-const rail = leer('src', 'dashboard', 'dashboard.html');
-check(/operarServicios && caps\.servicios/.test(rail),
+/* La entrada del menu vive ahora en el dock, declarada como dato. La regla es
+   la misma que cuando vivia en el rail: UNA sola entrada para las seis
+   pantallas del modulo, porque la carcasa ya trae sus propias pestanas. */
+const menu = leer('src', 'app', 'wx-dock', 'wx-dock.component.ts');
+check(/this\.operarServicios && this\.caps\.servicios/.test(menu),
   'la entrada del menu tambien');
-check((rail.match(/routerLink="\/dashboard\/ordenes-de-servicio"/g) || []).length === 1,
-  'y es UNA sola entrada, no cinco',
-  'el rail ya tiene dieciocho y cinco mas lo vuelven ilegible');
+/* Contar apariciones seria fragil -el area, su raiz y la accion de Crear son
+   tres- y ademas no es lo que importa. Lo que importa es que NINGUNA de las
+   seis pantallas de dentro se ofrezca por separado en el menu: la carcasa ya
+   trae sus pestanas, y seis entradas mas serian seis sitios donde perderse. */
+const internas = ['ordenes', 'agenda', 'activos', 'catalogo', 'profesionales', 'comisiones'];
+const sueltas = internas.filter(x => menu.includes(`/dashboard/ordenes-de-servicio/${x}`));
+check(sueltas.length === 0,
+  'y es UNA sola entrada, no seis',
+  sueltas.length ? `se ofrecen por separado: ${sueltas.join(', ')}` : 'las pantallas de dentro son navegacion interna suya');
 
 /* `servicios` YA estaba ocupado por Pago de servicios -recargas y recibos-, que
    lleva tiempo en produccion. Angular resuelve la PRIMERA ruta que coincide, asi

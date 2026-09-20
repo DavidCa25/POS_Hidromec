@@ -573,7 +573,12 @@
      style="background:rgba(0,0,0,0.25);z-index:12000;">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-4">
-      <div class="modal-header border-0 pb-1">
+      <div class="modal-header border-0 pb-1 align-items-center">
+        <!-- Wybix en exito. Es el UNICO momento del punto de venta en el que
+             aparece de cuerpo entero: da el salto, se le ven los ojos
+             contentos y se queda quieta. Si apareciera tambien al fallar o al
+             esperar, dejaria de significar "salio bien". -->
+        <wx-mascota estado="exito" [size]="44" class="me-2"></wx-mascota>
         <h5 class="modal-title fw-bold">Venta registrada</h5>
         <button type="button" class="btn-close" (click)="cerrarPostSaleModal()"></button>
       </div>

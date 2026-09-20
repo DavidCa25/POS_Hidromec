@@ -8,6 +8,7 @@ import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
@@ -57,7 +58,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {

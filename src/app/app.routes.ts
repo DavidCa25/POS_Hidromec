@@ -45,6 +45,15 @@ export const routes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('../dashboard/dashboard').then(m => m.Dashboard),
     children: [
+      /*
+       * INICIO. El panel no tenia pantalla de entrada: se caia en la ultima
+       * ruta o en un hueco. Con el rail lateral eso se disimulaba -habia
+       * dieciocho enlaces a la vista-, pero con el dock abajo la primera
+       * pantalla tiene que decir algo por si misma.
+       */
+      { path: '', pathMatch: 'full', redirectTo: 'inicio' },
+      { path: 'inicio', loadComponent: () => import('../dashboard/inicio/inicio.component').then(m => m.Inicio) },
+
       // ---- Retail POS ----
       // El guard decide, en cada navegacion, si esta caja vende aqui o en
       // Touch. Es lo que hace que cambiar la experiencia surta efecto sin

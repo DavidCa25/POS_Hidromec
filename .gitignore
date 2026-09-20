@@ -48,6 +48,12 @@ testem.log
 /typings
 docs/evidencias/
 
+# El wasm del runtime de Rive. Lo copia `scripts/assets/rive.mjs` desde
+# node_modules en cada build: son 849 KB de binario que ya estan ahi, y
+# guardarlos tambien aqui obligaria a acordarse de actualizarlos a mano cada
+# vez que suba la version del runtime.
+/src/assets/rive/
+
 # System files
 .DS_Store
 Thumbs.db

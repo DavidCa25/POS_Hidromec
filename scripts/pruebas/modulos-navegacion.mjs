@@ -18,7 +18,20 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const RAIL = join('src', 'dashboard', 'dashboard.html');
+/*
+ * LA NAVEGACION YA NO ESTA EN EL RAIL.
+ *
+ * El rail lateral se fue: la navegacion vive en `wx-dock`, y se DECLARA como
+ * datos en su componente, no como marcado. Esta prueba se mudo con ella.
+ *
+ * Lo que comprueba NO ha cambiado, porque lo que protege no era el rail sino
+ * una leccion que costo tres mudanzas: Aplicaciones y Fidelizacion tienen que
+ * ser de PRIMER NIVEL. En el dock, primer nivel significa una de dos cosas:
+ * un area, o una entrada de "Mas". Lo que NO vale es colgar de los `destinos`
+ * de otro dominio, que es la forma que tiene el dock de repetir el error de
+ * dejar una campana dentro de Inventario.
+ */
+const DOCK = join('src', 'app', 'wx-dock', 'wx-dock.component.ts');
 const RUTAS = join('src', 'app', 'app.routes.ts');
 const COMP = join('src', 'app', 'aplicaciones', 'aplicaciones.component.ts');
 const MODULOS = join('src', 'core', 'modulos.ts');
@@ -33,42 +46,71 @@ const check = (cond, titulo, detalle) => {
 };
 const seccion = (t) => console.log(`\n-- ${t}`);
 
-const rail = readFileSync(RAIL, 'utf8');
+const dock = readFileSync(DOCK, 'utf8');
 const rutas = readFileSync(RUTAS, 'utf8');
 const comp = readFileSync(COMP, 'utf8');
 const modulos = readFileSync(MODULOS, 'utf8');
 const negocio = readFileSync(NEGOCIO, 'utf8');
 const caps = readFileSync(CAPS, 'utf8');
 
-/** El rail sin comentarios: lo que de verdad se pinta. */
-const sinComentarios = rail.replace(/<!--[\s\S]*?-->/g, '');
+/** El dock sin comentarios: lo que de verdad se declara. */
+const sinComentarios = dock
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
 
-/** El bloque `<li>` que contiene un enlace a esa ruta. */
+/** Las entradas de primer nivel que no caben en las seis plazas del dock. */
+function bloqueMas() {
+  const i = sinComentarios.indexOf('readonly mas =');
+  if (i < 0) return '';
+  return sinComentarios.slice(i, sinComentarios.indexOf('.filter(x => x.visible);', i));
+}
+
+/** Los bloques `destinos: [...]`: lo que cuelga DENTRO de un area. */
+function bloquesDestinos() {
+  const out = [];
+  for (const m of sinComentarios.matchAll(/destinos:\s*\[([\s\S]*?)\]/g)) out.push(m[1]);
+  return out.join('\n');
+}
+
+/**
+ * La linea que declara el destino de esa ruta, sea area o entrada de "Mas".
+ * Devuelve null si la ruta no se ofrece en ningun sitio.
+ */
 function entrada(ruta) {
-  const i = sinComentarios.indexOf(`routerLink="${ruta}"`);
-  if (i < 0) return null;
-  const ini = sinComentarios.lastIndexOf('<li', i);
-  const fin = sinComentarios.indexOf('</li>', i);
-  return sinComentarios.slice(ini, fin);
+  for (const linea of sinComentarios.split('\n')) {
+    if (linea.includes(`'${ruta}'`)) return linea;
+  }
+  return null;
+}
+
+/** Esa ruta, ¿cuelga de los `destinos` de otro dominio? */
+function cuelgaDeOtro(ruta) {
+  return bloquesDestinos().includes(`'${ruta}'`);
+}
+
+/** ¿Es una entrada de "Mas", que es primer nivel? */
+function estaEnMas(ruta) {
+  return bloqueMas().includes(`'${ruta}'`);
 }
 
 // ===================================================================
-seccion('1. Aplicaciones es una entrada propia del menu lateral');
+seccion('1. Aplicaciones es una entrada propia de primer nivel');
 
 const apps = entrada('/dashboard/aplicaciones');
 check(!!apps, 'existe la entrada Aplicaciones');
-check(!!apps && /sidebar-link/.test(apps),
-  'y es un enlace del menu lateral, no de un desplegable',
-  'dentro de un dropdown seria una opcion de otra cosa, no una seccion');
-check(!!apps && !/dropdown-item/.test(apps),
-  'no vive dentro de ningun menu desplegable');
+check(estaEnMas('/dashboard/aplicaciones'),
+  'y es de primer nivel: vive en "Mas", no dentro de otro dominio',
+  'colgada de un area seria una opcion de otra cosa, no una seccion');
+check(!cuelgaDeOtro('/dashboard/aplicaciones'),
+  'no cuelga de los destinos de ningun area');
 
 /*
  * El menu de usuario es para la sesion: cerrarla, cambiar de usuario. Un
  * catalogo de modulos del producto no es una preferencia de quien ha entrado.
  */
-const menuUsuario = sinComentarios.slice(sinComentarios.indexOf('user-dropdown'));
-check(!/\/dashboard\/aplicaciones/.test(menuUsuario.slice(0, 1200)),
+const menuUsuario = readFileSync(join('src', 'app', 'wx-dock', 'wx-dock.component.html'), 'utf8');
+const bloqueYo = menuUsuario.slice(menuUsuario.indexOf('wxdock-pop--yo'));
+check(!/aplicaciones/.test(bloqueYo),
   'y NO esta duplicada en el menu de usuario',
   'dos accesos a lo mismo acaban divergiendo');
 
@@ -80,7 +122,7 @@ seccion('2. Fidelizacion es un dominio propio, condicionado');
 
 const fid = entrada('/dashboard/fidelizacion');
 check(!!fid, 'existe la entrada Fidelizacion');
-check(!!fid && /sidebar-link/.test(fid),
+check(estaEnMas('/dashboard/fidelizacion') && !cuelgaDeOtro('/dashboard/fidelizacion'),
   'y tambien es de primer nivel',
   'vivio colgada de Inventario, que es donde nadie buscaria una campana');
 check(!!fid && /caps\.loyalty/.test(fid),
