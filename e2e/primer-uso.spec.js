@@ -26,7 +26,7 @@
 const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('node:fs');
 const { nuevoPerfil, opcionesDeArranque } = require('./perfil');
-const { CUENTAS } = require('./fixtures');
+const { CUENTAS, irPorDock } = require('./fixtures');
 
 const BASE = 'Wybix_E2E_PrimerUso';
 
@@ -92,7 +92,7 @@ test.describe('Servicios recién encendido', () => {
       await ventana.waitForSelector('.open-shift-modal', { state: 'detached', timeout: 30000 });
     }
 
-    await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+    await irPorDock(ventana, 'Servicios', 'Ordenes');
     await ventana.waitForSelector('.srv-vacio, .srv-fila', { timeout: 30000 });
   }
 

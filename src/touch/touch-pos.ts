@@ -589,7 +589,10 @@ export class TouchPos implements OnInit, OnDestroy {
     try {
       const res = await this.sale.checkout({
         method: this.metodo(),
-        received: this.metodo() === 'EFECTIVO' ? this.recibidoNum() : null,
+        /* Con tarjeta o transferencia se cobra el total exacto. Mandar `null`
+           hacia que `SaleService.validate` lo rechazara como «dinero recibido
+           insuficiente», y Touch no podia cobrar mas que en efectivo. */
+        received: this.metodo() === 'EFECTIVO' ? this.recibidoNum() : this.totales().total,
       }, {
         openDrawer: this.metodo() === 'EFECTIVO',
         autoPrint: true,
@@ -657,7 +660,7 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   salir() {
-    this.router.navigate(['/dashboard/estadisticas']);
+    this.router.navigate(['/dashboard/inicio']);
   }
 
   /** Escape cierra lo que este abierto: util con teclado conectado. */

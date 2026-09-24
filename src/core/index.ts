@@ -24,3 +24,4 @@ export * from './hospitality.service';
 export * from './loyalty.service';
 export * from './modulos';
 export * from './dinamicas';
+export * from './fechas';

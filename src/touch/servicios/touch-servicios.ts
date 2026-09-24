@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
-import { GiroServiciosService } from '../../core';
+import { GiroServiciosService, hoyLocal, moverDias } from '../../core';
 import {
   Ausencia, Cita, Profesional, ServiciosService,
 } from '../../modulo-servicios/servicios.service';
@@ -47,7 +47,7 @@ export class TouchServicios {
   /** Más alto que en el escritorio: se toca con el dedo, no con el cursor. */
   readonly altoHora = 96;
 
-  readonly hoy = new Date().toISOString().slice(0, 10);
+  readonly hoy = hoyLocal();
   readonly dia = signal(this.hoy);
   readonly cargando = signal(true);
 
@@ -86,11 +86,7 @@ export class TouchServicios {
 
   irA(dia: string) { this.dia.set(dia); void this.cargar(); }
 
-  mover(dias: number) {
-    const d = new Date(this.dia() + 'T12:00:00');
-    d.setDate(d.getDate() + dias);
-    this.irA(d.toISOString().slice(0, 10));
-  }
+  mover(dias: number) { this.irA(moverDias(this.dia(), dias)); }
 
   // ------------------------------------------------------- la colocación
   readonly ventana = computed<Ventana>(() =>

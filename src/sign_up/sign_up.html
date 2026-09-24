@@ -43,16 +43,10 @@
       </div>
 
       <div class="input-group">
-        <select
-          [(ngModel)]="rol"
-          name="rol"
-          (change)="onInputChange()"
-          style="width: 100%; padding: 0.75rem 1.2rem; border-radius: 8px; border: 1px solid #ccc; background: #f8fafb; font-family: var(--wx-font);"
-        >
-          <option *ngFor="let r of rolesOpciones" [value]="r.value">
-            {{ r.label }}
-          </option>
-        </select>
+        <!-- Lista del dominio: control de Wybix, no del sistema operativo.
+             Ver el contrato de interfaz en CLAUDE.md. -->
+        <wx-select style="width:100%" [opciones]="opcRoles" placeholder="Elige un rol"
+                   [(ngModel)]="rol" name="rol" (ngModelChange)="onInputChange()"></wx-select>
       </div>
 
       <div *ngIf="advertencia" class="warning-message">

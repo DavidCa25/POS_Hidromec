@@ -77,4 +77,51 @@ const test = base.extend({
   appServicios: async ({}, use, testInfo) => { await arrancar(BASE_SERVICIOS, use, testInfo); },
 });
 
-module.exports = { test, expect, CUENTAS, BASE_CORE, BASE_SERVICIOS, invocar };
+/**
+ * NAVEGAR POR EL DOCK, COMO UNA PERSONA.
+ *
+ * Las pruebas pulsaban `a[href$="/dashboard/ordenes-de-servicio"]`, que era el
+ * enlace del rail. Con el dock, un area CON subsecciones es un boton que abre
+ * su panel -eso es lo que hace que funcione con el dedo, no solo con el raton-
+ * y el destino vive dentro. Son dos gestos porque de verdad son dos.
+ *
+ * Se localiza por TEXTO y no por clase o por indice: reordenar el dock o
+ * cambiar un icono no deberia romper una prueba de servicios.
+ */
+async function irPorDock(ventana, area, destino) {
+  await ventana.waitForSelector('.wxdock', { timeout: 30000 });
+  await ventana.evaluate((n) => {
+    const b = [...document.querySelectorAll('.wxdock__btn')]
+      .find((x) => x.textContent.includes(n));
+    if (b) b.click();
+  }, area);
+
+  await ventana.waitForSelector('.wxdock__panel', { timeout: 15000 });
+
+  /*
+   * Sin `destino` se pulsa la fila PRINCIPAL, que en Servicios la elige el
+   * giro: una barberia abre en la agenda y un taller en ordenes. Pedir
+   * «Ordenes» a mano saltaria justamente eso.
+   */
+  await ventana.evaluate((n) => {
+    const panel = document.querySelector('.wxdock__panel');
+    const filas = [...panel.querySelectorAll('.wxdock__pira')];
+    const a = n ? filas.find((x) => x.textContent.includes(n))
+                : panel.querySelector('.wxdock__pira.es-principal') || filas[0];
+    if (a) a.click();
+  }, destino || null);
+}
+
+/** El cajon «Mas» y una de sus entradas. */
+async function irPorMas(ventana, destino) {
+  await ventana.waitForSelector('.wxdock__btn--mas', { timeout: 30000 });
+  await ventana.click('.wxdock__btn--mas');
+  await ventana.waitForSelector('.wxdock-pop--mas', { timeout: 15000 });
+  await ventana.evaluate((n) => {
+    const a = [...document.querySelectorAll('.wxdock-pop--mas .wxdock-pop__fila')]
+      .find((x) => x.textContent.includes(n));
+    if (a) a.click();
+  }, destino);
+}
+
+module.exports = { test, expect, CUENTAS, BASE_CORE, BASE_SERVICIOS, invocar, irPorDock, irPorMas };

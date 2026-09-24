@@ -1,44 +1,21 @@
 <div class="ini">
 
-  <!-- ==================================================== columna principal -->
-  <section class="ini__col">
+  <!-- =========================================================== saludo
+       La guia NO esta metida en una tarjeta ni sobre un disco blanco. Se
+       apoya en el lienzo, al lado del texto que acompana, y el conjunto
+       -cara + frase- es UNA sola cosa que se lee de un vistazo. -->
+  <header class="ini__saludo">
+    <wx-mascota class="ini__guia" [estado]="estadoGuia()" [size]="104"
+                [alt]="'Wybix: ' + frase()" [variante]="guia.variante()"></wx-mascota>
 
-    <header class="ini__saludo">
-      <div class="ini__saludotxt">
-        <p class="ini__fecha">{{ fecha }}</p>
-        <h1 class="ini__h1">{{ saludo }}, {{ nombre }}.</h1>
-        <p class="ini__sub" *ngIf="!cargando()">
-          <ng-container *ngIf="hayPendientes; else todoBien">
-            Tu negocio esta en marcha. {{ pendientes().length }}
-            {{ pendientes().length === 1 ? 'cosa necesita' : 'cosas necesitan' }} atención.
-          </ng-container>
-          <ng-template #todoBien>Nada pendiente. El día está limpio.</ng-template>
-        </p>
-      </div>
-
-      <!-- Wybix en reposo. Respira y calla: es el 95% del tiempo. -->
-      <wx-mascota estado="idle" [size]="78"></wx-mascota>
-    </header>
-
-    <!-- ------------------------------------------------------------ hacer -->
-    <div class="ini__hacer">
-      <button type="button" class="ini__acc ini__acc--primera" *ngIf="puedeVender"
-              (click)="ir('/dashboard/venta')">
-        <i class="ph ph-cash-register" aria-hidden="true"></i>
-        <span class="ini__accnom">Nueva venta</span>
-        <span class="ini__accpie">Cobra y genera el ticket</span>
-      </button>
-
-      <button type="button" class="ini__acc" *ngIf="segundaAccion as s"
-              (click)="ir(s.ruta)">
-        <i class="ph {{ s.icono }}" aria-hidden="true"></i>
-        <span class="ini__accnom">{{ s.texto }}</span>
-        <span class="ini__accpie">{{ s.pie }}</span>
-      </button>
+    <div class="ini__saludotxt">
+      <p class="ini__fecha">{{ fecha }}</p>
+      <h1 class="ini__h1">{{ saludo }}, {{ nombre }}.</h1>
+      <p class="ini__sub">{{ frase() }}</p>
     </div>
 
-    <!-- ------------------------------------------------------------ cifras -->
-    <!-- Solo para quien puede ver numeros, y solo las que de verdad llegaron. -->
+    <!-- Las cifras del dia viven en la misma fila que el saludo: son la
+         respuesta a "como va el dia", y separarlas dejaba un hueco muerto. -->
     <div class="ini__cifras" *ngIf="verNumeros && vendidoHoy() !== null">
       <span class="ini__cifra">
         <span class="ini__cifranom">Vendido hoy</span>
@@ -49,60 +26,79 @@
         <b>{{ tickets() }}</b>
       </span>
       <span class="ini__cifra" *ngIf="ticketPromedio !== null">
-        <span class="ini__cifranom">Ticket promedio</span>
+        <span class="ini__cifranom">Promedio</span>
         <b>{{ dinero(ticketPromedio) }}</b>
       </span>
     </div>
+  </header>
 
-    <!-- -------------------------------------------------------- pendientes -->
-    <h2 class="ini__rot">Necesita tu atención</h2>
+  <!-- ============================================================ cuerpo -->
+  <div class="ini__rejilla">
 
-    <div class="ini__lista" *ngIf="hayPendientes">
-      <button type="button" class="ini__fila" *ngFor="let p of pendientes()"
-              (click)="ir(p.ruta)">
-        <span class="ini__punto" [ngClass]="'es-' + p.tono" aria-hidden="true"></span>
-        <span class="ini__filatxt">
-          <b>{{ p.titulo }}</b>
-          <span>{{ p.detalle }}</span>
-        </span>
-        <span class="ini__filaacc">{{ p.accion }}</span>
-      </button>
+    <!-- ---------------------------------------------------- lo que se hace -->
+    <section class="ini__zona">
+      <h2 class="ini__rot">Empezar</h2>
+      <div class="ini__hacer">
+        <button type="button" class="ini__acc ini__acc--primera" *ngIf="puedeVender"
+                (click)="ir('/dashboard/venta')">
+          <i class="ph ph-cash-register" aria-hidden="true"></i>
+          <span class="ini__accnom">Nueva venta</span>
+          <span class="ini__accpie">Cobra y genera el ticket</span>
+        </button>
 
-      <!--
-        Wybix en atencion, pegada a la lista que esta parada. Aparece solo
-        cuando hay algo: si estuviera siempre no significaria nada.
-      -->
-      <span class="ini__mira" aria-hidden="true">
-        <wx-mascota estado="atencion" [size]="46"></wx-mascota>
-        <span class="ini__bang">!</span>
-      </span>
-    </div>
-
-    <p class="ini__limpio" *ngIf="!hayPendientes && !cargando()">
-      Sin productos bajo mínimo, sin saldos vencidos y sin cortes descuadrados.
-    </p>
-  </section>
-
-  <!-- ============================================================== costado -->
-  <aside class="ini__aside">
-    <h2 class="ini__rot">Quién puede operar</h2>
-    <div class="ini__equipo">
-      <span class="ini__persona" *ngFor="let u of equipo()">
-        <wx-avatar [semilla]="'u:' + u.id" [nombre]="u.usuario" [size]="30"></wx-avatar>
-        <span class="ini__personatxt">
-          <b>{{ u.usuario }}</b>
-          <span>{{ u.rol }}</span>
-        </span>
-      </span>
-      <p class="ini__vacio" *ngIf="!equipo().length">Sin usuarios activos.</p>
-    </div>
-
-    <ng-container *ngIf="estrella() as e">
-      <h2 class="ini__rot">Lo más vendido</h2>
-      <div class="ini__estrella">
-        <b>{{ e.nombre }}</b>
-        <span>{{ e.piezas }} {{ e.piezas === 1 ? 'pieza' : 'piezas' }}</span>
+        <button type="button" class="ini__acc" *ngFor="let s of otrasAcciones()"
+                (click)="ir(s.ruta)">
+          <i class="ph {{ s.icono }}" aria-hidden="true"></i>
+          <span class="ini__accnom">{{ s.texto }}</span>
+          <span class="ini__accpie">{{ s.pie }}</span>
+        </button>
       </div>
-    </ng-container>
-  </aside>
+    </section>
+
+    <!-- ------------------------------------------------------- pendientes -->
+    <section class="ini__zona">
+      <h2 class="ini__rot">Necesita tu atención</h2>
+
+      <div class="ini__lista" *ngIf="hayPendientes">
+        <button type="button" class="ini__fila" *ngFor="let p of pendientes()"
+                (click)="ir(p.ruta)">
+          <span class="ini__punto" [ngClass]="'es-' + p.tono" aria-hidden="true"></span>
+          <span class="ini__filatxt">
+            <b>{{ p.titulo }}</b>
+            <span>{{ p.detalle }}</span>
+          </span>
+          <span class="ini__filaacc">{{ p.accion }}</span>
+        </button>
+      </div>
+
+      <!-- Sin pendientes no hace falta una tarjeta que diga "todo bien": una
+           linea basta, y la cara de arriba ya lo dijo. -->
+      <p class="ini__limpio" *ngIf="!hayPendientes && !cargando()">
+        Sin productos bajo mínimo, sin saldos vencidos y sin cortes descuadrados.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------ quien -->
+    <aside class="ini__zona">
+      <h2 class="ini__rot">Quién puede operar</h2>
+      <div class="ini__equipo">
+        <span class="ini__persona" *ngFor="let u of equipo()">
+          <wx-avatar [semilla]="'u:' + u.id" [nombre]="u.usuario" [size]="32"></wx-avatar>
+          <span class="ini__personatxt">
+            <b>{{ u.usuario }}</b>
+            <span>{{ u.rol }}</span>
+          </span>
+        </span>
+        <p class="ini__vacio" *ngIf="!equipo().length">Sin usuarios activos.</p>
+      </div>
+
+      <ng-container *ngIf="estrella() as e">
+        <h2 class="ini__rot">Lo más vendido</h2>
+        <p class="ini__estrella">
+          <b>{{ e.nombre }}</b>
+          <span>{{ e.piezas }} {{ e.piezas === 1 ? 'pieza' : 'piezas' }}</span>
+        </p>
+      </ng-container>
+    </aside>
+  </div>
 </div>

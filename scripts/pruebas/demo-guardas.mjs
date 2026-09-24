@@ -15,6 +15,7 @@
  * No toca ninguna base de datos. Corre en un segundo.
  */
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const G = require('../../electron/demo/guardas.js');
@@ -223,6 +224,54 @@ check(G.sePuedeDestruir({
   metadatos: { is_demo: 'true', demo_instance_id: OTRA_INSTANCIA },
   instanciaLocal: OTRA_INSTANCIA,
 }).ok === true, 'y la de hospitality tambien');
+
+
+// ===================================================================
+seccion('Una demo abre directamente: ni Gate ni asistente');
+
+/*
+ * Al abrir una demo salia "Comienza tu prueba gratis". El gestor prepara la
+ * base entera -negocio, giro, administrador y datos- pero el espacio de
+ * licencia queda vacio, y sin licencia la aplicacion muestra el Gate.
+ *
+ * La alternativa mala era sembrar una PRUEBA de verdad: eso gastaria la prueba
+ * real de la maquina, que se emite por machineId, por una demostracion. Y una
+ * demo no es una prueba comercial.
+ *
+ * `demo` es su propio estado, resuelto por el ESPACIO de licencia. No hay
+ * archivo que falsificar y una instalacion de cliente nunca declara ese
+ * espacio, asi que no puede afectar jamas a una licencia normal.
+ */
+{
+  const lic = readFileSync(join('electron', 'license.js'), 'utf8');
+  check(/const ESPACIO_DEMO = 'demo'/.test(lic),
+    'el espacio de demo esta declarado en el modulo de licencia');
+  check(/if \(esDemo\(\)\) return \{ state: 'demo'/.test(lic),
+    'y en ese espacio el estado es `demo`, sin leer ningun archivo');
+
+  const idx = readFileSync(join('electron', 'demo', 'index.js'), 'utf8');
+  check(/const ESPACIO = 'demo'/.test(idx) && /usarEspacio\(ESPACIO\)/.test(idx),
+    'el gestor declara ese mismo espacio al arrancar');
+
+  const appHtml = readFileSync(join('src', 'app', 'app.html'), 'utf8');
+  check(/license\.puedeOperar/.test(appHtml),
+    'y la carcasa deja entrar a `demo` sin pasar por el Gate');
+
+  const svc = readFileSync(join('src', 'services', 'license.service.ts'), 'utf8');
+  check(/\['demo', 'trial', 'active'\]\.includes/.test(svc),
+    'porque `puedeOperar` incluye demo');
+
+  /* Y el alta ya viene sembrada, asi que tampoco ve el asistente. */
+  for (const f of ['demo-profiles/retail/seed.sql', 'demo-profiles/servicios/comun.sql']) {
+    check(/EXEC dbo\.sp_setup_inicial/.test(readFileSync(f, 'utf8')),
+      `${f.split('/')[1]}: el alta viene hecha, asi que no hay asistente`);
+  }
+
+  /* Lo que NUNCA debe pasar: que la demo toque la licencia del cliente. */
+  check(/\.wxsys-\$\{espacio\}\.dat|`\.wxsys-\$\{espacio\}\.dat`/.test(lic),
+    'el espejo de la demo es un archivo aparte',
+    'nunca el `.wxsys.dat` de una instalacion normal');
+}
 
 console.log(`\nRESULTADO: ${fallos.length ? `${fallos.length} FALLO(S) de ${ok + fallos.length}` : `OK (${ok} comprobaciones)`}`);
 process.exit(fallos.length ? 1 : 0);

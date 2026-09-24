@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { ShiftService } from '../../core';
+import { ShiftService, fechaLocal } from '../../core';
 import Swal from 'sweetalert2';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 
@@ -111,7 +111,7 @@ export class Corte {
     await this.cargarCajas();
   }
 
-  private toStr(d: Date){ return d.toISOString().slice(0,10); }
+  private toStr(d: Date){ return fechaLocal(d); }
 
   private startOfWeek(d: Date){
     const x = new Date(d);

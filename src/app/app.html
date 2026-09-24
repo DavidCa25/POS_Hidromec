@@ -19,8 +19,11 @@
     }
   }
 
-  <!-- Con prueba activa o licencia de pago: usar el sistema -->
-  @if (license.estado.state === 'trial' || license.estado.state === 'active') {
+  <!-- Demostracion, prueba viva o licencia de pago: se trabaja.
+       `demo` entra aqui y NO pasa por el Gate: el gestor ya lo preparo todo,
+       y pedirle una prueba comercial a una demo gastaria la prueba real de la
+       maquina por una demostracion. -->
+  @if (license.puedeOperar) {
     @if (license.estado.state === 'trial') {
       @defer (on immediate) {
         <app-trial-banner></app-trial-banner>

@@ -15,7 +15,7 @@ const UMBRALES = [15, 7, 3, 1];
   <div class="trial-chip" [class.urgente]="dias <= 5">
     <i class="ph ph-hourglass"></i>
     <span class="txt">
-      Prueba gratis ·
+      Prueba gratuita ·
       <strong>{{ dias }} {{ dias === 1 ? 'día' : 'días' }}</strong> restantes
     </span>
     <button class="chip-btn" (click)="comprar()">Comprar</button>

@@ -250,12 +250,45 @@ check(idNormal === MACHINE_ID && idDemo === MACHINE_ID,
   'el machineId reportado es el mismo en los dos espacios',
   'aislar el archivo no falsea la identidad de la maquina');
 
-/* Y una licencia de otra maquina se sigue rechazando DENTRO de la demo: el
-   aislamiento no puede haberse llevado por delante la comprobacion. */
+/*
+ * DENTRO DE LA DEMO YA NO SE LEE NINGUNA LICENCIA.
+ *
+ * Esto comprobaba que una licencia de otra maquina se rechazara tambien en el
+ * espacio de demo. Dejo de tener sentido cuando `demo` paso a ser su propio
+ * estado: al abrir una demo salia "Comienza tu prueba gratis", y la salida no
+ * era sembrarle una prueba de verdad -eso gastaria la prueba real de la
+ * maquina por una demostracion- sino reconocer que una demo no tiene licencia.
+ *
+ * `computeStatus` devuelve `demo` ANTES de abrir ningun archivo. Asi que una
+ * licencia ajena copiada ahi dentro no desbloquea nada que la demo no tuviera
+ * ya, porque no se mira.
+ */
 const ajena = { machineIdV1: MACHINE_ID, candidatosV1: [MACHINE_ID], huella: construirHuella(otraPC) };
-check(licencia.computeStatus(ajena).state === 'tamper',
-  'y en la demo una licencia de otro equipo se sigue rechazando',
+check(licencia.computeStatus(ajena).state === 'demo',
+  'en la demo no se lee licencia: el estado es `demo` y nada mas',
   licencia.computeStatus(ajena).state);
+
+/*
+ * Y ESTO ES LO QUE AHORA HAY QUE PROTEGER.
+ *
+ * Si un binario de cliente pudiera declarar el espacio de demo, tendria una
+ * licencia ilimitada gratis. No puede: quien declara ese espacio es
+ * `electron/demo/index.js`, y el empaquetado de produccion lo EXCLUYE.
+ */
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+const excluidos = (pkg.build?.files ?? []).filter(f => String(f).includes('electron/demo'));
+check(excluidos.some(f => String(f).startsWith('!')),
+  'el binario de produccion no incluye el modulo de demo',
+  `reglas: ${excluidos.join(', ') || '(ninguna)'}`);
+
+const idx = readFileSync(join('electron', 'demo', 'index.js'), 'utf8');
+check((idx.match(/usarEspacio\(/g) || []).length >= 1,
+  'y solo ese modulo declara el espacio');
+const otros = ['electron/main.js', 'electron/preload.js']
+  .filter(f => /usarEspacio\(/.test(readFileSync(f, 'utf8')));
+check(otros.length === 0,
+  'ni el proceso principal ni el preload lo declaran nunca',
+  otros.length ? `lo hacen: ${otros.join(', ')}` : 'solo el gestor de demos');
 
 // ===================================================================
 seccion('H. Eliminar la demo se lleva SU espejo y solo el suyo');

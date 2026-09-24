@@ -32,6 +32,7 @@
 @import "blobatar/motion.css";
 
 @import "./styles/tokens.css";
+@import "./styles/movimiento.css";
 @import "./styles/refinamiento.css";
 @import "./styles/table.css";
 @import "./styles/overlay.css";

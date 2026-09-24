@@ -15,7 +15,7 @@
  * quedar fuera de la ventana horaria y no verse. Aquí se lee el color que el
  * navegador calculó y la posición que el navegador dio.
  */
-const { test, expect, CUENTAS } = require('./fixtures');
+const { test, expect, CUENTAS, irPorDock } = require('./fixtures');
 
 async function entrar(app, cuenta) {
   const { ventana } = app;
@@ -27,11 +27,24 @@ async function entrar(app, cuenta) {
   }, { timeout: 30000 }).toBe(cuenta.usuario);
 }
 
+/**
+ * `YYYY-MM-DD` de una fecha, leída AQUÍ y no en UTC.
+ *
+ * `toISOString()` da la fecha en Londres. Corriendo por la tarde en UTC-6,
+ * esta prueba pedía el martes creyendo que pedía el lunes, sembraba las citas
+ * un día y miraba otro. Fallaba de noche y pasaba de mañana.
+ */
+function comoDia(d) {
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
 /** El lunes de la semana que viene: un día estable, sin depender de hoy. */
 function proximoLunes() {
   const d = new Date();
   d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
-  return d.toISOString().slice(0, 10);
+  return comoDia(d);
 }
 
 /**
@@ -44,7 +57,10 @@ function proximoLunes() {
  * la pantalla.
  */
 async function irAlDia(ventana, destino) {
-  const hoy = new Date(); hoy.setHours(12, 0, 0, 0);
+  /* La agenda abre en el día de HOY, así que se cuentan los clics desde hoy.
+     Las dos fechas se anclan al mediodía: contar días entre medianoches cae
+     dentro del cambio de horario y sale un día de más o de menos. */
+  const hoy = new Date(comoDia(new Date()) + 'T12:00:00');
   const fin = new Date(destino + 'T12:00:00');
   const dias = Math.round((fin - hoy) / 86400000);
   for (let i = 0; i < dias; i++) {
@@ -97,12 +113,15 @@ test.describe('Agenda', () => {
 
     /* Las dos citas son de la MISMA persona: así se puede filtrar por ella y
        comprobar la colocación sin depender de quién más haya en la base. */
-    await app.invocar('serviciosCitaGuardar', {
-      clienteId, servicioId, profesionalId: gente[0].id, desde: `${dia}T09:00:00`,
-    });
-    await app.invocar('serviciosCitaGuardar', {
-      clienteId, servicioId, profesionalId: gente[0].id, desde: `${dia}T11:00:00`,
-    });
+    /* Se comprueba que la siembra FUNCIONO. Sin esto, un guardado que falla
+       en silencio se manifiesta mucho mas tarde como «la agenda no dibuja
+       nada», que es un sintoma de la pantalla y no de la causa. */
+    for (const hora of ['09:00', '11:00']) {
+      const c = await app.invocar('serviciosCitaGuardar', {
+        clienteId, servicioId, profesionalId: gente[0].id, desde: `${dia}T${hora}:00`,
+      });
+      expect(c?.success, `cita de las ${hora}: ${JSON.stringify(c)}`).toBeTruthy();
+    }
     await app.invocar('serviciosGuardarAusencia', {
       profesionalId: gente[2].id, desde: `${dia}T14:00:00`, hasta: `${dia}T18:00:00`,
       motivo: 'Cita médica',
@@ -127,7 +146,7 @@ test.describe('Agenda', () => {
 
     /* Se navega por la interfaz, no por la URL: así se comprueba de paso que
        la entrada del menú lleva a donde dice. */
-    await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+    await irPorDock(ventana, 'Servicios', 'Ordenes');
     await ventana.click('a[href$="/agenda"]');
     await ventana.waitForSelector('.ag-rejilla', { timeout: 30000 });
 
@@ -207,7 +226,7 @@ test.describe('Evidencia visual', () => {
     await ventana.waitForSelector('#username', { timeout: 60000 });
     await entrar(app, CUENTAS.admin);
 
-    await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+    await irPorDock(ventana, 'Servicios', 'Ordenes');
     await ventana.click('a[href$="/agenda"]');
     await ventana.waitForSelector('.ag-rejilla', { timeout: 30000 });
     await irAlDia(ventana, proximoLunes());

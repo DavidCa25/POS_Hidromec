@@ -267,15 +267,40 @@ check(/await caps\.load\(\)/.test(guard),
 const menu = leer('src', 'app', 'wx-dock', 'wx-dock.component.ts');
 check(/this\.operarServicios && this\.caps\.servicios/.test(menu),
   'la entrada del menu tambien');
-/* Contar apariciones seria fragil -el area, su raiz y la accion de Crear son
-   tres- y ademas no es lo que importa. Lo que importa es que NINGUNA de las
-   seis pantallas de dentro se ofrezca por separado en el menu: la carcasa ya
-   trae sus pestanas, y seis entradas mas serian seis sitios donde perderse. */
+/*
+ * ESTA REGLA CAMBIO, Y CONVIENE SABER POR QUE.
+ *
+ * Decia: las seis pantallas del modulo NO se ofrecen por separado. El motivo
+ * era el rail: una columna plana de veintiun destinos, donde seis mas la
+ * volvian ilegible. Ese motivo desaparecio con el rail.
+ *
+ * Ahora las seis viven DENTRO del panel de Servicios, que solo se ve cuando
+ * alguien abre Servicios. Ahi no compiten con nada, y esconderlas obligaba a
+ * entrar a la carcasa y buscar la pestana a mano.
+ *
+ * Lo que SI se sigue protegiendo, que es lo que de verdad estaba en juego:
+ *
+ *   1. Servicios es UNA sola area del dock, no seis.
+ *   2. Sus pantallas se ofrecen solo dentro de su panel: ni sueltas en «Mas»,
+ *      ni como areas propias. Un segundo sitio acaba divergiendo del primero.
+ *   3. Agenda y los activos dependen del GIRO, no estan siempre.
+ */
+const areasDeclaradas = (menu.match(/id: '[a-z]+', nombre: '/g) || []).length;
+check(areasDeclaradas <= 6, 'el dock no pasa de seis areas', `${areasDeclaradas} declaradas`);
+check((menu.match(/id: 'servicios', nombre: 'Servicios'/g) || []).length === 1,
+  'y Servicios es UNA de ellas, no seis');
+
+const bloqueMasDock = menu.slice(menu.indexOf('readonly mas ='), menu.indexOf('crearFrecuentes'));
 const internas = ['ordenes', 'agenda', 'activos', 'catalogo', 'profesionales', 'comisiones'];
-const sueltas = internas.filter(x => menu.includes(`/dashboard/ordenes-de-servicio/${x}`));
-check(sueltas.length === 0,
-  'y es UNA sola entrada, no seis',
-  sueltas.length ? `se ofrecen por separado: ${sueltas.join(', ')}` : 'las pantallas de dentro son navegacion interna suya');
+const fugadas = internas.filter(x => bloqueMasDock.includes(`/dashboard/ordenes-de-servicio/${x}`));
+check(fugadas.length === 0,
+  'sus pantallas no se escapan a «Mas»',
+  fugadas.length ? `sueltas en Mas: ${fugadas.join(', ')}` : 'viven solo dentro del panel de su area');
+
+check(/visible: this\.giro\.usaAgenda/.test(menu),
+  'la agenda solo aparece en los giros que la usan');
+check(/visible: this\.giro\.usaActivos/.test(menu),
+  'y los activos, en los que trabajan sobre uno');
 
 /* `servicios` YA estaba ocupado por Pago de servicios -recargas y recibos-, que
    lleva tiempo en produccion. Angular resuelve la PRIMERA ruta que coincide, asi

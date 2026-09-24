@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ServiciosService } from '../servicios.service';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { hoyLocal, fechaLocal } from '../../core';
 
 /**
  * COMISIONES: CUÁNTO GENERÓ CADA PERSONA.
@@ -134,10 +135,10 @@ export class ServiciosComisiones {
 
   constructor() { void this.cargar(); }
 
-  private hoy(): string { return new Date().toISOString().slice(0, 10); }
+  private hoy(): string { return hoyLocal(); }
   private primerDiaDelMes(): string {
     const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    return fechaLocal(new Date(d.getFullYear(), d.getMonth(), 1));
   }
 
   total(): number {

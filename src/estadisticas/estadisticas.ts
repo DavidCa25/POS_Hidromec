@@ -1,6 +1,7 @@
 import { DecimalPipe, CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
+import { fechaLocal } from '../core';
 
 type Seg = 'ventas' | 'clientes' | 'productos' | 'caja';
 type ViewMode = 'week' | 'month';
@@ -86,7 +87,7 @@ export class Estadisticas {
     const diffToMonday = (day + 6) % 7;
     const fromDate = new Date(today); fromDate.setDate(today.getDate() - diffToMonday);
     const toDate = new Date(fromDate); toDate.setDate(fromDate.getDate() + 6);
-    return { from: fromDate.toISOString().slice(0, 10), to: toDate.toISOString().slice(0, 10) };
+    return { from: fechaLocal(fromDate), to: fechaLocal(toDate) };
   }
 
   // Barras horizontales (porcentaje relativo al maximo)

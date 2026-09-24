@@ -17,7 +17,7 @@
 const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('node:fs');
 const { nuevoPerfil, opcionesDeArranque } = require('./perfil');
-const { CUENTAS } = require('./fixtures');
+const { CUENTAS, irPorDock } = require('./fixtures');
 
 async function herramientas() {
   const bases = await import('./preparar-bases.mjs');
@@ -52,7 +52,7 @@ async function abrir(base) {
 
 /** Entra al módulo y espera a que la carcasa esté dibujada. */
 async function entrarAlModulo(ventana) {
-  await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+  await irPorDock(ventana, 'Servicios');
   await ventana.waitForSelector('.srv-nav', { timeout: 30000 });
 }
 
@@ -175,7 +175,7 @@ for (const g of GIROS) {
         expect(orden.success, JSON.stringify(orden)).toBeTruthy();
         const ordenId = orden.data[0].id;
 
-        await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+        await irPorDock(ventana, 'Servicios');
         await ventana.waitForSelector('.srv-nav', { timeout: 30000 });
         /* Belleza abre en la AGENDA -su día es la agenda-, así que para mirar
            una orden hay que pasar a Órdenes. Darlo por hecho era suponer que
@@ -208,7 +208,7 @@ for (const g of GIROS) {
         await ventana.evaluate(() => window.electronAPI.createCustomer(
           'GIRO-2', 'Cliente recepción', null, null, '3330000001', 0, 0, 1, null, null, null, 0, 0, 0, 0));
 
-        await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+        await irPorDock(ventana, 'Servicios');
         await ventana.waitForSelector('.srv-nav', { timeout: 30000 });
         /* Belleza abre en la agenda: se pasa a órdenes para abrir una. */
         await ventana.click('.srv-nav a:has-text("Órdenes")');

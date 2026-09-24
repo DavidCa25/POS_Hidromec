@@ -101,7 +101,9 @@ export class Login {
           // miraba el perfil, y por eso cambiarlo exigia volver a entrar.
           this.router.navigate([this.caps.rutaDeVenta]);
         } else {
-          this.router.navigate(['/dashboard/estadisticas']);
+          /* Inicio y no Estadisticas: es la pantalla que dice que hay que
+             hacer hoy. Las estadisticas quedan a un toque en el dock. */
+          this.router.navigate(['/dashboard/inicio']);
         }
       } else {
         this.mensaje = resultado?.message || 'Usuario o contraseña inválidos';

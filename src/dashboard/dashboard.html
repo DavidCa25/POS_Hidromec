@@ -157,6 +157,52 @@
 
           </div>
         </div>
+
+        <!--
+          QUIEN ESTA DENTRO.
+
+          Estaba en el extremo derecho del dock, y ahi eran dos figuras
+          pequenas -Wybix a la izquierda, la persona a la derecha- que se leian
+          como decoracion repetida. La barra de trabajo es para navegar; quien
+          ha entrado es CONTEXTO, igual que el negocio de la izquierda, y aqui
+          es donde el contexto ya vivia.
+        -->
+        <div class="wx-yo" id="yo-wrapper">
+          <button type="button" class="wx-yo__btn" (click)="toggleUsuario()"
+                  [class.is-abierto]="usuarioAbierto"
+                  [attr.aria-expanded]="usuarioAbierto" aria-haspopup="menu"
+                  [attr.aria-label]="userName" [title]="userName">
+            <wx-avatar [semilla]="'u:' + userName" [nombre]="userName" [size]="30"></wx-avatar>
+            <span class="wx-yo__nom">{{ userName }}</span>
+            <i class="ph ph-caret-down" aria-hidden="true"></i>
+          </button>
+
+          <!--
+            SOLO LA SESION.
+
+            Tenia «Crear usuario», que no es una accion sobre uno mismo y ademas
+            ya vive en Configuracion > Usuarios y permisos, con rol y
+            contrasena. Aqui queda lo que existe de verdad para quien esta
+            dentro; administrar usuarios se ofrece aparte y solo a quien puede.
+          -->
+          <div class="wx-yo__menu" *ngIf="usuarioAbierto" role="menu">
+            <p class="wx-yo__quien">
+              <b>{{ userName }}</b>
+              <span>{{ rolTexto }}</span>
+            </p>
+            <button type="button" class="wx-yo__fila" role="menuitem" (click)="cerrarSesion()">
+              <i class="ph ph-sign-out" aria-hidden="true"></i><span>Cerrar sesión</span>
+            </button>
+            <ng-container *ngIf="puedeAdministrarUsuarios">
+              <span class="wx-yo__linea" aria-hidden="true"></span>
+              <a class="wx-yo__fila wx-yo__fila--tenue" role="menuitem"
+                 routerLink="/dashboard/configuracion" (click)="usuarioAbierto = false">
+                <i class="ph ph-identification-badge" aria-hidden="true"></i>
+                <span>Usuarios y permisos</span>
+              </a>
+            </ng-container>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -166,5 +212,10 @@
   </div>
 
   <!-- LA BARRA DE TRABAJO. Fija abajo, sobre cualquier pantalla del panel. -->
-  <wx-dock [usuario]="userName"></wx-dock>
+  <wx-dock></wx-dock>
+
+  <!-- Ctrl+K. Vive aqui y no dentro del dock porque escucha el documento
+       entero y porque es un dialogo: no debe heredar la capa del dock. -->
+  <wx-paleta></wx-paleta>
+
 </div>

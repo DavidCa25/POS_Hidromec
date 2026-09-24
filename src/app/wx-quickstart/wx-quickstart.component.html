@@ -1,0 +1,446 @@
+<!--
+  El muelle: riel a la izquierda, área de trabajo a la derecha.
+  Una sola voz por pantalla: si el área ya dice lo que pasa, Wybix se calla.
+-->
+<div class="qs" [class.es-arrastrando]="arrastrando()">
+
+  <!-- ================================================== EL RIEL -->
+  <aside class="qs__riel">
+    <header class="qs__rielcab">
+      <h2>Cargas</h2>
+      <span class="mono qs__cuenta">{{ qs.cargas().length }}</span>
+    </header>
+
+    <div class="qs__pozo wx-mudar" [class.es-vivo]="arrastrando()">
+      <i class="ph ph-upload-simple" aria-hidden="true"></i>
+      <span *ngIf="!arrastrando()">Suelta aquí tus archivos</span>
+      <b *ngIf="arrastrando()">Suéltalo y lo reviso</b>
+      <label class="qs__elegir wx-pulsar">
+        Elegir archivo
+        <input type="file" accept=".xlsx,.xlsm,.csv" (change)="alElegirArchivo($event)" hidden>
+      </label>
+    </div>
+
+    <div class="qs__lista">
+      <button type="button" class="qs__carga wx-pulsar wx-rozar"
+              *ngFor="let c of qs.cargas(); trackBy: porCarga"
+              [class.es-activa]="qs.activa()?.id === c.id"
+              (click)="elegir(c)">
+        <span class="qs__carganom">{{ c.etiqueta }}</span>
+        <span class="qs__cargapie">
+          <span class="qs__sello wx-mudar" [ngClass]="selloDe(c.estado).c">
+            <wx-cargando *ngIf="selloDe(c.estado).gira" [size]="12" alt=""></wx-cargando>
+            <i class="ph" *ngIf="!selloDe(c.estado).gira"
+               [class.ph-check]="c.estado === 'LISTA'"
+               [class.ph-dots-three]="c.estado === 'REVISION'"
+               [class.ph-minus]="c.estado === 'IMPORTADA'" aria-hidden="true"></i>
+            {{ selloDe(c.estado).t }}
+          </span>
+          <span class="mono qs__cargadet">
+            <ng-container *ngIf="c.estado === 'IMPORTADA'">{{ c.creadas }}+{{ c.actualizadas }}</ng-container>
+            <ng-container *ngIf="c.estado !== 'IMPORTADA'">
+              {{ c.total_filas }} renglones<ng-container *ngIf="c.pendientes"> · {{ c.pendientes }} por revisar</ng-container>
+            </ng-container>
+          </span>
+        </span>
+      </button>
+    </div>
+
+    <footer class="qs__rielpie">
+      <button type="button" class="qs__link wx-pulsar" (click)="volverAInicio()">
+        <i class="ph ph-arrow-left" aria-hidden="true"></i> Volver a Inicio
+      </button>
+    </footer>
+  </aside>
+
+  <!-- ================================================== ÁREA DE TRABAJO -->
+  <section class="qs__area">
+
+    <!-- ---------------------------------------------- catálogo vacío -->
+    <div class="qs__centro" *ngIf="vista() === 'vacio'">
+      <div class="qs__saludo">
+        <wx-mascota [estado]="arrastrando() ? 'atencion' : 'idle'" [size]="112" alt="" [variante]="qs.variante()"></wx-mascota>
+        <div>
+          <h1>Tráeme lo que ya tienes.</h1>
+          <p>No necesitas prepararlo, ni saber cómo se llaman las cosas aquí dentro. Yo lo traduzco.</p>
+        </div>
+      </div>
+
+      <div class="qs__caminos">
+        <label class="qs__camino es-primero wx-pulsar wx-rozar-fuerte">
+          <span class="qs__caminoic"><i class="ph ph-file-xls" aria-hidden="true"></i></span>
+          <span class="qs__caminotxt">
+            <b>Tengo un archivo</b>
+            <small>Excel o CSV, del proveedor o del sistema anterior.</small>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+          <input type="file" accept=".xlsx,.xlsm,.csv" (change)="alElegirArchivo($event)" hidden>
+        </label>
+
+        <button type="button" class="qs__camino wx-pulsar wx-rozar-fuerte" (click)="empezarCaptura(false)">
+          <span class="qs__caminoic"><i class="ph ph-notebook" aria-hidden="true"></i></span>
+          <span class="qs__caminotxt">
+            <b>Lo tengo en libreta</b>
+            <small>Nada digital todavía. Empezamos con lo que tengas enfrente.</small>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </button>
+
+        <button type="button" class="qs__camino wx-pulsar wx-rozar-fuerte" (click)="empezarCaptura(true)">
+          <span class="qs__caminoic"><i class="ph ph-barcode" aria-hidden="true"></i></span>
+          <span class="qs__caminotxt">
+            <b>Tengo el lector de códigos</b>
+            <small>Escaneas y le pones nombre y precio. Uno tras otro.</small>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <p class="qs__pie">
+        ¿No tienes nada todavía?
+        <button type="button" class="qs__link wx-pulsar" (click)="descargarPlantilla()">Descarga una plantilla</button>
+        · o pega tus filas con <kbd class="mono">Ctrl</kbd>&nbsp;<kbd class="mono">V</kbd>
+      </p>
+    </div>
+
+    <!-- ---------------------------------------------- hojas del libro -->
+    <div class="qs__panel" *ngIf="vista() === 'hojas'">
+      <header class="qs__cab">
+        <div>
+          <button type="button" class="qs__volver wx-pulsar" (click)="volverAOpciones()">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i> Cambiar método
+          </button>
+          <h1>Este archivo trae varias hojas</h1>
+          <p>Elige cuál cargar ahora. Las demás siguen aquí para después.</p>
+        </div>
+      </header>
+
+      <div class="qs__grupos">
+        <span class="qs__rotulo">Parecen datos</span>
+        <button type="button" class="qs__hojacard wx-pulsar wx-rozar-fuerte"
+                *ngFor="let h of hojasDatos(); trackBy: porHoja" (click)="usarHoja(h.nombre)">
+          <span class="qs__hojaic"><i class="ph ph-table" aria-hidden="true"></i></span>
+          <span class="qs__hojatxt">
+            <b>{{ h.nombre }}</b>
+            <small><span class="mono">{{ h.filas }}</span> renglones ·
+              <span class="mono">{{ h.reconocidos }}</span> de {{ h.columnas }} columnas reconocidas</small>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="qs__grupos" *ngIf="hojasOtras().length">
+        <span class="qs__rotulo">Otras hojas</span>
+        <button type="button" class="qs__hojacard es-otra wx-pulsar"
+                *ngFor="let h of hojasOtras(); trackBy: porHoja" (click)="usarHoja(h.nombre)">
+          <span class="qs__hojaic es-otra"><i class="ph ph-note" aria-hidden="true"></i></span>
+          <span class="qs__hojatxt">
+            <b>{{ h.nombre }}</b>
+            <small><span class="mono">{{ h.filas }}</span> renglones · no reconocí ninguna columna de producto</small>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="qs__dice wx-asomar">
+        <wx-mascota estado="idle" [size]="30" alt="" [variante]="qs.variante()"></wx-mascota>
+        <span>Puedo cargar una ahora y las demás cuando quieras. No hace falta volver a buscar el archivo.</span>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------- mapeo -->
+    <div class="qs__panel" *ngIf="vista() === 'mapeo' && propuesta()">
+      <header class="qs__cab">
+        <div>
+          <button type="button" class="qs__volver wx-pulsar" (click)="volverAOpciones()">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i> Cambiar método
+          </button>
+          <h1>Columnas</h1>
+          <p>
+            Reconocí {{ propuesta().columnas.length - propuesta().dudas }} de {{ propuesta().columnas.length }}. Dime qué son las demás y sigo.
+            <ng-container *ngIf="hojaEnUso()">
+              · usando la hoja <b>{{ hojaEnUso() }}</b>
+              <button type="button" class="qs__link wx-pulsar" *ngIf="hojasDelLibro().length > 1"
+                      (click)="cambiarHoja()">cambiar</button>
+            </ng-container>
+          </p>
+        </div>
+        <button type="button" class="qs__btn es-quieto wx-pulsar" (click)="guardarPerfil()">Guardar como perfil</button>
+      </header>
+
+      <div class="qs__mapa">
+        <div class="qs__par" *ngFor="let c of propuesta().columnas; trackBy: porColumna"
+             [class.es-duda]="c.confianza === 'ambiguo' || c.confianza === 'desconocido'">
+          <span class="qs__parorg">
+            <b class="mono">{{ c.original }}</b>
+          </span>
+          <i class="ph ph-arrow-right" aria-hidden="true"></i>
+          <span class="qs__pardst" *ngIf="c.confianza !== 'ambiguo' && c.confianza !== 'desconocido'">
+            <i class="ph ph-check" aria-hidden="true"></i>{{ etiquetaCampo(c.campo) }}
+          </span>
+          <span class="qs__opciones" *ngIf="c.confianza === 'ambiguo' || c.confianza === 'desconocido'">
+            <button type="button" class="qs__op es-si wx-pulsar" *ngFor="let o of (c.opciones || ['price','cost','stock'])"
+                    (click)="resolverColumna(c.indice, o)">{{ etiquetaCampo(o) }}</button>
+            <button type="button" class="qs__op wx-pulsar" (click)="resolverColumna(c.indice, null)">No usar</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="qs__dice wx-asomar">
+        <wx-mascota estado="atencion" [size]="30" alt="" [variante]="qs.variante()"></wx-mascota>
+        <span>Propongo, pero no decido: «P. Unit.» es el costo en unos catálogos y el precio en otros.</span>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------- revisión -->
+    <div class="qs__panel" *ngIf="vista() === 'revision' && qs.activa() as a">
+      <header class="qs__cab">
+        <div>
+          <button type="button" class="qs__volver wx-pulsar" (click)="volverAOpciones()">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i> Cambiar método
+          </button>
+          <h1>{{ a.etiqueta }}</h1>
+          <p *ngIf="hojaEnUso()" class="qs__hoja">
+            Hoja <b>{{ hojaEnUso() }}</b>
+            <button type="button" class="qs__link wx-pulsar" *ngIf="hojasDelLibro().length > 1"
+                    (click)="cambiarHoja()">cambiar hoja</button>
+          </p>
+          <!-- LA CABECERA DICE LA VERDAD DE UNA CARGA A MEDIAS.
+               En QA se importaron 9 de 10 y seguía diciendo «9 listas ·
+               nada ha tocado tu catálogo», ofreciendo importar las mismas
+               nueve. Ahora lo importado y lo pendiente se cuentan aparte. -->
+          <p>
+            <ng-container *ngIf="qs.yaImportadas()">
+              <b class="mono">{{ qs.yaImportadas() }}</b> importados
+            </ng-container>
+            <ng-container *ngIf="qs.porImportar()">
+              <ng-container *ngIf="qs.yaImportadas()"> · </ng-container>
+              <b class="mono">{{ qs.porImportar() }}</b> listas para entrar
+            </ng-container>
+            <ng-container *ngIf="qs.porResolver()">
+              · <b class="mono">{{ qs.porResolver() }}</b> por resolver
+            </ng-container>
+            <ng-container *ngIf="!qs.yaImportadas()"> · nada ha tocado tu catálogo todavía</ng-container>
+          </p>
+        </div>
+        <button type="button" class="qs__btn es-primario wx-pulsar" *ngIf="qs.porImportar()"
+                (click)="confirmar()" [disabled]="qs.ocupado()">
+          <i class="ph ph-check-circle" aria-hidden="true"></i>
+          Importar {{ qs.porImportar() }}
+        </button>
+        <button type="button" class="qs__btn es-primario wx-pulsar"
+                *ngIf="!qs.porImportar() && qs.porResolver()" (click)="cambiarFiltro('PENDIENTES')">
+          Resolver {{ qs.porResolver() }}
+        </button>
+      </header>
+
+      <!-- el avance real, mientras entra -->
+      <div class="qs__avance wx-asomar" *ngIf="qs.avance() as av">
+        <wx-cargando [size]="18" alt="Importando"></wx-cargando>
+        <!-- El total viene del propio avance: es lo que de verdad va a
+             entrar, no el total de filas de la carga. De comparar contra el
+             total salía «Entrando… 12 de 10». -->
+        <span>Entrando… <b class="mono">{{ av.procesadas }}</b> de {{ av.total }}</span>
+      </div>
+
+      <!-- Otra hoja del MISMO archivo, sin volver al selector. -->
+      <div class="qs__dice wx-asomar" *ngIf="hojasPendientes().length">
+        <wx-mascota estado="idle" [size]="30" alt="" [variante]="qs.variante()"></wx-mascota>
+        <span>
+          También encontré
+          <b *ngFor="let h of hojasPendientes(); let i = index">{{ i ? ', ' : '' }}{{ h.nombre }}</b>
+          en este archivo.
+        </span>
+        <button type="button" class="qs__btn wx-pulsar" *ngFor="let h of hojasPendientes(); trackBy: porHoja"
+                (click)="cargarOtraHoja(h.nombre)">Cargar {{ h.nombre }}</button>
+      </div>
+
+      <!-- los problemas, agrupados por clase -->
+      <div class="qs__grupos" *ngIf="gruposUI().length">
+        <span class="qs__rotulo">Lo que hay que decidir</span>
+        <div class="qs__grupo wx-mudar" *ngFor="let g of gruposUI(); trackBy: porGrupo" [ngClass]="'es-' + g.tono">
+          <div class="qs__grupocab">
+            <span class="qs__grupoic"><i class="ph ph-warning" aria-hidden="true"></i></span>
+            <span class="qs__grupotxt">
+              <span><b class="mono">{{ g.cuantos }}</b> {{ g.titulo }}</span>
+              <small>{{ g.explica }}</small>
+            </span>
+            <span class="qs__grupoacc" *ngIf="g.accion">
+              <!-- Categoría y unidad son listas cerradas: van con `wx-select`,
+                   no con un `<select>` del sistema operativo. -->
+              <wx-select *ngIf="g.codigo === 'SIN_CATEGORIA'" style="min-width:170px"
+                         [opciones]="opcCategorias()" placeholder="General"
+                         [ngModel]="valorGrupo()[g.codigo] || 'General'"
+                         (ngModelChange)="ponerValor(g.codigo, $event)"></wx-select>
+              <wx-select *ngIf="g.codigo === 'SIN_UNIDAD' || g.codigo === 'UNIDAD_DESCONOCIDA'" style="min-width:150px"
+                         [opciones]="opcUnidades()" placeholder="pza"
+                         [ngModel]="valorGrupo()[g.codigo] || 'pza'"
+                         (ngModelChange)="ponerValor(g.codigo, $event)"></wx-select>
+              <input *ngIf="g.pide === 'numero'" class="qs__mini mono" type="text"
+                     placeholder="0.00" [attr.aria-label]="g.accion"
+                     (input)="ponerValor(g.codigo, $any($event.target).value)">
+              <button type="button" class="qs__btn es-fuerte wx-pulsar" (click)="resolver(g)">{{ g.accion }}</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- las filas -->
+      <div class="qs__filtros">
+        <button type="button" class="qs__chip wx-pulsar" [class.es-elegido]="filtro() === 'TODAS'" (click)="cambiarFiltro('TODAS')">
+          Todas <span class="mono">{{ qs.resumen()['total'] || 0 }}</span></button>
+        <button type="button" class="qs__chip wx-pulsar" [class.es-elegido]="filtro() === 'LISTAS'" (click)="cambiarFiltro('LISTAS')">
+          Listas <span class="mono">{{ (qs.resumen()['crear']||0) + (qs.resumen()['actualizar']||0) }}</span></button>
+        <button type="button" class="qs__chip wx-pulsar" [class.es-elegido]="filtro() === 'PENDIENTES'" (click)="cambiarFiltro('PENDIENTES')">
+          Por revisar <span class="mono">{{ qs.porResolver() }}</span></button>
+        <span class="qs__sep"></span>
+        <button type="button" class="qs__link wx-pulsar" (click)="descartar()">Tirar esta carga</button>
+      </div>
+
+      <!-- LA TABLA SE ADAPTA A LO QUE SE ESTÁ REVISANDO.
+           Era fija —Producto, Código, Costo, Precio, Existencia—, que es una
+           tabla de tienda: revisando ingredientes no enseñaba la UNIDAD
+           («¿5000 qué?») y nunca enseñaba la CATEGORÍA, que el mapeo sí
+           había reconocido. -->
+      <div class="qs__tabla es-dinamica"
+           [style.--qs-cols]="'26px repeat(' + columnasVista().length + ', minmax(0,1fr))'">
+        <div class="qs__th es-dinamica">
+          <span></span>
+          <span *ngFor="let c of columnasVista(); trackBy: porCampo" [class.es-der]="c.der">{{ c.titulo }}</span>
+        </div>
+
+        <ng-container *ngFor="let f of qs.filas(); trackBy: porFila">
+          <div class="qs__tr es-dinamica" [ngClass]="'es-' + f.accion.toLowerCase()"
+               [class.es-foco]="filaEnFoco()?.id === f.id">
+            <span class="qs__punto" [attr.title]="f.accion"></span>
+            <span *ngFor="let c of columnasVista(); trackBy: porCampo"
+                  [class.es-der]="c.der" [class.mono]="c.der || c.campo === 'part_number' || c.campo === 'base_uom'"
+                  [class.qs__nom]="c.campo === 'nombre'">
+              <ng-container *ngIf="c.num">{{ valorDe(f, c.campo) | number: c.num }}</ng-container>
+              <ng-container *ngIf="!c.num">{{ valorDe(f, c.campo) || '—' }}</ng-container>
+            </span>
+          </div>
+
+          <!-- UN CONFLICTO SIEMPRE TIENE SALIDA.
+               Detectarlo y solo enseñarlo deja la carga atrapada: es lo que
+               pasó con el Latte en QA. -->
+          <div class="qs__conflicto" *ngIf="f.accion === 'CONFLICT' || f.accion === 'PENDIENTE'">
+            <span class="qs__confmotivo">{{ motivoDe(f) }}</span>
+            <span class="qs__confacc">
+              <button type="button" class="qs__btn wx-pulsar"
+                      *ngFor="let a of accionesDe(f)" [class.es-fuerte]="a.fuerte"
+                      (click)="resolverFila(f, a.resolucion)">{{ a.texto }}</button>
+            </span>
+          </div>
+        </ng-container>
+
+        <p class="qs__vacia" *ngIf="!qs.filas().length">No hay filas con ese filtro.</p>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------- captura de libreta -->
+    <div class="qs__panel" *ngIf="vista() === 'captura'">
+      <header class="qs__cab">
+        <div>
+          <button type="button" class="qs__volver wx-pulsar" (click)="volverAOpciones()">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i> Cambiar método
+          </button>
+          <h1>Escribe lo que tengas enfrente</h1>
+          <p><kbd class="mono">Tab</kbd> para pasar de campo, <kbd class="mono">Enter</kbd> para guardar y seguir.
+             Lo que escribas se guarda solo.</p>
+        </div>
+        <!-- «Terminar captura» significa UNA cosa: dejar de escribir y pasar a
+             revisar. Guardar ya pasó en cada Enter, e importar es otro botón. -->
+        <button type="button" class="qs__btn wx-pulsar" (click)="terminarCaptura()"
+                [disabled]="!capturados().length">
+          Terminar captura <i class="ph ph-arrow-right" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <div class="qs__captura">
+        <span class="qs__campo es-ancho">
+          <label for="qs-nombre">Nombre</label>
+          <input id="qs-nombre" type="text" [ngModel]="capturaNombre()" (ngModelChange)="capturaNombre.set($event)"
+                 (keydown)="alTeclearCaptura($event)" placeholder="Aceite Mobil Super 4T 20W50 1L" autocomplete="off">
+        </span>
+        <span class="qs__campo">
+          <label for="qs-precio">Precio</label>
+          <input id="qs-precio" type="text" class="mono es-der" [ngModel]="capturaPrecio()" (ngModelChange)="capturaPrecio.set($event)"
+                 (keydown)="alTeclearCaptura($event)" placeholder="0.00" autocomplete="off">
+        </span>
+        <span class="qs__campo">
+          <label for="qs-stock">Tienes</label>
+          <input id="qs-stock" type="text" class="mono es-der" [ngModel]="capturaStock()" (ngModelChange)="capturaStock.set($event)"
+                 (keydown)="alTeclearCaptura($event)" placeholder="0" autocomplete="off">
+        </span>
+        <span class="qs__campo">
+          <label for="qs-codigo">Código <small>(opcional)</small></label>
+          <input id="qs-codigo" type="text" class="mono" [ngModel]="capturaCodigo()" (ngModelChange)="capturaCodigo.set($event)"
+                 (keydown)="alTeclearCaptura($event)" placeholder="escanea o escribe" autocomplete="off">
+        </span>
+        <button type="button" class="qs__btn es-primario wx-pulsar" (click)="guardarCaptura()"
+                [disabled]="!capturaNombre().trim()">Guardar y siguiente</button>
+      </div>
+
+      <div class="qs__dice wx-asomar" *ngIf="tipAtajo()">
+        <wx-mascota estado="idle" [size]="30" alt="" [variante]="qs.variante()"></wx-mascota>
+        <span>Con <kbd class="mono">Enter</kbd> guardas y te dejo el siguiente listo. No hace falta soltar el teclado.</span>
+        <button type="button" class="qs__link wx-pulsar" (click)="cerrarTip()">Entendido</button>
+      </div>
+
+      <div class="qs__tabla">
+        <div class="qs__th es-captura">
+          <span></span><span>Nombre</span><span class="es-der">Precio</span><span class="es-der">Tienes</span>
+        </div>
+        <div class="qs__tr es-captura" *ngFor="let f of capturadosAlReves(); trackBy: porFila"
+             [class.wx-asentar]="f.id === ultimoId()">
+          <span class="qs__ok"><i class="ph ph-check" aria-hidden="true"></i></span>
+          <span class="qs__nom">{{ f.nombre }}</span>
+          <span class="mono es-der es-fuerte">{{ f.price | number:'1.2-2' }}</span>
+          <span class="mono es-der">{{ f.stock | number:'1.0-2' }}</span>
+        </div>
+        <p class="qs__vacia" *ngIf="!capturados().length">Todavía no has escrito ninguno.</p>
+      </div>
+
+      <p class="qs__pie">Lo escrito se guarda solo. Puedes cerrar Wybix y seguir mañana.</p>
+    </div>
+
+    <!-- ---------------------------------------------- importada -->
+    <div class="qs__panel" *ngIf="vista() === 'listo' && qs.activa() as a">
+      <header class="qs__cab">
+        <div>
+          <button type="button" class="qs__volver wx-pulsar" (click)="volverAOpciones()">
+            <i class="ph ph-arrow-left" aria-hidden="true"></i> Cargar algo más
+          </button>
+          <h1>{{ a.etiqueta }}</h1>
+          <p>Importación #{{ a.id }} · {{ a.usuario || 'tú' }}</p>
+        </div>
+        <button type="button" class="qs__btn wx-pulsar" (click)="deshacer()">
+          <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Deshacer
+        </button>
+      </header>
+
+      <div class="qs__resultado wx-asomar">
+        <wx-mascota estado="exito" [size]="44" alt="" [variante]="qs.variante()"></wx-mascota>
+        <span class="qs__cifra"><b class="mono wx-contar">{{ a.creadas }}</b><small>creados</small></span>
+        <span class="qs__cifra"><b class="mono wx-contar">{{ a.actualizadas }}</b><small>actualizados</small></span>
+        <span class="qs__cifra"><b class="mono">{{ qs.resumen()['igual'] || 0 }}</b><small>sin cambios</small></span>
+        <span class="qs__crece"></span>
+        <button type="button" class="qs__btn es-primario wx-pulsar" (click)="volverAInicio()">Ir a vender</button>
+      </div>
+
+      <div class="qs__grupos" *ngIf="gruposUI().length">
+        <span class="qs__rotulo">Lo que quedó pendiente</span>
+        <div class="qs__grupo es-aviso" *ngFor="let g of gruposUI(); trackBy: porGrupo">
+          <div class="qs__grupocab">
+            <span class="qs__grupotxt">
+              <span><b class="mono">{{ g.cuantos }}</b> {{ g.titulo }}</span>
+              <small>{{ g.explica }}</small>
+            </span>
+            <button type="button" class="qs__btn wx-pulsar" (click)="vista.set('revision')">Resolverlo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

@@ -125,6 +125,10 @@ const EXIGE = {
   'users:set-active': CONFIGURACION_ADMINISTRAR,
   'modules:set': CONFIGURACION_ADMINISTRAR,
   'update-business-config': CONFIGURACION_ADMINISTRAR,
+  /* Escribe un archivo en la carpeta de datos y cambia la marca que sale en
+     cada ticket y en la pantalla del cliente. No es una preferencia visual. */
+  'ticket:guardar-logo': CONFIGURACION_ADMINISTRAR,
+  'ticket:borrar-logo': CONFIGURACION_ADMINISTRAR,
   'backup-set-config': CONFIGURACION_ADMINISTRAR,
   'backup-run-now': CONFIGURACION_ADMINISTRAR,
   'export-database': CONFIGURACION_ADMINISTRAR,
@@ -158,6 +162,28 @@ const EXIGE = {
   'download-update': CONFIGURACION_ADMINISTRAR,
   'install-update': CONFIGURACION_ADMINISTRAR,
   // Cargas masivas. Escriben miles de filas de una vez y se hacen una vez.
+  /* ------------------------------------------------------------ QUICKSTART
+     Importar es reemplazar precios, costos y existencias de golpe: es la
+     operacion que mas puede cambiar un negocio en un gesto. Un cajero no la
+     tiene, y no por desconfianza: porque no es su trabajo. */
+  'quickstart:analizar-archivo': CONFIGURACION_ADMINISTRAR,
+  'quickstart:analizar-pegado': CONFIGURACION_ADMINISTRAR,
+  'quickstart:otra-hoja': CONFIGURACION_ADMINISTRAR,
+  'quickstart:remapear': CONFIGURACION_ADMINISTRAR,
+  'quickstart:carga-manual': INVENTARIO_OPERAR,
+  'quickstart:capturar': INVENTARIO_OPERAR,
+  'quickstart:resolver-grupo': CONFIGURACION_ADMINISTRAR,
+  'quickstart:resolver-fila': CONFIGURACION_ADMINISTRAR,
+  'quickstart:ejecutar': CONFIGURACION_ADMINISTRAR,
+  'quickstart:undo-check': CONFIGURACION_ADMINISTRAR,
+  'quickstart:undo': CONFIGURACION_ADMINISTRAR,
+  'quickstart:soltar-si-vacia': INVENTARIO_OPERAR,
+  'quickstart:descartar': CONFIGURACION_ADMINISTRAR,
+  'quickstart:guardar-perfil': CONFIGURACION_ADMINISTRAR,
+  'inventory:movements': INVENTARIO_OPERAR,
+  'quickstart:leer-hoja': CONFIGURACION_ADMINISTRAR,
+  'quickstart:plantilla': CONFIGURACION_ADMINISTRAR,
+
   'sp-import-products': CONFIGURACION_ADMINISTRAR,
   'sp-import-customers': CONFIGURACION_ADMINISTRAR,
   'sp-import-suppliers': CONFIGURACION_ADMINISTRAR,
@@ -217,6 +243,21 @@ const EXIGE = {
  * revisar la decisión dentro de un año sin reconstruir el razonamiento.
  */
 const ABIERTOS = {
+  /* Devuelve la RUTA del logo que ya esta guardado, nada mas. Ponerlo es
+     `ticket:guardar-logo`, que si exige el paquete de configuracion. */
+  /* Leer el estado de las cargas no cambia nada y la pantalla de Inicio lo
+     necesita para saber si ofrecer QuickStart: exigir permiso aqui dejaria a
+     un cajero sin poder ver que el catalogo esta vacio. Escribir si exige. */
+  'quickstart:contexto': 'el giro y las unidades, para saber que ofrecer',
+  'quickstart:cargas': 'lectura del riel de cargas',
+  'quickstart:carga': 'lectura del resumen de una carga',
+  'quickstart:filas': 'lectura de las filas de una carga',
+
+  'ticket:logo': 'lectura de la ruta del logo del negocio',
+  /* Manda a la nube el nombre que el alta acaba de guardar. No lee nada de la
+     base ni cambia la licencia: solo pone al dia un dato de contacto. Y lo
+     llama el propio asistente, antes de que exista ninguna sesion. */
+  'license:sync-trial-name': 'pone al dia el nombre del negocio en la prueba',
   // --- Antes de que exista sesión -----------------------------------------
   // El asistente de primera ejecución corre cuando todavía no hay usuarios, y
   // la licencia se activa antes de poder iniciar sesión. Exigir permiso aquí

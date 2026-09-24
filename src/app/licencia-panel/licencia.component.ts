@@ -78,24 +78,44 @@ export class LicenciaPanelComponent implements OnInit {
       default:       return 'warn';
     }
   }
+  /*
+   * LAS CUATRO IDENTIDADES, CON UNA SOLA FUENTE.
+   *
+   * Aquí faltaba `demo`: una demostración caía en el `default` y esta pantalla
+   * le decía «Sin licencia» con un triángulo de aviso, como si algo estuviera
+   * roto. No lo está —una demo no tiene licencia por diseño— y asustar a quien
+   * está viendo una demostración es justo lo contrario de lo que hace.
+   *
+   * El nombre de cada clase lo da `license.clase`, que es donde vive la
+   * distinción DEMO / prueba / MonoCaja / MultiCaja. Escribirlo otra vez aquí
+   * es como acabamos con una prueba que se anunciaba como MonoCaja.
+   */
   get iconoEstado(): string {
-    switch (this.estado.state) {
-      case 'active': return 'ph-fill ph-seal-check';
+    switch (this.license.clase) {
+      case 'demo':   return 'ph-fill ph-play-circle';
+      case 'mono':
+      case 'multi':  return 'ph-fill ph-seal-check';
       case 'trial':  return 'ph-hourglass';
       default:       return 'ph-fill ph-warning';
     }
   }
   get tituloEstado(): string {
-    switch (this.estado.state) {
-      case 'active':  return 'Licencia activa';
-      case 'trial':   return 'Prueba gratis';
-      case 'expired': return 'Prueba terminada';
-      case 'tamper':  return 'Licencia con problema';
-      default:        return 'Sin licencia';
+    switch (this.license.clase) {
+      case 'demo':   return 'Demostración';
+      case 'mono':
+      case 'multi':  return 'Licencia activa';
+      case 'trial':  return 'Prueba gratuita';
+      default:
+        if (this.estado.state === 'expired') return 'Prueba terminada';
+        if (this.estado.state === 'tamper')  return 'Licencia con problema';
+        return 'Sin licencia';
     }
   }
   get detalleEstado(): string {
     const s = this.estado;
+    if (this.license.clase === 'demo') {
+      return 'Esta copia es una demostración con datos de ejemplo. No necesita licencia.';
+    }
     if (s.state === 'active') {
       const plan = s.plan === 'multi' ? 'MultiCaja' : 'MonoCaja';
       return `Plan ${plan}${s.customerName ? ' · ' + s.customerName : ''}`;

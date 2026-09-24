@@ -71,6 +71,7 @@ function cargarGenerador() {
   template: `
   <span class="wx-av" [style.width.px]="size" [style.height.px]="size"
         [style.border-radius]="cuadrado ? '22%' : '50%'"
+        [class.wx-av--limpio]="sinFondo"
         [attr.role]="alt ? 'img' : null" [attr.aria-label]="alt || null"
         [attr.aria-hidden]="alt ? null : 'true'"
         [style.background]="uri() ? 'transparent' : respaldo()">
@@ -85,6 +86,8 @@ function cargarGenerador() {
       flex: none; overflow: hidden; user-select: none;
       box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
     }
+    /* Sin placa tampoco hay aro: el aro solo existia para rematar la placa. */
+    .wx-av--limpio { box-shadow: none; overflow: visible; }
     .wx-av img { display: block; }
     .wx-av__ini { color: #fff; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
   `],
@@ -107,6 +110,17 @@ export class WxAvatarComponent implements OnChanges {
   @Input() cuadrado = false;
 
   /**
+   * Sin la placa de fondo.
+   *
+   * Blobatar dibuja por defecto un disco claro detras de la figura, que sobre
+   * una superficie clara la separa de la fila. Sobre el dock -navy- ese disco
+   * se convierte en un circulo blanco alrededor de la cara, y la figura pasa
+   * de ser una persona a ser una pegatina. Aqui se apaga y la forma respira
+   * directamente sobre la superficie, que es lo que hace bien.
+   */
+  @Input() sinFondo = false;
+
+  /**
    * Texto para quien no ve la figura. Vacío = decorativo, y entonces el
    * lector de pantalla lo salta: al lado siempre va el nombre escrito, y
    * oírlo dos veces es ruido.
@@ -116,7 +130,7 @@ export class WxAvatarComponent implements OnChanges {
   readonly uri = signal<string | null>(null);
 
   ngOnChanges(): void {
-    const clave = `${this.semilla}|${this.size}|${this.cuadrado ? 'q' : 'c'}`;
+    const clave = `${this.semilla}|${this.size}|${this.cuadrado ? 'q' : 'c'}|${this.sinFondo ? 'n' : 'f'}`;
     const ya = CACHE.get(clave);
     if (ya) { this.uri.set(ya); return; }
 
@@ -126,11 +140,14 @@ export class WxAvatarComponent implements OnChanges {
     void cargarGenerador().then(hacer => {
       if (!hacer) return;
       try {
-        const u = hacer(this.semilla, { size: this.size, background: this.cuadrado ? 'squircle' : 'circle' });
+        const u = hacer(this.semilla, {
+          size: this.size,
+          background: this.sinFondo ? false : (this.cuadrado ? 'squircle' : 'circle'),
+        });
         CACHE.set(clave, u);
         /* Si mientras llegaba el módulo la fila pasó a ser de otra persona
            -una tabla que se reordena- no se pinta la cara equivocada. */
-        if (`${this.semilla}|${this.size}|${this.cuadrado ? 'q' : 'c'}` === clave) this.uri.set(u);
+        if (`${this.semilla}|${this.size}|${this.cuadrado ? 'q' : 'c'}|${this.sinFondo ? 'n' : 'f'}` === clave) this.uri.set(u);
       } catch { /* se queda con las iniciales */ }
     });
   }

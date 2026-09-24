@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
-import { ImportadorProductos } from '../importador-productos/importador-productos.component';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 type Tab = 'productos' | 'clientes' | 'proveedores' | 'ventas';
@@ -18,7 +18,7 @@ interface Prev {
 @Component({
   selector: 'app-migracion',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImportadorProductos],
+  imports: [CommonModule, FormsModule],
   templateUrl: './migracion.component.html',
   styleUrls: ['./migracion.component.css']
 })
@@ -26,7 +26,7 @@ export class Migracion implements OnInit {
   tab: Tab = 'productos';
 
   private get api() { return (window as any).electronAPI; }
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService, private router: Router) {}
 
   // Para cruzar ventas contra productos existentes
   private partNumbers = new Set<string>();
@@ -43,6 +43,9 @@ export class Migracion implements OnInit {
 
   cambiarTab(t: Tab) { this.tab = t; }
 
+  /** El camino canonico de productos. Aqui solo queda el puente. */
+  irAQuickstart() { void this.router.navigateByUrl('/dashboard/quickstart'); }
+
   // ---------- Helpers compartidos ----------
   private norm(s: any): string {
     return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -57,11 +60,22 @@ export class Migracion implements OnInit {
     const key = Object.keys(row).find(k => re.test(this.norm(k)));
     return key != null ? row[key] : '';
   }
-  private async leerHoja(file: File, cellDates = false): Promise<any[]> {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array', cellDates });
-    const hoja = wb.Sheets[wb.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(hoja, { defval: '', raw: true });
+  /**
+   * Un solo lector de archivos ajenos en todo Wybix.
+   *
+   * Antes esto leia con `xlsx` en el navegador. Esa version arrastra
+   * CVE-2023-30533 —prototype pollution a traves de un archivo manipulado— y
+   * el aviso dice justamente que los flujos que leen archivos arbitrarios SI
+   * estan afectados. Un archivo de clientes es tan ajeno como uno de
+   * productos, asi que pasa por el mismo sitio que QuickStart.
+   */
+  private async leerHoja(file: File, _cellDates = false): Promise<any[]> {
+    const api: any = (window as any).electronAPI;
+    const ruta = api?.qsRutaDeArchivo?.(file) || '';
+    if (!ruta) throw new Error('No se pudo leer el archivo.');
+    const r = await api?.qsLeerHoja?.({ ruta });
+    if (!r?.success) throw new Error(r?.error || 'No se pudo leer el archivo.');
+    return r.data ?? [];
   }
   private plantilla(archivo: string, headers: string[], ejemplos: any[][], notas: string[]) {
     const ws = XLSX.utils.aoa_to_sheet([headers, ...ejemplos]);

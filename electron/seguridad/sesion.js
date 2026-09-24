@@ -125,6 +125,9 @@ async function abrir(webContentsId, fila) {
     usuario: String(fila.usuario || ''),
     rol,
     rolCrudo: String(fila.rol || ''),
+    /* Cuando se abrio ESTA sesion. Lo usa la interfaz para tener algo que
+       cambia al entrar: la cara de Wybix rota por sesion, no por render. */
+    abiertaEn: Date.now(),
     permisos: permisosDeRol(rol),
     revision: valor,
     autenticadaEn: Date.now(),
@@ -251,6 +254,7 @@ function retrato(sesion) {
     rol: sesion.rol,
     rolEtiqueta: etiquetaDeRol(sesion.rol),
     rolConocido: sesion.rol !== 'sin-rol',
+    abiertaEn: sesion.abiertaEn ?? null,
     permisos: [...sesion.permisos],
   };
 }

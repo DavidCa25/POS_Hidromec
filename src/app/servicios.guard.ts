@@ -38,7 +38,7 @@ export const puedeVerServicios: CanActivateFn = async () => {
     return router.createUrlTree(['/dashboard/aplicaciones']);
   }
   if (!auth.puede(PAQUETES.SERVICIOS_OPERAR) && !auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) {
-    return router.createUrlTree(['/dashboard/estadisticas']);
+    return router.createUrlTree(['/dashboard/inicio']);
   }
 
   /* El giro, ANTES de que se resuelva a qué pestaña se entra.

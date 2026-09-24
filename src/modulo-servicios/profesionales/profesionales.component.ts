@@ -7,6 +7,7 @@ import { Ausencia, Franja, horaDeFranja, Profesional, ServiciosService } from '.
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 import { WxTimeComponent } from '../../app/wx-time/wx-time.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { hoyLocal } from '../../core';
 
 const DIAS = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -407,7 +408,7 @@ export class ServiciosProfesionales {
   /** Ausencia: vacaciones, incapacidad, un día fuera. */
   nuevaAusencia(p: Profesional) {
     this.ausenciaDe = p;
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyLocal();
     this.formAusencia = { desde: hoy, horaDesde: '09:00', hasta: hoy, horaHasta: '18:00', motivo: '' };
     this.errorModal.set('');
     this.dialogo.set('ausencia');

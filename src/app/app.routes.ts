@@ -65,7 +65,11 @@ export const routes: Routes = [
 
       // ---- Backoffice ----
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
-      { path: 'importador', loadComponent: () => import('./importador-productos/importador-productos.component').then(m => m.ImportadorProductos) },
+      { path: 'quickstart', loadComponent: () => import('./wx-quickstart/wx-quickstart.component').then(m => m.WxQuickstartComponent) },
+      /* `/importador` era el camino viejo. Se conserva como REDIRECCION y no
+         como pantalla: mantener dos motores de importacion vivos garantiza
+         que uno de los dos se quede atras sin que nadie se entere. */
+      { path: 'importador', redirectTo: 'quickstart', pathMatch: 'full' },
       { path: 'migracion', loadComponent: () => import('./migracion/migracion.component').then(m => m.Migracion) },
       { path: 'proveedores', loadComponent: () => import('./proveedores/proveedores.component').then(m => m.Proveedores) },
       { path: 'compras', loadComponent: () => import('../compras/compras').then(m => m.Compras) },

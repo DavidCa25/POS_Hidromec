@@ -458,7 +458,11 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
    *
    * `auth.salir()` ya existia y hacia lo correcto. No la llamaba nadie.
    */
-  check(/await this\.auth\.salir\(\)/.test(menu),
+  /* El boton se mudo del dock a la cabecera del panel: la barra de trabajo es
+     para navegar, y quien ha entrado es contexto. La comprobacion sigue siendo
+     la misma, en el archivo donde ahora vive. */
+  const carcasa = readFileSync(join(raiz, 'src/dashboard/dashboard.ts'), 'utf8');
+  check(/await this\.auth\.salir\(\)/.test(carcasa),
     'cerrar sesion avisa al proceso principal, no solo cambia de pantalla',
     'si no, la ventana se queda con los permisos del anterior');
   check(/async salir\(\)/.test(auth) && /api\?\.cerrarSesion\?\.\(\)/.test(auth),

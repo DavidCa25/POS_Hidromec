@@ -401,3 +401,81 @@
   letter-spacing: 0.08em;
   vertical-align: 1px;
 }
+
+/* ==========================================================================
+   QUIEN ESTA DENTRO
+   --------------------------------------------------------------------------
+   Vivia en el extremo derecho del dock. Ahi eran dos figuras pequenas -Wybix a
+   la izquierda y la persona a la derecha- y se leian como decoracion repetida.
+   La barra de trabajo es para navegar; quien ha entrado es CONTEXTO, igual que
+   el negocio del otro extremo de esta misma cabecera.
+   ========================================================================== */
+.wx-yo { position: relative; margin-left: 6px; }
+
+.wx-yo__btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: var(--wx-control-h);
+  padding: 0 10px 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text);
+  font-weight: 550;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.wx-yo__btn:hover, .wx-yo__btn.is-abierto { background: var(--wx-raised); }
+.wx-yo__btn:active { transform: scale(0.97); }
+.wx-yo__btn:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.wx-yo__btn > i { font-size: 13px; color: var(--wx-text-dim); }
+
+.wx-yo__nom { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wx-yo__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--wx-z-menu);
+  width: 234px;
+  padding: 8px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-menu);
+  /* Sale de SU boton, que esta arriba a la derecha. */
+  transform-origin: top right;
+  animation: wx-pop var(--wx-dur-menu) var(--wx-ease-out) both;
+}
+
+.wx-yo__quien { margin: 4px 9px 8px; display: flex; flex-direction: column; }
+.wx-yo__quien b { font-weight: 650; }
+.wx-yo__quien span { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+
+.wx-yo__fila {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text);
+  text-align: left;
+  text-decoration: none;
+  font-weight: 550;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease;
+}
+.wx-yo__fila i { font-size: 18px; color: var(--wx-text-muted); }
+.wx-yo__fila:hover { background: var(--wx-hover); }
+.wx-yo__fila:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+/* Administrar usuarios NO es una accion de la sesion: se ofrece, mas callada. */
+.wx-yo__fila--tenue { font-weight: 400; color: var(--wx-text-muted); }
+
+.wx-yo__linea { display: block; height: 1px; margin: 6px 10px; background: var(--wx-edge); }

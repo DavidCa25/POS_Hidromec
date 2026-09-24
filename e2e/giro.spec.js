@@ -24,7 +24,7 @@
 const { test, expect, _electron: electron } = require('@playwright/test');
 const fs = require('node:fs');
 const { nuevoPerfil, opcionesDeArranque } = require('./perfil');
-const { CUENTAS } = require('./fixtures');
+const { CUENTAS, irPorDock, irPorMas } = require('./fixtures');
 
 const BASE = 'Wybix_E2E_Giro';
 
@@ -85,8 +85,7 @@ test.describe('Elegir el giro de Servicios', () => {
   async function irAAplicaciones(ventana) {
     /* Se localiza por su papel, no por su etiqueta: "Mas" lleva tilde y una
        prueba no deberia romperse por como se escriba una palabra. */
-    await ventana.click('.wxdock__btn[aria-haspopup="menu"]');
-    await ventana.click('a[href$="/dashboard/aplicaciones"]');
+    await irPorMas(ventana, 'Aplicaciones');
     await ventana.waitForSelector('.apps-card', { timeout: 30000 });
   }
 
@@ -132,7 +131,7 @@ test.describe('Elegir el giro de Servicios', () => {
   test('el taller entra por Órdenes y llama Vehículos a lo que registra', async () => {
     const { ventana, cerrar } = await abrir();
     try {
-      await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+      await irPorDock(ventana, 'Servicios');
       await ventana.waitForSelector('.srv-nav', { timeout: 30000 });
 
       /* La redirección de la ruta vacía la decide el giro. */
@@ -185,7 +184,7 @@ test.describe('Elegir el giro de Servicios', () => {
       const nombres = (cat.data ?? []).map(s => s.nombre);
       expect(nombres, JSON.stringify(nombres)).toContain('Servicio que no se borra');
 
-      await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+      await irPorDock(ventana, 'Servicios');
       await ventana.waitForSelector('.srv-nav', { timeout: 30000 });
 
       /* Una barbería abre en la agenda: su día es la agenda. */

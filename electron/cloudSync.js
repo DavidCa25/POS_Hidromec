@@ -311,9 +311,27 @@ async function crearAlertaInmediata(tipo, titulo, mensaje) {
   }
 }
 
+/**
+ * El dia de hoy DONDE ESTA LA CAJA, no en Londres.
+ *
+ * `new Date().toISOString().slice(0, 10)` da la fecha en UTC: en Mexico
+ * (UTC-6) a partir de las 18:00 empieza a devolver la de manana. Aqui eso
+ * significaba marcar como «ya avisado hoy» una alerta con la fecha del dia
+ * siguiente -y volver a mandarla- y estampar la venta del dia en el dia que
+ * no era.
+ *
+ * Solo vale para «hoy». Una fecha que ya viene de la base NO pasa por aqui:
+ * llega como un instante concreto y esto la moveria un dia.
+ */
+function fechaLocal(d = new Date()) {
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
 // Evita repetir la alerta de riesgo del mismo cajero el mismo dia (marca [uID-fecha]).
 async function alertaRiesgoYaExiste(sucursalId, userId) {
-  const dia = new Date().toISOString().slice(0, 10);
+  const dia = fechaLocal();
   const q = `alertas?select=id&sucursal_id=eq.${sucursalId}&tipo=eq.RIESGO_CAJERO&mensaje=like=*[u${userId}-${dia}]*&limit=1`;
   try { const rows = await supabaseRequest('GET', q); return Array.isArray(rows) && rows.length > 0; }
   catch { return false; }
@@ -329,7 +347,7 @@ async function alertaMarcaYaExiste(sucursalId, tipo, marca) {
 async function evaluarAlertas(sucursalId, shifts, cfg, daily = null) {
   const ahora = new Date();
   const hora = ahora.getHours();
-  const dia = ahora.toISOString().slice(0, 10);
+  const dia = fechaLocal(ahora);
   const horaApertura = Number(cfg.horaApertura ?? 8);
   const fueraHorario = (hora < horaApertura || hora >= Number(cfg.horaCierre ?? 21));
   const umbral = Number(cfg.umbralDiferencia ?? 200);
@@ -383,8 +401,11 @@ async function pushOnce() {
 
   const { daily, top, shifts } = await fetchSummaries();
   const sucursalId = cfg.sucursalId;
-  const hoy = (daily?.fecha ? new Date(daily.fecha) : new Date());
-  const fechaStr = hoy.toISOString().slice(0, 10);
+  /* Si la fecha viene del resumen, es un dato de la base y se respeta tal cual.
+     Si no viene, es «hoy», y «hoy» se lee en la zona del negocio. */
+  const fechaStr = daily?.fecha
+    ? new Date(daily.fecha).toISOString().slice(0, 10)
+    : fechaLocal();
 
   // Estampa (una vez por proceso) el machine_id de la licencia en la sucursal,
   // para que el panel de admin pueda ligar licencias y prueba con este negocio.
@@ -497,7 +518,7 @@ async function pushOnce() {
       }));
       await supabaseUpsert('seguridad_riesgo', riskRows, 'sucursal_id,user_id');
 
-      const dia = new Date().toISOString().slice(0, 10);
+      const dia = fechaLocal();
       const umbralDev = Number(cfg.umbralDevoluciones ?? 3);
       for (const c of risk) {
         if (c.nivel === 'alto' && !(await alertaRiesgoYaExiste(sucursalId, c.user_id))) {

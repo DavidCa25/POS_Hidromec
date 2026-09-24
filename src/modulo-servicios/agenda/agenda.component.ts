@@ -8,6 +8,7 @@ import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { Ausencia, Cita, horaDeFranja, Profesional, ServiciosService } from '../servicios.service';
+import { hoyLocal, moverDias } from '../../core';
 
 /** Una cita ya colocada: dónde va y de qué color. */
 interface Bloque {
@@ -62,7 +63,7 @@ export class ServiciosAgenda {
   readonly altoHora = 64;
   readonly anchoHoras = 58;
 
-  readonly hoy = new Date().toISOString().slice(0, 10);
+  readonly hoy = hoyLocal();
   readonly dia = signal(this.hoy);
   readonly profesionalId = signal<number | null>(null);
 
@@ -318,11 +319,7 @@ export class ServiciosAgenda {
   }
 
   irA(d: string) { if (d) { this.dia.set(d); void this.cargar(); } }
-  mover(dias: number) {
-    const d = new Date(this.dia() + 'T12:00:00');
-    d.setDate(d.getDate() + dias);
-    this.irA(d.toISOString().slice(0, 10));
-  }
+  mover(dias: number) { this.irA(moverDias(this.dia(), dias)); }
   filtrarPor(id: number | null) { this.profesionalId.set(id); void this.cargar(); }
 
   async cargar() {

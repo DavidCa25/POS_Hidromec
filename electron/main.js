@@ -13,7 +13,9 @@ const { runMigrations } = require('./migrationsRunner');
 const ipcHospitality = require('./ipc/hospitality');
 const ipcLoyalty = require('./ipc/loyalty');
 const ipcServicios = require('./ipc/servicios');
+const ipcQuickstart = require('./ipc/quickstart');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
+const { estaConfigurado } = require('./lib/setup-estado');
 /* FASE CORE 0 — seguridad real.
    `permisos` es el catalogo que viaja con el binario; `sesion` guarda quien
    opera cada ventana y es la UNICA puerta de autorizacion del proceso
@@ -113,6 +115,13 @@ ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEs
    encendido y recibe la respuesta de hace cinco segundos. */
 ipcServicios.registrar({ ipcMain, sql, poolPromise,
   olvidarModulos: () => { modulosCache = { valor: null, leidoEn: 0 }; } });
+
+/* IPC de QuickStart: la carga inicial del catalogo.
+   Leer, mapear, validar y planificar corren AQUI y no en el renderer: diez
+   mil filas analizadas en el hilo de la interfaz dejan la ventana congelada
+   y lo primero que hace el usuario es cerrarla. */
+ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
+  contexto: { businessProfile: () => businessConfig?.business_profile || 'RETAIL' } });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -2909,10 +2918,41 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
         .execute('sp_reorder_suggestions');
       reorden = (rr.recordset || []).length;
     } catch { /* si el SP no existe aun */ }
+    /* Cuantos productos hay, sin mas. Inicio lo necesita para saber si
+       ofrecer QuickStart, y no merece un canal propio: esta consulta ya
+       existe y ya viaja. NO entra en `total`: un catalogo vacio no es una
+       alerta de inventario, es una instalacion recien nacida. */
+    const productos = await one(`SELECT COUNT(*) c FROM products WHERE active=1`);
     const total = agotados + lowstock + cero + vencidos + descuadres + reorden;
-    return { success: true, data: { agotados, lowstock, cero, vencidos, descuadres, reorden, total } };
+    return { success: true, data: { agotados, lowstock, cero, vencidos, descuadres, reorden, productos, total } };
   } catch (e) { console.error('alerts:counts:', e); return { success: false, error: e.message }; }
 });
+
+/**
+ * EL KARDEX DE UN PRODUCTO.
+ *
+ * De donde salio cada pieza. Hacia falta para poder ENSEÑAR la trazabilidad
+ * de la existencia inicial: sin esto, que la carga deje un movimiento con su
+ * fecha, su responsable y su numero de carga es un dato que existe y que
+ * nadie puede ver, y lo que no se puede ver no se puede auditar.
+ */
+ipcMain.handle('inventory:movements', sesion.proteger('inventory:movements', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('product_id', sql.Int, Number(p.productId) || 0)
+      .input('tope', sql.Int, Number(p.tope) || 100)
+      .query(`SELECT TOP (@tope) m.id, m.product_id, m.typee, m.reference, m.quantity,
+                     m.datee, m.descriptionn, m.source, m.unit_cost
+                FROM dbo.inventory_movements m
+               WHERE m.product_id = @product_id
+               ORDER BY m.datee DESC, m.id DESC`);
+    return { success: true, data: r.recordset ?? [] };
+  } catch (e) {
+    console.error('inventory:movements:', e);
+    return { success: false, error: e.message };
+  }
+}));
 
 // ===== Conteo fisico: aplicar ajustes de inventario =====
 ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}) => {
@@ -3476,6 +3516,87 @@ function ticketLogoUrl() {
   } catch { /* sin carpeta de datos accesible */ }
   return null;
 }
+
+/* ============================================================
+   EL LOGO DEL NEGOCIO
+   ------------------------------------------------------------
+   Se leia desde siempre (`ticketLogoUrl`) pero no habia forma de SUBIRLO: el
+   archivo tenia que aparecer a mano en la carpeta de datos, cosa que ningun
+   cliente iba a hacer. Estos dos canales cierran eso.
+
+   EL REDIMENSIONADO NO SE HACE AQUI. La pantalla tiene `canvas` y el proceso
+   principal no tiene ninguna libreria de imagen; meter una entera para
+   encoger un PNG seria pagar megabytes por algo que el navegador ya sabe
+   hacer. Aqui se valida y se escribe, que es lo que no se puede hacer alla.
+
+   LOS LIMITES, Y POR QUE ESTOS. Un ticket termico imprime a 384-576 px de
+   ancho, pero el mismo archivo encabeza los PDF y la pantalla del cliente, que
+   son mucho mas grandes. Guardar a 384 px se ve bien en papel y pixelado en
+   todo lo demas. 1024 px por el lado mayor cubre los tres usos sin que el
+   archivo pese: es el limite que aplica la pantalla antes de mandar, y aqui
+   solo se comprueba que lo que llega no sea absurdo.
+   ============================================================ */
+
+/** Tope de lo que se acepta escribir. Un PNG de 1024 px ronda 1-2 MB. */
+const LOGO_MAX_BYTES = 4 * 1024 * 1024;
+
+/** Los tres formatos que el ticket sabe dibujar. */
+const LOGO_NOMBRES = ['ticket-logo.png', 'ticket-logo.jpg', 'ticket-logo.jpeg'];
+
+ipcMain.handle('ticket:guardar-logo', sesion.proteger('ticket:guardar-logo', async (_e, p = {}) => {
+  try {
+    const b64 = String(p?.base64 || '');
+    if (!b64) return { success: false, error: 'No llego ninguna imagen.' };
+
+    /* Se acepta con o sin prefijo `data:`; lo que se guarda son los bytes. */
+    const limpio = b64.includes(',') ? b64.slice(b64.indexOf(',') + 1) : b64;
+    const bytes = Buffer.from(limpio, 'base64');
+
+    if (!bytes.length) return { success: false, error: 'La imagen llego vacia.' };
+    if (bytes.length > LOGO_MAX_BYTES) {
+      return { success: false, error: 'La imagen pesa demasiado. Prueba con una mas pequena.' };
+    }
+
+    /* Que sea DE VERDAD un PNG. La pantalla siempre convierte a PNG antes de
+       mandar, asi que cualquier otra cosa aqui significa que alguien llamo al
+       canal a mano: no se escribe un archivo arbitrario en la carpeta de datos
+       porque lo pida un renderer. */
+    const esPng = bytes.length > 8
+      && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+    if (!esPng) return { success: false, error: 'El formato no es valido.' };
+
+    const base = app.getPath('userData');
+    /* Los otros nombres se borran: si quedara un .jpg viejo, `ticketLogoUrl`
+       podria seguir sirviendolo segun el orden de la lista. */
+    for (const n of LOGO_NOMBRES) {
+      const ruta = path.join(base, n);
+      try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch { /* se sobrescribe */ }
+    }
+    fs.writeFileSync(path.join(base, 'ticket-logo.png'), bytes);
+
+    return { success: true, logoUrl: ticketLogoUrl() };
+  } catch (e) {
+    console.error('ticket:guardar-logo:', e);
+    return { success: false, error: e.message };
+  }
+}));
+
+ipcMain.handle('ticket:borrar-logo', sesion.proteger('ticket:borrar-logo', async () => {
+  try {
+    const base = app.getPath('userData');
+    for (const n of LOGO_NOMBRES) {
+      const ruta = path.join(base, n);
+      try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch { /* ya no estaba */ }
+    }
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
+/* Solo lectura: lo usa la pantalla para ensenar lo que ya hay. */
+ipcMain.handle('ticket:logo', async () => {
+  try { return { success: true, logoUrl: ticketLogoUrl() }; }
+  catch (e) { return { success: false, error: e.message }; }
+});
 
 /** Plantilla + datos del negocio, comunes al PDF y a la impresion. */
 function ticketExtrasComunes(paperWidthMm) {
@@ -4668,15 +4789,48 @@ ipcMain.handle('open-external', async (_event, url) => {
 
 //Setup
 
+/**
+ * ¿YA SE DIO DE ALTA ESTE NEGOCIO?
+ *
+ * LA REGLA: hay usuarios activos O hay negocio configurado.
+ *
+ * Antes era solo `usuarios > 0`, y `negocio_configurado` se calculaba sin que
+ * nadie lo leyera. Cambiarlo a solo `negocio_configurado` habria sido peor:
+ * una instalacion antigua a la que le faltara la fila -por la razon que
+ * fuera- habria vuelto al asistente, y volver al asistente en una caja que ya
+ * opera es lo mas caro que puede pasar aqui.
+ *
+ * Con OR el conjunto de instalaciones "ya configuradas" solo puede CRECER
+ * respecto a lo que habia: ninguna que hoy entra directa puede empezar a ver
+ * el asistente. Esa es la propiedad que hacia falta.
+ *
+ * Y ARREGLA UN FALLO REAL. `sp_setup_status` cuenta `users WHERE active = 1`:
+ * un negocio que desactivara a todos sus usuarios -o al unico administrador-
+ * pasaba a tener cero, y la aplicacion le ofrecia dar de alta el negocio otra
+ * vez encima de sus datos. Con la fila de `business_config` presente, eso ya
+ * no puede pasar.
+ *
+ * COMPROBADO QUE NO SE ADELANTA: una base recien restaurada del template y
+ * migrada tiene 0 usuarios y 0 filas en `business_config`. La fila la escribe
+ * `sp_setup_inicial`, en la misma transaccion que crea al administrador, asi
+ * que una instalacion nueva sigue viendo el asistente.
+ */
 ipcMain.handle('setup-status', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().execute('sp_setup_status');
     const row = r.recordset?.[0] ?? { usuarios: 0, negocio_configurado: 0 };
+    const usuarios = Number(row.usuarios) || 0;
+    const negocio = Number(row.negocio_configurado) || 0;
     return {
       success: true,
-      configurado: Number(row.usuarios) > 0,
-      data: row
+      /* La regla vive en `lib/setup-estado.js` para que una prueba pueda
+         ejercitarla contra cada forma de instalacion. Ver ahi el porque. */
+      configurado: estaConfigurado(row),
+      /* Se devuelven los dos por separado: una instalacion con negocio pero
+         sin usuarios activos esta configurada Y ademas tiene un problema, y
+         quien mire esto tiene que poder distinguirlo. */
+      data: { ...row, usuarios, negocio_configurado: negocio },
     };
   } catch (e) {
     return { success: false, error: e.message };
@@ -4822,7 +4976,55 @@ ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
   }
 });
 
-// 6. Estado unificado y blindado (none | trial | active | expired | tamper)
+/**
+ * EL NOMBRE DEFINITIVO DEL NEGOCIO, HACIA LA NUBE.
+ *
+ * El Gate ya no pide el nombre -lo pedia y el alta lo volvia a pedir-, asi que
+ * la prueba se emite sin el. Cuando el alta termina, el nombre real existe y
+ * se manda una vez.
+ *
+ * Es BEST EFFORT y a proposito: la prueba ya esta activa y el negocio ya esta
+ * configurado; que la nube no se entere del nombre no puede impedir vender ni
+ * mostrar un error a quien acaba de instalar. Si falla, se queda como estaba.
+ *
+ * ESTADO REAL DE LA OTRA PUNTA
+ * ----------------------------
+ * `action: 'rename'` NO estaba implementada en la funcion remota, y lo que
+ * hacia no era fallar: caia en la rama de `start`, encontraba la prueba y
+ * respondia `success: true` sin cambiar nada. Es decir, esto devolvia `ok` y
+ * el nombre remoto seguia vacio.
+ *
+ * La accion ya esta escrita en `supabase/functions/trial-license` (repo
+ * wybix-owner) y ahi tambien se cerro la caida a `start` de cualquier accion
+ * desconocida. PERO HAY QUE DESPLEGARLA: hasta que se despliegue, esto sigue
+ * devolviendo `ok` sin efecto remoto. No es una regresion -es lo que ya
+ * pasaba- pero ahora se sabe.
+ */
+ipcMain.handle('license:sync-trial-name', async (_event, payload = {}) => {
+  try {
+    const businessName = String(payload?.businessName || '').trim();
+    if (!businessName) return { ok: false, error: 'Sin nombre.' };
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/trial-license`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'apikey': ANON_KEY,
+      },
+      body: JSON.stringify({ action: 'rename', machineId: cachedMachineId, businessName }),
+    });
+    const data = await res.json().catch(() => null);
+    return { ok: !!data?.success };
+  } catch {
+    /* Sin conexion, o la funcion todavia no conoce la accion. No se avisa a
+       nadie: no hay nada que la persona pueda hacer al respecto. */
+    return { ok: false };
+  }
+});
+
+// 6. Estado unificado y blindado (none | demo | trial | active | expired | tamper)
 ipcMain.handle('license:status', async () => {
   try {
     return licenseStore.computeStatus(contextoLicencia());

@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { HospitalityService } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
+import { ProveedorFormComponent } from '../../app/proveedores/proveedor-form.component';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -129,7 +130,7 @@ const FORMAS_DE_PAGO: WxOpcion[] = [
   standalone: true,
   templateUrl: './registrarCompra.html',
   styleUrls: ['./registrarCompra.css'],
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectComponent],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectComponent, ProveedorFormComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class RegistrarCompra implements OnInit {
@@ -139,6 +140,7 @@ export class RegistrarCompra implements OnInit {
   proveedores: Proveedor[] = [];
   proveedorSeleccionado: number | null = null;
   proveedorAbierto = false;
+  altaProveedorAbierta = false;
 
   showModalProductos = false;
   productos: ProductRow[] = [];
@@ -222,6 +224,19 @@ export class RegistrarCompra implements OnInit {
   /** Tasa media de la compra: lo que se guarda en la cabecera. */
   get tasaEfectiva() {
     return this.subtotalSinIva > 0 ? this.iva / this.subtotalSinIva : this.ivaTasa;
+  }
+
+  abrirAltaProveedor() {
+    this.proveedorAbierto = false;
+    this.altaProveedorAbierta = true;
+  }
+
+  /** El proveedor recien dado de alta queda elegido: para eso se creo. */
+  async alAgregarProveedor(p: { id: number | null; nombre: string }) {
+    this.altaProveedorAbierta = false;
+    await this.cargarProveedores();
+    const nuevo = p.id ?? this.proveedores.find(x => x.nombre === p.nombre)?.id ?? null;
+    if (nuevo != null) this.seleccionarProveedor(Number(nuevo));
   }
 
   async cargarProveedores() {

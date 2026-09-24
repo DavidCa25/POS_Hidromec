@@ -1,50 +1,115 @@
 /* ==========================================================================
    INICIO
-   La pantalla de entrada. Dos columnas: lo que hay que hacer y con quien.
+   --------------------------------------------------------------------------
+   DENSIDAD. La version anterior era una columna estrecha con un costado, y en
+   16:9 dejaba media pantalla en blanco por debajo de la lista. Aqui el ancho
+   se reparte en tres zonas que se llenan con lo que hay: lo que se empieza, lo
+   que esta parado y con quien se trabaja.
+
+   Ese espacio NO se rellena con graficos ni banners. Se usa para jerarquia:
+   el saludo y las cifras arriba, en una sola fila, y el trabajo debajo.
    ========================================================================== */
 
 .ini {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 38px;
-  max-width: 1320px;
+  max-width: 1480px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
 }
 
-.ini__col { min-width: 0; }
+/* ------------------------------------------------------------- saludo */
+/*
+ * La guia, el saludo y las cifras del dia comparten fila. Es la respuesta
+ * completa a "como va esto" y separarla en tres bloques apilados era lo que
+ * abria el hueco muerto.
+ */
+.ini__saludo {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
 
-/* -------------------------------------------------------------- saludo */
-.ini__saludo { display: flex; align-items: flex-start; gap: 18px; }
-.ini__saludotxt { flex-grow: 1; min-width: 0; }
+/* Sin tarjeta, sin disco, sin sombra: se apoya en el lienzo. */
+.ini__guia { flex: none; }
+
+.ini__saludotxt { flex-grow: 1; min-width: 260px; }
+
 .ini__fecha {
   margin: 0;
   font-size: var(--wx-text-sm);
   color: var(--wx-text-muted);
 }
 .ini__h1 {
-  margin: 5px 0 0;
-  font-size: 32px;
+  margin: 4px 0 0;
+  font-size: 36px;
   font-weight: 650;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.032em;
+  line-height: 1.1;
+  color: var(--wx-text);
+  text-wrap: balance;
+}
+.ini__sub {
+  margin: 6px 0 0;
+  font-size: var(--wx-text-md);
+  color: var(--wx-text-muted);
+}
+
+/* -------------------------------------------------------------- cifras */
+.ini__cifras {
+  flex: none;
+  display: flex;
+  gap: 34px;
+  padding-left: 30px;
+  border-left: 1px solid var(--wx-edge);
+}
+.ini__cifra { display: flex; flex-direction: column; }
+.ini__cifranom { font-size: 12.5px; color: var(--wx-text-muted); }
+.ini__cifra b {
+  margin-top: 3px;
+  font-family: var(--wx-font-mono);
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
   color: var(--wx-text);
 }
-.ini__sub { margin: 5px 0 0; font-size: var(--wx-text-md); color: var(--wx-text-muted); }
+
+/* -------------------------------------------------------------- cuerpo */
+/*
+ * Tres zonas. Las dos primeras llevan el trabajo y la tercera el contexto, asi
+ * que la tercera es la mas estrecha. `auto-fit` no vale aqui: el reparto es
+ * deliberado, no el que salga.
+ */
+.ini__rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) minmax(0, 0.85fr);
+  gap: 34px;
+  align-items: start;
+}
+.ini__zona { min-width: 0; display: flex; flex-direction: column; }
+
+.ini__rot {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wx-text-dim);
+}
+.ini__zona .ini__rot:not(:first-child) { margin-top: 28px; }
 
 /* --------------------------------------------------------------- hacer */
-.ini__hacer {
-  margin-top: 26px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 13px;
-}
+.ini__hacer { display: flex; flex-direction: column; gap: 11px; }
 
 .ini__acc {
-  min-height: 122px;
-  padding: 19px;
+  min-height: 78px;
+  padding: 17px 18px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 1px;
 
   border: 1px solid var(--wx-edge-strong);
   border-radius: var(--wx-radius-lg);
@@ -55,20 +120,22 @@
   transition: transform var(--wx-dur-press, 110ms) var(--wx-ease-out),
               border-color var(--wx-dur-micro, 150ms) var(--wx-ease-out);
 }
-.ini__acc:active { transform: scale(0.98); }
+.ini__acc:active { transform: scale(0.985); }
 .ini__acc:hover { border-color: var(--wx-accent); }
 .ini__acc:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
-.ini__acc i { font-size: 22px; color: var(--wx-accent-text); margin-bottom: auto; }
-.ini__accnom { font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.015em; }
+.ini__acc i { font-size: 21px; color: var(--wx-accent-text); margin-bottom: auto; }
+.ini__accnom { font-size: 18px; font-weight: 650; letter-spacing: -0.018em; }
 .ini__accpie { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
 
 /* La primera es la del dia: navy, como el dock. */
 .ini__acc--primera {
+  min-height: 116px;
   border-color: transparent;
   background: var(--wx-rail);
   color: var(--wx-rail-text-strong);
 }
 .ini__acc--primera i { color: var(--wx-accent); }
+.ini__acc--primera .ini__accnom { font-size: 21px; }
 .ini__acc--primera .ini__accpie { color: var(--wx-rail-text); }
 .ini__acc--primera:hover { border-color: transparent; background: var(--wx-navy-600); }
 
@@ -83,43 +150,12 @@
 :host-context(html.dark) .ini__acc--primera .ini__accpie { opacity: 0.78; }
 :host-context(html.dark) .ini__acc--primera:hover { background: var(--wx-accent-hover); }
 
-/* -------------------------------------------------------------- cifras */
-.ini__cifras {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid var(--wx-edge);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 42px;
-}
-.ini__cifra { display: flex; flex-direction: column; }
-.ini__cifranom { font-size: 12.5px; color: var(--wx-text-muted); }
-.ini__cifra b {
-  margin-top: 3px;
-  font-family: var(--wx-font-mono);
-  font-size: 23px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--wx-text);
-}
-
 /* ---------------------------------------------------------- pendientes */
-.ini__rot {
-  margin: 30px 0 11px;
-  font-size: var(--wx-text-sm);
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--wx-text-muted);
-}
-.ini__aside .ini__rot:first-child { margin-top: 0; }
-
 .ini__lista {
-  position: relative;
   background: var(--wx-surface);
   border: 1px solid var(--wx-edge);
-  border-radius: var(--wx-radius-md);
+  border-radius: var(--wx-radius-lg);
+  overflow: hidden;
 }
 
 .ini__fila {
@@ -127,7 +163,7 @@
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 14px 17px;
+  padding: 15px 17px;
   border: 0;
   border-bottom: 1px solid var(--wx-edge);
   background: transparent;
@@ -149,34 +185,19 @@
 .ini__filatxt span { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
 .ini__filaacc { font-size: var(--wx-text-sm); font-weight: 550; color: var(--wx-accent-text); }
 
-/* Wybix mirando la lista. Fuera de la tarjeta, sin robarle sitio. */
-.ini__mira {
-  position: absolute;
-  right: -62px;
-  top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ini__bang {
-  font-family: var(--wx-font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--wx-danger);
-}
-
+/* Sin pendientes, una linea. Ni tarjeta ni borde punteado: el vacio tambien
+   puede ser silencio. */
 .ini__limpio {
   margin: 0;
-  padding: 18px;
-  border: 1px dashed var(--wx-edge-strong);
-  border-radius: var(--wx-radius-md);
+  padding: 2px 0;
   color: var(--wx-text-muted);
   font-size: var(--wx-text-sm);
+  line-height: var(--wx-leading);
+  max-width: 46ch;
 }
 
-/* ------------------------------------------------------------- costado */
-.ini__aside { min-width: 0; }
-.ini__equipo { display: flex; flex-direction: column; gap: 13px; }
+/* --------------------------------------------------------------- gente */
+.ini__equipo { display: flex; flex-direction: column; gap: 14px; }
 .ini__persona { display: flex; align-items: center; gap: 11px; }
 .ini__personatxt { display: flex; flex-direction: column; min-width: 0; }
 .ini__personatxt b { font-weight: 600; }
@@ -186,14 +207,7 @@
   text-transform: capitalize;
 }
 
-.ini__estrella {
-  padding: 15px 16px;
-  border: 1px solid var(--wx-edge);
-  border-radius: var(--wx-radius-md);
-  background: var(--wx-surface);
-  display: flex;
-  flex-direction: column;
-}
+.ini__estrella { margin: 0; display: flex; flex-direction: column; }
 .ini__estrella b { font-weight: 600; }
 .ini__estrella span {
   font-family: var(--wx-font-mono);
@@ -204,11 +218,13 @@
 .ini__vacio { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
 
 /* ------------------------------------------------------------ estrecho */
-/* La mascota de atencion vive en el margen; cuando no hay margen, se va. No
-   se encoge la tarjeta para hacerle sitio: la informacion manda. */
-@media (max-width: 1240px) {
-  .ini__mira { display: none; }
+@media (max-width: 1320px) {
+  .ini__rejilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
-@media (max-width: 1000px) {
-  .ini { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+@media (max-width: 1100px) {
+  .ini__cifras { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 900px) {
+  .ini__rejilla { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .ini__h1 { font-size: 30px; }
 }

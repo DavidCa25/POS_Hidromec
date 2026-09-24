@@ -15,7 +15,7 @@
  *
  * Aquí se pulsa. Si alguien vuelve a desconectar el cobro, esto falla.
  */
-const { test, expect, CUENTAS } = require('./fixtures');
+const { test, expect, CUENTAS, irPorDock } = require('./fixtures');
 
 async function entrar(app, cuenta) {
   const { ventana } = app;
@@ -139,7 +139,7 @@ test.describe('De la recepción a la entrega', () => {
     expect(hayTurno, `no hay turno para cobrar: ${JSON.stringify(abierto)}`).toBeTruthy();
 
     // ============================================================ la orden
-    await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+    await irPorDock(ventana, 'Servicios', 'Ordenes');
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
     await ventana.click('button:has-text("Nueva orden")');
 
@@ -250,7 +250,7 @@ test.describe('De la recepción a la entrega', () => {
     await ventana.waitForSelector('#username', { timeout: 60000 });
     await entrar(app, CUENTAS.admin);
 
-    await ventana.click('a[href$="/dashboard/ordenes-de-servicio"]');
+    await irPorDock(ventana, 'Servicios', 'Ordenes');
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
     /* «POR COBRAR» YA NO LA TIENE, Y ESO ES EL ARREGLO.
        Esta orden se acaba de cobrar. Antes seguía apareciendo ahí porque el

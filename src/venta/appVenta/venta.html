@@ -499,9 +499,13 @@
             <div class="pi-price">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
             <!-- Disponibilidad real. Una receta tiene stock 0 por diseno; lo
                  que importa es cuantas se pueden preparar. -->
-            <div class="pi-stock" [class.low]="(p.available_units ?? p.stock) <= 3">
+            <!-- NONE no lleva existencia: su disponibilidad es el centinela
+                 999999, que no es un dato para enseñar. -->
+            <div class="pi-stock" *ngIf="p.inventory_mode !== 'NONE'; else stockNoAplica"
+                 [class.low]="(p.available_units ?? p.stock) <= 3">
               {{ p.available_units ?? p.stock }} {{ p.inventory_mode === 'RECIPE' ? 'por preparar' : (p.base_uom || 'pz') }}
             </div>
+            <ng-template #stockNoAplica><div class="pi-stock">No aplica</div></ng-template>
           </div>
           <i class="ph-fill ph-plus-circle pi-add"></i>
         </button>

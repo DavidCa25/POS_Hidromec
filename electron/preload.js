@@ -1,4 +1,4 @@
-﻿const { contextBridge, ipcRenderer } = require('electron');
+﻿const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
@@ -20,6 +20,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    /* ---------------------------------------------------------- QUICKSTART
+       La carga inicial del catalogo. Una carga es un objeto que vive en la
+       base: se puede cerrar Wybix a media captura y seguir manana. */
+    /* La RUTA de un archivo que el usuario eligio o solto.
+       Electron 32 quito `File.path`; `webUtils.getPathForFile` es su
+       sustituto y tiene que vivir en el preload, porque `webUtils` no
+       existe en el renderer aislado. Sin esto el proceso principal no
+       sabria que archivo leer. */
+    qsRutaDeArchivo: (file) => { try { return webUtils.getPathForFile(file); } catch { return ''; } },
+    qsContexto: () => ipcRenderer.invoke('quickstart:contexto'),
+    qsCargas: (p) => ipcRenderer.invoke('quickstart:cargas', p),
+    qsCarga: (p) => ipcRenderer.invoke('quickstart:carga', p),
+    qsFilas: (p) => ipcRenderer.invoke('quickstart:filas', p),
+    qsAnalizarArchivo: (p) => ipcRenderer.invoke('quickstart:analizar-archivo', p),
+    qsAnalizarPegado: (p) => ipcRenderer.invoke('quickstart:analizar-pegado', p),
+    qsOtraHoja: (p) => ipcRenderer.invoke('quickstart:otra-hoja', p),
+    qsRemapear: (p) => ipcRenderer.invoke('quickstart:remapear', p),
+    qsCargaManual: (p) => ipcRenderer.invoke('quickstart:carga-manual', p),
+    qsCapturar: (p) => ipcRenderer.invoke('quickstart:capturar', p),
+    qsResolverGrupo: (p) => ipcRenderer.invoke('quickstart:resolver-grupo', p),
+    qsResolverFila: (p) => ipcRenderer.invoke('quickstart:resolver-fila', p),
+    qsEjecutar: (p) => ipcRenderer.invoke('quickstart:ejecutar', p),
+    qsUndoCheck: (p) => ipcRenderer.invoke('quickstart:undo-check', p),
+    qsUndo: (p) => ipcRenderer.invoke('quickstart:undo', p),
+    qsSoltarSiVacia: (p) => ipcRenderer.invoke('quickstart:soltar-si-vacia', p),
+    qsDescartar: (p) => ipcRenderer.invoke('quickstart:descartar', p),
+    qsGuardarPerfil: (p) => ipcRenderer.invoke('quickstart:guardar-perfil', p),
+    qsLeerHoja: (p) => ipcRenderer.invoke('quickstart:leer-hoja', p),
+    qsPlantilla: (p) => ipcRenderer.invoke('quickstart:plantilla', p),
+    /* El avance real de una importacion larga. Se escucha, no se sondea. */
+    qsAlAvanzar: (fn) => {
+      const h = (_e, d) => fn(d);
+      ipcRenderer.on('quickstart:avance', h);
+      return () => ipcRenderer.removeListener('quickstart:avance', h);
+    },
+
     importProducts: (payload) => ipcRenderer.invoke('sp-import-products', payload),
     importCustomers: (payload) => ipcRenderer.invoke('sp-import-customers', payload),
     importSuppliers: (payload) => ipcRenderer.invoke('sp-import-suppliers', payload),
@@ -90,6 +126,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     alertsOverdueCredit: () => ipcRenderer.invoke('alerts:overdue-credit'),
     alertsLowStock: (p) => ipcRenderer.invoke('alerts:low-stock', p),
     alertsCounts: (p) => ipcRenderer.invoke('alerts:counts', p),
+    inventoryMovements: (p) => ipcRenderer.invoke('inventory:movements', p),
     inventoryApplyCount: (p) => ipcRenderer.invoke('inventory:apply-count', p),
     usersList: () => ipcRenderer.invoke('users:list'),
     usersCreate: (p) => ipcRenderer.invoke('users:create', p),
@@ -106,6 +143,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // pantalla. No habilita ninguna operacion del gestor.
     esDemo: () => ipcRenderer.invoke("app:es-demo"),
     updateBusinessConfig: (p) => ipcRenderer.invoke('update-business-config', p),
+    /* El logo del negocio: el MISMO que encabeza el ticket y la pantalla del
+       cliente. Se manda ya redimensionado desde la pantalla -ahi hay canvas y
+       aqui no- y el proceso principal solo valida y escribe. */
+    ticketGuardarLogo: (p) => ipcRenderer.invoke('ticket:guardar-logo', p),
+    ticketBorrarLogo: () => ipcRenderer.invoke('ticket:borrar-logo'),
+    ticketLogo: () => ipcRenderer.invoke('ticket:logo'),
     paymentsGet: () => ipcRenderer.invoke('payments:get'),
     paymentsSet: (c) => ipcRenderer.invoke('payments:set', c),
     getAppVersion: () => ipcRenderer.invoke('app:get-version'),
@@ -345,6 +388,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     licenseClear: () => ipcRenderer.invoke('license:clear'),
     licenseActivate:  (d) => ipcRenderer.invoke('license:activate', d),
     licenseStartTrial: (d) => ipcRenderer.invoke('license:start-trial', d),
+    /* El nombre real del negocio, una vez que el alta lo conoce. */
+    licenseSyncTrialName: (d) => ipcRenderer.invoke('license:sync-trial-name', d),
     licenseStatus: () => ipcRenderer.invoke('license:status'),
 
     setupStatus: () => ipcRenderer.invoke('setup-status'),

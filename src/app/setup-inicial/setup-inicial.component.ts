@@ -3,14 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { LicenseService } from '../../services/license.service';
-import { ImportadorProductos } from '../importador-productos/importador-productos.component';
 import { CATALOGOS_GIRO, GiroCatalogo } from './catalogos-giro';
 import { BusinessProfile, CapabilityService, DeviceProfile } from '../../core';
+import { PRESETS_SERVICIOS, PresetServicios } from '../../core/presets-servicios';
 
 @Component({
   selector: 'app-setup-inicial',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImportadorProductos],
+  imports: [CommonModule, FormsModule],
   templateUrl: './setup-inicial.component.html',
   styleUrls: ['./setup-inicial.component.css']
 })
@@ -38,12 +38,40 @@ export class SetupInicial implements OnInit {
    */
   businessProfile: BusinessProfile = 'RETAIL';
 
-  readonly tiposNegocio: { valor: BusinessProfile; titulo: string; icono: string; ejemplos: string }[] = [
+  /**
+   * SERVICIOS NO ES UN `business_profile`.
+   *
+   * La columna solo admite RETAIL y HOSPITALITY -hay un CHECK en la base- y
+   * eso esta bien: lo que decide son las recetas y los ingredientes. Un taller
+   * o una barberia SON comercio que ademas cobra por trabajo, asi que eligen
+   * RETAIL y ENCIENDEN EL MODULO. El giro se guarda aparte, en
+   * `services_config`, que es donde vive desde que existe el modulo.
+   *
+   * Por eso este selector no es `BusinessProfile` a secas: es lo que el
+   * usuario reconoce -tres clases de negocio- traducido a las dos cosas que el
+   * sistema guarda por separado.
+   */
+  tipoNegocio: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS' = 'RETAIL';
+
+  readonly tiposNegocio: { valor: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS'; titulo: string; icono: string; ejemplos: string }[] = [
     { valor: 'RETAIL', titulo: 'Tienda o comercio', icono: 'ph-storefront',
       ejemplos: 'Abarrotes · Ferreterías · Refaccionarias · Papelerías' },
     { valor: 'HOSPITALITY', titulo: 'Alimentos y bebidas', icono: 'ph-coffee',
       ejemplos: 'Cafeterías · Panaderías · Heladerías · Comida rápida' },
+    { valor: 'SERVICIOS', titulo: 'Servicios', icono: 'ph-wrench',
+      ejemplos: 'Talleres · Barberías · Reparación · Mantenimiento' },
   ];
+
+  /**
+   * El giro, cuando el negocio es de servicios.
+   *
+   * Sale del MISMO archivo que lee el proceso principal y el gestor de demos
+   * (`electron/servicios/presets.json`). No hay una lista de giros para el
+   * asistente y otra para produccion: eso fue una decision explicita cuando se
+   * construyo el modulo y no se rompe aqui.
+   */
+  readonly presets: PresetServicios[] = PRESETS_SERVICIOS;
+  presetGiro = '';
 
   /**
    * Como se usara ESTA computadora. Vive en device-config.json, no en la
@@ -74,11 +102,117 @@ export class SetupInicial implements OnInit {
 
   constructor(private license: LicenseService, private caps: CapabilityService) {}
 
-  elegirTipoNegocio(v: BusinessProfile) {
-    this.businessProfile = v;
+  elegirTipoNegocio(v: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS') {
+    this.tipoNegocio = v;
+    /* Servicios guarda RETAIL: lo que cambia no es que vende, es que ademas
+       cobra trabajo, y eso es un modulo. */
+    this.businessProfile = v === 'HOSPITALITY' ? 'HOSPITALITY' : 'RETAIL';
+    if (v !== 'SERVICIOS') this.presetGiro = '';
     // Sugerencia, no imposicion: el usuario puede cambiarla en el paso
     // siguiente y despues en Configuracion.
     this.deviceProfile = v === 'HOSPITALITY' ? 'TOUCH_POS' : 'RETAIL_POS';
+  }
+
+  get esServicios(): boolean { return this.tipoNegocio === 'SERVICIOS'; }
+
+  elegirGiroNegocio(id: string) { this.presetGiro = id; }
+
+  // ---------- El logo del negocio ----------
+  /**
+   * LA IMAGEN SE ENCOGE AQUI, EN LA PANTALLA.
+   *
+   * El mismo archivo encabeza el ticket termico (384-576 px de ancho), los PDF
+   * y la pantalla del cliente. Guardar el original de 4000 px hace lento cada
+   * ticket; guardarlo a 384 se ve bien en papel y pixelado en todo lo demas.
+   * 1024 px por el lado mayor cubre los tres usos.
+   *
+   * Se hace con `canvas` porque el navegador ya sabe redimensionar: meter una
+   * libreria de imagen en el proceso principal seria pagar megabytes por esto.
+   * Y NO se amplia nunca: un logo de 200 px estirado a 1024 se ve peor, no
+   * mejor.
+   */
+  readonly LOGO_LADO_MAX = 1024;
+  /** Lo que se acepta del disco antes de tocarlo. */
+  readonly LOGO_ARCHIVO_MAX = 8 * 1024 * 1024;
+
+  logoPreview: string | null = null;
+  logoGuardando = false;
+
+  async alElegirLogo(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';               // permite volver a elegir el mismo archivo
+    if (!file) return;
+
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      await Swal.fire({ icon: 'warning', title: 'Formato no admitido',
+                        text: 'Usa una imagen PNG, JPG o WebP.' });
+      return;
+    }
+    if (file.size > this.LOGO_ARCHIVO_MAX) {
+      await Swal.fire({ icon: 'warning', title: 'Imagen muy pesada',
+                        text: 'El archivo no debe pasar de 8 MB.' });
+      return;
+    }
+
+    this.logoGuardando = true;
+    try {
+      const png = await this.aPngAcotado(file);
+      const r = await this.api?.ticketGuardarLogo?.({ base64: png });
+      if (!r?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo guardar',
+                          text: r?.error || 'Intenta con otra imagen.' });
+        return;
+      }
+      this.logoPreview = png;
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo leer la imagen',
+                        text: e?.message || 'Intenta con otra.' });
+    } finally {
+      this.logoGuardando = false;
+    }
+  }
+
+  async quitarLogo() {
+    this.logoGuardando = true;
+    try {
+      await this.api?.ticketBorrarLogo?.();
+      this.logoPreview = null;
+    } finally { this.logoGuardando = false; }
+  }
+
+  /** Lee el archivo, lo encoge si hace falta y lo devuelve como PNG. */
+  private aPngAcotado(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const lado = Math.max(img.naturalWidth, img.naturalHeight);
+          /* Nunca por encima de 1: no se amplia. */
+          const escala = Math.min(1, this.LOGO_LADO_MAX / (lado || 1));
+          const w = Math.max(1, Math.round(img.naturalWidth * escala));
+          const h = Math.max(1, Math.round(img.naturalHeight * escala));
+
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d');
+          if (!ctx) throw new Error('No se pudo preparar la imagen.');
+          /* Suavizado alto: encoger sin el deja bordes dentados, que es
+             justamente lo que se ve feo en un ticket impreso. */
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, w, h);
+
+          /* PNG y no JPG: un logo suele tener fondo transparente, y un JPG lo
+             rellena de blanco sobre el papel del ticket. */
+          resolve(c.toDataURL('image/png'));
+        } catch (e) { reject(e); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('La imagen no se pudo abrir.')); };
+      img.src = url;
+    });
   }
 
   get esRecomendado(): (v: DeviceProfile) => boolean {
@@ -107,16 +241,30 @@ export class SetupInicial implements OnInit {
    * la misma afirmacion falsa, dibujada.
    */
   get insignia(): { icono: string; texto: string; prueba: boolean } {
-    const s = this.license.estado;
-    if (s.state === 'trial') {
-      return { icono: 'ph ph-hourglass', prueba: true,
-               texto: `Prueba gratuita · ${this.license.textoDiasPrueba}` };
+    /*
+     * CUATRO CLASES, SIN MEZCLARLAS.
+     *
+     * Decia siempre "Licencia MonoCaja activada", tambien en una instalacion
+     * de prueba, porque leia un getter binario que no sabia que la prueba
+     * existe. Despues dijo "Prueba gratis de MonoCaja activada", que arreglaba
+     * la mitad: seguia metiendo el nombre de un plan comercial en algo que
+     * nadie ha comprado.
+     *
+     * La prueba tiene identidad PROPIA. Que por dentro conceda los mismos
+     * limites que MonoCaja es una decision de la logica, no algo que deba
+     * aparecer en la insignia.
+     *
+     * El icono cambia con el texto: un sello de verificacion sobre una prueba
+     * es la misma afirmacion falsa, dibujada.
+     */
+    const clase = this.license.clase;
+    const texto = this.license.insigniaTexto;
+    if (clase === 'demo')  return { icono: 'ph ph-flask', prueba: true, texto };
+    if (clase === 'trial') return { icono: 'ph ph-hourglass', prueba: true, texto };
+    if (clase === 'mono' || clase === 'multi') {
+      return { icono: 'ph-fill ph-seal-check', prueba: false, texto };
     }
-    if (s.state === 'active') {
-      return { icono: 'ph-fill ph-seal-check', prueba: false,
-               texto: `Licencia ${this.license.planTexto} activada` };
-    }
-    return { icono: 'ph ph-warning', prueba: true, texto: 'Sin licencia activa' };
+    return { icono: 'ph ph-warning', prueba: true, texto };
   }
 
   // Formatea la clave mientras escribe
@@ -134,6 +282,14 @@ export class SetupInicial implements OnInit {
   siguienteNegocio() {
     if (!this.businessName.trim()) {
       Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Escribe el nombre de tu negocio.' });
+      return;
+    }
+    /* Un negocio de servicios SIN giro no se puede configurar: el giro decide
+       el vocabulario, la pantalla de entrada y si hay agenda o activos. Dejarlo
+       vacio serviria un modulo generico que no se parece a lo que hace nadie. */
+    if (this.esServicios && !this.presetGiro) {
+      Swal.fire({ icon: 'warning', title: 'Falta el giro',
+                  text: 'Elige a qué se dedica principalmente tu negocio.' });
       return;
     }
     this.paso = 3;
@@ -179,6 +335,28 @@ export class SetupInicial implements OnInit {
         await Swal.fire({ icon: 'error', title: 'No se pudo configurar', text: res?.error || 'Error al crear el usuario.' });
         return;
       }
+
+      /*
+       * EL GIRO, DESPUES DEL ALTA.
+       *
+       * `servicios:elegir-giro` guarda el preset Y enciende el modulo en la
+       * misma transaccion. Va aqui y no en el paso 2 porque encender un modulo
+       * antes de que exista el negocio lo dejaria colgando de nada: si el alta
+       * fallara, quedaria un modulo activo en una base sin configurar.
+       */
+      if (this.esServicios && this.presetGiro) {
+        const g = await this.api?.serviciosElegirGiro?.(this.presetGiro);
+        if (!g?.success) {
+          await Swal.fire({
+            icon: 'warning', title: 'El negocio quedo creado',
+            text: 'No se pudo activar Servicios. Puedes encenderlo en Aplicaciones.',
+          });
+        }
+      }
+
+      /* El nombre definitivo ya existe: se manda a la nube. No se espera ni se
+         comprueba -es best effort- porque nada de lo que sigue depende de el. */
+      void this.api?.licenseSyncTrialName?.({ businessName: this.businessName.trim() });
 
       // El giro que se acaba de guardar decide si el negocio tiene recetas,
       // ingredientes y modificadores. Las capacidades en memoria se cargaron

@@ -10,6 +10,10 @@ import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
 import { CapabilityService, GiroServiciosService } from '../core';
 import { WxDockComponent } from '../app/wx-dock/wx-dock.component';
+import { WxPaletaComponent } from '../app/wx-paleta/wx-paleta.component';
+import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
+import { Router, RouterLink } from '@angular/router';
+import { PAQUETES } from '../services/auth.service';
 
 type AppNotification = {
   id: string;
@@ -27,7 +31,7 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, WxDockComponent],
+  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxDockComponent, WxPaletaComponent, WxAvatarComponent],
   styleUrls: ['./dashboard.css']
 })
 
@@ -42,6 +46,7 @@ export class Dashboard {
    * modo oscuro, las notificaciones del producto y el contexto del negocio.
    */
   themeOpen = false;
+  usuarioAbierto = false;
 
   /** Paleta de acentos. Vive en ThemeService para no duplicarla. */
   readonly presets: AccentPreset[] = ACCENT_PRESETS;
@@ -68,7 +73,7 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
               private giroServicios: GiroServiciosService) {}
 
   /**
@@ -92,6 +97,30 @@ export class Dashboard {
    * catálogo, que es quien sabe cuántos roles existen.
    */
   get rolTexto(): string { return this.auth.rolEtiqueta(); }
+
+  toggleUsuario() { this.usuarioAbierto = !this.usuarioAbierto; }
+
+  /** Administrar usuarios NO es una accion de la sesion, pero se ofrece aqui
+      a quien puede: es donde se busca. */
+  get puedeAdministrarUsuarios(): boolean {
+    return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR);
+  }
+
+  /**
+   * CERRAR SESION CIERRA LA SESION.
+   *
+   * El boton del rail solo navegaba a `/login`. La sesion seguia abierta en el
+   * proceso principal, que es quien autoriza: quien llegara despues a esa
+   * ventana heredaba los permisos del anterior sin identificarse, y cualquier
+   * canal sensible invocado a mano se ejecutaba con ellos.
+   *
+   * `auth.salir()` ya existia y hacia lo correcto; no la llamaba nadie.
+   */
+  async cerrarSesion() {
+    this.usuarioAbierto = false;
+    await this.auth.salir();
+    void this.router.navigate(['/login']);
+  }
 
   /** Su rol viene de una versión que este binario no conoce: no ofrece nada. */
   get sinRol(): boolean { return this.auth.sinRol(); }
@@ -350,6 +379,8 @@ export class Dashboard {
     if (themeWrapper && !themeWrapper.contains(event.target as Node)) {
       this.cerrarPaleta();
     }
+    const yo = document.getElementById('yo-wrapper');
+    if (yo && !yo.contains(event.target as Node)) this.usuarioAbierto = false;
   }
 
 }

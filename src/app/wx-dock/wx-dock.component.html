@@ -1,51 +1,122 @@
 <!--
   EL DOCK.
 
-  Seis areas, el boton de crear elevado en el centro, el buscador y quien esta
-  operando. Nada mas: lo que no cabe aqui no es que no exista, es que no se usa
-  cada dia.
+  Seis areas, el boton de crear elevado en el centro, «Mas», el buscador y
+  quien esta operando. A la izquierda del todo, el estado de Wybix: una figura
+  de 26 px que no es un boton y no hace nada al pulsarla.
 -->
 <nav class="wxdock" aria-label="Areas de Wybix">
 
+  <!--
+    WYBIX MINI — el UNICO Wybix permanente, y la entrada a la guia.
+
+    Aqui habia una figura que no hacia nada y otra a la derecha que era el
+    avatar de la persona. Dos caras pequenas en la misma barra, una a cada
+    extremo, y la de la izquierda sin funcion: parecia adorno porque lo era.
+    Ahora se pulsa y abre el resumen del negocio.
+
+    Sin placa, sin circulo y sin aro: la figura se apoya en la superficie del
+    dock. La capsula de alrededor es la zona sensible, no un marco.
+  -->
+  <span class="wxdock__anclaWybix">
+    <button type="button" class="wxdock__pulso" (click)="alternarGuia($event)"
+            [class.is-abierto]="guia.abierta()"
+            [attr.aria-expanded]="guia.abierta()" aria-haspopup="dialog"
+            [attr.aria-label]="estadoWybix() === 'atencion' ? 'Wybix: hay cosas pendientes' : 'Wybix: todo en orden'"
+            [attr.title]="estadoWybix() === 'atencion' ? 'Hay cosas pendientes' : 'Todo en orden'">
+      <wx-mascota [estado]="estadoWybix()" [variante]="guia.variante()" [size]="32"></wx-mascota>
+      <span *ngIf="estadoWybix() === 'atencion'" class="wxdock__pulsopunto" aria-hidden="true"></span>
+    </button>
+
+    <!--
+      EL PANEL CUELGA DEL PROPIO BOTON.
+
+      Antes vivia suelto en la carcasa y se colocaba con `margin-left: -452px`,
+      un numero sacado del ancho que tenia el dock ese dia. Cualquier cosa que
+      moviera ese ancho -una etiqueta mas larga en otro idioma, un area que
+      aparece o desaparece por capabilities, otra resolucion, otro zoom- lo
+      dejaba descolocado, y no habia nada que avisara.
+
+      Ahora es hijo del contenedor del boton, que es `position: relative`: se
+      ancla a el por CSS y no hay nada que medir ni que mantener al dia.
+    -->
+    <wx-guia></wx-guia>
+  </span>
+
+  <span class="wxdock__sep" aria-hidden="true"></span>
+
   <!-- ----------------------------------------------------------- areas -->
-  <span class="wxdock__item" *ngFor="let a of areas(); trackBy: porId">
-    <a class="wxdock__btn" [class.is-on]="esActiva(a)"
-       [routerLink]="a.ruta" (click)="cerrarTodo()">
+  <span class="wxdock__item" *ngFor="let a of areas(); trackBy: porId"
+        (mouseenter)="asomar(a)" (mouseleave)="retirar()">
+    <!--
+      BOTON O ENLACE, SEGUN LO QUE HAGA.
+
+      Un area CON panel es un `<button>`: abre algo. Un area sin subsecciones
+      es un `<a routerLink>`: lleva a un sitio.
+
+      No es purismo. Lo primero que se probo fue un `<a>` para las dos cosas,
+      con `preventDefault()` cuando habia panel. El `routerLink` registra su
+      escucha antes que la de la plantilla, asi que navegaba igual y la propia
+      navegacion cerraba el panel: pulsar Inventario te llevaba a Inventario y
+      no abria nada. Un elemento que a veces navega y a veces no tampoco se
+      anuncia bien a un lector de pantalla.
+    -->
+    <button *ngIf="tienePanel(a); else enlaceArea"
+            type="button" class="wxdock__btn"
+            [class.is-on]="esActiva(a)"
+            [class.is-abierto]="panel() === a.id"
+            (click)="pulsar(a, $event)"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="panel() === a.id">
       <i class="ph {{ a.icono }}" aria-hidden="true"></i>
       <span class="wxdock__txt">{{ a.nombre }}</span>
       <!-- El punto vive SOBRE el icono, no en una lista aparte: asi el dock
-           dice donde hay algo parado sin que nadie pase el cursor. -->
+           dice donde hay algo parado sin que nadie abra nada. -->
       <span *ngIf="a.aviso && a.aviso.tono !== 'ok'" class="wxdock__punto"
             [ngClass]="'es-' + a.aviso.tono" aria-hidden="true"></span>
-    </a>
+    </button>
+
+    <ng-template #enlaceArea>
+      <a class="wxdock__btn" [class.is-on]="esActiva(a)"
+         [routerLink]="a.ruta" (click)="cerrarTodo()">
+        <i class="ph {{ a.icono }}" aria-hidden="true"></i>
+        <span class="wxdock__txt">{{ a.nombre }}</span>
+        <span *ngIf="a.aviso && a.aviso.tono !== 'ok'" class="wxdock__punto"
+              [ngClass]="'es-' + a.aviso.tono" aria-hidden="true"></span>
+      </a>
+    </ng-template>
 
     <!--
-      LA VENTANA. Es lo que separa esto de una barra de modulos: se asoma lo
-      que hay dentro del area sin entrar. Aparece al pasar el cursor y tambien
-      al llegar con el teclado (`focus-within`), porque si dependiera solo del
-      raton la mitad del modelo no existiria para quien teclea.
+      EL PANEL DEL AREA.
+
+      Se asoma al pasar el cursor y se FIJA al pulsar o tocar. La franja
+      invisible de abajo (`::after` en la hoja) puentea el hueco hasta el
+      boton: sin ella, ir del boton a una opcion cerraba el panel a medio
+      camino.
     -->
-    <span class="wxdock__ventana" role="group" [attr.aria-label]="a.nombre">
-      <span class="wxdock__vcab">
-        <span class="wxdock__vnom">{{ a.nombre }}</span>
-        <span class="wxdock__vtecla">{{ a.tecla }}</span>
+    <span class="wxdock__panel" *ngIf="panel() === a.id"
+          [class.is-fijo]="fijado()"
+          (mouseenter)="sostener()" (mouseleave)="retirar()"
+          role="menu" [attr.aria-label]="a.nombre">
+
+      <span class="wxdock__pcab">
+        <span class="wxdock__pnom">{{ a.nombre }}</span>
+        <span class="wxdock__ptecla">{{ a.tecla }}</span>
       </span>
 
-      <span class="wxdock__vcifra" *ngIf="a.cifra">
-        <b>{{ a.cifra }}</b><span>{{ a.pie }}</span>
-      </span>
-
-      <span class="wxdock__vaviso" *ngIf="a.aviso" [ngClass]="'es-' + a.aviso.tono">
-        {{ a.aviso.texto }}
-      </span>
-
-      <span class="wxdock__vlista" *ngIf="a.destinos.length">
-        <ng-container *ngFor="let dst of a.destinos; trackBy: porRuta">
-          <a *ngIf="dst.visible" class="wxdock__vira" [routerLink]="dst.ruta"
-             routerLinkActive="is-on" (click)="cerrarTodo()">
-            <i class="ph {{ dst.icono }}" aria-hidden="true"></i>{{ dst.texto }}
-          </a>
-        </ng-container>
+      <span class="wxdock__plista">
+        <a *ngFor="let d of destinosDe(a); trackBy: porRuta"
+           class="wxdock__pira"
+           [class.es-principal]="d.principal"
+           [class.is-on]="esActivoDestino(d)"
+           role="menuitem"
+           [routerLink]="d.ruta" (click)="cerrarTodo()">
+          <i class="ph {{ d.icono }}" aria-hidden="true"></i>
+          <span class="wxdock__piratxt">
+            <b>{{ d.texto }}</b>
+            <span *ngIf="d.pie">{{ d.pie }}</span>
+          </span>
+        </a>
       </span>
     </span>
   </span>
@@ -53,25 +124,17 @@
   <!-- ----------------------------------------------------------- crear -->
   <span class="wxdock__hueco">
     <button type="button" class="wxdock__crear" (click)="alternarCrear()"
+            [class.is-abierto]="crearAbierto()"
             [attr.aria-expanded]="crearAbierto()" aria-haspopup="menu"
             aria-label="Crear" title="Crear">
       <i class="ph ph-plus" aria-hidden="true"></i>
     </button>
   </span>
 
-  <!--
-    MAS ES UN CAJON, NO UN DESTINO.
-
-    Empezo siendo un area mas, con enlace a su primera entrada y ventana al
-    pasar el cursor. Dos cosas estaban mal: pulsar "Mas" te llevaba a
-    Fidelizacion, que no es lo que dice el boton; y en una pantalla tactil no
-    hay cursor que pasar, asi que su contenido era sencillamente inalcanzable.
-
-    Ahora abre al pulsar, como Crear y como el menu de usuario.
-  -->
+  <!-- ------------------------------------------------------------- mas -->
   <span class="wxdock__item" *ngIf="mas().length">
-    <button type="button" class="wxdock__btn" (click)="alternarMas()"
-            [class.is-on]="masAbierto()"
+    <button type="button" class="wxdock__btn wxdock__btn--mas" (click)="alternarMas()"
+            [class.is-abierto]="masAbierto()"
             [attr.aria-expanded]="masAbierto()" aria-haspopup="menu" aria-label="Más">
       <i class="ph ph-dots-nine" aria-hidden="true"></i>
       <span class="wxdock__txt">Más</span>
@@ -81,72 +144,43 @@
   <span class="wxdock__sep" aria-hidden="true"></span>
 
   <!-- -------------------------------------------------------- buscador -->
-  <button type="button" class="wxdock__buscar" (click)="abrirBuscar()"
-          aria-label="Buscar" title="Buscar">
+  <button type="button" class="wxdock__buscar" (click)="abrirBuscador()"
+          aria-label="Buscar en Wybix" title="Buscar en Wybix">
     <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
     <span class="wxdock__kbd">Ctrl K</span>
   </button>
 
-  <!-- --------------------------------------------------------- usuario -->
-  <button type="button" class="wxdock__yo" (click)="alternarUsuario()"
-          [attr.aria-expanded]="usuarioAbierto()" aria-haspopup="menu"
-          [attr.aria-label]="usuario" [title]="usuario">
-    <wx-avatar [semilla]="'u:' + usuario" [nombre]="usuario" [size]="32"></wx-avatar>
-  </button>
 </nav>
 
 <!-- ============================================================ crear -->
 <div class="wxdock-pop wxdock-pop--crear" *ngIf="crearAbierto()" role="menu">
-  <button type="button" class="wxdock-pop__fila" *ngFor="let a of acciones(); trackBy: porRuta"
+  <button type="button" class="wxdock-pop__fila" *ngFor="let a of crearFrecuentes(); trackBy: porRuta"
           role="menuitem" (click)="ir(a.ruta)">
     <i class="ph {{ a.icono }}" aria-hidden="true"></i>
     <span>{{ a.texto }}</span>
   </button>
+
+  <!-- Lo que no es de todos los dias, detras de una puerta. -->
+  <ng-container *ngIf="crearResto().length">
+    <button type="button" class="wxdock-pop__mas" *ngIf="!crearTodo()"
+            (click)="verMasAcciones()">Más acciones</button>
+    <ng-container *ngIf="crearTodo()">
+      <span class="wxdock-pop__linea" aria-hidden="true"></span>
+      <button type="button" class="wxdock-pop__fila" *ngFor="let a of crearResto(); trackBy: porRuta"
+              role="menuitem" (click)="ir(a.ruta)">
+        <i class="ph {{ a.icono }}" aria-hidden="true"></i>
+        <span>{{ a.texto }}</span>
+      </button>
+    </ng-container>
+  </ng-container>
 </div>
 
 <!-- ============================================================== mas -->
 <div class="wxdock-pop wxdock-pop--mas" *ngIf="masAbierto()" role="menu">
-  <a class="wxdock-pop__fila" *ngFor="let dst of mas(); trackBy: porRuta"
-     role="menuitem" [routerLink]="dst.ruta" routerLinkActive="is-on"
+  <a class="wxdock-pop__fila" *ngFor="let d of mas(); trackBy: porRuta"
+     role="menuitem" [routerLink]="d.ruta" routerLinkActive="is-on"
      (click)="cerrarTodo()">
-    <i class="ph {{ dst.icono }}" aria-hidden="true"></i>
-    <span>{{ dst.texto }}</span>
+    <i class="ph {{ d.icono }}" aria-hidden="true"></i>
+    <span>{{ d.texto }}</span>
   </a>
-</div>
-
-<!-- ========================================================== usuario -->
-<div class="wxdock-pop wxdock-pop--yo" *ngIf="usuarioAbierto()" role="menu">
-  <p class="wxdock-pop__quien">{{ usuario }}<span>{{ auth.rolEtiqueta() }}</span></p>
-  <button type="button" class="wxdock-pop__fila" role="menuitem" (click)="crearUsuario()">
-    <i class="ph ph-user-plus" aria-hidden="true"></i><span>Crear usuario</span>
-  </button>
-  <button type="button" class="wxdock-pop__fila" role="menuitem" (click)="cerrarSesion()">
-    <i class="ph ph-sign-out" aria-hidden="true"></i><span>Cerrar sesión</span>
-  </button>
-</div>
-
-<!-- ========================================================= buscador -->
-<div class="wxdock-buscar" *ngIf="buscarAbierto()" role="dialog" aria-modal="true"
-     aria-label="Buscar en Wybix">
-  <div class="wxdock-buscar__caja">
-    <form class="wxdock-buscar__cab" (submit)="alEnviar($event)">
-      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-      <input id="wxdock-q" type="text" autocomplete="off"
-             placeholder="Ir a cualquier parte de Wybix..." aria-label="Buscar"
-             [value]="consulta()" (input)="alEscribir($event)" />
-      <button type="button" class="wxdock-buscar__esc" (click)="cerrarTodo()">Esc</button>
-    </form>
-    <div class="wxdock-buscar__lista">
-      <button type="button" class="wxdock-pop__fila" *ngFor="let r of resultados(); let i = index; trackBy: porRuta"
-              [class.es-primero]="i === 0" (click)="ir(r.ruta)">
-        <i class="ph {{ r.icono }}" aria-hidden="true"></i>
-        <span>{{ r.texto }}</span>
-        <span class="wxdock-buscar__enter" *ngIf="i === 0">Enter</span>
-      </button>
-      <p class="wxdock-buscar__vacio" *ngIf="!resultados().length">
-        Nada con ese nombre. Ctrl+K busca donde ir; los productos y los clientes
-        se buscan dentro de su pantalla.
-      </p>
-    </div>
-  </div>
 </div>
