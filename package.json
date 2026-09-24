@@ -56,6 +56,7 @@
     "test:quickstart": "node scripts/pruebas/quickstart.mjs",
     "test:ui-contract": "node scripts/pruebas/ui-contract.mjs",
     "test:dock": "node scripts/pruebas/dock-y-mascota.mjs",
+    "test:navegacion": "node scripts/pruebas/navegacion.mjs",
     "test:onboarding": "node scripts/pruebas/onboarding.mjs",
     "test:matriz": "node scripts/pruebas/arranque-matriz.mjs",
     "test:arranque": "node scripts/pruebas/arranque-secundaria.mjs",

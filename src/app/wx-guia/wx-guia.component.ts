@@ -41,9 +41,10 @@ export class WxGuiaComponent {
   @HostListener('document:click', ['$event'])
   alPulsarFuera(e: Event) {
     if (!this.guia.abierta()) return;
-    /* El propio botón del dock no cuenta como "fuera": si lo contara, pulsarlo
-       cerraría y volvería a abrir en el mismo gesto. */
-    const dentro = (e.target as HTMLElement)?.closest?.('.wxg, .wxdock__pulso');
+    /* El propio botón de Wybix -en el dock o en la barra lateral- no cuenta
+       como "fuera": si contara, pulsarlo cerraría y volvería a abrir en el
+       mismo gesto. */
+    const dentro = (e.target as HTMLElement)?.closest?.('.wxg, .wxdock__pulso, .wxside__pulso');
     if (!dentro) this.guia.cerrar();
   }
 }

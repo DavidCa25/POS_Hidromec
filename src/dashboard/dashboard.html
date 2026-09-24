@@ -1,7 +1,8 @@
 <!--
   EL PANEL, SIN RAIL LATERAL.
 
-  La navegacion se fue abajo, al dock (`wx-dock`). Lo que queda arriba es lo
+  La navegacion la pinta `wx-navegacion`: el dock abajo o la barra lateral a
+  la izquierda, segun la eleccion de quien entro. Lo que queda arriba es lo
   que NO es navegacion y que hace a Wybix lo que es:
 
     - el color de las tablas, que lo elige el negocio;
@@ -12,7 +13,13 @@
   Confundir esas cuatro con el menu fue lo que hizo que la cabecera y el rail
   se pelearan por el mismo sitio durante tanto tiempo.
 -->
-<div class="dashboard-wrapper">
+<div class="dashboard-wrapper" [class.es-sidebar]="nav.modo() === 'sidebar'">
+
+  <!-- LA NAVEGACION: el dock o la barra lateral, segun quien entro. Va
+       primero para que la barra ocupe su columna a la izquierda; el dock es
+       fijo y no ocupa sitio en el flujo. -->
+  <wx-navegacion></wx-navegacion>
+
   <div class="dashboard-content">
 
     <header class="dashboard-header d-flex align-items-center px-3 py-2">
@@ -210,9 +217,6 @@
       <router-outlet></router-outlet>
     </main>
   </div>
-
-  <!-- LA BARRA DE TRABAJO. Fija abajo, sobre cualquier pantalla del panel. -->
-  <wx-dock></wx-dock>
 
   <!-- Ctrl+K. Vive aqui y no dentro del dock porque escucha el documento
        entero y porque es un dialogo: no debe heredar la capa del dock. -->

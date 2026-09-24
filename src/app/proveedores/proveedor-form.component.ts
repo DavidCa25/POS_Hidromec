@@ -1,5 +1,4 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 
@@ -21,7 +20,7 @@ export interface ProveedorDatos {
 @Component({
   selector: 'app-proveedor-form',
   standalone: true,
-  imports: [NgIf, FormsModule],
+  imports: [FormsModule],
   template: `
     <div class="cierre-modal" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;"
          (keydown.escape)="cerrar()">

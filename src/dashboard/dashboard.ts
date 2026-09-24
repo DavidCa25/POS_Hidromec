@@ -9,7 +9,8 @@ import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.se
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
 import { CapabilityService, GiroServiciosService } from '../core';
-import { WxDockComponent } from '../app/wx-dock/wx-dock.component';
+import { WxNavegacionComponent } from '../app/wx-nav/wx-navegacion.component';
+import { NavegacionService } from '../app/wx-nav/navegacion.service';
 import { WxPaletaComponent } from '../app/wx-paleta/wx-paleta.component';
 import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
 import { Router, RouterLink } from '@angular/router';
@@ -31,7 +32,7 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxDockComponent, WxPaletaComponent, WxAvatarComponent],
+  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxNavegacionComponent, WxPaletaComponent, WxAvatarComponent],
   styleUrls: ['./dashboard.css']
 })
 
@@ -39,8 +40,9 @@ export class Dashboard {
   /*
    * Lo que quedaba aqui de NAVEGACION se fue con el rail: `menuOpen`,
    * `isMobile`, los cuatro desplegables y el menu de usuario vivian para
-   * abrir y cerrar partes de una columna que ya no existe. Ahora esa
-   * responsabilidad es de `wx-dock`, que la tiene entera y en un solo sitio.
+   * abrir y cerrar partes de una columna. Ahora esa responsabilidad es de
+   * `wx-navegacion`, que pinta el dock o la barra lateral desde un solo
+   * registro (`NavegacionService`).
    *
    * Lo que se queda es lo que NUNCA fue navegacion: el color de tablas, el
    * modo oscuro, las notificaciones del producto y el contexto del negocio.
@@ -74,7 +76,7 @@ export class Dashboard {
   private modSub?: Subscription;
 
   constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
-              private giroServicios: GiroServiciosService) {}
+              private giroServicios: GiroServiciosService, public nav: NavegacionService) {}
 
   /**
    * Contexto del negocio para el pie del rail. Se lee de la misma

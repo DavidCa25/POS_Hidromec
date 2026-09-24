@@ -30,6 +30,10 @@ import { join } from 'node:path';
 const DOCK_TS   = join('src', 'app', 'wx-dock', 'wx-dock.component.ts');
 const DOCK_HTML = join('src', 'app', 'wx-dock', 'wx-dock.component.html');
 const DOCK_CSS  = join('src', 'app', 'wx-dock', 'wx-dock.component.css');
+/* El registro de navegacion salio del dock: lo leen el dock, la barra
+   lateral y Ctrl+K. Las reglas sobre QUE se ofrece se comprueban ahi. */
+const REGISTRO_TS = join('src', 'app', 'wx-nav', 'navegacion.service.ts');
+const CARCASA_TS  = join('src', 'app', 'wx-nav', 'wx-navegacion.component.ts');
 const MASC_TS   = join('src', 'app', 'wx-mascota', 'wx-mascota.component.ts');
 const GLOBAL_CSS= join('src', 'styles.css');
 const PANEL_HTML= join('src', 'dashboard', 'dashboard.html');
@@ -64,6 +68,8 @@ const seccion = (t) => console.log(`\n-- ${t}`);
 const dock = sinComentarios(leer(DOCK_TS));
 const dockHtml = sinComentarios(leer(DOCK_HTML));
 const dockCss = leer(DOCK_CSS);
+const registro = sinComentarios(leer(REGISTRO_TS));
+const carcasa = sinComentarios(leer(CARCASA_TS));
 const masc = sinComentarios(leer(MASC_TS));
 const global = leer(GLOBAL_CSS);
 const panelHtml = sinComentarios(leer(PANEL_HTML));
@@ -83,8 +89,8 @@ seccion('1. El rail se fue entero, y no se llevo nada por delante');
 
 check(!/nav class="sidebar"|class="sidebar-link"/.test(panelHtml),
   'el panel ya no dibuja el rail lateral');
-check(/<wx-dock/.test(panelHtml),
-  'y en su lugar monta la barra de trabajo');
+check(/<wx-navegacion/.test(panelHtml) && /<wx-dock/.test(carcasa),
+  'y en su lugar monta la navegacion, que pinta la barra de trabajo');
 
 /*
  * LAS VEINTIUNA ENTRADAS DEL RAIL, el dia que se mudo.
@@ -103,7 +109,7 @@ const DESTINOS_DEL_RAIL = [
   '/dashboard/importador', '/dashboard/migracion',
 ];
 
-const perdidos = DESTINOS_DEL_RAIL.filter(r => !dock.includes(`'${r}'`));
+const perdidos = DESTINOS_DEL_RAIL.filter(r => !registro.includes(`'${r}'`));
 check(perdidos.length === 0,
   `las ${DESTINOS_DEL_RAIL.length} entradas del rail siguen alcanzables`,
   perdidos.length ? `se perdieron: ${perdidos.join(', ')}` : 'ninguna se quedo por el camino');
@@ -116,20 +122,20 @@ seccion('2. Ofrece exactamente lo que la autorizacion permite');
 
 for (const g of ['verNumeros', 'supervisarVentas', 'operarVentas',
                  'operarInventario', 'administrarNegocio', 'operarServicios']) {
-  check(dock.includes(`get ${g}(`) && dock.includes(`this.${g}`),
+  check(registro.includes(`get ${g}(`) && registro.includes(`this.${g}`),
     `pregunta por ${g}, y lo usa`);
 }
-check(/PAQUETES\./.test(dock) && !/rol === '/.test(dock),
+check(/PAQUETES\./.test(registro) && !/rol === '/.test(registro) && !/rol === '/.test(dock),
   'y lo hace por paquete, nunca por el nombre del rol',
   'un Encargado con reglas de "cajero" pierde inventario, compras y el corte');
 
 /* Cada entrada declara su condicion. Una sin `visible` seria una puerta
    abierta para todo el mundo, incluida la gente que no puede cruzarla. */
-const entradas = dock.match(/\{ texto: '[^']+', ruta: '[^']+', icono: '[^']+', visible: [^}]+\}/g) || [];
+const entradas = registro.match(/\{ texto: '[^']+', ruta: '[^']+', icono: '[^']+',(?: grupo: '[^']+',)? visible: [^}]+\}/g) || [];
 check(entradas.length >= 15, 'todas las entradas declaran su condicion',
   `${entradas.length} entradas con \`visible\``);
 
-check(/servicios[\s\S]{0,400}this\.operarServicios && this\.caps\.servicios/.test(dock),
+check(/servicios[\s\S]{0,400}this\.operarServicios && this\.caps\.servicios/.test(registro),
   'Servicios exige el modulo encendido Y el permiso');
 
 // ===================================================================
@@ -141,14 +147,14 @@ check(/trackBy: porId/.test(dockHtml) && /trackBy: porRuta/.test(dockHtml),
 check(/porId = \(/.test(dock) && /porRuta = \(/.test(dock),
   'y las funciones existen de verdad');
 
-check(/readonly areas = computed/.test(dock) && /readonly mas = computed/.test(dock),
+check(/readonly areas = computed/.test(registro) && /readonly mas = computed/.test(registro),
   'las listas son computed, no getters que reservan memoria en cada lectura',
   'un getter devuelve objetos nuevos cada vez y ngFor no puede reconocerlos');
 
-check(/private readonly ruta = signal/.test(dock) && /NavigationEnd/.test(dock),
+check(/readonly ruta = signal/.test(registro) && /NavigationEnd/.test(registro),
   'el area encendida sigue a la navegacion',
   'leer router.url desde la plantilla con OnPush dejaba encendida la anterior');
-check(/esActiva\(a: Area\): boolean \{ return this\.ruta\(\)/.test(dock),
+check(/esActiva\(a: Area\): boolean \{ return this\.ruta\(\)/.test(registro),
   'y lo hace leyendo ese signal');
 
 // ===================================================================
@@ -197,7 +203,7 @@ check(/\*ngIf="tienePanel\(a\); else enlaceArea"/.test(dockHtml)
   'y entonces es un enlace de verdad, no un boton que navega a escondidas',
   'un elemento que a veces navega y a veces no no se anuncia bien');
 
-check(/Escape/.test(dock) && /this\.cerrarTodo\(\)/.test(dock),
+check(/'Escape'|keydown\.escape/.test(dock) && /this\.cerrarTodo\(\)/.test(dock),
   'Escape cierra');
 check(/alPulsarFuera/.test(dock),
   'y un clic fuera tambien');
@@ -216,8 +222,8 @@ check(/\.wxdock__panel::after/.test(dockCss) && /top: 100%/.test(dockCss),
 check(/const GRACIA = \d+/.test(dock) && /setTimeout\(\(\) => this\.panel\.set\(null\), GRACIA\)/.test(dock),
   'y el cierre tiene una pausa de gracia para el trayecto en diagonal');
 
-check(/Ctrl 1/.test(dock) && /\/\^\[1-6\]\$\//.test(dock),
-  'Ctrl+1 a Ctrl+6 van DIRECTO al destino principal, sin abrir panel',
+check(/Ctrl 1/.test(registro) && /\/\^\[1-6\]\$\//.test(carcasa),
+  'Ctrl+1 a Ctrl+6 van DIRECTO al destino principal, sin abrir panel, con cualquier navegacion',
   'el panel esta para descubrir; la tecla, para repetir');
 
 /* El activo tiene que verse desde el borde de una pantalla grande. */

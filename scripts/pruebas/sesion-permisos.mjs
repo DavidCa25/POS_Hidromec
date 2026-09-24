@@ -419,12 +419,12 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
   check(/auth:sesion|api\?\.sesion/.test(auth),
     'los pide al proceso principal');
 
-  /* EL MENU SE MUDO AL DOCK.
-     El rail lateral ya no existe: la navegacion vive en `wx-dock`, y ahi se
-     DECLARA como datos en vez de como marcado. Lo que esta prueba protege no
-     cambia ni un apice -que lo que se ofrece salga del paquete que exige la
-     operacion, y no del nombre del rol-, solo cambia el archivo donde mirar. */
-  const menu = readFileSync(join(raiz, 'src/app/wx-dock/wx-dock.component.ts'), 'utf8');
+  /* EL MENU ES UN REGISTRO.
+     La navegacion se DECLARA como datos en `NavegacionService`, que pintan el
+     dock y la barra lateral. Lo que esta prueba protege no cambia ni un apice
+     -que lo que se ofrece salga del paquete que exige la operacion, y no del
+     nombre del rol-, solo cambia el archivo donde mirar. */
+  const menu = readFileSync(join(raiz, 'src/app/wx-nav/navegacion.service.ts'), 'utf8');
   check(!/auth\.esAdmin/.test(menu),
     'el menu ya no se dibuja preguntando si es administrador',
     'eso dejaba al Encargado sin inventario, sin compras y sin el corte del dia');

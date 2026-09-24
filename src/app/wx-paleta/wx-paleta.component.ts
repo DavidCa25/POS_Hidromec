@@ -7,6 +7,7 @@ import { AuthService, PAQUETES } from '../../services/auth.service';
 import { CapabilityService, GiroServiciosService } from '../../core';
 import { WxAvatarComponent } from '../wx-avatar/wx-avatar.component';
 import { PaletaService } from './paleta.service';
+import { NavegacionService } from '../wx-nav/navegacion.service';
 
 /**
  * WX-PALETA — Ctrl+K.
@@ -94,6 +95,7 @@ export class WxPaletaComponent implements OnInit {
     private auth: AuthService,
     private caps: CapabilityService,
     private giro: GiroServiciosService,
+    private nav: NavegacionService,
   ) {
     /* Al abrirse: limpia, enfoca y -la primera vez- trae los indices. */
     effect(() => {
@@ -138,33 +140,14 @@ export class WxPaletaComponent implements OnInit {
     ].filter((x): x is Resultado => !!x);
   }
 
-  /** Las pantallas. Mismo criterio de permisos que el dock. */
+  /**
+   * Las pantallas. NO tienen lista propia: son los destinos del registro de
+   * navegacion, los mismos que ofrecen el dock y la barra lateral con los
+   * mismos permisos. Aqui habia una copia que se habia separado -ofrecia
+   * «Pago de servicios» aunque el modulo estuviera apagado-.
+   */
   private destinos(): Resultado[] {
-    const d = (texto: string, ruta: string, icono: string, visible: boolean): Resultado | null =>
-      visible ? { grupo: 'Ir a', texto, ruta, icono } : null;
-    return [
-      d('Inicio', '/dashboard/inicio', 'ph-house', true),
-      d('Ventas realizadas', '/dashboard/tablaVenta', 'ph-receipt', this.supervisarVentas),
-      d('Inventario', '/dashboard/inventario', 'ph-package', this.operarInventario),
-      d('Compras registradas', '/dashboard/tablaCompra', 'ph-table', this.operarInventario),
-      d('Proveedores', '/dashboard/proveedores', 'ph-truck', this.operarInventario),
-      d('Clientes', '/dashboard/clientes', 'ph-users', this.operarVentas),
-      d('Alertas', '/dashboard/alertas', 'ph-bell', this.verNumeros),
-      d('Estadísticas', '/dashboard/estadisticas', 'ph-chart-line', this.verNumeros),
-      d('Recetas y modificadores', '/dashboard/recetas', 'ph-cooking-pot', this.operarInventario && this.caps.hospitality),
-      d('Órdenes de servicio', '/dashboard/ordenes-de-servicio/ordenes', 'ph-clipboard-text', this.haceServicios),
-      d('Agenda', '/dashboard/ordenes-de-servicio/agenda', 'ph-calendar-dots', this.haceServicios && this.giro.usaAgenda),
-      d('Catálogo de servicios', '/dashboard/ordenes-de-servicio/catalogo', 'ph-list-checks', this.haceServicios),
-      d('Profesionales', '/dashboard/ordenes-de-servicio/profesionales', 'ph-users-three', this.haceServicios),
-      d('Comisiones', '/dashboard/ordenes-de-servicio/comisiones', 'ph-percent', this.haceServicios && this.verNumeros),
-      d('Fidelización', '/dashboard/fidelizacion', 'ph-gift', this.administrarNegocio && this.caps.loyalty),
-      d('Facturación', '/dashboard/facturacion', 'ph-seal-check', this.operarVentas),
-      d('Pago de servicios', '/dashboard/servicios', 'ph-device-mobile', true),
-      d('Aplicaciones', '/dashboard/aplicaciones', 'ph-squares-four', this.administrarNegocio),
-      d('Configuración', '/dashboard/configuracion', 'ph-gear', this.administrarNegocio),
-      d('Importar productos', '/dashboard/importador', 'ph-file-arrow-up', this.administrarNegocio),
-      d('Migración', '/dashboard/migracion', 'ph-database', this.administrarNegocio),
-    ].filter((x): x is Resultado => !!x);
+    return this.nav.destinos().map(d => ({ grupo: 'Ir a' as Grupo, texto: d.texto, ruta: d.ruta, icono: d.icono }));
   }
 
   // ------------------------------------------------------------ resultados

@@ -131,17 +131,24 @@ test.describe('QuickStart · la revisión de una hoja de insumos', () => {
 
     /* Dos hojas con datos: la pantalla pregunta cual. Se elige como una
        persona, pulsando «Insumos». */
-    await ventana.waitForSelector('.qs__hojacard, .qs__th.es-dinamica', { timeout: 60000 });
+    /* SE ESPERA A LA ELECCION DE HOJA, Y SOLO A ELLA.
+       Este libro trae dos hojas con datos, asi que la pantalla SIEMPRE
+       pregunta. Esperar «la tarjeta o la tabla de revision» fallaba cuatro de
+       cada cinco veces: al entrar, QuickStart reabre la ultima carga sin
+       terminar -otras pruebas dejan las suyas en la base compartida-, la
+       espera encontraba ESA tabla, no se pulsaba ninguna tarjeta y se leian
+       las columnas de otra carga.
 
-    /* Con un `locator` y no con un `click()` despachado desde `evaluate`.
-       El despachado no espera a que el boton sea pulsable: llegaba antes de
-       que Angular hubiera atado el manejador y se perdia en silencio, y la
-       pantalla se quedaba en la eleccion de hoja. Uno de cada cuatro
-       intentos, que es la peor frecuencia posible. */
+       El click va con `locator`, no despachado desde `evaluate`: el
+       despachado no espera a que el boton sea pulsable. */
     const tarjeta = ventana.locator('.qs__hojacard').filter({ hasText: /Insumos/ }).first();
-    if (await tarjeta.count()) await tarjeta.click({ timeout: 30000 });
-    /* La tabla de la REVISION y no «alguna tabla»: la captura tiene la
-       suya, con otros encabezados. */
+    await tarjeta.waitFor({ timeout: 60000 });
+    await tarjeta.click({ timeout: 30000 });
+
+    /* Y la revision que se mira es la de ESTA carga: la del archivo que se
+       acaba de soltar, que aparece en las cargas con su nombre. */
+    await expect(ventana.locator('.qs__riel'),
+      'la carga de este archivo existe').toContainText(`QA_QuickStart_Hospitality_${s}`, { timeout: 60000 });
     await ventana.waitForSelector('.qs__th.es-dinamica', { timeout: 60000 });
 
     // =============================================== LO QUE SE VE EN PANTALLA

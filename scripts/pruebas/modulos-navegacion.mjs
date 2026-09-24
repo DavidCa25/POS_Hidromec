@@ -21,8 +21,9 @@ import { join } from 'node:path';
 /*
  * LA NAVEGACION YA NO ESTA EN EL RAIL.
  *
- * El rail lateral se fue: la navegacion vive en `wx-dock`, y se DECLARA como
- * datos en su componente, no como marcado. Esta prueba se mudo con ella.
+ * La navegacion se DECLARA como datos en un solo registro
+ * (`NavegacionService`), que pintan el dock y la barra lateral. Esta prueba
+ * lee ese registro: lo que valga ahi vale para las dos formas.
  *
  * Lo que comprueba NO ha cambiado, porque lo que protege no era el rail sino
  * una leccion que costo tres mudanzas: Aplicaciones y Fidelizacion tienen que
@@ -31,7 +32,7 @@ import { join } from 'node:path';
  * de otro dominio, que es la forma que tiene el dock de repetir el error de
  * dejar una campana dentro de Inventario.
  */
-const DOCK = join('src', 'app', 'wx-dock', 'wx-dock.component.ts');
+const DOCK = join('src', 'app', 'wx-nav', 'navegacion.service.ts');
 const RUTAS = join('src', 'app', 'app.routes.ts');
 const COMP = join('src', 'app', 'aplicaciones', 'aplicaciones.component.ts');
 const MODULOS = join('src', 'core', 'modulos.ts');

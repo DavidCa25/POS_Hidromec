@@ -18,11 +18,11 @@
 
 :host { display: block; }
 
-/* Sin rail lateral, el panel deja de ser dos columnas y pasa a ser una. Los
-   250 px que ocupaba la columna se los queda el contenido, que es donde
-   siempre falta ancho. */
+/* Una fila: la barra lateral -cuando es la eleccion- ocupa su columna y el
+   contenido el resto. Con dock la fila tiene un solo miembro: el dock es
+   fijo y no ocupa sitio en el flujo. */
 .dashboard-wrapper {
-  display: block;
+  display: flex;
   min-height: 100vh;
   background: var(--wx-canvas);
 }
@@ -142,6 +142,10 @@
   background: var(--wx-canvas) !important;
   min-height: 0 !important;
 }
+
+/* Con barra lateral no hay dock abajo: el hueco que se le reserva sobra. */
+.dashboard-wrapper.es-sidebar .main-content { padding-bottom: 28px !important; }
+
 
 /* ==========================================================================
    CONTEXTO DEL NEGOCIO

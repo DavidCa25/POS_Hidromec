@@ -261,10 +261,10 @@ check(/await caps\.load\(\)/.test(guard),
   'y lo comprueba en cada navegacion',
   'apagar el modulo desde otra caja surte efecto sin cerrar sesion');
 
-/* La entrada del menu vive ahora en el dock, declarada como dato. La regla es
-   la misma que cuando vivia en el rail: UNA sola entrada para las seis
-   pantallas del modulo, porque la carcasa ya trae sus propias pestanas. */
-const menu = leer('src', 'app', 'wx-dock', 'wx-dock.component.ts');
+/* La entrada del menu vive en el registro de navegacion, declarada como dato,
+   y de ahi la pintan el dock y la barra lateral. La regla es la misma que
+   cuando vivia en el rail: UNA sola area para las seis pantallas. */
+const menu = leer('src', 'app', 'wx-nav', 'navegacion.service.ts');
 check(/this\.operarServicios && this\.caps\.servicios/.test(menu),
   'la entrada del menu tambien');
 /*
@@ -290,7 +290,7 @@ check(areasDeclaradas <= 6, 'el dock no pasa de seis areas', `${areasDeclaradas}
 check((menu.match(/id: 'servicios', nombre: 'Servicios'/g) || []).length === 1,
   'y Servicios es UNA de ellas, no seis');
 
-const bloqueMasDock = menu.slice(menu.indexOf('readonly mas ='), menu.indexOf('crearFrecuentes'));
+const bloqueMasDock = menu.slice(menu.indexOf('readonly mas ='), menu.indexOf('readonly crear ='));
 const internas = ['ordenes', 'agenda', 'activos', 'catalogo', 'profesionales', 'comisiones'];
 const fugadas = internas.filter(x => bloqueMasDock.includes(`/dashboard/ordenes-de-servicio/${x}`));
 check(fugadas.length === 0,
