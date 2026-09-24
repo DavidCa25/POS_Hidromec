@@ -47,6 +47,11 @@
                 <div *ngIf="proveedores.length === 0" class="list-group-item text-muted small">
                   No hay proveedores registrados.
                 </div>
+                <!-- El alta se hace AQUI: salir a Proveedores dejaba la compra a medias. -->
+                <button type="button" class="list-group-item list-group-item-action text-start fw-semibold compra-prov-nuevo"
+                        (click)="abrirAltaProveedor()">
+                  <i class="ph ph-plus"></i> Agregar proveedor
+                </button>
               </div>
             </div>
           </div>
@@ -309,3 +314,7 @@
     </div>
   </div>
 </div>
+
+<app-proveedor-form *ngIf="altaProveedorAbierta"
+                    (guardado)="alAgregarProveedor($event)"
+                    (cerrado)="altaProveedorAbierta = false"></app-proveedor-form>

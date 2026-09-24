@@ -1,19 +1,21 @@
 import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angular/common';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, PAQUETES } from '../../services/auth.service';
 import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-nueva.component';
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
   ShiftService, SoldLine,
 } from '../../core';
 import { PremiosVenta } from '../../loyalty/premios-venta';
+import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
@@ -56,7 +58,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -67,6 +69,10 @@ export class Venta implements OnInit, OnDestroy {
   // Solo para leer los grupos de opciones de un producto. Retail no pinta el
   // menu Touch; lo necesita para saber que variante lleva una linea.
   private readonly menu = inject(MenuCatalogService);
+  /* Servicios: esta pantalla cobra sus ordenes. No las conoce por dentro; solo
+     sabe pedir sus partidas y, al final, decir con que venta se cobraron. */
+  private readonly servicios = inject(ServiciosService);
+  private readonly ruta = inject(ActivatedRoute);
 
   today = new Date();
 
@@ -221,6 +227,135 @@ export class Venta implements OnInit, OnDestroy {
     // asi que sin este refresco un turno ya cerrado dejaba entrar a vender.
     await this.shift.refresh();
     await this.ensureShiftOpen('VENTA');
+
+    /* Se viene de una orden de servicio a cobrarla. Va al final, DESPUES del
+       turno: si no hay turno abierto no hay nada que cobrar, y cargar las
+       partidas antes solo dejaria un carrito a medias. */
+    const orden = Number(this.ruta.snapshot.queryParamMap.get('ordenServicio') || 0);
+    if (orden > 0) await this.cargarOrdenDeServicio(orden);
+  }
+
+  // =========================================================================
+  //  COBRAR UNA ORDEN DE SERVICIO
+  // =========================================================================
+
+  /**
+   * El folio de la orden que se está cobrando en ESTA cuenta.
+   *
+   * Vive en el carrito y no en una variable de la pantalla porque el mostrador
+   * tiene varias cuentas abiertas a la vez: si estuviera aquí, cambiar de
+   * pestaña y volver enlazaría la orden con la venta equivocada.
+   */
+  get ordenServicio(): { id: number; folio: string } | null {
+    const m = this.cart.activeCart().meta as any;
+    return m?.ordenServicio ?? null;
+  }
+
+  /**
+   * Trae las partidas de la orden a una cuenta NUEVA.
+   *
+   * Nueva, y no la que estuviera activa: el mostrador puede tener medio ticket
+   * armado, y perdérselo por cobrar una orden sería un daño que nadie pidió.
+   *
+   * Los precios son los CONGELADOS de la orden, no los del catálogo de hoy.
+   * Es lo que el cliente autorizó, y es justo lo que distingue cobrar una
+   * orden de volver a teclearla.
+   */
+  private async cargarOrdenDeServicio(ordenId: number) {
+    const previa = await this.servicios.cobroPrevia(ordenId);
+    if (!previa.ok) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo cargar la orden', text: previa.error });
+      return;
+    }
+
+    const resumen = previa.datos.resumen;
+    if (!resumen || !resumen.can_charge) {
+      await Swal.fire({
+        icon: 'info', title: 'Esta orden no se puede cobrar',
+        text: resumen?.blocked_reason || 'No hay nada que cobrar.',
+      });
+      void this.router.navigate(['/dashboard/ordenes-de-servicio/orden', ordenId]);
+      return;
+    }
+
+    const cuenta = this.cart.createCart();
+    if (!cuenta) {
+      await Swal.fire({
+        icon: 'info', title: 'No hay cuentas libres',
+        text: 'Cierra o cobra alguna de las cuentas abiertas y vuelve a intentarlo.',
+      });
+      return;
+    }
+
+    for (const p of previa.datos.partidas) {
+      this.cart.addProduct({
+        productId: Number(p.product_id),
+        productName: String(p.name_snapshot),
+        unitPrice: Number(p.unit_price),
+        inventoryMode: p.line_kind === 'SERVICIO' ? 'NONE' : undefined,
+      }, Number(p.quantity));
+    }
+
+    /* El cliente de la orden queda puesto: es suya, y volver a elegirlo es
+       pedirle al mostrador que repita algo que el sistema ya sabe. */
+    const cli = await this.buscarClienteDeLaOrden(Number(resumen.customer_id));
+    if (cli) this.cart.setCustomer(cli);
+
+    cuenta.meta = {
+      ...(cuenta.meta ?? {}),
+      ordenServicio: { id: ordenId, folio: this.folioDeOrden(ordenId) },
+    };
+
+    if (resumen.needs_reauthorization) {
+      await Swal.fire({
+        icon: 'warning', title: 'Sin autorizar',
+        text: 'El cliente no ha aprobado este importe. Puedes cobrar igual, '
+            + 'pero conviene registrarlo antes.',
+      });
+    }
+  }
+
+  /** Abre la orden que se está cobrando, sin perder el carrito. */
+  verOrdenDeServicio(id: number) {
+    void this.router.navigate(['/dashboard/ordenes-de-servicio/orden', id]);
+  }
+
+  /** El folio se pinta a partir del identificador, igual que lo arma SQL. */
+  private folioDeOrden(id: number): string {
+    return 'OS-' + String(id).padStart(6, '0');
+  }
+
+  private async buscarClienteDeLaOrden(clienteId: number): Promise<CartCustomer | null> {
+    if (!clienteId) return null;
+    try {
+      const r = await (window as any).electronAPI?.getCustomers?.();
+      const lista: any[] = r?.data ?? r ?? [];
+      const c = lista.find((x: any) => Number(x.id) === clienteId);
+      return c ? { id: c.id, name: c.customerName, taxId: c.tax_id ?? null } as CartCustomer : null;
+    } catch { return null; }
+  }
+
+  /**
+   * La venta ya está registrada: se ata a su orden.
+   *
+   * Si esto falla, la venta EXISTE y la orden queda sin enlazar. No se puede
+   * deshacer el cobro —el dinero ya entró— así que lo único honesto es decir
+   * el número de venta para poder atarla después. Tragárselo dejaría una orden
+   * que parece impagada y que alguien volvería a cobrar.
+   */
+  private async enlazarOrdenDeServicio(saleId: number | null, orden: { id: number; folio: string }) {
+    if (!saleId) return;
+    const r = await this.servicios.enlazarVenta(orden.id, saleId);
+    if (r.ok) return;
+
+    await Swal.fire({
+      icon: 'warning',
+      title: 'La venta se registró, pero la orden quedó suelta',
+      html: `La venta <b>${saleId}</b> está cobrada y el dinero entró.<br>`
+          + `Lo que no quedó es su enlace con <b>${orden.folio}</b>.<br><br>`
+          + `Abre la orden y vuelve a cobrarla: reconocerá esta venta y no cobrará de nuevo.`
+          + `<br><br><small>${r.error ?? ''}</small>`,
+    });
   }
 
   ngOnDestroy() {
@@ -531,6 +666,10 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
+    /* Se lee ANTES de cobrar: `checkout` cierra la cuenta activa y pasa a la
+       vecina, así que después ya no hay de dónde sacar la orden. */
+    const orden = this.ordenServicio;
+
     const res = await this.sale.checkout(payment, {
       openDrawer: !isCredito,
       autoPrint: this.autoPrintTicketOnSale,
@@ -541,6 +680,8 @@ export class Venta implements OnInit, OnDestroy {
       await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: res.error || 'No se pudo registrar la venta.' });
       return;
     }
+
+    if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
 
     this.afterSale(res.saleId ?? null, res, isCredito);
     this.showModal = false;
@@ -1466,8 +1607,8 @@ export class Venta implements OnInit, OnDestroy {
 
     // Candado anti robo hormiga: devoluciones/cambios requieren supervisor.
     const autorizado = await this.supervisor.autorizarYregistrar(
-      'Las devoluciones y cambios requieren autorización de un supervisor.',
-      'REFUND',
+      'Las devoluciones y los cambios tiene que autorizarlos otra persona.',
+      'REFUND', 'sp-refund-sale', PAQUETES.VENTAS_SUPERVISAR,
       { amount: totalPreview, saleId: this.editingSaleId,
         detail: (this.refundKind === 'EFECTIVO' ? 'Reembolso efectivo' : 'Cambio') + ' folio #' + this.editingSaleId });
     if (!autorizado) return;
@@ -1750,6 +1891,10 @@ export class Venta implements OnInit, OnDestroy {
    * reintentar a ciegas. Misma ruta de registro que el resto: SaleService.
    */
   private async registrarVentaTerminal(orderId: string) {
+    /* Igual que en el cobro normal: la orden se lee antes, porque `checkout`
+       cierra la cuenta activa. */
+    const orden = this.ordenServicio;
+
     const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
       openDrawer: false, // pago con tarjeta: no se abre el cajon
       autoPrint: this.autoPrintTicketOnSale,
@@ -1763,6 +1908,8 @@ export class Venta implements OnInit, OnDestroy {
       });
       return;
     }
+
+    if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
 
     this.afterSale(res.saleId ?? null, res, false);
     this.paymentMethod = 'EFECTIVO';

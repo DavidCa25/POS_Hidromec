@@ -1,0 +1,141 @@
+/* ==========================================================================
+   EL LENGUAJE DE MOVIMIENTO DE WYBIX
+   --------------------------------------------------------------------------
+   Once gestos. Ni uno mas, y ninguno con curva propia.
+
+   POR QUE ESTE ARCHIVO EXISTE
+   ---------------------------
+   Antes de escribirlo habia 38 `@keyframes` repartidos por 23 archivos, y
+   entre ellos OCHO animaciones de girar distintas: `wx-spin`, `tp-spin`,
+   `sn-spin`, `rf-spin`, `rd-giro`, `pv-girar`, `pq-spin` y `spin`. Ninguna
+   vino de fuera: las produjo copiar y pegar entre pantallas propias. Una
+   aplicacion con ocho formas de decir «espera» no tiene lenguaje, tiene
+   acumulacion.
+
+   LAS TRES REGLAS
+   ---------------
+   1. UN movimiento principal por zona. Si la pantalla ya dijo que salio
+      bien, la mascota se calla.
+   2. Nada en bucle salvo `latir`, y solo mientras hay trabajo de verdad.
+      Un POS se mira ocho horas: lo que parpadea acaba tapado con un papel.
+   3. Solo `transform` y `opacity`. Nada que obligue al navegador a
+      recalcular la pagina, y nada de `filter` o `box-shadow` animados: en
+      una maquina de mostrador con graficos integrados, veinte capas vivas
+      cuestan mas que doscientos kilobytes de codigo.
+
+   Las curvas y las duraciones NO se declaran aqui: salen de tokens.css, que
+   ya las tenia. Este archivo solo las usa.
+   ========================================================================== */
+
+/* --------------------------------------------------------------- PULSAR
+   Todo lo que se puede tocar responde al dedo. Nunca rebota: un rebote
+   dice «mira que simpatico», y lo que tiene que decir es «te oi». */
+.wx-pulsar {
+  transition: transform var(--wx-dur-press) var(--wx-ease-out),
+              background-color var(--wx-dur-micro) var(--wx-ease-out),
+              border-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wx-pulsar:active { transform: scale(0.975); }
+.wx-pulsar:disabled, .wx-pulsar[aria-disabled="true"] { transform: none; }
+
+/* ---------------------------------------------------------------- ROZAR
+   Solo donde de verdad hay cursor. En una caja tactil `:hover` se queda
+   pegado despues de tocar, y el usuario ve medio catalogo iluminado. */
+@media (hover: hover) {
+  .wx-rozar:hover { background: var(--wx-raised); }
+  .wx-rozar-fuerte:hover { background: var(--wx-sunken); border-color: var(--wx-edge-strong); }
+}
+
+/* --------------------------------------------------------------- ASOMAR
+   Paneles, menus, avisos. Desde su origen y nunca desde `scale(0)`: nada
+   en el mundo real aparece de la nada. */
+.wx-asomar { animation: wx-asomar var(--wx-dur-menu) var(--wx-ease-out) both; }
+@keyframes wx-asomar {
+  from { opacity: 0; transform: translateY(7px) scale(0.975); }
+}
+
+/* -------------------------------------------------------------- RETIRAR
+   Salir es mas rapido que entrar. Al entrar hay algo que leer; al salir,
+   ya se leyo. */
+.wx-retirar { animation: wx-retirar calc(var(--wx-dur-menu) * 0.66) var(--wx-ease-out) both; }
+@keyframes wx-retirar {
+  to { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+/* ------------------------------------------------------------ ASENTARSE
+   Lo que acaba de guardarse. Un lavado que se va solo: confirma sin pedir
+   que nadie cierre nada. */
+.wx-asentar { animation: wx-asentar 900ms var(--wx-ease-out) both; }
+@keyframes wx-asentar {
+  0%   { background: var(--wx-success-soft); transform: translateY(-3px); opacity: 0; }
+  18%  { opacity: 1; transform: translateY(0); }
+  100% { background: transparent; }
+}
+
+/* ---------------------------------------------------------------- LATIR
+   El UNICO indicador de proceso de Wybix. Sustituye a los ocho giros que
+   habia, y solo gira mientras hay trabajo real detras. */
+.wx-latir { animation: wx-latir 900ms linear infinite; transform-origin: center; }
+@keyframes wx-latir { to { transform: rotate(360deg); } }
+
+/* -------------------------------------------------------------- AVANZAR
+   Progreso por `transform`, jamas por `width`: animar el ancho obliga a
+   recalcular la disposicion en cada fotograma. */
+.wx-avanzar { transform-origin: left center; transition: transform var(--wx-dur-state) var(--wx-ease-out); }
+
+/* ---------------------------------------------------------------- MUDAR
+   Un estado se convierte en otro. No parpadea, no salta: cambia. */
+.wx-mudar {
+  transition: background-color var(--wx-dur-state) var(--wx-ease-out),
+              color var(--wx-dur-state) var(--wx-ease-out),
+              border-color var(--wx-dur-state) var(--wx-ease-out);
+}
+
+/* --------------------------------------------------------------- ELEGIR
+   La seleccion es inmediata —150 ms— porque es respuesta directa a un
+   gesto. Un anillo por dentro, que no mueve nada de sitio. */
+.wx-elegir { transition: box-shadow var(--wx-dur-micro) var(--wx-ease-out),
+                         background-color var(--wx-dur-micro) var(--wx-ease-out); }
+.wx-elegir.es-elegido { box-shadow: inset 0 0 0 2px var(--wx-accent); }
+
+/* --------------------------------------------------------- ABRIR/CERRAR
+   Con `grid-template-rows: 0fr -> 1fr`, que SI se puede animar. El truco
+   viejo de `max-height: 900px` obliga a mentir sobre la altura y deja la
+   animacion con un tiron al final cuando el contenido es mas corto. */
+.wx-abrir { display: grid; grid-template-rows: 1fr;
+            transition: grid-template-rows var(--wx-dur-layout) var(--wx-ease-in-out); }
+.wx-abrir.es-cerrado { grid-template-rows: 0fr; }
+.wx-abrir > * { overflow: hidden; min-height: 0; }
+
+/* --------------------------------------------------------------- CONTAR
+   El numero cambia con una subida corta, y SOLO cuando el cambio lo causo
+   algo que hizo la persona. Un contador que se anima al pintar la pantalla
+   llama la atencion sobre nada. */
+.wx-contar { animation: wx-contar var(--wx-dur-state) var(--wx-ease-out) both; }
+@keyframes wx-contar {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+
+/* -------------------------------------------------------------- EL FOCO
+   No es un gesto, pero vive aqui por la misma razon: una sola definicion. */
+.wx-pulsar:focus-visible,
+.wx-rozar:focus-visible,
+.wx-elegir:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+/* ==========================================================================
+   SI EL SISTEMA PIDE CALMA
+   --------------------------------------------------------------------------
+   `tokens.css` ya pone las seis duraciones a 1 ms, asi que las transiciones
+   se apagan solas. Aqui se apaga lo que NO depende de una duracion: los
+   bucles y el empujon de la pulsacion.
+
+   La aplicacion no pierde una sola funcion. Los estados siguen cambiando;
+   lo unico que desaparece es el trayecto.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .wx-latir { animation: none; }
+  .wx-pulsar:active { transform: none; }
+  .wx-asentar { animation: none; background: transparent; }
+  .wx-asomar, .wx-retirar, .wx-contar { animation: none; }
+}

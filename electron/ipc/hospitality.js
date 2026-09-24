@@ -7,6 +7,11 @@
  *
  * Nombres por dominio: recipes:*, modifiers:*, catalog:*, images:*.
  */
+
+/* La puerta de autorizacion es la misma que usa el proceso principal: el
+ * paquete que exige cada canal sale de electron/seguridad/canales.js. */
+const sesion = require('../seguridad/sesion');
+
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -125,7 +130,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
     }
   });
 
-  ipcMain.handle('recipes:save', async (_e, payload = {}) => {
+  ipcMain.handle('recipes:save', sesion.proteger('recipes:save', async (_e, payload = {}) => {
     try {
       const p = await pool();
       const tvp = new sql.Table('dbo.RecipeLineType');
@@ -148,10 +153,10 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       console.error('[HOSPITALITY] recipes:save:', e.message);
       return { success: false, error: e.message };
     }
-  });
+  }));
 
-  ipcMain.handle('recipes:delete', async (_e, payload = {}) =>
-    ejecutar(await pool(), 'sp_delete_recipe', (r) => r.input('recipe_id', sql.Int, payload.recipeId)));
+  ipcMain.handle('recipes:delete', sesion.proteger('recipes:delete', async (_e, payload = {}) =>
+    ejecutar(await pool(), 'sp_delete_recipe', (r) => r.input('recipe_id', sql.Int, payload.recipeId))));
 
   /* ---------------------------------------------------- disponibilidad
      Cuantas unidades se pueden preparar CON LAS OPCIONES ELEGIDAS.
@@ -201,7 +206,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
     }
   });
 
-  ipcMain.handle('modifiers:save', async (_e, payload = {}) => {
+  ipcMain.handle('modifiers:save', sesion.proteger('modifiers:save', async (_e, payload = {}) => {
     try {
       const p = await pool();
       const tvp = new sql.Table('dbo.ModifierOptionType');
@@ -239,15 +244,15 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       console.error('[HOSPITALITY] modifiers:save:', e.message, '\n', e.stack);
       return { success: false, error: paraElUsuario(e, 'guardar el grupo') };
     }
-  });
+  }));
 
-  ipcMain.handle('modifiers:delete', async (_e, payload = {}) =>
-    ejecutar(await pool(), 'sp_delete_modifier_group', (r) => r.input('group_id', sql.Int, payload.groupId)));
+  ipcMain.handle('modifiers:delete', sesion.proteger('modifiers:delete', async (_e, payload = {}) =>
+    ejecutar(await pool(), 'sp_delete_modifier_group', (r) => r.input('group_id', sql.Int, payload.groupId))));
 
-  ipcMain.handle('modifiers:set-product-groups', async (_e, payload = {}) =>
+  ipcMain.handle('modifiers:set-product-groups', sesion.proteger('modifiers:set-product-groups', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_set_product_modifier_groups', (r) => r
       .input('product_id', sql.Int, payload.productId)
-      .input('group_ids_json', sql.NVarChar(sql.MAX), JSON.stringify(payload.groupIds || []))));
+      .input('group_ids_json', sql.NVarChar(sql.MAX), JSON.stringify(payload.groupIds || [])))));
 
   // ------------------------------------------------- presentaciones compra
   ipcMain.handle('presentations:list', async (_e, payload = {}) =>
@@ -255,17 +260,17 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       .input('product_id', sql.Int, payload.productId ?? null)
       .input('only_active', sql.Bit, bit(payload.onlyActive, true))));
 
-  ipcMain.handle('presentations:save', async (_e, payload = {}) =>
+  ipcMain.handle('presentations:save', sesion.proteger('presentations:save', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_save_product_presentation', (r) => r
       .input('id', sql.Int, payload.id ?? null)
       .input('product_id', sql.Int, payload.productId)
       .input('name', sql.NVarChar(60), payload.name)
       .input('factor_to_base', sql.Decimal(14, 4), payload.factorToBase)
       .input('is_default', sql.Bit, bit(payload.isDefault, false))
-      .input('active', sql.Bit, bit(payload.active, true))));
+      .input('active', sql.Bit, bit(payload.active, true)))));
 
-  ipcMain.handle('presentations:delete', async (_e, payload = {}) =>
-    ejecutar(await pool(), 'sp_delete_product_presentation', (r) => r.input('id', sql.Int, payload.id)));
+  ipcMain.handle('presentations:delete', sesion.proteger('presentations:delete', async (_e, payload = {}) =>
+    ejecutar(await pool(), 'sp_delete_product_presentation', (r) => r.input('id', sql.Int, payload.id))));
 
   // -------------------------------------------------------------- imagenes
   /**
@@ -275,7 +280,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
    * (nativeImage): sin dependencias nuevas y sin mandar el original por IPC.
    * Solo viaja la miniatura, que es lo unico que Touch muestra.
    */
-  ipcMain.handle('images:set', async (_e, payload = {}) => {
+  ipcMain.handle('images:set', sesion.proteger('images:set', async (_e, payload = {}) => {
     try {
       const p = await pool();
       let buf = null, w = 0, h = 0;
@@ -313,7 +318,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       console.error('[HOSPITALITY] images:set:', e.message);
       return { success: false, error: e.message };
     }
-  });
+  }));
 
   /**
    * Sincroniza la cache local de miniaturas.
@@ -333,7 +338,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
    */
   const comoDataUrl = (buf) => `data:image/jpeg;base64,${Buffer.from(buf).toString('base64')}`;
 
-  ipcMain.handle('images:sync', async (_e, payload = {}) => {
+  ipcMain.handle('images:sync', sesion.proteger('images:sync', async (_e, payload = {}) => {
     try {
       const dir = dirThumbs();
       const pedidos = payload.versions || {};
@@ -367,7 +372,7 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       console.error('[HOSPITALITY] images:sync:', e.message);
       return { success: false, error: e.message };
     }
-  });
+  }));
 }
 
 module.exports = { registrar };

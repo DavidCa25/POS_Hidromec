@@ -173,7 +173,14 @@
    (deviceProfile, vive en su configuracion local).
    ========================================================================== */
 
-.su-tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+/* Eran dos opciones y ahora son tres. `auto-fit` las pone en fila cuando
+   caben y las apila cuando no, sin dejar la tercera sola en su renglon. */
+.su-tipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
 @media (max-width: 560px) { .su-tipos { grid-template-columns: 1fr; } }
 
 .su-tipo {
@@ -226,3 +233,103 @@
   background: var(--wx-accent); color: var(--wx-accent-ink);
   font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
 }
+
+/* ==========================================================================
+   EL LOGO DEL NEGOCIO
+   Se pide aqui y no en Configuracion porque es lo que encabeza el primer
+   ticket. La caja de vista previa tiene tamano fijo: un logo apaisado y uno
+   cuadrado no pueden mover el formulario de sitio.
+
+   Todo por TOKENS. La primera version llevaba blancos fijos -`rgb(255 255 255
+   / .04)`- dando por hecho el tema oscuro, y en claro la caja quedaba blanca
+   sobre blanco: invisible.
+   ========================================================================== */
+.su-logo { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+
+.su-logo__caja {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--wx-edge-strong);
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-sunken);
+  color: var(--wx-text-dim);
+  font-size: 26px;
+  overflow: hidden;
+}
+.su-logo__caja.tiene { border-style: solid; border-color: var(--wx-edge); }
+/* `contain` y no `cover`: recortar el logo de alguien es peor que dejar aire. */
+.su-logo__caja img { width: 100%; height: 100%; object-fit: contain; }
+
+.su-logo__acc { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+.su-logo__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--wx-edge-strong);
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  font-size: var(--wx-text-sm);
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              border-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.su-logo__btn:hover { background: var(--wx-hover); border-color: var(--wx-accent); }
+.su-logo__btn.ocupado { opacity: 0.6; cursor: default; }
+
+.su-logo__quitar {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs);
+  cursor: pointer;
+}
+.su-logo__quitar:hover { color: var(--wx-danger); }
+
+/* ==========================================================================
+   EL GIRO DEL NEGOCIO DE SERVICIOS
+   Lista y no rejilla: son cinco opciones de una linea, y una rejilla las
+   separaria mas de lo que se parecen entre si.
+
+   SE LLAMAN `su-preset` Y NO `su-giro` porque `su-giro` YA EXISTE en este
+   mismo archivo: es el catalogo de productos por giro del ultimo paso. Dos
+   cosas distintas con el mismo nombre, y la de arriba gana por orden: las
+   tarjetas salian con el icono centrado encima del texto, que es el formato
+   del catalogo, no el de esto.
+   ========================================================================== */
+.su-presets { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+
+.su-preset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 0;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-sunken);
+  color: var(--wx-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.su-preset:hover { background: var(--wx-hover); }
+.su-preset:active { transform: scale(0.99); }
+.su-preset > i { font-size: 20px; color: var(--wx-accent-text); flex: none; }
+.su-preset__txt { display: flex; flex-direction: column; min-width: 0; }
+.su-preset__t { font-size: var(--wx-text-base); font-weight: 600; }
+.su-preset__d { font-size: var(--wx-text-xs); color: var(--wx-text-muted); line-height: 1.45; }
+
+.su-preset.on {
+  background: var(--wx-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--wx-accent);
+}
+.su-preset.on > i { color: var(--wx-accent-text); }

@@ -1,15 +1,20 @@
 import { Component, HostListener  } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf, NgFor, DecimalPipe } from '@angular/common';
-import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { Subscription } from 'rxjs';
 import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
-import { CapabilityService } from '../core';
+import { CapabilityService, GiroServiciosService } from '../core';
+import { WxNavegacionComponent } from '../app/wx-nav/wx-navegacion.component';
+import { NavegacionService } from '../app/wx-nav/navegacion.service';
+import { WxPaletaComponent } from '../app/wx-paleta/wx-paleta.component';
+import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
+import { Router, RouterLink } from '@angular/router';
+import { PAQUETES } from '../services/auth.service';
 
 type AppNotification = {
   id: string;
@@ -27,20 +32,23 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, RouterLink, RouterLinkActive, NgClass, NgIf, NgFor, DecimalPipe],
+  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxNavegacionComponent, WxPaletaComponent, WxAvatarComponent],
   styleUrls: ['./dashboard.css']
 })
 
 export class Dashboard {
-  menuOpen = true;
-  isMobile = false;
-  showOverlay = false;
-  isOperacionesOpen = false;
-  isUserDropdownOpen = false;
-  isOperacionesCompraOpen = false;
-  isInventarioOpen = false;
-  isDatosOpen = false;
+  /*
+   * Lo que quedaba aqui de NAVEGACION se fue con el rail: `menuOpen`,
+   * `isMobile`, los cuatro desplegables y el menu de usuario vivian para
+   * abrir y cerrar partes de una columna. Ahora esa responsabilidad es de
+   * `wx-navegacion`, que pinta el dock o la barra lateral desde un solo
+   * registro (`NavegacionService`).
+   *
+   * Lo que se queda es lo que NUNCA fue navegacion: el color de tablas, el
+   * modo oscuro, las notificaciones del producto y el contexto del negocio.
+   */
   themeOpen = false;
+  usuarioAbierto = false;
 
   /** Paleta de acentos. Vive en ThemeService para no duplicarla. */
   readonly presets: AccentPreset[] = ACCENT_PRESETS;
@@ -52,12 +60,14 @@ export class Dashboard {
 
   currentInvColor = '#1f2e86';
 
+  /* Quien esta operando. Lo pinta el dock, pero se resuelve aqui: la sesion
+     trae un nombre y la base puede traer otro mas correcto, y esa correccion
+     ya vivia en esta pantalla. */
   userName: string = 'Usuario';
 
   notifOpen = false;
   notifications: AppNotification[] = [];
   unreadCount = 0;
-  alertasCount = 0;
 
   // Módulos opcionales activos (controlan qué se ve en el menú)
   modulesState: ModulesState = { pagoServicios: false };
@@ -65,14 +75,8 @@ export class Dashboard {
   private sub?: Subscription;
   private modSub?: Subscription;
 
-  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService) {}
-
-  @HostListener('window:resize')
-  onResize() {
-    this.isMobile = window.innerWidth < 900;
-    this.menuOpen = !this.isMobile; 
-    this.showOverlay = this.isMobile && this.menuOpen;
-  }
+  constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
+              private giroServicios: GiroServiciosService, public nav: NavegacionService) {}
 
   /**
    * Contexto del negocio para el pie del rail. Se lee de la misma
@@ -86,9 +90,42 @@ export class Dashboard {
   esDemo = false;
   appVersion = '';
 
-  get rolTexto(): string {
-    return this.auth.esAdmin ? 'Administrador' : 'Cajero';
+  /**
+   * El rol, con el nombre que el producto usa en pantalla.
+   *
+   * Antes esto era `esAdmin ? 'Administrador' : 'Cajero'`, con dos
+   * consecuencias: un Encargado aparecía como «Cajero», y el día que hubiera
+   * un rol más seguiría apareciendo como «Cajero». La etiqueta la da el
+   * catálogo, que es quien sabe cuántos roles existen.
+   */
+  get rolTexto(): string { return this.auth.rolEtiqueta(); }
+
+  toggleUsuario() { this.usuarioAbierto = !this.usuarioAbierto; }
+
+  /** Administrar usuarios NO es una accion de la sesion, pero se ofrece aqui
+      a quien puede: es donde se busca. */
+  get puedeAdministrarUsuarios(): boolean {
+    return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR);
   }
+
+  /**
+   * CERRAR SESION CIERRA LA SESION.
+   *
+   * El boton del rail solo navegaba a `/login`. La sesion seguia abierta en el
+   * proceso principal, que es quien autoriza: quien llegara despues a esa
+   * ventana heredaba los permisos del anterior sin identificarse, y cualquier
+   * canal sensible invocado a mano se ejecutaba con ellos.
+   *
+   * `auth.salir()` ya existia y hacia lo correcto; no la llamaba nadie.
+   */
+  async cerrarSesion() {
+    this.usuarioAbierto = false;
+    await this.auth.salir();
+    void this.router.navigate(['/login']);
+  }
+
+  /** Su rol viene de una versión que este binario no conoce: no ofrece nada. */
+  get sinRol(): boolean { return this.auth.sinRol(); }
 
   private async cargarContexto() {
     try {
@@ -110,9 +147,21 @@ export class Dashboard {
     } catch { /* silencioso */ }
   }
 
-  ngOnInit() { this.onResize(); this.cargarContexto();
+  ngOnInit() { this.cargarContexto();
     // Perfil de negocio y de dispositivo: deciden que se ve en el menu.
-    this.caps.load();if (this.auth.usuarioActual?.nombre) {
+    this.caps.load();
+    /* EL GIRO SE CARGA AQUI, NO SOLO EN EL GUARD.
+       La redireccion de la ruta vacia de Servicios es sincrona -asi la define
+       Angular- y Angular RESUELVE LAS REDIRECCIONES ANTES DE EJECUTAR LOS
+       GUARDS. Con el giro cargandose solo en el guard, la primera entrada de
+       cada sesion se resolvia con el generico y una barberia caia en Ordenes
+       en vez de en su agenda; a la segunda ya estaba bien, que es el peor
+       tipo de fallo: el que no se reproduce cuando vas a mirarlo.
+       Cargandolo al entrar al panel, cuando alguien pulsa Servicios el dato
+       ya esta. El guard conserva su await como red para un enlace directo. */
+    void this.giroServicios.cargar();
+
+    if (this.auth.usuarioActual?.nombre) {
       this.registerService.load();
       this.userName = this.auth.usuarioActual.nombre;
       this.currentInvColor = this.theme.getInvMainSnapshot();
@@ -135,18 +184,9 @@ export class Dashboard {
       this.handleUpdateNotification(status);
     });
 
-    this.cargarAlertas();
-
     // Módulos opcionales: refresca y escucha cambios (se actualiza al configurar).
     this.modSub = this.modules.mods$.subscribe(m => this.modulesState = m);
     this.modules.refresh();
-  }
-
-  async cargarAlertas() {
-    try {
-      const r = await (window as any).electronAPI?.alertsCounts?.({ min: 3 });
-      if (r?.success) this.alertasCount = Number(r.data?.total || 0);
-    } catch { /* silencioso */ }
   }
 
   /**
@@ -335,59 +375,14 @@ export class Dashboard {
     }
   }
 
-  toggleMenu() {
-    this.menuOpen = !this.menuOpen;
-    this.showOverlay = this.isMobile && this.menuOpen;
-  }
-
-  
-  toggleOperaciones() {
-    this.isOperacionesOpen = !this.isOperacionesOpen;
-  }
-
-  toggleOperacionesCompra() {
-    this.isOperacionesCompraOpen = !this.isOperacionesCompraOpen;
-  }
-
-  toggleInventario() {
-    this.isInventarioOpen = !this.isInventarioOpen;
-  }
-
-  toggleDatos() {
-    this.isDatosOpen = !this.isDatosOpen;
-  }
-
-  toggleUserDropdown() {
-    this.isUserDropdownOpen = !this.isUserDropdownOpen;
-  }
-
-  cerrarSesion() {
-    this.router.navigate(['/login']);
-  }
-
-  crearUsuario() {
-    this.router.navigate(['/sign_up']);
-  }
-
   @HostListener('document:click', ['$event'])
   handleClickOutside(event: Event) {
-    const dropdown = document.getElementById('operaciones-dropdown');
-    const comprasDropdown = document.getElementById('operaciones-compra-dropdown');
-    const userWrapper = document.querySelector('.dashboard-user-wrapper');
-    if (!dropdown) return;
-    if (!dropdown.contains(event.target as Node)) {
-      this.isOperacionesOpen = false;
-    }
-    if (comprasDropdown && !comprasDropdown.contains(event.target as Node)) {
-      this.isOperacionesCompraOpen = false;
-    }
-    if (userWrapper && !userWrapper.contains(event.target as Node)) {
-      this.isUserDropdownOpen = false;
-    }
     const themeWrapper = document.getElementById('theme-wrapper');
     if (themeWrapper && !themeWrapper.contains(event.target as Node)) {
       this.cerrarPaleta();
     }
+    const yo = document.getElementById('yo-wrapper');
+    if (yo && !yo.contains(event.target as Node)) this.usuarioAbierto = false;
   }
 
 }

@@ -89,6 +89,36 @@ for (const f of archivos('src', ['.ts'])) {
     }
   }
 
+  /*
+   * El camino del Core: `ElectronBridge`.
+   *
+   *   private readonly bridge = inject(ElectronBridge);
+   *   private get api() { return this.bridge.api; }
+   *   ... this.api?.metodo(...)
+   *
+   * Es la forma SANCIONADA de llegar al puente -la usan CapabilityService y el
+   * modulo Servicios-, y la auditoria era ciega a ella: cuarenta metodos vivos
+   * aparecian como "expuestos y no usados". Un falso negativo en esta lista es
+   * peor que ruido, porque es justo donde se buscan los canales muertos.
+   */
+  const puentes = new Set();
+  for (const m of txt.matchAll(
+    /get\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\{[\s\S]{0,200}?this\.[A-Za-z_$][\w$]*\.api\b/g
+  )) {
+    puentes.add(m[1]);
+  }
+  for (const alias of puentes) {
+    const re = new RegExp(`this\\.${alias}\\s*\\??\\.\\s*([A-Za-z_$][\\w$]*)`, 'g');
+    for (const m of txt.matchAll(re)) registrarUso(m[1], f);
+  }
+
+  /* Y el acceso directo al puente inyectado: `this.bridge.api.metodo(...)`. */
+  for (const m of txt.matchAll(
+    /this\.[A-Za-z_$][\w$]*\.api\s*\??\.\s*([A-Za-z_$][\w$]*)/g
+  )) {
+    registrarUso(m[1], f);
+  }
+
   // this.api = (window as any).electronAPI;
   const aliasesThis = new Set();
 
@@ -165,10 +195,25 @@ for (const [grupo, api] of Object.entries(superficies.wybix || {})) {
   for (const k of Object.keys(api || {})) expuestosWybix.add(`${grupo}.${k}`);
 }
 
-// El canal se saca del texto solo para informar, no para decidir.
+// El canal que invoca cada metodo del puente.
+//
+// ANTES SE ESCAPABA UN CASO ENTERO. La expresion exigia que el nombre del
+// metodo y su `ipcRenderer.invoke(...)` estuvieran en la MISMA linea, por el
+// `[^,\n]*?`. Un metodo escrito en dos lineas -que son unos cuantos- quedaba
+// sin canal resuelto, y sin canal no se podia comprobar si tenia handler: se
+// daba por bueno. Por ese hueco paso `crearUsuario`, que apuntaba a
+// `sp-add-user`, un canal sin handler. El alta de usuarios no daba de alta a
+// nadie y la suite decia "contrato completo".
+//
+// Ahora se busca el primer `ipcRenderer.<algo>('canal'` DESPUES del nombre,
+// dentro de una ventana corta y cruzando saltos de linea.
 const preload = readFileSync('electron/preload.js', 'utf8');
-for (const m of preload.matchAll(/([A-Za-z_$][\w$]*)\s*:\s*[^,\n]*?ipcRenderer\.(?:invoke|send|on)\(\s*['"]([^'"]+)['"]/g)) {
-  if (expuestos.has(m[1])) expuestos.set(m[1], m[2]);
+for (const metodo of expuestos.keys()) {
+  const i = preload.search(new RegExp(`\\b${metodo}\\s*:`));
+  if (i < 0) continue;
+  const m = preload.slice(i, i + 400)
+    .match(/ipcRenderer\.(?:invoke|send|on)\(\s*['"]([^'"]+)['"]/);
+  if (m) expuestos.set(metodo, m[1]);
 }
 
 // -------------------------------------------- canales que atiende el main
@@ -180,7 +225,7 @@ for (const m of (main + ipcExtra).matchAll(/ipcMain\.(?:handle|on)\(\s*['"]([^'"
 }
 
 // --------------------------------------------------------- clasificacion
-const soloUsados = [];
+let soloUsados = [];   // `let`: los huecos declarados se apartan mas abajo
 const soloExpuestos = [];
 const sinHandler = [];
 let ok = 0;
@@ -210,6 +255,37 @@ console.log(`  usados por el renderer   ${usos.size}`);
 console.log(`  expuestos en el preload  ${expuestos.size}`);
 console.log(`  canales en el principal  ${canales.size}`);
 console.log(`\n  OK (usado, expuesto y con handler)   ${ok}`);
+
+/**
+ * HUECOS DECLARADOS, con el motivo.
+ *
+ * Mismo criterio que `electron/seguridad/canales.js`: la diferencia entre
+ * «decidido que no» y «nadie lo miro» tiene que estar escrita. Un hueco aqui
+ * NO deja de ser un hueco: sigue saliendo en el informe, con su motivo, y deja
+ * de parar la prueba.
+ *
+ * Solo entra aqui lo que el renderer ya comprueba antes de llamar, de modo que
+ * la persona ve un mensaje y no un error. Si alguien quita esa comprobacion,
+ * lo que aparece es un boton roto de verdad, y esta lista no lo tapa.
+ */
+const DECLARADOS = {
+  sendSaleTicketWhatsApp:
+    'El envio de tickets por WhatsApp nunca se implemento en el proceso principal. '
+    + 'La pantalla de venta comprueba que el metodo exista y dice "no esta configurado '
+    + 'en este entorno" en vez de fallar. El envio automatico por WhatsApp esta fuera '
+    + 'del alcance aprobado.',
+};
+
+const declarados = soloUsados.filter(u => DECLARADOS[u.metodo]);
+soloUsados = soloUsados.filter(u => !DECLARADOS[u.metodo]);
+
+if (declarados.length) {
+  console.log(`\nHUECOS DECLARADOS  (${declarados.length})  <- conocidos, con motivo`);
+  for (const d of declarados) {
+    console.log(`   ${d.metodo}`);
+    console.log(`      ${DECLARADOS[d.metodo]}`);
+  }
+}
 
 if (soloUsados.length) {
   console.log(`\nUSADO PERO NO EXPUESTO  (${soloUsados.length})  <- botones rotos`);

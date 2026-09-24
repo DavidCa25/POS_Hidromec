@@ -9,7 +9,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('demo', {
   estado:       ()           => ipcRenderer.invoke('demo:estado'),
-  crear:        (perfilId)   => ipcRenderer.invoke('demo:crear', { perfilId }),
+  /* `presetId` es el GIRO, y solo lo llevan los perfiles que lo piden.
+     Sigue sin viajar ningun nombre de base: el giro elige QUE semilla se
+     usa dentro de la carpeta del perfil, y el gestor lo resuelve contra
+     el catalogo del producto antes de tocar el disco. */
+  crear:        (perfilId, presetId) => ipcRenderer.invoke('demo:crear', { perfilId, presetId }),
   restablecer:  (perfilId)   => ipcRenderer.invoke('demo:restablecer', { perfilId }),
   eliminar:     (perfilId)   => ipcRenderer.invoke('demo:eliminar', { perfilId }),
   abrir:        (perfilId)   => ipcRenderer.invoke('demo:abrir', { perfilId }),

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { hoyLocal } from '../core';
 
 /*
  * xlsx-js-style y jsPDF pesan ~600 kB juntos y solo hacen falta al pulsar
@@ -75,7 +76,7 @@ export class ReportService {
   private baseName(cfg: ReportConfig, negocio?: string): string {
     const t = this.aSlug(cfg.filename || cfg.titulo || 'reporte');
     const n = negocio ? this.aSlug(negocio) : '';
-    const fecha = new Date().toISOString().slice(0, 10);
+    const fecha = hoyLocal();
     // El negocio va delante: al juntar exportaciones de varias sucursales en
     // una carpeta, el archivo dice de quien es sin abrirlo.
     return [n, t, fecha].filter(Boolean).join('_');

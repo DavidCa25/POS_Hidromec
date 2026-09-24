@@ -1,0 +1,239 @@
+{
+  "_": [
+    "LOS GIROS DE SERVICIOS. FUENTE UNICA.",
+    "",
+    "Este archivo lo leen TRES sitios y ninguno tiene copia propia:",
+    "  - el proceso principal, para validar lo que llega por el canal;",
+    "  - la interfaz (src/core/presets-servicios.ts lo importa tal cual);",
+    "  - el gestor de demos, para ofrecer el mismo menu que el onboarding.",
+    "",
+    "Es JSON y no un modulo de JavaScript por eso: un .js con module.exports",
+    "lo lee Node pero obliga a la interfaz a pasar por interoperabilidad de",
+    "CommonJS, y un .ts lo lee la interfaz pero no Node. JSON lo leen los dos",
+    "sin traduccion, que es justo lo que hace falta para que no haya dos",
+    "definiciones que se separen.",
+    "",
+    "QUE ES UN GIRO Y QUE NO ES",
+    "--------------------------",
+    "Un giro es un PUNTO DE PARTIDA, no una jaula. Decide con que se encuentra",
+    "el negocio el primer dia -que pestanas, que pantalla abre, como se llama",
+    "aqui la cosa sobre la que se trabaja- y se puede cambiar despues desde",
+    "Aplicaciones. Nada de lo que hay aqui borra datos ni cierra puertas.",
+    "",
+    "EL VOCABULARIO VIVE AQUI Y EN NINGUN OTRO SITIO",
+    "-----------------------------------------------",
+    "UNA arquitectura, no cinco modulos. El Core habla en generico -customer,",
+    "professional, service order, customer asset, material- y la pantalla habla",
+    "el idioma del negocio. Si eso se resolviera con condicionales repartidos",
+    "por treinta plantillas, el dia que se anada un giro habria que encontrar",
+    "los treinta, y el sintoma de olvidarse de uno es una barberia a la que le",
+    "preguntan por la placa del vehiculo. De ahi que cada giro traiga su",
+    "`vocabulario` completo y las pantallas no sepan en que giro estan.",
+    "",
+    "POR QUE `activo` ES VOCABULARIO Y NO UNA TABLA APARTE",
+    "-----------------------------------------------------",
+    "La tabla es la misma -customer_assets- para un coche, un equipo y un",
+    "inmueble. Lo unico que cambia es como se llama en pantalla, que se pide",
+    "como identificador y SI SE USA. `usa` tiene tres valores: CENTRAL (sin",
+    "eso la orden esta a medias), OPCIONAL (a veces hay algo, a veces no) y",
+    "NO (el trabajo es sobre la persona que viene, y ensenarlo es ruido)."
+  ],
+  "version": 2,
+  "presets": [
+    {
+      "id": "TALLER_AUTOMOTRIZ",
+      "nombre": "Taller automotriz",
+      "ejemplos": "Mecánica, hojalatería, llantera, servicio eléctrico",
+      "icono": "ph-car",
+      "orden": 1,
+      "modulos": ["servicios"],
+      "inicio": "ordenes",
+      "agenda": false,
+      "autorizacion": "REQUERIDA",
+      "activo": {
+        "usa": "CENTRAL",
+        "requerido": true,
+        "tipo": "VEHICULO",
+        "tipos": ["VEHICULO", "OTRO"],
+        "singular": "Vehículo",
+        "plural": "Vehículos",
+        "identificador": "Placa",
+        "ejemplo": "Jetta 2018 gris",
+        "ejemploIdentificador": "JHK-231-B"
+      },
+      "material": {
+        "singular": "Refacción",
+        "plural": "Refacciones",
+        "agregar": "+ Refacción"
+      },
+      "textos": {
+        "reportado": "¿Qué reporta el cliente?",
+        "reportadoEjemplo": "Hace un ruido al frenar…",
+        "reportadoCorto": "Reportó",
+        "diagnostico": "Diagnóstico y datos",
+        "diagnosticoCorto": "Encontramos",
+        "cambiarActivo": "Cambiar vehículo",
+        "indicarActivo": "Indicar vehículo",
+        "elegirActivo": "¿Sobre qué vehículo se trabaja?",
+        "registrarActivo": "Registrar vehículo",
+        "ordenVacia": "Añade los trabajos y las refacciones que requiere el vehículo."
+      }
+    },
+    {
+      "id": "BELLEZA",
+      "nombre": "Belleza y barbería",
+      "ejemplos": "Estética, barbería, salón de uñas, spa",
+      "icono": "ph-scissors",
+      "orden": 2,
+      "modulos": ["servicios"],
+      "inicio": "agenda",
+      "agenda": true,
+      "autorizacion": "DISCRETA",
+      "activo": {
+        "usa": "NO",
+        "requerido": false,
+        "tipo": null,
+        "tipos": [],
+        "singular": "Ficha",
+        "plural": "Fichas",
+        "identificador": "Referencia",
+        "ejemplo": "",
+        "ejemploIdentificador": ""
+      },
+      "material": {
+        "singular": "Producto",
+        "plural": "Productos e insumos",
+        "agregar": "+ Producto o insumo"
+      },
+      "textos": {
+        "reportado": "¿Qué necesita el cliente?",
+        "reportadoEjemplo": "Corte y barba, quiere el tinte un tono más claro…",
+        "reportadoCorto": "Pidió",
+        "diagnostico": "Notas del servicio",
+        "diagnosticoCorto": "Notas",
+        "cambiarActivo": "",
+        "indicarActivo": "",
+        "elegirActivo": "",
+        "registrarActivo": "",
+        "ordenVacia": "Aún no has añadido servicios. Agrega el trabajo que realizará el profesional y, si aplica, los productos utilizados."
+      }
+    },
+    {
+      "id": "REPARACION_ELECTRONICA",
+      "nombre": "Reparación de electrónicos",
+      "ejemplos": "Celulares, computadoras, línea blanca",
+      "icono": "ph-device-mobile",
+      "orden": 3,
+      "modulos": ["servicios"],
+      "inicio": "ordenes",
+      "agenda": false,
+      "autorizacion": "REQUERIDA",
+      "activo": {
+        "usa": "CENTRAL",
+        "requerido": true,
+        "tipo": "EQUIPO",
+        "tipos": ["EQUIPO", "OTRO"],
+        "singular": "Equipo",
+        "plural": "Equipos",
+        "identificador": "Número de serie",
+        "ejemplo": "iPhone 13 negro, laptop, tablet…",
+        "ejemploIdentificador": "F2LX9K3QJC"
+      },
+      "material": {
+        "singular": "Componente",
+        "plural": "Componentes y refacciones",
+        "agregar": "+ Componente"
+      },
+      "textos": {
+        "reportado": "¿Qué falla presenta el equipo?",
+        "reportadoEjemplo": "No enciende, se calienta, la pantalla está estrellada…",
+        "reportadoCorto": "Reportó",
+        "diagnostico": "Diagnóstico del equipo",
+        "diagnosticoCorto": "Encontramos",
+        "cambiarActivo": "Cambiar equipo",
+        "indicarActivo": "Indicar equipo",
+        "elegirActivo": "¿Sobre qué equipo se trabaja?",
+        "registrarActivo": "Registrar equipo",
+        "ordenVacia": "Añade el trabajo y los componentes que lleva la reparación."
+      }
+    },
+    {
+      "id": "MANTENIMIENTO",
+      "nombre": "Mantenimiento y servicios técnicos",
+      "ejemplos": "Aire acondicionado, refrigeración, bombas, equipo industrial",
+      "icono": "ph-wrench",
+      "orden": 4,
+      "modulos": ["servicios"],
+      "inicio": "ordenes",
+      "agenda": true,
+      "autorizacion": "OPCIONAL",
+      "activo": {
+        "usa": "OPCIONAL",
+        "requerido": false,
+        "tipo": "EQUIPO",
+        "tipos": ["EQUIPO", "INMUEBLE", "OTRO"],
+        "singular": "Activo",
+        "plural": "Equipos e instalaciones",
+        "identificador": "Número de serie",
+        "ejemplo": "Minisplit 1.5 ton, oficina 2",
+        "ejemploIdentificador": "MS-0042"
+      },
+      "material": {
+        "singular": "Material",
+        "plural": "Materiales y repuestos",
+        "agregar": "+ Material"
+      },
+      "textos": {
+        "reportado": "¿Qué trabajo solicita el cliente?",
+        "reportadoEjemplo": "Mantenimiento preventivo de los dos minisplits de oficina…",
+        "reportadoCorto": "Solicitó",
+        "diagnostico": "Diagnóstico e información del trabajo",
+        "diagnosticoCorto": "Encontramos",
+        "cambiarActivo": "Cambiar el equipo o la instalación",
+        "indicarActivo": "Indicar sobre qué se trabaja",
+        "elegirActivo": "¿Sobre qué se trabaja?",
+        "registrarActivo": "Registrar equipo o instalación",
+        "ordenVacia": "Añade el trabajo y los materiales que lleva."
+      }
+    },
+    {
+      "id": "OTRO",
+      "nombre": "Otro",
+      "ejemplos": "Cualquier negocio que cobre por trabajo",
+      "icono": "ph-dots-three-circle",
+      "orden": 99,
+      "modulos": ["servicios"],
+      "inicio": "ordenes",
+      "agenda": true,
+      "autorizacion": "OPCIONAL",
+      "activo": {
+        "usa": "OPCIONAL",
+        "requerido": false,
+        "tipo": null,
+        "tipos": ["EQUIPO", "INMUEBLE", "OTRO"],
+        "singular": "Activo",
+        "plural": "Activos",
+        "identificador": "Identificador",
+        "ejemplo": "",
+        "ejemploIdentificador": ""
+      },
+      "material": {
+        "singular": "Material",
+        "plural": "Materiales y productos",
+        "agregar": "+ Material o producto"
+      },
+      "textos": {
+        "reportado": "¿Qué necesita el cliente?",
+        "reportadoEjemplo": "",
+        "reportadoCorto": "Pidió",
+        "diagnostico": "Diagnóstico y datos",
+        "diagnosticoCorto": "Encontramos",
+        "cambiarActivo": "Cambiar el activo",
+        "indicarActivo": "Indicar el activo",
+        "elegirActivo": "¿Sobre qué se trabaja?",
+        "registrarActivo": "Registrar activo",
+        "ordenVacia": "Añade el trabajo y los materiales que lleva."
+      }
+    }
+  ]
+}

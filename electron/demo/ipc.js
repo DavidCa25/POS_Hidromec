@@ -27,6 +27,16 @@ const registro = require('./registro');
 function registrar({ ipcMain, app, sql, setup, runMigrations, migrationsDir, servidor, abrirApp, soltarApp, log = console.log }) {
   const perfiles = () => leerPerfiles(app);
 
+  /** Como se llama en pantalla el giro con el que se creo una demo. */
+  function nombreDeGiro(perfil, presetId) {
+    if (!perfil.giros || !presetId) return null;
+    const g = perfil.giros.find(x => x.id === presetId);
+    /* Si la base dice un giro que este binario ya no conoce, se ensena el
+       identificador tal cual en vez de esconderlo: «TALLER_VIEJO» dice algo,
+       y un hueco en blanco no dice nada. */
+    return g ? g.nombre : presetId;
+  }
+
   /** El perfil pedido, o un error si no es uno de los instalados. */
   function perfilDe(id) {
     const p = perfiles().find(x => x.id === id);
@@ -52,6 +62,16 @@ function registrar({ ipcMain, app, sql, setup, runMigrations, migrationsDir, ser
         lista.push({
           id: p.id, nombre: p.nombre, descripcion: p.descripcion, icono: p.icono,
           prueba: p.prueba || [], base: p.base,
+          /* Los giros que ofrece este perfil, o `null` si no pide ninguno.
+             La ventana no lleva su propia lista: la recibe. */
+          giros: p.giros ? p.giros.map(g => ({
+            id: g.id, nombre: g.nombre, ejemplos: g.ejemplos, icono: g.icono,
+          })) : null,
+          /* Con que giro se creo la que ya existe. Es lo que permite que la
+             tarjeta diga que estas a punto de abrir, y lo que «Restablecer»
+             rehace sin volver a preguntar. */
+          preset: foto?.metadatos?.demo_preset || null,
+          presetNombre: nombreDeGiro(p, foto?.metadatos?.demo_preset),
           existe: !!foto,
           esDemo: !!foto && String(foto.metadatos?.is_demo).toLowerCase() === 'true',
           creada: foto?.metadatos?.demo_created_at || null,
@@ -70,17 +90,30 @@ function registrar({ ipcMain, app, sql, setup, runMigrations, migrationsDir, ser
     }
   });
 
-  ipcMain.handle('demo:crear', async (_e, { perfilId } = {}) => {
+  /**
+   * Crear. Un perfil con giros EXIGE que se elija uno.
+   *
+   * No hay giro por omision y no se recuerda el anterior. Las dos cosas
+   * producen el mismo fallo: crear una demo creyendo que es un taller y
+   * encontrarse una barberia, o al reves, que es exactamente lo que no puede
+   * pasar delante de un cliente. Si falta, se dice y no se crea nada.
+   */
+  ipcMain.handle('demo:crear', async (_e, { perfilId, presetId } = {}) => {
     try {
       const p = perfilDe(perfilId);
+      if (p.giros && !presetId) {
+        return { success: false, error: 'Elige el giro antes de crear la demostración.',
+                 motivo: 'FALTA_GIRO' };
+      }
+
       const pool = await maestro();
       const foto = await radiografia(pool, sql, p.base);
       await pool.close();
       if (foto) return { success: false, error: `${p.base} ya existe. Usa Restablecer.` };
 
-      const r = await crearBase({ perfil: p, deps, log });
+      const r = await crearBase({ perfil: p, presetId: p.giros ? presetId : null, deps, log });
       registro.anotar(app, p.id, { instancia: r.instancia, base: r.base });
-      return { success: true, data: { base: p.base } };
+      return { success: true, data: { base: p.base, preset: r.preset || null } };
     } catch (e) {
       log('[DEMO] crear:', e.message);
       return { success: false, error: e.message };
@@ -104,6 +137,24 @@ function registrar({ ipcMain, app, sql, setup, runMigrations, migrationsDir, ser
       if (typeof soltarApp === 'function') soltarApp(p.base);
 
       const pool = await maestro();
+
+      /* El giro, ANTES de tirar la base: despues ya no hay de donde leerlo.
+         Restablecer rehace LA MISMA demo -mismo giro, datos limpios- y por eso
+         no vuelve a preguntar: quien pulsa Restablecer quiere su taller otra
+         vez desde cero, no elegir de nuevo. Para cambiar de giro estan
+         Eliminar y Crear, que dejan claro que lo de dentro se va. */
+      const antes = await radiografia(pool, sql, p.base);
+      const giroPrevio = antes?.metadatos?.demo_preset || null;
+      if (p.giros && !giroPrevio) {
+        await pool.close();
+        return {
+          success: false,
+          motivo: 'SIN_GIRO_ANOTADO',
+          error: `${p.base} no tiene anotado su giro, así que no se sabe cuál rehacer. ` +
+                 'Elimínala y créala otra vez eligiendo el giro.',
+        };
+      }
+
       const r = await eliminarBase({
         masterPool: pool, sql, perfil: p, perfiles: perfiles(),
         instanciaLocal: registro.leer(app, p.id), log,
@@ -115,9 +166,10 @@ function registrar({ ipcMain, app, sql, setup, runMigrations, migrationsDir, ser
          Si esto fallara, la demo quedaria creada y sin anotar, y el propio
          gestor se negaria a tocarla despues. Por eso se anota antes de
          responder que salio bien. */
-      const nueva = await crearBase({ perfil: p, deps, log });
+      const nueva = await crearBase({
+        perfil: p, presetId: p.giros ? giroPrevio : null, deps, log });
       registro.anotar(app, p.id, { instancia: nueva.instancia, base: nueva.base });
-      return { success: true, data: { base: p.base } };
+      return { success: true, data: { base: p.base, preset: nueva.preset || null } };
     } catch (e) {
       log('[DEMO] restablecer:', e.message);
       return { success: false, error: e.message };

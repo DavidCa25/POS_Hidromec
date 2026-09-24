@@ -114,7 +114,16 @@
           <td *ngIf="tabla.esVisible('indice')" class="num text-muted">{{ pageStartIndex + i + 1 }}</td>
           <td *ngIf="tabla.esVisible('part_number')">{{ item.part_number ?? '-' }}</td>
           <td *ngIf="tabla.esVisible('bar_code')" class="mono">{{ item.bar_code || '-' }}</td>
-          <td *ngIf="tabla.esVisible('product_name')">{{ item.product_name ?? item.nombre ?? '-' }}</td>
+          <td *ngIf="tabla.esVisible('product_name')">
+            {{ item.product_name ?? item.nombre ?? '-' }}
+            <!-- LA SEÑAL MINIMA QUE HACE FALTA.
+                 Un ingrediente vive en esta misma tabla y no se puede
+                 cobrar. Sin esto, «Café en grano» y «Café Americano» se ven
+                 igual y no hay forma de entender por qué uno entra a la
+                 venta y el otro no. Una palabra pequeña, no una columna
+                 nueva para todos. -->
+            <span class="inv-noventa" *ngIf="noVendible(item)">no se vende</span>
+          </td>
 
           <td *ngIf="tabla.esVisible('price')" class="money fw-semibold">
             {{ (item.price ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}
@@ -125,13 +134,21 @@
                mililitros, no cajas. Y una receta no tiene stock propio: lo
                que importa de ella es cuantas se pueden preparar. -->
           <td *ngIf="tabla.esVisible('stock')" class="num">
-            <ng-container *ngIf="esReceta(item); else stockPropio">
-              <span class="stock-receta">{{ disponibles(item) }}</span>
-              <span class="stock-uom">por preparar</span>
+            <!-- Un SERVICIO no tiene existencias, y decir «0 pza» de una
+                 afinacion no es un dato: es informacion falsa con formato de
+                 dato, que ademas se lee como «agotado». Se dice lo que es. -->
+            <ng-container *ngIf="sinInventario(item); else conInventario">
+              <span class="stock-na">{{ etiquetaSinStock(item) }}</span>
             </ng-container>
-            <ng-template #stockPropio>
-              <span>{{ item.stock ?? '-' }}</span>
-              <span class="stock-uom" *ngIf="item.stock != null">{{ item.base_uom || 'pza' }}</span>
+            <ng-template #conInventario>
+              <ng-container *ngIf="esReceta(item); else stockPropio">
+                <span class="stock-receta">{{ disponibles(item) }}</span>
+                <span class="stock-uom">por preparar</span>
+              </ng-container>
+              <ng-template #stockPropio>
+                <span>{{ item.stock ?? '-' }}</span>
+                <span class="stock-uom" *ngIf="item.stock != null">{{ item.base_uom || 'pza' }}</span>
+              </ng-template>
             </ng-template>
           </td>
           <td *ngIf="tabla.esVisible('category_name')">{{ item.category_name ?? '-' }}</td>
@@ -218,6 +235,12 @@
     </button>
   </div>
 
+</div>
+
+<!-- Los modales van FUERA de `.castrol-table-container`: ese contenedor
+     aisla su apilamiento (`isolation: isolate`, table.css) y dentro el
+     z-index del modal no le gana a la cabecera ni al dock, que se pintaban
+     encima y tapaban el titulo y los botones Guardar / Cancelar. -->
 
   <!-- Modal Agregar / Editar Producto -->
   <!-- ========================= -->
@@ -594,7 +617,6 @@
       </div>
     </div>
   </div>
-</div>
 <!-- ========================= -->
 <!-- ✅ Modal: Agregar Marca -->
 <!-- ========================= -->

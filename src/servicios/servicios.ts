@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 
 @Component({
   selector: 'app-servicios',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, WxSelectComponent],
   styles: [`
     :host{display:block;}
     .sv-head{margin-bottom:1.2rem;}
@@ -56,9 +57,8 @@ import Swal from 'sweetalert2';
   <div class="sv-card" *ngIf="tab==='recargas'">
     <div class="sv-field">
       <label>Compañía</label>
-      <select class="sv-ctl" [(ngModel)]="compania">
-        <option *ngFor="let c of companias" [value]="c">{{ c }}</option>
-      </select>
+      <wx-select class="sv-ctl" [opciones]="opcCompanias" placeholder="Elige compañía"
+                 [(ngModel)]="compania"></wx-select>
     </div>
     <div class="sv-field">
       <label>Número de teléfono</label>
@@ -79,9 +79,8 @@ import Swal from 'sweetalert2';
   <div class="sv-card" *ngIf="tab==='servicios'">
     <div class="sv-field">
       <label>Servicio</label>
-      <select class="sv-ctl" [(ngModel)]="servicio">
-        <option *ngFor="let s of servicios" [value]="s">{{ s }}</option>
-      </select>
+      <wx-select class="sv-ctl" [opciones]="opcServicios" placeholder="Elige servicio"
+                 [(ngModel)]="servicio"></wx-select>
     </div>
     <div class="sv-field">
       <label>Referencia / número de cuenta</label>
@@ -104,12 +103,16 @@ export class Servicios {
   busy = false;
 
   companias = ['Telcel', 'Movistar', 'AT&T', 'Unefon', 'Bait', 'Weex'];
+  /* Lista del dominio, no del sistema operativo: va con el control de
+     Wybix. Ver el contrato de interfaz en CLAUDE.md. */
+  opcCompanias: WxOpcion[] = this.companias.map(c => ({ valor: c, etiqueta: c }));
   compania = 'Telcel';
   telefono = '';
   montos = [10, 20, 30, 50, 100, 150, 200, 300, 500];
   monto: number | null = null;
 
   servicios = ['CFE (Luz)', 'Agua', 'Gas Natural', 'Telmex', 'Izzi', 'Totalplay', 'Sky', 'Dish'];
+  opcServicios: WxOpcion[] = this.servicios.map(s => ({ valor: s, etiqueta: s }));
   servicio = 'CFE (Luz)';
   referencia = '';
   montoServicio: number | null = null;

@@ -77,15 +77,145 @@ try {
     check(st.customerName === 'Cafe QA', 'y conserva los demas campos remotos', st.customerName);
   }
 
-  seccion('Sin sellar, el defecto se reproduce');
+  seccion('Una prueba guardada ANTES del sellado tambien se repara');
   {
-    // Se guarda tal cual llegaba antes: esto es lo que veia el cliente.
+    /*
+     * ESTO ANTES COMPROBABA EL DEFECTO, Y AHORA COMPRUEBA SU REPARACION.
+     *
+     * `sellarComoPrueba` arregla el problema al GUARDAR. Las instalaciones que
+     * empezaron su prueba antes de que existiera se quedaron con el archivo
+     * clasificado como licencia de pago, y seguian anunciando "MonoCaja"
+     * para siempre: el arreglo no llegaba hacia atras.
+     *
+     * `computeStatus` las reconoce ahora por su FORMA. Una prueba caduca
+     * -`expiresAt`- y una licencia de pago se revalida -`revalidateBy`-. Tener
+     * caducidad y no tener revalidacion solo le pasa a una prueba.
+     */
     licenseStore.clearLicense();
     licenseStore.saveLicense(MAQUINA, { success: true, expiresAt: en30dias, plan: 'mono' });
     const st = licenseStore.computeStatus(MAQUINA);
-    check(st.state === 'active' && st.plan === 'mono',
-      'una prueba sin `type` se leia como licencia MonoCaja activada',
-      `state = ${st.state}, plan = ${st.plan}`);
+    check(st.state === 'trial' && st.type === 'trial',
+      'una prueba sin `type` ya NO se lee como licencia MonoCaja activada',
+      `state = ${st.state}, type = ${st.type}`);
+  }
+
+  seccion('PRUEBAS NEGATIVAS: ninguna licencia pagada se reclasifica');
+  /*
+   * LA REGLA ES `expiresAt` PRESENTE => PRUEBA, y no es una corazonada.
+   *
+   * Se comprobo contra el servidor: `expiresAt` lo emite UN SOLO archivo de
+   * todo el backend, `trial-license`. La activacion de pago (`license-check`)
+   * devuelve
+   *
+   *     { plan, maxRegisters, customerName, machineId,
+   *       supportUntil, supportActive, revalidateBy, issuedAt }
+   *
+   * y ahi no hay `expiresAt`. Una licencia pagada no puede coincidir con la
+   * forma de una prueba porque el campo no existe en su contrato.
+   *
+   * Abajo van TODAS las formas conocidas de licencia de pago. Ninguna puede
+   * salir clasificada como prueba.
+   */
+  const FORMAS_DE_PAGO = [
+    ['MonoCaja, respuesta actual completa', {
+      success: true, plan: 'mono', maxRegisters: 1, customerName: 'Cliente',
+      machineId: 'x', supportUntil: null, supportActive: false,
+      revalidateBy: en30dias, issuedAt: new Date().toISOString(),
+    }],
+    ['MultiCaja, respuesta actual completa', {
+      success: true, plan: 'multi', maxRegisters: 99, customerName: 'Cliente',
+      revalidateBy: en30dias, issuedAt: new Date().toISOString(),
+    }],
+    ['MonoCaja legada, solo plan y revalidateBy', {
+      success: true, plan: 'mono', revalidateBy: en30dias,
+    }],
+    ['MultiCaja legada, solo plan y revalidateBy', {
+      success: true, plan: 'multi', revalidateBy: en30dias,
+    }],
+    ['de pago muy vieja, solo plan', { success: true, plan: 'mono' }],
+    ['de pago con soporte vigente', {
+      success: true, plan: 'multi', supportUntil: en30dias, supportActive: true,
+      revalidateBy: en30dias,
+    }],
+    ['de pago ya sellada con type', {
+      success: true, type: 'paid', plan: 'mono', revalidateBy: en30dias,
+    }],
+
+    /*
+     * EL CASO AMBIGUO, QUE ES EL QUE IMPORTA.
+     *
+     * `plan` sale de una columna de la tabla de licencias de pago, y esa
+     * columna no tiene ninguna restriccion que impida escribir ahi la palabra
+     * `trial`. No se puede DEMOSTRAR que nunca pase: solo confiar en que nadie
+     * lo escriba. Asi que la regla no confia.
+     *
+     * Lo que si es demostrable es que `supportUntil` y `supportActive` los
+     * emite unicamente `license-check` -se verifico en el backend-, asi que su
+     * presencia dice "esto es de pago" con independencia de `plan`.
+     */
+    ['de pago con `plan` puesto a mano en trial, pero con marcas de soporte', {
+      success: true, plan: 'trial', maxRegisters: 99, customerName: 'Cliente',
+      supportUntil: en30dias, supportActive: true, revalidateBy: en30dias,
+      issuedAt: new Date().toISOString(),
+    }],
+    ['de pago con `plan` en trial y soporte ya vencido', {
+      success: true, plan: 'trial', supportUntil: null, supportActive: false,
+      revalidateBy: en30dias,
+    }],
+
+    /* Y una de pago a la que le falta TODO menos la revalidacion: sigue sin
+       tener `expiresAt`, asi que sigue siendo de pago. */
+    ['de pago pelada, solo revalidateBy', { success: true, revalidateBy: en30dias }],
+  ];
+
+  for (const [nombre, forma] of FORMAS_DE_PAGO) {
+    licenseStore.clearLicense();
+    licenseStore.saveLicense(MAQUINA, forma);
+    const st = licenseStore.computeStatus(MAQUINA);
+    check(st.state === 'active' && st.type === 'paid',
+      `una licencia ${nombre} NO se convierte en prueba`,
+      `state = ${st.state}, type = ${st.type}`);
+  }
+
+  seccion('Y todas las formas conocidas de PRUEBA se reconocen');
+  const FORMAS_DE_PRUEBA = [
+    ['actual, con type y plan trial', {
+      success: true, type: 'trial', plan: 'trial', expiresAt: en30dias,
+      revalidateBy: en30dias, customerName: 'Prueba',
+    }],
+    ['legada, sin type, con plan del negocio', {
+      success: true, plan: 'mono', expiresAt: en30dias,
+    }],
+    ['legada, sin type y con revalidateBy tambien', {
+      success: true, plan: 'mono', expiresAt: en30dias, revalidateBy: en30dias,
+    }],
+    ['legada, sin type ni plan', { success: true, expiresAt: en30dias }],
+  ];
+
+  for (const [nombre, forma] of FORMAS_DE_PRUEBA) {
+    licenseStore.clearLicense();
+    licenseStore.saveLicense(MAQUINA, forma);
+    const st = licenseStore.computeStatus(MAQUINA);
+    check(st.state === 'trial' && st.type === 'trial',
+      `una prueba ${nombre} se reconoce como prueba`,
+      `state = ${st.state}, type = ${st.type}`);
+  }
+
+  seccion('Una demo no es una licencia, y no se confunde con una prueba');
+  {
+    /* Se resuelve por el ESPACIO, no por un archivo: no hay nada que
+       falsificar, y una instalacion de cliente nunca declara este espacio. */
+    licenseStore.clearLicense();
+    licenseStore.usarEspacio('demo');
+    const st = licenseStore.computeStatus(MAQUINA);
+    check(st.state === 'demo' && st.type === 'demo',
+      'en el espacio de demo el estado es demo, sin archivo ninguno',
+      `state = ${st.state}`);
+    licenseStore.usarEspacio('');
+    const vuelta = licenseStore.computeStatus(MAQUINA);
+    check(vuelta.state === 'none',
+      'y al salir del espacio de demo vuelve a no haber licencia',
+      `state = ${vuelta.state}`);
   }
 
   seccion('Si la respuesta remota SI lo dice, nada cambia');

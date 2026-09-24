@@ -1,412 +1,225 @@
-<div class="dashboard-wrapper" [class.sidebar-open]="menuOpen">
-  <!-- Overlay para móvil -->
-  <div *ngIf="showOverlay" class="sidebar-backdrop" (click)="toggleMenu()"></div>
+<!--
+  EL PANEL, SIN RAIL LATERAL.
 
-  <!-- SIDEBAR -->
-  <nav class="sidebar" [class.collapsed]="!menuOpen" [class.sidebar-mobile-closed]="!menuOpen && isMobile">
-    <div class="sidebar-header text-center py-4">
-      <img src="assets/wybie_logo.png" alt="Logo" class="sidebar-logo" />
-      <div class="sidebar-title mt-2 fw-bold text-dark">Wybix POS</div>
-    </div>
-    <ul class="sidebar-menu list-unstyled">
-      <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/estadisticas"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-chart-line"></i> <span>Estadisticas</span>
-        </a>
-      </li>
-      <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/alertas"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-bell"></i> <span>Alertas</span>
-          <span *ngIf="alertasCount > 0" class="badge rounded-pill bg-danger ms-auto">{{ alertasCount }}</span>
-        </a>
-      </li>
-      <li class="wx-grp wx-grp--operacion nav-item" id="operaciones-dropdown" style="position: relative;"
-      [class.is-open]="isOperacionesOpen">
-      <a 
-        class="sidebar-link d-flex align-items-center px-4 py-3"
-        (click)="toggleOperaciones()" 
-        [class.active]="isOperacionesOpen"
-        style="cursor: pointer;"
-        [attr.aria-expanded]="isOperacionesOpen">
-        <i class="ph ph-storefront me-2"></i>
-        <span>Venta</span>
-        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isOperacionesOpen"></i>
-      </a>
+  La navegacion la pinta `wx-navegacion`: el dock abajo o la barra lateral a
+  la izquierda, segun la eleccion de quien entro. Lo que queda arriba es lo
+  que NO es navegacion y que hace a Wybix lo que es:
 
-      <ul 
-        class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
-        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
-        <li>
-          <a routerLink="/dashboard/venta" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-cash-register me-2"></i> Hacer venta
-          </a>
-        </li>
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/abrir-cajon" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-vault me-2"></i> Abrir cajón
-          </a>
-        </li>
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/corte-dia" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-calendar-check me-2"></i> Corte del día
-          </a>
-        </li>
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaVenta" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-receipt me-2"></i> Tabla de Ventas
-          </a>
-        </li>
-      </ul>
-    </li>
-    <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
-      [class.is-open]="isInventarioOpen">
-      <a
-        class="sidebar-link d-flex align-items-center px-4 py-3"
-        (click)="toggleInventario()"
-        [class.active]="isInventarioOpen"
-        style="cursor: pointer;"
-        [attr.aria-expanded]="isInventarioOpen">
-        <i class="ph ph-package me-2"></i>
-        <span>Inventario</span>
-        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isInventarioOpen"></i>
-      </a>
+    - el color de las tablas, que lo elige el negocio;
+    - el modo oscuro, que es de quien esta en la caja a las diez de la noche;
+    - las notificaciones del producto (actualizaciones);
+    - y el contexto: que negocio es, con que rol se entro y si es una demo.
 
-      <ul
-        class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
-        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/inventario" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-package me-2"></i> Ver inventario
-          </a>
-        </li>
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/conteo" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-clipboard-text me-2"></i> Conteo físico
-          </a>
-        </li>
-        <!-- Solo en negocios de alimentos y bebidas (business_profile). -->
-        <li>
-          <a *ngIf="auth.esAdmin && caps.hospitality" routerLink="/dashboard/recetas" routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-cooking-pot me-2"></i> Recetas y modificadores
-          </a>
-        </li>
-      </ul>
-    </li>
-    <li class="nav-item" id="operaciones-dropdown" style="position: relative;"
-      [class.is-open]="isOperacionesCompraOpen">
-      <a 
-        class="sidebar-link d-flex align-items-center px-4 py-3"
-        (click)="toggleOperacionesCompra()" 
-        [class.active]="isOperacionesCompraOpen"
-        style="cursor: pointer;"
-        [attr.aria-expanded]="isOperacionesCompraOpen">
-        <i class="ph ph-shopping-bag-open me-2"></i>
-        <span>Compra</span>
-        <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isOperacionesCompraOpen"></i>
-      </a>
-      <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
-        style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
-        <li>
-          <a *ngIf="auth.esAdmin" routerLink="/dashboard/tablaCompra"
-            routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-table me-2"></i> Tabla de compras
-          </a>
-        </li>
-        <li>
-          <a routerLink="/dashboard/registrarCompra"
-            routerLinkActive="active"
-            class="dropdown-item d-flex align-items-center">
-            <i class="ph ph-bag me-2"></i> Registrar compra
-          </a>
-        </li>
-      </ul>
-    </li>
-      <li class="wx-grp wx-grp--gestion">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/proveedores"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-truck me-2"></i> <span>Proveedores</span>
-        </a>
-      </li>
-      <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/clientes"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-users me-2"></i> <span>Clientes</span>
-        </a>
-      </li>
-      <!-- Módulo opcional: aparece solo cuando está configurado -->
-      <li>
-        <a *ngIf="modulesState.pagoServicios" routerLink="/dashboard/servicios"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-device-mobile me-2"></i> <span>Pago de servicios</span>
-        </a>
-      </li>
-      <li>
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/facturacion"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-seal-check"></i> <span>Facturación</span>
-        </a>
-      </li>
-      <!--
-        Fidelizacion es un dominio de primer nivel, como Venta o Compra. Vivia
-        colgada de Inventario, que es donde nadie buscaria una campana: no
-        tiene mas que ver con el inventario que la facturacion.
+  Confundir esas cuatro con el menu fue lo que hizo que la cabecera y el rail
+  se pelearan por el mismo sitio durante tanto tiempo.
+-->
+<div class="dashboard-wrapper" [class.es-sidebar]="nav.modo() === 'sidebar'">
 
-        Sigue siendo UNA entrada: las seis secciones -Resumen, Campanas,
-        Recompensas, Cupones, Dinamicas y Rifas- son navegacion interna suya.
-      -->
-      <li class="wx-grp">
-        <a *ngIf="auth.esAdmin && caps.loyalty" routerLink="/dashboard/fidelizacion"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-gift"></i> <span>Fidelización</span>
-        </a>
-      </li>
-      <!--
-        Aplicaciones es una seccion propia de Wybix, no una preferencia ni una
-        opcion tecnica: es el catalogo de modulos del producto. Por eso no vive
-        dentro de Configuracion ni en el menu del usuario.
+  <!-- LA NAVEGACION: el dock o la barra lateral, segun quien entro. Va
+       primero para que la barra ocupe su columna a la izquierda; el dock es
+       fijo y no ocupa sitio en el flujo. -->
+  <wx-navegacion></wx-navegacion>
 
-        Siempre visible; Fidelizacion, solo cuando esta encendida.
-      -->
-      <li class="wx-grp wx-grp--sistema">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/aplicaciones"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-squares-four"></i> <span>Aplicaciones</span>
-        </a>
-      </li>
-      <li class="wx-grp wx-grp--sistema">
-        <a *ngIf="auth.esAdmin" routerLink="/dashboard/configuracion"
-           routerLinkActive="active"
-           class="sidebar-link d-flex align-items-center px-4 py-3">
-          <i class="ph ph-gear"></i> <span>Configuracion</span>
-        </a>
-      </li>
-      <li class="nav-item" id="operaciones-dropdown" style="position: relative;" [class.is-open]="isDatosOpen">
-        <a class="sidebar-link d-flex align-items-center px-4 py-3"
-           (click)="toggleDatos()" [class.active]="isDatosOpen" style="cursor: pointer;"
-           [attr.aria-expanded]="isDatosOpen">
-          <i class="ph ph-database me-2"></i>
-          <span>Datos</span>
-          <i class="ph ph-caret-down ms-auto chevron" [class.rotate-180]="isDatosOpen"></i>
-        </a>
-        <ul class="dropdown-menu w-100 shadow-sm border-0 dropdown-venta"
-            style="left: 0; position: absolute; top: 100%; z-index: 9999; border-radius:1rem;">
-          <li>
-            <a *ngIf="auth.esAdmin" routerLink="/dashboard/importador" routerLinkActive="active"
-               class="dropdown-item d-flex align-items-center">
-              <i class="ph ph-file-arrow-up me-2"></i> Importar productos
-            </a>
-          </li>
-          <li>
-            <a *ngIf="auth.esAdmin" routerLink="/dashboard/migracion" routerLinkActive="active"
-               class="dropdown-item d-flex align-items-center">
-              <i class="ph ph-database me-2"></i> Migracion
-            </a>
-          </li>
-        </ul>
-      </li>
+  <div class="dashboard-content">
 
-    </ul>
+    <header class="dashboard-header d-flex align-items-center px-3 py-2">
 
-    <!-- Contexto del negocio. Ancla el pie de la columna y da referencia de
-         donde se esta trabajando. -->
-    <div class="sidebar-sucursal" *ngIf="menuOpen">
-      <span class="sidebar-sucursal__tile" aria-hidden="true">
-        <i class="ph-fill ph-storefront"></i>
-      </span>
-      <div class="sidebar-sucursal__txt">
-        <span class="sidebar-sucursal__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
-        <span class="sidebar-sucursal__meta">
-          <span class="sidebar-demo" *ngIf="esDemo">DEMO</span>{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span></span>
-      </div>
-    </div>
-
-    <!-- Colapsada solo cabe la baldosa, con el nombre en el tooltip. -->
-    <div class="sidebar-sucursal sidebar-sucursal--min" *ngIf="!menuOpen"
-         [title]="esDemo ? nombreNegocio + ' · DEMO' : nombreNegocio">
-      <span class="sidebar-sucursal__tile" [class.es-demo]="esDemo" aria-hidden="true">
-        <i class="ph-fill ph-storefront"></i>
-      </span>
-    </div>
-  </nav>
-
-  <!-- CONTENIDO -->
- <div class="dashboard-content">
-  <header class="dashboard-header d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-white shadow-sm">
-    <div class="d-flex align-items-center">
-      <button class="wx-iconbtn menu-btn" type="button" (click)="toggleMenu()"
-              title="Menú" aria-label="Menú">
-        <i class="ph ph-list" aria-hidden="true"></i>
-      </button>
-    </div>
-    <div class="topbar-acciones d-flex align-items-center">
-      <div class="position-relative" id="theme-wrapper">
-        <!-- El disparador muestra el color vigente, no cuatro cuadros fijos:
-             asi se sabe de un vistazo cual esta puesto. -->
-        <!-- El icono de paleta dice "esto cambia el aspecto" y va tenido con
-             el color vigente, asi que hace de muestra al mismo tiempo. La
-             etiqueta dice de que. Un icono solo no se entendia. -->
-        <button class="wx-iconbtn wx-iconbtn--etiqueta theme-swatch-btn" type="button"
-                popovertarget="paletaTablas"
-                [attr.aria-expanded]="themeOpen"
-                aria-haspopup="dialog"
-                title="Personalizar tablas">
-          <i class="ph-fill ph-palette theme-swatch-btn__ph" aria-hidden="true"></i>
-          <span class="wx-iconbtn__txt">Tablas</span>
-        </button>
-
-        <!-- Popover nativo: top layer, cierre por clic fuera y Escape, y
-             recolocacion automatica si no cabe. -->
-        <div id="paletaTablas" popover data-anclado
-             class="wx-pop wx-palette" role="dialog"
-             aria-label="Color de tablas"
-             (toggle)="onPaletaToggle($any($event))">
-          <p class="wx-palette__title">Color de las tablas</p>
-
-          <div class="wx-palette__grid" role="listbox" aria-label="Colores"
-               (keydown)="onPaletaKey($event)">
-            <button *ngFor="let c of presets; let i = index"
-                    type="button"
-                    role="option"
-                    class="wx-swatch"
-                    [class.is-on]="esColorActual(c.valor)"
-                    [attr.aria-selected]="esColorActual(c.valor)"
-                    [attr.tabindex]="i === indicePaleta ? 0 : -1"
-                    [style.background]="c.valor"
-                    [attr.title]="c.nombre"
-                    [attr.aria-label]="c.nombre"
-                    (focus)="indicePaleta = i"
-                    (click)="setInvTheme(c.valor)">
-              <i class="ph-fill ph-check" aria-hidden="true" *ngIf="esColorActual(c.valor)"></i>
-            </button>
-          </div>
-
-          <!-- Personalizado. Usa el selector nativo del sistema: es el que ya
-               conoce el usuario y no anade dependencias. -->
-          <label class="wx-palette__custom" [class.is-on]="!esPreset()">
-            <span class="wx-palette__customdot" [style.background]="colorEnEdicion"></span>
-            <span class="wx-palette__customtxt">Personalizado</span>
-            <input type="color"
-                   [value]="colorEnEdicion"
-                   aria-label="Elegir un color personalizado"
-                   (input)="previewColor($any($event.target).value)"
-                   (change)="confirmarColor($any($event.target).value)" />
-          </label>
-
-          <div class="wx-palette__foot">
-            <span class="wx-palette__hex">{{ colorEnEdicion }}</span>
-            <span class="wx-palette__nombre">{{ nombreColorActual }}</span>
-          </div>
+      <!-- Contexto del negocio. Vivia en el pie del rail; el rail se fue y
+           esto no puede irse con el: saber en que base se esta trabajando
+           -y si es una demo- es lo que evita el error caro. -->
+      <div class="wx-negocio">
+        <span class="wx-negocio__tile" [class.es-demo]="esDemo" aria-hidden="true">
+          <i class="ph-fill ph-storefront"></i>
+        </span>
+        <div class="wx-negocio__txt">
+          <span class="wx-negocio__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
+          <span class="wx-negocio__meta">
+            <span class="sidebar-demo" *ngIf="esDemo">DEMO</span>{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span>
+          </span>
         </div>
       </div>
-      <!-- Modo oscuro -->
-      <button class="wx-iconbtn dark-toggle-btn" type="button" (click)="toggleDark()"
-              [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'"
-              [attr.aria-label]="isDark ? 'Modo claro' : 'Modo oscuro'">
-        <i [ngClass]="isDark ? 'ph-fill ph-sun' : 'ph-fill ph-moon'" aria-hidden="true"></i>
-      </button>
 
-      <!-- Icono de notificación -->
-      <div class="position-relative" id="notif-wrapper">
-        <button class="wx-iconbtn position-relative" type="button" (click)="toggleNotif()"
-                title="Notificaciones" aria-label="Notificaciones">
-          <i class="ph ph-bell" aria-hidden="true"></i>
+      <div class="topbar-acciones d-flex align-items-center ms-auto">
+        <div class="position-relative" id="theme-wrapper">
+          <!-- El disparador muestra el color vigente, no cuatro cuadros fijos:
+               asi se sabe de un vistazo cual esta puesto. -->
+          <!-- El icono de paleta dice "esto cambia el aspecto" y va tenido con
+               el color vigente, asi que hace de muestra al mismo tiempo. La
+               etiqueta dice de que. Un icono solo no se entendia. -->
+          <button class="wx-iconbtn wx-iconbtn--etiqueta theme-swatch-btn" type="button"
+                  popovertarget="paletaTablas"
+                  [attr.aria-expanded]="themeOpen"
+                  aria-haspopup="dialog"
+                  title="Personalizar tablas">
+            <i class="ph-fill ph-palette theme-swatch-btn__ph" aria-hidden="true"></i>
+            <span class="wx-iconbtn__txt">Tablas</span>
+          </button>
 
-          <span
-            *ngIf="unreadCount > 0"
-            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-            {{ unreadCount }} 
-          </span>
-        </button>
+          <!-- Popover nativo: top layer, cierre por clic fuera y Escape, y
+               recolocacion automatica si no cabe. -->
+          <div id="paletaTablas" popover data-anclado
+               class="wx-pop wx-palette" role="dialog"
+               aria-label="Color de tablas"
+               (toggle)="onPaletaToggle($any($event))">
+            <p class="wx-palette__title">Color de las tablas</p>
 
-        <!-- Dropdown -->
-        <div
-          *ngIf="notifOpen"
-          class="position-absolute end-0 mt-2 bg-white border rounded shadow"
-          style="width: 320px; z-index: 1050;">
-          
-          <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
-            <div class="fw-semibold">Notificaciones</div>
-            <button class="btn btn-sm btn-outline-secondary" (click)="markAllAsRead()">Marcar leídas</button>
-          </div>
-
-          <div *ngIf="notifications.length === 0" class="p-3 text-muted">
-            Sin notificaciones
-          </div>
-
-          <div *ngFor="let n of notifications" class="p-2 border-bottom">
-            <div class="fw-semibold" [class.text-muted]="n.read">{{ n.title }}</div>
-            <div class="small text-muted">{{ n.message }}</div>
-
-            <div class="mt-2" *ngIf="n.subtype === 'downloading'">
-              <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
-                <span>Descargando…</span>
-                <span>{{ (n.percent ?? 0) | number:'1.0-0' }}%</span>
-              </div>
-
-              <div class="progress" style="height: 8px;">
-                <div class="progress-bar"
-                    role="progressbar"
-                    [style.width.%]="(n.percent ?? 0)"
-                    [attr.aria-valuenow]="(n.percent ?? 0)"
-                    aria-valuemin="0"
-                    aria-valuemax="100"></div>
-              </div>
-            </div>
-
-            <div class="mt-2" *ngIf="n.action">
-              <button class="btn btn-sm btn-primary" (click)="onNotifAction(n)">
-                {{ n.action === 'download' ? 'Descargar' : 'Instalar y reiniciar' }}
+            <div class="wx-palette__grid" role="listbox" aria-label="Colores"
+                 (keydown)="onPaletaKey($event)">
+              <button *ngFor="let c of presets; let i = index"
+                      type="button"
+                      role="option"
+                      class="wx-swatch"
+                      [class.is-on]="esColorActual(c.valor)"
+                      [attr.aria-selected]="esColorActual(c.valor)"
+                      [attr.tabindex]="i === indicePaleta ? 0 : -1"
+                      [style.background]="c.valor"
+                      [attr.title]="c.nombre"
+                      [attr.aria-label]="c.nombre"
+                      (focus)="indicePaleta = i"
+                      (click)="setInvTheme(c.valor)">
+                <i class="ph-fill ph-check" aria-hidden="true" *ngIf="esColorActual(c.valor)"></i>
               </button>
             </div>
+
+            <!-- Personalizado. Usa el selector nativo del sistema: es el que ya
+                 conoce el usuario y no anade dependencias. -->
+            <label class="wx-palette__custom" [class.is-on]="!esPreset()">
+              <span class="wx-palette__customdot" [style.background]="colorEnEdicion"></span>
+              <span class="wx-palette__customtxt">Personalizado</span>
+              <input type="color"
+                     [value]="colorEnEdicion"
+                     aria-label="Elegir un color personalizado"
+                     (input)="previewColor($any($event.target).value)"
+                     (change)="confirmarColor($any($event.target).value)" />
+            </label>
+
+            <div class="wx-palette__foot">
+              <span class="wx-palette__hex">{{ colorEnEdicion }}</span>
+              <span class="wx-palette__nombre">{{ nombreColorActual }}</span>
+            </div>
           </div>
-
-        </div>
-      </div>
-      <div class="dashboard-user-wrapper" [class.is-open]="isUserDropdownOpen">
-        <div 
-          class="dashboard-user d-flex align-items-center user-trigger"
-          (click)="toggleUserDropdown()"
-        >
-          <img src="assets/user.png" alt="User" class="rounded-circle me-2">
-          <span class="fw-semibold text-secondary">{{ userName }}</span>
-          <i class="ph ph-caret-down ms-2 chevron" [class.rotate-180]="isUserDropdownOpen"></i>
         </div>
 
-        <ul class="user-dropdown shadow-sm border-0">
-          <li>
-            <a (click)="cerrarSesion()" class="dropdown-item d-flex align-items-center">
-              <i class="ph ph-sign-out me-2"></i> Cerrar sesión
-            </a>
-          </li>
-          <li>
-            <a (click)="crearUsuario()" class="dropdown-item d-flex align-items-center">
-              <i class="ph ph-sign-in me-2"></i> Crear Usuario
-            </a>
-          </li>
-        </ul>
+        <!-- Modo oscuro -->
+        <button class="wx-iconbtn dark-toggle-btn" type="button" (click)="toggleDark()"
+                [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'"
+                [attr.aria-label]="isDark ? 'Modo claro' : 'Modo oscuro'">
+          <i [ngClass]="isDark ? 'ph-fill ph-sun' : 'ph-fill ph-moon'" aria-hidden="true"></i>
+        </button>
+
+        <!-- Icono de notificación -->
+        <div class="position-relative" id="notif-wrapper">
+          <button class="wx-iconbtn position-relative" type="button" (click)="toggleNotif()"
+                  title="Notificaciones" aria-label="Notificaciones">
+            <i class="ph ph-bell" aria-hidden="true"></i>
+
+            <span
+              *ngIf="unreadCount > 0"
+              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {{ unreadCount }}
+            </span>
+          </button>
+
+          <!-- Dropdown -->
+          <div
+            *ngIf="notifOpen"
+            class="position-absolute end-0 mt-2 bg-white border rounded shadow"
+            style="width: 320px; z-index: 1050;">
+
+            <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+              <div class="fw-semibold">Notificaciones</div>
+              <button class="btn btn-sm btn-outline-secondary" (click)="markAllAsRead()">Marcar leídas</button>
+            </div>
+
+            <div *ngIf="notifications.length === 0" class="p-3 text-muted">
+              Sin notificaciones
+            </div>
+
+            <div *ngFor="let n of notifications" class="p-2 border-bottom">
+              <div class="fw-semibold" [class.text-muted]="n.read">{{ n.title }}</div>
+              <div class="small text-muted">{{ n.message }}</div>
+
+              <div class="mt-2" *ngIf="n.subtype === 'downloading'">
+                <div class="d-flex align-items-center justify-content-between small text-muted mb-1">
+                  <span>Descargando…</span>
+                  <span>{{ (n.percent ?? 0) | number:'1.0-0' }}%</span>
+                </div>
+
+                <div class="progress" style="height: 8px;">
+                  <div class="progress-bar"
+                      role="progressbar"
+                      [style.width.%]="(n.percent ?? 0)"
+                      [attr.aria-valuenow]="(n.percent ?? 0)"
+                      aria-valuemin="0"
+                      aria-valuemax="100"></div>
+                </div>
+              </div>
+
+              <div class="mt-2" *ngIf="n.action">
+                <button class="btn btn-sm btn-primary" (click)="onNotifAction(n)">
+                  {{ n.action === 'download' ? 'Descargar' : 'Instalar y reiniciar' }}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!--
+          QUIEN ESTA DENTRO.
+
+          Estaba en el extremo derecho del dock, y ahi eran dos figuras
+          pequenas -Wybix a la izquierda, la persona a la derecha- que se leian
+          como decoracion repetida. La barra de trabajo es para navegar; quien
+          ha entrado es CONTEXTO, igual que el negocio de la izquierda, y aqui
+          es donde el contexto ya vivia.
+        -->
+        <div class="wx-yo" id="yo-wrapper">
+          <button type="button" class="wx-yo__btn" (click)="toggleUsuario()"
+                  [class.is-abierto]="usuarioAbierto"
+                  [attr.aria-expanded]="usuarioAbierto" aria-haspopup="menu"
+                  [attr.aria-label]="userName" [title]="userName">
+            <wx-avatar [semilla]="'u:' + userName" [nombre]="userName" [size]="30"></wx-avatar>
+            <span class="wx-yo__nom">{{ userName }}</span>
+            <i class="ph ph-caret-down" aria-hidden="true"></i>
+          </button>
+
+          <!--
+            SOLO LA SESION.
+
+            Tenia «Crear usuario», que no es una accion sobre uno mismo y ademas
+            ya vive en Configuracion > Usuarios y permisos, con rol y
+            contrasena. Aqui queda lo que existe de verdad para quien esta
+            dentro; administrar usuarios se ofrece aparte y solo a quien puede.
+          -->
+          <div class="wx-yo__menu" *ngIf="usuarioAbierto" role="menu">
+            <p class="wx-yo__quien">
+              <b>{{ userName }}</b>
+              <span>{{ rolTexto }}</span>
+            </p>
+            <button type="button" class="wx-yo__fila" role="menuitem" (click)="cerrarSesion()">
+              <i class="ph ph-sign-out" aria-hidden="true"></i><span>Cerrar sesión</span>
+            </button>
+            <ng-container *ngIf="puedeAdministrarUsuarios">
+              <span class="wx-yo__linea" aria-hidden="true"></span>
+              <a class="wx-yo__fila wx-yo__fila--tenue" role="menuitem"
+                 routerLink="/dashboard/configuracion" (click)="usuarioAbierto = false">
+                <i class="ph ph-identification-badge" aria-hidden="true"></i>
+                <span>Usuarios y permisos</span>
+              </a>
+            </ng-container>
+          </div>
+        </div>
       </div>
-    </div>
-  </header>
-  <main class="main-content bg-body-tertiary p-4 min-vh-100">
-    <router-outlet></router-outlet>
-  </main>
-</div>
+    </header>
+
+    <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <!-- Ctrl+K. Vive aqui y no dentro del dock porque escucha el documento
+       entero y porque es un dialogo: no debe heredar la capa del dock. -->
+  <wx-paleta></wx-paleta>
+
 </div>

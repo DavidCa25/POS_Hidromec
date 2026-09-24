@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { SupervisorAuthService } from '../../services/supervisor.service';
+import { PAQUETES } from '../../services/auth.service';
 
 @Component({
   selector: 'app-cajon',
@@ -19,8 +20,9 @@ export class Cajon {
   async abrirCajon() {
     // Candado anti robo hormiga: apertura manual del cajón (no-sale).
     const ok = await this.supervisor.autorizarYregistrar(
-      'Abrir el cajón sin una venta requiere autorización de un supervisor.',
-      'DRAWER_NO_SALE', { detail: 'Apertura manual del cajón' });
+      'Abrir el cajón sin una venta detrás tiene que autorizarlo otra persona.',
+      'DRAWER_NO_SALE', 'open-cash-drawer', PAQUETES.VENTAS_SUPERVISAR,
+      { detail: 'Apertura manual del cajón' });
     if (!ok) return;
 
     const api = (window as any).electronAPI;

@@ -1151,6 +1151,49 @@ export class Inventario {
   ]);
 
   /** Un producto por receta no tiene existencias propias: su stock es 0. */
+  /**
+   * Un producto que NO lleva inventario: los servicios, sobre todo.
+   *
+   * No esta agotado -la pregunta no aplica-, y la diferencia importa: una
+   * columna de existencias en cero invita a «surtir» algo que no se surte, y
+   * al que mira la lista le dice que su taller no puede afinar coches.
+   */
+  sinInventario(item: any): boolean {
+    return String(item?.inventory_mode ?? '') === 'NONE';
+  }
+
+  /**
+   * COMO SE LLAMA LO QUE NO TIENE EXISTENCIA.
+   *
+   * `inventory_mode = 'NONE'` lo comparten un servicio y un producto de
+   * menu sin receta, y decir «Servicio» de un Cafe Americano es tan falso
+   * como decir «0 pza». Lo que las distingue es que un servicio tiene ficha
+   * en `services`; un producto de menu, no.
+   *
+   * «No aplica», y no «Sin existencia»: en un mostrador «sin existencia»
+   * quiere decir agotado, que es justo lo que un Cafe Americano sin receta
+   * no esta.
+   */
+  etiquetaSinStock(item: any): string {
+    return item?.duration_minutes != null || item?.schedulable != null
+      ? 'Servicio' : 'No aplica';
+  }
+
+  /**
+   * LO QUE NO SE VENDE.
+   *
+   * Un ingrediente vive en la misma tabla que lo que se vende y se comporta
+   * distinto: `sellable = 0` lo mantiene fuera de la pantalla de venta. Sin
+   * una señal, «Cafe en grano» y «Cafe Americano» se ven igual y no hay
+   * forma de entender por que uno se puede cobrar y el otro no.
+   *
+   * Una palabra pequena al lado del nombre basta. No hace falta una columna
+   * nueva para todos.
+   */
+  noVendible(item: any): boolean {
+    return Number(item?.sellable ?? 1) === 0;
+  }
+
   esReceta(item: any): boolean {
     return (item?.inventory_mode ?? 'DIRECT') === 'RECIPE';
   }

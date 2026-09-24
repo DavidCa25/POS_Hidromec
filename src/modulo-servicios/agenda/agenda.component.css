@@ -1,0 +1,239 @@
+/* ============================================================
+   AGENDA — DIRECCIÓN A: columnas por persona.
+
+   Una columna por quien atiende, las horas bajando. Es la forma que todo el
+   mundo reconoce como «agenda», y responde de un vistazo la pregunta que más
+   se hace en el mostrador: quién está libre a las once.
+
+   LAS TRES CAPAS DE UNA COLUMNA
+   -----------------------------
+   De atrás hacia delante: la rejilla horaria, los bloques de ausencia
+   —rayados, porque «no está» no es lo mismo que «no tiene cita»—, y las citas.
+   Los huecos libres NO se dibujan: son el espacio que queda, y se pulsa.
+   Dibujarlos habría llenado la pantalla de cajas vacías compitiendo con las
+   citas de verdad.
+
+   EL COLOR, EN DOS PLANOS
+   -----------------------
+   El cromo de la pantalla —cabecera, botón, columna de hoy— toma el color que
+   el negocio eligió, como Compras e Inventario. Los bloques de cita toman el
+   color de SU PROFESIONAL, que es un dato del negocio: con cinco personas,
+   distinguirlas por color es lo que hace la pantalla legible de un vistazo.
+   Son dos cosas distintas y por eso son dos fuentes distintas.
+
+   A PANTALLA ESTRECHA, UNA PERSONA A LA VEZ
+   -----------------------------------------
+   Por debajo de 1100 px, tres columnas dejan cada cita ilegible. Ahí la
+   agenda pasa a una sola columna y la cabecera ofrece elegir de quién.
+   ============================================================ */
+
+:host { display: block; height: 100%; }
+
+.ag { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+/* ------------------------------------------------------------- cabecera */
+.ag-cab {
+  flex: none;
+  background: var(--wx-surface);
+  border-bottom: 1px solid var(--wx-edge);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ag-titulo { display: flex; align-items: baseline; gap: 10px; }
+.ag-titulo h1 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
+/* Sólo la PRIMERA letra: `capitalize` a secas convierte «martes 22 de
+   septiembre» en «Martes 22 De Septiembre», con el «De» en mayúscula. */
+.ag-fecha { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.ag-fecha::first-letter { text-transform: uppercase; }
+.ag-nav { display: flex; gap: 4px; }
+.ag-resumen { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+.ag-der { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* -------------------------------------------------------------- rejilla */
+.ag-cuerpo { flex-grow: 1; min-height: 0; padding: 12px 16px 16px; display: flex; }
+
+.ag-rejilla {
+  flex-grow: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* La cabecera de columnas se pinta con el color del negocio, igual que la
+   cabecera de cualquier tabla del sistema. */
+.ag-cols {
+  flex: none;
+  display: grid;
+  background: var(--inv-main, var(--wx-accent));
+  border-bottom: 3px solid var(--inv-main-dark, var(--wx-cyan-700, var(--wx-accent)));
+}
+.ag-cols-hueco { border-right: 1px solid rgb(255 255 255 / .18); }
+.ag-col-cab {
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--wx-user-accent-fg, #fff);
+  border-left: 1px solid rgb(255 255 255 / .18);
+}
+.ag-col-cab:first-of-type { border-left: none; }
+.ag-col-nombre {
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-col-n {
+  margin-left: auto;
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  background: rgb(255 255 255 / .22);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.ag-punto { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.ag-punto--claro { box-shadow: 0 0 0 1.5px rgb(255 255 255 / .6); }
+
+.ag-scroll { flex-grow: 1; min-height: 0; overflow: auto; }
+.ag-lienzo { display: grid; position: relative; }
+
+/* --------------------------------------------------------- columna horas */
+.ag-horas { border-right: 1px solid var(--wx-edge); background: var(--wx-edge-soft); }
+.ag-hora {
+  padding: 3px 9px 0;
+  text-align: right;
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-dim);
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------- columnas */
+.ag-col {
+  position: relative;
+  border-left: 1px solid var(--wx-edge);
+  min-width: 0;
+  /* La rejilla horaria se dibuja con el fondo: una línea por hora sin un
+     elemento por hora. Con diez horas y seis personas eso son sesenta
+     elementos que no hacen nada. */
+  background-image: linear-gradient(to bottom, var(--wx-edge) 1px, transparent 1px);
+  background-repeat: repeat-y;
+}
+
+.ag-bloque {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: var(--wx-radius-sm);
+  padding: 5px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: none;
+  border-left: 3px solid var(--ag-color, var(--wx-accent));
+  background: var(--ag-suave, var(--wx-accent-soft));
+  color: var(--wx-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: block;
+}
+.ag-bloque:hover { filter: brightness(.97); }
+.ag-bloque:focus-visible {
+  outline: 2px solid var(--wx-user-accent, var(--wx-accent));
+  outline-offset: 1px;
+}
+.ag-bloque-quien { font-size: var(--wx-text-sm); font-weight: 500; line-height: 1.25; }
+.ag-bloque-que {
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-bloque--corto { padding: 3px 8px; }
+.ag-bloque--corto .ag-bloque-que { display: none; }
+
+/* Atendida, cancelada, no llegó: ya pasaron. Se apagan para que el día que
+   queda por delante se lea primero. */
+.ag-bloque--cerrado { opacity: .55; }
+.ag-bloque--cancelado { text-decoration: line-through; }
+
+/* Ausencia: rayada. «No está» no es lo mismo que «no tiene cita», y un hueco
+   liso se ofrecería para agendar. */
+.ag-ausencia {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: var(--wx-radius-sm);
+  background: repeating-linear-gradient(135deg,
+    var(--wx-edge-soft) 0 6px, var(--wx-edge) 6px 12px);
+  padding: 6px 9px;
+  box-sizing: border-box;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* La línea de ahora. Roja en todos los negocios: no es decoración del tema,
+   es una referencia temporal. */
+.ag-ahora { position: absolute; left: 0; right: 0; border-top: 2px solid var(--wx-danger); z-index: 3; }
+.ag-ahora-hora {
+  position: absolute;
+  left: 6px;
+  transform: translateY(-50%);
+  font-family: var(--wx-font-mono);
+  font-size: 10px;
+  color: var(--wx-danger);
+  font-weight: 500;
+  z-index: 3;
+  background: var(--wx-surface);
+  padding: 0 3px;
+}
+
+/* ----------------------------------------------------------- sin horario */
+.ag-aviso {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--wx-edge);
+  background: var(--wx-edge-soft);
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-muted);
+  flex: none;
+}
+
+@media (max-width: 1100px) {
+  /* Una persona a la vez: tres columnas a esta anchura dejan cada cita
+     ilegible, y la agenda existe para leerse. */
+  .ag-cuerpo { padding: 10px; }
+  .ag-col-cab { padding: 8px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-bloque { transition: none; }
+}
+
+/* Una cita que ya no promete horario: banda fina, detrás de las vivas y sin
+   el relleno de color que las hace leerse como reserva. No se borra —saber
+   que ese cliente no llegó es la mitad de la razón de tenerlo apuntado— pero
+   deja de tapar el hueco que acaba de quedar libre. */
+.ag-bloque--pasada {
+  z-index: 1;
+  background: var(--wx-sunken) !important;
+  border-left-style: dashed;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  opacity: .72;
+}
+.ag-bloque--pasada .ag-bloque-que { display: none; }
+.ag-bloque--pasada .ag-bloque-quien { font-weight: 450; font-size: 12px; }

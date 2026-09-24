@@ -73,4 +73,17 @@ export const MODULOS: ModuleDefinition[] = [
     route: '/dashboard/fidelizacion',
     aparece: 'Fidelización, en el menú principal',
   },
+  {
+    id: 'servicios',
+    name: 'Servicios',
+    description: 'Órdenes de servicio, profesionales y agenda de citas.',
+    detalle: 'Para el negocio que además de vender cobra por trabajo: el taller, la ' +
+             'estética, la clínica. Abre una orden por cada trabajo, anota qué se hizo y ' +
+             'quién lo hizo, y cóbrala con las refacciones en el mismo ticket.',
+    icon: 'wrench',
+    category: 'OPERACION',
+    capability: 'servicios',
+    route: '/dashboard/ordenes-de-servicio',
+    aparece: 'Servicios y Agenda, en el menú principal',
+  },
 ];

@@ -1,0 +1,77 @@
+<!--
+  LA PALETA.
+
+  Un campo protagonista, resultados agrupados y nada mas. Sin tarjetas por
+  resultado, sin colores por todas partes y sin un dialogo grande medio vacio:
+  la caja crece con lo que hay dentro.
+-->
+<div class="wxpal" *ngIf="abierta" (click)="cerrar()">
+  <div class="wxpal__caja" role="dialog" aria-modal="true" aria-label="Buscar en Wybix"
+       (click)="$event.stopPropagation()">
+
+    <div class="wxpal__cab">
+      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+      <input id="wxpal-q" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Busca un producto, un cliente, una orden o una acción"
+             aria-label="Buscar en Wybix"
+             [value]="consulta()" (input)="alEscribir($event)" />
+      <span class="wxpal__cargando" *ngIf="cargando()" aria-hidden="true"></span>
+      <button type="button" class="wxpal__esc" (click)="cerrar()">Esc</button>
+    </div>
+
+    <!-- ------------------------------------------------ con lo que escribes -->
+    <div class="wxpal__cuerpo" *ngIf="consulta().trim()">
+      <ng-container *ngFor="let g of grupos()">
+        <p class="wxpal__grupo">{{ g.nombre === 'Activos' ? nombreActivos : g.nombre }}</p>
+        <button type="button" class="wxpal__fila" *ngFor="let r of g.filas; trackBy: porFila"
+                [class.is-elegida]="esElegido(r)"
+                (mouseenter)="indice.set(posicion(r))"
+                (click)="abrir(r)">
+          <!-- Una persona lleva su figura; lo demas, un icono discreto. -->
+          <wx-avatar *ngIf="r.persona; else iconoGenerico"
+                     [semilla]="r.persona" [nombre]="r.texto" [size]="22"></wx-avatar>
+          <ng-template #iconoGenerico>
+            <i class="ph {{ r.icono }}" aria-hidden="true"></i>
+          </ng-template>
+
+          <span class="wxpal__txt">
+            <b [class.mono]="r.mono">{{ r.texto }}</b>
+            <span *ngIf="r.pie">{{ r.pie }}</span>
+          </span>
+          <span class="wxpal__enter" *ngIf="esElegido(r)">Enter</span>
+        </button>
+      </ng-container>
+
+      <!-- Un vacio que dice que hacer, no solo que no hay nada. -->
+      <div class="wxpal__nada" *ngIf="vacio()">
+        <p>Nada con «{{ consulta() }}».</p>
+        <p>Se buscan productos, clientes, órdenes y acciones. Las pantallas
+           también están aquí, pero para eso el dock suele ser más corto.</p>
+      </div>
+    </div>
+
+    <!-- ----------------------------------------------- con el campo vacio -->
+    <div class="wxpal__cuerpo" *ngIf="!consulta().trim()">
+      <p class="wxpal__grupo">{{ tituloSugerencias() }}</p>
+      <button type="button" class="wxpal__fila" *ngFor="let r of sugerencias(); let i = index; trackBy: porFila"
+              [class.is-elegida]="i === indice()"
+              (mouseenter)="indice.set(i)"
+              (click)="abrir(r)">
+        <wx-avatar *ngIf="r.persona; else iconoSug"
+                   [semilla]="r.persona" [nombre]="r.texto" [size]="22"></wx-avatar>
+        <ng-template #iconoSug><i class="ph {{ r.icono || 'ph-arrow-elbow-down-left' }}" aria-hidden="true"></i></ng-template>
+        <span class="wxpal__txt">
+          <b [class.mono]="r.mono">{{ r.texto }}</b>
+          <span *ngIf="r.pie">{{ r.pie }}</span>
+        </span>
+        <span class="wxpal__enter" *ngIf="i === indice()">Enter</span>
+      </button>
+    </div>
+
+    <div class="wxpal__pie">
+      <span><kbd>↑</kbd><kbd>↓</kbd> moverse</span>
+      <span><kbd>Enter</kbd> abrir</span>
+      <span><kbd>Esc</kbd> cerrar</span>
+    </div>
+  </div>
+</div>

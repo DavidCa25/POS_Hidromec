@@ -1,287 +1,31 @@
 /* ==========================================================================
-   WYBIX POS - APP SHELL (sidebar + topbar)
+   WYBIX POS - CARCASA DEL PANEL
    --------------------------------------------------------------------------
-   REFINAMIENTO, no rediseno. Se conservan intactos:
-   - la estructura de la sidebar y sus SUBMENUS desplegables
-   - el orden y la agrupacion de los destinos
-   - la topbar con sus mismas funciones (buscador, color, tema, alertas,
-     descarga, usuario)
-   - el comportamiento de colapso y el de movil
+   Aqui ya NO vive la navegacion. El rail lateral se fue al dock
+   (`src/app/wx-dock/`), y con el se fueron unas setenta reglas que dibujaban
+   una columna, sus submenus desplegables, su version colapsada y su version
+   de movil.
 
-   Lo que se refina:
-   - La sidebar pasa a navy de marca. Antes era blanca con texto oscuro, que
-     es el patron exacto de "sidebar + topbar + white cards" de cualquier
-     plantilla. En navy, la silueta de la app se vuelve reconocible y ademas
-     iguala su comportamiento en claro y en oscuro.
-   - El estado activo se comunica con TRES senales coherentes -barra de
-     acento, icono relleno y peso- en vez de solo un fondo de color.
-   - Los submenus se abren con una transicion de altura corta en vez de
-     aparecer de golpe.
-   - Espaciado, tipografia, contraste y foco.
+   Lo que queda es la carcasa y la cabecera, que nunca fueron navegacion:
+
+   - el contexto del negocio (que base, que rol, si es una demo), que vivia en
+     el pie del rail y se mudo arriba;
+   - el color de las tablas, que lo elige el negocio;
+   - el modo oscuro;
+   - las notificaciones del producto;
+   - y el area de trabajo, que ahora ocupa el ancho entero.
    ========================================================================== */
 
 :host { display: block; }
 
+/* Una fila: la barra lateral -cuando es la eleccion- ocupa su columna y el
+   contenido el resto. Con dock la fila tiene un solo miembro: el dock es
+   fijo y no ocupa sitio en el flujo. */
 .dashboard-wrapper {
   display: flex;
   min-height: 100vh;
   background: var(--wx-canvas);
 }
-
-/* ==========================================================================
-   SIDEBAR
-   ========================================================================== */
-.sidebar {
-  position: sticky;
-  top: 0;
-  z-index: var(--wx-z-rail);
-  flex: 0 0 auto;
-  width: 250px;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background: var(--wx-rail);
-  border-right: 1px solid var(--wx-rail-edge);
-  overflow-x: hidden;
-  overflow-y: auto;
-  transition: width var(--wx-dur-layout) var(--wx-ease-out);
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 16px !important;
-  height: 64px;
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--wx-rail-edge);
-  text-align: left !important;
-}
-.sidebar-logo {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border-radius: var(--wx-radius-sm);
-  object-fit: contain;
-  background: #fff;
-  padding: 2px;
-}
-.sidebar-title {
-  margin: 0 !important;
-  font-size: var(--wx-text-md);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--wx-rail-text-strong) !important;
-  white-space: nowrap;
-  transition: opacity var(--wx-dur-layout) var(--wx-ease-out);
-}
-
-.sidebar-menu {
-  margin: 0;
-  padding: 8px 0 14px;
-  list-style: none;
-
-  /* La lista ocupa toda la altura sobrante y reparte ese sobrante entre los
-     arranques de grupo. Sin esto, `margin-top: auto` no tendria de donde
-     tomar espacio y todo seguiria apelmazado arriba. */
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  min-height: 0;          /* permite encoger y que aparezca el scroll */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-/* --------------------------------------------------------------------------
-   GRUPOS
-   --------------------------------------------------------------------------
-   Tres puntos de corte: Operacion, Gestion y Sistema. El primer bloque
-   (Estadisticas / Alertas) no lleva marca porque debe quedar pegado a la
-   cabecera.
-
-   `:has(.sidebar-link)` evita el hueco fantasma: muchos destinos estan detras
-   de `*ngIf="auth.esAdmin"`, y si el enlace que abre un grupo no se pinta, el
-   <li> seguiria vacio pero aportando separacion.
-   -------------------------------------------------------------------------- */
-/* Separacion entre grupos.
-   La iteracion anterior repartia el sobrante de la columna entre los cortes y
-   producia huecos de hasta 62px: la navegacion quedaba estirada a la fuerza.
-   Un menu no tiene que llenar la altura que tiene.
-
-   18px es poco mas de un tercio de la altura de un destino: suficiente para
-   que el ojo agrupe, y demasiado poco para leerse como un hueco. Los items de
-   un mismo grupo quedan pegados, que es lo que hace que se lean como grupo. */
-.sidebar-menu > li.wx-grp:has(.sidebar-link) {
-  margin-top: 18px;
-}
-
-/* El bloque de sistema ya no se ancla al pie. Anclarlo obligaba a abrir un
-   vacio continuo en medio de la columna, y ese vacio se veia peor que dejar
-   el aire sobrante abajo, que es donde no molesta. */
-.sidebar-menu > li.wx-grp--sistema:has(.sidebar-link) { padding-bottom: 4px; }
-
-/* Cuando el contenido desborda (pantalla baja o varios submenus abiertos), el
-   reparto vale cero por si solo y el bloque vuelve al flujo con scroll. */
-
-/* Al colapsar el rail no hay etiquetas y la lista es mucho mas corta: repartir
-   ahi deja los iconos flotando sueltos. Se agrupan arriba. */
-.sidebar.collapsed .sidebar-menu > li.wx-grp { margin-top: 0; }
-.sidebar.collapsed .sidebar-menu { justify-content: flex-start; }
-
-/* --------------------------------------------------------------------------
-   DESTINO
-   -------------------------------------------------------------------------- */
-.sidebar-link {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 44px;
-  padding: 0 16px !important;
-  color: var(--wx-rail-text);
-  font-family: var(--wx-font);
-  font-size: 14.5px;
-  font-weight: 400;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color var(--wx-dur-micro) ease,
-              color var(--wx-dur-micro) ease;
-}
-.sidebar-link > i { font-size: 19px; flex: 0 0 auto; }
-.sidebar-link > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-
-@media (hover: hover) and (pointer: fine) {
-  .sidebar-link:hover { background: rgb(255 255 255 / 0.055); color: var(--wx-rail-text-strong); }
-}
-.sidebar-link:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
-
-/* Activo: barra de acento + icono en cyan + peso. Sin glow. */
-.sidebar-link.active {
-  background: rgb(255 255 255 / 0.07);
-  color: var(--wx-rail-text-strong);
-  font-weight: 500;
-}
-.sidebar-link.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 7px;
-  bottom: 7px;
-  width: 2px;
-  border-radius: 0 2px 2px 0;
-  background: var(--wx-accent);
-}
-.sidebar-link.active > i { color: var(--wx-accent); }
-
-/* Contador de alertas: el unico elemento del rail que puede gritar. */
-.sidebar-link .badge {
-  margin-left: auto;
-  min-width: 20px;
-  height: 19px;
-  padding: 0 6px;
-  background: var(--wx-danger) !important;
-  color: #fff !important;
-  border-radius: 999px !important;
-  font-family: var(--wx-font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Chevron del submenu. */
-.chevron {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--wx-rail-text-dim);
-  transition: transform var(--wx-dur-state) var(--wx-ease-out);
-}
-.rotate-180 { transform: rotate(180deg); }
-
-/* --------------------------------------------------------------------------
-   SUBMENUS
-   Se conserva el patron desplegable. Antes aparecian de golpe y en posicion
-   absoluta con z-index 9999, lo que los sacaba del flujo del rail; ahora se
-   despliegan en su sitio con una transicion de altura corta.
-   -------------------------------------------------------------------------- */
-.sidebar .nav-item { position: relative; }
-
-.sidebar .dropdown-menu.dropdown-venta {
-  position: static !important;
-  display: block !important;
-  width: 100% !important;
-  margin: 0;
-  padding: 0;
-  background: rgb(0 0 0 / 0.22) !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  overflow: hidden;
-  /* De 0 a auto no es animable: se usa max-height, que aqui es seguro porque
-     los submenus tienen 2-4 elementos. */
-  max-height: 0;
-  opacity: 0;
-  /* Cerrar es mas rapido que abrir: al cerrar el usuario ya decidio (Emil).
-     Altura y opacidad comparten duracion para que el contenido no aparezca
-     con el contenedor a medio abrir. */
-  transition: max-height var(--wx-dur-micro) var(--wx-ease-out),
-              opacity var(--wx-dur-micro) var(--wx-ease-out);
-}
-.sidebar .nav-item.is-open > .dropdown-menu.dropdown-venta {
-  max-height: 300px;
-  opacity: 1;
-  transition: max-height var(--wx-dur-state) var(--wx-ease-out),
-              opacity var(--wx-dur-state) var(--wx-ease-out);
-}
-
-.sidebar .dropdown-venta .dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 40px;
-  /* 46px = 16 de padding + 19 de icono + 11 de hueco: la etiqueta del submenu
-     cae exactamente bajo la etiqueta del destino que lo abre. */
-  padding: 0 14px 0 46px !important;
-  border-radius: 0;
-  color: var(--wx-rail-text);
-  font-size: 13.5px;
-  white-space: nowrap;
-  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
-}
-.sidebar .dropdown-venta .dropdown-item > i { font-size: 16px; color: var(--wx-rail-text-dim); }
-.sidebar .dropdown-venta .dropdown-item:hover {
-  background: rgb(255 255 255 / 0.06);
-  color: var(--wx-rail-text-strong);
-}
-.sidebar .dropdown-venta .dropdown-item.active {
-  background: rgb(255 255 255 / 0.07);
-  color: var(--wx-rail-text-strong);
-  font-weight: 500;
-}
-.sidebar .dropdown-venta .dropdown-item.active > i { color: var(--wx-accent); }
-
-/* --------------------------------------------------------------------------
-   COLAPSADA
-   -------------------------------------------------------------------------- */
-.sidebar.collapsed { width: 68px; }
-.sidebar.collapsed .sidebar-title,
-.sidebar.collapsed .sidebar-link > span,
-.sidebar.collapsed .chevron { opacity: 0; width: 0; overflow: hidden; }
-.sidebar.collapsed .sidebar-header { justify-content: center; padding: 0 !important; }
-.sidebar.collapsed .sidebar-link { justify-content: center; padding: 0 !important; gap: 0; }
-.sidebar.collapsed .sidebar-link > i { font-size: 20px; }
-.sidebar.collapsed .sidebar-link .badge {
-  position: absolute;
-  top: 4px;
-  right: 8px;
-  margin: 0;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  font-size: 9.5px;
-}
-.sidebar.collapsed .dropdown-venta { display: none !important; }
 
 /* ==========================================================================
    CONTENIDO
@@ -308,42 +52,6 @@
   box-shadow: none !important;
   flex: 0 0 auto;
 }
-
-.menu-btn {
-  display: inline-grid !important;
-  place-items: center;
-  width: var(--wx-control-h);
-  height: var(--wx-control-h);
-  padding: 0 !important;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  border-radius: var(--wx-radius-sm) !important;
-  color: var(--wx-text-muted) !important;
-  box-shadow: none !important;
-  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
-}
-.menu-btn:hover { background: var(--wx-raised) !important; color: var(--wx-text) !important; }
-.menu-btn i { font-size: 20px; }
-
-/* Buscador. */
-.search-bar { max-width: 260px; }
-.search-bar .input-group-text {
-  background: var(--wx-raised) !important;
-  border-color: var(--wx-edge-strong) !important;
-  color: var(--wx-text-dim) !important;
-  padding-right: 4px;
-}
-.search-bar .form-control {
-  background: var(--wx-raised);
-  border-color: var(--wx-edge-strong);
-  padding-left: 4px;
-}
-.search-bar:focus-within .input-group-text,
-.search-bar:focus-within .form-control {
-  background: var(--wx-surface);
-  border-color: var(--wx-accent);
-}
-.search-bar .form-control:focus { box-shadow: none; }
 
 /* Botones de icono de la barra (tema, alertas, descarga). */
 .dashboard-header .btn-light,
@@ -401,31 +109,6 @@
               border-color var(--wx-dur-micro) ease;
 }
 .theme-swatch-btn:hover { background: var(--wx-raised); border-color: var(--wx-edge); }
-.theme-swatch-btn__dot {
-  width: 17px;
-  height: 17px;
-  border-radius: var(--wx-radius-xs);
-  background: var(--wx-user-accent);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
-  /* El cambio de color es informacion, no espectaculo: cruza rapido. */
-  transition: background-color var(--wx-dur-micro) ease;
-}
-
-.theme-option {
-  height: 36px;
-  border: 0;
-  border-radius: var(--wx-radius-sm);
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
-  transition: transform var(--wx-dur-press) var(--wx-ease-out);
-}
-.theme-option:hover { transform: scale(1.04); }
-.theme-option:active { transform: scale(0.97); }
-.theme-option.active {
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18),
-              0 0 0 2px var(--wx-surface),
-              0 0 0 4px var(--wx-accent);
-}
 
 /* Los paneles flotantes de la barra (color, notificaciones) escalan desde su
    esquina superior derecha, que es donde vive el disparador. Escalar desde el
@@ -447,112 +130,70 @@
 }
 
 /* --------------------------------------------------------------------------
-   USUARIO
-   -------------------------------------------------------------------------- */
-.dashboard-user-wrapper { position: relative; }
-
-.dashboard-user {
-  gap: 9px;
-  height: var(--wx-control-h);
-  padding: 0 10px 0 6px;
-  border: 1px solid transparent;
-  border-radius: var(--wx-radius-sm);
-  cursor: pointer;
-  transition: background-color var(--wx-dur-micro) ease;
-}
-.dashboard-user:hover { background: var(--wx-raised); }
-.dashboard-user img { width: 27px; height: 27px; border-radius: var(--wx-radius-xs); object-fit: cover; }
-.dashboard-user span { color: var(--wx-text) !important; font-size: var(--wx-text-base); font-weight: 500; }
-.dashboard-user .chevron { color: var(--wx-text-dim); margin-left: 2px; }
-
-.user-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: var(--wx-z-menu);
-  min-width: 200px;
-  margin: 0;
-  padding: 5px;
-  list-style: none;
-  background: var(--wx-surface);
-  border: 1px solid var(--wx-edge) !important;
-  border-radius: var(--wx-radius-md);
-  box-shadow: var(--wx-shadow-menu) !important;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.97) translateY(-4px);
-  transform-origin: top right;
-  transition: opacity var(--wx-dur-menu) var(--wx-ease-out),
-              transform var(--wx-dur-menu) var(--wx-ease-out),
-              visibility var(--wx-dur-menu);
-}
-.dashboard-user-wrapper.is-open .user-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1) translateY(0);
-}
-.user-dropdown .dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
-  border-radius: var(--wx-radius-xs);
-  color: var(--wx-text);
-  font-size: var(--wx-text-base);
-  cursor: pointer;
-}
-.user-dropdown .dropdown-item > i { color: var(--wx-text-muted); font-size: 17px; }
-.user-dropdown .dropdown-item:hover { background: var(--wx-raised); }
-
-/* --------------------------------------------------------------------------
    AREA DE TRABAJO
    -------------------------------------------------------------------------- */
 .main-content {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 20px 22px 32px !important;
+  /* El hueco de abajo es el del dock (54 px de alto + 18 de separacion) mas
+     aire. Sin el, la ultima fila de cualquier tabla queda debajo de la barra
+     y no hay forma de llegar a ella. */
+  padding: 20px 22px 108px !important;
   background: var(--wx-canvas) !important;
   min-height: 0 !important;
 }
 
+/* Con barra lateral no hay dock abajo: el hueco que se le reserva sobra. */
+.dashboard-wrapper.es-sidebar .main-content { padding-bottom: 28px !important; }
+
+
 /* ==========================================================================
-   MOVIL
-   La sidebar entra como panel lateral y sube la altura de los destinos a
-   objetivo tactil. No es "la sidebar de escritorio abierta encima".
+   CONTEXTO DEL NEGOCIO
+   Vivia en el pie del rail, sobre navy. Ahora vive en la cabecera, sobre
+   superficie clara, asi que cambian los colores pero no lo que dice: en que
+   negocio se esta trabajando, con que rol y si la base es de demostracion.
    ========================================================================== */
-.sidebar-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--wx-z-rail) - 1);
-  background: var(--wx-scrim);
-  animation: wx-fade var(--wx-dur-menu) var(--wx-ease-out) both;
+.wx-negocio { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.wx-negocio__tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-navy-800);
+  color: var(--wx-accent);
+  font-size: 17px;
+}
+.wx-negocio__tile.es-demo {
+  background: var(--wx-warning-soft);
+  color: var(--wx-warning-ink);
+}
+
+.wx-negocio__txt { display: flex; flex-direction: column; min-width: 0; }
+
+.wx-negocio__nombre {
+  font-size: var(--wx-text-base);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--wx-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 34ch;
+}
+
+.wx-negocio__meta {
+  font-size: 11.5px;
+  color: var(--wx-text-muted);
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 @keyframes wx-fade { from { opacity: 0; } to { opacity: 1; } }
 
 @media (max-width: 900px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: min(82vw, 280px);
-    transform: translateX(0);
-    box-shadow: var(--wx-shadow-dialog);
-    transition: transform var(--wx-dur-layout) var(--wx-ease-out);
-  }
-  .sidebar.sidebar-mobile-closed,
-  .sidebar.collapsed { transform: translateX(-100%); width: min(82vw, 280px); }
-
-  /* En movil nunca se colapsa a iconos: se cierra del todo. */
-  .sidebar.collapsed .sidebar-title,
-  .sidebar.collapsed .sidebar-link > span,
-  .sidebar.collapsed .chevron { opacity: 1; width: auto; }
-  .sidebar.collapsed .sidebar-link { justify-content: flex-start; padding: 0 16px !important; gap: 11px; }
-  .sidebar.collapsed .sidebar-header { justify-content: flex-start; padding: 0 16px !important; }
-  .sidebar.collapsed .dropdown-venta { display: block !important; }
-  .sidebar.collapsed .sidebar-link .badge { position: static; min-width: 20px; height: 19px; font-size: 11px; }
-
-  .sidebar-link { height: 46px; }
-  .sidebar .dropdown-venta .dropdown-item { height: 42px; }
 
   .main-content { padding: 16px 14px 28px !important; }
   .search-bar { max-width: 180px; }
@@ -560,7 +201,6 @@
 
 @media (max-width: 600px) {
   .search-bar { display: none !important; }
-  .dashboard-user span { display: none; }
 }
 
 /* ==========================================================================
@@ -678,51 +318,6 @@
 }
 .wx-palette__nombre { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
 
-/* ==========================================================================
-   ICONO ACTIVO RELLENO
-   --------------------------------------------------------------------------
-   Phosphor usa el MISMO codepoint en `regular` y en `fill`: solo cambia la
-   familia. Eso permite rellenar el icono activo desde CSS, sin tocar una
-   sola plantilla ni duplicar clases.
-
-   Se aplica solo al icono que encabeza el destino: el chevron del submenu se
-   queda en trazo, porque rellenarlo lo convertiria en una mancha.
-   ========================================================================== */
-.sidebar-link.active > i:not(.chevron),
-.sidebar .dropdown-venta .dropdown-item.active > i {
-  font-family: "Phosphor-Fill" !important;
-}
-
-/* ==========================================================================
-   SIDEBAR EN CADA TEMA
-   --------------------------------------------------------------------------
-   El navy se conserva en los dos temas: es el ancla de identidad. Lo que
-   cambia es como se relaciona con su entorno.
-
-   En CLARO el rail contrasta mucho con el lienzo, asi que necesita un borde
-   definido y puede permitirse un hover mas tenue.
-
-   En OSCURO el rail y el lienzo estan cerca: el borde casi desaparece y el
-   trabajo de separacion lo hace un rail algo mas profundo que el fondo, con
-   hover y activo un punto mas marcados para que sigan leyendose.
-   ========================================================================== */
-.sidebar { border-right: 1px solid rgb(0 0 0 / 0.22); }
-
-:host-context(html.dark) .sidebar {
-  border-right: 1px solid rgb(255 255 255 / 0.07);
-}
-:host-context(html.dark) .sidebar-link:hover { background: rgb(255 255 255 / 0.07); }
-:host-context(html.dark) .sidebar-link.active { background: rgb(255 255 255 / 0.09); }
-:host-context(html.dark) .sidebar .dropdown-menu.dropdown-venta {
-  /* Sobre un rail ya muy oscuro, oscurecer mas el submenu no se ve: se
-     aclara ligeramente en su lugar. */
-  background: rgb(255 255 255 / 0.03) !important;
-}
-:host-context(html.dark) .sidebar-header { border-bottom-color: rgb(255 255 255 / 0.07); }
-
-/* En claro el submenu si puede hundirse respecto al rail. */
-.sidebar .dropdown-menu.dropdown-venta { background: rgb(0 0 0 / 0.24) !important; }
-
 /* --------------------------------------------------------------------------
    ANCLAJE DEL SELECTOR DE COLOR
    El panel se ancla al boton de la topbar. `position-try-fallbacks` (definido
@@ -789,53 +384,8 @@
 .theme-swatch-btn__ph { color: var(--wx-user-accent); }
 .wx-iconbtn.theme-swatch-btn:hover .theme-swatch-btn__ph { color: var(--wx-user-accent); }
 
-/* El menu lateral se separa del grupo: no pertenece a la fila de acciones. */
-.wx-iconbtn.menu-btn { margin-right: 4px; }
-
 @media (prefers-reduced-motion: reduce) {
   .wx-iconbtn:active { transform: none; }
-}
-
-/* ==========================================================================
-   SUCURSAL — PIE DEL RAIL
-   --------------------------------------------------------------------------
-   Ancla el pie de la columna y da contexto de donde se esta trabajando. De
-   paso ocupa el aire que quedaba abajo, asi que el aprovechamiento vertical
-   mejora sin estirar la navegacion.
-   ========================================================================== */
-.sidebar-sucursal {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
-  margin: 8px 10px 10px;
-  padding: 10px;
-  border-radius: var(--wx-radius-md);
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.07);
-}
-
-.sidebar-sucursal__tile {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border-radius: var(--wx-radius-sm);
-  background: rgb(255 255 255 / 0.08);
-  color: var(--wx-accent);
-  font-size: 18px;
-}
-
-.sidebar-sucursal__txt { display: flex; flex-direction: column; min-width: 0; }
-.sidebar-sucursal__nombre {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--wx-rail-text-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 /* ENTORNO DE DEMOSTRACION.
    Una marca pequena junto al rol, no un rediseno de la barra. Tiene que
@@ -856,30 +406,80 @@
   vertical-align: 1px;
 }
 
-/* Con el menu plegado solo queda la baldosa: la marca pasa a ella. */
-.sidebar-sucursal__tile.es-demo {
-  background: var(--wx-warning-soft, rgb(200 135 27 / 0.18));
-  color: var(--wx-warning-ink, #E0A63A);
-}
+/* ==========================================================================
+   QUIEN ESTA DENTRO
+   --------------------------------------------------------------------------
+   Vivia en el extremo derecho del dock. Ahi eran dos figuras pequenas -Wybix a
+   la izquierda y la persona a la derecha- y se leian como decoracion repetida.
+   La barra de trabajo es para navegar; quien ha entrado es CONTEXTO, igual que
+   el negocio del otro extremo de esta misma cabecera.
+   ========================================================================== */
+.wx-yo { position: relative; margin-left: 6px; }
 
-.sidebar-sucursal__meta {
-  font-size: 11.5px;
-  color: var(--wx-rail-text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.wx-yo__btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: var(--wx-control-h);
+  padding: 0 10px 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text);
+  font-weight: 550;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
 }
+.wx-yo__btn:hover, .wx-yo__btn.is-abierto { background: var(--wx-raised); }
+.wx-yo__btn:active { transform: scale(0.97); }
+.wx-yo__btn:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.wx-yo__btn > i { font-size: 13px; color: var(--wx-text-dim); }
 
-/* Colapsado solo cabe la baldosa, centrada. */
-.sidebar-sucursal--min {
-  justify-content: center;
-  margin: 8px 8px 10px;
+.wx-yo__nom { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wx-yo__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--wx-z-menu);
+  width: 234px;
   padding: 8px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-menu);
+  /* Sale de SU boton, que esta arriba a la derecha. */
+  transform-origin: top right;
+  animation: wx-pop var(--wx-dur-menu) var(--wx-ease-out) both;
 }
 
-/* En claro el rail sigue siendo navy, asi que el bloque se separa subiendo
-   luz igual que en oscuro; lo que cambia es cuanta. */
-:host-context(html.dark) .sidebar-sucursal {
-  background: rgb(255 255 255 / 0.035);
-  border-color: rgb(255 255 255 / 0.055);
+.wx-yo__quien { margin: 4px 9px 8px; display: flex; flex-direction: column; }
+.wx-yo__quien b { font-weight: 650; }
+.wx-yo__quien span { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+
+.wx-yo__fila {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text);
+  text-align: left;
+  text-decoration: none;
+  font-weight: 550;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease;
 }
+.wx-yo__fila i { font-size: 18px; color: var(--wx-text-muted); }
+.wx-yo__fila:hover { background: var(--wx-hover); }
+.wx-yo__fila:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+/* Administrar usuarios NO es una accion de la sesion: se ofrece, mas callada. */
+.wx-yo__fila--tenue { font-weight: 400; color: var(--wx-text-muted); }
+
+.wx-yo__linea { display: block; height: 1px; margin: 6px 10px; background: var(--wx-edge); }

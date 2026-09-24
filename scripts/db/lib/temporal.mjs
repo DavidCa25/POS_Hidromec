@@ -109,9 +109,31 @@ export function ejecutarVarios(db, sentencias) {
   }
 }
 
-/** Se niega a tocar una base que no sea claramente temporal. */
+/**
+ * BASES QUE NO SE TOCAN NUNCA, PASE LO QUE PASE.
+ *
+ * La lista blanca de abajo ya seria suficiente si nadie se equivocara al
+ * escribir un patron. Esta lista negra existe para el dia en que alguien lo
+ * haga: son las cuatro bases cuyo borrado no tiene vuelta atras -la del
+ * cliente, la de produccion, la plantilla que se instala y el catalogo del
+ * servidor- y se comprueban por nombre exacto antes que nada.
+ */
+const INTOCABLES = new Set(['wybix_pos', 'wybix_production', 'wybix_template', 'master',
+                            'model', 'msdb', 'tempdb']);
+
+/**
+ * Se niega a tocar una base que no sea claramente desechable.
+ *
+ * `Wybix_E2E_*` entra en la lista porque las pruebas de extremo a extremo
+ * necesitan una base con nombre estable entre ejecuciones -Electron la abre por
+ * su configuracion, no por un parametro-, y un nombre al azar no serviria. El
+ * prefijo es igual de inconfundible que `Wybix_Tmp`.
+ */
 export function exigirTemporal(nombre) {
-  if (!/^Wybix_(MigTest|SchemaTest|RebuildTest|Tmp[A-Za-z0-9]*)$/.test(nombre)) {
+  if (INTOCABLES.has(String(nombre || '').trim().toLowerCase())) {
+    throw new Error(`"${nombre}" es una base protegida. Esta herramienta NUNCA la toca.`);
+  }
+  if (!/^Wybix_(MigTest|SchemaTest|RebuildTest|Tmp[A-Za-z0-9]*|E2E_[A-Za-z0-9]+)$/.test(nombre)) {
     throw new Error(`"${nombre}" no parece una base temporal. Se rechaza por seguridad.`);
   }
 }

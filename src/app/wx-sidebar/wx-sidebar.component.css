@@ -1,0 +1,339 @@
+/* ==========================================================================
+   WX-SIDEBAR
+   --------------------------------------------------------------------------
+   Recuperada de la sidebar anterior (src/dashboard/dashboard.css en el padre
+   de 3af2bc3). Las medidas y el acabado son los suyos:
+
+   - navy de marca en los dos temas: es el ancla de identidad;
+   - 250 px, 68 plegada;
+   - destinos de 44 px, icono de 19, texto de 14.5;
+   - activo con TRES senales -barra de acento, icono relleno y peso-;
+   - submenus que se despliegan EN SU SITIO, hundidos respecto al rail.
+
+   Cambia lo que tenia que cambiar: los submenus usan el primitivo
+   `.wx-abrir` (grid 0fr -> 1fr) en vez de un `max-height` que mentia sobre
+   la altura, y la barra deja de hacer scroll entera: solo la lista. Asi el
+   pie -Wybix- y el tirador pueden salirse de ella.
+   ========================================================================== */
+
+:host { display: contents; }
+
+.wxside {
+  position: sticky;
+  top: 0;
+  z-index: var(--wx-z-rail, 40);
+  flex: 0 0 auto;
+  width: 250px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--wx-rail);
+  border-right: 1px solid rgb(0 0 0 / 0.22);
+  transition: width var(--wx-dur-layout) var(--wx-ease-out);
+}
+.wxside.es-plegada { width: 68px; }
+
+/* ---------------------------------------------------------------- cabecera */
+.wxside__cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 10px 0 16px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--wx-rail-edge);
+}
+.wxside.es-plegada .wxside__cab { justify-content: center; padding: 0; }
+
+.wxside__logo {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: var(--wx-radius-sm);
+  object-fit: contain;
+  background: #fff;
+  padding: 2px;
+}
+.wxside__titulo {
+  font-size: var(--wx-text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--wx-rail-text-strong);
+  white-space: nowrap;
+}
+
+.wxside__plegar {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-rail-text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.wxside.es-plegada .wxside__plegar { margin-left: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .wxside__plegar:hover { background: rgb(255 255 255 / 0.07); color: var(--wx-rail-text-strong); }
+}
+.wxside__plegar:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
+
+/* ---------------------------------------------------------------- buscador */
+.wxside__buscar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  height: 38px;
+  margin: 12px 12px 4px;
+  padding: 0 10px;
+  border: 1px solid var(--wx-rail-edge);
+  border-radius: var(--wx-radius-sm);
+  background: rgb(255 255 255 / 0.05);
+  color: var(--wx-rail-text-dim);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.wxside__buscar > i { font-size: 17px; flex: 0 0 auto; }
+.wxside__buscartxt { flex: 1 1 auto; }
+.wxside__kbd {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.25);
+  color: var(--wx-rail-text-dim);
+  font-family: var(--wx-font-mono);
+  font-size: 11px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wxside__buscar:hover { background: rgb(255 255 255 / 0.08); color: var(--wx-rail-text-strong); }
+}
+.wxside__buscar:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; }
+.wxside.es-plegada .wxside__buscar { justify-content: center; margin: 12px 10px 4px; padding: 0; }
+.wxside.es-plegada .wxside__buscartxt,
+.wxside.es-plegada .wxside__kbd { display: none; }
+
+/* ------------------------------------------------------------------- lista */
+.wxside__menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 0 14px;
+  list-style: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  /* La barra de desplazamiento nativa es clara y en oscuro se ve prestada. */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+.wxside__menu ul { margin: 0; padding: 0; list-style: none; }
+
+/* Separacion entre grupos: 18 px, poco mas de un tercio de un destino.
+   Suficiente para que el ojo agrupe, poco para leerse como un hueco. */
+.wxside__grp { margin-top: 18px; }
+.wxside__grp--sistema { padding-bottom: 4px; }
+.wxside.es-plegada .wxside__grp { margin-top: 10px; }
+
+/* ----------------------------------------------------------------- destino */
+.wxside__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--wx-rail-text);
+  font-family: var(--wx-font);
+  font-size: 14.5px;
+  font-weight: 400;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.wxside__link > i:first-child { font-size: 19px; flex: 0 0 auto; }
+.wxside__txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+@media (hover: hover) and (pointer: fine) {
+  .wxside__link:hover { background: rgb(255 255 255 / 0.055); color: var(--wx-rail-text-strong); }
+}
+.wxside__link:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
+
+/* Activo: barra de acento + icono en acento + peso. Sin glow. */
+.wxside__link.active {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--wx-rail-text-strong);
+  font-weight: 500;
+}
+.wxside__link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--wx-accent);
+}
+.wxside__link.active > i:first-child { color: var(--wx-accent); }
+
+/* Phosphor usa el mismo codepoint en trazo y relleno: se rellena el icono
+   activo cambiando la familia, sin tocar la plantilla. El chevron no. */
+.wxside__link.active > i:first-child,
+.wxside__item.active > i { font-family: "Phosphor-Fill" !important; }
+
+/* El aviso del area: el mismo punto que en el dock. */
+.wxside__punto {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.wxside__punto.es-peligro { background: var(--wx-danger); }
+.wxside__punto.es-aviso { background: var(--wx-amber-500); }
+.wxside__punto + .wxside__chevron { margin-left: 8px; }
+
+.wxside__chevron {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--wx-rail-text-dim);
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
+}
+.wxside__area.is-open .wxside__chevron { transform: rotate(180deg); }
+
+/* ---------------------------------------------------------------- submenus */
+.wxside__sub > ul { background: rgb(0 0 0 / 0.24); }
+
+.wxside__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  /* 46 = 16 de padding + 19 de icono + 11 de hueco: la etiqueta del submenu
+     cae exactamente bajo la del destino que lo abre. */
+  padding: 0 14px 0 46px;
+  color: var(--wx-rail-text);
+  font-size: 13.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
+}
+.wxside__item > i { font-size: 16px; color: var(--wx-rail-text-dim); }
+.wxside__item > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) and (pointer: fine) {
+  .wxside__item:hover { background: rgb(255 255 255 / 0.06); color: var(--wx-rail-text-strong); }
+}
+.wxside__item:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
+.wxside__item.active {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--wx-rail-text-strong);
+  font-weight: 500;
+}
+.wxside__item.active > i { color: var(--wx-accent); }
+
+/* ---------------------------------------------------------------- plegada */
+.wxside.es-plegada .wxside__txt,
+.wxside.es-plegada .wxside__chevron { display: none; }
+.wxside.es-plegada .wxside__link { justify-content: center; padding: 0; gap: 0; }
+.wxside.es-plegada .wxside__link > i:first-child { font-size: 20px; }
+.wxside.es-plegada .wxside__punto {
+  position: absolute;
+  top: 9px;
+  right: 17px;
+  margin: 0;
+  box-shadow: 0 0 0 2px var(--wx-rail);
+}
+.wxside.es-plegada .wxside__sub { display: none; }
+
+/* -------------------------------------------------------------------- pie */
+.wxside__pie {
+  flex: 0 0 auto;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--wx-rail-edge);
+}
+/* El ancla del panel de la guia, igual que en el dock: el panel se coloca
+   respecto al boton y no hay nada que medir. */
+.wxside__anclaWybix { position: relative; display: flex; }
+
+.wxside__pulso {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--wx-radius-md);
+  background: transparent;
+  color: var(--wx-rail-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.wxside__pulso:hover, .wxside__pulso.is-abierto { background: var(--wx-rail-raised); }
+.wxside__pulso:active { transform: scale(0.98); }
+.wxside__pulso:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.wxside.es-plegada .wxside__pulso { justify-content: center; padding: 6px 0; }
+
+.wxside__wybix { display: flex; flex-direction: column; min-width: 0; }
+.wxside__wybix b { font-size: 13px; font-weight: 600; color: var(--wx-rail-text-strong); }
+.wxside__wybix span {
+  font-size: 11.5px;
+  color: var(--wx-rail-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wxside__pulsopunto {
+  position: absolute;
+  top: 7px;
+  left: 30px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wx-amber-500);
+  box-shadow: 0 0 0 2.5px var(--wx-rail);
+}
+.wxside.es-plegada .wxside__pulsopunto { left: auto; right: 12px; }
+
+/* ------------------------------------------------------------------ tactil
+   Sin cursor, los destinos suben a objetivo de dedo, como hacia el rail en
+   pantallas pequenas. */
+@media (hover: none) {
+  .wxside__link { height: 46px; }
+  .wxside__item { height: 42px; }
+}
+
+/* ------------------------------------------------------------- en oscuro
+   El navy se conserva: es el ancla. En oscuro rail y lienzo estan cerca, asi
+   que el borde casi desaparece y el hover y el activo se marcan un punto mas. */
+:host-context(html.dark) .wxside { border-right: 1px solid rgb(255 255 255 / 0.07); }
+:host-context(html.dark) .wxside__cab { border-bottom-color: rgb(255 255 255 / 0.07); }
+@media (hover: hover) and (pointer: fine) {
+  :host-context(html.dark) .wxside__link:hover { background: rgb(255 255 255 / 0.07); }
+}
+:host-context(html.dark) .wxside__link.active { background: rgb(255 255 255 / 0.09); }
+/* Sobre un rail ya muy oscuro, oscurecer mas el submenu no se ve: se aclara. */
+:host-context(html.dark) .wxside__sub > ul { background: rgb(255 255 255 / 0.03); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wxside, .wxside__chevron, .wxside__pulso { transition: none; }
+  .wxside__pulso:active { transform: none; }
+}

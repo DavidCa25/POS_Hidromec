@@ -115,6 +115,18 @@ function usarEspacio(nombre) {
   return espacio;
 }
 
+/**
+ * El espacio reservado a las demostraciones.
+ *
+ * `electron/demo/index.js` lo declara al arrancar el gestor, y es lo que hace
+ * que la demo escriba su espejo en `.wxsys-demo.dat` en vez de pisar el del
+ * cliente.
+ */
+const ESPACIO_DEMO = 'demo';
+
+/** ¿Esta ventana es una demostracion? */
+function esDemo() { return espacio === ESPACIO_DEMO; }
+
 function mainPath()   { return path.join(app.getPath('userData'), 'license.json'); }
 function mirrorPath() {
   return path.join(app.getPath('appData'), espacio ? `.wxsys-${espacio}.dat` : '.wxsys.dat');
@@ -329,6 +341,24 @@ function readLicense(ctx) {
 }
 
 function computeStatus(ctx) {
+  /*
+   * UNA DEMO NO TIENE LICENCIA, Y NO DEBE FINGIR TENERLA.
+   *
+   * El gestor de demos prepara la base entera -negocio, giro, administrador y
+   * datos-, pero el espacio de licencia queda vacio: al abrirla salia
+   * "Comienza tu prueba gratis", que es exactamente el paso redundante que no
+   * tiene sentido pedirle a una demo.
+   *
+   * La alternativa mala era sembrar una PRUEBA de verdad en la demo. Eso
+   * gastaria la prueba real de la maquina -se emiten por machineId-, y ademas
+   * una demo no es una prueba comercial: es una demostracion.
+   *
+   * `demo` es su propio estado. Se resuelve por el ESPACIO, no por un archivo,
+   * asi que no hay nada que falsificar y no puede afectar jamas a la licencia
+   * normal: una instalacion de cliente nunca declara este espacio.
+   */
+  if (esDemo()) return { state: 'demo', type: 'demo', plan: 'demo' };
+
   const c = contexto(ctx);
   const { data, tampered, identidad } = readLicense(c);
   if (tampered) return { state: 'tamper', motivo: 'firma' };
@@ -344,7 +374,56 @@ function computeStatus(ctx) {
   const effectiveNow = Math.max(now, lastSeen); // el reloj no puede retroceder
   if (now > lastSeen) saveLicense(c, { ...data, lastSeen: now }, data.fp);
 
-  const type = data.type || (data.plan === 'trial' ? 'trial' : 'paid');
+  /*
+   * QUE CLASE DE LICENCIA ES ESTA.
+   *
+   * `type` lo escribe `sellarComoPrueba` desde que existe, asi que una
+   * licencia guardada por el codigo actual SIEMPRE lo trae y este calculo ni
+   * se ejecuta.
+   *
+   * Sin `type` la guardo una version ANTERIOR al sellado, y ahi estaba el
+   * fallo: la respuesta de la prueba no traia `type` ni `plan: 'trial'`, asi
+   * que caia en `paid` y la caja anunciaba "Licencia MonoCaja activada" a
+   * quien acababa de pedir una prueba gratuita. El arreglo actuaba al GUARDAR,
+   * asi que las instalaciones que ya habian empezado su prueba se quedaban
+   * mintiendo para siempre.
+   *
+   * LA REGLA: `expiresAt` presente => prueba.
+   *
+   * Y esto NO es una heuristica: se comprobo contra el servidor de licencias.
+   * `expiresAt` lo emite UN SOLO archivo de todo el backend, `trial-license`.
+   * La activacion de pago (`license-check`) devuelve
+   *
+   *     { plan, maxRegisters, customerName, machineId,
+   *       supportUntil, supportActive, revalidateBy, issuedAt }
+   *
+   * y ahi no hay `expiresAt` ni lo hubo nunca. Una licencia pagada no puede
+   * coincidir con esta forma porque el campo no existe en su contrato.
+   *
+   * La version anterior de esta regla exigia ADEMAS que faltara
+   * `revalidateBy`, y eso la dejaba corta: la prueba tambien lo trae
+   * -`revalidateBy: expiresAt`-, asi que una prueba legada con los dos campos
+   * no se reparaba. El campo que de verdad distingue es `expiresAt`.
+   *
+   * LA UNICA AMBIGUEDAD QUE QUEDABA, Y COMO SE RESUELVE
+   * ---------------------------------------------------
+   * `plan === 'trial'` era la otra senal, y esa NO es demostrable. `plan` sale
+   * de la columna homonima de la tabla de licencias de pago, y esa columna no
+   * tiene ninguna restriccion que impida escribir ahi la palabra `trial`. Es
+   * una convencion operativa, no una garantia del contrato.
+   *
+   * Ante una ambiguedad NO se reclasifica. Asi que esa senal solo vale cuando
+   * no hay ninguna marca de pago: `supportUntil` y `supportActive` los emite
+   * UNICAMENTE `license-check`, nunca la prueba. Si vienen, es una licencia
+   * pagada y se queda como esta, diga lo que diga `plan`.
+   *
+   * A las pruebas legadas de verdad no les cuesta nada: todas traen
+   * `expiresAt`, que es la senal demostrable, y se reparan por ahi.
+   */
+  const marcasDePago = data.supportUntil !== undefined || data.supportActive !== undefined;
+  const type = data.type
+    || (data.expiresAt ? 'trial'
+    : (data.plan === 'trial' && !marcasDePago ? 'trial' : 'paid'));
 
   if (type === 'trial') {
     const exp = Date.parse(data.expiresAt || data.revalidateBy || '') || 0;
@@ -391,7 +470,7 @@ function clearLicense() {
 }
 
 module.exports = {
-  saveLicense, readLicense, computeStatus, clearLicense, machineIdEstable, usarEspacio,
+  saveLicense, readLicense, computeStatus, clearLicense, machineIdEstable, usarEspacio, esDemo,
   // Expuestos para las pruebas: permiten ejercitar el formato sin Electron.
   _internos: { cifrarV3, descifrarV3, cifrarV2, descifrarV2, claveDeMaquina, FORMATO, mainPath, mirrorPath },
 };

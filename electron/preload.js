@@ -1,11 +1,14 @@
-﻿const { contextBridge, ipcRenderer } = require('electron');
+﻿const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
     onSaleResult: (callback) => ipcRenderer.on('sale-result', (event, data) => callback(data)),
     iniciarSesion: (usuario, contrasena) => ipcRenderer.invoke('sp-iniciar-sesion', { usuario, contrasena }),
-    crearUsuario: (username, password, role) =>
-        ipcRenderer.invoke('sp-add-user', { username, password, role }),
+    /* Apuntaba a `sp-add-user`, un canal SIN handler: la llamada moria en
+       "No handler registered" y la pantalla de alta no daba de alta a nadie.
+       El camino real es `users:create`, que ademas valida el rol. */
+    crearUsuario: (usuario, password, rol) =>
+        ipcRenderer.invoke('users:create', { usuario, password, rol }),
 
     consultarDetallesProducto: (CategoryID) => ipcRenderer.invoke('sp-Consultar-Detalle-Productos', CategoryID),
     // `control` es opcional y va al final: inventory_mode, sellable, base_uom,
@@ -17,6 +20,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCategories: () => ipcRenderer.invoke('sp-get-categories'),
     getBrands: () => ipcRenderer.invoke('sp-get-brands'),
     getActiveProducts: () => ipcRenderer.invoke('sp-get-active-products'),
+    /* ---------------------------------------------------------- QUICKSTART
+       La carga inicial del catalogo. Una carga es un objeto que vive en la
+       base: se puede cerrar Wybix a media captura y seguir manana. */
+    /* La RUTA de un archivo que el usuario eligio o solto.
+       Electron 32 quito `File.path`; `webUtils.getPathForFile` es su
+       sustituto y tiene que vivir en el preload, porque `webUtils` no
+       existe en el renderer aislado. Sin esto el proceso principal no
+       sabria que archivo leer. */
+    qsRutaDeArchivo: (file) => { try { return webUtils.getPathForFile(file); } catch { return ''; } },
+    qsContexto: () => ipcRenderer.invoke('quickstart:contexto'),
+    qsCargas: (p) => ipcRenderer.invoke('quickstart:cargas', p),
+    qsCarga: (p) => ipcRenderer.invoke('quickstart:carga', p),
+    qsFilas: (p) => ipcRenderer.invoke('quickstart:filas', p),
+    qsAnalizarArchivo: (p) => ipcRenderer.invoke('quickstart:analizar-archivo', p),
+    qsAnalizarPegado: (p) => ipcRenderer.invoke('quickstart:analizar-pegado', p),
+    qsOtraHoja: (p) => ipcRenderer.invoke('quickstart:otra-hoja', p),
+    qsRemapear: (p) => ipcRenderer.invoke('quickstart:remapear', p),
+    qsCargaManual: (p) => ipcRenderer.invoke('quickstart:carga-manual', p),
+    qsCapturar: (p) => ipcRenderer.invoke('quickstart:capturar', p),
+    qsResolverGrupo: (p) => ipcRenderer.invoke('quickstart:resolver-grupo', p),
+    qsResolverFila: (p) => ipcRenderer.invoke('quickstart:resolver-fila', p),
+    qsEjecutar: (p) => ipcRenderer.invoke('quickstart:ejecutar', p),
+    qsUndoCheck: (p) => ipcRenderer.invoke('quickstart:undo-check', p),
+    qsUndo: (p) => ipcRenderer.invoke('quickstart:undo', p),
+    qsSoltarSiVacia: (p) => ipcRenderer.invoke('quickstart:soltar-si-vacia', p),
+    qsDescartar: (p) => ipcRenderer.invoke('quickstart:descartar', p),
+    qsGuardarPerfil: (p) => ipcRenderer.invoke('quickstart:guardar-perfil', p),
+    qsLeerHoja: (p) => ipcRenderer.invoke('quickstart:leer-hoja', p),
+    qsPlantilla: (p) => ipcRenderer.invoke('quickstart:plantilla', p),
+    /* El avance real de una importacion larga. Se escucha, no se sondea. */
+    qsAlAvanzar: (fn) => {
+      const h = (_e, d) => fn(d);
+      ipcRenderer.on('quickstart:avance', h);
+      return () => ipcRenderer.removeListener('quickstart:avance', h);
+    },
+
     importProducts: (payload) => ipcRenderer.invoke('sp-import-products', payload),
     importCustomers: (payload) => ipcRenderer.invoke('sp-import-customers', payload),
     importSuppliers: (payload) => ipcRenderer.invoke('sp-import-suppliers', payload),
@@ -87,6 +126,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     alertsOverdueCredit: () => ipcRenderer.invoke('alerts:overdue-credit'),
     alertsLowStock: (p) => ipcRenderer.invoke('alerts:low-stock', p),
     alertsCounts: (p) => ipcRenderer.invoke('alerts:counts', p),
+    inventoryMovements: (p) => ipcRenderer.invoke('inventory:movements', p),
     inventoryApplyCount: (p) => ipcRenderer.invoke('inventory:apply-count', p),
     usersList: () => ipcRenderer.invoke('users:list'),
     usersCreate: (p) => ipcRenderer.invoke('users:create', p),
@@ -103,6 +143,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // pantalla. No habilita ninguna operacion del gestor.
     esDemo: () => ipcRenderer.invoke("app:es-demo"),
     updateBusinessConfig: (p) => ipcRenderer.invoke('update-business-config', p),
+    /* El logo del negocio: el MISMO que encabeza el ticket y la pantalla del
+       cliente. Se manda ya redimensionado desde la pantalla -ahi hay canvas y
+       aqui no- y el proceso principal solo valida y escribe. */
+    ticketGuardarLogo: (p) => ipcRenderer.invoke('ticket:guardar-logo', p),
+    ticketBorrarLogo: () => ipcRenderer.invoke('ticket:borrar-logo'),
+    ticketLogo: () => ipcRenderer.invoke('ticket:logo'),
     paymentsGet: () => ipcRenderer.invoke('payments:get'),
     paymentsSet: (c) => ipcRenderer.invoke('payments:set', c),
     getAppVersion: () => ipcRenderer.invoke('app:get-version'),
@@ -164,9 +210,74 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Blindaje / seguridad (anti robo hormiga)
     securityAuthorize: (creds) => ipcRenderer.invoke('security:authorize', creds),
+
+    /* ---- FASE CORE 0: sesion, permisos y modulos ----
+       `sesion()` no recibe ni devuelve credenciales: pregunta al proceso
+       principal quien esta operando ESTA ventana. Sirve para repintar tras
+       un F5, no para decidir nada. */
+    sesion: () => ipcRenderer.invoke('auth:sesion'),
+    cerrarSesion: () => ipcRenderer.invoke('auth:cerrar-sesion'),
+    modulosLista: () => ipcRenderer.invoke('modules:list'),
+    modulosSet: (moduleKey, enabled) => ipcRenderer.invoke('modules:set', { moduleKey, enabled }),
+    securityCatalogo: () => ipcRenderer.invoke('security:catalogo'),
+    securityModelo: () => ipcRenderer.invoke('security:modelo'),
     securityLog: (evt) => ipcRenderer.invoke('security:log', evt),
     securityByCashier: (r) => ipcRenderer.invoke('security:by-cashier', r),
     securityRisk: (r) => ipcRenderer.invoke('security:risk', r),
+
+    /* ------------------------------------------------------------ SERVICIOS
+       El negocio que cobra por trabajo: catalogo, activos del cliente,
+       profesionales, ordenes de servicio, agenda y comisiones.
+
+       Los nombres van en espanol como el resto del dominio, y el canal lleva
+       el prefijo `servicios:` y no `services:`, que ya significa los servicios
+       de Windows del panel de red. */
+    /* El giro: que clase de negocio de servicios es este. `serviciosGiros`
+       es el catalogo (no toca la base), `serviciosConfig` lo que eligio este
+       negocio y `serviciosElegirGiro` la eleccion, que ademas enciende el
+       modulo. */
+    serviciosGiros: () => ipcRenderer.invoke('servicios:giros'),
+    serviciosConfig: () => ipcRenderer.invoke('servicios:config'),
+    serviciosElegirGiro: (preset) => ipcRenderer.invoke('servicios:elegir-giro', { preset }),
+    serviciosCatalogo: (p) => ipcRenderer.invoke('servicios:catalogo', p),
+    serviciosGuardarServicio: (p) => ipcRenderer.invoke('servicios:guardar-servicio', p),
+    serviciosActivarServicio: (p) => ipcRenderer.invoke('servicios:activar-servicio', p),
+    serviciosAsignarProfesionales: (p) => ipcRenderer.invoke('servicios:asignar-profesionales', p),
+
+    serviciosActivos: (p) => ipcRenderer.invoke('servicios:activos', p),
+    serviciosGuardarActivo: (p) => ipcRenderer.invoke('servicios:guardar-activo', p),
+    serviciosActivarActivo: (p) => ipcRenderer.invoke('servicios:activar-activo', p),
+
+    serviciosProfesionales: (p) => ipcRenderer.invoke('servicios:profesionales', p),
+    serviciosGuardarProfesional: (p) => ipcRenderer.invoke('servicios:guardar-profesional', p),
+    serviciosActivarProfesional: (p) => ipcRenderer.invoke('servicios:activar-profesional', p),
+    serviciosHorario: (p) => ipcRenderer.invoke('servicios:horario', p),
+    serviciosGuardarHorario: (p) => ipcRenderer.invoke('servicios:guardar-horario', p),
+    serviciosGuardarAusencia: (p) => ipcRenderer.invoke('servicios:guardar-ausencia', p),
+    serviciosBorrarAusencia: (p) => ipcRenderer.invoke('servicios:borrar-ausencia', p),
+
+    serviciosOrdenes: (p) => ipcRenderer.invoke('servicios:ordenes', p),
+    serviciosOrden: (p) => ipcRenderer.invoke('servicios:orden', p),
+    serviciosOrdenCrear: (p) => ipcRenderer.invoke('servicios:orden-crear', p),
+    serviciosOrdenActualizar: (p) => ipcRenderer.invoke('servicios:orden-actualizar', p),
+    serviciosOrdenEstado: (p) => ipcRenderer.invoke('servicios:orden-estado', p),
+    serviciosOrdenAutorizar: (p) => ipcRenderer.invoke('servicios:orden-autorizar', p),
+    serviciosOrdenCancelar: (p) => ipcRenderer.invoke('servicios:orden-cancelar', p),
+    serviciosLineaAgregar: (p) => ipcRenderer.invoke('servicios:linea-agregar', p),
+    serviciosLineaActualizar: (p) => ipcRenderer.invoke('servicios:linea-actualizar', p),
+
+    serviciosCobroPrevia: (p) => ipcRenderer.invoke('servicios:cobro-previa', p),
+    serviciosOrdenEnlazarVenta: (p) => ipcRenderer.invoke('servicios:orden-enlazar-venta', p),
+
+    serviciosCitas: (p) => ipcRenderer.invoke('servicios:citas', p),
+    serviciosCita: (p) => ipcRenderer.invoke('servicios:cita', p),
+    serviciosCitaGuardar: (p) => ipcRenderer.invoke('servicios:cita-guardar', p),
+    serviciosCitaEstado: (p) => ipcRenderer.invoke('servicios:cita-estado', p),
+    serviciosCitaReprogramar: (p) => ipcRenderer.invoke('servicios:cita-reprogramar', p),
+    serviciosCitaAOrden: (p) => ipcRenderer.invoke('servicios:cita-a-orden', p),
+    serviciosDisponibilidad: (p) => ipcRenderer.invoke('servicios:disponibilidad', p),
+
+    serviciosComisiones: (p) => ipcRenderer.invoke('servicios:comisiones', p),
 
     exportDatabase: () => ipcRenderer.invoke('export-database'),
     // Guarda bytes generados en el renderer (PDF, Excel) como archivo real.
@@ -277,6 +388,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     licenseClear: () => ipcRenderer.invoke('license:clear'),
     licenseActivate:  (d) => ipcRenderer.invoke('license:activate', d),
     licenseStartTrial: (d) => ipcRenderer.invoke('license:start-trial', d),
+    /* El nombre real del negocio, una vez que el alta lo conoce. */
+    licenseSyncTrialName: (d) => ipcRenderer.invoke('license:sync-trial-name', d),
     licenseStatus: () => ipcRenderer.invoke('license:status'),
 
     setupStatus: () => ipcRenderer.invoke('setup-status'),

@@ -1,0 +1,256 @@
+/* ============================================================
+   ORDEN DE SERVICIO — DETALLE.
+
+   Dirección A, la aprobada: las líneas ocupan el centro y el carril lateral
+   lleva el avance, la autorización y las acciones.
+
+   POR QUÉ UN CARRIL Y NO PESTAÑAS
+   -------------------------------
+   Quien está en esta pantalla hace dos cosas a la vez: mira lo que se va a
+   cobrar y decide el siguiente paso. Con pestañas, la mitad de la información
+   está siempre escondida detrás de la otra, y la pregunta «¿puedo cobrar ya?»
+   obliga a cambiar de pestaña para responderse.
+
+   En pantallas de 1024 el carril se convierte en un cajón: a esa anchura, un
+   carril fijo de 300px deja las líneas sin sitio, y las líneas son lo que se
+   vino a ver.
+   ============================================================ */
+
+:host { display: block; height: 100%; }
+
+.os {
+  display: flex;
+  flex-direction: column;
+  background: var(--wx-canvas);
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------- cabecera */
+.os-cab {
+  background: var(--wx-surface);
+  border-bottom: 1px solid var(--wx-edge);
+  padding: 9px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: none;
+}
+.os-cab .l1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.os-cab .volver {
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--wx-text-sm);
+  cursor: pointer;
+}
+.os-cab .folio { font-family: var(--wx-font-mono); font-size: var(--wx-text-md); font-weight: 500; }
+.os-cab .sep { color: var(--wx-edge-strong); }
+.os-cab .l2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}
+.os-cab .l2 b { color: var(--wx-text); font-weight: 500; }
+.os-cab .punto { color: var(--wx-edge-strong); }
+
+/* La barra que aparece cuando el carril se vuelve cajón: sin ella, las dos
+   cifras que deciden todo quedarían escondidas detrás de un botón. */
+.os-barra { display: none; }
+
+/* ------------------------------------------------------------------ cuerpo */
+.os-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  flex: 1;
+  min-height: 0;
+}
+.os-main { padding: 14px 16px; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.os-lineas {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.os-scroll { overflow: auto; flex: 1; min-height: 0; }
+
+table.os-t { width: 100%; border-collapse: collapse; font-size: var(--wx-text-base); }
+/* Con el color del negocio, igual que la cabecera de Compras y de Ventas. */
+table.os-t th {
+  text-align: left;
+  font-size: var(--wx-text-xs);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--wx-user-accent-fg, #fff);
+  padding: 10px 12px;
+  background: var(--inv-main, var(--wx-accent));
+  border-bottom: 3px solid var(--inv-main-dark, var(--wx-cyan-700, var(--wx-accent)));
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+table.os-t td { padding: 9px 12px; border-bottom: 1px solid var(--wx-edge); vertical-align: middle; }
+table.os-t tr:last-child td { border-bottom: none; }
+table.os-t tbody tr:hover td { background: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+table.os-t tr.cancelada td { opacity: .5; text-decoration: line-through; }
+
+.ln-tipo {
+  display: inline-block;
+  font-family: var(--wx-font-mono);
+  font-size: 10px;
+  letter-spacing: .07em;
+  padding: 2px 6px;
+  border-radius: var(--wx-radius-xs);
+}
+/* La etiqueta SERVICIO toma el color del negocio: es lo que distingue el
+   trabajo de la refaccion, y en un taller con su azul se lee como suyo. */
+.ln-tipo--s {
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft));
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+}
+.ln-tipo--p { background: var(--wx-edge-soft); color: var(--wx-text-dim); }
+.ln-quien { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+/* El precio del catálogo cambió después de cotizar: se cobra el congelado. */
+.ln-precio-viejo { font-size: var(--wx-text-xs); color: var(--wx-warning); }
+
+.os-add { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--wx-edge); flex: none; flex-wrap: wrap; }
+.os-resumen {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 13px;
+  border-top: 1px solid var(--wx-edge);
+  background: var(--wx-edge-soft);
+  flex: none;
+}
+.os-resumen .total { margin-left: auto; font-size: var(--wx-text-md); font-weight: 600; }
+.os-resumen .menor { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.os-resumen .pend { color: var(--wx-warning); font-weight: 500; }
+
+/* ------------------------------------------------------------------ carril */
+.os-rail {
+  border-left: 1px solid var(--wx-edge);
+  background: var(--wx-surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.os-rail-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.os-rail h3 {
+  font-size: var(--wx-text-xs);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--wx-text-dim);
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.paso { display: flex; gap: 9px; align-items: center; font-size: var(--wx-text-sm); padding: 3.5px 0; }
+.paso .p {
+  width: 19px; height: 19px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  font-size: 10px; font-family: var(--wx-font-mono);
+  border: 1px solid var(--wx-edge-strong);
+  color: var(--wx-text-dim); background: var(--wx-surface);
+}
+.paso--hecho .p { background: var(--wx-success); border-color: var(--wx-success); color: #fff; }
+.paso--activo .p {
+  background: var(--wx-user-accent, var(--wx-accent));
+  border-color: var(--wx-user-accent, var(--wx-accent));
+  color: var(--wx-user-accent-fg, var(--wx-cyan-ink));
+}
+.paso--activo { font-weight: 600; }
+.paso--pend { color: var(--wx-text-dim); }
+
+.aut { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm); overflow: hidden; }
+.aut-cifras { display: grid; grid-template-columns: 1fr 1fr; }
+.aut-cifras > div { padding: 9px 11px; }
+.aut-cifras > div + div { border-left: 1px solid var(--wx-edge); }
+.aut-cifras .k { font-size: var(--wx-text-xs); color: var(--wx-text-dim); display: block; }
+.aut-cifras .v { font-size: var(--wx-text-md); font-weight: 600; }
+.aut-cifras .v--pend { color: var(--wx-warning); }
+.aut-meta {
+  padding: 8px 11px;
+  border-top: 1px solid var(--wx-edge);
+  background: var(--wx-edge-soft);
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-muted);
+  line-height: 1.45;
+}
+
+.os-rail-acc {
+  flex: none;
+  border-top: 1px solid var(--wx-edge);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--wx-surface);
+}
+.os-rail-acc .btn { width: 100%; justify-content: center; }
+/* Por qué no se puede cobrar todavía. Un botón apagado sin motivo es una
+   pantalla que no responde a la única pregunta que se le hace. */
+.os-nota { font-size: var(--wx-text-xs); color: var(--wx-text-dim); text-align: center; }
+
+/* ------------------------------------------------------------ historial */
+.os-evento { display: flex; gap: 8px; font-size: var(--wx-text-sm); padding: 4px 0; }
+.os-evento .cuando { font-family: var(--wx-font-mono); font-size: var(--wx-text-xs); color: var(--wx-text-dim); flex: none; }
+.os-evento .que { color: var(--wx-text-muted); min-width: 0; }
+
+/* ----------------------------------------------- 1024: el carril es cajón */
+@media (max-width: 1180px) {
+  .os-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .os-barra {
+    display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap;
+    padding: 9px 16px; background: var(--wx-surface); border-bottom: 1px solid var(--wx-edge);
+  }
+  .os-barra .cifra { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+  .os-barra .cifra b { color: var(--wx-text); font-weight: 500; }
+  .os-barra .der { margin-left: auto; display: flex; gap: 8px; }
+  .os-rail {
+    position: absolute; top: 0; right: 0; bottom: 0; width: min(300px, 88vw);
+    border-left: 1px solid var(--wx-edge-strong);
+    box-shadow: -8px 0 24px rgb(22 33 46 / .13);
+    transform: translateX(100%);
+    transition: transform 180ms cubic-bezier(.32, .72, 0, 1);
+    z-index: 20;
+  }
+  .os[data-cajon="abierto"] .os-rail { transform: translateX(0); }
+  .os-velo {
+    position: absolute; inset: 0; background: rgb(22 33 46 / .32);
+    opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 19;
+  }
+  .os[data-cajon="abierto"] .os-velo { opacity: 1; pointer-events: auto; }
+  .cerrar-cajon { display: inline-flex !important; }
+}
+.cerrar-cajon { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .os-rail, .os-velo { transition: none; }
+}
+
+@media (max-width: 720px) {
+  .os-main { padding: 10px; }
+  table.os-t th, table.os-t td { padding: 8px 9px; }
+}

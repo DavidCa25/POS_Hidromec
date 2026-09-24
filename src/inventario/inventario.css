@@ -1004,3 +1004,22 @@
   font-weight: 500;
 }
 .stock-receta { font-variant-numeric: tabular-nums; }
+
+/* Lo que no lleva existencias. Gris y sin número: dice que la pregunta no
+   aplica, en vez de responderla con un cero que se lee como «agotado». */
+.stock-na { color: var(--wx-text-muted); font-size: .86rem; font-style: normal; }
+
+/* Lo que NO se vende: un ingrediente vive en la misma tabla que la
+   mercancia y se comporta distinto. Una palabra, no una columna. */
+.inv-noventa {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--wx-sunken);
+  color: var(--wx-text-dim);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}

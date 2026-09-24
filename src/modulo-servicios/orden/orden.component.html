@@ -1,0 +1,524 @@
+<div class="os" [attr.data-cajon]="cajon() ? 'abierto' : 'cerrado'" *ngIf="orden() as o">
+
+  <!-- ============================================================ cabecera -->
+  <header class="os-cab">
+    <div class="l1">
+      <button class="volver" (click)="volver()">← Órdenes</button>
+      <span class="sep">/</span>
+      <span class="folio">{{ o.cabecera.folio }}</span>
+      <span class="srv-badge" [class]="'srv-badge--' + claseEstado(o.cabecera.status)">
+        {{ etiquetaEstado(o.cabecera.status) }}
+      </span>
+      <span class="srv-badge srv-badge--warn"
+            *ngIf="o.cabecera.needs_reauthorization && o.cabecera.status !== 'CANCELADA'">
+        Sin autorizar
+      </span>
+      <span class="srv-badge" [class]="'srv-badge--' + claseCobro(o.cabecera.economic_status)">
+        {{ etiquetaCobro(o.cabecera.economic_status) }}
+      </span>
+    </div>
+    <div class="l2">
+      <b>{{ o.cabecera.customer_name }}</b>
+      <ng-container *ngIf="o.cabecera.asset_label">
+        <span class="punto">·</span>
+        <b>{{ o.cabecera.asset_label }}</b>
+        <span class="mono" *ngIf="o.cabecera.asset_identifier">{{ o.cabecera.asset_identifier }}</span>
+      </ng-container>
+      <ng-container *ngIf="o.cabecera.customer_phone || o.cabecera.customer_mobile">
+        <span class="punto">·</span>
+        <span class="mono">{{ o.cabecera.customer_mobile || o.cabecera.customer_phone }}</span>
+      </ng-container>
+      <span class="punto">·</span>
+      Recibida <b>{{ o.cabecera.opened_at | date:'d MMM, HH:mm':undefined:'es-MX' }}</b>
+      <ng-container *ngIf="o.cabecera.opened_by_name">
+        por <b>{{ o.cabecera.opened_by_name }}</b>
+      </ng-container>
+    </div>
+  </header>
+
+  <!-- Solo a partir de 1180px hacia abajo: las dos cifras que deciden todo no
+       pueden quedarse escondidas detrás del botón del cajón. -->
+  <div class="os-barra">
+    <span class="cifra">Total <b class="mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</b></span>
+    <span class="cifra" *ngIf="o.cabecera.needs_reauthorization" style="color:var(--wx-warning)">
+      Sin autorizar
+    </span>
+    <div class="der">
+      <button class="btn srv-sm" (click)="cajon.set(true)">Avance y acciones</button>
+    </div>
+  </div>
+
+  <!-- ============================================================== cuerpo -->
+  <div class="os-cuerpo">
+    <main class="os-main">
+      <div class="os-lineas">
+        <div class="os-scroll">
+          <table class="os-t">
+            <thead>
+              <tr>
+                <th style="width:92px">Tipo</th>
+                <th>Concepto</th>
+                <th style="width:132px">Estado</th>
+                <th class="ta-c" style="width:74px">Cant.</th>
+                <th class="ta-r" style="width:104px">Precio</th>
+                <th class="ta-r" style="width:110px">Importe</th>
+                <th style="width:44px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let l of o.lineas; trackBy: porLinea"
+                  [class.cancelada]="l.status === 'CANCELADA'">
+                <td>
+                  <span class="ln-tipo" [class.ln-tipo--s]="l.line_kind === 'SERVICIO'"
+                        [class.ln-tipo--p]="l.line_kind === 'PRODUCTO'">
+                    {{ l.line_kind === 'SERVICIO' ? 'SERVICIO' : giro.material.singular.toUpperCase() }}
+                  </span>
+                </td>
+                <td>
+                  {{ l.name_snapshot }}
+                  <div class="ln-quien" *ngIf="l.professional_name">{{ l.professional_name }}</div>
+                  <div class="ln-quien" *ngIf="l.notes">{{ l.notes }}</div>
+                </td>
+                <td>
+                  <wx-select class="wx-sel-compacto" [opciones]="opcEstadoLinea"
+                             [ngModel]="l.status"
+                             (ngModelChange)="cambiarEstadoLinea(l, $event)"
+                             [disabled]="!editable(o) || !puedeOperar"></wx-select>
+                </td>
+                <td class="ta-c mono">{{ l.quantity }}</td>
+                <td class="ta-r mono">
+                  {{ l.unit_price_snapshot | currency:'MXN':'symbol-narrow' }}
+                  <div class="ln-precio-viejo" *ngIf="precioCambio(l)">
+                    hoy {{ l.current_price | currency:'MXN':'symbol-narrow' }}
+                  </div>
+                </td>
+                <td class="ta-r mono" style="font-weight:500">
+                  {{ l.line_total | currency:'MXN':'symbol-narrow' }}
+                </td>
+                <td class="ta-c">
+                  <button class="btn srv-sm srv-ghost"
+                          *ngIf="editable(o) && puedeOperar && l.status !== 'CANCELADA'"
+                          (click)="quitarLinea(l)"
+                          [attr.aria-label]="'Quitar ' + l.name_snapshot">×</button>
+                </td>
+              </tr>
+              <tr class="os-sin-lineas" *ngIf="o.lineas.length === 0">
+                <td colspan="7" class="srv-vacio" style="padding:26px">
+                  <p><b>Todavía no hay nada cotizado.</b></p>
+                  <p class="srv-sub">{{ giro.textos.ordenVacia }}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="os-add" *ngIf="editable(o) && puedeOperar">
+          <button class="btn srv-sm" (click)="agregar('SERVICIO')">+ Servicio</button>
+          <button class="btn srv-sm" (click)="agregar('PRODUCTO')">{{ giro.material.agregar }}</button>
+        </div>
+
+        <div class="os-resumen">
+          <span class="menor">Servicios <span class="mono">{{ o.cabecera.total_servicios | currency:'MXN':'symbol-narrow' }}</span></span>
+          <span class="menor">·</span>
+          <span class="menor">{{ giro.material.plural }} <span class="mono">{{ o.cabecera.total_productos | currency:'MXN':'symbol-narrow' }}</span></span>
+          <span class="total">Total <span class="mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</span></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================== carril -->
+    <aside class="os-rail" aria-label="Avance, autorización y acciones">
+      <div class="os-rail-scroll">
+        <section>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h3 style="margin:0">Avance</h3>
+            <button class="btn srv-sm srv-ghost cerrar-cajon" style="margin-left:auto"
+                    (click)="cajon.set(false)" aria-label="Cerrar panel">×</button>
+          </div>
+          <div style="margin-top:8px">
+            <div class="paso" *ngFor="let p of pasos(o); let i = index"
+                 [class.paso--hecho]="p.estado === 'hecho'"
+                 [class.paso--activo]="p.estado === 'activo'"
+                 [class.paso--pend]="p.estado === 'pendiente'">
+              <span class="p">{{ p.estado === 'hecho' ? '✓' : (i + 1) }}</span> {{ p.nombre }}
+            </div>
+          </div>
+        </section>
+
+        <!-- En los giros donde la autorización no manda -una barbería cobra
+             un corte con precio conocido- la sección existe pero no ocupa el
+             centro de la pantalla: se puede plegar y no reclama nada. -->
+        <section *ngIf="!autorizacionDiscreta || o.cabecera.authorized_at">
+          <h3>Autorización</h3>
+          <div class="aut">
+            <div class="aut-cifras">
+              <div>
+                <span class="k">Total</span>
+                <span class="v mono">{{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}</span>
+              </div>
+              <div>
+                <span class="k">Estado</span>
+                <span class="v" [class.v--pend]="o.cabecera.needs_reauthorization">
+                  {{ o.cabecera.needs_reauthorization ? 'Pendiente' : 'Autorizado' }}
+                </span>
+              </div>
+            </div>
+            <div class="aut-meta" *ngIf="o.cabecera.authorized_at">
+              Versión {{ o.cabecera.authorized_version }} ·
+              {{ o.cabecera.authorized_at | date:'d MMM HH:mm':undefined:'es-MX' }} ·
+              {{ viaTexto(o.cabecera.authorized_channel) }}<br>
+              Autorizó <b>{{ o.cabecera.authorized_by_name }}</b>
+            </div>
+            <div class="aut-meta" *ngIf="!o.cabecera.authorized_at">
+              El cliente todavía no ha aprobado ningún presupuesto.
+            </div>
+            <div class="aut-meta" *ngIf="o.cabecera.authorized_at && o.cabecera.needs_reauthorization">
+              El presupuesto cambió después de que lo autorizara: lo que aprobó
+              ya no es lo que se le va a cobrar.
+            </div>
+          </div>
+        </section>
+
+        <section *ngIf="o.cabecera.reported_issue || o.cabecera.diagnosis">
+          <h3>Qué pasa</h3>
+          <p class="srv-sub" *ngIf="o.cabecera.reported_issue" style="margin:0 0 8px">
+            <b>{{ giro.textos.reportadoCorto }}:</b> {{ o.cabecera.reported_issue }}
+          </p>
+          <p class="srv-sub" *ngIf="o.cabecera.diagnosis" style="margin:0">
+            <b>{{ giro.textos.diagnosticoCorto }}:</b> {{ o.cabecera.diagnosis }}
+          </p>
+        </section>
+
+        <section>
+          <h3>Historial</h3>
+          <div class="os-evento" *ngFor="let e of o.eventos">
+            <span class="cuando">{{ e.happened_at | date:'d MMM HH:mm':undefined:'es-MX' }}</span>
+            <span class="que">
+              {{ textoEvento(e) }}
+              <ng-container *ngIf="e.user_name"> · {{ e.user_name }}</ng-container>
+            </span>
+          </div>
+        </section>
+      </div>
+
+      <div class="os-rail-acc">
+        <!-- Solo cuando de verdad espera una: nunca autorizada, o la
+             cotización cambió después de que la autorizaran. Verlo debajo de
+             una orden ya autorizada invita a autorizar dos veces lo mismo. -->
+        <button class="btn btn-primary" *ngIf="esperaAutorizacion(o)" (click)="autorizar()">
+          {{ textoAutorizar(o) }}
+        </button>
+
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'ABIERTA'"
+                (click)="cambiarEstado('EN_PROCESO')">
+          Marcar en proceso
+        </button>
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'EN_PROCESO'"
+                (click)="cambiarEstado('TERMINADA')">
+          Marcar terminada
+        </button>
+
+        <button class="btn" (click)="editarDatos()" *ngIf="editable(o) && puedeOperar">
+          {{ giro.textos.diagnostico }}
+        </button>
+
+        <!-- Sobre qué se trabaja. Solo en los giros que trabajan SOBRE algo,
+             y solo mientras la orden lo admite: en cuanto se autorizó, empezó
+             el trabajo o se cobró, cambiarlo sería reescribir lo que ya pasó. -->
+        <ng-container *ngIf="giro.usaActivos && puedeOperar && editable(o)">
+          <button class="btn" (click)="cambiarActivo()" *ngIf="puedeCambiarActivo(o)">
+            {{ o.cabecera.customer_asset_id ? giro.textos.cambiarActivo : giro.textos.indicarActivo }}
+          </button>
+          <span class="os-nota" *ngIf="!puedeCambiarActivo(o) && o.cabecera.customer_asset_id">
+            {{ porQueNoActivo(o) }}
+          </span>
+        </ng-container>
+
+        <button class="btn btn-primary" *ngIf="puedeOperar"
+                [disabled]="!puedeCobrar(o)"
+                [attr.aria-describedby]="puedeCobrar(o) ? null : 'os-porque'"
+                (click)="cobrar()">
+          Cobrar · {{ o.cabecera.total | currency:'MXN':'symbol-narrow' }}
+        </button>
+        <span class="os-nota" id="os-porque" *ngIf="!puedeCobrar(o)">{{ porQueNoCobrar(o) }}</span>
+
+        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'TERMINADA' && o.cabecera.sale_id"
+                (click)="cambiarEstado('ENTREGADA')">
+          Entregar
+        </button>
+
+        <button class="btn srv-danger" *ngIf="editable(o) && puedeOperar" (click)="cancelar()">
+          Cancelar orden
+        </button>
+      </div>
+    </aside>
+
+    <div class="os-velo" (click)="cajon.set(false)"></div>
+  </div>
+</div>
+
+<div class="srv-vacio" *ngIf="!orden() && !cargando()">
+  <p>No se encontró la orden.</p>
+  <button class="btn" (click)="volver()">Volver a órdenes</button>
+</div>
+
+<!-- ====================================================================
+     LOS MODALES DE LA ORDEN
+
+     Mismo marcado que Clientes, Compras y el punto de venta: `.modal
+     fade show d-block` > `.modal-dialog` > `.modal-content`. No es un
+     sistema nuevo; es el que ya estaba, con los controles wx que ya
+     estaban. Lo que había antes eran cadenas de avisos del sistema con
+     tres ventanas para una sola decisión y sin una etiqueta visible.
+     ==================================================================== -->
+
+<!-- ------------------------------------------------ recepción: nueva orden -->
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'nueva'"
+     role="dialog" aria-modal="true" aria-labelledby="srv-t-nueva">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="srv-t-nueva">Recibir trabajo</h5>
+        <button type="button" class="btn-close" (click)="cancelarNueva()" aria-label="Cancelar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <label class="form-label" for="srv-cliente">Cliente</label>
+        <wx-select id="srv-cliente" [opciones]="opcClientes" [buscable]="true"
+                   placeholder="¿De quién es?" textoBusqueda="Buscar cliente…"
+                   [ngModel]="formNueva.clienteId" (ngModelChange)="alElegirCliente($event)">
+        </wx-select>
+
+        <ng-container *ngIf="giro.usaActivos && formNueva.clienteId">
+          <label class="form-label mt-3" for="srv-activo-n">
+            {{ giro.activoSingular }}
+            <span class="srv-opcional" *ngIf="!giro.activoCentral">· opcional</span>
+          </label>
+          <wx-select id="srv-activo-n" [opciones]="opcActivos" [buscable]="true"
+                     [placeholder]="giro.textos.elegirActivo"
+                     [(ngModel)]="formActivo.activoId"></wx-select>
+
+          <div class="srv-alta" *ngIf="formActivo.activoId === 'nuevo'">
+            <div class="srv-campos">
+              <div>
+                <label class="form-label" for="srv-an-label">Cómo se le llama</label>
+                <input id="srv-an-label" class="form-control" [(ngModel)]="formActivoNuevo.etiqueta"
+                       [placeholder]="giro.giro().activo.ejemplo || 'Para reconocerlo'">
+              </div>
+              <div>
+                <label class="form-label" for="srv-an-id">{{ giro.activoIdentificador }}</label>
+                <input id="srv-an-id" class="form-control" [(ngModel)]="formActivoNuevo.identificador"
+                       [placeholder]="giro.giro().activo.ejemploIdentificador">
+              </div>
+              <div>
+                <label class="form-label" for="srv-an-marca">Marca</label>
+                <input id="srv-an-marca" class="form-control" [(ngModel)]="formActivoNuevo.marca">
+              </div>
+              <div>
+                <label class="form-label" for="srv-an-modelo">Modelo</label>
+                <input id="srv-an-modelo" class="form-control" [(ngModel)]="formActivoNuevo.modelo">
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <label class="form-label mt-3" for="srv-reportado">{{ giro.textos.reportado }}</label>
+        <textarea id="srv-reportado" class="form-control" rows="3"
+                  [(ngModel)]="formNueva.reportado"
+                  [placeholder]="giro.textos.reportadoEjemplo"></textarea>
+        <div class="hint">Puedes cotizarlo después, cuando sepas qué hay que hacer.</div>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelarNueva()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarNueva()">
+            {{ guardando() ? 'Abriendo…' : 'Abrir orden' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------------------- añadir trabajo o material -->
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'linea'"
+     role="dialog" aria-modal="true" aria-labelledby="srv-t-linea">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="srv-t-linea">
+          {{ claseLinea === 'SERVICIO' ? 'Añadir trabajo' : 'Añadir ' + giro.material.singular.toLowerCase() }}
+        </h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <label class="form-label" for="srv-prod">
+          {{ claseLinea === 'SERVICIO' ? 'Servicio' : giro.material.singular }}
+        </label>
+        <wx-select id="srv-prod" [opciones]="opcCatalogo" [buscable]="true"
+                   placeholder="Elige" textoBusqueda="Buscar por nombre o clave…"
+                   [ngModel]="formLinea.productoId"
+                   (ngModelChange)="claseLinea === 'SERVICIO' ? alElegirServicio($event) : formLinea.productoId = $event">
+        </wx-select>
+
+        <div class="srv-campos mt-3">
+          <div>
+            <label class="form-label" for="srv-cant">Cantidad</label>
+            <input id="srv-cant" class="form-control" type="number" min="0.01" step="0.01"
+                   [(ngModel)]="formLinea.cantidad">
+          </div>
+          <div *ngIf="claseLinea === 'SERVICIO' && opcProfesionales.length">
+            <label class="form-label" for="srv-pro">Quién lo hace</label>
+            <wx-select id="srv-pro" [opciones]="opcProfesionales" placeholder="Sin asignar por ahora"
+                       [(ngModel)]="formLinea.profesionalId"></wx-select>
+          </div>
+        </div>
+
+        <!-- El importe, mientras se escribe. Un número sin contexto -«1850»-
+             no dice si son pesos, minutos o por ciento. -->
+        <p class="srv-importe" *ngIf="formLinea.productoId">
+          Importe <b class="mono">{{ moneda(importeLinea) }}</b>
+        </p>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary"
+                  [disabled]="guardando() || !formLinea.productoId"
+                  (click)="confirmarLinea()">
+            {{ guardando() ? 'Añadiendo…' : 'Añadir a la orden' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ---------------------------------------------------------- autorización -->
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'autorizar'"
+     role="dialog" aria-modal="true" aria-labelledby="srv-t-aut">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="srv-t-aut">
+          {{ orden() && orden()!.cabecera.authorized_at ? 'Registrar la nueva autorización' : 'Registrar autorización' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4" *ngIf="orden() as o">
+
+        <div class="srv-aut-total">
+          <span>El cliente aprueba</span>
+          <b class="mono">{{ moneda(o.cabecera.total) }}</b>
+        </div>
+
+        <label class="form-label mt-3" for="srv-aut-nombre">Quién autoriza</label>
+        <input id="srv-aut-nombre" class="form-control" [(ngModel)]="formAutorizar.nombre"
+               placeholder="Nombre de quien aprueba">
+
+        <label class="form-label mt-3" for="srv-aut-via">Cómo lo autorizó</label>
+        <wx-select id="srv-aut-via" [opciones]="opcVia" [(ngModel)]="formAutorizar.via"></wx-select>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarAutorizacion()">
+            {{ guardando() ? 'Registrando…' : 'Registrar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------------------------- diagnóstico y notas -->
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'datos'"
+     role="dialog" aria-modal="true" aria-labelledby="srv-t-datos">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="srv-t-datos">{{ giro.textos.diagnostico }}</h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <label class="form-label" for="srv-diag">{{ giro.textos.diagnosticoCorto }}</label>
+        <textarea id="srv-diag" class="form-control" rows="3" [(ngModel)]="formDatos.diagnostico"
+                  placeholder="Lo que se encontró al revisar"></textarea>
+        <div class="hint">Sale en el presupuesto: es lo que explica por qué se cotizó lo que se cotizó.</div>
+
+        <label class="form-label mt-3" for="srv-notas">Notas internas</label>
+        <textarea id="srv-notas" class="form-control" rows="2" [(ngModel)]="formDatos.notas"
+                  placeholder="Para el equipo. El cliente no las ve."></textarea>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarDatos()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- --------------------------------------------- sobre qué se trabaja -->
+<div class="modal fade show d-block srv-modal" *ngIf="dialogo() === 'activo'"
+     role="dialog" aria-modal="true" aria-labelledby="srv-t-activo">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="srv-t-activo">{{ giro.textos.elegirActivo }}</h5>
+        <button type="button" class="btn-close" (click)="cerrarDialogo()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+
+        <label class="form-label" for="srv-activo">{{ giro.activoSingular }}</label>
+        <wx-select id="srv-activo" [opciones]="opcActivos" [buscable]="true"
+                   placeholder="Elige" [(ngModel)]="formActivo.activoId"></wx-select>
+
+        <div class="srv-alta" *ngIf="formActivo.activoId === 'nuevo'">
+          <div class="srv-campos">
+            <div>
+              <label class="form-label" for="srv-a-label">Cómo se le llama</label>
+              <input id="srv-a-label" class="form-control" [(ngModel)]="formActivoNuevo.etiqueta"
+                     [placeholder]="giro.giro().activo.ejemplo || 'Para reconocerlo'">
+            </div>
+            <div>
+              <label class="form-label" for="srv-a-id">{{ giro.activoIdentificador }}</label>
+              <input id="srv-a-id" class="form-control" [(ngModel)]="formActivoNuevo.identificador"
+                     [placeholder]="giro.giro().activo.ejemploIdentificador">
+            </div>
+            <div>
+              <label class="form-label" for="srv-a-marca">Marca</label>
+              <input id="srv-a-marca" class="form-control" [(ngModel)]="formActivoNuevo.marca">
+            </div>
+            <div>
+              <label class="form-label" for="srv-a-modelo">Modelo</label>
+              <input id="srv-a-modelo" class="form-control" [(ngModel)]="formActivoNuevo.modelo">
+            </div>
+          </div>
+        </div>
+
+        <p class="srv-error" *ngIf="errorModal()" role="alert">{{ errorModal() }}</p>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+                  (click)="confirmarActivo()">
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

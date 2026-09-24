@@ -12,11 +12,18 @@ export interface LicenseInfo {
   token?: string;
 }
 
-export type LicenseState = 'none' | 'trial' | 'active' | 'expired' | 'tamper';
+/**
+ * `demo` NO es una licencia: es una demostracion.
+ *
+ * Se resuelve por el ESPACIO de licencia, no por un archivo, asi que no hay
+ * nada que falsificar. Se distingue de `trial` a proposito: una demo no gasta
+ * la prueba de la maquina ni caduca.
+ */
+export type LicenseState = 'none' | 'demo' | 'trial' | 'active' | 'expired' | 'tamper';
 
 export interface LicenseStatus {
   state: LicenseState;
-  type?: 'trial' | 'paid';
+  type?: 'demo' | 'trial' | 'paid';
   daysRemaining?: number;
   expiresAt?: string | null;
   startedAt?: string | null;
@@ -40,6 +47,11 @@ export class LicenseService {
   get licencia(): LicenseInfo | null { return this.info; }
 
   get enPrueba(): boolean { return this.estado.state === 'trial'; }
+  get esDemo(): boolean { return this.estado.state === 'demo'; }
+  /** Puede trabajar: demo, prueba viva o licencia de pago. */
+  get puedeOperar(): boolean {
+    return ['demo', 'trial', 'active'].includes(this.estado.state);
+  }
   get bloqueado(): boolean { return this.estado.state === 'expired' || this.estado.state === 'tamper'; }
   get sinLicencia(): boolean { return this.estado.state === 'none'; }
   get diasRestantesPrueba(): number { return this.estado.daysRemaining ?? 0; }
@@ -57,8 +69,37 @@ export class LicenseService {
    * para que la instalacion, el panel de licencia y el de cajas digan lo mismo.
    */
   get planTexto(): string {
+    if (this.esDemo) return 'Demostración';
     if (this.enPrueba) return 'Prueba gratuita';
     return this.estado.plan === 'multi' ? 'MultiCaja' : 'MonoCaja';
+  }
+
+  /**
+   * LAS CUATRO CLASES, SIN MEZCLARLAS.
+   *
+   *   Demostración      una demo del gestor. Ni caduca ni se compra.
+   *   Prueba gratuita   30 días. NO se llama MonoCaja aunque por dentro le dé
+   *                     los mismos límites: comercialmente no es lo mismo, y
+   *                     decirle "MonoCaja activada" a quien está probando le
+   *                     hace creer que ya compró.
+   *   Licencia MonoCaja / MultiCaja   lo que sí se compró.
+   */
+  get clase(): 'demo' | 'trial' | 'mono' | 'multi' | 'ninguna' {
+    if (this.esDemo) return 'demo';
+    if (this.enPrueba) return 'trial';
+    if (this.estado.state !== 'active') return 'ninguna';
+    return this.estado.plan === 'multi' ? 'multi' : 'mono';
+  }
+
+  /** Lo que se lee en pantalla para cada clase. */
+  get insigniaTexto(): string {
+    switch (this.clase) {
+      case 'demo':  return 'Demostración';
+      case 'trial': return `Prueba gratuita · ${this.textoDiasPrueba}`;
+      case 'mono':  return 'Licencia MonoCaja activada';
+      case 'multi': return 'Licencia MultiCaja activada';
+      default:      return 'Sin licencia activa';
+    }
   }
 
   /** "quedan 12 dias" / "queda 1 dia", ya en singular o plural. */

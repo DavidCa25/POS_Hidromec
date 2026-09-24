@@ -161,7 +161,19 @@ const perfiles = leerPerfiles({});
 const cuenta = (id) => perfiles.filter(p => p.id === id).length;
 check(cuenta('retail') === 1, 'Retail aparece una sola vez', `${cuenta('retail')} entradas`);
 check(cuenta('hospitality') === 1, 'Hospitality aparece una sola vez', `${cuenta('hospitality')} entradas`);
-check(perfiles.length === 2, 'y no hay ningun perfil de mas', perfiles.map(p => p.id).join(', '));
+check(cuenta('servicios') === 1, 'Servicios aparece una sola vez, no una por giro',
+  `${cuenta('servicios')} entradas`);
+/* Los giros de Servicios NO son perfiles: son una eleccion DENTRO de su
+   tarjeta. Cinco tarjetas casi iguales -Servicios Taller, Servicios
+   Belleza...- habrian llenado la ventana de opciones que hay que leer
+   enteras para distinguirlas. */
+check(perfiles.length === 3, 'y no hay ningun perfil de mas', perfiles.map(p => p.id).join(', '));
+const srv = perfiles.find(p => p.id === 'servicios');
+check(Array.isArray(srv && srv.giros) && srv.giros.length >= 5,
+  'el perfil de Servicios ofrece los giros del producto',
+  srv && srv.giros ? srv.giros.map(g => g.id).join(', ') : 'ninguno');
+check(!perfiles.some(p => p.id !== 'servicios' && p.giros),
+  'y ningun otro perfil pide giro');
 
 /* Y con una carpeta repetida de verdad: es como llega el defecto a una
    maquina -alguien copia `hospitality` para probar algo y no lo borra-. */

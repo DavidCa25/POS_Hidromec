@@ -18,12 +18,14 @@ const SECCIONES = ['resumen', 'campanas', 'recompensas', 'cupones', 'dinamicas',
 export default async function ({ ev, captura }) {
   const informe = [];
 
-  // Fidelizacion puede estar apagada: entonces ni siquiera hay entrada.
-  const encendida = await ev(`
-    const l = [...document.querySelectorAll('a.sidebar-link')]
-      .find(a => /fidelizacion/i.test(a.getAttribute('routerLink') || a.getAttribute('href') || ''));
-    return !!l;
-  `);
+  /* El rail lateral se fue: la entrada vive en la ventana de "Mas" del dock.
+     Esa ventana solo se ABRE al pasar el cursor, pero el enlace esta en el
+     arbol igualmente, asi que se puede encontrar y pulsar sin simular hover.
+     Fidelizacion puede estar apagada: entonces ni siquiera hay entrada. */
+  const ENLACE = `[...document.querySelectorAll('.wxdock__vira')]
+      .find(a => /fidelizacion/i.test(a.getAttribute('routerLink') || a.getAttribute('href') || ''))`;
+
+  const encendida = await ev(`return !!(${ENLACE});`);
   if (!encendida) {
     console.log('Fidelizacion esta apagada en esta base: no hay nada que fotografiar.');
     console.log('Enciendela en Aplicaciones y vuelve a lanzar el guion.');
@@ -31,12 +33,7 @@ export default async function ({ ev, captura }) {
   }
 
   await ev(`window.location.hash = ''; return true;`);
-  await ev(`
-    const l = [...document.querySelectorAll('a.sidebar-link')]
-      .find(a => /fidelizacion/i.test(a.getAttribute('routerLink') || ''));
-    l.click();
-    return true;
-  `);
+  await ev(`(${ENLACE}).click(); return true;`);
   await new Promise(r => setTimeout(r, 1200));
 
   for (const s of SECCIONES) {

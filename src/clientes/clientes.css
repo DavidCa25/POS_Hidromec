@@ -287,3 +287,8 @@
   color: var(--wx-text);
 }
 .kpi-card.total .kpi-value { font-size: 30px; }
+
+/* El nombre del cliente con su figura delante. La figura no desplaza el
+   texto: la celda ya tenía su ancho y la fila conserva su altura. */
+.cli-nombre { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.cli-nombre > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

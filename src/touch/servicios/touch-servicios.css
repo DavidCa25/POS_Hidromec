@@ -1,0 +1,333 @@
+/* ==========================================================================
+   SERVICIOS EN TOUCH — EL DÍA MANDA
+
+   Hereda `touch-pos.css`: los mismos tokens, la misma barra superior, la
+   misma densidad táctil. Aquí sólo va lo propio de la agenda.
+
+   La única diferencia de escala con el Backoffice es la ergonomía, y se
+   declara en el scope de esta pantalla igual que hace el punto de venta: la
+   hora mide 96 px porque el dedo es más gordo que el cursor, y ninguna cosa
+   que se toque baja de 44 px.
+   ========================================================================== */
+
+.ts {
+  --ts-lado: 320px;
+  --ts-gap: 10px;
+}
+
+@media (min-width: 1600px) { .ts { --ts-lado: 360px; --ts-gap: 12px; } }
+
+/* --------------------------------------------------------- barra superior */
+.ts-secciones { display: flex; gap: 4px; }
+.ts-seccion {
+  min-height: var(--tp-tap);
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--wx-rail-text);
+  font: inherit;
+  font-size: var(--wx-text-sm);
+  font-weight: 550;
+  cursor: pointer;
+}
+.ts-seccion.on { background: var(--wx-accent); color: var(--wx-navy-900); font-weight: 650; }
+.ts-dia-txt {
+  color: var(--wx-rail-text-dim, var(--wx-rail-text));
+  font-size: var(--wx-text-sm);
+  text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------------- cuerpo */
+.ts-cuerpo {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ts-lado);
+  gap: var(--ts-gap);
+  padding: var(--ts-gap);
+}
+
+.ts-agenda {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------- navegación */
+.ts-nav {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.ts-iconbtn {
+  width: var(--tp-touch); height: var(--tp-touch);
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--wx-edge);
+  border-radius: 12px;
+  background: var(--wx-surface);
+  color: var(--wx-text-muted);
+  font-size: 22px;
+  cursor: pointer;
+}
+.ts-nav__txt { display: flex; flex-direction: column; min-width: 0; }
+.ts-nav__dia {
+  font-size: var(--wx-text-base);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.ts-nav__sub { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.ts-hoy {
+  margin-left: auto;
+  min-height: var(--tp-touch);
+  padding: 0 20px;
+  border: 1px solid var(--wx-edge);
+  border-radius: 12px;
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  font: inherit; font-size: var(--wx-text-sm); font-weight: 600;
+  cursor: pointer;
+}
+.ts-hoy:disabled { opacity: .45; cursor: default; }
+
+/* -------------------------------------------------------- las cabeceras */
+.ts-cabeceras {
+  flex: none;
+  display: grid;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.ts-quien {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-left: 1px solid var(--wx-edge);
+  min-width: 0;
+}
+.ts-avatar {
+  width: 38px; height: 38px; flex: none;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 700;
+}
+.ts-quien__txt { display: flex; flex-direction: column; min-width: 0; }
+.ts-quien__n {
+  font-size: var(--wx-text-sm); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-quien__t { font-size: 12px; color: var(--wx-text-muted); }
+
+.ts-ocultas {
+  flex: none;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--wx-sunken);
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+}
+
+/* ----------------------------------------------------------- la rejilla */
+.ts-rejilla-wrap { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.ts-rejilla { display: grid; position: relative; }
+
+.ts-horas { border-right: 1px solid var(--wx-edge); }
+.ts-hora {
+  padding: 4px 9px 0 0;
+  text-align: right;
+  font-family: var(--wx-font-mono);
+  font-size: 12.5px;
+  color: var(--wx-text-muted);
+}
+
+.ts-col {
+  position: relative;
+  border-left: 1px solid var(--wx-edge);
+  background-image: linear-gradient(var(--wx-edge-soft, #EDF1F6) 1px, transparent 1px);
+  background-repeat: repeat-y;
+}
+
+/* ------------------------------------------------------------- una cita */
+.ts-cita {
+  position: absolute;
+  left: 6px; right: 6px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 0;
+  border-left: 4px solid var(--wx-accent);
+  border-radius: 12px;
+  background: var(--wx-user-accent-soft, #E4F4F7);
+  color: var(--wx-text);
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 2;
+}
+.ts-cita__quien {
+  font-size: var(--wx-text-sm); font-weight: 650;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-cita__que,
+.ts-cita__hora { font-size: 12.5px; color: var(--wx-text-muted); }
+.ts-cita__hora { font-family: var(--wx-font-mono); }
+.ts-cita__estado { font-size: 11.5px; font-weight: 650; color: var(--wx-warning); }
+
+/* Una cita cancelada o a la que nadie llegó NO ocupa horario: se queda como
+   banda fina, detrás de las vivas, para no tapar el hueco que quedó libre.
+   No se borra: saber que ese cliente no llegó es la mitad de tenerlo
+   apuntado. */
+.ts-cita--pasada {
+  z-index: 1;
+  background: var(--wx-sunken);
+  border-left-style: dashed;
+  padding: 5px 12px;
+  opacity: .75;
+}
+.ts-cita--pasada .ts-cita__quien {
+  font-weight: 450;
+  font-size: 12.5px;
+  text-decoration: line-through;
+}
+
+.ts-ahora {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: var(--wx-danger);
+  z-index: 3;
+  pointer-events: none;
+}
+.ts-ahora__punto {
+  position: absolute; left: -5px; top: -4px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--wx-danger);
+}
+
+.ts-vacio {
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+}
+
+/* -------------------------------------------------------------- el lado */
+.ts-lado { display: flex; flex-direction: column; gap: var(--ts-gap); min-width: 0; }
+.ts-tarjeta {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: 16px;
+  padding: 16px;
+}
+.ts-tarjeta--crece { flex: 1; min-height: 0; overflow: auto; }
+.ts-tarjeta--tenue { color: var(--wx-text-muted); }
+.ts-lbl {
+  font-size: 12px; font-weight: 650; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--wx-text-muted);
+}
+.ts-lado__quien { margin: 10px 0 2px; font-size: 19px; font-weight: 650; }
+.ts-lado__que { margin: 6px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.ts-lado__hora {
+  margin: 4px 0 14px;
+  font-family: var(--wx-font-mono);
+  font-size: 13px;
+  color: var(--wx-text-muted);
+}
+
+.ts-siguientes { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ts-siguiente {
+  min-height: var(--tp-touch);
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--wx-canvas);
+  color: var(--wx-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ts-siguiente__h {
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-sm); font-weight: 650;
+  color: var(--wx-accent-text, var(--wx-cyan-700));
+}
+.ts-siguiente__txt { display: flex; flex-direction: column; min-width: 0; }
+.ts-siguiente__n {
+  font-size: var(--wx-text-sm); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-siguiente__s { font-size: 12.5px; color: var(--wx-text-muted); }
+
+/* ------------------------------------------------------- hoja inferior */
+/* Por debajo de 13000: de ahi hacia arriba la franja esta reservada para los
+   avisos, y una hoja que tape un aviso deja a alguien esperando una respuesta
+   que ya esta dada. Lo comprueba scripts/pruebas/capas.mjs, que es quien
+   encontro esto. */
+.ts-velo {
+  position: fixed; inset: 0;
+  background: rgb(0 0 0 / .32);
+  z-index: 12800;
+}
+.ts-hoja {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 12801;
+  background: var(--wx-surface);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px rgb(0 0 0 / .18);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ts-hoja__asa {
+  width: 44px; height: 4px; border-radius: 999px;
+  background: var(--wx-edge-strong, #C9D4E0);
+  margin: 0 auto 2px;
+}
+.ts-hoja__cab { display: flex; align-items: flex-start; gap: 12px; }
+.ts-hoja__quien { margin: 0; font-size: 20px; font-weight: 650; }
+.ts-hoja__que { margin: 3px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.ts-badge {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--wx-sunken);
+  color: var(--wx-text-muted);
+  font-size: 12.5px; font-weight: 650;
+  white-space: nowrap;
+}
+.ts-hoja__acciones { display: flex; flex-direction: column; gap: 9px; }
+.ts-hoja__nota {
+  margin: 0;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}
+
+/* Las tres alturas de acción. Ninguna baja de lo que mide un dedo. */
+.ts-primaria,
+.ts-secundaria,
+.ts-peligro {
+  min-height: var(--tp-touch);
+  border-radius: 12px;
+  font: inherit;
+  font-size: var(--wx-text-base);
+  font-weight: 650;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.ts-primaria { background: var(--wx-accent); color: var(--wx-navy-900); border: 0; }
+.ts-secundaria { background: var(--wx-surface); color: var(--wx-text); border-color: var(--wx-edge); }
+.ts-peligro { background: var(--wx-surface); color: var(--wx-danger); border-color: var(--wx-edge); }
+
+@media (max-width: 900px) {
+  .ts-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .ts-lado { display: none; }
+}

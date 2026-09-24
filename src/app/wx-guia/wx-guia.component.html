@@ -1,0 +1,61 @@
+<!--
+  Sale de la esquina del dock, donde vive Wybix Mini. La figura vuelve a
+  aparecer arriba del panel -grande- para que se vea que es el mismo que se
+  acaba de pulsar, y con la MISMA cara.
+-->
+<div class="wxg" *ngIf="guia.abierta()" role="dialog" aria-label="Wybix">
+
+  <header class="wxg__cab">
+    <wx-mascota [estado]="guia.estado()" [variante]="guia.variante()" [size]="64" alt=""></wx-mascota>
+    <div class="wxg__dice">
+      <p class="wxg__frase">{{ guia.frase() }}</p>
+      <p class="wxg__datos" *ngIf="guia.resumen().length">
+        <span *ngFor="let d of guia.resumen()">
+          <b>{{ d.etiqueta }}</b> {{ d.valor }}
+        </span>
+      </p>
+    </div>
+  </header>
+
+  <!-- ------------------------------------------------------ lo parado -->
+  <section class="wxg__lista" *ngIf="guia.hayPendientes()">
+    <ng-container *ngFor="let a of guia.avisos(); trackBy: porAviso">
+      <!-- Con ruta es un botón; sin ruta -porque a esta persona no le
+           corresponde- es solo una línea que informa. -->
+      <button type="button" class="wxg__aviso" *ngIf="a.ruta; else soloInforma"
+              (click)="ir(a.ruta)">
+        <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
+        <span class="wxg__avisotxt">
+          <span class="wxg__area">{{ a.area }}</span>
+          <b>{{ a.texto }}</b>
+        </span>
+        <i class="ph ph-arrow-right" aria-hidden="true"></i>
+      </button>
+
+      <ng-template #soloInforma>
+        <span class="wxg__aviso es-mudo">
+          <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
+          <span class="wxg__avisotxt">
+            <span class="wxg__area">{{ a.area }}</span>
+            <b>{{ a.texto }}</b>
+          </span>
+        </span>
+      </ng-template>
+    </ng-container>
+  </section>
+
+  <!-- No se ofrece lo que esta persona no puede ejecutar; se dice y ya. -->
+  <p class="wxg__admin" *ngIf="guia.necesitaAdmin()">
+    Hay algo que necesita un administrador.
+  </p>
+
+  <!-- ------------------------------------------------------- acciones -->
+  <section class="wxg__acciones" *ngIf="guia.acciones().length">
+    <button type="button" class="wxg__accion" *ngFor="let a of guia.acciones()"
+            (click)="ir(a.ruta)">
+      <i class="ph {{ a.icono }}" aria-hidden="true"></i>
+      <span>{{ a.texto }}</span>
+      <i class="ph ph-arrow-right wxg__flecha" aria-hidden="true"></i>
+    </button>
+  </section>
+</div>

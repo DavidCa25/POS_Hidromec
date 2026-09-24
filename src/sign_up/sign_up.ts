@@ -2,19 +2,20 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 
 @Component({
   selector: 'app-crear-usuario',
   standalone: true,
   templateUrl: './sign_up.html',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, WxSelectComponent],
   styleUrls: ['../login/login.css'] 
 })
 export class CrearUsuarioComponent {
   usuario = '';
   contrasena = '';
   confirmarContrasena = '';
-  rol: 'admin' | 'cajero' | 'consulta' = 'cajero';
+  rol: 'admin' | 'supervisor' | 'cajero' = 'cajero';
 
   mensaje = '';
   advertencia = '';
@@ -22,10 +23,18 @@ export class CrearUsuarioComponent {
   mostrarConfirmacion = false;
   cargando = false;
 
+  /* Los tres roles que el backend acepta. "Solo consulta" estaba aqui y no
+     existia en ninguna otra capa: su canal no tenia handler, asi que nunca
+     llego a crearse ninguno. */
+  /* Lo que consume `wx-select`. Ver el contrato de interfaz en CLAUDE.md. */
+  get opcRoles(): WxOpcion[] {
+    return this.rolesOpciones.map((r: any) => ({ valor: r.value, etiqueta: r.label ?? r.value }));
+  }
+
   rolesOpciones = [
-    { value: 'admin',   label: 'Administrador' },
-    { value: 'cajero',  label: 'Cajero' },
-    { value: 'consulta', label: 'Solo consulta' }
+    { value: 'admin',      label: 'Administrador' },
+    { value: 'supervisor', label: 'Encargado' },
+    { value: 'cajero',     label: 'Operador' }
   ];
 
   constructor(

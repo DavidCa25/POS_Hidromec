@@ -1,0 +1,334 @@
+/* ============================================================
+   MÓDULO SERVICIOS — estilos compartidos.
+
+   EL COLOR ES EL DEL CLIENTE, NO EL DE WYBIX
+   ------------------------------------------
+   Inventario, Compras y Ventas llevan años pintándose con el color que el
+   negocio eligió: la cabecera de la tabla, la fila seleccionada, el botón
+   principal. Un taller con su azul y otro con su verde reconocen su sistema
+   por eso, y una pantalla nueva en cian corporativo se siente traída de otro
+   programa.
+
+   Así que todo lo que en las demás pantallas responde al color, aquí también:
+
+     --inv-main / --inv-main-dark   la cabecera de la tabla, como en Compras
+     --wx-user-accent               el botón principal, la pestaña activa
+     --wx-user-accent-soft          la fila bajo el cursor, la insignia
+     --wx-user-accent-text          el color como TEXTO, ya legible
+     --wx-user-accent-fg            la tinta ENCIMA del color
+
+   Cada una lleva un respaldo al acento del sistema entre paréntesis: en una
+   caja que todavía no eligió color, o mientras el tema carga, la pantalla se
+   ve bien igual en vez de quedarse sin fondo.
+
+   Lo que NO responde al color del cliente son los estados: verde es cobrado,
+   ámbar es pendiente y rojo es cancelado en todos los negocios. Teñirlos
+   habría hecho que en un taller con acento rojo «todo bien» y «cancelado» se
+   vieran igual.
+
+   El archivo es uno solo porque las cinco pantallas comparten la misma tabla,
+   las mismas insignias y el mismo encabezado. Cinco copias se habrían
+   separado a la tercera corrección.
+   ============================================================ */
+
+.srv-pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px;
+}
+
+/* ------------------------------------------------------------ encabezado */
+.srv-cab {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.srv-cab h1 {
+  margin: 0;
+  font-size: var(--wx-text-xl);
+  font-weight: 600;
+  color: var(--wx-text);
+}
+.srv-cab > button,
+.srv-cab > div:last-child { margin-left: auto; }
+.srv-sub {
+  margin: 2px 0 0;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}
+.srv-hint { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+
+/* ---------------------------------------------------------------- filtros */
+.srv-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.srv-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.srv-tab:hover { color: var(--wx-text); }
+.srv-tab.activo {
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+  border-bottom-color: var(--wx-user-accent, var(--wx-accent));
+  font-weight: 500;
+}
+.srv-tab-n {
+  font-family: var(--wx-font-mono);
+  font-size: var(--wx-text-xs);
+  background: var(--wx-edge-soft);
+  color: var(--wx-text-dim);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.srv-tab.activo .srv-tab-n {
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft));
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+}
+
+.srv-barra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.srv-barra .ctl { min-width: 240px; }
+
+/* ----------------------------------------------------------------- tabla */
+.srv-tabla-wrap {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  overflow: auto;
+  min-height: 0;
+}
+.srv-tabla { width: 100%; border-collapse: collapse; font-size: var(--wx-text-base); }
+
+/* La cabecera con el color del negocio, igual que la de Compras. */
+.srv-tabla th {
+  text-align: left;
+  font-size: var(--wx-text-xs);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  background: var(--inv-main, var(--wx-accent));
+  color: var(--wx-user-accent-fg, #fff);
+  border-bottom: 3px solid var(--inv-main-dark, var(--wx-cyan-700, var(--wx-accent)));
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.srv-tabla th:first-child { border-top-left-radius: var(--wx-radius-md); }
+.srv-tabla th:last-child { border-top-right-radius: var(--wx-radius-md); }
+
+.srv-tabla td { padding: 9px 12px; border-bottom: 1px solid var(--wx-edge); vertical-align: middle; }
+.srv-tabla tr:last-child td { border-bottom: none; }
+.srv-fila { cursor: pointer; }
+.srv-fila:hover td,
+.srv-fila:focus-visible td { background: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+.srv-fila:focus-visible {
+  outline: 2px solid var(--wx-user-accent, var(--wx-accent));
+  outline-offset: -2px;
+}
+.ta-r { text-align: right; }
+.ta-c { text-align: center; }
+.mono { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.srv-dim { color: var(--wx-text-muted); }
+
+/* La que está parada costando dinero: se ve antes que nada. Ámbar y no el
+   color del negocio, porque «atención» significa lo mismo en todos. */
+.srv-alerta {
+  font-size: var(--wx-text-xs);
+  color: var(--wx-warning);
+  font-weight: 500;
+}
+
+/* -------------------------------------------------------------- insignias
+   Los ESTADOS no se tiñen: verde es cobrado y ámbar es pendiente en todos los
+   negocios. Solo la neutra —«info»— toma el color del cliente, porque no
+   significa nada por sí misma. */
+.srv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--wx-text-xs);
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.srv-badge--ok { background: var(--wx-success-soft); color: var(--wx-success); }
+.srv-badge--warn { background: var(--wx-warning-soft); color: var(--wx-warning); }
+.srv-badge--info {
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft));
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+}
+.srv-badge--mute { background: var(--wx-edge-soft); color: var(--wx-text-dim); }
+.srv-badge--danger { background: var(--wx-danger-soft); color: var(--wx-danger); }
+
+/* ----------------------------------------------------------------- vacío */
+.srv-vacio {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--wx-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.srv-vacio p { margin: 0; max-width: 46ch; }
+
+/* ------------------------------------------------------------- formulario */
+.srv-form { display: grid; gap: 12px; }
+.srv-form-fila { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.srv-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.srv-campo > label {
+  font-size: var(--wx-text-xs);
+  color: var(--wx-text-dim);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.srv-campo .srv-ayuda { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+
+/* ----------------------------------------------------------- tarjeta suelta
+   La línea de color a la izquierda es el mismo recurso que usa la tabla de
+   compras para marcar una tarjeta como «del negocio». */
+.srv-tarjeta {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-left: 3px solid var(--wx-user-accent, var(--wx-accent));
+  border-radius: var(--wx-radius-md);
+  padding: 14px;
+}
+.srv-tarjeta h2 {
+  margin: 0 0 10px;
+  font-size: var(--wx-text-md);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------- variantes de botón
+   El sistema ya trae `.btn` y `.btn-primary`. Faltaban tres matices que este
+   módulo usa mucho: el botón pequeño de una fila de tabla, el fantasma de
+   quitar una línea y el rojo de cancelar. Se definen ENCIMA de `.btn` en vez
+   de inventar una familia nueva: un segundo sistema de botones se separa del
+   primero en la siguiente pantalla. */
+.btn.srv-sm {
+  height: var(--wx-control-h-sm);
+  padding: 0 11px;
+  font-size: var(--wx-text-sm);
+}
+.ctl.srv-sm { height: var(--wx-control-h-sm); font-size: var(--wx-text-sm); padding: 0 8px; }
+.btn.srv-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--wx-text-muted);
+}
+.btn.srv-ghost:hover:not(:disabled) { background: var(--wx-edge-soft); color: var(--wx-text); }
+.btn.srv-danger { color: var(--wx-danger); border-color: var(--wx-danger); background: transparent; }
+.btn.srv-danger:hover:not(:disabled) { background: var(--wx-danger-soft); }
+
+/* El botón principal del módulo toma el color del negocio, igual que en
+   Compras y en Ventas. `.btn-primary` del sistema ya existe; aquí solo se le
+   dice de dónde sale su color cuando el cliente eligió uno. */
+.srv-pagina .btn-primary,
+.srv-shell .btn-primary {
+  background: var(--wx-user-accent, var(--wx-accent));
+  border-color: var(--wx-user-accent, var(--wx-accent));
+  color: var(--wx-user-accent-fg, #fff);
+}
+.srv-pagina .btn-primary:hover:not(:disabled),
+.srv-shell .btn-primary:hover:not(:disabled) {
+  background: var(--inv-main-dark, var(--wx-cyan-700, var(--wx-accent)));
+  border-color: var(--inv-main-dark, var(--wx-cyan-700, var(--wx-accent)));
+}
+
+@media (max-width: 720px) {
+  .srv-pagina { padding: 12px; }
+  .srv-cab > button,
+  .srv-cab > div:last-child { margin-left: 0; }
+  .srv-barra .ctl { min-width: 0; flex-grow: 1; }
+}
+
+/* ------------------------------------------------- los primeros pasos
+   Aparece sólo con el módulo recién encendido y desaparece en cuanto hay
+   catálogo. Un aviso que no se va deja de leerse. */
+.srv-pasos {
+  text-align: left;
+  margin: 4px 0 0;
+  padding-left: 22px;
+  max-width: 52ch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}
+.srv-pasos li { line-height: 1.5; }
+.srv-pasos b { color: var(--wx-text); font-weight: 500; display: block; }
+.srv-pasos a {
+  color: var(--wx-user-accent-text, var(--wx-accent-text));
+  text-decoration: none;
+  font-weight: 500;
+}
+.srv-pasos a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------- los modales del módulo
+   Mismo marcado que Clientes y el punto de venta; aquí sólo va lo propio del
+   contenido: la rejilla de campos, el importe en vivo y el error. */
+.srv-modal { background: rgba(0, 0, 0, .18); z-index: 12000; }
+.srv-modal .modal-content { border: 1px solid var(--wx-edge); }
+.srv-modal .form-label {
+  font-size: var(--wx-text-sm);
+  font-weight: 500;
+  color: var(--wx-text);
+  margin-bottom: 5px;
+}
+.srv-modal .hint { font-size: 12.5px; color: var(--wx-text-muted); margin-top: 5px; }
+.srv-opcional { font-weight: 400; color: var(--wx-text-muted); }
+.srv-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.srv-alta {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--wx-edge);
+  border-radius: 10px;
+  background: var(--wx-sunken);
+}
+.srv-importe {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--wx-user-accent-soft, var(--wx-sunken));
+  font-size: var(--wx-text-sm);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.srv-importe b { font-size: 1.05rem; color: var(--wx-text); }
+.srv-error {
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--wx-danger-soft, #fee2e2);
+  color: var(--wx-danger, #b91c1c);
+  font-size: var(--wx-text-sm);
+}
+@media (max-width: 560px) { .srv-campos { grid-template-columns: 1fr; } }
+
+/* El contador del asistente: en qué cliente vamos y cuántos llevamos. */
+.srv-paso {
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--wx-sunken);
+  font-size: var(--wx-text-sm);
+  color: var(--wx-text-muted);
+}

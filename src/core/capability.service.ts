@@ -31,7 +31,22 @@ export class CapabilityService {
    * Caja 1 no conoce.
    */
   readonly loyaltyEnabled = signal(false);
+  /** Los modulos encendidos del NEGOCIO, tal cual los da `business_modules`. */
+  readonly modulos = signal<Set<string>>(new Set());
   readonly loaded = signal(false);
+
+  /**
+   * De la capacidad del producto a la clave del registro.
+   *
+   * Solo estan las que se pueden encender desde Aplicaciones. `touchPos` o
+   * `customerDisplay` no aparecen porque son del DISPOSITIVO, no del negocio,
+   * y viven en device-config.json.
+   */
+  private static readonly CLAVE_DE_MODULO: Partial<Record<keyof Capabilities, string>> = {
+    loyalty: 'loyalty',
+    hospitality: 'hospitality',
+    servicios: 'servicios',
+  };
 
   readonly capabilities = computed<Capabilities>(() => {
     const bp = this.businessProfile();
@@ -39,17 +54,25 @@ export class CapabilityService {
     return {
       businessProfile: bp,
       deviceProfile: dp,
-      hospitality: bp === 'HOSPITALITY',
+      /* Deja de ser el perfil y pasa a ser un modulo, que es lo que permite
+         Retail + Hospitality y Retail + Servicios. El perfil queda como
+         preset de origen, no como interruptor. */
+      hospitality: this.modulos().has('hospitality'),
       touchPos: dp === 'TOUCH_POS',
       retailPos: dp === 'RETAIL_POS',
       customerDisplay: this.customerDisplayEnabled(),
-      loyalty: this.loyaltyEnabled(),
+      loyalty: this.modulos().has('loyalty'),
+      /* Se suma a lo que ya haya: un taller es Retail + Servicios, y una
+         cafeteria con salon de belleza es Hospitality + Servicios. Los
+         perfiles se excluyen; los modulos se suman. */
+      servicios: this.modulos().has('servicios'),
     };
   });
 
   get hospitality(): boolean { return this.capabilities().hospitality; }
   get touchPos(): boolean { return this.capabilities().touchPos; }
   get loyalty(): boolean { return this.capabilities().loyalty; }
+  get servicios(): boolean { return this.capabilities().servicios; }
 
   /**
    * Donde vende ESTA caja ahora mismo.
@@ -76,12 +99,36 @@ export class CapabilityService {
     if (this.inflight && !force) return this.inflight;
     this.inflight = (async () => {
       const api = this.bridge.api;
+      /* EL REGISTRO MANDA, LA CONFIGURACION ES EL RESPALDO.
+         `business_modules` es la fuente unica desde Core 0. Mientras dure la
+         ventana de compatibilidad, `sp_set_business_module` escribe tambien
+         las columnas antiguas, asi que si el registro no existe todavia -base
+         anterior a la migracion- leerlas da exactamente el mismo resultado.
+         `business_profile` se conserva solo como preset de origen. */
+      let delRegistro: Set<string> | null = null;
+      try {
+        const rs = await api?.modulosLista?.();
+        if (rs?.success && Array.isArray(rs.data) && rs.data.length) {
+          delRegistro = new Set(
+            rs.data.filter((m: any) => m.enabled === true || m.enabled === 1)
+                   .map((m: any) => String(m.module_key)));
+        }
+      } catch { /* sin registro: se cae al respaldo de abajo */ }
+
       try {
         const cfg = await api?.getConfig?.();
         const c = cfg?.data ?? cfg ?? {};
         this.businessProfile.set(CapabilityService.parseBusiness(c?.business_profile));
-        this.loyaltyEnabled.set(!!c?.loyalty_enabled);
-      } catch { this.businessProfile.set('RETAIL'); this.loyaltyEnabled.set(false); }
+        this.modulos.set(delRegistro ?? new Set(c?.loyalty_enabled ? ['loyalty'] : []));
+        if (!delRegistro && CapabilityService.parseBusiness(c?.business_profile) === 'HOSPITALITY') {
+          this.modulos.update(m => new Set([...m, 'hospitality']));
+        }
+        this.loyaltyEnabled.set(this.modulos().has('loyalty'));
+      } catch {
+        this.businessProfile.set('RETAIL');
+        this.modulos.set(delRegistro ?? new Set());
+        this.loyaltyEnabled.set(this.modulos().has('loyalty'));
+      }
       try {
         const dev = await api?.getDeviceConfig?.();
         const d = dev?.data ?? dev ?? {};
@@ -111,15 +158,14 @@ export class CapabilityService {
    * Lo que cambio es quien lo administra.
    */
   async setModulo(capability: keyof Capabilities, activo: boolean): Promise<void> {
-    if (capability !== 'loyalty') {
-      throw new Error(`El módulo "${capability}" no se puede activar desde aquí todavía.`);
+    /* El `if (capability !== 'loyalty')` que habia aqui era la razon por la
+       que anadir un modulo exigia tocar este archivo. Ahora la clave viaja al
+       registro y el catalogo de `modulos.ts` decide que se ofrece. */
+    const clave = CapabilityService.CLAVE_DE_MODULO[capability];
+    if (!clave) {
+      throw new Error(`El módulo "${capability}" no se puede activar desde aquí.`);
     }
-    const rs = await this.bridge.api?.updateBusinessConfig?.({
-      // `updateBusinessConfig` exige el nombre del negocio: se manda el que ya
-      // hay para no borrarlo por el camino.
-      business_name: await this.nombreDelNegocio(),
-      loyalty_enabled: activo,
-    });
+    const rs = await this.bridge.api?.modulosSet?.(clave, activo);
     if (rs && rs.success === false) {
       throw new Error(rs.error || 'No se pudo cambiar el módulo.');
     }

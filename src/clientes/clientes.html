@@ -95,7 +95,12 @@
 
           <tr *ngIf="it.tipo === 'fila' && it.fila as c">
             <td *ngIf="tabla.esVisible('name')" class="strong">
-              {{ c.name }}
+              <!-- La cara sale del identificador, no del nombre: si el cliente
+                   se renombra, sigue siendo el mismo y conserva la suya. -->
+              <span class="cli-nombre">
+                <wx-avatar [semilla]="'c:' + c.id" [nombre]="c.name" [size]="28"></wx-avatar>
+                <span>{{ c.name }}</span>
+              </span>
               <span *ngIf="!c.active" class="badge badge.tarjeta" style="margin-left:6px;">Inactivo</span>
             </td>
             <td *ngIf="tabla.esVisible('contacto')">

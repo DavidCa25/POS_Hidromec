@@ -7,6 +7,7 @@ import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import Swal from 'sweetalert2';
 import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
+import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
 
 type Cliente = {
   id: number;
@@ -42,7 +43,7 @@ type ClienteVenta = {
 @Component({
   selector: 'app-clientes',
   templateUrl: './clientes.html',
-  imports: [WxTablaBarraComponent, 
+  imports: [WxTablaBarraComponent, WxAvatarComponent, 
     RouterOutlet,
     FormsModule,
     CommonModule,

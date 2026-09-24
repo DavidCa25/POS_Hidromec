@@ -20,9 +20,21 @@
     </button>
   </div>
 
-  <!-- ===== PRODUCTOS ===== -->
-  <div *ngIf="tab === 'productos'">
-    <app-importador-productos></app-importador-productos>
+  <!-- ===== PRODUCTOS =====
+       Ya no vive aqui. Migrar productos es QuickStart, que ademas sabe
+       actualizar, deja el trabajo a medias guardado y genera el movimiento
+       de existencia inicial. Mantener el importador viejo al lado garantiza
+       que uno de los dos se quede atras sin que nadie se entere. -->
+  <div *ngIf="tab === 'productos'" class="mig-panel">
+    <div class="mig-vacio">
+      <i class="ph ph-tray-arrow-down"></i>
+      <h3>Los productos se cargan en QuickStart</h3>
+      <p>Ahí puedes traer tu Excel, pegar desde una hoja de cálculo o escribirlos
+         a mano, revisar antes de importar y deshacer después.</p>
+      <button class="mig-btn primary" (click)="irAQuickstart()">
+        Abrir QuickStart <i class="ph ph-arrow-right"></i>
+      </button>
+    </div>
   </div>
 
   <!-- ===== CLIENTES ===== -->

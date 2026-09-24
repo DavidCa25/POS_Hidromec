@@ -68,6 +68,25 @@
     </button>
   </div>
 
+  <!--
+    Se está cobrando una orden de servicio.
+
+    Tiene que verse: quien cobra necesita saber que este ticket no es una venta
+    de mostrador, que los precios son los que el cliente autorizó y que al
+    cobrar la orden quedará cerrada. Sin esto, la pantalla es idéntica a
+    cualquier otra venta y el enlace ocurre por sorpresa.
+  -->
+  <div class="venta-orden-servicio" *ngIf="ordenServicio as os">
+    <i class="ph ph-wrench"></i>
+    <span>
+      Cobrando la orden <b>{{ os.folio }}</b> · los precios son los que se
+      cotizaron, no los del catálogo de hoy.
+    </span>
+    <button type="button" class="venta-orden-ver" (click)="verOrdenDeServicio(os.id)">
+      Ver la orden
+    </button>
+  </div>
+
   <!-- ===== CARD PRINCIPAL: layout horizontal de 2 columnas ===== -->
   <div class="card shadow-lg border-0 venta-card">
     <div class="card-body pos-grid">
@@ -480,9 +499,13 @@
             <div class="pi-price">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
             <!-- Disponibilidad real. Una receta tiene stock 0 por diseno; lo
                  que importa es cuantas se pueden preparar. -->
-            <div class="pi-stock" [class.low]="(p.available_units ?? p.stock) <= 3">
+            <!-- NONE no lleva existencia: su disponibilidad es el centinela
+                 999999, que no es un dato para enseñar. -->
+            <div class="pi-stock" *ngIf="p.inventory_mode !== 'NONE'; else stockNoAplica"
+                 [class.low]="(p.available_units ?? p.stock) <= 3">
               {{ p.available_units ?? p.stock }} {{ p.inventory_mode === 'RECIPE' ? 'por preparar' : (p.base_uom || 'pz') }}
             </div>
+            <ng-template #stockNoAplica><div class="pi-stock">No aplica</div></ng-template>
           </div>
           <i class="ph-fill ph-plus-circle pi-add"></i>
         </button>
@@ -554,7 +577,12 @@
      style="background:rgba(0,0,0,0.25);z-index:12000;">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-4">
-      <div class="modal-header border-0 pb-1">
+      <div class="modal-header border-0 pb-1 align-items-center">
+        <!-- Wybix en exito. Es el UNICO momento del punto de venta en el que
+             aparece de cuerpo entero: da el salto, se le ven los ojos
+             contentos y se queda quieta. Si apareciera tambien al fallar o al
+             esperar, dejaria de significar "salio bien". -->
+        <wx-mascota estado="exito" [size]="44" class="me-2"></wx-mascota>
         <h5 class="modal-title fw-bold">Venta registrada</h5>
         <button type="button" class="btn-close" (click)="cerrarPostSaleModal()"></button>
       </div>

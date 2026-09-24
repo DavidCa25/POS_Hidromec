@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../../services/report.service';
+import { ProveedorFormComponent } from './proveedor-form.component';
 
 interface Prov {
   id: number; nombre: string; telefono: string | null; correo: string | null; rfc: string | null;
@@ -21,7 +22,7 @@ interface Payment { id: number; purchase_id: number | null; datee: string; amoun
 @Component({
   selector: 'app-proveedores',
   standalone: true,
-  imports: [WxTablaBarraComponent, CommonModule, FormsModule],
+  imports: [WxTablaBarraComponent, CommonModule, FormsModule, ProveedorFormComponent],
   templateUrl: './proveedores.component.html',
   styleUrls: ['./proveedores.component.css']
 })
@@ -38,7 +39,6 @@ export class Proveedores implements OnInit {
 
   // Alta / edicion
   showForm = false;
-  guardando = false;
   form = { id: 0, nombre: '', telefono: '', correo: '', rfc: '' };
 
   // Historial de pagos
@@ -114,26 +114,9 @@ export class Proveedores implements OnInit {
   editar(p: Prov) { this.form = { id: p.id, nombre: p.nombre, telefono: p.telefono || '', correo: p.correo || '', rfc: p.rfc || '' }; this.showForm = true; }
   cerrarForm() { this.showForm = false; }
 
-  async guardar() {
-    if (!this.form.nombre.trim()) { await Swal.fire({ icon: 'warning', title: 'Falta el nombre' }); return; }
-    this.guardando = true;
-    try {
-      const res = await this.api?.supplierSave?.({
-        id: this.form.id || null,
-        nombre: this.form.nombre.trim(),
-        telefono: this.form.telefono.trim() || null,
-        correo: this.form.correo.trim() || null,
-        rfc: this.form.rfc.trim().toUpperCase() || null
-      });
-      if (!res?.success) throw new Error(res?.error || 'No se pudo guardar.');
-      this.showForm = false;
-      await Swal.fire({ icon: 'success', title: this.form.id ? 'Proveedor actualizado' : 'Proveedor agregado', timer: 1100, showConfirmButton: false });
-      await this.cargar();
-    } catch (e: any) {
-      await Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Fallo al guardar.' });
-    } finally {
-      this.guardando = false;
-    }
+  async alGuardar() {
+    this.showForm = false;
+    await this.cargar();
   }
 
   async verHistorial(p: Prov) {

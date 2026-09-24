@@ -100,10 +100,18 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
 export class UsuariosPanelComponent implements OnInit {
   private get api() { return (window as any).electronAPI; }
 
+  /**
+   * Los tres roles, con el nombre que el producto usa en pantalla.
+   *
+   * La clave es la que ya está guardada en `users.rol` de las instalaciones
+   * existentes y NO se reescribe: cambiar valores en la base de un cliente
+   * para ganar un nombre más bonito es riesgo sin beneficio. Lo que cambia es
+   * cómo se llaman aquí.
+   */
   roles = [
     { key: 'admin', label: 'Administrador' },
-    { key: 'supervisor', label: 'Supervisor' },
-    { key: 'cajero', label: 'Cajero' },
+    { key: 'supervisor', label: 'Encargado' },
+    { key: 'cajero', label: 'Operador' },
   ];
 
   usuarios: Usuario[] = [];
@@ -117,7 +125,18 @@ export class UsuariosPanelComponent implements OnInit {
 
   async ngOnInit() { await this.cargar(); }
 
-  rolLabel(k: string): string { return this.roles.find(r => r.key === k)?.label ?? k; }
+  /**
+   * Un rol que esta versión no conoce se dice tal cual, no se disfraza.
+   *
+   * Pasa al abrir una base más nueva con un binario más viejo, o al heredar un
+   * valor que alguien escribió hace años. Esa persona entra y no puede hacer
+   * nada —cero paquetes—, así que la pantalla tiene que enseñarlo para que un
+   * administrador lo arregle desde aquí mismo.
+   */
+  rolLabel(k: string): string {
+    const conocido = this.roles.find(r => r.key === k);
+    return conocido ? conocido.label : `Sin rol asignado (${k || '—'})`;
+  }
 
   async cargar() {
     this.cargando = true;

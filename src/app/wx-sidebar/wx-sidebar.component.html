@@ -1,0 +1,120 @@
+<nav class="wxside" [class.es-plegada]="plegada()" aria-label="Navegación de Wybix">
+
+  <!-- Cabecera: la del rail, con el logo sobre su baldosa blanca. -->
+  <div class="wxside__cab">
+    <img src="assets/wybie_logo.png" alt="" class="wxside__logo" *ngIf="!plegada()" />
+    <span class="wxside__titulo" *ngIf="!plegada()">Wybix POS</span>
+    <button type="button" class="wxside__plegar" (click)="alternarPlegada()"
+            [attr.aria-label]="plegada() ? 'Desplegar menú' : 'Plegar menú'"
+            [attr.title]="plegada() ? 'Desplegar menú' : 'Plegar menú'"
+            [attr.aria-expanded]="!plegada()">
+      <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <!-- Ctrl+K, el mismo buscador que la lupa del dock. -->
+  <button type="button" class="wxside__buscar" (click)="buscar()"
+          aria-label="Buscar en Wybix" [attr.title]="plegada() ? 'Buscar en Wybix (Ctrl K)' : null">
+    <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+    <span class="wxside__buscartxt">Buscar</span>
+    <kbd class="wxside__kbd">Ctrl K</kbd>
+  </button>
+
+  <ul class="wxside__menu">
+    <!-- ------------------------------------------------------------ areas -->
+    <li *ngFor="let a of areas(); trackBy: porId" class="wxside__area" [class.is-open]="estaAbierto(a)">
+
+      <!-- Un area con un solo destino es un ENLACE: lleva a un sitio. -->
+      <a *ngIf="!tienePanel(a); else grupo" class="wxside__link"
+         [class.active]="esActiva(a)" [attr.aria-current]="esActiva(a) ? 'page' : null"
+         [routerLink]="a.ruta" [attr.title]="plegada() ? a.nombre : null">
+        <i class="ph {{ a.icono }}" aria-hidden="true"></i>
+        <span class="wxside__txt">{{ a.nombre }}</span>
+        <span *ngIf="a.aviso && a.aviso.tono !== 'ok'" class="wxside__punto"
+              [ngClass]="'es-' + a.aviso.tono" [attr.title]="a.aviso.texto"></span>
+      </a>
+
+      <!-- Con varios, un GRUPO que se despliega en su sitio. -->
+      <ng-template #grupo>
+        <button type="button" class="wxside__link" [class.active]="esActiva(a)"
+                (click)="alternarGrupo(a)"
+                [attr.aria-expanded]="estaAbierto(a)" [attr.aria-controls]="'wxside-' + a.id"
+                [attr.title]="plegada() ? a.nombre : null">
+          <i class="ph {{ a.icono }}" aria-hidden="true"></i>
+          <span class="wxside__txt">{{ a.nombre }}</span>
+          <span *ngIf="a.aviso && a.aviso.tono !== 'ok'" class="wxside__punto"
+                [ngClass]="'es-' + a.aviso.tono" [attr.title]="a.aviso.texto"></span>
+          <i class="ph ph-caret-down wxside__chevron" aria-hidden="true"></i>
+        </button>
+
+        <div class="wx-abrir wxside__sub" [class.es-cerrado]="!estaAbierto(a)" [id]="'wxside-' + a.id">
+          <ul>
+            <li *ngFor="let d of destinosDe(a); trackBy: porRuta">
+              <a class="wxside__item" [class.active]="esActivoDestino(d)"
+                 [attr.aria-current]="esActivoDestino(d) ? 'page' : null"
+                 [attr.tabindex]="estaAbierto(a) ? null : -1"
+                 [routerLink]="d.ruta" [attr.title]="d.pie || null">
+                <i class="ph {{ d.icono }}" aria-hidden="true"></i>
+                <span>{{ d.texto }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </ng-template>
+    </li>
+
+    <!-- ------------------------------------------ mas: negocio y sistema -->
+    <li class="wxside__grp" *ngIf="negocio().length">
+      <ul>
+        <li *ngFor="let d of negocio(); trackBy: porRuta">
+          <a class="wxside__link" [class.active]="esActivoDestino(d)"
+             [attr.aria-current]="esActivoDestino(d) ? 'page' : null"
+             [routerLink]="d.ruta" [attr.title]="plegada() ? d.texto : null">
+            <i class="ph {{ d.icono }}" aria-hidden="true"></i>
+            <span class="wxside__txt">{{ d.texto }}</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <li class="wxside__grp wxside__grp--sistema" *ngIf="sistema().length">
+      <ul>
+        <li *ngFor="let d of sistema(); trackBy: porRuta">
+          <a class="wxside__link" [class.active]="esActivoDestino(d)"
+             [attr.aria-current]="esActivoDestino(d) ? 'page' : null"
+             [routerLink]="d.ruta" [attr.title]="plegada() ? d.texto : null">
+            <i class="ph {{ d.icono }}" aria-hidden="true"></i>
+            <span class="wxside__txt">{{ d.texto }}</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <!--
+    EL PIE ES DE WYBIX.
+
+    En el rail aqui iba el negocio; ahora el negocio vive en la cabecera de la
+    aplicacion y no se repite. Lo que ocupa el pie es Wybix Mini, el mismo que
+    en el dock: una sola figura por pantalla, con la variante de la sesion.
+  -->
+  <div class="wxside__pie">
+    <span class="wxside__anclaWybix">
+      <button type="button" class="wxside__pulso" (click)="alternarGuia($event)"
+              [class.is-abierto]="guia.abierta()"
+              [attr.aria-expanded]="guia.abierta()" aria-haspopup="dialog"
+              [attr.aria-label]="estadoWybix() === 'atencion' ? 'Wybix: hay cosas pendientes' : 'Wybix: todo en orden'">
+        <wx-mascota [estado]="estadoWybix()" [variante]="guia.variante()" [size]="30"></wx-mascota>
+        <span *ngIf="estadoWybix() === 'atencion'" class="wxside__pulsopunto" aria-hidden="true"></span>
+        <span class="wxside__wybix" *ngIf="!plegada()">
+          <b>Wybix</b>
+          <span>{{ estadoWybix() === 'atencion' ? 'Hay cosas pendientes' : 'Todo en orden' }}</span>
+        </span>
+      </button>
+      <wx-guia></wx-guia>
+    </span>
+  </div>
+
+  <!-- El tirador vive en el borde de la barra y se va con ella. -->
+  <wx-nav-modo desde="sidebar" (cambiar)="usarDock.emit()"></wx-nav-modo>
+</nav>

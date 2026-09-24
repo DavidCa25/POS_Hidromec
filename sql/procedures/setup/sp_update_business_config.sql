@@ -97,6 +97,55 @@ BEGIN
     WHERE id = @id;
   END
 
+  /* ------------------------------------------------ espejo hacia el registro
+
+     Una caja con una version anterior de Wybix no conoce `business_modules`:
+     enciende Hospitality como siempre se hizo, escribiendo `business_profile`.
+     Si el registro no se enterara, la caja nueva de al lado veria el modulo
+     apagado y las dos mostrarian pantallas distintas del mismo negocio.
+
+     Por eso este procedimiento -que es el que usa la caja vieja- mantiene el
+     registro al dia. Es la mitad que falta del espejo: `sp_set_business_module`
+     escribe hacia `business_config`, y esto escribe de vuelta.
+
+     Solo cuando el parametro VINO. El panel de datos del negocio guarda el
+     telefono sin mencionar el perfil ni la fidelizacion, y con NULL no se toca
+     nada: cambiar el telefono no puede apagar un modulo.
+
+     No hay sincronizacion bidireccional infinita porque ninguno de los dos
+     procedimientos llama al otro: cada uno escribe la copia del otro y para. */
+  IF OBJECT_ID(N'dbo.business_modules', 'U') IS NOT NULL
+  BEGIN
+    IF @business_profile IS NOT NULL
+    BEGIN
+      DECLARE @hosp BIT = CASE WHEN @business_profile = 'HOSPITALITY' THEN 1 ELSE 0 END;
+      MERGE dbo.business_modules AS d
+      USING (SELECT 'hospitality' AS module_key) AS s ON d.module_key = s.module_key
+      WHEN MATCHED AND d.enabled <> @hosp
+        THEN UPDATE SET enabled = @hosp,
+                        enabled_at = CASE WHEN @hosp = 1 THEN SYSDATETIME() ELSE enabled_at END,
+                        updated_at = SYSDATETIME()
+      WHEN NOT MATCHED
+        THEN INSERT (module_key, enabled, enabled_at, updated_at)
+             VALUES ('hospitality', @hosp,
+                     CASE WHEN @hosp = 1 THEN SYSDATETIME() END, SYSDATETIME());
+    END
+
+    IF @loyalty_enabled IS NOT NULL
+    BEGIN
+      MERGE dbo.business_modules AS d
+      USING (SELECT 'loyalty' AS module_key) AS s ON d.module_key = s.module_key
+      WHEN MATCHED AND d.enabled <> @loyalty_enabled
+        THEN UPDATE SET enabled = @loyalty_enabled,
+                        enabled_at = CASE WHEN @loyalty_enabled = 1 THEN SYSDATETIME() ELSE enabled_at END,
+                        updated_at = SYSDATETIME()
+      WHEN NOT MATCHED
+        THEN INSERT (module_key, enabled, enabled_at, updated_at)
+             VALUES ('loyalty', @loyalty_enabled,
+                     CASE WHEN @loyalty_enabled = 1 THEN SYSDATETIME() END, SYSDATETIME());
+    END
+  END
+
   SELECT TOP 1 *
   FROM dbo.business_config
   WHERE id = @id;

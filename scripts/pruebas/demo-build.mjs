@@ -223,8 +223,23 @@ for (const c of carpetas) {
   const p = JSON.parse(readFileSync(ficha, 'utf8'));
   check(p.id === c, `${c}: el id coincide con la carpeta`, `id = ${p.id}`);
   check(!!p.nombre && !!p.descripcion, `${c}: tiene nombre y descripcion`);
-  const semilla = join(base, c, p.seed || 'seed.sql');
-  check(existsSync(semilla), `${c}: su semilla existe`, semilla);
+  /* Un perfil normal tiene UNA semilla. Uno que pide elegir giro tiene una
+     por giro dentro de su carpeta `seeds/`, mas la parte comun. Las dos formas
+     valen; lo que no vale es no tener ninguna. */
+  let semilla;
+  if (p.presets) {
+    const dir = join(base, c, p.seeds || 'seeds');
+    const porGiro = existsSync(dir)
+      ? readdirSync(dir).filter(x => x.endsWith('.sql')) : [];
+    check(porGiro.length >= 2, `${c}: tiene una semilla por giro`, porGiro.join(', ') || dir);
+    /* El marcador de demo lo escribe la parte COMUN, que es la que se ejecuta
+       primero en todos los giros. Es la que se mira debajo. */
+    semilla = join(base, c, 'comun.sql');
+    check(existsSync(semilla), `${c}: y lo que comparten todos los giros va una sola vez`);
+  } else {
+    semilla = join(base, c, p.seed || 'seed.sql');
+    check(existsSync(semilla), `${c}: su semilla existe`, semilla);
+  }
 
   /* Sin marcador, la demo que cree esa semilla no se podria restablecer ni
      eliminar: quedaria una base huerfana que el gestor se niega a tocar. */

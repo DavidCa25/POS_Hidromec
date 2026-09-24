@@ -66,19 +66,62 @@
         <small>Aparecera en los tickets.</small>
       </div>
 
+      <!-- EL LOGO. El mismo archivo encabeza el ticket, los PDF y la pantalla
+           del cliente: se pide una vez y sirve para los tres. -->
+      <div class="su-field">
+        <label>Logo del negocio (opcional)</label>
+        <div class="su-logo">
+          <span class="su-logo__caja" [class.tiene]="logoPreview">
+            <img *ngIf="logoPreview" [src]="logoPreview" alt="">
+            <i *ngIf="!logoPreview" class="ph ph-image" aria-hidden="true"></i>
+          </span>
+          <div class="su-logo__acc">
+            <label class="su-logo__btn" [class.ocupado]="logoGuardando">
+              <i class="ph ph-upload-simple" aria-hidden="true"></i>
+              {{ logoGuardando ? 'Guardando…' : (logoPreview ? 'Cambiar' : 'Subir imagen') }}
+              <input type="file" accept="image/png,image/jpeg,image/webp"
+                     (change)="alElegirLogo($event)" [disabled]="logoGuardando" hidden>
+            </label>
+            <button type="button" class="su-logo__quitar" *ngIf="logoPreview"
+                    (click)="quitarLogo()" [disabled]="logoGuardando">Quitar</button>
+          </div>
+        </div>
+        <small>PNG, JPG o WebP. Se guarda hasta 1024 px por lado, que es lo que
+        necesitan el ticket, los PDF y la pantalla del cliente sin verse pixelado.</small>
+      </div>
+
       <!-- Qué vende el negocio. Decide si existen recetas e ingredientes;
            se pregunta aquí para que nadie tenga que buscarlo después. -->
       <div class="su-field">
         <label>¿Qué tipo de negocio tienes?</label>
         <div class="su-tipos">
           <button type="button" class="su-tipo" *ngFor="let t of tiposNegocio"
-                  [class.on]="businessProfile === t.valor" (click)="elegirTipoNegocio(t.valor)">
+                  [class.on]="tipoNegocio === t.valor" (click)="elegirTipoNegocio(t.valor)">
             <span class="su-tipo__ic"><i class="ph {{ t.icono }}"></i></span>
             <span class="su-tipo__t">{{ t.titulo }}</span>
             <span class="su-tipo__d">{{ t.ejemplos }}</span>
           </button>
         </div>
         <small>Puedes cambiarlo después en Configuración › Datos del negocio.</small>
+      </div>
+
+      <!-- EL GIRO. Solo si el negocio es de servicios, y dentro del MISMO
+           paso: no hay un cuarto paso. Decide el vocabulario, la pantalla de
+           entrada y si hay agenda o activos. -->
+      <div class="su-field" *ngIf="esServicios">
+        <label>¿A qué se dedica principalmente?</label>
+        <div class="su-presets">
+          <button type="button" class="su-preset" *ngFor="let g of presets"
+                  [class.on]="presetGiro === g.id" (click)="elegirGiroNegocio(g.id)">
+            <i class="ph {{ g.icono }}" aria-hidden="true"></i>
+            <span class="su-preset__txt">
+              <span class="su-preset__t">{{ g.nombre }}</span>
+              <span class="su-preset__d">{{ g.ejemplos }}</span>
+            </span>
+          </button>
+        </div>
+        <small>Wybix llamará a las cosas como se llaman en tu giro. Se puede
+        cambiar después en Aplicaciones.</small>
       </div>
 
       <div class="su-field">
@@ -193,7 +236,7 @@
         <button class="su-ob-card" (click)="elegirImportar()">
           <i class="ph ph-upload-simple"></i>
           <span class="t">Ya tengo productos en otro sistema</span>
-          <span class="d">Importa tu inventario desde un Excel.</span>
+          <span class="d">Los traes al entrar, sin retrasar el alta.</span>
         </button>
 
         <button class="su-ob-card" (click)="elegirGiro()">
@@ -210,7 +253,15 @@
       <!-- Importar (migracion) -->
       <div *ngIf="obVista === 'importar'">
         <button class="su-back" (click)="volverPregunta()"><i class="ph ph-arrow-left"></i> Regresar</button>
-        <app-importador-productos></app-importador-productos>
+        <!-- El importador ya no vive en el alta. Terminar el alta y entrar
+             vale mas que cargar el catalogo antes de ver el POS: desde
+             Inicio, Wybix lo ofrece en cuanto detecta que no hay productos. -->
+        <div class="su-ob-head">
+          <h2>Tu catálogo, cuando quieras</h2>
+          <p>En cuanto entres, Wybix te ofrece traerlo desde un Excel, pegarlo
+             de una hoja de cálculo o escribirlo a mano. Puedes empezar a vender
+             antes de tenerlo completo.</p>
+        </div>
         <div class="su-actions">
           <button class="su-btn" (click)="terminar()">Terminar <i class="ph ph-check-circle"></i></button>
         </div>

@@ -110,23 +110,8 @@
   </div>
 
   <!-- Modal nuevo / editar -->
-  <div class="cierre-modal" *ngIf="showForm"
-       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
-    <div class="cierre-dialog modal-content"
-         style="padding:1.2rem 1.4rem 1.4rem; width:96%; max-width:520px;">
-      <h3 style="margin:0 0 .9rem; font-size:1.4rem; font-weight:800;">{{ form.id ? 'Editar proveedor' : 'Nuevo proveedor' }}</h3>
-      <div class="filter-row" style="grid-template-columns:1fr 1fr;">
-        <div class="filter-group"><label>Nombre</label><input class="form-control" [(ngModel)]="form.nombre"></div>
-        <div class="filter-group"><label>Telefono</label><input class="form-control" [(ngModel)]="form.telefono"></div>
-        <div class="filter-group"><label>Correo</label><input class="form-control" [(ngModel)]="form.correo"></div>
-        <div class="filter-group"><label>RFC</label><input class="form-control" [(ngModel)]="form.rfc" style="text-transform:uppercase;"></div>
-      </div>
-      <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
-        <button class="btn btn-ghost" (click)="cerrarForm()" [disabled]="guardando">Cancelar</button>
-        <button class="btn btn-primary" (click)="guardar()" [disabled]="guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
-      </div>
-    </div>
-  </div>
+  <app-proveedor-form *ngIf="showForm" [proveedor]="form"
+                      (guardado)="alGuardar()" (cerrado)="cerrarForm()"></app-proveedor-form>
 
   <!-- Modal historial de pagos -->
   <div class="cierre-modal" *ngIf="showHist"

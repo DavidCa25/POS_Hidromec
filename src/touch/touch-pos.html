@@ -2,7 +2,7 @@
 
   <!-- ===================================================== BARRA SUPERIOR -->
   <header class="tp-top">
-    <!-- Isotipo oficial (el mismo asset del sidebar del dashboard). Va sobre
+    <!-- Isotipo oficial (el mismo asset que el dock del panel). Va sobre
          placa clara porque la marca solo existe en su version oscura. -->
     <div class="tp-top__marca">
       <img class="tp-top__logo" src="assets/wybie_logo.png" alt="Wybix" />
@@ -27,6 +27,13 @@
               (click)="!hayTurno() && abrirTurno.set(true)">
         <span class="tp-turno__dot" [class.on]="hayTurno()"></span>
         <span class="tp-turno__txt">{{ hayTurno() ? 'Turno abierto' : 'Abrir turno' }}</span>
+      </button>
+      <!-- La agenda del dia, cuando el negocio la tiene. Va aqui y no en un
+           menu: en una estetica es a donde se vuelve entre cliente y cliente,
+           no una pantalla que se visita dos veces al dia. -->
+      <button type="button" class="tp-iconbtn" *ngIf="caps.servicios"
+              (click)="aServicios()" aria-label="Agenda del día">
+        <i class="ph ph-calendar-blank"></i>
       </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
