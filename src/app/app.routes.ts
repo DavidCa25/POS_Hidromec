@@ -4,6 +4,7 @@ import { GiroServiciosService } from '../core';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
+import { puedeConfigurarSalon, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
 
 /*
  * Rutas de Wybix.
@@ -42,6 +43,20 @@ export const routes: Routes = [
     loadComponent: () => import('../touch/servicios/touch-servicios').then(m => m.TouchServicios),
   },
   {
+    /* El salon en Touch: la misma pantalla que en el panel, a pantalla
+       completa. Tocar una mesa vuelve a /touch con su cuenta cargada. */
+    path: 'touch/mesas',
+    canActivate: [puedeUsarMesas],
+    loadComponent: () => import('../hospitality/mesas/mesas.component').then(m => m.MesasComponent),
+  },
+  {
+    /* La pantalla de cocina va SIN el panel: se usa de pie, todo el turno, y
+       no tiene nada que hacer con el dock ni la barra lateral. */
+    path: 'cocina',
+    canActivate: [puedeUsarCocina],
+    loadComponent: () => import('../hospitality/cocina/kds.component').then(m => m.KdsComponent),
+  },
+  {
     path: 'dashboard',
     loadComponent: () => import('../dashboard/dashboard').then(m => m.Dashboard),
     children: [
@@ -59,6 +74,8 @@ export const routes: Routes = [
       // Touch. Es lo que hace que cambiar la experiencia surta efecto sin
       // reiniciar ni volver a entrar.
       { path: 'venta', canActivate: [experienciaDeVenta], loadComponent: () => import('../venta/appVenta/venta').then(m => m.Venta) },
+      { path: 'mesas', canActivate: [puedeUsarMesas], loadComponent: () => import('../hospitality/mesas/mesas.component').then(m => m.MesasComponent) },
+      { path: 'salon', canActivate: [puedeConfigurarSalon], loadComponent: () => import('../hospitality/salon-admin/salon-admin.component').then(m => m.SalonAdminComponent) },
       { path: 'corte-dia', loadComponent: () => import('../venta/appCorte/corte').then(m => m.Corte) },
       { path: 'abrir-cajon', loadComponent: () => import('../venta/appCajon/abrirCajon').then(m => m.Cajon) },
       { path: 'tablaVenta', loadComponent: () => import('../venta/tablaVenta/tablaVenta').then(m => m.TablaVentaComponent) },

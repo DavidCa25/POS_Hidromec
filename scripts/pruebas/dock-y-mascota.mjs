@@ -569,12 +569,21 @@ check(/prioridadPorGiro/.test(guia) && /this\.giro\.inicio === 'agenda'/.test(gu
   'el orden de los avisos lo decide el giro',
   'una barberia mira primero su agenda y un taller sus ordenes');
 
-/* Sale de su propio boton, no del centro de la pantalla. */
+/*
+ * EL TABLERO DE WYBIX GUIDE ES CENTRAL (decision de diseño: «B» solo para el
+ * tablero; los recorridos se viven en el presentador «C»). Vive dentro del
+ * dock o de la barra -que deciden cuando existe- pero se pinta en el <body>:
+ * el dock esta centrado con `transform`, y un `fixed` dentro de algo
+ * transformado se coloca respecto a eso, no a la ventana.
+ */
 const guiaCss = leer(GUIA_CSS);
-check(/transform-origin: bottom left/.test(guiaCss),
-  'el panel escala desde la esquina donde vive Wybix Mini');
-check(!/inset: 0/.test(guiaCss),
-  'y no es un modal centrado que corte el trabajo');
+check(/document\.body\.appendChild\(this\.portal\.nativeElement\)/.test(guiaComp)
+   && /this\.portal\.nativeElement\.remove\(\)/.test(guiaComp),
+  'el tablero se pinta en el <body> y se retira al desmontarse');
+check(/position: fixed; inset: 0; margin: auto/.test(guiaCss),
+  'y es un panel central, no un globo pegado al boton');
+check(/data-escenario/.test(guiaHtml) && !/wx-guide-layer/.test(guiaHtml),
+  'lista recorridos; los recorridos NO se viven dentro del tablero');
 
 /*
  * ANCLADO AL BOTON, NO A UN NUMERO.
@@ -586,8 +595,8 @@ check(!/inset: 0/.test(guiaCss),
 /* Sin comentarios: la nota que EXPLICA el numero magico contiene el numero
    magico, y una prueba que encuentra su propia explicacion da un falso rojo.
    Ya paso con `proximamente` en el catalogo de modulos. */
-check(/position: absolute/.test(guiaCss) && !/margin-left: -\d+px/.test(sinComentarios(guiaCss)),
-  'y se ancla al boton, sin numeros magicos',
+check(!/margin-left: -\d+px/.test(sinComentarios(guiaCss)),
+  'sin numeros magicos',
   'nada de un margen negativo sacado del ancho que tenia el dock ese dia');
 check(/\.wxdock__anclaWybix \{ position: relative/.test(dockCss),
   'el boton vive en un contenedor relativo, que es todo el anclaje que hace falta');

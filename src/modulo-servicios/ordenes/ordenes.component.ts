@@ -34,7 +34,7 @@ import { GiroServiciosService } from '../../core';
         <h1>Órdenes de servicio</h1>
         <p class="srv-sub">El trabajo que hay dentro, y cómo va.</p>
       </div>
-      <button class="btn btn-primary" (click)="nueva()" *ngIf="puedeOperar">
+      <button class="btn btn-primary" data-guide="srv-nueva-orden" (click)="nueva()" *ngIf="puedeOperar">
         <i class="ph ph-plus"></i> Nueva orden
       </button>
     </header>
@@ -136,7 +136,7 @@ import { GiroServiciosService } from '../../core';
           <!-- El ejemplo lo pone el giro. «El coche, la mascota, el equipo»
                estaba escrito aquí, y en una barbería no nombra nada que exista. -->
           <p class="srv-sub">{{ giro.textos.ordenVacia }}</p>
-          <button class="btn btn-primary" (click)="nueva()" *ngIf="puedeOperar">Abrir la primera orden</button>
+          <button class="btn btn-primary" data-guide="srv-nueva-orden" (click)="nueva()" *ngIf="puedeOperar">Abrir la primera orden</button>
         </ng-container>
       </div>
     </div>

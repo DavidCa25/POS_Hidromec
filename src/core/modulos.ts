@@ -41,6 +41,10 @@ export interface ModuleDefinition {
   category: ModuleCategory;
   /** La capacidad de `Capabilities` que enciende. */
   capability: keyof Capabilities;
+  /** Otro modulo sin el que este no tiene sentido. */
+  requiere?: keyof Capabilities;
+  /** Como se llama ese otro, para decirlo en la tarjeta. */
+  requiereNombre?: string;
   /** A donde lleva cuando esta encendido. */
   route?: string;
   /** Que aparece en el menu al encenderlo, para decirlo antes de pulsar. */
@@ -85,5 +89,33 @@ export const MODULOS: ModuleDefinition[] = [
     capability: 'servicios',
     route: '/dashboard/ordenes-de-servicio',
     aparece: 'Servicios y Agenda, en el menú principal',
+  },
+  {
+    id: 'mesas',
+    name: 'Mesas',
+    description: 'Salón con áreas y mesas, y cuentas abiertas mientras el cliente consume.',
+    detalle: 'Abre una mesa, pide por partes, manda a cocina y cobra al final con el ' +
+             'cobro de siempre. La mesa dice si está libre, abierta o por cobrar.',
+    icon: 'armchair',
+    category: 'OPERACION',
+    capability: 'mesas',
+    requiere: 'hospitality',
+    requiereNombre: 'Hospitality',
+    route: '/dashboard/mesas',
+    aparece: 'Mesas, dentro de Venta',
+  },
+  {
+    id: 'comandas',
+    name: 'Comandas y cocina',
+    description: 'Estaciones de preparación, comandas y la pantalla de cocina (KDS).',
+    detalle: 'Cada producto sabe dónde se prepara -barra, cocina, postres- y cada envío ' +
+             'genera una comanda por estación, en pantalla, en papel o en los dos.',
+    icon: 'cooking-pot',
+    category: 'OPERACION',
+    capability: 'comandas',
+    requiere: 'hospitality',
+    requiereNombre: 'Hospitality',
+    route: '/cocina',
+    aparece: 'Cocina, dentro de Venta',
   },
 ];

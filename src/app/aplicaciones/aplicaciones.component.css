@@ -89,3 +89,13 @@
   color: var(--wx-text-muted); font-size: var(--wx-text-sm);
 }
 .apps-pie i { flex: none; font-size: 17px; color: var(--wx-info); }
+
+/* El modulo del que depende esta apagado: se dice cual, sin alarma. */
+.apps-card__falta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  color: var(--wx-text-muted);
+  font-size: var(--wx-text-sm);
+}

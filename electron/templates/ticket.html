@@ -77,6 +77,13 @@
   .tot div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 1px 0; }
   .tot .grande { font-size: 17px; font-weight: 700; padding: 3px 0; }
 
+  /* ---- Numero de pedido: lo mas grande del ticket, porque es lo que el
+     cliente tiene que recordar ---- */
+  .pedido { text-align: center; padding: 2px 0; }
+  .pedido span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pedido b { display: block; font-size: 44px; line-height: 1.05; }
+  .pedido small { display: block; font-size: 11px; }
+
   .pie { text-align: center; font-size: 11px; margin-top: 8px; line-height: 1.4; }
   .pie .gracias { font-weight: 700; }
 </style>
@@ -89,6 +96,8 @@
 
   <div class="negocio">{{BUSINESS_NAME}}</div>
   <div class="negocio-datos">{{BUSINESS_LINES}}</div>
+
+  {{PEDIDO_BLOCK}}
 
   <div class="sep"></div>
 

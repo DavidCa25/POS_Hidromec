@@ -103,7 +103,7 @@ function etiquetaPago(metodo) {
 /**
  * @param {object} header  cabecera de sp_get_sale_ticket
  * @param {Array}  lineas  partidas de sp_get_sale_ticket
- * @param {object} extras  { plantilla, paperWidthMm, negocio, logoUrl, pagado, cambio, payment_method, fecha }
+ * @param {object} extras  { plantilla, paperWidthMm, negocio, logoUrl, pagado, cambio, payment_method, fecha, pedido }
  */
 function construirTicketHtml(header, lineas, extras = {}) {
   const plantilla = String(extras.plantilla || '');
@@ -158,11 +158,21 @@ function construirTicketHtml(header, lineas, extras = {}) {
 
   const pie = String(negocio.ticket_footer || '').trim();
 
+  // --- numero de pedido del dia (mostrador / para llevar) ---
+  // Lo primero que el cliente busca en su ticket: con el lo llaman, y es el
+  // que sale en la pantalla de pedidos. Solo si la venta tiene uno.
+  const pedido = Number(extras.pedido);
+  const pedidoHtml = Number.isInteger(pedido) && pedido > 0
+    ? `<div class="sep"></div>
+  <div class="pedido"><span>Tu pedido</span><b class="num">${pedido}</b><small>Te avisamos por este número</small></div>`
+    : '';
+
   return plantilla
     .replaceAll('{{PAPER_W}}', String(ancho))
     .replaceAll('{{LOGO_BLOCK}}', logo)
     .replaceAll('{{BUSINESS_NAME}}', esc(negocio.business_name || ''))
     .replaceAll('{{BUSINESS_LINES}}', datosNegocio)
+    .replaceAll('{{PEDIDO_BLOCK}}', pedidoHtml)
     .replaceAll('{{FOLIO}}', esc(String(header?.id ?? header?.sale_id ?? '')))
     .replaceAll('{{DATE}}', esc(String(extras.fecha ?? header?.datee ?? '')))
     .replaceAll('{{META_EXTRA}}', metaHtml)

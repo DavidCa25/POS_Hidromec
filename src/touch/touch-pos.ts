@@ -1,15 +1,17 @@
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { TecladoPantalla } from './teclado';
 import { RegisterService } from '../services/register.service';
 import {
-  CapabilityService, CartLine, CartService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
+  CapabilityService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
   SelectedOption, ServiceMode, ShiftService,
+  MesaService, MesaSalon,
 } from '../core';
+import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
+import { nombreDeMesa } from '../hospitality/hx';
 import { PremiosVenta } from '../loyalty/premios-venta';
 import { CuponVenta } from '../loyalty/cupon-venta';
 import {
@@ -41,7 +43,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, TecladoPantalla, PremiosVenta, CuponVenta],
+  imports: [CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -60,6 +62,190 @@ export class TouchPos implements OnInit, OnDestroy {
 
   /** A la agenda del día, que en Touch es la pantalla de Servicios. */
   aServicios() { void this.router.navigate(['/touch/servicios']); }
+
+  // ================================================================ MESAS
+  /*
+   * Una mesa se atiende aqui, en la cuenta normal del carrito marcada con su
+   * cuenta de la base (ver `MesaService`). Lo enviado ya esta en cocina y no
+   * se toca desde el carrito; lo nuevo se envia con «Enviar a cocina». El
+   * cobro es el de siempre, y despues la mesa se libera.
+   */
+  private readonly mesaSvc = inject(MesaService);
+  readonly cuentaMesa = this.mesaSvc.cuentaActiva;
+  readonly enviando = signal(false);
+
+  /**
+   * Lo que aun no se ha enviado a preparacion. En una cuenta de la base son
+   * las lineas sin `enviada`; en un «para llevar» sin cuenta todavia, todas.
+   */
+  readonly pendientesMesa = computed<CartLine[]>(() => {
+    this.cart.version();
+    if (this.cuentaMesa()) return this.mesaSvc.pendientes();
+    return this.enviaSinMesa() ? this.cart.activeCart().lines.filter(l => l.enviada == null) : [];
+  });
+
+  /** «Para llevar» con cocina: se puede enviar a preparacion sin mesa. */
+  readonly enviaSinMesa = computed(() => {
+    this.cart.version();
+    return !this.cuentaMesa() && this.caps.comandas && this.cart.activeCart().serviceMode === 'TAKEAWAY';
+  });
+
+  /** «Aqui» sin mesa todavia: el boton de enviar ofrece elegirla. */
+  readonly faltaMesa = computed(() => {
+    this.cart.version();
+    return !this.cuentaMesa() && this.caps.mesas && this.cart.activeCart().serviceMode === 'DINE_IN';
+  });
+
+  // ------------------------------------------------- selector de mesas
+  readonly eligiendoMesa = signal(false);
+  readonly abriendoMesa = signal<number | null>(null);
+
+  /** El boton Mesas: el selector rapido, sin salir de Venta. */
+  aMesas() { this.eligiendoMesa.set(true); }
+  verSalon() { this.eligiendoMesa.set(false); void this.router.navigate(['/touch/mesas']); }
+
+  async elegirMesa(m: MesaSalon) {
+    if (this.abriendoMesa()) return;
+    this.abriendoMesa.set(m.id);
+    try {
+      /* Lo que ya se estaba tomando en esta cuenta pasa a la mesa, salvo que
+         esta cuenta ya sea de OTRA mesa: entonces se va a la elegida. */
+      const r = await this.mesaSvc.abrirMesa(m.id, this.cuentaMesa() ? undefined : this.cart.activeCart());
+      if (!r.ok) { this.mostrar(r.error); return; }
+      this.eligiendoMesa.set(false);
+      this.mostrar(`${nombreDeMesa(r.datos.titulo)} · ${m.estado === 'LIBRE' ? 'abierta' : 'cuenta cargada'}`, 'ok');
+    } finally {
+      this.abriendoMesa.set(null);
+    }
+  }
+
+  async enviarCocina() {
+    if (this.enviando()) return;
+    this.enviando.set(true);
+    try {
+      /* Sin cuenta, solo «para llevar» puede enviar: la cuenta se abre AHORA
+         y la base le da su numero del dia («Pedido 23 · Para llevar»). */
+      const r = await this.mesaSvc.enviar(this.cuentaMesa() ? {} : { sinMesa: this.etiquetaParaLlevar() });
+      if (!r.ok) { this.mostrar(r.error); return; }
+      const { comandas, sinImprimir } = r.datos;
+      const numero = this.cuentaMesa()?.numero;
+      if (sinImprimir.length) this.mostrar(`Enviado, pero sin imprimir: ${sinImprimir.join(' · ')}`, 'error');
+      else if (numero && comandas) this.mostrar(`Pedido ${numero} enviado a preparación · díselo al cliente`, 'ok');
+      else this.mostrar(comandas ? `Enviado a preparación · ${comandas} comanda${comandas > 1 ? 's' : ''}` : 'Guardado en la cuenta', 'ok');
+    } finally {
+      this.enviando.set(false);
+    }
+  }
+
+  /* El numero lo pone la base; la etiqueta solo dice que es para llevar. */
+  private etiquetaParaLlevar(): string {
+    return 'Para llevar';
+  }
+
+  /**
+   * Donde esta cada linea, dicho en corto: Pendiente, Enviado a Barra, Listo.
+   * Solo en cuentas que van a preparacion; una venta de mostrador no lo lleva.
+   */
+  estadoLinea(l: CartLine): { texto: string; clase: string } | null {
+    if (l.enviada == null) {
+      return this.cuentaMesa() || this.enviaSinMesa() ? { texto: 'Pendiente', clase: 'es-pendiente' } : null;
+    }
+    const e = l.prep?.estado;
+    if (e === 'LISTA') return { texto: 'Listo', clase: 'es-listo' };
+    if (e === 'ENTREGADA') return { texto: 'Entregado', clase: 'es-entregado' };
+    if (l.prep?.estacion) return { texto: `Enviado a ${l.prep.estacion}`, clase: 'es-enviado' };
+    return { texto: 'Enviado', clase: 'es-enviado' };
+  }
+
+  /* Mientras se atiende una cuenta, su estado en cocina se relee solo. */
+  private relojCuenta: any = null;
+  private refrescarCuenta() {
+    if (!this.cuentaMesa() || this.enviando() || this.vista() !== 'menu' || this.eligiendoMesa()) return;
+    void this.mesaSvc.refrescar();
+  }
+
+  async pedirCuenta() {
+    const r = await this.mesaSvc.pedirCuenta();
+    this.mostrar(r.ok ? 'Mesa marcada por cobrar' : r.error, r.ok ? 'ok' : 'error');
+  }
+
+  // =============================================================== CLIENTE
+  /*
+   * El cliente de la venta, como en Venta: vive en el carrito
+   * (`cart.customer`) y termina en `sales.customer_id`. Con una cuenta de
+   * Hospitality se guarda tambien en la cuenta (MesaService.fijarCliente),
+   * que es lo que ven la otra caja y el tablero de pedidos. Aqui solo cambia
+   * la presentacion: una fila compacta y una hoja con botones grandes.
+   */
+  private readonly clientesSvc = inject(ClientesVentaService);
+  readonly cliente = computed<CartCustomer | null>(() => {
+    this.cart.version();
+    return this.cart.activeCart().customer ?? null;
+  });
+  readonly eligiendoCliente = signal(false);
+  readonly clientes = signal<CartCustomer[]>([]);
+  readonly filtroCliente = signal('');
+  readonly cargandoClientes = signal(false);
+  readonly clientesFiltrados = computed(() =>
+    this.clientesSvc.filtrar(this.clientes(), this.filtroCliente()).slice(0, 30));
+  /** Alta minima: nombre y, si se quiere, telefono. */
+  readonly nuevoCliente = signal<{ nombre: string; telefono: string; error: string | null } | null>(null);
+  readonly guardandoCliente = signal(false);
+
+  async abrirClientes() {
+    this.filtroCliente.set('');
+    this.nuevoCliente.set(null);
+    this.eligiendoCliente.set(true);
+    this.cargandoClientes.set(true);
+    const r = await this.clientesSvc.listar();
+    this.cargandoClientes.set(false);
+    if (!r.ok) { this.mostrar(r.error); return; }
+    this.clientes.set(r.datos);
+  }
+
+  /** Cerrar la hoja NO cambia el cliente elegido. */
+  cerrarClientes() {
+    this.eligiendoCliente.set(false);
+    this.nuevoCliente.set(null);
+  }
+
+  async elegirCliente(c: CartCustomer) {
+    const r = await this.mesaSvc.fijarCliente(c);
+    if (!r.ok) { this.mostrar(r.error); return; }
+    this.cerrarClientes();
+  }
+
+  async quitarCliente() {
+    const r = await this.mesaSvc.fijarCliente(null);
+    if (!r.ok) { this.mostrar(r.error); return; }
+    this.cerrarClientes();
+  }
+
+  empezarAlta() {
+    /* Lo que ya se escribio en la busqueda suele ser el nombre. */
+    const q = this.filtroCliente().trim();
+    const esTelefono = /^[0-9 +()-]{7,}$/.test(q);
+    this.nuevoCliente.set({ nombre: !esTelefono && /\p{L}/u.test(q) ? q : '', telefono: esTelefono ? q : '', error: null });
+  }
+
+  campoAlta(campo: 'nombre' | 'telefono', v: string) {
+    const n = this.nuevoCliente();
+    if (n) this.nuevoCliente.set({ ...n, [campo]: v, error: null });
+  }
+
+  async guardarCliente() {
+    const n = this.nuevoCliente();
+    if (!n || this.guardandoCliente()) return;
+    this.guardandoCliente.set(true);
+    try {
+      const r = await this.clientesSvc.crearRapido(n.nombre, n.telefono);
+      if (!r.ok) { this.nuevoCliente.set({ ...n, error: r.error }); return; }
+      await this.elegirCliente(r.datos);
+      this.mostrar(`${r.datos.name} dado de alta`, 'ok');
+    } finally {
+      this.guardandoCliente.set(false);
+    }
+  }
 
   vista = signal<Vista>('menu');
   categoriaSel = signal<number | null>(null);
@@ -90,7 +276,6 @@ export class TouchPos implements OnInit, OnDestroy {
 
   // ----------------------------------------------------------- modificadores
   /** El teclado en pantalla se abre bajo demanda, no ocupa sitio siempre. */
-  tecladoNota = signal(false);
 
   hoja = signal<MenuProduct | null>(null);
   grupos = signal<ModifierGroup[]>([]);
@@ -170,6 +355,8 @@ export class TouchPos implements OnInit, OnDestroy {
     // cobrar, y de eso se encarga `irACobro`.
     if (!(await this.shift.refresh())) this.abrirTurno.set(true);
 
+    this.relojCuenta = setInterval(() => this.refrescarCuenta(), 10000);
+
     const api = (window as any).electronAPI;
     if (api?.onBarcodeScan) {
       const off = api.onBarcodeScan((payload: any) => {
@@ -182,6 +369,7 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    clearInterval(this.relojCuenta);
     try { this.offBarcode?.(); } catch { /* noop */ }
     this.offBarcode = null;
     clearTimeout(this.avisoTimer);
@@ -212,6 +400,9 @@ export class TouchPos implements OnInit, OnDestroy {
     const b = !this.buscando();
     this.buscando.set(b);
     if (!b) this.termino.set('');
+    /* Al abrir, el foco va al campo: el teclado en pantalla sube solo y el
+       fisico escribe directamente. */
+    if (b) setTimeout(() => document.getElementById('tp-buscar')?.focus(), 0);
   }
 
   cerrarBusqueda() {
@@ -315,7 +506,6 @@ export class TouchPos implements OnInit, OnDestroy {
 
   cerrarHoja() {
     this.cantidades.set(new Map());
-    this.tecladoNota.set(false);
     this.hoja.set(null);
     this.grupos.set([]);
     this.seleccion.set(new Map());
@@ -509,6 +699,7 @@ export class TouchPos implements OnInit, OnDestroy {
   // ============================================================== CARRITO
 
   mas(l: CartLine, delta: number) {
+    if (l.enviada != null) { this.mostrar('Eso ya se envió: para quitarlo, cancela su comanda'); return; }
     if (l.qty + delta <= 0) { this.cart.removeLine(l); return; }
     this.cart.adjustQty(l, delta);
   }
@@ -519,6 +710,12 @@ export class TouchPos implements OnInit, OnDestroy {
 
   vaciar() {
     if (!this.lineas().length) return;
+    /* En una mesa solo se vacia lo que no se ha enviado: lo enviado esta en
+       la cuenta de la base y en cocina. */
+    if (this.cuentaMesa()) {
+      for (const l of this.pendientesMesa()) this.cart.removeLine(l);
+      return;
+    }
     this.cart.clearActive();
   }
 
@@ -530,27 +727,68 @@ export class TouchPos implements OnInit, OnDestroy {
     this.cart.switchTo(id);
   }
 
+  readonly nombreDeMesa = nombreDeMesa;
+
   etiquetaCuenta(id: number, i: number): string {
-    return `Cuenta ${i + 1}`;
+    const mesa = this.cuentas().find(c => c.id === id)?.meta?.['cuentaMesa'] as { titulo?: string } | undefined;
+    return mesa?.titulo ? nombreDeMesa(mesa.titulo) : `Cuenta ${i + 1}`;
   }
 
   itemsDe(c: { lines: CartLine[] }): number {
     return c.lines.reduce((a, l) => a + l.qty, 0);
   }
 
+  /**
+   * AQUI con mesas: si la cuenta aun no tiene mesa, se elige aqui mismo.
+   * PARA LLEVAR no pide mesa ni envia nada al elegirse: enviar es un boton.
+   * Una cuenta que ya es de una mesa sigue siendo «aqui».
+   */
   fijarServicio(m: ServiceMode) {
+    const mesa = this.cuentaMesa()?.mesaId;
+    if (m === 'DINE_IN' && this.caps.mesas && !mesa) {
+      this.cart.setServiceMode('DINE_IN');
+      this.eligiendoMesa.set(true);
+      return;
+    }
+    if (m === 'DINE_IN' && mesa) { this.cart.setServiceMode('DINE_IN'); return; }
     this.cart.setServiceMode(this.serviceMode() === m ? null : m);
   }
 
   // ================================================================ COBRO
 
+  /**
+   * Cuantas lineas que van a preparacion aun no se enviaron, si se pidio
+   * cobrar asi. La caja no cobra en silencio algo que la cocina nunca
+   * recibio: pregunta.
+   */
+  readonly sinEnviar = signal<number | null>(null);
+
   async irACobro() {
     if (!this.lineas().length) { this.mostrar('Agrega productos antes de cobrar'); return; }
     const ok = await this.shift.ensureOpen();
     if (!ok) { this.mostrar('Abre el turno de esta caja antes de vender'); return; }
+    /* Solo donde se puede enviar: una cuenta, o un «para llevar» con cocina.
+       Un producto sin estacion (una botella de agua) no cuenta. */
+    if (this.cuentaMesa() || this.enviaSinMesa()) {
+      const pend = await this.mesaSvc.pendientesDePreparacion(this.cart.activeCart().lines);
+      if (pend.length) { this.sinEnviar.set(pend.length); return; }
+    }
+    this.abrirCobro();
+  }
+
+  private abrirCobro() {
     this.recibido.set('');
     this.metodo.set('EFECTIVO');
     this.vista.set('cobro');
+  }
+
+  /** «Enviar y cobrar»: el envio de siempre (sin duplicar), y luego el cobro. */
+  async enviarYCobrar() {
+    this.sinEnviar.set(null);
+    await this.enviarCocina();
+    const quedan = await this.mesaSvc.pendientesDePreparacion(this.cart.activeCart().lines);
+    if (quedan.length) return; // el envio fallo y ya se dijo por que: no se cobra a ciegas
+    this.abrirCobro();
   }
 
   volverAlMenu() {
@@ -586,6 +824,9 @@ export class TouchPos implements OnInit, OnDestroy {
     if (this.cobrando()) return;
     if (!this.alcanza()) { this.mostrar('El importe recibido no alcanza'); return; }
     this.cobrando.set(true);
+    /* Se lee ANTES de cobrar: `checkout` cierra la cuenta activa, y con ella
+       se iria saber de que mesa era. */
+    const mesa = this.cuentaMesa();
     try {
       const res = await this.sale.checkout({
         method: this.metodo(),
@@ -600,16 +841,25 @@ export class TouchPos implements OnInit, OnDestroy {
 
       if (!res.ok) { this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
 
+      /* La venta ya esta. Enlazarla libera la mesa; si fallara, se dice y la
+         mesa se libera despues desde el salon: nada se deshace. */
+      if (mesa) {
+        const e = await this.mesaSvc.enlazarCobro(mesa.id, res.saleId ?? null);
+        if (!e.ok) this.mostrar(e.error, 'error');
+      }
+
       const cambio = res.change ?? 0;
       this.ultimoCambio.set(cambio);
       this.ultimoFolio.set(res.saleId ?? null);
+      this.ultimoPedido.set(mesa?.numero ?? null);
       this.vista.set('menu');
       this.recibido.set('');
       // El catalogo cambio: se recarga en segundo plano para refrescar
       // existencias y disponibilidad derivada.
       this.menu.load(true);
       this.mostrarCambio.set(true);
-      setTimeout(() => this.mostrarCambio.set(false), cambio > 0 ? 6000 : 2500);
+      /* Con numero de pedido se queda mas: el cajero tiene que decirlo. */
+      setTimeout(() => this.mostrarCambio.set(false), mesa?.numero ? 9000 : cambio > 0 ? 6000 : 2500);
       // Los premios se pintan encima del aviso de cambio: en Touch el
       // cliente esta delante de la caja y es AHORA cuando hay que decirselo.
       this.premiosUltimaVenta.set(res.premios ?? []);
@@ -622,6 +872,8 @@ export class TouchPos implements OnInit, OnDestroy {
 
   ultimoCambio = signal(0);
   ultimoFolio = signal<number | null>(null);
+  /** El numero de pedido del dia de la ultima venta, si era de mostrador. */
+  ultimoPedido = signal<number | null>(null);
   /** Lo que gano la ultima venta, si Fidelizacion esta encendida. */
   premiosUltimaVenta = signal<LoyaltyAward[]>([]);
   cerrarPremios() { this.premiosUltimaVenta.set([]); }
@@ -639,6 +891,13 @@ export class TouchPos implements OnInit, OnDestroy {
   // ------------------------------------------------------------- turno/salida
   abrirTurno = signal(false);
   fondo = signal('');
+
+  /* Si el turno se abre por otro camino -la barra superior, otra pantalla,
+     la preparacion de una demo-, la hoja pedida al entrar ya no tiene razon
+     de estar: se quedaba encima de la caja, pidiendo algo que ya estaba hecho. */
+  private readonly cerrarHojaConTurno = effect(() => {
+    if (this.hayTurno() && untracked(this.abrirTurno)) this.abrirTurno.set(false);
+  });
 
   /** Mismo teclado numerico que el cobro: la caja no necesita uno fisico. */
   teclaFondo(t: string) {

@@ -117,6 +117,9 @@
   .mq__marca{font-weight:700;letter-spacing:-.01em;}
   .mq__modo{display:none;color:var(--accent);font-weight:600;}
   .mq__modo.on{display:inline;}
+  .mq__cliente{display:none;color:var(--hueso);font-weight:600;}
+  .mq__cliente.on{display:inline;}
+  .mq__cliente::before{content:'·';color:var(--humo);margin-right:calc(1.6 * var(--u));}
   .mq__reloj{margin-left:auto;color:var(--humo);}
 
   /* El logo del negocio: pequeno y permanente, como el mastil de un
@@ -198,6 +201,37 @@
   #checkout .pay .k{font-size:var(--t-et);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);}
   #checkout .pay .v{font-size:calc(4.4 * var(--u));font-weight:700;}
   #checkout .change .v{color:var(--ok);}
+
+  /* ================================================ PEDIDO + QR ===
+     Un pedido de mostrador: su numero y el QR para seguirlo en el telefono.
+     Acompana al cobro (y a los premios, si los hay) en una columna propia a
+     la derecha, separada por un filete, no en una tarjeta. El unico bloque
+     claro es el del QR: un lector necesita su margen blanco.
+     ==================================================================== */
+  .pedido{
+    position:fixed;right:var(--margen);
+    top:calc(var(--margen) + 5 * var(--u));bottom:calc(var(--margen) + 4 * var(--u));
+    width:calc(28 * var(--u));
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:calc(1 * var(--u));
+    padding-left:calc(4 * var(--u));border-left:1px solid var(--filete);text-align:center;
+  }
+  body.con-pedido .pedido{display:flex;}
+  body.con-pedido #checkout .mq__cuerpo,
+  body.con-pedido #premios .mq__cuerpo{padding-right:calc(33 * var(--u));}
+  /* El total cede sitio: sigue siendo lo mas grande de su columna, pero un
+     importe de cuatro cifras no puede meterse bajo el QR. */
+  body.con-pedido #checkout .total{font-size:calc(10.5 * var(--u));}
+  .pedido__et{font-size:var(--t-et);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
+  .pedido__cliente{font-size:var(--t-cuerpo);font-weight:700;letter-spacing:-.01em;line-height:1.1;max-width:100%;overflow-wrap:anywhere;}
+  .pedido__cliente:empty{display:none;}
+  .pedido__num{font-size:calc(8 * var(--u));font-weight:800;line-height:.9;letter-spacing:-.05em;}
+  .pedido__qr{
+    width:calc(14.5 * var(--u));aspect-ratio:1;max-width:100%;
+    background:#fff;border-radius:var(--r-md);padding:calc(1 * var(--u));
+  }
+  .pedido__qr img{display:block;width:100%;height:100%;image-rendering:pixelated;}
+  .pedido__txt{font-size:var(--t-micro);color:var(--humo);max-width:26ch;line-height:1.35;}
+  .pedido__txt b{color:var(--hueso);font-weight:600;}
 
   /* ========================================================= PREMIOS === */
   #premios .lista{display:flex;flex-direction:column;margin-top:calc(2 * var(--u));max-width:calc(58 * var(--u));}
@@ -475,6 +509,9 @@
     <header class="mq__top">
       <span class="mq__marca" id="saleBiz">Tu compra</span>
       <span class="mq__modo" id="saleModo"></span>
+      <!-- customerDisplayName: el nombre de quien compra, si la venta tiene
+           cliente. Solo el nombre: nunca telefono, correo ni RFC. -->
+      <span class="mq__cliente" id="saleCliente"></span>
       <span class="mq__reloj mono" id="saleClock"></span>
     </header>
 
@@ -514,6 +551,15 @@
     </div>
     <footer class="mq__pie"><span>Gracias por su compra</span><span></span></footer>
   </section>
+
+  <!-- ======================================= PEDIDO + QR ============ -->
+  <aside class="pedido" id="pedido" aria-label="Tu pedido" data-prueba="pedido">
+    <span class="pedido__et">Tu pedido</span>
+    <b class="pedido__num mono" id="pedidoNum"></b>
+    <span class="pedido__cliente" id="pedidoCliente"></span>
+    <div class="pedido__qr" id="pedidoQr"><img id="pedidoQrImg" alt="Código QR para consultar los pedidos"></div>
+    <p class="pedido__txt" id="pedidoTxt"></p>
+  </aside>
 
   <!-- ============================================= PREMIOS ============ -->
   <section class="screen" id="premios">
@@ -556,9 +602,33 @@
     const v = Number(n || 0);
     return '$' + v.toLocaleString('es-MX', { minimumFractionDigits:2, maximumFractionDigits:2 });
   }
+  /* El pedido de mostrador que se acaba de cobrar: numero y QR. Vive
+     mientras se ve el cobro o sus premios; la siguiente venta lo borra. */
+  let pedidoActual = null;
+  const CON_PEDIDO_MS = 30000;
+
   function show(id){
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
     document.getElementById(id).classList.add('on');
+    if (id !== 'checkout' && id !== 'premios') pedidoActual = null;
+    pintarPedido();
+  }
+
+  function pintarPedido(){
+    const visible = !!pedidoActual && (document.getElementById('checkout').classList.contains('on')
+      || document.getElementById('premios').classList.contains('on'));
+    document.body.classList.toggle('con-pedido', visible);
+    if (!visible) return;
+    texto('pedidoNum', '#' + pedidoActual.numero);
+    texto('pedidoCliente', pedidoActual.cliente || '');
+    const img = document.getElementById('pedidoQrImg');
+    const conQr = typeof pedidoActual.qr === 'string' && pedidoActual.qr.startsWith('data:image/png;base64,');
+    document.getElementById('pedidoQr').style.display = conQr ? 'block' : 'none';
+    if (conQr) img.src = pedidoActual.qr; else img.removeAttribute('src');
+    const txt = document.getElementById('pedidoTxt');
+    txt.innerHTML = conQr
+      ? 'Escanea para consultar los pedidos. <b>Conéctate al Wi-Fi del local.</b>'
+      : 'Te avisamos por este número. <b>Va impreso en tu ticket.</b>';
   }
   function texto(id, v){ const e = document.getElementById(id); if (e) e.textContent = v == null ? '' : v; }
 
@@ -708,6 +778,13 @@
         '<div class="linea__imp mono">' + money(it.importe) + '</div>';
       cont.appendChild(row);
     });
+
+    const cli = document.getElementById('saleCliente');
+    if (cli) {
+      const nombre = typeof s.cliente === 'string' ? s.cliente.trim() : '';
+      cli.textContent = nombre;
+      cli.classList.toggle('on', !!nombre);
+    }
 
     const modo = document.getElementById('saleModo');
     if (modo) {
@@ -1212,8 +1289,13 @@
     } else if (s.mode === 'checkout') {
       if (checkoutTimer) clearTimeout(checkoutTimer);
       renderCheckout(s);
+      const n = Number(s.pedido && s.pedido.numero);
+      pedidoActual = Number.isInteger(n) && n > 0
+        ? { numero: n, qr: s.pedido.qr || null, cliente: typeof s.pedido.cliente === 'string' ? s.pedido.cliente : null }
+        : null;
       show('checkout');
-      checkoutTimer = setTimeout(() => { checkoutTimer = null; goIdle(); }, 8000);
+      // Con pedido, el cliente tiene que alcanzar a escanear el QR.
+      checkoutTimer = setTimeout(() => { checkoutTimer = null; goIdle(); }, pedidoActual ? CON_PEDIDO_MS : 8000);
     } else if (s.mode === 'message') {
       texto('idleBiz', s.text || bizName);
       show('idle');
@@ -1223,7 +1305,7 @@
       if (checkoutTimer) clearTimeout(checkoutTimer);
       renderPremios(s);
       show('premios');
-      checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
+      checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, pedidoActual ? CON_PEDIDO_MS : 12000);
     } else if (s.mode === 'dinamica') {
       // Sin temporizador mientras se juega: la pantalla no se va sola a
       // media partida. Solo el resultado pone cuenta atras.

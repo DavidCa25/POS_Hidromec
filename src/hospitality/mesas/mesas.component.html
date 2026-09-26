@@ -1,0 +1,135 @@
+<div class="salon" [class.es-touch]="enTouch">
+
+  <!-- En Touch no hay panel alrededor: la salida va aqui. -->
+  <div class="salon-barra" *ngIf="enTouch">
+    <button type="button" class="salon-volver wx-pulsar" (click)="volver()">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i> Volver a vender
+    </button>
+  </div>
+
+  <header class="hx-head">
+    <div class="hx-head__ic"><i class="ph ph-armchair" aria-hidden="true"></i></div>
+    <div class="hx-head__txt">
+      <h1>Mesas</h1>
+      <p *ngIf="todas().length">{{ todas().length }} mesas · se actualiza sola</p>
+      <p *ngIf="!todas().length">El salón de tu local</p>
+    </div>
+    <div class="hx-head__acc">
+      <button type="button" class="btn-outline" data-guide="mesas-cuenta-sin-mesa" (click)="cuentaSinMesa()">
+        <i class="ph ph-receipt" aria-hidden="true"></i> Cuenta sin mesa
+      </button>
+    </div>
+  </header>
+
+  <!-- ------------------------------------------------ areas y cifras vivas -->
+  <div class="salon-bar" *ngIf="todas().length">
+    <div class="wx-seg" role="group" aria-label="Áreas" *ngIf="areas().length > 1">
+      <button type="button" class="wx-seg__op" [class.on]="area() === null" [attr.aria-pressed]="area() === null"
+              (click)="area.set(null)">
+        Todas <span class="wx-seg__n">{{ todas().length }}</span>
+      </button>
+      <button type="button" class="wx-seg__op" *ngFor="let a of areas(); trackBy: porId"
+              [class.on]="area() === a.id" [attr.aria-pressed]="area() === a.id" (click)="area.set(a.id)">
+        {{ a.nombre }} <span class="wx-seg__n">{{ mesasEnArea(a.id) }}</span>
+      </button>
+    </div>
+
+    <ul class="hx-cifras" aria-label="Resumen del salón">
+      <li class="hx-cifra hx-cifra--libre"><b>{{ resumen().libres }}</b> libres</li>
+      <li class="hx-cifra hx-cifra--abierta"><b>{{ resumen().abiertas }}</b> {{ resumen().abiertas === 1 ? 'abierta' : 'abiertas' }}</li>
+      <li class="hx-cifra hx-cifra--cobrar" *ngIf="resumen().porCobrar"><b>{{ resumen().porCobrar }}</b> por cobrar</li>
+      <li class="hx-cifra hx-cifra--lista" *ngIf="resumen().listas"><b>{{ resumen().listas }}</b> con pedido listo</li>
+      <li class="hx-cifra hx-cifra--dinero" *ngIf="resumen().enMesas > 0">
+        En mesas <b>{{ resumen().enMesas | currency:'MXN':'symbol-narrow':'1.0-0' }}</b>
+      </li>
+    </ul>
+  </div>
+
+  <p class="salon-error" *ngIf="error()" role="alert">
+    <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ error() }}
+  </p>
+
+  <!-- Cargando: la forma de lo que viene, quieta. Nada gira. -->
+  <div class="salon-rejilla" *ngIf="cargando()" aria-hidden="true">
+    <span class="mesa-hueco" *ngFor="let _ of [0,1,2,3,4,5]"></span>
+  </div>
+
+  <!-- Salon sin configurar: se dice que falta y, a quien puede, donde. -->
+  <div class="salon-vacio" data-guide="mesas-vacio" *ngIf="!cargando() && !error() && !todas().length">
+    <div class="salon-vacio__dibujo" aria-hidden="true">
+      <hx-mesita [sillas]="2" tam="md"></hx-mesita>
+      <hx-mesita [sillas]="4" tam="lg"></hx-mesita>
+      <hx-mesita [sillas]="6" tam="md"></hx-mesita>
+    </div>
+    <h3>Todavía no hay mesas</h3>
+    <p>Crea las áreas de tu local —Salón, Terraza, Barra— y sus mesas. Aquí verás cuáles están libres, cuánto lleva cada cuenta y qué ya salió de cocina.</p>
+    <button type="button" class="btn-primary" *ngIf="puedeConfigurar" (click)="configurar()">
+      <i class="ph ph-squares-four" aria-hidden="true"></i> Configurar el salón
+    </button>
+  </div>
+
+  <!-- ----------------------------------------------------------- las areas -->
+  <section class="zona" *ngFor="let z of zonas(); let zi = index; trackBy: porZona" [attr.aria-label]="z.area.nombre"
+           [attr.data-guide]="zi === 0 ? 'mesas-salon' : null">
+    <header class="zona__cab">
+      <span class="hx-area-ic"><i class="ph" [ngClass]="z.icono" aria-hidden="true"></i></span>
+      <h2>{{ z.area.nombre }}</h2>
+      <span class="zona__meta">{{ z.ocupadas }} de {{ z.mesas.length }} ocupadas</span>
+      <span class="zona__ocupacion" aria-hidden="true">
+        <i class="wx-avanzar" [style.transform]="'scaleX(' + (z.ocupadas / z.mesas.length) + ')'"></i>
+      </span>
+    </header>
+
+    <div class="salon-rejilla">
+      <div class="mesa-slot hx-entra" *ngFor="let m of z.mesas; let i = index; trackBy: porId" [style.--i]="i">
+        <button type="button" class="mesa" data-guide="salon-mesa"
+                [attr.data-guide-clave]="m.id" [attr.data-guide-estado]="m.estado"
+                [ngClass]="'es-' + m.estado.toLowerCase()"
+                [class.tiene-lista]="m.comandas_listas > 0"
+                [class.es-vacia]="vacia(m)"
+                [class.is-abriendo]="abriendo() === m.id"
+                [attr.aria-label]="nombreDeMesa(m.nombre) + ', ' + etiqueta(m) + (m.estado !== 'LIBRE' ? ', ' + (m.total | currency:'MXN':'symbol-narrow':'1.2-2') : '')"
+                (click)="abrir(m)">
+          <span class="mesa__cab">
+            <b class="mesa__nombre">{{ nombreDeMesa(m.nombre) }}</b>
+            <i class="ph ph-circle-notch wx-latir mesa__abriendo" *ngIf="abriendo() === m.id" aria-hidden="true"></i>
+            <span class="mesa__estado">{{ etiqueta(m) }}</span>
+          </span>
+
+          <span class="mesa__cuerpo">
+            <hx-mesita [sillas]="m.capacidad" [estado]="m.estado.toLowerCase()" tam="sm"></hx-mesita>
+
+            <span class="mesa__datos" *ngIf="m.estado !== 'LIBRE'; else libre">
+              <span class="mesa__total">{{ m.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+              <span class="mesa__meta">
+                <span [class.es-larga]="larga(m)"><i class="ph ph-clock" aria-hidden="true"></i> {{ tiempo(m) }}</span>
+                <span *ngIf="m.lineas"><i class="ph ph-list-checks" aria-hidden="true"></i> {{ m.lineas }} {{ m.lineas === 1 ? 'producto' : 'productos' }}</span>
+                <span *ngIf="!m.lineas">Sin pedido aún</span>
+              </span>
+            </span>
+            <ng-template #libre>
+              <span class="mesa__datos mesa__datos--libre">
+                <span class="mesa__sillas"><i class="ph ph-users" aria-hidden="true"></i> {{ m.capacidad || 4 }} {{ (m.capacidad || 4) === 1 ? 'lugar' : 'lugares' }}</span>
+                <span class="mesa__abrir">Abrir <i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+              </span>
+            </ng-template>
+          </span>
+
+          <span class="mesa__cocina es-lista" *ngIf="m.comandas_listas">
+            <i class="ph ph-bell-ringing" aria-hidden="true"></i>
+            {{ m.comandas_listas }} {{ m.comandas_listas > 1 ? 'listas' : 'lista' }} para llevar
+          </span>
+          <span class="mesa__cocina" *ngIf="!m.comandas_listas && m.comandas_pendientes">
+            <i class="ph ph-cooking-pot" aria-hidden="true"></i>
+            {{ m.comandas_pendientes }} en cocina
+          </span>
+        </button>
+        <!-- Fuera del boton de la mesa: un control dentro de otro no se anuncia
+             bien. Solo con la mesa sin consumo; con consumo, se cobra. -->
+        <button type="button" class="mesa__liberar wx-pulsar" *ngIf="vacia(m)"
+                [attr.aria-label]="'Liberar ' + nombreDeMesa(m.nombre)"
+                (click)="liberar(m, $event)">Liberar</button>
+      </div>
+    </div>
+  </section>
+</div>

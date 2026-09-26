@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A1119">
+  <meta name="robots" content="noindex">
+  <title>Pedidos</title>
+  <link rel="stylesheet" href="/app/app.css">
+  <!-- El tablero de pedidos en el telefono del cliente (lo abre el QR de la
+       pantalla de la caja). Es la MISMA superficie que la TV: el mismo
+       s-cliente.js y la misma fuente de datos. Esta pagina solo la arranca
+       sin credencial y la relee cada pocos segundos. No carga la app de las
+       pantallas de trabajo: no sabe emparejar, ni entrar, ni actuar. -->
+  <script src="/app/tablero.js" defer></script>
+  <script src="/app/s-cliente.js" defer></script>
+</head>
+<body class="es-publica">
+  <main id="app" class="app app--publica" aria-live="polite">
+    <p class="seg__cargando">Buscando pedidos…</p>
+  </main>
+  <noscript><p class="seg__cargando">Esta página necesita JavaScript activado.</p></noscript>
+</body>
+</html>

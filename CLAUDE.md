@@ -83,3 +83,37 @@ se le añade a `wx-select`.
   identidad entre fotogramas.
 - **El estado cambia la expresión, no la identidad**: `idle`, `atencion`,
   `exito`, `error` son caras del mismo personaje.
+
+---
+
+# Wybix Guide
+
+Wybix Guide enseña Wybix y reproduce demostraciones. Motor en
+`src/app/wx-guide/`, tablero en `src/app/wx-guia/`, guarda en
+`electron/ipc/guide.js`.
+
+1. **Los recorridos señalan con `data-guide` estable.** Todo elemento que un
+   recorrido necesite lleva `data-guide="nombre"` (y, en una lista,
+   `data-guide-clave` / `data-guide-estado`). Nunca `:nth-child()`, posición
+   en el DOM ni texto.
+2. **Nunca una clase de presentación como único selector de un recorrido.**
+   Una clase cambia con el diseño; el contrato no.
+3. **La guía no crea datos reales.** En una instalación normal enseña y espera
+   a la persona: no escribe, no guarda, no cobra. Solo una demostración segura
+   —proceso del gestor de demos + base con `is_demo` + instancia registrada por
+   ese gestor, comprobado en el proceso principal antes de CADA paso que
+   escribe— puede actuar sola.
+4. **Persona ≠ Guide.** El avatar de una persona sale de su id; Wybix Guide
+   usa la variante curada de la sesión.
+5. **Guide mantiene su identidad durante la sesión.** Ni entre pasos ni entre
+   pantallas cambia de personaje.
+6. **Los estados cambian gesto, mirada y expresión; nunca el personaje.**
+   `wx-mascota` tiene cuatro caras; `thinking`, `speaking`, `pointing` y
+   `waiting` son gesto y mirada, no caras nuevas.
+7. **Movimiento reducido es obligatorio.** Sin letra a letra, sin
+   desplazamientos: el texto sale entero y el foco sigue funcionando.
+8. **Los escenarios dependen de capacidades, áreas y permisos**, con la misma
+   regla que la navegación (`NavegacionService.areas()`, `CapabilityService`,
+   `AuthService.puede`). No se enseña lo que no existe.
+9. **Los recorridos se definen como datos en `src/app/wx-guide/escenarios.ts`**,
+   nunca repartidos por los componentes. Un escenario nuevo no toca el motor.

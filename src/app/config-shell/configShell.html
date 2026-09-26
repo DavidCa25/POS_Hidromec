@@ -41,7 +41,7 @@
   <div class="cs-drawer-wrap" [class.open]="activeTile">
     <div class="cs-backdrop" (click)="cerrar()"></div>
 
-    <aside class="cs-drawer" role="dialog" aria-modal="true">
+    <aside class="cs-drawer" [class.cs-drawer--amplio]="activeTile?.amplio" role="dialog" aria-modal="true">
       <header class="cs-drawer-head" *ngIf="activeTile">
         <div class="cs-drawer-title">
           <span class="cs-tile-chip" [attr.data-c]="activeTile.color">

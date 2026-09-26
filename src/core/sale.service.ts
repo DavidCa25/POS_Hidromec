@@ -119,6 +119,11 @@ export class SaleService {
     // Se copia ANTES de registrar: `completeActive()` deja el carrito vacio y
     // con el se iria el cupon que hay que canjear justo despues.
     const cuponAplicado = cart.coupon ?? null;
+    // El numero de pedido del dia (cuenta sin mesa): va en grande en el ticket.
+    // La cuenta aun no esta enlazada a la venta cuando se imprime, asi que se
+    // lleva desde aqui.
+    const cuentaPedido = cart.meta?.['cuentaMesa'] as { id?: number; numero?: number | null } | undefined;
+    const pedido = Number(cuentaPedido?.numero) || null;
 
     this.inflight = true;
     try {
@@ -149,11 +154,12 @@ export class SaleService {
         change: isCredit ? null : change,
         method: payment.method,
         credito: isCredit,
+        pedido: pedido && cuentaPedido?.id ? { numero: pedido, cuentaId: Number(cuentaPedido.id), cliente: customer?.name ?? null } : null,
       });
 
       if (opts.autoPrint && saleId && !isCredit) {
         try {
-          await this.printTicket(saleId, { pagado: paid, cambio: change, silent: true, paymentMethod: payment.method });
+          await this.printTicket(saleId, { pagado: paid, cambio: change, silent: true, paymentMethod: payment.method, pedido });
         } catch { /* la impresion nunca deshace una venta ya registrada */ }
       }
 
@@ -266,7 +272,7 @@ export class SaleService {
     }
   }
 
-  async printTicket(saleId: number, opts: { pagado?: number | null; cambio?: number | null; silent?: boolean; printerName?: string | null; paymentMethod?: string | null }): Promise<{ success: boolean; error?: string }> {
+  async printTicket(saleId: number, opts: { pagado?: number | null; cambio?: number | null; silent?: boolean; printerName?: string | null; paymentMethod?: string | null; pedido?: number | null }): Promise<{ success: boolean; error?: string }> {
     const api = this.bridge.api;
     if (!api?.printSaleTicket) return { success: false, error: 'Falta electronAPI.printSaleTicket en preload.' };
     const resp = await api.printSaleTicket({
@@ -276,6 +282,7 @@ export class SaleService {
       silent: opts.silent ?? true,
       printerName: opts.printerName ?? undefined,
       paymentMethod: opts.paymentMethod ?? undefined,
+      pedido: opts.pedido ?? undefined,
     });
     return resp ?? { success: false };
   }

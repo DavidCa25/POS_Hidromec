@@ -133,6 +133,13 @@ export class NavegacionService {
           { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
           { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
           { texto: 'Abrir cajon', ruta: '/dashboard/abrir-cajon', icono: 'ph-vault', visible: this.supervisarVentas },
+          /* La operacion de un local con servicio: dentro de Venta, porque es
+             vender. Cada una aparece solo con su modulo encendido; el dock no
+             gana ningun icono. */
+          { texto: 'Mesas', ruta: '/dashboard/mesas', icono: 'ph-armchair', visible: this.caps.mesas },
+          { texto: 'Cocina', ruta: '/cocina', icono: 'ph-cooking-pot', visible: this.caps.comandas },
+          { texto: 'Salon y estaciones', ruta: '/dashboard/salon', icono: 'ph-squares-four',
+            visible: (this.caps.mesas || this.caps.comandas) && this.administrarNegocio },
         ],
       },
       {

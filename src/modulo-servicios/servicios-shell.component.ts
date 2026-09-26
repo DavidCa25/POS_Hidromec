@@ -35,13 +35,13 @@ import { GiroServiciosService } from '../core';
   template: `
   <div class="srv-shell">
     <nav class="srv-nav" aria-label="Servicios">
-      <a routerLink="ordenes" routerLinkActive="activo" class="srv-nav-a">
+      <a routerLink="ordenes" routerLinkActive="activo" class="srv-nav-a" data-guide="srv-tab-ordenes">
         <i class="ph ph-clipboard-text"></i> Órdenes
       </a>
-      <a routerLink="agenda" routerLinkActive="activo" class="srv-nav-a" *ngIf="giro.usaAgenda">
+      <a routerLink="agenda" routerLinkActive="activo" class="srv-nav-a" data-guide="srv-tab-agenda" *ngIf="giro.usaAgenda">
         <i class="ph ph-calendar-blank"></i> Agenda
       </a>
-      <a routerLink="activos" routerLinkActive="activo" class="srv-nav-a" *ngIf="giro.usaActivos">
+      <a routerLink="activos" routerLinkActive="activo" class="srv-nav-a" data-guide="srv-tab-activos" *ngIf="giro.usaActivos">
         <i class="ph {{ giro.giro().icono }}"></i> {{ giro.activoPlural }}
       </a>
       <a routerLink="catalogo" routerLinkActive="activo" class="srv-nav-a" *ngIf="puedeAdministrar">

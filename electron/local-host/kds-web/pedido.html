@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A1119">
+  <meta name="robots" content="noindex">
+  <title>Tu pedido</title>
+  <link rel="stylesheet" href="/app/app.css">
+  <!-- El telefono del CLIENTE: solo esta pagina y su script. No carga la
+       app de las pantallas de trabajo: no sabe emparejar, ni entrar, ni
+       actuar. Solo lee su pedido. -->
+  <script src="/app/pedido.js" defer></script>
+</head>
+<body class="es-publica">
+  <main id="seg" class="seg" aria-live="polite">
+    <p class="seg__cargando">Buscando tu pedido…</p>
+  </main>
+  <noscript><p class="seg__cargando">Esta página necesita JavaScript activado.</p></noscript>
+</body>
+</html>

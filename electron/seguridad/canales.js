@@ -233,6 +233,67 @@ const EXIGE = {
 
   // Cuanto gano cada persona es dinero del negocio, y va con los reportes.
   'servicios:comisiones': REPORTES_VER,
+
+  // --------------------------------------------- mesas, cuentas y cocina
+  // Atender una mesa es el trabajo del turno: abrirla, pedir, enviar a
+  // cocina, pedir la cuenta, cerrarla tras cobrar. Lo mismo que vender.
+  'salon:get': VENTAS_OPERAR,
+  'cuentas:abrir': VENTAS_OPERAR,
+  'cuentas:obtener': VENTAS_OPERAR,
+  'cuentas:cliente': VENTAS_OPERAR,
+  'cuentas:preparacion': VENTAS_OPERAR,
+  'cuentas:enviar': VENTAS_OPERAR,
+  'cuentas:estado': VENTAS_OPERAR,
+  'cuentas:cobrada': VENTAS_OPERAR,
+  // Liberar solo deja hacerlo con la mesa vacia (lo impide SQL): con
+  // consumo hay que cobrar o que un encargado cancele lo pedido.
+  'cuentas:liberar': VENTAS_OPERAR,
+  // La cocina marca lo que prepara. No hay un rol «cocina»: quien atiende la
+  // pantalla de la estacion trabaja con el paquete del turno.
+  'estaciones:listar': VENTAS_OPERAR,
+  'kds:listar': VENTAS_OPERAR,
+  'kds:estado': VENTAS_OPERAR,
+  'comandas:reimprimir': VENTAS_OPERAR,
+  // Cancelar lo que ya se pidio saca dinero de la cuenta: es la misma clase
+  // de decision que un reembolso, y la toma un encargado.
+  'comandas:cancelar': VENTAS_SUPERVISAR,
+  // Como es el salon y quien prepara que es configuracion del negocio.
+  'salon:area-guardar': CONFIGURACION_ADMINISTRAR,
+  'salon:mesa-guardar': CONFIGURACION_ADMINISTRAR,
+  'estaciones:guardar': CONFIGURACION_ADMINISTRAR,
+  'estaciones:productos': CONFIGURACION_ADMINISTRAR,
+  'estaciones:producto-asignar': CONFIGURACION_ADMINISTRAR,
+  // Wybix Local Host: que pantallas de la red local entran al negocio, y el
+  // firewall de esta computadora. Todo es configuracion del negocio.
+  'localhost:estado': CONFIGURACION_ADMINISTRAR,
+  'localhost:activar': CONFIGURACION_ADMINISTRAR,
+  'localhost:emparejar': CONFIGURACION_ADMINISTRAR,
+  'localhost:revocar': CONFIGURACION_ADMINISTRAR,
+  'localhost:red': CONFIGURACION_ADMINISTRAR,
+  'localhost:firewall': CONFIGURACION_ADMINISTRAR,
+  'localhost:firewall-abrir': CONFIGURACION_ADMINISTRAR,
+  // Pantallas Operativas: que funcion tiene cada dispositivo y quien puede
+  // entrar en ellas (QR y PIN de las personas). Configuracion del negocio.
+  'localhost:cambiar-funcion': CONFIGURACION_ADMINISTRAR,
+  'localhost:renombrar': CONFIGURACION_ADMINISTRAR,
+  'localhost:trabajadores': CONFIGURACION_ADMINISTRAR,
+  'localhost:trabajador-qr': CONFIGURACION_ADMINISTRAR,
+  'localhost:trabajador-pin': CONFIGURACION_ADMINISTRAR,
+  'localhost:trabajador-revocar': CONFIGURACION_ADMINISTRAR,
+  'localhost:diagnostico': CONFIGURACION_ADMINISTRAR,
+  // Conteos y faltantes que reporta el piso: aplicarlos mueve existencias.
+  'inventario:reportes': INVENTARIO_OPERAR,
+  'inventario:reporte-resolver': INVENTARIO_OPERAR,
+  // Cuanto se vende a cada hora es informacion del negocio.
+  'reportes:actividad-horaria': REPORTES_VER,
+
+  // Modo terminal: restringe lo que la cuenta de Windows de esta caja puede
+  // abrir. Es configuracion del negocio, y ademas pide administrador de
+  // Windows (UAC): hacen falta las dos cosas. Auditar va con lo mismo porque
+  // ensena la cuenta y su SID.
+  'terminal:auditar': CONFIGURACION_ADMINISTRAR,
+  'terminal:activar': CONFIGURACION_ADMINISTRAR,
+  'terminal:restaurar': CONFIGURACION_ADMINISTRAR,
 };
 
 /**
@@ -286,6 +347,9 @@ const ABIERTOS = {
   // Tienen su propio preload y nunca inician sesión. No pueden autorizar nada
   // porque no tienen identidad, y ese es justamente el blindaje.
   'app:es-demo': 'ventana de demo, sin sesión por diseño',
+  'guide:contexto': 'solo lectura: dice si esta ventana es una demo segura; no habilita nada por sí solo',
+  'guide:autorizar': 'solo comprueba el contexto de demo; cada acción real sigue pasando por el permiso de su propio canal',
+  'guide:preparar': 'solo corre dentro de una demo segura (misma guarda que guide:autorizar) y con SQL fijo: limpia lo que dejó la vuelta anterior de la demo',
   'app:get-version': 'dato de versión, sin identidad',
   'getConfig': 'configuración de arranque de la ventana',
   'demo:estado': 'gestor de demos: ventana aparte, sin sesión',

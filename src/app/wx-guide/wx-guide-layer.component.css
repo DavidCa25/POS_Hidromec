@@ -1,0 +1,146 @@
+/* ==========================================================================
+   WYBIX GUIDE · EL PRESENTADOR
+   Una franja con el material del dock -el azul noche de la aplicacion, en
+   claro y en oscuro-, Wybix asomandose por encima, el texto escribiendose y
+   el avance en segmentos. Encima de la pantalla real, nunca en lugar de ella.
+   ========================================================================== */
+:host { display: contents; }
+
+/* ------------------------------------------------------------------ visor */
+.wxgl-visor {
+  position: fixed; z-index: var(--wx-z-guia, 100010);
+  pointer-events: none;
+  animation: wxgl-asoma var(--wx-dur-menu) var(--wx-ease-out) both;
+}
+.wxgl-visor i {
+  position: absolute; width: 18px; height: 18px;
+  border: 0 solid var(--wx-accent);
+}
+.wxgl-visor i:nth-child(1) { left: 0; top: 0; border-left-width: 2.5px; border-top-width: 2.5px; border-top-left-radius: 7px; }
+.wxgl-visor i:nth-child(2) { right: 0; top: 0; border-right-width: 2.5px; border-top-width: 2.5px; border-top-right-radius: 7px; }
+.wxgl-visor i:nth-child(3) { left: 0; bottom: 0; border-left-width: 2.5px; border-bottom-width: 2.5px; border-bottom-left-radius: 7px; }
+.wxgl-visor i:nth-child(4) { right: 0; bottom: 0; border-right-width: 2.5px; border-bottom-width: 2.5px; border-bottom-right-radius: 7px; }
+
+/* ------------------------------------------------------------------ franja */
+.wxgl {
+  --wxgl-ancho: 880px;
+  --wxgl-pad: 132px;
+  /* Centrada sin `transform` (ver test:capas). */
+  /* Con barra lateral, se centra en lo que queda a su derecha. */
+  position: fixed; left: var(--wxgl-izq, 0px); right: 0; margin-inline: auto; bottom: var(--wxgl-base, 20px);
+  z-index: var(--wx-z-guia, 100010);
+  width: min(var(--wxgl-ancho), calc(100vw - var(--wxgl-izq, 0px) - 32px));
+  color: var(--wx-rail-text-strong);
+  animation: wxgl-entra var(--wx-dur-dialog) var(--wx-ease-out) both;
+}
+.wxgl.es-arriba { bottom: auto; top: 20px; }
+.wxgl--demo { --wxgl-ancho: 940px; --wxgl-pad: 150px; }
+.wxgl--compacto { --wxgl-ancho: 660px; --wxgl-pad: 82px; }
+
+@keyframes wxgl-entra { from { opacity: 0; transform: translateY(10px); } }
+@keyframes wxgl-asoma { from { opacity: 0; transform: scale(1.04); } }
+
+.wxgl__franja {
+  position: relative; z-index: 0;
+  display: flex; align-items: center; gap: 16px;
+  min-height: 92px;
+  padding: 14px 16px 14px var(--wxgl-pad);
+  background: var(--wx-rail);
+  border: 1px solid var(--wx-rail-edge);
+  border-radius: 22px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 24px 56px -22px rgb(3 7 12 / 0.7);
+}
+
+/* Wybix asomado por encima del borde: medio cuerpo fuera de la franja. */
+.wxgl__figura {
+  position: absolute; left: 20px; bottom: calc(100% - 40px); z-index: 1;
+  display: flex; pointer-events: none;
+}
+.wxgl.es-arriba .wxgl__figura { bottom: auto; top: calc(100% - 40px); }
+/* Compacto: la figura es la cabeza del globo, a su izquierda, y el globo le
+   saca una colita. */
+.wxgl--compacto .wxgl__figura { left: 14px; bottom: 50%; transform: translateY(50%); }
+.wxgl--compacto .wxgl__franja { position: relative; }
+.wxgl--compacto .wxgl__franja::before {
+  content: ""; position: absolute; left: 62px; top: 50%;
+  width: 12px; height: 12px; transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--wx-rail); border-left: 1px solid var(--wx-rail-edge); border-bottom: 1px solid var(--wx-rail-edge);
+}
+
+.wxgl__principal { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.wxgl__cab { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--wx-rail-text-dim); }
+.wxgl__titulo { font-weight: 650; color: var(--wx-rail-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wxgl__cuenta { margin-left: auto; font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wxgl__chip {
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  padding: 3px 10px 3px 8px; border-radius: 999px;
+  background: rgb(69 179 195 / 0.16); color: var(--wx-cyan-400);
+  font-weight: 700; letter-spacing: 0.01em;
+}
+.wxgl__vivo { width: 8px; height: 8px; border-radius: 50%; background: var(--wx-accent); box-shadow: 0 0 0 3px rgb(69 179 195 / 0.25); }
+.wxgl__vivo.es-quieto { background: var(--wx-rail-text-dim); box-shadow: none; }
+
+.wxgl__segs { display: flex; gap: 4px; }
+.wxgl__segs i { flex: 1; height: 3px; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
+.wxgl__segs i.es-hecho { background: var(--wx-accent); }
+.wxgl__segs i.es-actual { background: linear-gradient(90deg, var(--wx-accent) 50%, rgb(255 255 255 / 0.12) 50%); }
+
+.wxgl__texto {
+  display: block; width: 100%; padding: 0; min-height: 52px;
+  border: 0; background: transparent; color: var(--wx-rail-text-strong);
+  font: inherit; font-size: 19px; line-height: 1.4; font-weight: 500; letter-spacing: -0.01em;
+  text-align: left; cursor: pointer;
+}
+.wxgl--compacto .wxgl__texto { font-size: 17px; min-height: 44px; }
+.wxgl__texto:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); border-radius: 8px; }
+.wxgl__aviso { margin: 0; color: var(--wx-cyan-400); font-size: 13px; font-weight: 600; }
+
+/* ------------------------------------------------------------------ mandos */
+.wxgl__mandos { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.wxgl__botones { display: flex; align-items: center; gap: 8px; }
+.wxgl__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 44px; padding: 0 16px;
+  border: 1px solid transparent; border-radius: 13px;
+  font: inherit; font-size: 14px; font-weight: 650; white-space: nowrap;
+  cursor: pointer; touch-action: manipulation;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out), background-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.wxgl__btn:active { transform: scale(0.97); }
+.wxgl__btn:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.wxgl__btn--cta { background: var(--wx-accent); color: var(--wx-accent-ink); }
+@media (hover: hover) { .wxgl__btn--cta:hover { background: var(--wx-accent-hover); } }
+.wxgl__btn--suave { background: rgb(255 255 255 / 0.07); color: var(--wx-rail-text-strong); border-color: var(--wx-rail-edge); }
+@media (hover: hover) { .wxgl__btn--suave:hover { background: rgb(255 255 255 / 0.12); } }
+.wxgl__btn--icono { width: 44px; padding: 0; background: rgb(255 255 255 / 0.07); color: var(--wx-rail-text-strong); border-color: var(--wx-rail-edge); font-size: 17px; }
+.wxgl__btn kbd {
+  font-family: var(--wx-font-mono); font-size: 10.5px; font-weight: 600;
+  padding: 1px 5px; border-radius: 5px; background: rgb(0 0 0 / 0.16);
+}
+.wxgl__btn--suave kbd { background: rgb(255 255 255 / 0.1); }
+
+/* «Tu turno» no es un boton: dice a quien le toca. Sin caja, para que no se
+   confunda con los mandos que si se pulsan. */
+.wxgl__turno {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 6px;
+  color: var(--wx-cyan-400); font-size: 14px; font-weight: 700; white-space: nowrap;
+}
+.wxgl__turno .ph { font-size: 18px; }
+.wxgl__check { display: inline-flex; align-items: center; gap: 8px; color: var(--wx-rail-text); font-size: 12.5px; cursor: pointer; }
+.wxgl__check input { width: 17px; height: 17px; accent-color: var(--wx-accent); }
+
+/* ---------------------------------------------------------------- angosto */
+@media (max-width: 760px) {
+  .wxgl { --wxgl-pad: 16px; }
+  .wxgl__franja { flex-direction: column; align-items: stretch; padding-top: 40px; }
+  .wxgl__figura { left: 16px; }
+  .wxgl--compacto .wxgl__franja { padding-top: 14px; padding-left: 82px; }
+  .wxgl__mandos { align-items: stretch; }
+  .wxgl__botones { justify-content: flex-end; flex-wrap: wrap; }
+  .wxgl__texto { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wxgl, .wxgl-visor { animation: none; }
+  .wxgl__btn:active { transform: none; }
+}

@@ -25,3 +25,5 @@ export * from './loyalty.service';
 export * from './modulos';
 export * from './dinamicas';
 export * from './fechas';
+export * from './mesas.service';
+export * from './clientes-venta.service';

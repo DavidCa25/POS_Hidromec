@@ -265,6 +265,18 @@ export interface Capabilities {
    * modulos se suman.
    */
   servicios: boolean;
+  /**
+   * TABLE_SERVICE: salon con areas y mesas, y cuentas que se quedan abiertas
+   * mientras el cliente consume. Solo con Hospitality: una mesa de un taller
+   * no tiene sentido.
+   */
+  mesas: boolean;
+  /**
+   * KITCHEN_ORDERS: comandas por estacion de preparacion y la pantalla de
+   * cocina (KDS). Solo con Hospitality. No exige mesas: una cafeteria de
+   * mostrador tambien manda a la barra.
+   */
+  comandas: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */
@@ -278,6 +290,8 @@ export type CustomerDisplayState =
       discount: number;
       total: number;
       serviceMode?: ServiceMode | null;
+      /** customerDisplayName: el nombre de quien paga, si la venta tiene cliente. Solo el nombre. */
+      cliente?: string | null;
     }
   | {
       mode: 'checkout';
@@ -286,6 +300,12 @@ export type CustomerDisplayState =
       change: number | null;
       method: PaymentMethod;
       credito: boolean;
+      /**
+       * Pedido de mostrador: su numero, el nombre de quien paga (customerDisplayName,
+       * completo: lo tiene delante) y, lo que agrega el proceso principal, el QR
+       * del tablero general de pedidos.
+       */
+      pedido?: { numero: number; cuentaId: number; cliente?: string | null } | null;
     }
   | { mode: 'message'; text: string }
   /*

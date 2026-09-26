@@ -1,4 +1,4 @@
-<button type="button" class="wx-sel__campo"
+<button type="button" class="wx-sel__campo" data-guide-parte="abrir"
         [attr.popovertarget]="idPanel"
         [style.anchor-name]="ancla"
         [disabled]="deshabilitado"
@@ -26,7 +26,7 @@
   <ul class="wx-pop__list" role="listbox">
     <li *ngFor="let o of visibles; let i = index">
       <button type="button" class="wx-opt"
-              role="option"
+              role="option" [attr.data-guide-opcion]="o.etiqueta" [attr.data-guide-valor]="o.valor"
               [attr.aria-selected]="esSeleccionada(o)"
               [attr.data-activo]="i === indice"
               [disabled]="o.desactivada"

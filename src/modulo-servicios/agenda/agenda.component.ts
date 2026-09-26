@@ -397,6 +397,12 @@ export class ServiciosAgenda {
       confirmButtonText: 'Llegó',
       denyButtonText: 'Mover',
       cancelButtonText: 'Más…',
+      /* Contrato para Wybix Guide: los botones del aviso se señalan por
+         `data-guide`, no por su texto. */
+      didOpen: () => {
+        Swal.getConfirmButton()?.setAttribute('data-guide', 'srv-cita-llego');
+        Swal.getDenyButton()?.setAttribute('data-guide', 'srv-cita-mover');
+      },
     });
 
     if (r.isConfirmed) { await this.llego(c); return; }

@@ -144,10 +144,13 @@ export class ServiciosOrden {
    * vez, con sus etiquetas, es lo menos que puede hacer la pantalla.
    */
   private async crear() {
-    this.cargando.set(false);
+    /* `cargando` sigue en true hasta que el dialogo abre: si no, detras de la
+       recepcion se asomaba «No se encontró la orden» (aun no hay orden: se
+       esta recibiendo). */
     const clientes = await (window as any).electronAPI?.getCustomers?.();
     const lista: any[] = clientes?.data ?? clientes ?? [];
     if (!lista.length) {
+      this.cargando.set(false);
       await Swal.fire({
         icon: 'info', title: 'Primero, un cliente',
         text: 'Una orden de servicio es de alguien. Da de alta al cliente y vuelve.',
@@ -171,6 +174,7 @@ export class ServiciosOrden {
     };
     this.errorModal.set('');
     this.dialogo.set('nueva');
+    this.cargando.set(false);
   }
 
   /** Al elegir cliente se traen sus cosas, si este giro trabaja sobre algo. */
@@ -640,12 +644,19 @@ export class ServiciosOrden {
         icon: 'warning', title: 'Sin autorizar',
         text: 'El cliente no ha aprobado este importe. ¿Cobrar de todas formas?',
         showCancelButton: true, confirmButtonText: 'Cobrar igual', cancelButtonText: 'Registrar autorización',
+        didOpen: () => {
+          Swal.getConfirmButton()?.setAttribute('data-guide', 'srv-cobrar-igual');
+          Swal.getCancelButton()?.setAttribute('data-guide', 'srv-cobrar-autorizar');
+        },
       });
       if (!c.isConfirmed) { await this.autorizar(); return; }
     }
 
+    /* Si aqui ya se decidio «Cobrar igual», Venta no vuelve a preguntarlo:
+       el mismo aviso dos veces seguidas era un modal de mas que cerrar. */
     void this.router.navigate(['/dashboard/venta'], {
-      queryParams: { ordenServicio: o.cabecera.id },
+      queryParams: { ordenServicio: o.cabecera.id,
+        ...(previa.datos.resumen.needs_reauthorization ? { sinAutorizar: 'aceptado' } : {}) },
     });
   }
 

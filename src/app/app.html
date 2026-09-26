@@ -38,4 +38,16 @@
     }
   }
 
+  <!-- El teclado en pantalla: uno para toda la aplicacion. Decide solo
+       cuando aparecer segun la configuracion de este equipo. -->
+  <wx-virtual-keyboard></wx-virtual-keyboard>
+
+  <!-- Wybix Guide: el presentador de recorridos, demos y primer uso. Uno
+       para toda la aplicacion; los recorridos viven en src/app/wx-guide. -->
+  @if (license.puedeOperar && !necesitaSetup) {
+    @defer (on idle) {
+      <wx-guide-layer></wx-guide-layer>
+    }
+  }
+
 }

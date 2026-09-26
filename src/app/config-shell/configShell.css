@@ -122,6 +122,7 @@
   box-shadow: var(--wx-shadow-raised);
 }
 .cs-drawer-wrap.open .cs-drawer { transform: translateX(0); }
+.cs-drawer--amplio { width: min(1180px, 100%); }
 
 .cs-drawer-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;

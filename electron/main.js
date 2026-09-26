@@ -14,6 +14,11 @@ const ipcHospitality = require('./ipc/hospitality');
 const ipcLoyalty = require('./ipc/loyalty');
 const ipcServicios = require('./ipc/servicios');
 const ipcQuickstart = require('./ipc/quickstart');
+const ipcSalon = require('./ipc/salon');
+const ipcTerminal = require('./ipc/terminal');
+const ipcGuide = require('./ipc/guide');
+const { crearLocalHost } = require('./local-host');
+const { imprimirHtml } = require('./lib/imprimir-html');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
 const { estaConfigurado } = require('./lib/setup-estado');
 /* FASE CORE 0 — seguridad real.
@@ -122,6 +127,32 @@ ipcServicios.registrar({ ipcMain, sql, poolPromise,
    y lo primero que hace el usuario es cerrarla. */
 ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
   contexto: { businessProfile: () => businessConfig?.business_profile || 'RETAIL' } });
+
+/* IPC de mesas, cuentas, comandas y KDS. Las comandas que van a papel se
+   imprimen con el mismo `imprimirHtml` que el ticket de venta. */
+const hospitalityDominio = ipcSalon.registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig,
+  alCambiarComandas: () => localHost.avisar() });
+
+/* Wybix Local Host: el KDS en tablets por la red del local. Solo la
+   instalacion principal, solo con el arriendo de la base y solo si se
+   encendio en Configuracion. Ver electron/local-host/index.js. */
+const localHost = crearLocalHost({
+  sql, poolPromise,
+  machineId: () => machineIdDeEsteEquipo(),
+  esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+  leerConfig: () => loadDeviceConfig(),
+  guardarConfig: (cfg) => saveDeviceConfig(cfg),
+  /* El mesero envia a preparacion por las MISMAS funciones que Touch y Venta. */
+  dominios: { hospitality: hospitalityDominio },
+});
+localHost.registrarIpc(ipcMain);
+
+/* Modo terminal: directivas oficiales de Windows, con respaldo y vuelta atras. */
+ipcTerminal.registrar({ ipcMain, loadDeviceConfig, saveDeviceConfig });
+
+/* Wybix Guide: si esta ventana puede correr una demo automatica. Solo el
+   gestor de demostraciones, sobre SU base marcada, dice que si. */
+ipcGuide.registrar({ ipcMain, poolPromise, app, demo, licencia: licenseStore });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -428,6 +459,10 @@ async function bootMainApp(poolYaAbierto) {
     // Sin arriendo se opera como siempre. No es motivo para no abrir.
     console.error('[CAJA] No se pudo iniciar el arriendo:', e.message);
   }
+
+  /* El Local Host arranca DESPUES de la caja: no compite por la base con el
+     arranque, y si no esta encendido en Configuracion no abre nada. */
+  localHost.iniciar().catch(e => console.error('[LOCAL HOST] No se pudo iniciar:', e.message));
 
   backup.startScheduler();
   // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
@@ -995,7 +1030,29 @@ function autoOpenCustomerDisplay() {
 ipcMain.handle('customer-display:list-monitors', async () => listMonitors());
 ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCustomerDisplay(displayId));
 ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
-ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
+/**
+ * El cobro de un pedido de mostrador lleva su numero, el nombre del cliente
+ * (si la venta tiene) y un QR hacia el tablero general de pedidos. La caja
+ * manda lo que su carrito sabe; la direccion del Local Host se lee aqui y a
+ * la pantalla del cliente llega el QR ya hecho imagen: esa pantalla no
+ * consulta nada. Sin Local Host vigente, va el pedido sin QR.
+ * Ver local-host/qr-pantalla-cliente.js.
+ */
+async function conSeguimiento(state) {
+  const p = state?.mode === 'checkout' ? state.pedido : null;
+  if (!p) return state;
+  const { pedidoParaPantallaCliente, nombreParaPantallaCliente } = require('./local-host/qr-pantalla-cliente');
+  try {
+    const pedido = await pedidoParaPantallaCliente({ pool: () => poolPromise, sql, QRCode: require('qrcode'), pedido: p });
+    return { ...state, pedido };
+  } catch (e) {
+    console.warn('[pantalla cliente] pedido:', e?.message);
+    const n = Number(p.numero);
+    return { ...state, pedido: Number.isInteger(n) && n > 0 ? { numero: n, cliente: nombreParaPantallaCliente(p.cliente), qr: null } : null };
+  }
+}
+
+ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(await conSeguimiento(state)); return { ok: true }; });
 ipcMain.handle('customer-display:status', async () => ({
   open: !!(customerWindow && !customerWindow.isDestroyed()),
   preview: !!(previewWindow && !previewWindow.isDestroyed()),
@@ -1440,14 +1497,24 @@ let soltandoCaja = false;
 app.on('before-quit', (e) => {
   if (soltandoCaja) return;
   const caja = cajaArrendada.instantanea();
-  if (!caja.registerId || !caja.vigente) return;
+  const conCaja = !!(caja.registerId && caja.vigente);
+  /* El Local Host tambien suelta su arriendo: si algun dia se cambia la
+     computadora principal, la nueva no espera a que caduque. */
+  const conHost = localHost.instantanea().fase === 'ACTIVO';
+  if (!conCaja && !conHost) return;
 
   soltandoCaja = true;
   e.preventDefault();
-  cajaArrendada.detener();
+  if (conCaja) cajaArrendada.detener();
 
   const aTiempo = new Promise(r => setTimeout(r, 3000));
-  Promise.race([cajaArrendada.soltar('EQUIPO'), aTiempo])
+  Promise.race([
+    Promise.allSettled([
+      conCaja ? cajaArrendada.soltar('EQUIPO') : null,
+      conHost ? localHost.detener() : null,
+    ]),
+    aTiempo,
+  ])
     .catch(() => { /* cerrar no puede fallar por esto */ })
     .finally(() => app.exit(0));
 });
@@ -2298,13 +2365,17 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
 // CREATE
 ipcMain.handle(
   'sp-create-customer', sesion.proteger('sp-create-customer',
-  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
+  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
+    /* El alta ignoraba gracia, mora y riesgo: se capturaban en el formulario y
+       se perdian. `proteger` anexa la sesion al final de los argumentos; si un
+       llamador viejo manda menos, lo que cae aqui no es un numero y vale 0. */
+    const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0));
     try {
       const pool = await poolPromise;
       const request = pool.request();
 
       request
-        .input('code',           sql.NVarChar(30),  code)
+        .input('code',           sql.NVarChar(30),  code || null)
         .input('customerName',   sql.NVarChar(120), customerName)
         .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
         .input('email',          sql.NVarChar(120), email)
@@ -2314,7 +2385,11 @@ ipcMain.handle(
         .input('active',         sql.Bit,           active)
         .input('regimen_fiscal', sql.NVarChar(5),   regimenFiscal ?? null)
         .input('uso_cfdi',       sql.NVarChar(5),   usoCfdi ?? null)
-        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null);
+        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null)
+        .input('grace_days',     sql.Int,           n(graceDays))
+        .input('late_fee_pct',   sql.Decimal(5, 2), n(lateFeePct))
+        .input('late_fee_fixed', sql.Decimal(12, 2), n(lateFeeFixed))
+        .input('risk_level',     sql.TinyInt,       Math.min(3, Math.max(0, Math.round(n(riskLevel)))));
 
       request.output('NewId', sql.Int);
 
@@ -2409,7 +2484,9 @@ ipcMain.handle(
 
       request
         .input('id',             sql.Int,           id)
-        .input('code',           sql.NVarChar(30),  code ?? null)
+        /* '' no es "sin codigo": UX_customers_code es unico sobre NOT NULL, y
+           el segundo cliente editado con codigo vacio chocaba con el primero. */
+        .input('code',           sql.NVarChar(30),  (typeof code === 'string' && code.trim()) ? code.trim() : null)
         .input('customerName',   sql.NVarChar(120), customerName)
         .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
         .input('email',          sql.NVarChar(120), email ?? null)
@@ -2460,14 +2537,18 @@ ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
 
 ipcMain.handle(
   'sp-register-customer-payment', sesion.proteger('sp-register-customer-payment',
-  async (event, customerId, saleId, amount, userId, paymentMethod, note) => {
+  async (event, customerId, saleId, amount, userId, paymentMethod, note, ...resto) => {
+    /* Quien cobra es quien tiene la sesion. La pantalla mandaba `1` fijo: todos
+       los abonos quedaban a nombre del primer usuario, cobrara quien cobrara. */
+    const ses = resto.length ? resto[resto.length - 1] : null;
+    const quien = Number(ses?.userId) || Number(userId) || null;
     try {
       const pool = await poolPromise;
       const result = await pool.request()
         .input('customer_id',    sql.Int,          customerId)
         .input('sale_id',        sql.Int,          saleId)
         .input('amount',         sql.Decimal(10,2), amount)
-        .input('user_id',        sql.Int,          userId)
+        .input('user_id',        sql.Int,          quien)
         .input('payment_method', sql.NVarChar(50), paymentMethod)
         .input('note',           sql.NVarChar(255), note ?? null)
         .execute('sp_register_customer_payment');
@@ -2861,16 +2942,20 @@ ipcMain.handle('alerts:overdue-credit', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().query(`
+      /* Vencida = vencimiento + dias de gracia del cliente (misma regla que
+         sp_get_customers). */
       SELECT s.customer_id,
+             MAX(c.customerName) AS customerName,
              SUM(s.balance) AS deuda_vencida,
              MIN(s.due_date) AS vence,
-             DATEDIFF(DAY, MIN(s.due_date), CAST(GETDATE() AS DATE)) AS dias_vencido,
+             MAX(DATEDIFF(DAY, DATEADD(DAY, c.grace_days, s.due_date), CAST(GETDATE() AS DATE))) AS dias_vencido,
              COUNT(*) AS facturas
       FROM sales s
+      JOIN customers c ON c.id = s.customer_id
       WHERE UPPER(s.payment_method) = 'CREDITO'
         AND s.balance > 0
-        AND s.due_date < CAST(GETDATE() AS DATE)
-        AND s.customer_id IS NOT NULL
+        AND s.due_date IS NOT NULL
+        AND DATEADD(DAY, c.grace_days, s.due_date) < CAST(GETDATE() AS DATE)
       GROUP BY s.customer_id
       ORDER BY deuda_vencida DESC
     `);
@@ -2909,7 +2994,7 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
     const agotados   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock<=0`);
     const lowstock   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock>0 AND stock<=@min`, [['min', sql.Int, min]]);
     const cero       = await one(`SELECT COUNT(*) c FROM sales WHERE total=0 AND datee>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
-    const vencidos   = await one(`SELECT COUNT(DISTINCT customer_id) c FROM sales WHERE UPPER(payment_method)='CREDITO' AND balance>0 AND due_date<CAST(GETDATE() AS DATE) AND customer_id IS NOT NULL`);
+    const vencidos   = await one(`SELECT COUNT(DISTINCT s.customer_id) c FROM sales s JOIN customers cu ON cu.id = s.customer_id WHERE UPPER(s.payment_method)='CREDITO' AND s.balance>0 AND s.due_date IS NOT NULL AND DATEADD(DAY, cu.grace_days, s.due_date)<CAST(GETDATE() AS DATE)`);
     const descuadres = await one(`SELECT COUNT(*) c FROM cash_closures WHERE difference<>0 AND CAST(create_date AS DATE)>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
     let reorden = 0;
     try {
@@ -2955,30 +3040,25 @@ ipcMain.handle('inventory:movements', sesion.proteger('inventory:movements', asy
 }));
 
 // ===== Conteo fisico: aplicar ajustes de inventario =====
-ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}) => {
+ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}, s) => {
   try {
     const items = Array.isArray(p.items) ? p.items : [];
     if (!items.length) return { success: false, error: 'No hay conteos para aplicar.' };
     const pool = await poolPromise;
     let ajustados = 0;
+    /* El ajuste vive en sp_inventory_count_apply (0045): atomico, con la fila
+       bloqueada, y el mismo que usan los reportes de las Pantallas de
+       inventario. Antes era SQL suelto aqui. */
     for (const it of items) {
       const pid = Number(it.product_id);
       const fisico = Number(it.fisico);
       if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(fisico) || fisico < 0) continue;
-      const cur = await pool.request().input('id', sql.Int, pid).query('SELECT stock FROM products WHERE id=@id');
-      const teorico = Number(cur.recordset[0]?.stock ?? 0);
-      const diff = fisico - teorico;
-      if (diff === 0) continue;
-      await pool.request().input('id', sql.Int, pid).input('s', sql.Decimal(12, 2), fisico)
-        .query('UPDATE products SET stock=@s WHERE id=@id');
-      await pool.request()
-        .input('pid', sql.Int, pid)
-        .input('t', sql.NVarChar(20), diff > 0 ? 'entrada' : 'salida')
-        .input('q', sql.Decimal(12, 2), Math.abs(diff))
-        .input('d', sql.NVarChar(200), 'Ajuste por conteo fisico (dif ' + diff + ')')
-        .query(`INSERT INTO inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
-                VALUES (@pid, @t, 'CONTEO', @q, GETDATE(), @d)`);
-      ajustados++;
+      const r = await pool.request()
+        .input('product_id', sql.Int, pid)
+        .input('fisico', sql.Decimal(12, 2), fisico)
+        .input('user_id', sql.Int, s?.userId ?? null)
+        .execute('sp_inventory_count_apply');
+      if (Number(r.recordset?.[0]?.diferencia ?? 0) !== 0) ajustados++;
     }
     return { success: true, ajustados };
   } catch (e) { console.error('inventory:apply-count:', e); return { success: false, error: e.message }; }
@@ -3484,6 +3564,27 @@ async function loadSaleByFolioFromDb(saleId) {
   return { header, details };
 }
 
+/**
+ * El numero de pedido del dia de una venta de mostrador, para el ticket.
+ *
+ * Al cobrar, la caja lo manda (la cuenta se enlaza a la venta DESPUES de
+ * imprimir); en una reimpresion se lee de la cuenta ya enlazada. Si
+ * Hospitality no esta instalado, simplemente no hay.
+ */
+async function pedidoDelTicket(saleId, enviado) {
+  const n = Number(enviado);
+  if (Number.isInteger(n) && n > 0 && n < 100000) return n;
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('sale_id', sql.Int, saleId).query(`
+      IF COL_LENGTH(N'dbo.hosp_cuentas', N'numero_dia') IS NOT NULL
+        EXEC sp_executesql N'SELECT TOP 1 numero_dia FROM dbo.hosp_cuentas WHERE sale_id = @s AND numero_dia IS NOT NULL',
+                           N'@s INT', @s = @sale_id;`);
+    const v = Number(r.recordset?.[0]?.numero_dia);
+    return Number.isInteger(v) && v > 0 ? v : null;
+  } catch { return null; }
+}
+
 function escHtmlTicket(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -3624,12 +3725,11 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
     pagado: extras.pagado,
     cambio: extras.cambio,
     payment_method: extras.payment_method,
+    pedido: extras.pedido ?? null,
   });
 }
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
-  let printWin = null;
-
   try {
     const saleId = Number(payload?.saleId ?? payload?.sale_id ?? 0);
     if (!Number.isFinite(saleId) || saleId <= 0) {
@@ -3656,60 +3756,25 @@ ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (
       pagado: payload?.pagado ?? payload?.paid ?? null,
       cambio: payload?.cambio ?? payload?.change ?? null,
       payment_method: payload?.paymentMethod ?? payload?.payment_method ?? null,
+      pedido: await pedidoDelTicket(saleId, payload?.pedido),
       paperWidthMm
     });
 
-    printWin = new BrowserWindow({
-      show: false,
-      width: 420,
-      height: 800,
-      webPreferences: {
-        contextIsolation: true,
-        sandbox: false
-      }
+    /* La impresion en si es la misma para el ticket y para las comandas de
+       cocina: una sola implementacion en `lib/imprimir-html.js`. */
+    const ok = await imprimirHtml(html, {
+      paperWidthMm,
+      silent: payload?.silent !== false,
+      printerName: payload?.printerName || undefined,
     });
-
-    await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
-
-    // Esperar render y medir el alto real del contenido para no sacar papel en blanco de mas.
-    await new Promise(r => setTimeout(r, 200));
-    let heightPx = 0;
-    try { heightPx = Number(await printWin.webContents.executeJavaScript('document.body.scrollHeight')) || 0; } catch {}
-    if (!heightPx || heightPx < 40) heightPx = 500;
-
-    const MICRON_PER_PX = 25400 / 96; // 1px @96dpi = 264.58 micras
-    const widthMicrons  = Math.round(paperWidthMm * 1000);
-    const heightMicrons = Math.round((heightPx + 12) * MICRON_PER_PX);
-
-    const silent = payload?.silent !== false;
-    const deviceName = payload?.printerName || undefined;
-    const ok = await new Promise((resolve) => {
-      printWin.webContents.print(
-        {
-          silent,
-          printBackground: true,
-          deviceName,
-          margins: { marginType: 'none' },
-          pageSize: { width: widthMicrons, height: heightMicrons }
-        },
-        (success, failureReason) => {
-          if (!success) console.error('Print failed:', failureReason);
-          resolve(success);
-        }
-      );
-    });
-
-    try { printWin.close(); } catch {}
 
     if (!ok) {
       return { success: false, error: 'No se pudo imprimir (revisa impresora predeterminada / driver / deviceName).' };
     }
 
-
     return { success: true };
   } catch (err) {
     console.error('❌ print-sale-ticket:', err);
-    try { if (printWin) printWin.close(); } catch {}
     return { success: false, error: err?.message || String(err) };
   }
 }));

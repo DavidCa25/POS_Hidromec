@@ -9,7 +9,7 @@
     </div>
 
     <div class="inv-actions-group">
-      <button class="castrol-btn-add" type="button" (click)="abrirProductoModal()">
+      <button class="castrol-btn-add" type="button" data-guide="agregar-producto" (click)="abrirProductoModal()">
         <i class="ph ph-plus-circle me-2"></i> Agregar Producto
       </button>
 
@@ -244,7 +244,7 @@
 
   <!-- Modal Agregar / Editar Producto -->
   <!-- ========================= -->
-  <div class="producto-modal" *ngIf="productoModalAbierto">
+  <div class="producto-modal" data-guide="producto-form" *ngIf="productoModalAbierto">
     <h1 class="producto-modal-title">
       <b>{{ editingProductId ? 'Editar producto' : 'Agregar producto' }}</b>
     </h1>
@@ -253,29 +253,29 @@
         <!-- Marca y categoria solo en ALTA (el SP de update no las modifica) -->
         <div class="grid-col-span" *ngIf="!editingProductId">
           <label>Marca</label>
-          <wx-select name="brand" [(ngModel)]="form.brand" [opciones]="opcMarcas"
+          <wx-select name="brand" data-guide="producto-marca" [(ngModel)]="form.brand" [opciones]="opcMarcas"
                      [buscable]="brands.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div *ngIf="!editingProductId">
           <label>Categoría</label>
-          <wx-select name="category" [(ngModel)]="form.category" [opciones]="opcCategorias"
+          <wx-select name="category" data-guide="producto-categoria" [(ngModel)]="form.category" [opciones]="opcCategorias"
                      [buscable]="categorys.length > 8" placeholder="Selecciona una"></wx-select>
         </div>
 
         <div class="grid-col-span">
           <label>Código interno / SKU</label>
-          <input type="text" name="partNumber" [(ngModel)]="form.partNumber" required class="my-1 mr-sm-2">
+          <input type="text" name="partNumber" data-guide="producto-sku" [(ngModel)]="form.partNumber" required class="my-1 mr-sm-2">
         </div>
 
         <div class="grid-col-span-3">
           <label>Nombre</label>
-          <input type="text" name="name" [(ngModel)]="form.name" required class="my-1 mr-sm-2">
+          <input type="text" name="name" data-guide="producto-nombre" [(ngModel)]="form.name" required class="my-1 mr-sm-2">
         </div>
 
         <div>
           <label>Precio</label>
-          <input type="number" step="0.01" name="price" [(ngModel)]="form.price" required class="my-1 mr-sm-2" placeholder="0.00">
+          <input type="number" step="0.01" name="price" data-guide="producto-precio" data-teclado="MONEY" [(ngModel)]="form.price" required class="my-1 mr-sm-2" placeholder="0.00">
         </div>
 
         <!-- El stock fisico solo existe cuando el producto se cuenta. Una
@@ -286,7 +286,7 @@
                error mas facil de cometer y el mas dificil de ver despues. -->
           <label>Stock <span class="prod-unidad" *ngIf="unidadDeStock && !presentacionStock">en {{ unidadDeStock }}</span></label>
           <div class="prod-stock">
-            <input type="number" step="0.01" name="stock" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
+            <input type="number" step="0.01" name="stock" data-guide="producto-stock" data-teclado="QUANTITY" [(ngModel)]="form.stock" min="0" required class="my-1 mr-sm-2" placeholder="1">
             <!-- "Tengo 12 cajas de un litro": se escribe 12, se elige la caja
                  y se guardan 12000 ml. En la base el stock sigue siendo
                  siempre unidad base, que es lo que consumen las recetas. -->
@@ -491,7 +491,7 @@
 
       <div class="producto-modal-actions">
         <button type="button" class="producto-cancel-btn" (click)="cerrarProductoModal()">Cancelar</button>
-        <button type="submit" class="producto-save-btn" [disabled]="formRef.invalid || guardando">
+        <button type="submit" class="producto-save-btn" data-guide="producto-guardar" [disabled]="formRef.invalid || guardando">
           {{ guardando ? 'Guardando...' : 'Guardar' }}
         </button>
       </div>

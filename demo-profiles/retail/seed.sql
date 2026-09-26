@@ -68,9 +68,15 @@ BEGIN
 END
 GO
 
-/* --------------------------------------------------- 3) UNA CATEGORIA */
+/* ------------------------------------------- 3) UNA CATEGORIA Y UNA MARCA
+   La marca «General» se CREA aqui. Antes la semilla la buscaba sin crearla:
+   en una demo recien hecha no existia, los productos quedaban sin marca y
+   `sp_get_active_products` (que une con CAT_brands) no los mostraba en ningun
+   lado. Y el formulario de producto, que exige marca, decia «Sin resultados». */
 IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'Abarrotes')
     INSERT INTO dbo.CAT_categories (namee) VALUES (N'Abarrotes');
+IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'General')
+    INSERT INTO dbo.CAT_brands (namee) VALUES (N'General');
 GO
 
 /* ------------------------------------------------------- 4) PRODUCTOS
@@ -85,7 +91,8 @@ USING (VALUES
       ) AS s(part_number, nombre, price, stock)
    ON d.part_number = s.part_number
  WHEN MATCHED THEN
-      UPDATE SET nombre = s.nombre, price = s.price, stock = s.stock, active = 1
+      UPDATE SET nombre = s.nombre, price = s.price, stock = s.stock, active = 1,
+                 brand_id = ISNULL(d.brand_id, (SELECT TOP 1 id FROM dbo.CAT_brands WHERE namee = N'General'))
  WHEN NOT MATCHED THEN
       INSERT (part_number, nombre, price, stock, active, registrated_date, category_id,
               brand_id, inventory_mode, sellable, base_uom)

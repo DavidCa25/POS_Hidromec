@@ -457,6 +457,73 @@ contextBridge.exposeInMainWorld('wybix', {
         // Consumir, con la venta ya cobrada. Un fallo aqui SI se ensena.
         redeem: (p) => ipcRenderer.invoke('coupons:redeem', p),
     },
+    /*
+     * Mesas, cuentas y cocina. Enviar NO cobra y cobrar NO envia: son canales
+     * distintos a proposito. El cobro sigue siendo `registerSale`.
+     */
+    salon: {
+        get: () => ipcRenderer.invoke('salon:get'),
+        guardarArea: (p) => ipcRenderer.invoke('salon:area-guardar', p),
+        guardarMesa: (p) => ipcRenderer.invoke('salon:mesa-guardar', p),
+    },
+    cuentas: {
+        abrir: (p) => ipcRenderer.invoke('cuentas:abrir', p),
+        obtener: (p) => ipcRenderer.invoke('cuentas:obtener', p),
+        cliente: (p) => ipcRenderer.invoke('cuentas:cliente', p),
+        preparacion: (p) => ipcRenderer.invoke('cuentas:preparacion', p),
+        enviar: (p) => ipcRenderer.invoke('cuentas:enviar', p),
+        estado: (p) => ipcRenderer.invoke('cuentas:estado', p),
+        cobrada: (p) => ipcRenderer.invoke('cuentas:cobrada', p),
+        liberar: (p) => ipcRenderer.invoke('cuentas:liberar', p),
+    },
+    estaciones: {
+        listar: () => ipcRenderer.invoke('estaciones:listar'),
+        guardar: (p) => ipcRenderer.invoke('estaciones:guardar', p),
+        productos: () => ipcRenderer.invoke('estaciones:productos'),
+        asignar: (p) => ipcRenderer.invoke('estaciones:producto-asignar', p),
+    },
+    kds: {
+        listar: (p) => ipcRenderer.invoke('kds:listar', p),
+        estado: (p) => ipcRenderer.invoke('kds:estado', p),
+        cancelar: (p) => ipcRenderer.invoke('comandas:cancelar', p),
+        reimprimir: (p) => ipcRenderer.invoke('comandas:reimprimir', p),
+    },
+    /* Wybix Local Host: pantallas de la red local (KDS en tablets). */
+    localHost: {
+        estado: () => ipcRenderer.invoke('localhost:estado'),
+        activar: (p) => ipcRenderer.invoke('localhost:activar', p),
+        emparejar: (p) => ipcRenderer.invoke('localhost:emparejar', p),
+        revocar: (p) => ipcRenderer.invoke('localhost:revocar', p),
+        red: () => ipcRenderer.invoke('localhost:red'),
+        firewall: () => ipcRenderer.invoke('localhost:firewall'),
+        abrirFirewall: () => ipcRenderer.invoke('localhost:firewall-abrir'),
+        cambiarFuncion: (p) => ipcRenderer.invoke('localhost:cambiar-funcion', p),
+        renombrar: (p) => ipcRenderer.invoke('localhost:renombrar', p),
+        trabajadores: () => ipcRenderer.invoke('localhost:trabajadores'),
+        qrTrabajador: (p) => ipcRenderer.invoke('localhost:trabajador-qr', p),
+        pinTrabajador: (p) => ipcRenderer.invoke('localhost:trabajador-pin', p),
+        revocarTrabajador: (p) => ipcRenderer.invoke('localhost:trabajador-revocar', p),
+        diagnostico: () => ipcRenderer.invoke('localhost:diagnostico'),
+    },
+    /* Conteos y faltantes reportados desde las Pantallas de inventario. */
+    inventarioReportes: {
+        listar: (p) => ipcRenderer.invoke('inventario:reportes', p),
+        resolver: (p) => ipcRenderer.invoke('inventario:reporte-resolver', p),
+    },
+    reportes: {
+        actividadHoraria: (p) => ipcRenderer.invoke('reportes:actividad-horaria', p),
+    },
+    /* Wybix Guide: el contexto de demo lo decide el proceso principal. */
+    guide: {
+        contexto: () => ipcRenderer.invoke('guide:contexto'),
+        autorizar: (p) => ipcRenderer.invoke('guide:autorizar', p),
+        preparar: (p) => ipcRenderer.invoke('guide:preparar', p),
+    },
+    terminal: {
+        auditar: (p) => ipcRenderer.invoke('terminal:auditar', p),
+        activar: (p) => ipcRenderer.invoke('terminal:activar', p),
+        restaurar: () => ipcRenderer.invoke('terminal:restaurar'),
+    },
     raffles: {
         save: (p) => ipcRenderer.invoke('raffles:save', p),
         // Cerrar y sortear son dos actos distintos.

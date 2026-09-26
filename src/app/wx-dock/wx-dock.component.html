@@ -19,7 +19,7 @@
     dock. La capsula de alrededor es la zona sensible, no un marco.
   -->
   <span class="wxdock__anclaWybix">
-    <button type="button" class="wxdock__pulso" (click)="alternarGuia($event)"
+    <button type="button" class="wxdock__pulso" data-guide="wybix-guide" (click)="alternarGuia($event)"
             [class.is-abierto]="guia.abierta()"
             [attr.aria-expanded]="guia.abierta()" aria-haspopup="dialog"
             [attr.aria-label]="estadoWybix() === 'atencion' ? 'Wybix: hay cosas pendientes' : 'Wybix: todo en orden'"
@@ -63,6 +63,7 @@
     -->
     <button *ngIf="tienePanel(a); else enlaceArea"
             type="button" class="wxdock__btn"
+            [attr.data-guide]="'area-' + a.id"
             [class.is-on]="esActiva(a)"
             [class.is-abierto]="panel() === a.id"
             (click)="pulsar(a, $event)"
@@ -77,7 +78,7 @@
     </button>
 
     <ng-template #enlaceArea>
-      <a class="wxdock__btn" [class.is-on]="esActiva(a)"
+      <a class="wxdock__btn" [attr.data-guide]="'area-' + a.id" [class.is-on]="esActiva(a)"
          [routerLink]="a.ruta" (click)="cerrarTodo()">
         <i class="ph {{ a.icono }}" aria-hidden="true"></i>
         <span class="wxdock__txt">{{ a.nombre }}</span>
@@ -123,7 +124,7 @@
 
   <!-- ----------------------------------------------------------- crear -->
   <span class="wxdock__hueco">
-    <button type="button" class="wxdock__crear" (click)="alternarCrear()"
+    <button type="button" class="wxdock__crear" data-guide="crear" (click)="alternarCrear()"
             [class.is-abierto]="crearAbierto()"
             [attr.aria-expanded]="crearAbierto()" aria-haspopup="menu"
             aria-label="Crear" title="Crear">
@@ -144,7 +145,7 @@
   <span class="wxdock__sep" aria-hidden="true"></span>
 
   <!-- -------------------------------------------------------- buscador -->
-  <button type="button" class="wxdock__buscar" (click)="abrirBuscador()"
+  <button type="button" class="wxdock__buscar" data-guide="buscar" (click)="abrirBuscador()"
           aria-label="Buscar en Wybix" title="Buscar en Wybix">
     <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
     <span class="wxdock__kbd">Ctrl K</span>

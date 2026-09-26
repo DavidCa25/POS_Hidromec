@@ -48,11 +48,14 @@ export class CustomerDisplayService {
       discount: 0,
       total: t.total,
       serviceMode: c.serviceMode,
+      /* Solo el nombre: nunca telefono, correo ni RFC en la pantalla del cliente. */
+      cliente: c.customer?.name ?? null,
     };
   }
 
-  showCheckout(p: { total: number; paid: number | null; change: number | null; method: PaymentMethod; credito: boolean }): void {
-    this.checkoutHasta = Date.now() + 8000;
+  showCheckout(p: { total: number; paid: number | null; change: number | null; method: PaymentMethod; credito: boolean; pedido?: { numero: number; cuentaId: number; cliente?: string | null } | null }): void {
+    /* Con numero de pedido, el cliente tiene que alcanzar a escanear el QR. */
+    this.checkoutHasta = Date.now() + (p.pedido ? 30000 : 8000);
     this.push({ mode: 'checkout', ...p }, true);
   }
 
@@ -70,7 +73,7 @@ export class CustomerDisplayService {
    */
   showPremios(items: { tipo: string; nombre: string | null; codigo: string | null; numero: number | null }[]): void {
     if (!items.length) return;
-    this.checkoutHasta = Date.now() + 12000;
+    this.checkoutHasta = Math.max(this.checkoutHasta, Date.now() + 12000);
     this.push({ mode: 'premios', items }, true);
   }
 

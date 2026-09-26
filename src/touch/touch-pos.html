@@ -35,6 +35,11 @@
               (click)="aServicios()" aria-label="Agenda del día">
         <i class="ph ph-calendar-blank"></i>
       </button>
+      <!-- El salon, cuando el negocio atiende en mesa. -->
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-mesas" *ngIf="caps.mesas"
+              (click)="aMesas()" aria-label="Mesas">
+        <i class="ph ph-armchair"></i><span>Mesas</span>
+      </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
         <i class="ph ph-magnifying-glass"></i>
@@ -82,7 +87,7 @@
       </div>
 
       <div class="tp-grid" *ngIf="!cargando() && productos().length">
-        <button type="button" class="tp-card" *ngFor="let p of productos()"
+        <button type="button" class="tp-card" *ngFor="let p of productos()" data-guide="touch-producto" [attr.data-guide-clave]="p.part_number"
                 [class.off]="agotado(p)" [disabled]="agotado(p)" (click)="tocar(p)">
 
           <span class="tp-card__media" [class.con-foto]="p.thumb">
@@ -114,16 +119,26 @@
     </main>
 
     <!-- ---------------------------------------------------------- CUENTA -->
-    <aside class="tp-cart" aria-label="Cuenta actual">
+    <aside class="tp-cart" aria-label="Cuenta actual" data-guide="touch-cuenta">
       <div class="tp-cart__head">
-        <h2>Cuenta</h2>
+        <h2 *ngIf="!cuentaMesa()">Cuenta</h2>
+        <!-- Una cuenta de mesa dice de que mesa es: es lo primero que se
+             pregunta el mesero al volver a la caja. -->
+        <h2 *ngIf="cuentaMesa() as m" class="tp-cart__mesa" data-guide="touch-cuenta-mesa">
+          <i class="ph" [class.ph-armchair]="m.mesaId" [class.ph-bag]="!m.mesaId" aria-hidden="true"></i> {{ nombreDeMesa(m.titulo) }}
+          <small *ngIf="m.area">{{ m.area }}</small>
+          <small class="tp-cart__porcobrar" *ngIf="m.estado === 'POR_COBRAR'">Por cobrar</small>
+        </h2>
         <span class="tp-cart__n" *ngIf="totales().itemCount">{{ totales().itemCount }}</span>
-        <button type="button" class="tp-txtbtn" *ngIf="lineas().length" (click)="vaciar()">Vaciar</button>
+        <button type="button" class="tp-txtbtn" *ngIf="cuentaMesa() && cuentaMesa()!.estado !== 'POR_COBRAR' && lineas().length"
+                (click)="pedirCuenta()">Pedir cuenta</button>
+        <button type="button" class="tp-txtbtn" *ngIf="lineas().length && (!cuentaMesa() || pendientesMesa().length)"
+                (click)="vaciar()">{{ cuentaMesa() ? 'Quitar lo nuevo' : 'Vaciar' }}</button>
       </div>
 
       <!-- Estado de la CUENTA completa, no del producto -->
       <div class="tp-servicio" role="group" aria-label="Modo de servicio">
-        <button type="button" [class.on]="serviceMode() === 'DINE_IN'" (click)="fijarServicio('DINE_IN')">
+        <button type="button" data-guide="venta-servicio" [class.on]="serviceMode() === 'DINE_IN'" (click)="fijarServicio('DINE_IN')">
           <i class="ph ph-fork-knife"></i> Aquí
         </button>
         <button type="button" [class.on]="serviceMode() === 'TAKEAWAY'" (click)="fijarServicio('TAKEAWAY')">
@@ -131,17 +146,33 @@
         </button>
       </div>
 
+      <!-- El cliente de la venta: una fila, no un formulario. Opcional. -->
+      <button type="button" class="tp-cliente" data-guide="touch-cliente" (click)="abrirClientes()"
+              [attr.aria-label]="cliente() ? 'Cliente: ' + cliente()!.name + '. Cambiar cliente' : 'Seleccionar cliente'">
+        <i class="ph ph-user" aria-hidden="true"></i>
+        <span class="tp-cliente__lbl">Cliente</span>
+        <span class="tp-cliente__nombre" *ngIf="cliente() as c; else sinCliente">{{ c.name }}</span>
+        <ng-template #sinCliente><span class="tp-cliente__vacio">Seleccionar</span></ng-template>
+        <i class="ph ph-caret-right" aria-hidden="true"></i>
+      </button>
+
       <div class="tp-lineas">
-        <div class="tp-linea" *ngFor="let l of lineas()">
+        <div class="tp-linea" *ngFor="let l of lineas()" [class.es-enviada]="l.enviada != null" data-guide="touch-linea" [attr.data-guide-clave]="l.productId">
           <div class="tp-linea__txt">
             <span class="tp-linea__nombre">{{ l.productName }}</span>
+            <!-- Donde esta la linea: Pendiente, Enviado a Barra, Listo. -->
+            <span class="tp-linea__estado" *ngIf="estadoLinea(l) as e" [ngClass]="e.clase">{{ e.texto }}</span>
             <span class="tp-linea__opts" *ngIf="l.options?.length">
               <span class="tp-linea__opt" *ngFor="let o of resumenOpciones(l)">{{ o.texto }}</span>
             </span>
             <span class="tp-linea__nota" *ngIf="l.note">{{ l.note }}</span>
           </div>
 
-          <div class="tp-linea__qty">
+          <!-- Lo enviado ya esta en cocina: la cantidad se ve, no se toca. -->
+          <div class="tp-linea__qty tp-linea__qty--fija" *ngIf="l.enviada != null">
+            <span class="tp-linea__num">{{ l.qty }}</span>
+          </div>
+          <div class="tp-linea__qty" *ngIf="l.enviada == null">
             <button type="button" (click)="mas(l, -1)" [attr.aria-label]="'Quitar uno de ' + l.productName">
               <i class="ph" [class.ph-minus]="l.qty > 1" [class.ph-trash]="l.qty === 1"></i>
             </button>
@@ -167,11 +198,127 @@
           <span>Total</span>
           <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
         </div>
-        <button type="button" class="tp-primaria" [disabled]="!lineas().length" (click)="irACobro()">
+        <!-- Enviar NO cobra y cobrar NO envia: son dos botones. Lo nuevo que no
+             se envie antes de cobrar se cobra igual, sin comanda. -->
+        <!-- Solo lo PENDIENTE: lo enviado ya esta en la base y no se repite. -->
+        <button type="button" class="tp-secundaria tp-enviar" data-guide="touch-enviar" *ngIf="pendientesMesa().length"
+                [disabled]="enviando()" (click)="enviarCocina()">
+          <i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>
+          {{ enviando() ? 'Enviando…' : (caps.comandas ? 'Enviar a preparación' : 'Guardar en la cuenta') }}
+          <span class="tp-enviar__n">{{ pendientesMesa().length }}</span>
+        </button>
+        <!-- «Aqui» sin mesa: para mandar a preparar, primero la mesa. -->
+        <button type="button" class="tp-secundaria tp-enviar" *ngIf="faltaMesa() && lineas().length"
+                (click)="aMesas()">
+          <i class="ph ph-armchair" aria-hidden="true"></i> Elegir mesa
+        </button>
+        <button type="button" class="tp-primaria" data-guide="touch-cobrar" [disabled]="!lineas().length" (click)="irACobro()">
           <i class="ph ph-arrow-right"></i> Cobrar
         </button>
       </div>
     </aside>
+  </div>
+
+  <!-- ============================================ SELECTOR DE MESAS -->
+  <div class="tp-overlay" *ngIf="eligiendoMesa()" (click)="eligiendoMesa.set(false)">
+    <hx-selector-mesas (click)="$event.stopPropagation()"
+                       [conPedido]="!cuentaMesa() && lineas().length > 0"
+                       [ocupado]="abriendoMesa()"
+                       (elegir)="elegirMesa($event)"
+                       (cerrar)="eligiendoMesa.set(false)"
+                       (verSalon)="verSalon()"></hx-selector-mesas>
+  </div>
+
+  <!-- ============================================ CLIENTE DE LA VENTA -->
+  <div class="tp-overlay" *ngIf="eligiendoCliente()" (click)="cerrarClientes()">
+    <div class="tp-hoja tp-hoja--cliente" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="tp-cli-titulo">
+      <header class="tp-hoja__head">
+        <div class="tp-hoja__id">
+          <span class="tp-hoja__media"><i class="ph ph-user"></i></span>
+          <div>
+            <h3 id="tp-cli-titulo">{{ nuevoCliente() ? 'Nuevo cliente' : 'Cliente de la venta' }}</h3>
+            <p *ngIf="!nuevoCliente()">{{ cliente() ? 'Ahora: ' + cliente()!.name : 'Opcional' }}</p>
+            <p *ngIf="nuevoCliente()">Solo lo indispensable. El resto, en Clientes.</p>
+          </div>
+        </div>
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarClientes()" aria-label="Cerrar">
+          <i class="ph ph-x"></i>
+        </button>
+      </header>
+
+      <!-- Buscar y elegir -->
+      <ng-container *ngIf="!nuevoCliente()">
+        <div class="tp-hoja__body tp-clientes">
+          <div class="tp-buscador__campo">
+            <i class="ph ph-magnifying-glass"></i>
+            <input id="tp-buscar-cliente" type="search" data-teclado="TEXT" placeholder="Nombre, teléfono o RFC…"
+                   autocomplete="off" maxlength="60"
+                   [value]="filtroCliente()" (input)="filtroCliente.set($any($event.target).value)"
+                   aria-label="Buscar cliente">
+          </div>
+          <div class="tp-clientes__lista" role="list">
+            <button type="button" class="tp-res tp-res--cliente" role="listitem" *ngFor="let c of clientesFiltrados()"
+                    [class.on]="cliente()?.id === c.id" (click)="elegirCliente(c)" [attr.data-cliente]="c.id">
+              <i class="ph" [class.ph-check-circle]="cliente()?.id === c.id" [class.ph-user]="cliente()?.id !== c.id"></i>
+              <span class="tp-res__n">{{ c.name }}</span>
+              <span class="tp-res__p" *ngIf="c.phone">{{ c.phone }}</span>
+            </button>
+            <p class="tp-res__vacio" *ngIf="cargandoClientes()">Cargando clientes…</p>
+            <p class="tp-res__vacio" *ngIf="!cargandoClientes() && !clientesFiltrados().length">
+              {{ filtroCliente() ? 'Nadie coincide. Puedes darlo de alta.' : 'Aún no hay clientes.' }}
+            </p>
+          </div>
+        </div>
+        <footer class="tp-hoja__foot tp-hoja__foot--dos">
+          <button type="button" class="tp-secundaria" *ngIf="cliente()" (click)="quitarCliente()">
+            <i class="ph ph-user-minus"></i> Quitar cliente
+          </button>
+          <button type="button" class="tp-secundaria" (click)="empezarAlta()">
+            <i class="ph ph-user-plus"></i> Nuevo cliente
+          </button>
+        </footer>
+      </ng-container>
+
+      <!-- Alta minima -->
+      <ng-container *ngIf="nuevoCliente() as n">
+        <div class="tp-hoja__body tp-alta">
+          <label class="tp-lbl" for="tp-cli-nombre">Nombre</label>
+          <input id="tp-cli-nombre" class="tp-campo" type="text" data-teclado="TEXT" maxlength="120" autocomplete="off"
+                 [value]="n.nombre" (input)="campoAlta('nombre', $any($event.target).value)">
+          <label class="tp-lbl" for="tp-cli-tel">Teléfono <small>(opcional)</small></label>
+          <input id="tp-cli-tel" class="tp-campo" type="tel" data-teclado="TEXT" maxlength="20" autocomplete="off"
+                 [value]="n.telefono" (input)="campoAlta('telefono', $any($event.target).value)">
+          <p class="tp-alta__error" role="alert" *ngIf="n.error">{{ n.error }}</p>
+        </div>
+        <footer class="tp-hoja__foot tp-hoja__foot--dos">
+          <button type="button" class="tp-secundaria" (click)="nuevoCliente.set(null)">Volver</button>
+          <button type="button" class="tp-primaria" [disabled]="guardandoCliente()" (click)="guardarCliente()">
+            {{ guardandoCliente() ? 'Guardando…' : 'Guardar y asignar' }}
+          </button>
+        </footer>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- ================================ COBRAR SIN ENVIAR A PREPARACION -->
+  <div class="tp-overlay" *ngIf="sinEnviar() as n" (click)="sinEnviar.set(null)">
+    <div class="tp-hoja tp-hoja--sm" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="tp-sin-enviar">
+      <header class="tp-hoja__head">
+        <div class="tp-hoja__id">
+          <span class="tp-hoja__media"><i class="ph ph-paper-plane-tilt"></i></span>
+          <div>
+            <h3 id="tp-sin-enviar">Hay productos sin enviar a preparación</h3>
+            <p>{{ n }} {{ n === 1 ? 'producto aún no llega' : 'productos aún no llegan' }} a cocina. Si cobras así, nadie {{ n === 1 ? 'lo' : 'los' }} prepara.</p>
+          </div>
+        </div>
+      </header>
+      <footer class="tp-hoja__foot tp-hoja__foot--dos">
+        <button type="button" class="tp-secundaria" (click)="sinEnviar.set(null)">Volver</button>
+        <button type="button" class="tp-primaria" data-guide="touch-enviar-y-cobrar" [disabled]="enviando()" (click)="enviarYCobrar()">
+          Enviar y cobrar
+        </button>
+      </footer>
+    </div>
   </div>
 
   <!-- ========================================================== BUSQUEDA -->
@@ -179,8 +326,13 @@
     <div class="tp-buscador" (click)="$event.stopPropagation()">
       <div class="tp-buscador__campo">
         <i class="ph ph-magnifying-glass"></i>
-        <input type="text" readonly inputmode="none" placeholder="Buscar producto…"
-               [value]="termino()" aria-label="Término de búsqueda">
+        <!-- Un campo de verdad: escribe el teclado de Wybix y escribe el
+             fisico, a la vez. Antes era de solo lectura y un teclado
+             conectado no servia de nada. -->
+        <input id="tp-buscar" type="search" data-teclado="TEXT" placeholder="Buscar producto…"
+               autocomplete="off" maxlength="40"
+               [value]="termino()" (input)="termino.set($any($event.target).value)"
+               aria-label="Buscar producto">
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarBusqueda()" aria-label="Cerrar búsqueda">
           <i class="ph ph-x"></i>
         </button>
@@ -197,7 +349,6 @@
         <p class="tp-res__vacio" *ngIf="!productos().length">Nada coincide todavía.</p>
       </div>
 
-      <wx-teclado [valor]="termino()" (valorChange)="termino.set($event)" [maximo]="40"></wx-teclado>
     </div>
   </div>
 
@@ -225,7 +376,7 @@
           </div>
           <div class="tp-opciones">
             <div class="tp-opcion-wrap" *ngFor="let o of g.options">
-              <button type="button" class="tp-opcion"
+              <button type="button" class="tp-opcion" data-guide="touch-opcion" [attr.data-guide-clave]="o.name"
                       [class.on]="elegido(g, o)" [class.off]="o.available_units <= 0"
                       [disabled]="o.available_units <= 0"
                       (click)="alternarOpcion(g, o)">
@@ -253,15 +404,12 @@
             <h4>Nota para barra</h4>
             <span class="tp-grupo__regla">Opcional</span>
           </div>
-          <button type="button" class="tp-nota" (click)="tecladoNota.set(!tecladoNota())"
-                  [class.on]="tecladoNota()">
-            <i class="ph ph-note-pencil"></i>
-            <span *ngIf="notaHoja()">{{ notaHoja() }}</span>
-            <span class="ph-vacio" *ngIf="!notaHoja()">Sin hielo, bien caliente…</span>
-          </button>
-          <div class="tp-nota__kb" *ngIf="tecladoNota()">
-            <wx-teclado [valor]="notaHoja()" (valorChange)="notaHoja.set($event)" [maximo]="120"></wx-teclado>
-          </div>
+          <label class="tp-nota tp-nota--campo">
+            <i class="ph ph-note-pencil" aria-hidden="true"></i>
+            <input type="text" data-teclado="TEXT" maxlength="120" autocomplete="off"
+                   placeholder="Sin hielo, bien caliente…" aria-label="Nota para barra"
+                   [value]="notaHoja()" (input)="notaHoja.set($any($event.target).value)">
+          </label>
         </section>
       </div>
 
@@ -271,7 +419,7 @@
           <span>{{ cantidadHoja() }}</span>
           <button type="button" (click)="masHoja(1)" aria-label="Más"><i class="ph ph-plus"></i></button>
         </div>
-        <button type="button" class="tp-primaria tp-hoja__add" [disabled]="!puedeAgregar()" (click)="confirmarHoja()">
+        <button type="button" class="tp-primaria tp-hoja__add" data-guide="touch-hoja-agregar" [disabled]="!puedeAgregar()" (click)="confirmarHoja()">
           <ng-container *ngIf="puedeAgregar()">
             <span>Agregar</span>
             <span class="tp-hoja__precio">{{ precioHoja() | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
@@ -323,7 +471,7 @@
         </div>
 
         <div class="tp-rapidas">
-          <button type="button" *ngFor="let s of sugerencias()"
+          <button type="button" *ngFor="let s of sugerencias()" data-guide="touch-cobro-rapido"
                   [class.on]="recibidoNum() === s" (click)="usarSugerencia(s)">
             {{ s | currency:'MXN':'symbol-narrow':'1.0-0' }}
           </button>
@@ -348,7 +496,7 @@
         </p>
       </div>
 
-      <button type="button" class="tp-primaria tp-cobro__confirmar"
+      <button type="button" class="tp-primaria tp-cobro__confirmar" data-guide="touch-cobro-confirmar"
               [disabled]="!alcanza() || cobrando()" (click)="confirmar()">
         <i class="ph ph-check-circle" *ngIf="!cobrando()"></i>
         <i class="ph ph-circle-notch spin" *ngIf="cobrando()"></i>
@@ -422,6 +570,14 @@
       <ng-template #sinCambio>
         <b class="tp-exito__titulo">Venta registrada</b>
       </ng-template>
+
+      <!-- El numero que el cliente buscara en la pantalla de pedidos. Va
+           tambien impreso en su ticket. -->
+      <div class="tp-exito__pedido" *ngIf="ultimoPedido() as n" data-guide="touch-numero-pedido">
+        <span>Pedido</span>
+        <b>{{ n }}</b>
+        <small>Díselo al cliente · va impreso en su ticket</small>
+      </div>
 
       <p class="tp-exito__folio" *ngIf="ultimoFolio()">Folio {{ ultimoFolio() }}</p>
 

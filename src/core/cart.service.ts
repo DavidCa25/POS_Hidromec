@@ -19,6 +19,21 @@ export class CartLine {
   inventoryMode: LineSource['inventoryMode'];
   /** Nota libre de la linea ("sin hielo"). No afecta inventario. */
   note: string | null = null;
+  /**
+   * Si la linea ya se envio a una cuenta de mesa, el id de esa linea en la
+   * base. Una linea enviada ya esta en cocina: no se fusiona con lo nuevo, no
+   * cambia de cantidad y no se quita desde el carrito. Deshacerla es cancelar
+   * su comanda, y eso lo decide un encargado.
+   */
+  enviada: number | null = null;
+  /**
+   * Identificador que la linea recibe al enviarse por primera vez y que NO
+   * cambia si el envio se reintenta. La base salta cualquier linea cuyo
+   * origen ya tiene: asi un reintento nunca manda dos veces lo mismo a cocina.
+   */
+  origen: string | null = null;
+  /** Lo que dice la cocina de esta linea ya enviada: su estacion y el estado de su comanda. */
+  prep: { estacion: string | null; estado: string | null } | null = null;
 
   constructor(lineId: number, src: LineSource, qty: number, options: SelectedOption[] = []) {
     this.lineId = lineId;
@@ -211,6 +226,12 @@ export class CartService {
       active.customer = null;
       active.creditCustomerId = null;
       active.serviceMode = null;
+      /* La venta se cerro: lo que la ataba a algo -la cuenta de una mesa, una
+         orden de servicio- se cerro con ella. Antes `meta` sobrevivia y la
+         caja seguia mostrando «Mesa 1» sobre una cuenta ya COBRADA: el
+         siguiente pedido iba a una cuenta cerrada y «Aquí» ya no ofrecia
+         elegir mesa. */
+      active.meta = undefined;
       this.touch();
     }
   }
@@ -273,7 +294,10 @@ export class CartService {
   addProduct(src: LineSource, qty = 1, options: SelectedOption[] = []): CartLine {
     const cart = this.activeCart();
     const key = CartService.optionsKey(options);
-    const existing = cart.lines.find(l => l.productId === src.productId && CartService.optionsKey(l.options) === key);
+    /* Ni en una enviada ni en una con envio en vuelo (tiene origen): lo que
+       ya salio hacia la cocina no crece por detras. */
+    const existing = cart.lines.find(l => l.enviada == null && l.origen == null
+      && l.productId === src.productId && CartService.optionsKey(l.options) === key);
     if (existing) {
       existing.qty += qty;
       this.touch();
@@ -286,6 +310,7 @@ export class CartService {
   }
 
   setQty(line: CartLine, qty: number, min = 1): void {
+    if (line.enviada != null) return;
     const q = Number(qty);
     line.qty = Number.isFinite(q) && q >= min ? q : min;
     this.touch();
@@ -308,12 +333,14 @@ export class CartService {
   }
 
   setPrice(line: CartLine, price: number): void {
+    if (line.enviada != null) return;
     const p = Number(price);
     line.unitPrice = Number.isFinite(p) && p >= 0 ? p : 0;
     this.touch();
   }
 
   removeLine(line: CartLine): void {
+    if (line.enviada != null) return;
     const cart = this.activeCart();
     cart.lines = cart.lines.filter(l => l !== line);
     this.touch();

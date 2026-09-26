@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { RouterOutlet } from '@angular/router';
@@ -8,6 +8,18 @@ import Swal from 'sweetalert2';
 import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
+import { AuthService } from '../services/auth.service';
+
+const PLIEGUE = 'wx-clientes:pliegue:';
+function leerPliegue(seccion: string, porDefecto: boolean): boolean {
+  try {
+    const v = localStorage.getItem(PLIEGUE + seccion);
+    return v === null ? porDefecto : v === '1';
+  } catch { return porDefecto; }
+}
+function guardarPliegue(seccion: string, abierta: boolean) {
+  try { localStorage.setItem(PLIEGUE + seccion, abierta ? '1' : '0'); } catch { /* noop */ }
+}
 
 type Cliente = {
   id: number;
@@ -21,14 +33,36 @@ type Cliente = {
   email?: string;
   creditLimit: number;
   termsDays: number;
-  balance: number;
-  overdueCount: number;
   active: boolean;
 
   graceDays?: number;
   lateFeePct?: number;
   lateFeeFixed?: number;
   riskLevel?: number;
+
+  /* ESTADO DE CUENTA: lo calcula sp_get_customers desde las ventas a credito.
+     No se captura: antes eran «Saldo (demo)» y «# vencidos (demo)», campos
+     que se editaban a mano y no se guardaban en ningun lado. */
+  balance: number;
+  overdueCount: number;
+  overdueBalance?: number;
+  availableCredit?: number;
+  nextDueDate?: string | null;
+  maxDaysLate?: number;
+  lateFeeEstimate?: number;
+  /** Por que no se le puede vender a credito (null = si se puede). */
+  creditBlock?: BloqueoCredito | null;
+};
+
+type BloqueoCredito = 'INACTIVO' | 'SIN_LIMITE' | 'RIESGO' | 'VENCIDAS' | 'SIN_DISPONIBLE';
+
+/** Lo que se le dice a la persona. `SIN_LIMITE` no se dice: es no dar credito. */
+const MOTIVO_BLOQUEO: Record<BloqueoCredito, string> = {
+  INACTIVO: 'Está inactivo.',
+  SIN_LIMITE: 'No tiene crédito autorizado.',
+  RIESGO: 'Está en riesgo alto: el crédito nuevo está suspendido.',
+  VENCIDAS: 'Tiene ventas vencidas: hay que abonar antes de fiarle otra vez.',
+  SIN_DISPONIBLE: 'Ya usó todo su límite.',
 };
 
 type ClienteVenta = {
@@ -38,6 +72,9 @@ type ClienteVenta = {
   paid_amount: number;
   balance: number;
   due_date: string | null;
+  daysLate: number;
+  overdue: boolean;
+  lateFee: number;
 };
 
 @Component({
@@ -67,11 +104,13 @@ export class Clientes implements OnInit {
     { valor: true, etiqueta: 'Sí' },
     { valor: false, etiqueta: 'No' },
   ];
+  /* Los valores no cambian (0-3, ya guardados en la base). Lo que cambia es
+     que el 3 ahora HACE algo: sp_register_sale no le vende a credito. */
   readonly opcRiesgo: WxOpcion[] = [
-    { valor: 0, etiqueta: '0 - Normal' },
-    { valor: 1, etiqueta: '1 - Bajo Riesgo' },
-    { valor: 2, etiqueta: '2 - Medio Riesgo' },
-    { valor: 3, etiqueta: '3 - Alto Riesgo' },
+    { valor: 0, etiqueta: 'Normal' },
+    { valor: 1, etiqueta: 'Bajo' },
+    { valor: 2, etiqueta: 'Medio', nota: 'Se avisa en caja' },
+    { valor: 3, etiqueta: 'Alto', nota: 'Sin crédito nuevo' },
   ];
   readonly opcMetodoAbono: WxOpcion[] = [
     { valor: 'EFECTIVO', etiqueta: 'Efectivo' },
@@ -109,10 +148,14 @@ export class Clientes implements OnInit {
   regimenes: CatalogoItem[] = [];
   usosCfdi: CatalogoItem[] = [];
 
-  regimenAbierto = false;
-  usoAbierto = false;
+  /* Secciones plegables del dialogo. Se recuerda en este equipo como las dejo
+     la persona: quien no da credito no quiere verlo abierto cada vez. */
+  creditoAbierto = leerPliegue('credito', false);
+  facturacionAbierta = leerPliegue('facturacion', false);
+  opcRegimen: WxOpcion[] = [];
+  opcUso: WxOpcion[] = [];
 
-  constructor(private catalogos: CatalogosService) {}
+  constructor(private catalogos: CatalogosService, private auth: AuthService) {}
 
   async ngOnInit() {
     await this.cargarCatalogos();
@@ -156,13 +199,19 @@ export class Clientes implements OnInit {
         email: row.email,
         creditLimit: Number(row.credit_limit ?? 0),
         termsDays: Number(row.terms_days ?? 0),
-        balance: Number(row.balance ?? 0),
-        overdueCount: Number(row.overdueCount ?? 0),
         active: !!row.active,
         graceDays: Number(row.grace_days ?? 0),
         lateFeePct: Number(row.late_fee_pct ?? 0),
         lateFeeFixed: Number(row.late_fee_fixed ?? 0),
         riskLevel: Number(row.risk_level ?? 0),
+        balance: Number(row.balance ?? 0),
+        overdueCount: Number(row.overdueCount ?? 0),
+        overdueBalance: Number(row.overdue_balance ?? 0),
+        availableCredit: Number(row.available_credit ?? 0),
+        nextDueDate: row.next_due_date ?? null,
+        maxDaysLate: Number(row.max_days_late ?? 0),
+        lateFeeEstimate: Number(row.late_fee_estimate ?? 0),
+        creditBlock: (row.credit_block ?? null) as BloqueoCredito | null,
       }));
     } catch (e: any) {
       console.error(e);
@@ -241,8 +290,6 @@ export class Clientes implements OnInit {
     this.form = {
       creditLimit: 0,
       termsDays: 0,
-      balance: 0,
-      overdueCount: 0,
       active: true,
       graceDays: 0,
       lateFeePct: 0,
@@ -268,11 +315,18 @@ export class Clientes implements OnInit {
       return;
     }
 
+    const problema = this.problemaCredito();
+    if (problema) {
+      this.creditoAbierto = true;
+      await Swal.fire({ icon: 'warning', title: 'Revisa el crédito', text: problema });
+      return;
+    }
+
     const api = (window as any).electronAPI;
     if (!api || (!api.createCustomer && !api.updateCustomer)) {
       await Swal.fire({
         icon: 'error',
-        title: 'Modo demo',
+        title: 'Sin conexión',
         text: 'No hay conexión con Electron/DB (¿quizá estás en ng serve?).',
       });
       return;
@@ -309,7 +363,8 @@ export class Clientes implements OnInit {
           return;
         }
 
-        Object.assign(this.editing, this.form);
+        /* Limite, plazo o gracia cambian el disponible y lo vencido: se relee. */
+        await this.loadClientes();
 
         await Swal.fire({
           icon: 'success',
@@ -331,9 +386,14 @@ export class Clientes implements OnInit {
           this.form.creditLimit ?? 0,
           this.form.termsDays ?? 0,
           this.form.active ?? true,
-          this.form.regimen_fiscal ?? null, 
-          this.form.uso_cfdi ?? null,       
-          this.form.razon_social ?? null    
+          this.form.regimen_fiscal ?? null,
+          this.form.uso_cfdi ?? null,
+          this.form.razon_social ?? null,
+          /* Antes el alta no los mandaba: se capturaban y se perdian. */
+          Number(this.form.graceDays) || 0,
+          Number(this.form.lateFeePct) || 0,
+          Number(this.form.lateFeeFixed) || 0,
+          Number(this.form.riskLevel) || 0
         );
 
         if (!res?.success) {
@@ -345,24 +405,8 @@ export class Clientes implements OnInit {
           return;
         }
 
-        const id = res.id;
-
-        this.clientes.unshift({
-          id,
-          code: this.form.code ?? '',
-          name: this.form.name!,
-          tax_id: this.form.tax_id ?? '',                
-          regimen_fiscal: this.form.regimen_fiscal ?? '', 
-          uso_cfdi: this.form.uso_cfdi ?? '',            
-          razon_social: this.form.razon_social ?? '',     
-          phone: this.form.phone ?? '',
-          email: this.form.email ?? '',
-          creditLimit: this.form.creditLimit ?? 0,
-          termsDays: this.form.termsDays ?? 0,
-          balance: this.form.balance ?? 0,
-          overdueCount: this.form.overdueCount ?? 0,
-          active: this.form.active ?? true
-        });
+        /* El estado de cuenta lo calcula la base: se relee en vez de inventarlo. */
+        await this.loadClientes();
 
         await Swal.fire({
           icon: 'success',
@@ -387,6 +431,74 @@ export class Clientes implements OnInit {
   }
 
   cerrarModal() { this.showModal = false; }
+
+  @HostListener('document:keydown.escape')
+  alEscape() {
+    /* Un menu abierto (wx-select) se cierra primero con su propio Escape. */
+    if (this.showModal && !document.querySelector('.wx-pop:popover-open')) this.cerrarModal();
+  }
+
+  /** Lo que no cuadra en las condiciones de credito, dicho para la persona. */
+  problemaCredito(): string | null {
+    const f = this.form;
+    const num = (v: any) => (v === null || v === undefined || v === '' ? 0 : Number(v));
+    if (!Number.isFinite(num(f.creditLimit)) || num(f.creditLimit) < 0) return 'El límite de crédito no puede ser negativo.';
+    if (!Number.isInteger(num(f.termsDays)) || num(f.termsDays) < 0) return 'Los días de plazo son un número entero, cero o más.';
+    if (!Number.isInteger(num(f.graceDays)) || num(f.graceDays) < 0) return 'Los días de gracia son un número entero, cero o más.';
+    if (num(f.lateFeePct) < 0 || num(f.lateFeePct) > 100) return 'El interés moratorio va de 0 a 100 % al mes.';
+    if (num(f.lateFeeFixed) < 0) return 'El recargo por venta vencida no puede ser negativo.';
+    return null;
+  }
+
+  /** Por que no se le puede fiar, o null. */
+  motivoBloqueo(c: Cliente | null): string | null {
+    if (!c?.creditBlock || c.creditBlock === 'SIN_LIMITE') return null;
+    return MOTIVO_BLOQUEO[c.creditBlock] ?? null;
+  }
+
+  /** El limite nuevo queda por debajo de lo que ya debe. */
+  get limiteBajoDeuda(): boolean {
+    return !!this.editing && Number(this.form.creditLimit) > 0
+      && Number(this.form.creditLimit) < (this.editing.balance || 0);
+  }
+
+  get moraTotal(): number {
+    return this.ventasCliente.reduce((s, v) => s + (v.lateFee || 0), 0);
+  }
+
+  /** Editar -> abonar sin pasar por la lista. */
+  async abonarDesdeFicha() {
+    const c = this.editing;
+    if (!c) return;
+    this.cerrarModal();
+    await this.abonar(c);
+  }
+
+  alternarCredito() {
+    this.creditoAbierto = !this.creditoAbierto;
+    guardarPliegue('credito', this.creditoAbierto);
+  }
+
+  alternarFacturacion() {
+    this.facturacionAbierta = !this.facturacionAbierta;
+    guardarPliegue('facturacion', this.facturacionAbierta);
+  }
+
+  /** Lo que dice la seccion de credito plegada. */
+  get resumenCredito(): string {
+    const limite = Number(this.form.creditLimit) || 0;
+    const dinero = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
+    const debe = this.editing?.balance || 0;
+    if (limite <= 0) return debe > 0 ? `Sin crédito · debe ${dinero(debe)}` : 'Sin crédito';
+    const plazo = Number(this.form.termsDays) || 0;
+    const base = plazo > 0 ? `${dinero(limite)} · ${plazo} ${plazo === 1 ? 'día' : 'días'}` : dinero(limite);
+    return debe > 0 ? `${base} · debe ${dinero(debe)}` : base;
+  }
+
+  /** Lo que dice la seccion de facturacion plegada. */
+  get resumenFacturacion(): string {
+    return (this.form.tax_id || '').trim() || 'Sin datos';
+  }
 
   // ===== ABONOS =====
   async abonar(c: Cliente) {
@@ -437,7 +549,10 @@ export class Clientes implements OnInit {
         total: Number(r.total ?? 0),
         paid_amount: Number(r.paid_amount ?? 0),
         balance: Number(r.balance ?? 0),
-        due_date: r.due_date
+        due_date: r.due_date,
+        daysLate: Number(r.days_late ?? 0),
+        overdue: !!r.is_overdue,
+        lateFee: Number(r.late_fee_estimate ?? 0),
       }));
 
       if (this.ventasCliente.length > 0) {
@@ -519,7 +634,8 @@ export class Clientes implements OnInit {
     try {
       this.savingAbono = true;
 
-      const userId = 1;
+      /* El proceso principal usa el de la sesion; este es solo por si acaso. */
+      const userId = this.auth.usuarioActualId;
 
       const resp = await api.registerCustomerPayment(
         this.abonoCliente.id,
@@ -571,18 +687,10 @@ export class Clientes implements OnInit {
       ]);
       this.regimenes = reg;
       this.usosCfdi = uso;
+      this.opcRegimen = reg.map(r => ({ valor: r.code, etiqueta: r.description, nota: r.code, busca: r.code }));
+      this.opcUso = uso.map(u => ({ valor: u.code, etiqueta: u.description, nota: u.code, busca: u.code }));
     } catch (e) {
       console.error('Error al cargar catálogos SAT en clientes:', e);
     }
-  }
-
-  get regimenLabel(): string {
-    const r = this.regimenes.find(x => x.code === this.form.regimen_fiscal);
-    return r ? `${r.code} - ${r.description}` : 'Selecciona régimen';
-  }
-
-  get usoLabel(): string {
-    const u = this.usosCfdi.find(x => x.code === this.form.uso_cfdi);
-    return u ? `${u.code} - ${u.description}` : 'Selecciona uso de CFDI';
   }
 }

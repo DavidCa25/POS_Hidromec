@@ -1,0 +1,244 @@
+/* ==========================================================================
+   KDS
+   Pantalla de trabajo, no de consulta: se mira de pie, a un metro, todo el
+   turno. Tres carriles en el orden en que viaja una comanda -nueva, en el
+   fuego, lista- y cada uno con SU color, el mismo de las cifras de arriba:
+   azul lo que llega, cyan lo que se prepara, verde lo que espera a salir.
+
+   El tiempo tiene su propio canal y no se mezcla con el estado: el reloj y la
+   barra bajo la cabecera se calientan a los 8 minutos (ambar) y se marcan a
+   los 15 (rojo). Nada parpadea ni late: una cocina no necesita mas ruido.
+   ========================================================================== */
+:host { display: block; }
+
+.kds {
+  min-height: 100dvh;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 14px 18px 24px;
+  background: var(--wx-canvas);
+  color: var(--wx-text);
+}
+
+/* ------------------------------------------------------------- cabecera */
+.kds-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px;
+  padding: 10px 12px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+}
+.kds-salir {
+  width: 48px; height: 48px; display: grid; place-items: center;
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md);
+  background: var(--wx-raised); color: var(--wx-text); font-size: 20px; cursor: pointer;
+}
+.kds-salir:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.kds-titulo { display: flex; flex-direction: column; line-height: 1.1; }
+.kds-titulo h1 { margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; }
+.kds-hora { color: var(--wx-text-muted); font-family: var(--wx-font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.kds-est .kds-dot { --dot: var(--hx-c); }
+/* Cifras en texto, sin cajas (concepto A). Solo lo atrasado va en rojo. */
+.kds-cifras {
+  margin: 0 0 0 auto; padding: 0; list-style: none;
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  font-size: 14px; color: var(--wx-text-muted);
+}
+.kds-cifras b {
+  margin-right: 4px; color: var(--wx-text);
+  font-family: var(--wx-font-mono); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.kds-cifras .es-tarde, .kds-cifras .es-tarde b { color: var(--wx-danger); }
+
+.kds-error { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--wx-danger); }
+
+/* --------------------------------------------------------------- al dia */
+.kds-vacio {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52vh; padding: 32px 24px; text-align: center;
+  border: 1px dashed var(--wx-edge-strong);
+  border-radius: var(--wx-radius-lg);
+  background:
+    radial-gradient(ellipse at 50% 38%, var(--wx-success-soft), transparent 55%),
+    var(--wx-surface);
+  color: var(--wx-text-muted);
+}
+.kds-vacio__sello {
+  position: relative; width: 132px; height: 132px; margin-bottom: 10px;
+  display: grid; place-items: center;
+}
+.kds-vacio__sello > i {
+  position: relative; width: 76px; height: 76px; display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--wx-surface);
+  border: 1px solid color-mix(in srgb, var(--wx-success) 40%, transparent);
+  color: var(--wx-success);
+  font-size: 38px;
+  box-shadow: var(--wx-shadow-raised);
+}
+.kds-vacio__anillo {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--wx-success) 22%, transparent);
+}
+.kds-vacio__anillo--2 { inset: 18px; border-color: color-mix(in srgb, var(--wx-success) 34%, transparent); }
+.kds-vacio h2 { margin: 0; color: var(--wx-text); font-size: 24px; font-weight: 750; letter-spacing: -0.02em; }
+.kds-vacio p { margin: 0; max-width: 46ch; font-size: 15px; line-height: 1.5; }
+.kds-vacio__pulso {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--wx-raised); border: 1px solid var(--wx-edge);
+  font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------- carriles
+   CONCEPTO A · CARRILES CLAROS
+   - El carril ya no se tiñe: es una columna con su titulo; el color de estado
+     vive en un punto junto al titulo, no en cada tarjeta.
+   - La tarjeta es blanca. Su franja izquierda es la ESTACION (el mismo color
+     que el filtro de arriba), no el estado.
+   - El reloj va en gris y SOLO se colorea cuando importa: ambar a los 8 min,
+     rojo a los 15. Antes todo estaba en rojo y el rojo ya no avisaba.
+   - Un boton por paso, cada uno con su tono: Empezar navy, Lista cyan,
+     Entregada verde suave. Reimprimir y cancelar, en «···».
+   ------------------------------------------------------------------------ */
+.kds-tablero {
+  display: grid;
+  grid-template-columns: var(--kds-cols, repeat(3, minmax(0, 1fr)));
+  gap: 16px;
+  align-items: start;
+}
+.kds-carril {
+  --carril: var(--wx-blue-500);
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 60vh;
+}
+.kds-carril.es-preparando { --carril: var(--wx-accent); }
+.kds-carril.es-lista { --carril: var(--wx-success); }
+
+.kds-carril__cab { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 4px; }
+.kds-carril__punto { width: 8px; height: 8px; border-radius: 50%; background: var(--carril); }
+.kds-carril__cab h2 {
+  margin: 0; font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--wx-text-muted);
+}
+.kds-carril__n {
+  font-family: var(--wx-font-mono); font-size: 12.5px; font-weight: 500;
+  color: var(--wx-text-dim); font-variant-numeric: tabular-nums;
+}
+.kds-carril__nada {
+  margin: 0; padding: 22px 12px; text-align: center;
+  border: 1px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-md);
+  color: var(--wx-text-dim); font-size: 13.5px;
+}
+/* Dentro del carril, las tarjetas se reparten en columnas si caben. */
+.kds-carril__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.kds-carril__lista:empty { display: none; }
+
+/* ------------------------------------------------------------- tarjetas */
+.kds-card {
+  position: relative;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px 12px 18px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  overflow: hidden;
+  transition: border-color var(--wx-dur-state) var(--wx-ease-out);
+}
+/* La estacion, en la franja: `colorEstacion()` pone la clase hx-cN. */
+.kds-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--hx-c, var(--wx-edge-strong));
+}
+.kds-card.t-atraso { border-color: color-mix(in srgb, var(--wx-danger) 45%, var(--wx-edge)); }
+
+/* Mesa y reloj en la primera linea; donde (estacion, area, folio) debajo y
+   completo: con nombres reales no cabia en una linea y el folio se cortaba. */
+.kds-card__cab {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; column-gap: 8px; row-gap: 1px; min-width: 0;
+}
+.kds-card__dest {
+  grid-column: 1; grid-row: 1;
+  font-size: 18px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.kds-card__donde {
+  grid-column: 1 / -1; grid-row: 2;
+  font-size: 12.5px; color: var(--wx-text-muted); line-height: 1.35; overflow-wrap: anywhere;
+}
+.kds-card__num { font-family: var(--wx-font-mono); }
+.kds-card__reloj {
+  grid-column: 2; grid-row: 1;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px;
+  font-family: var(--wx-font-mono); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums;
+  color: var(--wx-text-muted);
+}
+.kds-card__reloj .ph { font-size: 14px; }
+.kds-card.t-aviso .kds-card__reloj { background: var(--wx-warning-soft); color: var(--wx-warning-ink, var(--wx-amber-600)); font-weight: 600; }
+.kds-card.t-atraso .kds-card__reloj { background: var(--wx-danger-soft); color: var(--wx-danger); font-weight: 600; }
+
+.kds-card__lineas { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.kds-card__lineas li { display: grid; grid-template-columns: 30px 1fr; gap: 9px; align-items: start; }
+.kds-l__cant {
+  display: grid; place-items: center;
+  height: 27px; border-radius: 7px;
+  background: var(--wx-sunken);
+  font-family: var(--wx-font-mono); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.kds-l__cuerpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; }
+.kds-l__nom { font-size: 16.5px; font-weight: 500; line-height: 1.3; }
+.kds-l__op { font-size: 13.5px; color: var(--wx-text-muted); line-height: 1.3; }
+.kds-l__nota {
+  width: fit-content; max-width: 100%; margin-top: 3px;
+  padding: 1px 8px; border-radius: 6px;
+  background: var(--wx-warning-soft); color: var(--wx-warning-ink, var(--wx-amber-600));
+  font-size: 13px; font-weight: 600;
+}
+
+.kds-card__pie { display: flex; align-items: stretch; gap: 8px; margin-top: auto; }
+.kds-paso {
+  flex: 1 1 auto;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px;
+  border: 0; border-radius: var(--wx-radius-sm);
+  background: var(--wx-navy-700); color: #fff;
+  font: inherit; font-size: 16px; font-weight: 600;
+  cursor: pointer; touch-action: manipulation;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out), opacity var(--wx-dur-micro) ease;
+}
+.kds-paso .ph { font-size: 18px; }
+.kds-card.es-preparando .kds-paso { background: var(--wx-accent); color: var(--wx-accent-ink); }
+.kds-card.es-lista .kds-paso { background: var(--wx-success-soft); color: var(--wx-success); }
+/* En oscuro el navy se funde con el fondo: el paso se enciende. */
+:host-context(html.dark) .kds-card.es-nueva .kds-paso { background: var(--wx-navy-400); }
+@media (hover: hover) { .kds-paso:hover { opacity: 0.92; } }
+.kds-paso:active { transform: scale(0.98); }
+.kds-paso:disabled { opacity: 0.6; }
+.kds-paso:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+/* «···»: el menu de la tarjeta, del mismo alto que el paso. */
+.kds-card__pie wx-menu { --wx-menu-alto: 48px; display: flex; }
+
+/* Pantallas angostas (una tableta de pie): un carril debajo del otro. */
+@media (max-width: 1100px) {
+  .kds-tablero { grid-template-columns: 1fr; }
+  .kds-carril { min-height: 0; }
+  .kds-carril__nada { padding: 12px; }
+  .kds-cifras { margin-left: 0; }
+  .kds-carril__lista { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kds-paso { transition: none; }
+  .kds-paso:active { transform: none; }
+}

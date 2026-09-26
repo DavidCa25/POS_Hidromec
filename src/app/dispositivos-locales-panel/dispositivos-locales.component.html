@@ -1,0 +1,255 @@
+<div class="panel-content dl">
+  <div class="dl-titulo">
+    <div>
+      <div class="section-title"><i class="ph ph-devices"></i> Dispositivos locales</div>
+      <p class="hint">Así está la red de tu local ahora. Las pantallas hablan con esta computadora, no con Internet.</p>
+    </div>
+    <div class="toggle dl-toggle" *ngIf="estado() as e">
+      <label class="sw">
+        <input type="checkbox" id="dl-activo" [checked]="e.encendidoEnConfig" [disabled]="trabajando() || e.fase === 'NO_PRINCIPAL'"
+               (change)="alternar($any($event.target).checked)">
+        <span class="sl"></span>
+      </label>
+      <label class="ttext" for="dl-activo">Permitir pantallas en la red local</label>
+    </div>
+  </div>
+
+  <p class="dl-aviso" *ngIf="cargando() && !estado()">Revisando la red…</p>
+  <p class="dl-aviso dl-aviso--mal" *ngIf="error()" role="alert">{{ error() }}</p>
+
+  <ng-container *ngIf="estado() as e">
+    <!-- ================================================= MAPA DE LA RED (B) -->
+    <section class="dl-mapa" aria-label="Mapa de la red del local">
+      <svg class="dl-mapa__lineas" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="50" y1="50" x2="50" y2="14" class="ln ln--internet" [class.ln--internet-ok]="e.internet"></line>
+        <line x1="22" y1="50" x2="50" y2="50" class="ln ln--host" [class.ln--apagado]="!e.activo"></line>
+        <line *ngFor="let n of nodos(); trackBy: porNodo" x1="50" y1="50" [attr.x2]="n.x" [attr.y2]="n.y"
+              class="ln" [class.ln--vivo]="n.d.enLinea" [class.ln--fuera]="!n.d.enLinea"></line>
+      </svg>
+
+      <div class="dl-nodo dl-nodo--nube" style="left:50%;top:14%">
+        <span class="dl-nodo__cir"><i class="ph ph-globe" aria-hidden="true"></i></span>
+        <b>Internet</b>
+        <span class="dl-chip"><span class="dl-punto" [class.dl-punto--ok]="e.internet" [class.dl-punto--off]="!e.internet"></span>
+          {{ e.internet === null ? 'Revisando…' : e.internet ? 'Disponible · no se usa' : 'No disponible · no hace falta' }}</span>
+      </div>
+
+      <div class="dl-nodo" style="left:50%;top:50%">
+        <span class="dl-nodo__cir" [class.dl-nodo__cir--mal]="!e.lan"><i class="ph ph-wifi-high" aria-hidden="true"></i></span>
+        <b>Router del local</b>
+        <span class="mono dl-sub" *ngIf="direccion() as d">{{ d.ip }}</span>
+        <span class="dl-chip dl-chip--mal" *ngIf="!e.lan"><span class="dl-punto dl-punto--mal"></span> Sin red local</span>
+      </div>
+
+      <div class="dl-nodo dl-nodo--host" style="left:22%;top:50%">
+        <span class="dl-nodo__cir"><i class="ph ph-desktop-tower" aria-hidden="true"></i></span>
+        <b>Esta computadora</b>
+        <span class="dl-chip"><span class="dl-punto" [class.dl-punto--ok]="e.activo" [class.dl-punto--off]="!e.activo"></span>
+          {{ textoFase(e) }}<span class="mono" *ngIf="e.activo"> · :{{ e.puerto }}</span></span>
+      </div>
+
+      <button type="button" class="dl-nodo dl-nodo--disp" *ngFor="let n of nodos(); trackBy: porNodo"
+              [style.left.%]="n.x" [style.top.%]="n.y" [class.dl-nodo--fuera]="!n.d.enLinea" [class.dl-nodo--visto]="visto()?.id === n.d.id"
+              (click)="ver(n.d)" [attr.aria-label]="n.d.nombre + ', ' + n.d.superficieNombre + (n.d.enLinea ? ', en línea' : ', sin conexión')">
+        <span class="dl-nodo__cir"><i class="ph" [ngClass]="icono(n.d.superficie)" aria-hidden="true"></i></span>
+        <b>{{ n.d.nombre }}</b>
+        <span class="dl-chip"><span class="dl-punto" [class.dl-punto--ok]="n.d.enLinea" [class.dl-punto--off]="!n.d.enLinea"></span>
+          {{ n.d.superficieNombre }}<ng-container *ngIf="detalleDe(n.d) as x"> · {{ x }}</ng-container></span>
+      </button>
+      <p class="dl-mapa__mas" *ngIf="fuera()">y {{ fuera() }} más en la lista</p>
+      <p class="dl-mapa__vacio" *ngIf="!activos().length">Aún no hay dispositivos. Conecta una tablet, un teléfono o una PC.</p>
+
+      <button type="button" class="btn-primary dl-mapa__conectar" (click)="abrirConectar()" *ngIf="!conectando()"
+              [disabled]="e.fase === 'NO_PRINCIPAL' || e.fase === 'OTRO_HOST' || !e.lan">
+        <i class="ph ph-plus"></i> Conectar dispositivo
+      </button>
+      <div class="dl-mapa__leyenda">
+        <span><span class="dl-punto dl-punto--ok"></span> En línea</span>
+        <span><span class="dl-punto dl-punto--off"></span> Sin conexión</span>
+        <span>- - Internet: no forma parte del camino</span>
+      </div>
+    </section>
+
+    <!-- ============================================ CONECTAR UN DISPOSITIVO -->
+    <section class="dl-hoja" *ngIf="conectando() || cambiando()" aria-label="Función del dispositivo">
+      <ng-container *ngIf="!qr(); else codigo">
+        <div class="dl-hoja__cab">
+          <b>{{ cambiando() ? 'Cambiar la función de «' + cambiando()!.nombre + '»' : 'Conectar dispositivo' }}</b>
+          <span class="hint">{{ cambiando() ? 'La persona que esté usándolo sale y la pantalla cambia al momento.' : 'Elige qué va a ser esta pantalla. Hace una sola cosa.' }}</span>
+        </div>
+        <div class="dl-funciones" role="group" aria-label="Función">
+          <button type="button" class="dl-funcion" *ngFor="let s of e.superficies" [attr.aria-pressed]="funcion() === s.tipo" (click)="funcion.set(s.tipo)">
+            <i class="ph" [ngClass]="icono(s.tipo)" aria-hidden="true"></i>
+            <b>{{ s.nombre }}</b>
+            <span>{{ s.descripcion }}</span>
+            <small>{{ s.identidad === 'TRABAJADOR' ? 'Cada persona entra con su QR o PIN' : s.familia === 'PUBLICA' ? 'La ve el cliente' : 'Sin iniciar sesión' }}</small>
+          </button>
+        </div>
+
+        <ng-container *ngIf="superficieElegida() as s">
+          <div class="dl-form" *ngIf="!cambiando()">
+            <label class="lbl" for="dl-nombre">Nombre del dispositivo</label>
+            <input id="dl-nombre" class="ctl" [(ngModel)]="nombre" maxlength="80" [placeholder]="s.requiereEstacion ? 'Tablet Cocina' : 'Tablet empleados'" autocomplete="off">
+          </div>
+          <div class="dl-form" *ngIf="s.requiereEstacion">
+            <span class="lbl">Estación</span>
+            <div class="dl-opciones">
+              <button type="button" class="dl-opcion" *ngFor="let x of e.estaciones" [attr.aria-pressed]="estacion === x.id" (click)="estacion = x.id">{{ x.nombre }}</button>
+              <button type="button" class="dl-opcion" [attr.aria-pressed]="estacion === 'todas'" (click)="estacion = 'todas'">Todas</button>
+            </div>
+            <p class="hint" *ngIf="!e.estaciones.length">Primero crea una estación (Barra, Cocina…) en Comandas.</p>
+          </div>
+          <div class="dl-form" *ngIf="s.tipo === 'WAITER' && e.areas.length">
+            <span class="lbl">Áreas que atiende (sin marcar: todo el salón)</span>
+            <div class="dl-opciones">
+              <label class="dl-check" *ngFor="let a of e.areas">
+                <input type="checkbox" [checked]="areasElegidas.has(a.id)" (change)="alternarArea(a.id, $any($event.target).checked)"> {{ a.nombre }}
+              </label>
+            </div>
+          </div>
+          <div class="dl-form" *ngIf="s.tipo === 'CUSTOMER_STATUS'">
+            <span class="lbl">Pantalla del cliente</span>
+            <label class="dl-check"><input type="checkbox" [(ngModel)]="publica.mostrarMesa"> Incluir también los pedidos de mesa (salen por el nombre de la mesa)</label>
+            <label class="dl-check"><input type="checkbox" [(ngModel)]="publica.sonido"> Sonar cuando un pedido está listo</label>
+            <label class="dl-check">Quitar los pedidos listos a los
+              <input type="number" class="ctl dl-num" min="1" max="60" [(ngModel)]="publica.minutosListo"> minutos</label>
+            <p class="hint">Muestra el número de pedido del día, el mismo que va impreso en el ticket del cliente, y su estado. Nunca nombres, totales ni teléfonos.</p>
+          </div>
+          <p class="hint" *ngIf="s.identidad === 'TRABAJADOR'">Quien la use entra con su QR o su PIN (sección Personas). No puede cobrar.</p>
+        </ng-container>
+
+        <div class="btn-row">
+          <button type="button" class="btn-outline" (click)="conectando.set(false); cambiando.set(null)">Cancelar</button>
+          <button type="button" class="btn-primary" *ngIf="!cambiando()" (click)="generar()" [disabled]="trabajando() || !funcion()">Generar código</button>
+          <button type="button" class="btn-primary" *ngIf="cambiando()" (click)="confirmarCambio()" [disabled]="!funcion()">Cambiar función</button>
+        </div>
+      </ng-container>
+
+      <ng-template #codigo>
+        <div class="dl-qr" *ngIf="qr() as q">
+          <img [src]="q.qr" width="220" height="220" alt="Código QR para conectar el dispositivo">
+          <div class="dl-qr__txt">
+            <b>Escanéalo con la cámara del dispositivo</b>
+            <span>{{ q.nombre }} · {{ q.funcion }}</span>
+            <code>{{ sinToken(q.url) }}</code>
+            <span class="dl-qr__tiempo" [class.dl-qr__tiempo--fin]="!quedan()">
+              {{ quedan() ? 'Caduca en ' + quedanTexto : 'Este código caducó. Genera otro.' }}
+            </span>
+            <small>Sirve una sola vez. El dispositivo debe estar en la misma red que esta computadora.</small>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-outline" (click)="generar()" *ngIf="!quedan()">Generar otro</button>
+          <button type="button" class="btn-primary" (click)="cerrarConectar()">Listo</button>
+        </div>
+      </ng-template>
+    </section>
+
+    <!-- ======================================================= DISPOSITIVOS -->
+    <div class="section-title dl-sep"><i class="ph ph-list"></i> Dispositivos</div>
+    <ul class="dl-lista" *ngIf="activos().length; else sinDispositivos">
+      <li *ngFor="let d of activos(); trackBy: porId" class="dl-disp" [class.dl-disp--abierto]="visto()?.id === d.id">
+        <div class="dl-disp__fila">
+          <span class="dl-disp__ic"><i class="ph" [ngClass]="icono(d.superficie)" aria-hidden="true"></i></span>
+          <div class="dl-disp__txt">
+            <b>{{ d.nombre }}</b>
+            <span>{{ d.superficieNombre }}<ng-container *ngIf="d.superficie === 'PREPARATION'"> · {{ d.todas ? 'Todas' : d.estacion }}</ng-container></span>
+          </div>
+          <span class="dl-disp__quien">{{ d.sesion ? d.sesion.nombre : (d.familia === 'TRABAJADOR' ? '—' : '') }}</span>
+          <span class="wx-status" [class.wx-status--ok]="d.enLinea">{{ d.enLinea ? 'En línea' : 'Sin conexión · ' + hace(d.ultimoContacto) }}</span>
+          <div class="dl-disp__acc">
+            <button type="button" class="btn-outline dl-mini" (click)="ver(d)">{{ visto()?.id === d.id ? 'Ocultar' : 'Ver' }}</button>
+            <button type="button" class="btn-outline dl-mini" (click)="abrirCambio(d)">Cambiar función</button>
+            <button type="button" class="btn-outline dl-mini" (click)="renombrar(d)">Renombrar</button>
+            <button type="button" class="btn-outline dl-mini dl-mini--mal" (click)="revocar(d)">Revocar</button>
+          </div>
+        </div>
+        <dl class="dl-datos" *ngIf="visto()?.id === d.id">
+          <dt>Función</dt><dd>{{ d.superficieNombre }}</dd>
+          <ng-container *ngIf="d.sesion">
+            <dt>Sesión</dt><dd>{{ d.sesion.nombre }} · desde {{ hora(d.sesion.inicio) }} ({{ d.sesion.via }})</dd>
+            <dt>Última actividad</dt><dd>{{ hace(d.sesion.ultimaActividad) }}</dd>
+          </ng-container>
+          <ng-container *ngIf="d.config?.areas?.length">
+            <dt>Áreas</dt><dd>{{ d.config.areas.length }} área(s) permitidas</dd>
+          </ng-container>
+          <dt>Último contacto</dt><dd>{{ hace(d.ultimoContacto) }}<span class="mono" *ngIf="d.ultimaIp"> · {{ d.ultimaIp }}</span></dd>
+          <dt>Conectado desde</dt><dd>{{ d.emparejadoEn | date:'d MMM y' }}</dd>
+          <ng-container *ngIf="d.colaPendiente">
+            <dt>Sin enviar</dt><dd>{{ d.colaPendiente }} acción(es) guardadas sin conexión</dd>
+          </ng-container>
+        </dl>
+      </li>
+    </ul>
+    <ng-template #sinDispositivos><p class="dl-vacio">Aún no hay dispositivos conectados.</p></ng-template>
+    <details class="dl-revocadas" *ngIf="revocados().length">
+      <summary>Desconectados ({{ revocados().length }})</summary>
+      <ul class="dl-lista">
+        <li *ngFor="let d of revocados(); trackBy: porId" class="dl-disp dl-disp--fuera">
+          <div class="dl-disp__fila">
+            <span class="dl-disp__ic"><i class="ph" [ngClass]="icono(d.superficie)" aria-hidden="true"></i></span>
+            <div class="dl-disp__txt"><b>{{ d.nombre }}</b><span>{{ d.superficieNombre }}</span></div>
+            <span class="wx-status">Desconectado</span>
+          </div>
+        </li>
+      </ul>
+    </details>
+
+    <!-- ============================================================ PERSONAS -->
+    <div class="section-title dl-sep"><i class="ph ph-identification-badge"></i> Personas</div>
+    <p class="hint">Quién puede entrar a una pantalla de trabajo (Mesero, Mi jornada, Técnico, Inventario). El QR y el PIN solo funcionan en dispositivos ya conectados a este negocio.</p>
+    <ul class="dl-lista">
+      <li *ngFor="let p of personas(); trackBy: porClave" class="dl-disp">
+        <div class="dl-disp__fila">
+          <span class="dl-avatar" aria-hidden="true">{{ (p.nombre || '?').slice(0, 1) }}</span>
+          <div class="dl-disp__txt">
+            <b>{{ p.nombre }}</b>
+            <span>{{ p.profesional ? 'Profesional' : '' }}{{ p.profesional && p.usuario ? ' · ' : '' }}{{ p.usuario ? 'Usuario ' + p.usuario : (p.profesional ? ' sin usuario' : '') }}</span>
+          </div>
+          <span class="dl-marcas">
+            <span class="dl-marca" [class.dl-marca--on]="p.qr">QR</span>
+            <span class="dl-marca" [class.dl-marca--on]="p.pin">PIN</span>
+            <span class="dl-marca dl-marca--mal" *ngIf="p.bloqueado">Bloqueado</span>
+          </span>
+          <div class="dl-disp__acc">
+            <button type="button" class="btn-outline dl-mini" (click)="generarQrPersona(p)">{{ p.qr ? 'QR nuevo' : 'Generar QR' }}</button>
+            <button type="button" class="btn-outline dl-mini" (click)="abrirPin(p)">{{ p.pin ? 'Cambiar PIN' : 'Asignar PIN' }}</button>
+            <button type="button" class="btn-outline dl-mini dl-mini--mal" *ngIf="p.qr || p.pin" (click)="revocarPersona(p)">Quitar acceso</button>
+          </div>
+        </div>
+        <div class="dl-pin" *ngIf="pinPara()?.clave === p.clave">
+          <input class="ctl dl-num" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 a 8 números" [(ngModel)]="pinNuevo">
+          <button type="button" class="btn-primary dl-mini" (click)="guardarPin()">Guardar PIN</button>
+          <button type="button" class="btn-outline dl-mini" (click)="pinPara.set(null)">Cancelar</button>
+        </div>
+      </li>
+    </ul>
+    <div class="dl-hoja" *ngIf="qrPersona() as qp">
+      <div class="dl-qr">
+        <img [src]="qp.qr" width="200" height="200" [attr.alt]="'QR de ' + qp.nombre">
+        <div class="dl-qr__txt">
+          <b>QR de {{ qp.nombre }}</b>
+          <span>Imprímelo o compártelo solo con esta persona. Con la cámara de una tablet ya conectada, entra directo.</span>
+          <small *ngIf="!qp.conDireccion">Sin red local ahora: el QR funciona con un lector de códigos, no con la cámara.</small>
+          <small>Si se pierde o alguien lo fotografía: «QR nuevo» invalida este.</small>
+        </div>
+      </div>
+      <div class="btn-row"><button type="button" class="btn-primary" (click)="qrPersona.set(null)">Listo</button></div>
+    </div>
+
+    <!-- ============================================================ FIREWALL -->
+    <div class="dl-fw-barra">
+      <i class="ph ph-shield-check" [class.dl-ok]="firewall()?.regla === true" aria-hidden="true"></i>
+      <div class="dl-fw-barra__txt">
+        <b>Firewall de Windows</b>
+        <span *ngIf="!firewall()">Si una tablet no abre la página, casi siempre es el firewall. Revisar no cambia nada.</span>
+        <span *ngIf="firewall()?.regla === true">Regla «{{ firewall()!.nombreRegla }}» activa, solo red local.</span>
+        <span *ngIf="firewall()?.regla === false">Sin regla: Windows puede bloquear a las pantallas.</span>
+        <span *ngIf="firewall() && firewall()!.regla === null" class="dl-aviso--mal">{{ firewall()!.error || 'No se pudo leer el firewall.' }}</span>
+        <span *ngIf="firewall()?.redPublica" class="dl-publica">Windows marcó esta red como Pública: cámbiala a Privada en Configuración de Windows → Red e Internet.</span>
+      </div>
+      <button type="button" class="btn-primary dl-mini" *ngIf="firewall()?.regla === false" (click)="abrirFirewall()" [disabled]="revisandoFirewall()">Permitir</button>
+      <button type="button" class="btn-outline" (click)="revisarFirewall()" [disabled]="revisandoFirewall()">{{ revisandoFirewall() ? 'Revisando…' : 'Revisar' }}</button>
+    </div>
+  </ng-container>
+</div>

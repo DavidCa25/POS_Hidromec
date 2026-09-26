@@ -41,6 +41,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    /* Celular, nacimiento y domicilio no estan en el formulario de Clientes
+       (los trae la importacion): si no llegan, se conservan. Antes cada
+       edicion los dejaba en NULL. */
     UPDATE dbo.customers
     SET
         code           = @code,
@@ -48,13 +51,13 @@ BEGIN
         tax_id         = @tax_id,
         email          = @email,
         phone          = @phone,
-        mobile         = @mobile,
-        birthdate      = @birthdate,
-        street         = @street,
-        city           = @city,
-        state          = @state,
-        zip            = @zip,
-        country        = @country,
+        mobile         = ISNULL(@mobile, mobile),
+        birthdate      = ISNULL(@birthdate, birthdate),
+        street         = ISNULL(@street, street),
+        city           = ISNULL(@city, city),
+        state          = ISNULL(@state, state),
+        zip            = ISNULL(@zip, zip),
+        country        = ISNULL(@country, country),
         credit_limit   = @credit_limit,
         terms_days     = @terms_days,
         active         = @active,

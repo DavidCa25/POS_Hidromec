@@ -79,6 +79,14 @@ BEGIN
     SET @is_credit =
       CASE WHEN @customer_id IS NOT NULL AND UPPER(@payment_method) = 'CREDITO' THEN 1 ELSE 0 END;
 
+    /* Una venta A CREDITO sin cliente quedaba con @is_credit = 0 y se
+       registraba como PAGADA: saldo 0, nadie a quien cobrarle. */
+    IF UPPER(@payment_method) = 'CREDITO' AND @customer_id IS NULL
+    BEGIN
+        RAISERROR('Una venta a credito necesita el cliente.', 16, 1);
+        RETURN;
+    END
+
 
     /* ---------------- MULTICAJA: esta caja es de este equipo ----------------
        La proteccion NO puede vivir solo en el selector de la pantalla. El
@@ -500,6 +508,61 @@ BEGIN
 
         /* 5) Total */
         SELECT @total = SUM(quantity * unit_price) FROM #lines;
+
+        /* 5b) CREDITO: el cliente puede llevarselo fiado.
+           La pantalla ya filtra, pero la regla vive AQUI, donde no hay pantalla
+           que saltarse. La fila del cliente se bloquea: dos cajas vendiendole a
+           la vez no pueden gastar dos veces el mismo disponible.
+
+           Misma regla que sp_get_customers y sp_get_customers_with_credit_available:
+             - activo, con limite, y sin riesgo alto (3);
+             - sin ventas VENCIDAS: vencida = vencimiento + dias de gracia < hoy;
+             - la deuda abierta mas esta venta no pasa del limite.
+           Y si la venta no trae vencimiento, vence a los dias de plazo del cliente. */
+        IF @is_credit = 1
+        BEGIN
+            DECLARE @cr_limite DECIMAL(12,2), @cr_activo BIT, @cr_riesgo TINYINT,
+                    @cr_plazo INT, @cr_gracia INT, @cr_deuda DECIMAL(12,2), @cr_vencidas INT,
+                    @cr_hoy DATE = CONVERT(date, GETDATE());
+
+            SELECT @cr_limite = credit_limit, @cr_activo = active, @cr_riesgo = risk_level,
+                   @cr_plazo = terms_days, @cr_gracia = grace_days
+            FROM dbo.customers WITH (UPDLOCK, HOLDLOCK)
+            WHERE id = @customer_id;
+
+            IF @cr_limite IS NULL
+                RAISERROR('El cliente de la venta a credito no existe.', 16, 1);
+            IF @cr_activo = 0
+                RAISERROR('El cliente esta inactivo: no se le puede vender a credito.', 16, 1);
+            IF @cr_limite <= 0
+                RAISERROR('Este cliente no tiene credito autorizado.', 16, 1);
+            IF @cr_riesgo >= 3
+                RAISERROR('Este cliente esta en riesgo alto: el credito nuevo esta suspendido.', 16, 1);
+
+            SELECT @cr_deuda = ISNULL(SUM(balance), 0),
+                   @cr_vencidas = ISNULL(SUM(CASE WHEN due_date IS NOT NULL
+                                                   AND DATEADD(DAY, @cr_gracia, due_date) < @cr_hoy
+                                                  THEN 1 ELSE 0 END), 0)
+            FROM dbo.sales
+            WHERE customer_id = @customer_id
+              AND UPPER(payment_method) = 'CREDITO'
+              AND balance > 0;
+
+            IF @cr_vencidas > 0
+                RAISERROR('Este cliente tiene ventas a credito vencidas. Registra un abono antes de volver a venderle a credito.', 16, 1);
+
+            IF @cr_deuda + @total > @cr_limite
+            BEGIN
+                SET @errmsg = CONCAT('La venta ($', FORMAT(@total, 'N2', 'es-MX'),
+                                     ') supera el credito disponible del cliente ($',
+                                     FORMAT(CASE WHEN @cr_limite - @cr_deuda > 0 THEN @cr_limite - @cr_deuda ELSE 0 END, 'N2', 'es-MX'),
+                                     ').');
+                RAISERROR(@errmsg, 16, 1);
+            END
+
+            IF @due_date IS NULL AND @cr_plazo > 0
+                SET @due_date = DATEADD(DAY, @cr_plazo, @cr_hoy);
+        END
 
         /* 6) Venta */
         INSERT INTO sales (datee, useer_id, total, payment_method, customer_id, paid_amount, balance, due_date, register_id, service_mode)

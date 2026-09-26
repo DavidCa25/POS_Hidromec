@@ -46,6 +46,8 @@ export class CapabilityService {
     loyalty: 'loyalty',
     hospitality: 'hospitality',
     servicios: 'servicios',
+    mesas: 'mesas',
+    comandas: 'comandas',
   };
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -66,6 +68,11 @@ export class CapabilityService {
          cafeteria con salon de belleza es Hospitality + Servicios. Los
          perfiles se excluyen; los modulos se suman. */
       servicios: this.modulos().has('servicios'),
+      /* Mesas y comandas cuelgan de Hospitality: si alguien apaga Hospitality,
+         el salon y la cocina se apagan con el aunque su fila siga encendida,
+         y vuelven tal cual al encenderlo. */
+      mesas: this.modulos().has('hospitality') && this.modulos().has('mesas'),
+      comandas: this.modulos().has('hospitality') && this.modulos().has('comandas'),
     };
   });
 
@@ -73,6 +80,8 @@ export class CapabilityService {
   get touchPos(): boolean { return this.capabilities().touchPos; }
   get loyalty(): boolean { return this.capabilities().loyalty; }
   get servicios(): boolean { return this.capabilities().servicios; }
+  get mesas(): boolean { return this.capabilities().mesas; }
+  get comandas(): boolean { return this.capabilities().comandas; }
 
   /**
    * Donde vende ESTA caja ahora mismo.

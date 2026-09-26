@@ -22,6 +22,8 @@ export interface ConfigTile {
      */
     load?: TileLoader;
     statusKey?: StatusKey;
+    /** Un panel que necesita espacio (un mapa, una tabla ancha) abre el cajon amplio. */
+    amplio?: boolean;
 }
 
 export interface ConfigSection {
@@ -76,7 +78,9 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', load: devices },
             { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', load: devices },
             { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'monitor', color: 'purple', size: '2x1',
-              load: () => import('../customer-display-panel/customer-display.component').then(m => m.CustomerDisplayPanelComponent) }
+              load: () => import('../customer-display-panel/customer-display.component').then(m => m.CustomerDisplayPanelComponent) },
+            { id: 'dispositivos-locales', title: 'Dispositivos locales', desc: 'Tablets y pantallas de trabajo por la red del local', icon: 'device-tablet', color: 'green', size: '2x1', amplio: true,
+              load: () => import('../dispositivos-locales-panel/dispositivos-locales.component').then(m => m.DispositivosLocalesPanelComponent) }
         ]
     },
     /*
@@ -100,6 +104,18 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
               load: () => import('../descarga-app-panel/descarga-app.component').then(m => m.DescargaAppPanel) },
             { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
               load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
+        ]
+    },
+    {
+        /* Lo que es de ESTA maquina y no del negocio: como se escribe en ella
+           y si se usa solo para operar. Vive en device-config.json. */
+        id: 'equipo',
+        title: 'Este equipo',
+        tiles: [
+            { id: 'teclado', title: 'Teclado en pantalla', desc: 'Automático, siempre o nunca, en esta máquina', icon: 'keyboard', color: 'blue', size: '1x1',
+              load: () => import('../teclado-panel/teclado-panel.component').then(m => m.TecladoPanelComponent) },
+            { id: 'modo-terminal', title: 'Modo terminal', desc: 'Usar este equipo solo para operar', icon: 'lock-key', color: 'gray', size: '1x1',
+              load: () => import('../modo-terminal-panel/modo-terminal.component').then(m => m.ModoTerminalPanelComponent) }
         ]
     },
     {

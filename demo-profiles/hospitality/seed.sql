@@ -70,6 +70,10 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'Bebidas')
     INSERT INTO dbo.CAT_categories (namee) VALUES (N'Bebidas');
+/* Marca explicita: sin ella el Latte no salia en la caja (el catalogo de
+   venta une con CAT_brands). */
+IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'General')
+    INSERT INTO dbo.CAT_brands (namee) VALUES (N'General');
 GO
 
 /* ------------------------------------------------- 3) LOS INGREDIENTES
@@ -99,12 +103,14 @@ USING (VALUES (N'DEMO-LATTE', N'Latte', CAST(55.00 AS DECIMAL(10,2)))) AS s(part
    ON d.part_number = s.part_number
  WHEN MATCHED THEN
       UPDATE SET nombre = s.nombre, price = s.price, active = 1,
-                 inventory_mode = N'RECIPE', sellable = 1
+                 inventory_mode = N'RECIPE', sellable = 1,
+                 brand_id = ISNULL(d.brand_id, (SELECT TOP 1 id FROM dbo.CAT_brands WHERE namee = N'General'))
  WHEN NOT MATCHED THEN
-      INSERT (part_number, nombre, price, stock, active, registrated_date, category_id,
+      INSERT (part_number, nombre, price, stock, active, registrated_date, category_id, brand_id,
               inventory_mode, sellable, base_uom)
       VALUES (s.part_number, s.nombre, s.price, 0, 1, GETDATE(),
               (SELECT TOP 1 id FROM dbo.CAT_categories WHERE namee = N'Bebidas'),
+              (SELECT TOP 1 id FROM dbo.CAT_brands WHERE namee = N'General'),
               N'RECIPE', 1, N'pza');
 GO
 

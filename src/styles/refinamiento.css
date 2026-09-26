@@ -580,6 +580,102 @@ html.dark .btn-close { filter: invert(1) grayscale(1) brightness(2); }
 }
 
 /* ==========================================================================
+   SEGMENTOS  (.wx-seg)
+   Elegir UNA vista entre pocas: las areas del salon, las estaciones de la
+   cocina, las pestanas de una pantalla, «recibe en pantalla / impresora».
+
+   Existia seis veces con otro nombre (.salon-areas, .kds-est, .sa-tabs,
+   .hosp-tabs, .ah-seg, .est-seg): la misma receta con diferencias que nadie
+   eligio. Esta es la receta.
+
+     <div class="wx-seg" role="group">
+       <button class="wx-seg__op on">Todas <span class="wx-seg__n">12</span></button>
+       <button class="wx-seg__op"><span class="wx-seg__dot"></span> Barra</button>
+     </div>
+
+   `.on`, `[aria-pressed=true]` y `[aria-checked=true]` marcan la elegida;
+   `--dot` colorea el punto. `--lg` es para pantallas de pie (cocina, Touch),
+   `--sm` para filtros secundarios y `--full` reparte el ancho.
+   ========================================================================== */
+.wx-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  max-width: 100%;
+  background: var(--wx-sunken);
+  border: 1px solid var(--wx-edge-soft);
+  border-radius: var(--wx-radius-md);
+}
+.wx-seg__op {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--wx-control-h);
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--wx-radius-sm);
+  background: transparent;
+  color: var(--wx-text-muted);
+  font: inherit;
+  font-size: var(--wx-text-base);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out),
+              color var(--wx-dur-micro) var(--wx-ease-out),
+              box-shadow var(--wx-dur-micro) var(--wx-ease-out),
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+@media (hover: hover) {
+  .wx-seg__op:hover { color: var(--wx-text); background: var(--wx-hover); }
+}
+.wx-seg__op:active { transform: scale(0.97); }
+.wx-seg__op:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.wx-seg__op:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.wx-seg__op.on,
+.wx-seg__op[aria-pressed="true"],
+.wx-seg__op[aria-checked="true"] {
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  box-shadow: 0 0 0 1px var(--wx-edge), 0 1px 2px rgb(15 30 55 / 0.08);
+}
+html.dark .wx-seg__op.on,
+html.dark .wx-seg__op[aria-pressed="true"],
+html.dark .wx-seg__op[aria-checked="true"] { background: var(--wx-raised); box-shadow: 0 0 0 1px var(--wx-edge-strong); }
+.wx-seg__op > .ph { font-size: 16px; }
+
+.wx-seg__n {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--wx-edge-soft);
+  color: var(--wx-text-dim);
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.wx-seg__op.on .wx-seg__n,
+.wx-seg__op[aria-pressed="true"] .wx-seg__n { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.wx-seg__dot {
+  width: 8px; height: 8px; flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--dot, currentColor);
+}
+
+.wx-seg--lg .wx-seg__op { min-height: 46px; padding: 0 18px; font-size: 15px; }
+.wx-seg--sm .wx-seg__op { min-height: var(--wx-control-h-sm); padding: 0 11px; font-size: var(--wx-text-sm); }
+.wx-seg--full { display: flex; }
+.wx-seg--full .wx-seg__op { flex: 1 1 0; justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-seg__op:active { transform: none; }
+}
+
+/* ==========================================================================
    ESTADOS VACIOS
    Un vacio responde dos cosas: que pasa y que puede hacer el usuario.
    Sin ilustracion generica.

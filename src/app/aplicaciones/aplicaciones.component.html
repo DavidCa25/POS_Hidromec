@@ -41,8 +41,13 @@
         </p>
 
         <div class="apps-card__pie">
+          <!-- Sin el modulo del que depende no se ofrece: encenderlo daria
+               pantallas que no pueden funcionar. Se dice cual falta. -->
+          <span class="apps-card__falta" *ngIf="!encendido(m) && faltaRequisito(m)">
+            <i class="ph ph-lock-simple"></i> Necesita {{ m.requiereNombre }}
+          </span>
           <button class="btn-primary" type="button" *ngIf="!encendido(m)"
-                  (click)="alternar(m)" [disabled]="cambiando() === m.id">
+                  (click)="alternar(m)" [disabled]="cambiando() === m.id || faltaRequisito(m)">
             <i class="ph ph-power"></i> {{ cambiando() === m.id ? 'Activando…' : 'Activar' }}
           </button>
 
