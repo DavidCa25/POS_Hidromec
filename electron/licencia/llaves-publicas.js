@@ -22,7 +22,11 @@
  * empaquetar (npm start, pruebas). Nunca en el instalador.
  */
 const PRODUCCION = {
-  // 'wybix-lic-1': `-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----`,
+  // Ceremonia del 2026-09-29. Huella: sha256:01e7131431b2770e
+  'wybix-lic-1': `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENFfvB0oMedXkpFLMDzw+2hTkA80i
+sA8/LzAxCJ6ocTHxPqXuRVB58lFObOZ7pfLxK4hfA5i38XRdM0gvUCZehw==
+-----END PUBLIC KEY-----`,
 };
 
 /**
