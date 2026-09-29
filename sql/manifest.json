@@ -994,7 +994,15 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "209196daf2e3322e"
+      "checksum": "2f0fb722956958e2"
+    },
+    {
+      "nombre": "sp_venta_esencial_resumen",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/sales/sp_venta_esencial_resumen.sql",
+      "origen": "repo",
+      "critico": false,
+      "clasificacion": "current"
     },
     {
       "nombre": "sp_register_supplier_payment",
@@ -2058,14 +2066,14 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/sales.sql",
         "origen": "Wybix_Production",
-        "columnas": 12,
+        "columnas": 13,
         "pk": "PK__sales__3213E83FA8816593",
         "unicas": 0,
         "foraneas": 3,
         "chequeos": 1,
-        "predeterminados": 5,
+        "predeterminados": 6,
         "indices": 1,
-        "checksum": "2df5853d6e4348bd"
+        "checksum": "88d11dbb669ee03c"
       },
       {
         "nombre": "security_events",

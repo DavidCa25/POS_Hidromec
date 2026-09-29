@@ -11,6 +11,13 @@ const { poolPromise, sql } = require('./db');
 // - Genera alertas (corte, caja fuera de horario, diferencia)
 // - Aprovisiona negocio/sucursal y arma el QR de vinculacion
 // El POS sigue 100% offline; si no hay internet, encola y reintenta.
+//
+// SIN SERVICE ROLE. Antes esto escribia en PostgREST con la service_role
+// de Supabase guardada en cada caja: con ella se podia modificar TODO el
+// proyecto, licencias incluidas. Ahora todo pasa por la Edge Function
+// `pos-sync` con un token propio de la sucursal (que entrega al
+// aprovisionar); el servidor solo deja escribir filas de ESA sucursal. La
+// service key ya no se pide, no se lee y se borra de la config si estaba.
 // ============================================================
 
 function log(msg) { console.log(`[CLOUD] ${msg}`); }
@@ -19,6 +26,15 @@ function log(msg) { console.log(`[CLOUD] ${msg}`); }
 let licenseMachineId = null;
 let stampedLicense = false;
 function setLicenseMachineId(id) { licenseMachineId = id ? String(id) : null; }
+
+/* Destino por omision (el proyecto de Wybix) y la LICENCIA: en Venta
+   Esencial los servicios conectados se pausan. Los pone main.js. */
+let destino = { url: '', anonKey: '' };
+let permitido = () => true;
+function configurar({ url, anonKey, licenciaPermite } = {}) {
+  destino = { url: url || destino.url, anonKey: anonKey || destino.anonKey };
+  if (typeof licenciaPermite === 'function') permitido = licenciaPermite;
+}
 
 // ---- Configuracion (cloud-config.json en userData) ----
 
@@ -35,7 +51,7 @@ function loadConfig() {
   }
   return {
     url: '', anonKey: '', sucursalId: '', negocioId: '', deviceKey: '',
-    serviceKeyEnc: '', serviceKeyMethod: '',
+    syncTokenEnc: '', syncTokenMethod: '',
     intervalMs: 300000, enabled: false,
     horaApertura: 8, horaCierre: 21, umbralDiferencia: 200
   };
@@ -46,7 +62,7 @@ function writeConfig(cfg) {
   fs.writeFileSync(getConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
 }
 
-// ---- Cifrado de la service key (mismo patron que db.js) ----
+// ---- Cifrado del token de sincronizacion (mismo patron que db.js) ----
 
 function encryptSecret(plain) {
   try {
@@ -67,7 +83,7 @@ function decryptSecret(b64, method) {
     }
     return Buffer.from(b64, 'base64').toString('utf8');
   } catch (e) {
-    console.error('[CLOUD] No se pudo descifrar la service key:', e.message);
+    console.error('[CLOUD] No se pudo descifrar el token de sincronizacion:', e.message);
     return '';
   }
 }
@@ -75,12 +91,10 @@ function decryptSecret(b64, method) {
 function setCloudConfig(partial = {}) {
   const cfg = loadConfig();
   const merged = { ...cfg, ...partial };
-  if (partial.serviceKey) {
-    const { enc, method } = encryptSecret(partial.serviceKey);
-    merged.serviceKeyEnc = enc;
-    merged.serviceKeyMethod = method;
-  }
-  delete merged.serviceKey;
+  // La service key ya no se acepta ni se conserva: se borra si estaba.
+  delete merged.serviceKey; delete merged.serviceKeyEnc; delete merged.serviceKeyMethod;
+  // Cambiar de sucursal a mano obliga a reclamarla de nuevo (y solo si es de este equipo).
+  if (partial.sucursalId && partial.sucursalId !== cfg.sucursalId) { merged.syncTokenEnc = ''; merged.syncTokenMethod = ''; }
   writeConfig(merged);
   return { success: true };
 }
@@ -97,7 +111,9 @@ function getCloudConfig() {
     horaApertura: cfg.horaApertura,
     horaCierre: cfg.horaCierre,
     umbralDiferencia: cfg.umbralDiferencia,
-    hasServiceKey: !!cfg.serviceKeyEnc
+    // Ya no hay clave que pegar: la caja se vincula sola con su token.
+    hasServiceKey: true,
+    vinculadaConToken: !!cfg.syncTokenEnc
   };
 }
 
@@ -111,33 +127,43 @@ function setAnonKey(anonKey) {
 
 // ---- Llamada REST a Supabase ----
 
-async function supabaseRequest(method, pathAndQuery, body, extraHeaders = {}) {
+/** Llama a la Edge Function pos-sync. Solo anon key + el token de la sucursal. */
+async function gateway(action, cuerpo = {}, conToken = true) {
   const cfg = loadConfig();
-  const key = decryptSecret(cfg.serviceKeyEnc, cfg.serviceKeyMethod);
-  if (!cfg.url || !key) throw new Error('Falta url o service key de Supabase.');
-
-  const res = await fetch(`${cfg.url}/rest/v1/${pathAndQuery}`, {
-    method,
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...extraHeaders
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`Supabase ${pathAndQuery} HTTP ${res.status}: ${txt}`);
-  }
-  const text = await res.text().catch(() => '');
-  return text ? JSON.parse(text) : null;
+  const url = cfg.url || destino.url;
+  const anon = cfg.anonKey || destino.anonKey;
+  if (!url || !anon) throw new Error('Falta la configuracion de la nube.');
+  const headers = { 'Content-Type': 'application/json', apikey: anon, Authorization: `Bearer ${anon}` };
+  if (conToken) headers['x-wybix-sync'] = await tokenDeSync();
+  const res = await fetch(`${url}/functions/v1/pos-sync`, { method: 'POST', headers, body: JSON.stringify({ action, ...cuerpo }) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.success) throw new Error(data?.error || `pos-sync ${action} HTTP ${res.status}`);
+  return data;
 }
 
-async function supabaseUpsert(table, rows, onConflict) {
-  const q = table + (onConflict ? `?on_conflict=${onConflict}` : '');
-  return supabaseRequest('POST', q, rows, { 'Prefer': 'resolution=merge-duplicates' });
+function guardarToken(token) {
+  const cfg = loadConfig();
+  const { enc, method } = encryptSecret(token);
+  cfg.syncTokenEnc = enc; cfg.syncTokenMethod = method;
+  delete cfg.serviceKeyEnc; delete cfg.serviceKeyMethod;
+  writeConfig(cfg);
+}
+
+/** El token de esta caja. Una instalacion previa lo reclama con su equipo. */
+async function tokenDeSync() {
+  const cfg = loadConfig();
+  const t = decryptSecret(cfg.syncTokenEnc, cfg.syncTokenMethod);
+  if (t) return t;
+  if (cfg.sucursalId) {
+    const r = await gateway('claim', { deviceKey: cfg.deviceKey || getStableDeviceKey(), sucursalId: cfg.sucursalId }, false);
+    guardarToken(r.token);
+    return r.token;
+  }
+  throw new Error('Esta caja aun no esta vinculada a la nube.');
+}
+
+async function supabaseUpsert(table, rows) {
+  return gateway('upsert', { table, rows });
 }
 
 // ---- Aprovisionamiento (crear negocio/sucursal) + QR ----
@@ -168,39 +194,16 @@ async function ensureProvisioned(nombreNegocio) {
   const nombre = (nombreNegocio && String(nombreNegocio).trim()) || (os.hostname() || 'Mi negocio');
   const deviceKey = getStableDeviceKey();
 
-  // Idempotente en la nube: si esta máquina YA tiene sucursal, reusarla
-  // (evita duplicados cuando se reinstala y se pierde la config local).
-  try {
-    const existing = await supabaseRequest('GET',
-      `sucursales?select=id,negocio_id&device_key=eq.${encodeURIComponent(deviceKey)}&limit=1`);
-    if (Array.isArray(existing) && existing.length && existing[0].id && existing[0].negocio_id) {
-      cfg.negocioId = existing[0].negocio_id;
-      cfg.sucursalId = existing[0].id;
-      cfg.deviceKey = deviceKey;
-      writeConfig(cfg);
-      return { success: true, sucursalId: existing[0].id, negocioId: existing[0].negocio_id, reused: true };
-    }
-  } catch { /* si falla la búsqueda, se crea normalmente */ }
-
-  // 1) Crear negocio (owner_id se llena cuando el dueno se registra)
-  const negocio = await supabaseRequest('POST', 'negocios', [{ nombre }], { 'Prefer': 'return=representation' });
-  const negocioId = Array.isArray(negocio) ? negocio[0]?.id : negocio?.id;
-  if (!negocioId) throw new Error('No se pudo crear el negocio.');
-
-  // 2) Crear sucursal ligada al negocio
-  const sucursal = await supabaseRequest('POST', 'sucursales',
-    [{ negocio_id: negocioId, nombre: os.hostname() || 'Matriz', device_key: deviceKey }],
-    { 'Prefer': 'return=representation' });
-  const sucursalId = Array.isArray(sucursal) ? sucursal[0]?.id : sucursal?.id;
-  if (!sucursalId) throw new Error('No se pudo crear la sucursal.');
-
-  // 3) Guardar en la config local
-  cfg.negocioId = negocioId;
-  cfg.sucursalId = sucursalId;
+  // El servidor reusa la sucursal de este equipo si ya existe (reinstalar no
+  // duplica) o crea negocio + sucursal, y entrega el token de sincronizacion.
+  const r = await gateway('provision', { deviceKey, nombre, equipo: os.hostname() || 'Matriz' }, false);
+  cfg.negocioId = r.negocioId;
+  cfg.sucursalId = r.sucursalId;
   cfg.deviceKey = deviceKey;
   writeConfig(cfg);
+  guardarToken(r.token);
 
-  return { success: true, sucursalId, negocioId };
+  return { success: true, sucursalId: r.sucursalId, negocioId: r.negocioId };
 }
 
 // Arma el contenido del QR que escanea la app del dueno (nada secreto).
@@ -278,14 +281,8 @@ async function fetchDailyProfit() {
 // ---- Generacion de alertas ----
 
 async function alertaYaExiste(sucursalId, tipo, closureIdLocal) {
-  const q = `alertas?select=id&sucursal_id=eq.${sucursalId}` +
-            `&tipo=eq.${tipo}&mensaje=like=*corte ${closureIdLocal}*&limit=1`;
-  try {
-    const rows = await supabaseRequest('GET', q);
-    return Array.isArray(rows) && rows.length > 0;
-  } catch {
-    return false;
-  }
+  try { return !!(await gateway('alert_exists', { tipo, marca: `corte ${closureIdLocal}` })).exists; }
+  catch { return false; }
 }
 
 async function crearAlerta(sucursalId, tipo, titulo, mensaje) {
@@ -302,6 +299,7 @@ async function crearAlerta(sucursalId, tipo, titulo, mensaje) {
 async function crearAlertaInmediata(tipo, titulo, mensaje) {
   const cfg = loadConfig();
   if (!cfg.enabled || !cfg.sucursalId) return { success: false, skipped: 'sync deshabilitada' };
+  if (!permitido()) return { success: false, skipped: 'suscripcion' };
   try {
     await crearAlerta(cfg.sucursalId, tipo, titulo, mensaje);
     return { success: true };
@@ -332,15 +330,13 @@ function fechaLocal(d = new Date()) {
 // Evita repetir la alerta de riesgo del mismo cajero el mismo dia (marca [uID-fecha]).
 async function alertaRiesgoYaExiste(sucursalId, userId) {
   const dia = fechaLocal();
-  const q = `alertas?select=id&sucursal_id=eq.${sucursalId}&tipo=eq.RIESGO_CAJERO&mensaje=like=*[u${userId}-${dia}]*&limit=1`;
-  try { const rows = await supabaseRequest('GET', q); return Array.isArray(rows) && rows.length > 0; }
+  try { return !!(await gateway('alert_exists', { tipo: 'RIESGO_CAJERO', marca: `[u${userId}-${dia}]` })).exists; }
   catch { return false; }
 }
 
 // Genericos: evita repetir una alerta que lleva una marca unica en el mensaje (ej. [vc-fecha], [dev-uID-fecha]).
 async function alertaMarcaYaExiste(sucursalId, tipo, marca) {
-  const q = `alertas?select=id&sucursal_id=eq.${sucursalId}&tipo=eq.${tipo}&mensaje=like=*${marca}*&limit=1`;
-  try { const rows = await supabaseRequest('GET', q); return Array.isArray(rows) && rows.length > 0; }
+  try { return !!(await gateway('alert_exists', { tipo, marca })).exists; }
   catch { return false; }
 }
 
@@ -411,7 +407,7 @@ async function pushOnce() {
   // para que el panel de admin pueda ligar licencias y prueba con este negocio.
   if (licenseMachineId && !stampedLicense) {
     try {
-      await supabaseRequest('PATCH', `sucursales?id=eq.${sucursalId}`, { license_machine_id: licenseMachineId });
+      await gateway('stamp_license', { licenseMachineId });
       stampedLicense = true;
     } catch (e) { log('stamp licencia: ' + e.message); }
   }
@@ -540,51 +536,21 @@ async function pushOnce() {
 
 // ---- Eliminar cuenta y datos en la nube (cumplimiento Google Play) ----
 
-async function supabaseAuthAdmin(method, path) {
-  const cfg = loadConfig();
-  const key = decryptSecret(cfg.serviceKeyEnc, cfg.serviceKeyMethod);
-  if (!cfg.url || !key) throw new Error('Falta url o service key.');
-  const res = await fetch(`${cfg.url}/auth/v1/${path}`, {
-    method, headers: { apikey: key, Authorization: `Bearer ${key}` }
-  });
-  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`auth ${path} ${res.status}: ${t}`); }
-  return true;
-}
-
 async function deleteAccount() {
   const cfg = loadConfig();
-  const sid = cfg.sucursalId, nid = cfg.negocioId;
-  if (!sid || !nid) return { success: false, error: 'No hay una cuenta vinculada en este equipo.' };
-
-  // Dueño (para borrar su cuenta de acceso y sus tokens de push)
-  let ownerId = null;
-  try {
-    const r = await supabaseRequest('GET', `negocios?id=eq.${nid}&select=owner_id`);
-    ownerId = (Array.isArray(r) && r[0]) ? r[0].owner_id : null;
-  } catch (e) { log('owner lookup: ' + e.message); }
-
-  // 1) Datos espejo por sucursal
-  for (const t of ['resumen_ventas', 'top_productos', 'cortes_caja', 'tendencia_ventas', 'alertas', 'seguridad_riesgo']) {
-    try { await supabaseRequest('DELETE', `${t}?sucursal_id=eq.${sid}`); } catch (e) { log('del ' + t + ': ' + e.message); }
-  }
-  // 2) Apps del dueño y tokens de push
-  try { await supabaseRequest('DELETE', `owner_apps?negocio_id=eq.${nid}`); } catch (e) { log('del owner_apps: ' + e.message); }
-  if (ownerId) { try { await supabaseRequest('DELETE', `push_tokens?owner_id=eq.${ownerId}`); } catch (e) { log('del push_tokens: ' + e.message); } }
-  // 3) Sucursal y negocio
-  try { await supabaseRequest('DELETE', `sucursales?id=eq.${sid}`); } catch (e) { log('del sucursal: ' + e.message); }
-  try { await supabaseRequest('DELETE', `negocios?id=eq.${nid}`); } catch (e) { log('del negocio: ' + e.message); }
-  // 4) Cuenta de acceso (Auth)
-  if (ownerId) { try { await supabaseAuthAdmin('DELETE', `admin/users/${ownerId}`); } catch (e) { log('del owner auth: ' + e.message); } }
-
-  // 5) Limpiar config local: deja de sincronizar (no borra device_key para no reprovisionar solo)
-  cfg.enabled = false; cfg.sucursalId = ''; cfg.negocioId = '';
+  if (!cfg.sucursalId || !cfg.negocioId) return { success: false, error: 'No hay una cuenta vinculada en este equipo.' };
+  // El servidor borra, con SU llave, solo lo de la sucursal de este token.
+  await gateway('delete_account');
+  // Limpiar config local: deja de sincronizar (no borra device_key para no reprovisionar solo)
+  cfg.enabled = false; cfg.sucursalId = ''; cfg.negocioId = ''; cfg.syncTokenEnc = ''; cfg.syncTokenMethod = '';
   writeConfig(cfg);
   stopScheduler();
-
   return { success: true };
 }
 
 async function pushSafe() {
+  // Venta Esencial: los servicios conectados esperan a la renovacion.
+  if (!permitido()) return { success: false, skipped: 'suscripcion' };
   try {
     const r = await pushOnce();
     if (r.success) log('Sincronizado con la nube.');
@@ -624,6 +590,7 @@ module.exports = {
   getPairingPayload,
   crearAlertaInmediata,
   setLicenseMachineId,
+  configurar,
   deleteAccount,
   pushNow: pushSafe,
   startScheduler,

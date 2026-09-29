@@ -1,3 +1,32 @@
+/* ============================================================
+   0048 — venta esencial
+
+   Generada con scripts/db/generar-migracion.mjs desde los archivos
+   canonicos de sql/. No editar a mano: regenerar.
+
+   Idempotente: todos los objetos usan CREATE OR ALTER, y los tipos
+   comprueban su existencia antes de crearse. Se puede reejecutar.
+
+   Incluye el bloque de esquema sql/schema/changes/0048_venta-esencial.sql (tablas,
+   columnas, seed). Cada paso de ese bloque comprueba su existencia.
+   ============================================================ */
+
+/* ========== ESQUEMA: sql/schema/changes/0048_venta-esencial.sql ========== */
+/* ============================================================================
+   0048 — MODO VENTA ESENCIAL (licencia sin suscripcion activa)
+   ----------------------------------------------------------------------------
+   Cuando la suscripcion vence y pasan los 45 dias de gracia, Wybix sigue
+   vendiendo pero deja de administrar el inventario. No se toca ningun
+   producto: la regla vive en `sp_register_sale` (@venta_esencial), no en los
+   datos. Cada venta hecha asi queda marcada, para poder decir al renovar
+   cuantas hubo y entre que fechas, y recomendar un conteo.
+   ========================================================================== */
+IF COL_LENGTH(N'dbo.sales', N'venta_esencial') IS NULL
+    ALTER TABLE dbo.sales ADD venta_esencial BIT NOT NULL
+        CONSTRAINT DF_sales_venta_esencial DEFAULT (0);
+GO
+
+/* ---------- sp_register_sale (SQL_STORED_PROCEDURE) ---------- */
 /* sp_register_sale
  * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
  * No editar en SSMS: modificar este archivo y crear una migracion.
@@ -717,4 +746,30 @@ BEGIN
         RAISERROR(@msg, 16, 1);
     END CATCH
 END
+GO
+
+/* ---------- sp_venta_esencial_resumen (SQL_STORED_PROCEDURE) ---------- */
+/* sp_venta_esencial_resumen
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
+ */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+/* ============================================================
+   sp_venta_esencial_resumen — las ventas hechas en Modo Venta Esencial
+
+   Al renovar la suscripcion, Wybix avisa que el inventario no se actualizo
+   durante ese periodo. Esto dice cuantas ventas fueron y entre que fechas:
+   la venta misma es la evidencia (sales.venta_esencial), no hay un segundo
+   registro de movimientos.
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[sp_venta_esencial_resumen]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT COUNT(*) AS ventas, MIN(datee) AS desde, MAX(datee) AS hasta
+      FROM dbo.sales
+     WHERE venta_esencial = 1;
+END;
 GO

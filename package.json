@@ -10,9 +10,9 @@
     "start:ng": "npm run assets:rive && ng serve",
     "start:electron": "cross-env NODE_ENV=development electronmon ./electron/main.js",
     "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\"",
-    "pack": "npm run db:check-template && electron-builder --dir",
-    "dist": "npm run db:check-template && npm run build && electron-builder",
-    "publish": "npm run db:check-template && npm run build && electron-builder --publish always",
+    "pack": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && electron-builder --dir",
+    "dist": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder",
+    "publish": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder --publish always",
     "db:extract": "node scripts/db/extraer.mjs",
     "db:extract-schema": "node scripts/db/extraer-esquema.mjs",
     "db:verify": "node scripts/db/verificar.mjs",
@@ -63,7 +63,6 @@
     "test:matriz": "node scripts/pruebas/arranque-matriz.mjs",
     "test:arranque": "node scripts/pruebas/arranque-secundaria.mjs",
     "test:ipc": "node scripts/pruebas/auditar-ipc.mjs",
-    "test:trial": "node scripts/pruebas/licencia-prueba.mjs",
     "test:ticket": "node scripts/pruebas/ticket.mjs",
     "test:licencia": "node scripts/pruebas/licencia-huella.mjs && node scripts/pruebas/licencia-almacen.mjs && node scripts/pruebas/licencia-aislamiento.mjs",
     "test:red": "node scripts/pruebas/red-principal.mjs",
@@ -96,7 +95,9 @@
     "test:servicios-ui": "node scripts/pruebas/servicios-ui.mjs",
     "e2e:giros": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/giros-recorridos.spec.js",
     "e2e:guide": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/wybix-guide.spec.js e2e/wybix-guide-demos.spec.js e2e/wybix-guide-giros.spec.js",
-    "e2e:operacion": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/mesas-kds.spec.js e2e/actividad-horaria.spec.js e2e/teclado.spec.js e2e/modo-terminal.spec.js"
+    "e2e:operacion": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/mesas-kds.spec.js e2e/actividad-horaria.spec.js e2e/teclado.spec.js e2e/modo-terminal.spec.js",
+    "test:licencia-v2": "node scripts/pruebas/licencia-v2.mjs",
+    "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs"
   },
   "prettier": {
     "overrides": [

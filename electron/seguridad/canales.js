@@ -36,6 +36,10 @@ const {
  * El orden agrupa por área para que se pueda leer y auditar de un vistazo.
  */
 const EXIGE = {
+  // ------------------------------------------------------------ licencia
+  'license:release': CONFIGURACION_ADMINISTRAR,
+  'license:inventory-review-dismiss': CONFIGURACION_ADMINISTRAR,
+
   // ------------------------------------------------------------ venta diaria
   // El trabajo del turno. Un Operador tiene todo esto y nada más.
   'sp-register-sale': VENTAS_OPERAR,
@@ -319,6 +323,11 @@ const ABIERTOS = {
      base ni cambia la licencia: solo pone al dia un dato de contacto. Y lo
      llama el propio asistente, antes de que exista ninguna sesion. */
   'license:sync-trial-name': 'pone al dia el nombre del negocio en la prueba',
+  /* El giro de la PRUEBA, elegido en el alta (antes de que exista sesión). Solo
+     PIDE: el servidor decide y responde un certificado firmado con ese giro, y
+     solo mientras la prueba siga vigente. No puede otorgar más de un giro ni
+     tocar una licencia pagada. */
+  'license:trial-vertical': 'pide al servidor el giro de la prueba elegido en el alta',
   // --- Antes de que exista sesión -----------------------------------------
   // El asistente de primera ejecución corre cuando todavía no hay usuarios, y
   // la licencia se activa antes de poder iniciar sesión. Exigir permiso aquí
@@ -333,9 +342,10 @@ const ABIERTOS = {
   'db-reconnect': 'reintento de conexión: sin base no hay a quién preguntar permisos',
   'license:get': 'la licencia se consulta antes del login',
   'license:status': 'la licencia se consulta antes del login',
-  'license:save': 'la licencia se activa antes del login',
   'license:activate': 'la licencia se activa antes del login',
-  'license:clear': 'parte del mismo flujo de licencia, sin sesión',
+  'license:refresh': 'refresca el certificado desde el servidor; solo guarda lo que el proceso principal pidió',
+  'license:import': 'importar una licencia sin Internet; solo acepta un certificado firmado de este equipo',
+  'license:inventory-review': 'aviso al renovar: solo cuenta las ventas de la Venta Esencial',
   'license:start-trial': 'la prueba gratuita empieza antes del login',
   'get-machine-id': 'identificador del equipo, necesario para licenciar sin sesión',
   'network:diagnose': 'diagnóstico de red, disponible sin sesión',

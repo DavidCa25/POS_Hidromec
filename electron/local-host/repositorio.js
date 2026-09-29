@@ -139,6 +139,17 @@ function crear({ poolPromise, sql }) {
     return r.recordset || [];
   }
 
+  /** Pantallas vivas y QR pendientes, con su función: la cuota por giro. */
+  async function ocupacionPorSuperficie() {
+    const r = await (await pool()).request().query(`
+      SELECT id, superficie FROM dbo.dispositivos_locales WHERE revocado_en IS NULL;
+      SELECT superficie FROM dbo.dispositivos_emparejamientos WHERE usado_en IS NULL AND expira_en > SYSUTCDATETIME();`);
+    return {
+      dispositivos: (r.recordsets?.[0] || []).map(f => ({ id: String(f.id).toLowerCase(), superficie: f.superficie })),
+      pendientes: r.recordsets?.[1] || [],
+    };
+  }
+
   async function revocar(id, userId) {
     const r = await (await pool()).request().input('id', sql.UniqueIdentifier, id).input('u', sql.Int, userId || null)
       .query('UPDATE dbo.dispositivos_locales SET revocado_en = SYSUTCDATETIME(), revocado_por = @u WHERE id = @id AND revocado_en IS NULL; SELECT @@ROWCOUNT AS n;');
@@ -197,7 +208,7 @@ function crear({ poolPromise, sql }) {
 
   return {
     tomarArriendo, soltarArriendo, quienEsHost,
-    crearEmparejamiento, canjear, porCredencial, tocar, listarDispositivos, revocar, cambiarFuncion, renombrar,
+    crearEmparejamiento, canjear, porCredencial, tocar, listarDispositivos, revocar, cambiarFuncion, renombrar, ocupacionPorSuperficie,
     cambiosDesde, versionActual, estaciones, SEGUNDOS_ARRIENDO,
   };
 }

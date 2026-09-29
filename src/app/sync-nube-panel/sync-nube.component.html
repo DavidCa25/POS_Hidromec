@@ -19,12 +19,6 @@
         </span>
       </div>
       <div class="sn-row">
-        <span class="sn-lbl">Clave de servicio</span>
-        <span class="sn-pill" [class.on]="tieneKey" [class.off]="!tieneKey">
-          {{ tieneKey ? 'Configurada' : 'Falta' }}
-        </span>
-      </div>
-      <div class="sn-row">
         <span class="sn-lbl">Sucursal destino</span>
         <span class="sn-val">{{ sucursalCorta }}</span>
       </div>
@@ -32,16 +26,6 @@
         <span class="sn-lbl">Frecuencia</span>
         <span class="sn-val">cada {{ minutos }} min</span>
       </div>
-    </div>
-
-    <!-- Falta la clave: permitir pegarla -->
-    <div class="sn-keybox" *ngIf="!tieneKey">
-      <label>Service Role Key de Supabase</label>
-      <input type="password" [(ngModel)]="serviceKeyInput" placeholder="Pega aquí la clave (service_role)" />
-      <button class="sn-btn" [disabled]="saving || !serviceKeyInput.trim()" (click)="guardarKey()">
-        Guardar clave
-      </button>
-      <small>La encuentras en Supabase → Project Settings → API → service_role. Se guarda cifrada en esta PC.</small>
     </div>
 
     <!-- Controles -->

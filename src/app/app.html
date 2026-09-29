@@ -7,7 +7,7 @@
   @if (license.estado.state === 'expired' || license.estado.state === 'tamper') {
     @defer (on immediate) {
       <app-licencia-vencida
-        [motivo]="license.estado.state === 'tamper' ? 'tamper' : 'vencida'"
+        [motivo]="license.estado.state !== 'tamper' ? 'vencida' : license.estado.motivo === 'sin-firma' ? 'actualizar' : 'tamper'"
         (activado)="onLicenciaLista()"></app-licencia-vencida>
     }
   }
@@ -27,6 +27,13 @@
     @if (license.estado.state === 'trial') {
       @defer (on immediate) {
         <app-trial-banner></app-trial-banner>
+      }
+    }
+    <!-- Suscripción: gracia, Venta Esencial, validar pronto y el aviso de
+         inventario al renovar. Solo aparece cuando hay algo que decir. -->
+    @if (license.enGracia || license.ventaEsencial || license.estado.refrescarEnDias != null || license.estado.revisionInventario) {
+      @defer (on immediate) {
+        <app-suscripcion-aviso></app-suscripcion-aviso>
       }
     }
     @if (necesitaSetup) {

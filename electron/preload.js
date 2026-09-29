@@ -384,12 +384,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getMachineId: () => ipcRenderer.invoke('get-machine-id'),
 
     licenseGet:   () => ipcRenderer.invoke('license:get'),
-    licenseSave:  (d) => ipcRenderer.invoke('license:save', d),
-    licenseClear: () => ipcRenderer.invoke('license:clear'),
+    // La licencia solo la escribe el proceso principal (servidor o archivo firmado).
+    licenseRefresh: () => ipcRenderer.invoke('license:refresh'),
+    licenseImport: () => ipcRenderer.invoke('license:import'),
+    licenseRelease: () => ipcRenderer.invoke('license:release'),
+    licenseInventoryReview: () => ipcRenderer.invoke('license:inventory-review'),
+    licenseInventoryReviewDismiss: () => ipcRenderer.invoke('license:inventory-review-dismiss'),
     licenseActivate:  (d) => ipcRenderer.invoke('license:activate', d),
     licenseStartTrial: (d) => ipcRenderer.invoke('license:start-trial', d),
     /* El nombre real del negocio, una vez que el alta lo conoce. */
     licenseSyncTrialName: (d) => ipcRenderer.invoke('license:sync-trial-name', d),
+    licenseTrialVertical: (d) => ipcRenderer.invoke('license:trial-vertical', d),
     licenseStatus: () => ipcRenderer.invoke('license:status'),
 
     setupStatus: () => ipcRenderer.invoke('setup-status'),

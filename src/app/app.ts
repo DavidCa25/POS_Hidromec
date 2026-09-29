@@ -6,6 +6,7 @@ import { SetupInicial } from './setup-inicial/setup-inicial.component';
 import { IniciarPruebaComponent } from './licencia/iniciar-prueba.component';
 import { LicenciaVencidaComponent } from './licencia/licencia-vencida.component';
 import { TrialBannerComponent } from './licencia/trial-banner.component';
+import { SuscripcionAvisoComponent } from './licencia/suscripcion-aviso.component';
 
 import { WxVirtualKeyboardComponent } from './wx-virtual-keyboard/wx-virtual-keyboard.component';
 import { WxGuideLayerComponent } from './wx-guide/wx-guide-layer.component';
@@ -14,7 +15,7 @@ import { WxGuideLayerComponent } from './wx-guide/wx-guide-layer.component';
   standalone: true,
   // Los cuatro componentes solo se usan dentro de bloques @defer en la
   // plantilla: el compilador los saca del bundle inicial.
-  imports: [RouterOutlet, SetupInicial, IniciarPruebaComponent, LicenciaVencidaComponent, TrialBannerComponent, WxVirtualKeyboardComponent, WxGuideLayerComponent],
+  imports: [RouterOutlet, SetupInicial, IniciarPruebaComponent, LicenciaVencidaComponent, TrialBannerComponent, SuscripcionAvisoComponent, WxVirtualKeyboardComponent, WxGuideLayerComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })

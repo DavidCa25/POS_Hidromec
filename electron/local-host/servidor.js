@@ -78,7 +78,7 @@ function limitador(max, ventanaMs) {
   };
 }
 
-function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, dominios = {}, log = () => {}, alPedir = () => {} }) {
+function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, licenciaPantallas = null, dominios = {}, log = () => {}, alPedir = () => {} }) {
   const limiteApi = limitador(300, 60_000);
   /* Un telefono consulta cada pocos segundos; esto deja de sobra y frena a
      quien pruebe codigos (que ademas son de 128 bits). */
@@ -190,6 +190,11 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
 
   function sinFuncion(res, ctx) {
     if (!ctx.def) { responder(res, 409, { error: 'Esta pantalla tiene una función que ya no existe. Asígnale otra desde Wybix.', codigo: 'SIN_FUNCION' }); return true; }
+    /* Licencia antes que capacidad: el mensaje dice la causa real. */
+    if (licenciaPantallas && !licenciaPantallas.permite(ctx.def.tipo)) {
+      responder(res, 409, { error: licenciaPantallas.mensaje(), codigo: 'LICENCIA' });
+      return true;
+    }
     if (!ctx.def.disponible(ctx.caps)) {
       responder(res, 409, { error: `«${ctx.def.nombre}» no está encendida en este negocio. Asígnale otra función desde Wybix.`, codigo: 'FUNCION_APAGADA' });
       return true;
@@ -276,6 +281,17 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
           : 'El código no es válido.';
         responder(res, 410, { error: texto, motivo: r.motivo });
         return;
+      }
+      /* La cuota se vuelve a mirar al canjear: la licencia pudo cambiar desde
+         que se generó el QR. Si ya no cabe, este dispositivo nuevo no entra
+         (los que ya trabajaban no se tocan). */
+      if (licenciaPantallas) {
+        const q = await licenciaPantallas.cuota(r.dispositivo.superficie, { excluirId: r.dispositivo.id, contarPendientes: false });
+        if (!q.ok) {
+          await repo.revocar(r.dispositivo.id, null).catch(() => {});
+          responder(res, 403, { error: q.error, motivo: 'CUOTA' });
+          return;
+        }
       }
       log(`dispositivo emparejado: ${r.dispositivo.nombre} (${r.dispositivo.superficie})`);
       responder(res, 200, { dispositivo: publicoDisp(r.dispositivo) }, {
@@ -497,6 +513,10 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
       const caps = await capacidades.leer();
       const nueva = registro.obtener(String(cuerpo?.superficie || ''));
       if (!nueva || !nueva.disponible(caps)) { responder(res, 400, { error: 'Esa función no está disponible en este negocio.' }); return; }
+      if (licenciaPantallas) {
+        const q = await licenciaPantallas.cuota(nueva.tipo, { excluirId: d.id });
+        if (!q.ok) { responder(res, 403, { error: q.error, codigo: 'CUOTA' }); return; }
+      }
       const stationId = Number(cuerpo?.stationId) || null;
       const todas = !!cuerpo?.todas;
       if (nueva.requiereEstacion && !todas && !(await repo.estaciones()).some(e => Number(e.id) === stationId)) {

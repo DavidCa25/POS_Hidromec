@@ -60,7 +60,9 @@ check(/license\.estado\.state === 'none'/.test(appHtml),
   'sin licencia se ve el License Gate');
 check(/license\.puedeOperar/.test(appHtml),
   'con demo, prueba o licencia se entra a trabajar');
-check(/\['demo', 'trial', 'active'\]\.includes/.test(leer(join('src', 'services', 'license.service.ts'))),
+/* Licencias v2: se entra por el MODO de la licencia (DEMO, TRIAL, ACTIVE,
+   GRACE, SALE_ONLY); la demo sigue entrando sin pasar por el Gate. */
+check(/puedeOperar\(\): boolean \{ return \['DEMO', 'TRIAL'/.test(leer(join('src', 'services', 'license.service.ts'))),
   'y `demo` entra sin pasar por el Gate',
   'pedirle una prueba comercial a una demo gastaria la prueba real de la maquina');
 check(/necesitaSetup/.test(appHtml) && /<router-outlet>/.test(appHtml),
@@ -171,8 +173,8 @@ check(/textoDiasPrueba/.test(svc) && /dias restantes|días restantes/.test(svc),
   'sin los dias nadie sabe que hay una cuenta atras corriendo');
 check(/case 'demo':  return 'Demostración'/.test(svc),
   'una demo se llama demostracion');
-check(/case 'mono':  return 'Licencia MonoCaja activada'/.test(svc)
-   && /case 'multi': return 'Licencia MultiCaja activada'/.test(svc),
+check(/case 'mono':\s+return (this\.ventaEsencial \? [^:]+ : )?'Licencia MonoCaja activada'/.test(svc)
+   && /case 'multi':\s+return (this\.ventaEsencial \? [^:]+ : )?'Licencia MultiCaja activada'/.test(svc),
   'y solo lo comprado se anuncia como licencia activada');
 check(/get clase\(\): 'demo' \| 'trial' \| 'mono' \| 'multi' \| 'ninguna'/.test(svc),
   'las cuatro clases estan en UN solo sitio',
@@ -190,10 +192,13 @@ check(/this\.license\.insigniaTexto/.test(setup),
  */
 const PANEL = join('src', 'app', 'licencia-panel', 'licencia.component.ts');
 const panel = leer(PANEL);
-check(/switch \(this\.license\.clase\)/.test(panel),
+/* v2: el panel pinta el ESTADO (prueba, activa, gracia, Venta Esencial) por
+   `modo`, y el PLAN por la clase del servicio (planTexto). Lo que no puede
+   volver es un segundo switch sobre la clase dentro del panel. */
+check(/this\.license\.planTexto/.test(panel) && !/case 'mono'|case 'multi'/.test(panel),
   'el panel de licencia resuelve por `clase`, no por su propio switch',
   'dos switches sobre lo mismo es como la prueba acabo anunciandose como MonoCaja');
-check(/case 'demo':   return 'Demostración'/.test(panel),
+check(/case 'DEMO': return 'Demostración'/.test(panel),
   'y una demostracion se reconoce como tal');
 check(!/case 'trial':  return 'Prueba gratis'/.test(panel),
   'la prueba ya no se llama distinto en cada pantalla',
@@ -210,15 +215,15 @@ const lic = leer(LICENSE);
 /*
  * REPARACION DE PRUEBAS LEGADAS, Y POR QUE ES SEGURA.
  *
- * `sellarComoPrueba` arregla el problema al GUARDAR, asi que las instalaciones
- * que empezaron su prueba antes de que existiera se quedaban clasificadas como
- * licencia de pago y anunciando "MonoCaja" para siempre.
+ * Las instalaciones que empezaron su prueba antes de sellar `type` se quedaban
+ * clasificadas como licencia de pago y anunciando "MonoCaja" para siempre.
  *
  * La regla es `expiresAt` presente => prueba, y se comprobo contra el servidor:
  * ese campo lo emite UN SOLO archivo del backend, `trial-license`. La
  * activacion de pago devuelve plan, maxRegisters, customerName, machineId,
  * supportUntil, supportActive, revalidateBy e issuedAt, y ahi no hay
- * `expiresAt`. Las pruebas negativas viven en `test:trial`.
+ * `expiresAt`. (Licencias v2: ese formato sin firma ya se rechaza como
+ * «necesita actualizarse»; esto solo lo clasifica.)
  */
 check(/data\.expiresAt \? 'trial'/.test(lic),
   'una prueba legada se reconoce por `expiresAt`',

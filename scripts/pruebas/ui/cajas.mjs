@@ -123,23 +123,17 @@ export default async function ({ ev, cdp }) {
   const asignacionOriginal = inicial.actual;
 
   /**
-   * El mosaico "Cajas" solo existe con licencia MultiCaja. Para poder probar
-   * el panel en una maquina en prueba se fuerza el plan por el canal del
-   * propio producto, y se restaura al final.
+   * El mosaico "Cajas" solo existe con licencia MultiCaja. Antes se simulaba
+   * el plan escribiendo la licencia desde la pantalla; con licencias v2 el
+   * renderer ya no puede escribir una (a proposito), asi que en una maquina
+   * sin MultiCaja esta prueba se OMITE en vez de tocar la licencia real.
    */
-  const licenciaOriginal = await ev(`return await window.electronAPI.licenseGet();`).catch(() => null);
-  const necesitaSimular = inicial.plan !== 'multi';
+  if (inicial.plan !== 'multi') {
+    console.log('   ---- SKIPPED: esta maquina no tiene MultiCaja (la licencia ya no se simula desde la pantalla).');
+    return { fallos: 0, omitida: true };
+  }
 
   try {
-    if (necesitaSimular) {
-      console.log('   (esta maquina no tiene plan multi: se simula para alcanzar el panel)');
-      await ev(`
-        const hasta = new Date(Date.now() + 365 * 864e5).toISOString();
-        await window.electronAPI.licenseSave({ type: 'paid', plan: 'multi',
-          customerName: 'QA MultiCaja', revalidateBy: hasta });
-        return true;
-      `);
-    }
 
     if (!await ir('/dashboard/configuracion', 'app-config-shell')) {
       mal('no se llego a Configuracion');
@@ -346,15 +340,7 @@ export default async function ({ ev, cdp }) {
       if (id) await window.electronAPI.registerSetCurrent({ id });
       return true;
     `).catch(() => {});
-    if (necesitaSimular) {
-      await ev(`
-        await window.electronAPI.licenseClear();
-        const prev = ${JSON.stringify(licenciaOriginal)};
-        if (prev) await window.electronAPI.licenseSave(prev);
-        return true;
-      `).catch(() => {});
-    }
-    console.log(`\n   (caja restaurada a ${asignacionOriginal ?? 'sin asignar'}${necesitaSimular ? ' · licencia restaurada' : ''})`);
+    console.log(`\n   (caja restaurada a ${asignacionOriginal ?? 'sin asignar'})`);
   }
 
   console.log(fallos ? `\nRESULTADO: ${fallos} FALLO(S)` : '\nRESULTADO: OK');

@@ -15,11 +15,41 @@
  *
  * Se hace UNA vez por ejecucion, no una por prueba, porque arrancar Electron
  * cuesta unos segundos y multiplicarlo por cada caso no compra nada.
+ *
+ * LA LICENCIA ES UN CERTIFICADO FIRMADO DE VERDAD (licencias v2). Cada worker
+ * genera una clave efímera; el POS confía en ella SOLO con WYBIX_E2E=1 y sin
+ * empaquetar (WYBIX_E2E_LLAVE_PUBLICA). El certificado se firma aquí con el
+ * mismo formato que el servidor, para el machineId que reporta la app, con
+ * los tres giros: estas pruebas recorren Comercio, Restaurante y Servicios.
  */
 const { _electron: electron } = require('@playwright/test');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const { TODOS } = require('../electron/licencia/entitlements.js');
+
+const PAR = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+const LLAVE_PUBLICA = PAR.publicKey.export({ type: 'spki', format: 'pem' });
+
+/** Un certificado ACTIVE de un año, MonoCaja, tres giros y pantallas ilimitadas, para ESTE equipo. */
+function certificadoDePruebas(machineId) {
+  const ahora = Date.now(), DIA = 86400000, iso = (t) => new Date(t).toISOString();
+  const pagado = ahora + 365 * DIA;
+  const payload = {
+    schema: 1, kind: 'LICENSE', license_id: 'e2e', customer: 'Pruebas E2E', machine_id: machineId,
+    edition: 'mono', registers_max: 1, verticals: ['COMMERCE', 'HOSPITALITY', 'SERVICES'],
+    /* Pantallas ilimitadas por giro (como SCREENS_UNLIMITED): estas pruebas
+       recorren el emparejamiento, no la cuota, que se prueba aparte
+       (test:licencia-v2 y test:licencia-integracion). */
+    screens: { COMMERCE: null, HOSPITALITY: null, SERVICES: null }, entitlements: [...TODOS].sort(), addons: [],
+    trial_started_at: null, trial_ends_at: null, first_activated_at: iso(ahora), paid_until: iso(pagado),
+    grace_days: 45, grace_until: iso(pagado + 45 * DIA), offline_days: 45, issued_at: iso(ahora), valid_until: iso(ahora + 45 * DIA),
+  };
+  const cuerpo = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.sign('sha256', Buffer.from(cuerpo), { key: PAR.privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+  return { format: 'wybix-license', v: 1, kid: 'e2e-1', payload: cuerpo, sig };
+}
 
 const RAIZ = path.join(__dirname, '..');
 const SERVIDOR = process.env.WYBIX_DB_SERVER || 'localhost';
@@ -54,7 +84,7 @@ function opcionesDeArranque(perfil) {
     /* La interfaz sale del bundle ya construido: levantar `ng serve` solo para
        las pruebas anadiria un minuto a cada ejecucion y fallos que no tienen
        que ver con lo que se prueba. */
-    env: { ...process.env, WYBIX_UI_DIST: '1', WYBIX_E2E: '1' },
+    env: { ...process.env, WYBIX_UI_DIST: '1', WYBIX_E2E: '1', WYBIX_E2E_LLAVE_PUBLICA: LLAVE_PUBLICA },
     timeout: 120000,
   };
 }
@@ -72,9 +102,11 @@ async function obtenerMolde(base = BASE_CORE) {
   const app = await electron.launch(opcionesDeArranque(dir));
   const v = await app.firstWindow({ timeout: 120000 });
   await v.waitForFunction(() => !!(window).electronAPI, null, { timeout: 60000 });
-  await v.evaluate(() => window.electronAPI.licenseSave({
-    type: 'paid', plan: 'mono', customerName: 'Pruebas E2E',
-  }));
+  /* La licencia se aplica desde el proceso principal: el renderer ya no
+     puede escribir una (licencias v2). Solo existe con WYBIX_E2E. */
+  const machineId = await app.evaluate(() => global.__wybixE2E.machineId());
+  const sembrado = await app.evaluate((_e, cert) => global.__wybixE2E.sembrarCertificado(cert), certificadoDePruebas(machineId));
+  if (!sembrado?.ok) throw new Error(`El certificado de pruebas no se aplicó: ${JSON.stringify(sembrado)}`);
   const estado = await v.evaluate(() => window.electronAPI.licenseStatus());
   await app.close();
 

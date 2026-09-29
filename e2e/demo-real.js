@@ -109,7 +109,13 @@ async function entrarDemo(ventana) {
   await ventana.fill('#username', DEMO.usuario);
   await ventana.fill('#password', DEMO.password);
   await ventana.click('#btnLogin');
-  await ventana.waitForFunction(() => !!window.wybixGuide, null, { timeout: 60000 });
+  /* La capa de Wybix Guide también existe en la pantalla de login: su
+     presencia NO dice que se entró. Se espera a salir de /login (sesión
+     abierta en el proceso principal) y a la capa. Antes, el recorrido podía
+     arrancar con la sesión en vuelo («Inicia sesión para continuar»). */
+  await ventana.waitForFunction(() => !!window.wybixGuide
+    && !/login/.test(location.hash || location.pathname)
+    && !document.querySelector('#btnLogin'), null, { timeout: 60000 });
 }
 
 async function borrarDemo(base) {

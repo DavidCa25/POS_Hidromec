@@ -68,6 +68,9 @@ let deps = {
   leerRevision: async () => 0,
   leerUsuario: async () => null,
   modulosActivos: async () => new Set(),
+  /* La LICENCIA (electron/licencia): ¿el negocio tiene derecho a esto? Sin
+     configurar no restringe nada, que es como se ejercita este módulo solo. */
+  licencia: () => null,
   registrar: () => {},
 };
 
@@ -212,6 +215,19 @@ async function comprobar(webContentsId, permiso, opciones = {}) {
       return { ok: false, motivo: 'MODULO_APAGADO', modulo };
     }
   }
+
+  /* LICENCIA. Una función no está disponible solo porque el código esté
+     instalado o el menú la muestre: el negocio tiene que tener derecho, y en
+     Venta Esencial solo queda vender, consultar y respaldar. Es local (el
+     certificado firmado): no espera a Internet. */
+  let lic = null;
+  try { lic = deps.licencia(); } catch { lic = null; }
+  if (lic) {
+    const r = lic.permiteCanal(opciones.canal, permiso, modulo);
+    if (!r.ok) {
+      return { ok: false, motivo: lic.ventaEsencial ? 'VENTA_ESENCIAL' : 'SIN_LICENCIA', requiere: r.requiere };
+    }
+  }
   return { ok: true, sesion: s };
 }
 
@@ -221,6 +237,8 @@ const MENSAJES = {
   SIN_VERIFICAR: 'No se pudo comprobar tu acceso. Revisa la conexión e inténtalo de nuevo.',
   MODULO_APAGADO: 'Esta función no está activada para el negocio.',
   MODULO_INDETERMINADO: 'No se pudo comprobar si la función está activada.',
+  VENTA_ESENCIAL: 'Tu suscripción no está activa: Wybix sigue vendiendo, pero esta función vuelve al renovar.',
+  SIN_LICENCIA: 'Tu plan no incluye esta función.',
 };
 
 /**
@@ -236,7 +254,7 @@ function proteger(canal, handler, opciones = {}) {
   const permiso = exigePara(canal);
   return async function (evento, ...args) {
     const id = evento?.sender?.id;
-    const r = await comprobar(id, permiso, opciones);
+    const r = await comprobar(id, permiso, { ...opciones, canal });
     if (!r.ok) {
       deps.registrar({ tipo: 'ACCESO_DENEGADO', canal, motivo: r.motivo, permiso, webContentsId: id });
       return { success: false, ok: false, error: MENSAJES[r.motivo] || 'No autorizado.', motivo: r.motivo };

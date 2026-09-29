@@ -11,6 +11,7 @@ import {
   MesaService, MesaSalon,
 } from '../core';
 import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
+import { LicenseService } from '../services/license.service';
 import { nombreDeMesa } from '../hospitality/hx';
 import { PremiosVenta } from '../loyalty/premios-venta';
 import { CuponVenta } from '../loyalty/cupon-venta';
@@ -55,6 +56,7 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly sale = inject(SaleService);
   private readonly shift = inject(ShiftService);
+  private readonly licencia = inject(LicenseService);
   private readonly display = inject(CustomerDisplayService);
   private readonly auth = inject(AuthService);
   private readonly registro = inject(RegisterService);
@@ -411,6 +413,9 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   agotado(p: MenuProduct): boolean {
+    /* Venta Esencial: se vende lo vendible aunque no haya existencia (el
+       inventario no se administra en ese modo). No cambia ningun producto. */
+    if (this.licencia.ventaEsencial) return false;
     return p.available_units <= 0;
   }
 
@@ -541,7 +546,7 @@ export class TouchPos implements OnInit, OnDestroy {
    * ni sustituia ni se anadia. Se quedaba bloqueado sin decir por que.
    */
   alternarOpcion(g: ModifierGroup, o: ModifierOption) {
-    if (o.available_units <= 0) { this.mostrar(`${o.name} no está disponible`); return; }
+    if (o.available_units <= 0 && !this.licencia.ventaEsencial) { this.mostrar(`${o.name} no está disponible`); return; }
     const tope = topeDeGrupo(g);
     this.seleccion.update(mapa => {
       const n = new Map(mapa);

@@ -358,6 +358,13 @@ export class SetupInicial implements OnInit {
          comprueba -es best effort- porque nada de lo que sigue depende de el. */
       void this.api?.licenseSyncTrialName?.({ businessName: this.businessName.trim() });
 
+      /* EL GIRO DE LA PRUEBA. El tipo de negocio que se acaba de elegir se PIDE
+         como giro de evaluación: 30 días de ESE giro (nunca los tres). Lo decide
+         el servidor y llega en el certificado firmado; business_profile no
+         otorga nada. Si no es una prueba, no hace nada. Sin red queda pendiente. */
+      await this.license.elegirGiroPrueba(
+        this.tipoNegocio === 'HOSPITALITY' ? 'HOSPITALITY' : this.tipoNegocio === 'SERVICIOS' ? 'SERVICES' : 'COMMERCE');
+
       // El giro que se acaba de guardar decide si el negocio tiene recetas,
       // ingredientes y modificadores. Las capacidades en memoria se cargaron
       // ANTES de existir la configuracion, asi que aqui quedan obsoletas: se

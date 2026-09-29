@@ -15,6 +15,7 @@ import {
   MesaService, ShiftService, SoldLine, ClientesVentaService,
 } from '../../core';
 import { PremiosVenta } from '../../loyalty/premios-venta';
+import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
@@ -91,6 +92,7 @@ export class Venta implements OnInit, OnDestroy {
    */
   private readonly mesaSvc = inject(MesaService);
   private readonly clientesSvc = inject(ClientesVentaService);
+  private readonly licencia = inject(LicenseService);
   readonly cuentaMesa = this.mesaSvc.cuentaActiva;
   readonly pendientesMesa = this.mesaSvc.pendientes;
   enviandoMesa = false;
@@ -1112,6 +1114,8 @@ export class Venta implements OnInit, OnDestroy {
    * leche de almendra.
    */
   private async avisarSiNoAlcanza(p: CatalogProduct, opciones: SelectedOption[]): Promise<boolean> {
+    // Venta Esencial: el inventario no se administra, se vende lo vendible.
+    if (this.licencia.ventaEsencial) return false;
     const hosp = (window as any).wybix;
     if (typeof hosp?.catalog?.disponibilidad !== 'function') return false;
     try {

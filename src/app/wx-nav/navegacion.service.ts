@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { ModulesService, ModulesState } from '../../services/modules.service';
 import { CapabilityService, GiroServiciosService } from '../../core';
+import { LicenseService } from '../../services/license.service';
 
 /**
  * LA NAVEGACION DE WYBIX, EN UN SOLO SITIO.
@@ -70,6 +71,7 @@ export class NavegacionService {
   private readonly caps = inject(CapabilityService);
   private readonly modules = inject(ModulesService);
   private readonly giro = inject(GiroServiciosService);
+  private readonly license = inject(LicenseService);
 
   /** Cifras y avisos de las areas. Vacios hasta que llegan; nunca inventados. */
   private readonly datos = signal<Record<string, { aviso: Aviso; pies: Record<string, string> }>>({});
@@ -94,10 +96,12 @@ export class NavegacionService {
   get verNumeros() { return this.auth.puede(PAQUETES.REPORTES_VER); }
   get supervisarVentas() { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
   get operarVentas() { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
-  get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
+  /* Permiso de la persona Y derecho de la licencia (en Venta Esencial el
+     inventario y las compras esperan a la renovación). */
+  get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR) && this.license.tiene('inventory'); }
   get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
   get operarServicios() {
-    return this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR);
+    return (this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) && this.license.tiene('services');
   }
   get administrarServicios() { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
 

@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ElectronBridge } from './electron-bridge.service';
 import { BusinessProfile, Capabilities, DeviceProfile } from './models';
+import { LicenseService } from '../services/license.service';
 
 /**
  * negocio + dispositivo -> capacidades.
@@ -18,6 +19,13 @@ import { BusinessProfile, Capabilities, DeviceProfile } from './models';
 @Injectable({ providedIn: 'root' })
 export class CapabilityService {
   private readonly bridge = inject(ElectronBridge);
+  /*
+   * CAPABILITY != ENTITLEMENT. Un módulo encendido dice que Wybix puede hacer
+   * algo; la licencia dice si el negocio tiene derecho. Aquí se combinan para
+   * pintar (menú, rutas, guards); la autoridad es el proceso principal, que
+   * rechaza el canal aunque alguien llegue a la pantalla por URL.
+   */
+  private readonly license = inject(LicenseService);
 
   readonly businessProfile = signal<BusinessProfile>('RETAIL');
   readonly deviceProfile = signal<DeviceProfile>('RETAIL_POS');
@@ -53,26 +61,28 @@ export class CapabilityService {
   readonly capabilities = computed<Capabilities>(() => {
     const bp = this.businessProfile();
     const dp = this.deviceProfile();
+    this.license.estadoSignal();
+    const lic = (e: string) => this.license.tiene(e);
     return {
       businessProfile: bp,
       deviceProfile: dp,
       /* Deja de ser el perfil y pasa a ser un modulo, que es lo que permite
          Retail + Hospitality y Retail + Servicios. El perfil queda como
          preset de origen, no como interruptor. */
-      hospitality: this.modulos().has('hospitality'),
+      hospitality: this.modulos().has('hospitality') && lic('hospitality'),
       touchPos: dp === 'TOUCH_POS',
       retailPos: dp === 'RETAIL_POS',
       customerDisplay: this.customerDisplayEnabled(),
-      loyalty: this.modulos().has('loyalty'),
+      loyalty: this.modulos().has('loyalty') && lic('loyalty'),
       /* Se suma a lo que ya haya: un taller es Retail + Servicios, y una
          cafeteria con salon de belleza es Hospitality + Servicios. Los
          perfiles se excluyen; los modulos se suman. */
-      servicios: this.modulos().has('servicios'),
+      servicios: this.modulos().has('servicios') && lic('services'),
       /* Mesas y comandas cuelgan de Hospitality: si alguien apaga Hospitality,
          el salon y la cocina se apagan con el aunque su fila siga encendida,
          y vuelven tal cual al encenderlo. */
-      mesas: this.modulos().has('hospitality') && this.modulos().has('mesas'),
-      comandas: this.modulos().has('hospitality') && this.modulos().has('comandas'),
+      mesas: this.modulos().has('hospitality') && this.modulos().has('mesas') && lic('hospitality') && lic('hospitality.tables'),
+      comandas: this.modulos().has('hospitality') && this.modulos().has('comandas') && lic('hospitality') && lic('hospitality.kds'),
     };
   });
 

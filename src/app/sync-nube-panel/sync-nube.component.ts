@@ -4,8 +4,12 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 
 // Panel de "Sincronización en la nube": activa/desactiva el envío de datos
-// a Supabase (para la app del dueño), permite pegar la service key si falta
-// y forzar un envío inmediato ("Sincronizar ahora") con su resultado.
+// a Supabase (para la app del dueño) y fuerza un envío inmediato
+// ("Sincronizar ahora") con su resultado.
+//
+// Ya no pide la service key: cada caja se vincula con un token propio de su
+// sucursal a través de la Edge Function pos-sync. Esa llave no debe estar en
+// ninguna caja (ver docs/licensing.md, hallazgos de seguridad).
 @Component({
   selector: 'app-sync-nube',
   standalone: true,
@@ -18,7 +22,6 @@ export class SyncNubePanelComponent implements OnInit {
   saving = false;
   syncing = false;
   cfg: any = null;
-  serviceKeyInput = '';
   negocioIdInput = '';
   sucursalIdInput = '';
   mostrarAvanzado = false;
@@ -48,7 +51,6 @@ export class SyncNubePanelComponent implements OnInit {
   }
 
   get activa(): boolean { return !!this.cfg?.enabled; }
-  get tieneKey(): boolean { return !!this.cfg?.hasServiceKey; }
   get vinculada(): boolean { return !!this.cfg?.sucursalId; }
   get sucursalCorta(): string {
     const s = this.cfg?.sucursalId || '';
@@ -74,29 +76,11 @@ export class SyncNubePanelComponent implements OnInit {
   }
 
   async toggle() {
-    if (!this.activa && !this.tieneKey) {
-      await Swal.fire({ icon: 'warning', title: 'Falta la clave de servicio', text: 'Pega la Service Role Key de Supabase antes de activar la sincronización.' });
-      return;
-    }
     this.saving = true;
     try {
       await this.api?.cloudSetConfig?.({ enabled: !this.activa });
       await this.cargar();
       if (this.activa) await this.sincronizarAhora();
-    } finally {
-      this.saving = false;
-    }
-  }
-
-  async guardarKey() {
-    const key = this.serviceKeyInput.trim();
-    if (!key) return;
-    this.saving = true;
-    try {
-      await this.api?.cloudSetConfig?.({ serviceKey: key });
-      this.serviceKeyInput = '';
-      await this.cargar();
-      await Swal.fire({ icon: 'success', title: 'Clave guardada', timer: 1200, showConfirmButton: false });
     } finally {
       this.saving = false;
     }
@@ -114,7 +98,9 @@ export class SyncNubePanelComponent implements OnInit {
       } else if (r?.skipped) {
         this.lastResult = 'Sincronización desactivada.';
       } else {
-        this.lastResult = r?.error || 'No se pudo sincronizar. Revisa tu conexión y la clave.';
+        this.lastResult = r?.skipped === 'suscripcion'
+          ? 'En pausa: la sincronización vuelve al renovar tu suscripción.'
+          : (r?.error || 'No se pudo sincronizar. Revisa tu conexión.');
       }
     } catch (e: any) {
       this.lastOk = false;

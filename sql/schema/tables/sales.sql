@@ -18,6 +18,7 @@ CREATE TABLE dbo.sales (
     invoice_status NVARCHAR(20) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_sales_invoice_status DEFAULT ('NONE'),
     register_id INT NULL CONSTRAINT DF_sales_register_id DEFAULT ((1)),
     service_mode NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NULL,
+    venta_esencial BIT NOT NULL CONSTRAINT DF_sales_venta_esencial DEFAULT ((0)),
     PRIMARY KEY CLUSTERED (id)
 );
 END;

@@ -35,6 +35,7 @@ const { crearEventos } = require('./eventos');
 const { crearCapacidades } = require('./capacidades');
 const { crearTrabajadores } = require('./trabajadores');
 const { crearAuditoria } = require('./auditoria');
+const { crearLicenciaPantallas } = require('./licencia-pantallas');
 const { crearSeguimiento } = require('./seguimiento');
 const { crearRegistro } = require('./superficies/registro');
 const { nuevoSecreto, MINUTOS_EMPAREJAR } = require('./credenciales');
@@ -63,7 +64,7 @@ function registrarSuperficies(registro, { dominios }) {
   registro.registrar(require('./superficies/inventario')());
 }
 
-function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname(), esPrincipal, leerConfig, guardarConfig, dominios = {}, log = (m) => console.log(`[LOCAL HOST] ${m}`) }) {
+function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname(), esPrincipal, leerConfig, guardarConfig, dominios = {}, licencia = null, log = (m) => console.log(`[LOCAL HOST] ${m}`) }) {
   const pool = () => poolPromise;
   const repo = repositorio.crear({ poolPromise, sql });
   const registro = crearRegistro();
@@ -71,6 +72,14 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
   const capacidades = crearCapacidades({ pool, log });
   const trabajadores = crearTrabajadores({ pool, sql, log });
   const auditoria = crearAuditoria({ pool, sql, log });
+  /* LA LICENCIA, en el servidor: cada función existe si el negocio la tiene
+     encendida (capacidad) Y la licencia la incluye (entitlement). La cuota
+     de pantallas por giro se revisa al emparejar y al cambiar de función. */
+  const licenciaPantallas = crearLicenciaPantallas({ repo, licencia });
+  for (const def of registro.todas()) {
+    const capacidad = def.disponible;
+    def.disponible = (caps) => capacidad(caps) && licenciaPantallas.permite(def.tipo);
+  }
 
   const estado = {
     /** APAGADO | NO_PRINCIPAL | SIN_TABLAS | OTRO_HOST | PUERTO_OCUPADO | ACTIVO | ERROR */
@@ -108,6 +117,7 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
       srvApi = crearServidor({
         repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, dominios, log,
         seguimiento: crearSeguimiento({ pool, sql }),
+        licenciaPantallas,
         alPedir: (d, req) => {
           const cola = Number(req.headers['x-wx-cola']);
           reportes.set(d.id, { cola: Number.isFinite(cola) ? cola : (reportes.get(d.id)?.cola ?? 0), en: new Date().toISOString() });
@@ -273,6 +283,7 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
     const caps = await capacidades.leer(true);
     const def = registro.obtener(superficie);
     if (!def) return { error: 'Esa función no existe.' };
+    if (!licenciaPantallas.permite(def.tipo)) return { error: licenciaPantallas.mensaje() };
     if (!def.disponible(caps)) return { error: `«${def.nombre}» no está encendida en este negocio.` };
     const st = Number(stationId);
     if (def.requiereEstacion && !todas) {
@@ -303,6 +314,8 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
     if (!dir) return { ok: false, error: 'Esta computadora no está conectada a una red local.' };
     const f = await funcionPedida({ superficie, stationId, todas, config });
     if (f.error) return { ok: false, error: f.error };
+    const q = await licenciaPantallas.cuota(f.def.tipo);
+    if (!q.ok) return { ok: false, error: q.error, codigo: 'CUOTA' };
     const n = String(nombre || '').trim().slice(0, 80) || `Pantalla · ${f.def.nombre}`;
     const token = nuevoSecreto();
     await repo.crearEmparejamiento({ token, superficie: f.def.tipo, stationId: f.stationId, todas: f.todas, nombre: n, config: f.config, userId });
@@ -315,6 +328,9 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
     if (!UUID.test(String(id || ''))) return { ok: false, error: 'Dispositivo no válido.' };
     const f = await funcionPedida({ superficie, stationId, todas, config });
     if (f.error) return { ok: false, error: f.error };
+    /* Reasignar deja de contar en el giro anterior y cuenta en el nuevo. */
+    const q = await licenciaPantallas.cuota(f.def.tipo, { excluirId: id });
+    if (!q.ok) return { ok: false, error: q.error, codigo: 'CUOTA' };
     const ok = await repo.cambiarFuncion({ id, superficie: f.def.tipo, stationId: f.stationId, todas: f.todas, config: f.config, userId });
     if (!ok) return { ok: false, error: 'Ese dispositivo ya no está conectado.' };
     eventos?.cambioDeFuncion(id);
@@ -363,7 +379,9 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
         /* Las areas del salon: el mesero puede quedar limitado a algunas. */
         pool().then(p => p.request().query('SELECT id, nombre FROM dbo.salon_areas ORDER BY orden, nombre;')).then(r => r.recordset || []).catch(() => []),
       ]);
-      return bien({ ...instantanea(), dispositivos: lista, estaciones, superficies, areas });
+      /* Cuántas Pantallas Operativas usa cada giro y cuántas permite la licencia. */
+      const pantallas = await licenciaPantallas.resumen().catch(() => null);
+      return bien({ ...instantanea(), dispositivos: lista, estaciones, superficies, areas, pantallas });
     })));
 
     ipcMain.handle('localhost:activar', sesion.proteger('localhost:activar', envolver(async (_e, p = {}) =>

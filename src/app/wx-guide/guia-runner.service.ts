@@ -723,6 +723,12 @@ export class GuiaRunnerService {
 
   /** El giro de Servicios, leido antes de filtrar. */
   async preparar(): Promise<void> {
+    /* Los pasos se eligen con las capacidades de ESTE equipo (Touch o
+       escritorio, módulos). Si el recorrido empieza justo después de entrar,
+       todavía pueden estar cargándose: se espera a que estén (si ya lo están,
+       no cuesta nada). Sin esto, una caja Touch podía recibir los pasos de
+       escritorio y el recorrido se perdía en el tercer paso. */
+    await this.caps.load();
     if (this.caps.servicios) await this.giro.cargar();
   }
 

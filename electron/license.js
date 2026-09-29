@@ -377,9 +377,9 @@ function computeStatus(ctx) {
   /*
    * QUE CLASE DE LICENCIA ES ESTA.
    *
-   * `type` lo escribe `sellarComoPrueba` desde que existe, asi que una
-   * licencia guardada por el codigo actual SIEMPRE lo trae y este calculo ni
-   * se ejecuta.
+   * LICENCIAS v2: esto solo clasifica el FORMATO ANTERIOR (sin firma), que el
+   * servicio de licencia (electron/licencia/index.js) ahora RECHAZA con
+   * 'sin-firma'. Se conserva para distinguir demo, manipulada o ninguna.
    *
    * Sin `type` la guardo una version ANTERIOR al sellado, y ahi estaba el
    * fallo: la respuesta de la prueba no traia `type` ni `plan: 'trial'`, asi

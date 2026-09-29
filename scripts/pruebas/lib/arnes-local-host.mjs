@@ -202,7 +202,7 @@ export function puertoAbierto(puerto, host = '127.0.0.1') {
  * las funciones de salon.js que usa el mesero: se registran con un ipcMain de
  * mentira, igual que en main.js.
  */
-export function crearHost({ pool, machine = 'PC-PRINCIPAL', puerto, config = { localHost: { activo: true } }, conHospitality = true }) {
+export function crearHost({ pool, machine = 'PC-PRINCIPAL', puerto, config = { localHost: { activo: true } }, conHospitality = true, licencia = null }) {
   const antes = process.env.WYBIX_LOCAL_HOST_PUERTO;
   process.env.WYBIX_LOCAL_HOST_PUERTO = String(puerto);
   delete require.cache[require.resolve('../../../electron/local-host/index.js')];
@@ -223,6 +223,7 @@ export function crearHost({ pool, machine = 'PC-PRINCIPAL', puerto, config = { l
     leerConfig: () => config,
     guardarConfig: (c) => Object.assign(config, c),
     dominios: { hospitality },
+    licencia,
     log: () => {},
   });
   return host;
