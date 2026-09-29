@@ -218,7 +218,10 @@ for (const metodo of expuestos.keys()) {
 
 // -------------------------------------------- canales que atiende el main
 const main = readFileSync('electron/main.js', 'utf8');
-const ipcExtra = archivos('electron/ipc', ['.js']).map(f => readFileSync(f, 'utf8')).join('\n');
+/* Wybix Local Host registra sus canales en su propio modulo (arranca y los
+   atiende junto al servidor de la red local). */
+const ipcExtra = [...archivos('electron/ipc', ['.js']), 'electron/local-host/index.js']
+  .map(f => readFileSync(f, 'utf8')).join('\n');
 const canales = new Set();
 for (const m of (main + ipcExtra).matchAll(/ipcMain\.(?:handle|on)\(\s*['"]([^'"]+)['"]/g)) {
   canales.add(m[1]);

@@ -1,0 +1,252 @@
+<div class="sa">
+  <header class="hx-head">
+    <div class="hx-head__ic"><i class="ph ph-squares-four" aria-hidden="true"></i></div>
+    <div class="hx-head__txt">
+      <h1>Salón y estaciones</h1>
+      <p>Cómo es tu local y dónde se prepara cada cosa.</p>
+    </div>
+    <nav class="wx-seg sa-tabs" aria-label="Secciones">
+      <button type="button" class="wx-seg__op" *ngIf="caps.mesas" [class.on]="tab() === 'salon'"
+              [attr.aria-pressed]="tab() === 'salon'" (click)="tab.set('salon')">
+        <i class="ph ph-armchair" aria-hidden="true"></i> Salón
+        <span class="wx-seg__n">{{ mesas().length }}</span>
+      </button>
+      <button type="button" class="wx-seg__op" *ngIf="caps.comandas" [class.on]="tab() === 'estaciones'"
+              [attr.aria-pressed]="tab() === 'estaciones'" (click)="tab.set('estaciones')">
+        <i class="ph ph-cooking-pot" aria-hidden="true"></i> Estaciones
+        <span class="wx-seg__n">{{ estaciones().length }}</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- ================================================================ SALON -->
+  <section *ngIf="tab() === 'salon' && caps.mesas" class="sa-salon wx-asomar">
+    <div class="sa-bar">
+      <ul class="hx-cifras" *ngIf="areas().length" aria-label="Resumen del salón">
+        <li class="hx-cifra hx-cifra--dinero"><b>{{ resumenSalon().areas }}</b> {{ resumenSalon().areas === 1 ? 'área' : 'áreas' }}</li>
+        <li class="hx-cifra hx-cifra--dinero"><b>{{ resumenSalon().mesas }}</b> mesas</li>
+        <li class="hx-cifra hx-cifra--dinero"><b>{{ resumenSalon().lugares }}</b> lugares</li>
+      </ul>
+      <p class="sa-bar__txt">Toca una mesa para cambiarle el nombre o los lugares.</p>
+      <button type="button" class="btn-primary" (click)="nuevaArea()">
+        <i class="ph ph-plus" aria-hidden="true"></i> Nueva área
+      </button>
+    </div>
+
+    <div class="sa-vacio" *ngIf="!areas().length">
+      <div class="sa-vacio__dibujo" aria-hidden="true">
+        <hx-mesita [sillas]="2" tam="md"></hx-mesita>
+        <hx-mesita [sillas]="4" tam="lg"></hx-mesita>
+        <hx-mesita [sillas]="1" tam="md"></hx-mesita>
+      </div>
+      <h3>Dibuja tu local</h3>
+      <p>Empieza por un área —Salón, Terraza, Barra— y agrégale sus mesas. Las verás así en la pantalla de Mesas.</p>
+      <button type="button" class="btn-primary" (click)="nuevaArea()">
+        <i class="ph ph-plus" aria-hidden="true"></i> Crear la primera área
+      </button>
+    </div>
+
+    <article class="sa-area hx-entra" *ngFor="let a of areas(); let i = index; trackBy: porId" [style.--i]="i">
+      <header class="sa-area__cab">
+        <span class="hx-area-ic"><i class="ph" [ngClass]="iconoDeArea(a.nombre)" aria-hidden="true"></i></span>
+        <div class="sa-area__tit">
+          <h2>{{ a.nombre }}</h2>
+          <small>
+            {{ mesasDe(a).length }} {{ mesasDe(a).length === 1 ? 'mesa' : 'mesas' }} · {{ lugaresDe(a) }} lugares
+            <span *ngIf="enUsoDe(a)" class="sa-area__uso">· {{ enUsoDe(a) }} en uso</span>
+          </small>
+        </div>
+        <button type="button" class="sa-icono wx-pulsar" (click)="renombrarArea(a)"
+                [attr.aria-label]="'Renombrar ' + a.nombre" title="Renombrar área">
+          <i class="ph ph-pencil-simple" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="sa-icono sa-icono--peligro wx-pulsar" (click)="quitarArea(a)"
+                [attr.aria-label]="'Quitar ' + a.nombre" title="Quitar área">
+          <i class="ph ph-trash" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <!-- El plano: cada mesa dibujada con sus lugares. -->
+      <div class="sa-plano">
+        <button type="button" class="sa-mesa" *ngFor="let m of mesasDe(a); trackBy: porId"
+                [class.es-elegida]="editando() === m.id" [class.en-uso]="m.estado !== 'LIBRE'"
+                [attr.aria-expanded]="editando() === m.id"
+                [attr.aria-label]="m.nombre + ', ' + lugares(m) + ' lugares' + (m.estado !== 'LIBRE' ? ', en uso' : '')"
+                (click)="editar(m)">
+          <hx-mesita [sillas]="lugares(m)" [estado]="m.estado === 'LIBRE' ? 'libre' : 'abierta'" tam="md"></hx-mesita>
+          <span class="sa-mesa__nom">{{ m.nombre }}</span>
+          <span class="sa-mesa__cap">{{ lugares(m) }} {{ lugares(m) === 1 ? 'lugar' : 'lugares' }}</span>
+          <span class="sa-mesa__uso" *ngIf="m.estado !== 'LIBRE'" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="sa-mesa sa-mesa--nueva" (click)="nuevaMesa(a)">
+          <span class="sa-mesa__mas"><i class="ph ph-plus" aria-hidden="true"></i></span>
+          <span class="sa-mesa__nom">Agregar mesa</span>
+          <span class="sa-mesa__cap">será «{{ siguienteDe(a) }}»</span>
+        </button>
+      </div>
+
+      <!-- Editor en linea: se abre bajo el plano, sin ventana encima. -->
+      <div class="wx-abrir" [class.es-cerrado]="!mesaEditadaEn(a)">
+        <div>
+          <form class="sa-editor" *ngIf="mesaEditadaEn(a) as m" (ngSubmit)="guardarMesa(m)">
+            <hx-mesita class="sa-editor__vista" [sillas]="borrador.capacidad"
+                       [estado]="m.estado === 'LIBRE' ? 'libre' : 'abierta'" tam="lg"></hx-mesita>
+            <div class="sa-editor__campos">
+              <label class="sa-campo">
+                <span>Nombre de la mesa</span>
+                <input class="ctl" id="sa-mesa-nombre" name="sa-mesa-nombre" type="text" maxlength="30"
+                       [(ngModel)]="borrador.nombre" autocomplete="off">
+              </label>
+              <div class="sa-campo">
+                <span id="sa-lugares-et">Lugares</span>
+                <div class="sa-pasos" role="group" aria-labelledby="sa-lugares-et">
+                  <button type="button" class="wx-pulsar" (click)="cambiarLugares(-1)" [disabled]="borrador.capacidad <= 1"
+                          aria-label="Un lugar menos"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                  <output aria-live="polite">{{ borrador.capacidad }}</output>
+                  <button type="button" class="wx-pulsar" (click)="cambiarLugares(1)" [disabled]="borrador.capacidad >= 12"
+                          aria-label="Un lugar más"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="sa-editor__acc">
+              <button type="button" class="btn-ghost sa-editor__quitar" (click)="quitarMesa(m)" [disabled]="m.estado !== 'LIBRE'">
+                <i class="ph ph-trash" aria-hidden="true"></i> Quitar mesa
+              </button>
+              <button type="button" class="btn-outline" (click)="cerrarEditor()">Cancelar</button>
+              <button type="submit" class="btn-primary" [disabled]="!borrador.nombre.trim()">Guardar</button>
+            </div>
+            <p class="sa-editor__nota" *ngIf="m.estado !== 'LIBRE'">
+              <i class="ph ph-info" aria-hidden="true"></i> Tiene una cuenta abierta: se puede renombrar, pero no quitar.
+            </p>
+          </form>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- =========================================================== ESTACIONES -->
+  <section *ngIf="tab() === 'estaciones' && caps.comandas" class="sa-est wx-asomar">
+    <div class="sa-bar">
+      <p class="sa-bar__txt">Cada estación recibe sus comandas en pantalla, en papel o en las dos. Imprime la caja que envía.</p>
+      <button type="button" class="btn-primary" (click)="nuevaEstacion()">
+        <i class="ph ph-plus" aria-hidden="true"></i> Nueva estación
+      </button>
+    </div>
+
+    <div class="sa-est__rejilla">
+      <!-- ------------------------------------------------------- estaciones -->
+      <div class="sa-est__col">
+        <h2 class="sa-sub">Estaciones</h2>
+
+        <div class="sa-vacio sa-vacio--chico" *ngIf="!estaciones().length">
+          <i class="ph ph-cooking-pot" aria-hidden="true"></i>
+          <p>Crea la primera: Barra, Cocina, Postres… Cada una ve solo lo suyo.</p>
+        </div>
+
+        <article class="sa-estacion hx-entra" *ngFor="let e of estaciones(); let i = index; trackBy: porEstacion"
+                 [style.--i]="i" [ngClass]="colorEstacion(e.id)" [class.es-sucia]="sucia(e)">
+          <header class="sa-estacion__cab">
+            <span class="sa-estacion__ic"><i class="ph" [ngClass]="iconoSalida(e.salida)" aria-hidden="true"></i></span>
+            <input class="sa-estacion__nombre" type="text" [(ngModel)]="e.nombre" [name]="'est-nombre-' + i"
+                   placeholder="Nombre de la estación" aria-label="Nombre de la estación" maxlength="40" autocomplete="off">
+            <span class="sa-estacion__n" *ngIf="e.id != null">{{ productosDe(e.id) }} {{ productosDe(e.id) === 1 ? 'producto' : 'productos' }}</span>
+            <button type="button" class="sa-icono sa-icono--peligro wx-pulsar" (click)="quitarEstacion(e)"
+                    [attr.aria-label]="'Quitar ' + (e.nombre || 'estación')" title="Quitar estación">
+              <i class="ph ph-trash" aria-hidden="true"></i>
+            </button>
+          </header>
+
+          <div class="sa-campo">
+            <span [id]="'est-salida-et-' + i">Recibe las comandas en</span>
+            <div class="wx-seg wx-seg--full" role="radiogroup" [attr.aria-labelledby]="'est-salida-et-' + i">
+              <button type="button" class="wx-seg__op" role="radio" *ngFor="let s of salidas"
+                      [attr.aria-checked]="e.salida === s.valor" (click)="e.salida = s.valor">
+                <i class="ph" [ngClass]="s.icono" aria-hidden="true"></i> {{ s.etiqueta }}
+              </button>
+            </div>
+          </div>
+
+          <div class="wx-abrir" [class.es-cerrado]="!usaImpresora(e)">
+            <div>
+              <div class="sa-estacion__imp">
+                <label class="sa-campo">
+                  <span>Impresora</span>
+                  <wx-select [opciones]="impresoras()" [(ngModel)]="e.impresora" [name]="'est-imp-' + i"
+                             placeholder="Elige la impresora" [buscable]="impresoras().length > 6"></wx-select>
+                </label>
+                <div class="sa-campo sa-campo--corto">
+                  <span [id]="'est-ancho-et-' + i">Papel</span>
+                  <div class="wx-seg wx-seg--full" role="radiogroup" [attr.aria-labelledby]="'est-ancho-et-' + i">
+                    <button type="button" class="wx-seg__op" role="radio" *ngFor="let w of anchos"
+                            [attr.aria-checked]="anchoDe(e) === w" (click)="e.ancho_mm = w">{{ w }} mm</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="sa-estacion__pie" [class.wx-asentar]="recienGuardada() === e.id">
+            <span class="sa-estacion__estado es-sucia" *ngIf="sucia(e)">
+              {{ e.id == null ? 'Nueva, sin guardar' : 'Cambios sin guardar' }}
+            </span>
+            <span class="sa-estacion__estado" *ngIf="!sucia(e)">
+              <i class="ph ph-check-circle" aria-hidden="true"></i>
+              {{ recienGuardada() === e.id ? 'Guardada' : 'Al día' }}
+            </span>
+            <button type="button" class="btn-primary btn-sm wx-asomar" *ngIf="sucia(e)" (click)="guardarEstacion(e)"
+                    [disabled]="!e.nombre.trim()">Guardar</button>
+          </footer>
+        </article>
+      </div>
+
+      <!-- ------------------------------------------------ producto -> estacion -->
+      <div class="sa-prod" *ngIf="estaciones().length">
+        <header class="sa-prod__cab">
+          <h2>¿Dónde se prepara cada producto?</h2>
+          <p>Lo que no se prepara —un agua, algo empaquetado— no genera comanda.</p>
+        </header>
+
+        <div class="sa-prod__filtros">
+          <div class="wx-seg wx-seg--sm" role="group" aria-label="Filtrar por estación">
+            <button type="button" class="wx-seg__op" [class.on]="filtroEst() === 'todos'"
+                    [attr.aria-pressed]="filtroEst() === 'todos'" (click)="filtroEst.set('todos')">
+              Todos <span class="wx-seg__n">{{ productos().length }}</span>
+            </button>
+            <ng-container *ngFor="let e of estaciones(); trackBy: porEstacion">
+              <button type="button" class="wx-seg__op" *ngIf="e.id != null" [ngClass]="colorEstacion(e.id)"
+                      [class.on]="filtroEst() === e.id" [attr.aria-pressed]="filtroEst() === e.id" (click)="filtroEst.set(e.id)">
+                <span class="wx-seg__dot sa-dot" aria-hidden="true"></span>
+                {{ e.nombre }} <span class="wx-seg__n">{{ productosDe(e.id) }}</span>
+              </button>
+            </ng-container>
+            <button type="button" class="wx-seg__op" [class.on]="filtroEst() === 'ninguna'"
+                    [attr.aria-pressed]="filtroEst() === 'ninguna'" (click)="filtroEst.set('ninguna')">
+              Sin preparación <span class="wx-seg__n">{{ productosDe(null) }}</span>
+            </button>
+          </div>
+          <label class="sa-prod__buscar">
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+            <input class="ctl" type="search" placeholder="Buscar producto…" aria-label="Buscar producto"
+                   [ngModel]="filtroSig()" (ngModelChange)="filtroSig.set($event)" name="sa-buscar" autocomplete="off">
+          </label>
+        </div>
+
+        <div class="sa-prod__lista">
+          <div class="sa-prod__fila" *ngFor="let p of productosVisibles(); trackBy: porProducto"
+               [ngClass]="colorEstacion(p.station_id)">
+            <span class="sa-prod__punto" aria-hidden="true"></span>
+            <span class="sa-prod__nom">
+              <b>{{ p.nombre }}</b>
+              <small>{{ p.category_name || 'Sin categoría' }}</small>
+            </span>
+            <wx-select [opciones]="opcionesEstacion()" [ngModel]="p.station_id"
+                       (ngModelChange)="asignar(p, $event)" [name]="'prep-' + p.product_id"></wx-select>
+          </div>
+          <p class="sa-prod__nada" *ngIf="!productosVisibles().length">
+            {{ filtroSig().trim() ? 'Ningún producto coincide con la búsqueda.' : 'No hay productos aquí.' }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

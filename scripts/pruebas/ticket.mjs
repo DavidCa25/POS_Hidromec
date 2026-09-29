@@ -148,6 +148,17 @@ check(etiquetaPago('EFECTIVO') === 'Efectivo', 'EFECTIVO -> Efectivo');
 check(etiquetaPago('TRANSFERENCIA') === 'Transferencia', 'TRANSFERENCIA -> Transferencia');
 check(etiquetaPago('') === '—', 'sin metodo, una raya, no la cadena vacia');
 
+// =============================================================== 7
+seccion('7. El numero de pedido del dia, en grande');
+const conPedido = construirTicketHtml({ id: 1010, payment_method: 'EFECTIVO', service_mode: 'TAKEAWAY' },
+  mixta, { plantilla: PLANTILLA, negocio, pedido: 23 });
+check(/<div class="pedido"><span>Tu pedido<\/span><b class="num">23<\/b>/.test(conPedido), 'una venta de mostrador lleva «Tu pedido 23»');
+check(!conPedido.includes('{{'), 'no queda ninguna marca de plantilla sin rellenar');
+check(conPedido.indexOf('class="pedido"') < conPedido.indexOf('<table class="items"'), 'va arriba, antes de los productos');
+check(!sinLogo.includes('class="pedido"') && !construirTicketHtml({ id: 9 }, mixta, { plantilla: PLANTILLA, negocio, pedido: 'x' }).includes('class="pedido"'),
+  'sin numero (o con uno invalido) no se imprime el bloque');
+check(!sinLogo.includes('{{PEDIDO_BLOCK}}'), 'y la marca desaparece aunque no haya numero');
+
 console.log(fallos ? `\nRESULTADO: ${fallos} fallas de ${pasos}` : `\nRESULTADO: ${pasos} ok · 0 fallas`);
 console.log('El ticket es lo unico que el cliente se lleva.');
 process.exit(fallos ? 1 : 0);

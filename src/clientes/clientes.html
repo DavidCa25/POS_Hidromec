@@ -128,124 +128,161 @@
     </div>
   </div>
 
-  <!-- Modal Nuevo/Editar -->
-  <div class="cierre-modal" *ngIf="showModal" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center;">
-    <div class="cierre-dialog modal-content" style="padding:1.2rem 1.2rem 1.4rem; width: 96%; max-width: 560px;">
-      <h3 style="margin:0 0 .6rem; font-size:1.4rem; font-weight:800;">
-        {{ editing ? 'Editar cliente' : 'Nuevo cliente' }}
-      </h3>
+  <!-- Modal Nuevo/Editar
+       HORIZONTAL: en una pantalla pequeña el dialogo vertical de 16 campos no
+       cabia y «Guardar» quedaba fuera. Ahora es ancho, con cabecera y pie fijos
+       y solo el cuerpo desplaza; Credito y Facturacion se pliegan con su flecha
+       y, plegados, dicen lo que tienen. -->
+  <!-- Sin cierre al tocar fuera: un toque errado no debe tirar lo capturado. -->
+  <div class="cierre-modal cli-velo" *ngIf="showModal">
+    <div class="cierre-dialog modal-content cli-dlg" role="dialog" aria-modal="true" aria-labelledby="cli-dlg-titulo">
 
-      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
-        <div class="filter-group">
-          <label>Nombre</label>
-          <input class="form-control" [(ngModel)]="form.name">
+      <header class="cli-dlg__cab">
+        <wx-avatar *ngIf="editing" [semilla]="'c:' + editing.id" [nombre]="editing.name" [size]="34"></wx-avatar>
+        <div class="cli-dlg__tit">
+          <h3 id="cli-dlg-titulo">{{ editing ? 'Editar cliente' : 'Nuevo cliente' }}</h3>
+          <p *ngIf="editing">{{ editing.name }}</p>
         </div>
-        <div class="filter-group">
-          <label>Teléfono</label>
-          <input class="form-control" [(ngModel)]="form.phone">
-        </div>
-        <div class="filter-group">
-          <label>Correo</label>
-          <input class="form-control" [(ngModel)]="form.email">
-        </div>
-        <div class="filter-group">
-          <label>Límite de crédito</label>
-          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.creditLimit">
-        </div>
-        <div class="filter-group">
-          <label>Días de plazo</label>
-          <input class="form-control" type="number" [(ngModel)]="form.termsDays">
-        </div>
-        <div class="filter-group">
-          <label>Activo</label>
-          <wx-select [(ngModel)]="form.active" [opciones]="opcActivo"></wx-select>
-        </div>
-      </div>
+        <button type="button" class="cli-dlg__x" (click)="cerrarModal()" aria-label="Cerrar">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </header>
 
-      <h4 style="margin: 1.5rem 0 .8rem; font-size:1.1rem; font-weight:700; border-top: 1px solid #e2e8f0; padding-top: 1.2rem;">
-        Datos de Facturación <span style="font-size: 0.9rem; font-weight: 400; color: #64748b;">(Opcional)</span>
-      </h4>
-      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
-        <div class="filter-group">
-          <label>RFC</label>
-          <input class="form-control" [(ngModel)]="form.tax_id" placeholder="Ej. XAXX010101000">
-        </div>
-        <div class="filter-group">
-          <label>Razón Social</label>
-          <input class="form-control" [(ngModel)]="form.razon_social" placeholder="Nombre legal">
-        </div>
-        <!-- Regimen -->
-        <div class="filter-group">
-          <label>Régimen Fiscal</label>
-          <div class="fn-select" [class.open]="regimenAbierto">
-            <button type="button" class="fn-select-trigger" [class.ph]="!form.regimen_fiscal" (click)="regimenAbierto = !regimenAbierto; usoAbierto = false">
-              <span>{{ regimenLabel }}</span><i class="ph ph-caret-down"></i>
-            </button>
-            <div class="fn-select-menu" *ngIf="regimenAbierto">
-              <button type="button" class="fn-opt" *ngFor="let r of regimenes" (click)="form.regimen_fiscal = r.code; regimenAbierto = false">
-                <span class="fn-opt-code">{{ r.code }}</span><span>{{ r.description }}</span>
-              </button>
+      <div class="cli-dlg__cuerpo">
+        <!-- Datos: siempre a la vista -->
+        <section class="cli-sec">
+          <div class="cli-grid cli-grid--datos">
+            <div class="filter-group">
+              <label for="cli-nombre">Nombre</label>
+              <input id="cli-nombre" class="form-control" [(ngModel)]="form.name">
+            </div>
+            <div class="filter-group">
+              <label for="cli-tel">Teléfono</label>
+              <input id="cli-tel" class="form-control" [(ngModel)]="form.phone">
+            </div>
+            <div class="filter-group">
+              <label for="cli-correo">Correo</label>
+              <input id="cli-correo" class="form-control" [(ngModel)]="form.email">
+            </div>
+            <div class="filter-group">
+              <label>Estado</label>
+              <wx-select [(ngModel)]="form.active" [opciones]="opcActivo"></wx-select>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Uso CFDI -->
-        <div class="filter-group">
-          <label>Uso CFDI</label>
-          <div class="fn-select" [class.open]="usoAbierto">
-            <button type="button" class="fn-select-trigger" [class.ph]="!form.uso_cfdi" (click)="usoAbierto = !usoAbierto; regimenAbierto = false">
-              <span>{{ usoLabel }}</span><i class="ph ph-caret-down"></i>
-            </button>
-            <div class="fn-select-menu" *ngIf="usoAbierto">
-              <button type="button" class="fn-opt" *ngFor="let u of usosCfdi" (click)="form.uso_cfdi = u.code; usoAbierto = false">
-                <span class="fn-opt-code">{{ u.code }}</span><span>{{ u.description }}</span>
+        <!-- Credito -->
+        <section class="cli-sec cli-sec--plegable" [class.es-abierta]="creditoAbierto">
+          <button type="button" class="cli-sec__cab" (click)="alternarCredito()"
+                  [attr.aria-expanded]="creditoAbierto" aria-controls="cli-credito">
+            <i class="ph ph-caret-right cli-sec__flecha" aria-hidden="true"></i>
+            <span class="cli-sec__nombre">Crédito</span>
+            <span class="cli-sec__resumen" *ngIf="!creditoAbierto">{{ resumenCredito }}</span>
+          </button>
+          <div id="cli-credito" class="cli-credito" *ngIf="creditoAbierto">
+
+            <!-- Estado de cuenta: lo calcula la base desde las ventas a credito.
+                 Antes eran «Saldo (demo)» y «# vencidos (demo)»: se editaban a
+                 mano y no se guardaban. -->
+            <div class="cli-cuenta" *ngIf="editing as c" aria-label="Estado de cuenta">
+              <div class="cli-cifra">
+                <span>Debe</span>
+                <b class="mono">{{ c.balance | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              </div>
+              <div class="cli-cifra">
+                <span>Disponible</span>
+                <b class="mono">{{ (c.availableCredit ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              </div>
+              <div class="cli-cifra" [class.es-mal]="c.overdueCount > 0">
+                <span>Vencido</span>
+                <b class="mono">{{ (c.overdueBalance ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+                <small *ngIf="c.overdueCount > 0">{{ c.overdueCount }} {{ c.overdueCount === 1 ? 'venta' : 'ventas' }} · {{ c.maxDaysLate }} {{ c.maxDaysLate === 1 ? 'día' : 'días' }} de atraso</small>
+                <small *ngIf="!c.overdueCount && c.nextDueDate">Vence {{ c.nextDueDate | date:'dd/MM/yyyy' }}</small>
+              </div>
+              <div class="cli-cifra" [class.es-mal]="(c.lateFeeEstimate ?? 0) > 0">
+                <span>Mora estimada</span>
+                <b class="mono">{{ (c.lateFeeEstimate ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              </div>
+              <button type="button" class="btn btn-ghost cli-abonar" *ngIf="c.balance > 0" (click)="abonarDesdeFicha()">
+                <i class="ph ph-hand-coins" aria-hidden="true"></i> Abonar
               </button>
             </div>
+            <p class="cli-aviso" *ngIf="motivoBloqueo(editing) as m">
+              <i class="ph ph-lock-simple" aria-hidden="true"></i> No se le puede vender a crédito. {{ m }}
+            </p>
+
+            <div class="cli-grid">
+              <div class="filter-group">
+                <label for="cli-limite">Límite de crédito ($)</label>
+                <input id="cli-limite" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.creditLimit">
+                <small class="cli-hint" *ngIf="!limiteBajoDeuda">0 = no se le vende a crédito.</small>
+                <small class="cli-hint es-mal" *ngIf="limiteBajoDeuda">Ya debe más que eso: no podrá comprar a crédito hasta abonar.</small>
+              </div>
+              <div class="filter-group">
+                <label for="cli-plazo">Días de plazo</label>
+                <input id="cli-plazo" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.termsDays">
+                <small class="cli-hint">La venta vence a los días que pongas.</small>
+              </div>
+              <div class="filter-group">
+                <label for="cli-gracia">Días de gracia</label>
+                <input id="cli-gracia" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.graceDays" placeholder="0">
+                <small class="cli-hint">Tolerancia antes de contarla vencida.</small>
+              </div>
+              <div class="filter-group">
+                <label>Nivel de riesgo</label>
+                <wx-select [(ngModel)]="form.riskLevel" [opciones]="opcRiesgo"></wx-select>
+                <small class="cli-hint">«Alto» suspende el crédito nuevo.</small>
+              </div>
+              <div class="filter-group">
+                <label for="cli-interes">Interés moratorio mensual (%)</label>
+                <input id="cli-interes" class="form-control" type="number" min="0" max="100" step="0.01" [(ngModel)]="form.lateFeePct" placeholder="0.00">
+                <small class="cli-hint">Sobre lo vencido, por día de atraso.</small>
+              </div>
+              <div class="filter-group">
+                <label for="cli-recargo">Recargo por venta vencida ($)</label>
+                <input id="cli-recargo" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.lateFeeFixed" placeholder="0.00">
+                <small class="cli-hint">Una vez por venta, al vencer.</small>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <!-- Facturacion -->
+        <section class="cli-sec cli-sec--plegable" [class.es-abierta]="facturacionAbierta">
+          <button type="button" class="cli-sec__cab" (click)="alternarFacturacion()"
+                  [attr.aria-expanded]="facturacionAbierta" aria-controls="cli-facturacion">
+            <i class="ph ph-caret-right cli-sec__flecha" aria-hidden="true"></i>
+            <span class="cli-sec__nombre">Datos de facturación</span>
+            <span class="cli-sec__opcional">Opcional</span>
+            <span class="cli-sec__resumen" *ngIf="!facturacionAbierta">{{ resumenFacturacion }}</span>
+          </button>
+          <div id="cli-facturacion" class="cli-grid" *ngIf="facturacionAbierta">
+            <div class="filter-group">
+              <label for="cli-rfc">RFC</label>
+              <input id="cli-rfc" class="form-control" [(ngModel)]="form.tax_id" placeholder="Ej. XAXX010101000">
+            </div>
+            <div class="filter-group">
+              <label for="cli-razon">Razón social</label>
+              <input id="cli-razon" class="form-control" [(ngModel)]="form.razon_social" placeholder="Nombre legal">
+            </div>
+            <div class="filter-group">
+              <label>Régimen fiscal</label>
+              <wx-select [(ngModel)]="form.regimen_fiscal" [opciones]="opcRegimen" [buscable]="true"
+                         placeholder="Selecciona régimen" textoBusqueda="Buscar régimen…"></wx-select>
+            </div>
+            <div class="filter-group">
+              <label>Uso CFDI</label>
+              <wx-select [(ngModel)]="form.uso_cfdi" [opciones]="opcUso" [buscable]="true"
+                         placeholder="Selecciona uso de CFDI" textoBusqueda="Buscar uso…"></wx-select>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <!-- INICIO CONFIGURACIÓN AVANZADA CRÉDITO -->
-      <h4 style="margin: 1.5rem 0 .8rem; font-size:1.1rem; font-weight:700; border-top: 1px solid #e2e8f0; padding-top: 1.2rem;">
-        Opciones avanzadas de crédito
-      </h4>
-      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
-        <div class="filter-group">
-          <label>Días de gracia</label>
-          <input class="form-control" type="number" [(ngModel)]="form.graceDays" placeholder="0">
-        </div>
-        <div class="filter-group">
-          <label>Interés moratorio (%)</label>
-          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.lateFeePct" placeholder="0.00">
-        </div>
-        <div class="filter-group">
-          <label>Recargo fijo por mora ($)</label>
-          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.lateFeeFixed" placeholder="0.00">
-        </div>
-        <div class="filter-group">
-          <label>Nivel de riesgo</label>
-          <wx-select [(ngModel)]="form.riskLevel" [opciones]="opcRiesgo"></wx-select>
-        </div>
-      </div>
-      <!-- FIN CONFIGURACIÓN AVANZADA CRÉDITO -->
-
-      <div class="nota" style="text-align:left;">
-      </div>
-      <div class="filter-row" style="grid-template-columns: 1fr 1fr;">
-        <div class="filter-group">
-          <label>Saldo (demo)</label>
-          <input class="form-control" type="number" step="0.01" [(ngModel)]="form.balance">
-        </div>
-        <div class="filter-group">
-          <label># vencidos (demo)</label>
-          <input class="form-control" type="number" [(ngModel)]="form.overdueCount">
-        </div>
-      </div>
-
-      <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
+      <footer class="cli-dlg__pie">
         <button class="btn btn-ghost" (click)="cerrarModal()">Cancelar</button>
         <button class="btn btn-primary" (click)="guardar()">Guardar</button>
-      </div>
+      </footer>
     </div>
   </div>
 </div>
@@ -288,11 +325,12 @@
                   <th class="right">Pagado</th>
                   <th class="right">Saldo</th>
                   <th>Vence</th>
+                  <th class="right">Mora est.</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngIf="loadingVentas">
-                  <td colspan="6" style="text-align:center; padding:.9rem;">
+                  <td colspan="7" style="text-align:center; padding:.9rem;">
                     Cargando ventas...
                   </td>
                 </tr>
@@ -317,11 +355,16 @@
                     <ng-template #sinFecha>
                       <span class="nota">Sin fecha</span>
                     </ng-template>
+                    <span class="cli-vencida" *ngIf="v.overdue">{{ v.daysLate }} {{ v.daysLate === 1 ? 'día' : 'días' }}</span>
+                  </td>
+                  <td class="right">
+                    <span *ngIf="v.lateFee > 0; else sinMora">$ {{ v.lateFee | number:'1.2-2' }}</span>
+                    <ng-template #sinMora><span class="nota">—</span></ng-template>
                   </td>
                 </tr>
 
                 <tr *ngIf="!loadingVentas && ventasCliente.length === 0">
-                  <td colspan="6" style="text-align:center; padding:.9rem;">
+                  <td colspan="7" style="text-align:center; padding:.9rem;">
                     No hay ventas a crédito con saldo pendiente para este cliente.
                   </td>
                 </tr>
@@ -354,6 +397,13 @@
 
           <div class="nota" style="margin-top:.6rem;">
             Selecciona una venta, ajusta el monto si es parcial y confirma el abono.
+          </div>
+          <!-- La mora se informa, no se suma sola: cobrarla es decision del
+               negocio y no entra al saldo de la venta. -->
+          <div class="cli-mora" *ngIf="moraTotal > 0">
+            <i class="ph ph-warning-circle" aria-hidden="true"></i>
+            Mora estimada del cliente: <b class="mono">$ {{ moraTotal | number:'1.2-2' }}</b>.
+            Se informa aparte; el abono se aplica al saldo de la venta.
           </div>
         </div>
       </div>

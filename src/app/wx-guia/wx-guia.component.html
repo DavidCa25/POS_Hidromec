@@ -1,61 +1,83 @@
 <!--
-  Sale de la esquina del dock, donde vive Wybix Mini. La figura vuelve a
-  aparecer arriba del panel -grande- para que se vea que es el mismo que se
-  acaba de pulsar, y con la MISMA cara.
+  EL TABLERO DE WYBIX GUIDE. Recorridos a la izquierda, avance y estado del
+  negocio a la derecha. Se pinta en el <body> (ver el componente).
 -->
-<div class="wxg" *ngIf="guia.abierta()" role="dialog" aria-label="Wybix">
+<div #portal class="wxg-portal">
+  <div class="wxg-velo" *ngIf="guia.abierta()" aria-hidden="true"></div>
 
-  <header class="wxg__cab">
-    <wx-mascota [estado]="guia.estado()" [variante]="guia.variante()" [size]="64" alt=""></wx-mascota>
-    <div class="wxg__dice">
-      <p class="wxg__frase">{{ guia.frase() }}</p>
-      <p class="wxg__datos" *ngIf="guia.resumen().length">
-        <span *ngFor="let d of guia.resumen()">
-          <b>{{ d.etiqueta }}</b> {{ d.valor }}
-        </span>
-      </p>
-    </div>
-  </header>
-
-  <!-- ------------------------------------------------------ lo parado -->
-  <section class="wxg__lista" *ngIf="guia.hayPendientes()">
-    <ng-container *ngFor="let a of guia.avisos(); trackBy: porAviso">
-      <!-- Con ruta es un botón; sin ruta -porque a esta persona no le
-           corresponde- es solo una línea que informa. -->
-      <button type="button" class="wxg__aviso" *ngIf="a.ruta; else soloInforma"
-              (click)="ir(a.ruta)">
-        <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
-        <span class="wxg__avisotxt">
-          <span class="wxg__area">{{ a.area }}</span>
-          <b>{{ a.texto }}</b>
-        </span>
-        <i class="ph ph-arrow-right" aria-hidden="true"></i>
+  <div class="wxg" *ngIf="guia.abierta()" role="dialog" aria-modal="true" aria-labelledby="wxg-titulo">
+    <header class="wxg__cab">
+      <div>
+        <h2 id="wxg-titulo">Wybix Guide</h2>
+        <p>¿Qué quieres aprender?</p>
+      </div>
+      <button type="button" class="wxg__x wx-pulsar" (click)="guia.cerrar()" aria-label="Cerrar Wybix Guide">
+        <i class="ph ph-x" aria-hidden="true"></i>
       </button>
+    </header>
 
-      <ng-template #soloInforma>
-        <span class="wxg__aviso es-mudo">
-          <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
-          <span class="wxg__avisotxt">
-            <span class="wxg__area">{{ a.area }}</span>
-            <b>{{ a.texto }}</b>
+    <div class="wxg__cuerpo">
+      <!-- ------------------------------------------------ los recorridos -->
+      <div class="wxg__lista">
+        <section class="wxg__grupo" *ngFor="let g of grupos(); trackBy: porId">
+          <h3>{{ g.titulo }}</h3>
+          <button type="button" class="wxg__rec wx-pulsar" *ngFor="let e of g.escenarios; trackBy: porId"
+                  [class.es-destacado]="e.grupo === 'inicio' && !progreso.hecho(e.id)"
+                  [class.es-hecho]="e.modo === 'guia' && progreso.hecho(e.id)"
+                  [class.es-demo]="e.modo === 'demo'"
+                  [attr.data-escenario]="e.id"
+                  (click)="empezar(e)">
+            <span class="wxg__recic" aria-hidden="true">
+              <i class="ph" [ngClass]="e.modo === 'guia' && progreso.hecho(e.id) ? 'ph-check' : (e.grupo === 'inicio' || e.modo === 'demo' ? 'ph-play' : e.icono)"></i>
+            </span>
+            <span class="wxg__rectxt">
+              <b>{{ e.titulo }}</b>
+              <small>{{ e.descripcion }}</small>
+            </span>
+            <span class="wxg__recmin">{{ e.modo === 'guia' && progreso.hecho(e.id) ? 'Hecho' : '~' + e.minutos + ' min' }}</span>
+          </button>
+        </section>
+      </div>
+
+      <!-- ------------------------------------------- avance y el negocio -->
+      <aside class="wxg__resumen">
+        <div class="wxg__anillo" [style.--wxg-grados]="avance().grados + 'deg'">
+          <span class="wxg__anillofondo">
+            <wx-mascota [estado]="guia.estado()" [variante]="guia.variante()" [size]="72" alt=""></wx-mascota>
           </span>
-        </span>
-      </ng-template>
-    </ng-container>
-  </section>
+        </div>
+        <b class="wxg__avance">{{ avance().hechos }} de {{ avance().total }} recorridos</b>
+        <p class="wxg__frase">{{ guia.frase() }}</p>
 
-  <!-- No se ofrece lo que esta persona no puede ejecutar; se dice y ya. -->
-  <p class="wxg__admin" *ngIf="guia.necesitaAdmin()">
-    Hay algo que necesita un administrador.
-  </p>
+        <div class="wxg__avisos" *ngIf="guia.hayPendientes()">
+          <ng-container *ngFor="let a of guia.avisos().slice(0, 3); trackBy: porAviso">
+            <!-- Con ruta es un botón; sin ruta -porque a esta persona no le
+                 corresponde- es solo una línea que informa. -->
+            <button type="button" class="wxg__aviso" *ngIf="a.ruta; else soloInforma" (click)="ir(a.ruta)">
+              <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
+              <span>{{ a.texto }}</span>
+              <i class="ph ph-arrow-right" aria-hidden="true"></i>
+            </button>
+            <ng-template #soloInforma>
+              <span class="wxg__aviso es-mudo">
+                <span class="wxg__punto" [ngClass]="'es-' + a.tono" aria-hidden="true"></span>
+                <span>{{ a.texto }}</span>
+              </span>
+            </ng-template>
+          </ng-container>
+        </div>
+        <p class="wxg__admin" *ngIf="guia.necesitaAdmin()">Hay algo que necesita un administrador.</p>
 
-  <!-- ------------------------------------------------------- acciones -->
-  <section class="wxg__acciones" *ngIf="guia.acciones().length">
-    <button type="button" class="wxg__accion" *ngFor="let a of guia.acciones()"
-            (click)="ir(a.ruta)">
-      <i class="ph {{ a.icono }}" aria-hidden="true"></i>
-      <span>{{ a.texto }}</span>
-      <i class="ph ph-arrow-right wxg__flecha" aria-hidden="true"></i>
-    </button>
-  </section>
+        <div class="wxg__pie">
+          <label class="wxg__check">
+            <input type="checkbox" [checked]="progreso.progreso().mostrarAlIniciar" (change)="alternarInicio($event)">
+            Mostrar al iniciar
+          </label>
+          <button type="button" class="wxg__reiniciar" (click)="reiniciar()">
+            <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Reiniciar recorridos
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
 </div>

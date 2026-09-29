@@ -189,29 +189,6 @@
   margin-left: .35rem;
 }
 
-.fn-select { position: relative; }
-.fn-select-trigger {
-  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  border: 1px solid var(--wx-edge-strong); border-radius: 10px; padding: 9px 11px;
-  font-size: 13.5px; background: var(--wx-raised); color: var(--wx-text); cursor: pointer; text-align: left;
-}
-.fn-select-trigger.ph { color: var(--wx-text-dim); }
-.fn-select-trigger span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fn-select-trigger i { font-size: 12px; color: var(--wx-text-muted); flex: 0 0 auto; }
-.fn-select.open .fn-select-trigger { border-color: #4F9BB8; background: var(--wx-surface); }
-.fn-select-menu {
-  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 20;
-  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 11px;
-  box-shadow: var(--wx-shadow-raised); padding: 5px; max-height: 240px; overflow-y: auto;
-}
-.fn-opt {
-  width: 100%; display: flex; align-items: center; gap: 9px;
-  border: none; background: transparent; border-radius: 8px; padding: 8px 9px;
-  cursor: pointer; text-align: left; font-size: 12.5px; color: var(--wx-text-muted);
-}
-.fn-opt:hover { background: var(--wx-sunken); }
-.fn-opt-code { flex: 0 0 auto; font-weight: 600; font-size: 11px; color: var(--wx-accent-text); background: var(--wx-sunken); border-radius: 5px; padding: 2px 7px; min-width: 40px; text-align: center; }
-
 /* ==========================================================================
    REFINAMIENTO
    Se CONSERVA el flujo: buscar, filtrar por estado, presets, cifras y tabla.
@@ -292,3 +269,148 @@
    texto: la celda ya tenía su ancho y la fila conserva su altura. */
 .cli-nombre { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .cli-nombre > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ==========================================================================
+   DIALOGO DE CLIENTE, HORIZONTAL
+   --------------------------------------------------------------------------
+   Era una columna de 16 campos a 540 px: en 1366x768 o en una caja de 10"
+   «Guardar» quedaba debajo del borde y no habia X. Ahora:
+   - ancho (hasta 920 px) y los campos en rejilla que se reparte sola;
+   - cabecera y pie fijos; solo el cuerpo desplaza;
+   - Credito y Facturacion se pliegan con su flecha y, plegados, dicen lo que
+     tienen («$5,000.00 · 30 días», el RFC).
+   ========================================================================== */
+.cli-velo { z-index: var(--wx-z-dialog); padding: 16px; }
+.cierre-modal > .cierre-dialog.cli-dlg {
+  width: min(920px, 100%);
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  display: flex; flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cli-dlg__cab {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 14px 12px 20px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.cli-dlg__tit { flex: 1; min-width: 0; }
+.cli-dlg__tit h3 { margin: 0; }
+.cli-dlg__tit p {
+  margin: 1px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cli-dlg__x {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 36px; height: 36px; border: none; border-radius: var(--wx-radius-sm);
+  background: transparent; color: var(--wx-text-muted); font-size: 18px; cursor: pointer;
+  transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease,
+              transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.cli-dlg__x:hover { background: var(--wx-sunken); color: var(--wx-text); }
+.cli-dlg__x:active { transform: scale(.96); }
+
+.cli-dlg__cuerpo {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  padding: 16px 20px 18px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.cli-dlg__pie {
+  display: flex; justify-content: flex-end; gap: .6rem;
+  padding: 12px 20px;
+  border-top: 1px solid var(--wx-edge);
+  background: var(--wx-dialogo-elevado, var(--wx-raised));
+}
+
+/* Rejilla: cuatro columnas en ancho, dos en una caja pequeña, una en telefono. */
+.cli-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+/* Los datos van en UNA fila: nombre largo, telefono, correo y el estado, que
+   es corto. Antes el estado quedaba solo en una segunda fila. */
+.cli-grid--datos { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(120px, .8fr); }
+.cli-grid .filter-group { min-width: 0; }
+.cli-grid .filter-group label { display: block; margin-bottom: 4px; }
+
+/* Secciones plegables */
+.cli-sec--plegable {
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-raised);
+}
+.cli-sec--plegable > .cli-grid { padding: 4px 14px 14px; }
+.cli-sec__cab {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  min-height: 46px; padding: 0 14px;
+  border: none; background: transparent; border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font: inherit; text-align: left; cursor: pointer;
+}
+.cli-sec__cab:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: -2px; }
+.cli-sec__flecha {
+  flex: 0 0 auto; font-size: 14px; color: var(--wx-text-muted);
+  transition: transform var(--wx-dur-state) var(--wx-ease-out);
+}
+.cli-sec.es-abierta .cli-sec__flecha { transform: rotate(90deg); }
+.cli-sec__nombre { font-weight: 600; font-size: var(--wx-text-base); }
+.cli-sec__opcional { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+.cli-sec__resumen {
+  margin-left: auto; min-width: 0;
+  font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--wx-text-sm); color: var(--wx-text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cli-sec__cab:hover .cli-sec__resumen { color: var(--wx-text); }
+
+@media (max-width: 860px) {
+  .cli-grid, .cli-grid--datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .cli-grid, .cli-grid--datos { grid-template-columns: 1fr; }
+  .cli-velo { padding: 8px; }
+  .cierre-modal > .cierre-dialog.cli-dlg { max-height: calc(100dvh - 16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cli-sec__flecha { transition: none; }
+}
+
+/* ---------------------------------------------- estado de cuenta en la ficha */
+.cli-credito { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 14px; }
+.cli-credito > .cli-grid { padding: 0; }
+.cli-cuenta {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: stretch; gap: 10px;
+}
+.cli-cifra {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: 9px 12px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+}
+.cli-cifra span { font-size: var(--wx-text-xs); color: var(--wx-text-muted); font-weight: 500; }
+.cli-cifra b { font-size: 16px; font-weight: 600; color: var(--wx-text); font-variant-numeric: tabular-nums; }
+.cli-cifra small { font-size: 11.5px; color: var(--wx-text-muted); }
+.cli-cifra.es-mal { border-color: color-mix(in srgb, var(--wx-danger) 35%, var(--wx-edge)); background: var(--wx-danger-soft); }
+.cli-cifra.es-mal b { color: var(--wx-danger); }
+.cli-abonar { align-self: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.cli-aviso {
+  margin: 0; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-warning-soft); color: var(--wx-amber-600); font-size: var(--wx-text-sm); font-weight: 500;
+}
+.cli-hint { display: block; margin-top: 4px; font-size: 11.5px; color: var(--wx-text-dim); line-height: 1.35; }
+.cli-hint.es-mal { color: var(--wx-danger); }
+.cli-vencida {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+  background: var(--wx-danger-soft); color: var(--wx-danger); font-size: 11px; font-weight: 600;
+}
+.cli-mora {
+  margin-top: .6rem; display: flex; gap: 8px; align-items: flex-start;
+  padding: 8px 10px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-warning-soft); color: var(--wx-amber-600); font-size: 12.5px; line-height: 1.4;
+}
+.mono { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+@media (max-width: 860px) {
+  .cli-cuenta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cli-abonar { grid-column: 1 / -1; justify-self: start; }
+}

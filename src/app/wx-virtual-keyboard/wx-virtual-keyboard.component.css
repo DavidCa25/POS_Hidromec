@@ -1,0 +1,71 @@
+/* ==========================================================================
+   WX-VIRTUAL-KEYBOARD
+   Las teclas son las del teclado que tenia Touch (superficie, borde tenue,
+   46 px): misma familia visual, ahora para toda la aplicacion. Por encima de
+   los dialogos -un SweetAlert pide la contrasena del supervisor- y por debajo
+   de las alertas criticas del sistema.
+   ========================================================================== */
+:host { display: contents; }
+
+.wxvk {
+  position: fixed;
+  z-index: 12000;
+  bottom: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--wx-raised);
+  border: 1px solid var(--wx-edge);
+  box-shadow: 0 -8px 28px rgb(6 11 17 / 0.18);
+  user-select: none;
+  touch-action: manipulation;
+  animation: wxvk-sube var(--wx-dur-menu, 170ms) var(--wx-ease-out) both;
+}
+@keyframes wxvk-sube { from { transform: translateY(14px); opacity: 0; } }
+
+.wxvk--text {
+  left: 50%;
+  width: min(1100px, 100vw);
+  translate: -50% 0;
+  border-radius: var(--wx-radius-lg) var(--wx-radius-lg) 0 0;
+}
+
+.wxvk--numeric, .wxvk--money, .wxvk--quantity {
+  right: 16px;
+  bottom: 16px;
+  width: 300px;
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+}
+
+.wxvk__fila { display: flex; gap: 6px; }
+.wxvk__pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+.wxvk__k {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  display: grid; place-items: center;
+  padding: 0;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-sm);
+  color: var(--wx-text);
+  font-family: var(--wx-font);
+  font-size: 19px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out), background-color var(--wx-dur-micro) ease;
+}
+.wxvk__k:active { transform: scale(0.94); background: var(--wx-accent-soft); }
+.wxvk__k--mod { background: var(--wx-sunken); font-size: 15px; color: var(--wx-text-muted); }
+.wxvk__k--mod.on { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.wxvk__k--espacio { flex: 4 1 0; font-size: 14px; color: var(--wx-text-muted); }
+.wxvk__k--listo { background: var(--wx-accent); border-color: var(--wx-accent); color: var(--wx-accent-ink, #fff); font-size: 16px; font-weight: 650; }
+.wxvk__k--ancho { grid-column: span 3; }
+.wxvk__k i { font-size: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wxvk { animation: none; }
+  .wxvk__k { transition: none; }
+  .wxvk__k:active { transform: none; }
+}

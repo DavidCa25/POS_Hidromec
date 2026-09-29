@@ -1,0 +1,51 @@
+/* ==========================================================================
+   WYBIX GUIDE — lo que tiene que ser de DOCUMENTO
+   --------------------------------------------------------------------------
+   Driver.js pinta su velo y su hueco en el <body>, fuera de cualquier
+   componente; la mirada de blobatar registra `@property` que solo existen a
+   nivel de documento. Por eso esto vive aqui y no en un componente.
+   ========================================================================== */
+@import "driver.js/dist/driver.css";
+@import "blobatar/gaze.css";
+
+:root {
+  /* Por encima de todo lo de la aplicacion, por debajo de SweetAlert (20000
+     es `--wx-z-alerta`): un error del sistema tiene que poder decirse aunque
+     haya un recorrido abierto. El velo de Driver va en 10000. */
+  --wx-z-guia: 19000;
+  --wx-guide-velo: rgb(6 11 17);
+}
+
+/* Driver deja sin punteros TODO lo que no sea el objetivo. El presentador y
+   el teclado en pantalla tienen que seguir respondiendo: sin esto no habria
+   forma de pausar, saltar ni salir. */
+.driver-active .wxgl,
+.driver-active .wxgl *,
+.driver-active .wxvk,
+.driver-active .wxvk *,
+/* Y un aviso que salta a mitad de un recorrido («Primero, un cliente»): va
+   por encima de todo y tiene que poder cerrarse, o la pantalla queda muda. */
+.driver-active .swal2-container,
+.driver-active .swal2-container * { pointer-events: auto; }
+.driver-active .wxgl-visor,
+.driver-active .wxgl__figura,
+.driver-active .wxgl__figura * { pointer-events: none; }
+
+/* El globo de Driver NO existe en Wybix: habla el presentador. */
+.wx-guide-driver, .driver-popover.wx-guide-driver { display: none !important; }
+
+/* El objetivo encuadrado: sin el contorno de Driver; el marco lo pone el visor. */
+.driver-active-element { outline: none !important; }
+
+/* El cursor de la voz de Wybix. Parpadea solo mientras escribe. */
+.wx-guide-caret {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 2px;
+  vertical-align: -0.16em; border-radius: 1px;
+  background: var(--wx-accent);
+  animation: wx-guide-caret 1s steps(1) infinite;
+}
+@keyframes wx-guide-caret { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-guide-caret { animation: none; }
+}

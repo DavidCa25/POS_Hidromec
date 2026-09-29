@@ -541,7 +541,14 @@
 .tp-nota.on { background: var(--wx-surface); box-shadow: inset 0 0 0 2px var(--wx-accent); }
 .tp-nota i { color: var(--wx-text-dim); font-size: 19px; }
 .tp-nota .ph-vacio { color: var(--wx-text-dim); }
-.tp-nota__kb { margin-top: 10px; }
+.tp-nota--campo { cursor: text; }
+.tp-nota--campo:focus-within { background: var(--wx-surface); box-shadow: inset 0 0 0 2px var(--wx-accent); }
+.tp-nota--campo input {
+  flex: 1; min-width: 0; min-height: 36px;
+  background: transparent; border: 0; outline: none;
+  color: var(--wx-text); font: inherit;
+}
+.tp-nota--campo input::placeholder { color: var(--wx-text-dim); }
 
 .tp-hoja__foot {
   flex: 0 0 auto;
@@ -813,6 +820,18 @@
   letter-spacing: -0.035em; line-height: 1.02; color: var(--wx-success);
   font-variant-numeric: tabular-nums;
 }
+.tp-exito__pedido {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 100%; margin-top: 16px; padding: 12px 16px;
+  border-radius: var(--wx-radius-md); background: var(--wx-sunken);
+}
+.tp-exito__pedido span {
+  font-size: var(--wx-text-xs); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--wx-text-dim);
+}
+.tp-exito__pedido b {
+  font-family: var(--wx-font-mono); font-size: 56px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.tp-exito__pedido small { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
 .tp-exito__folio {
   margin: 6px 0 0; color: var(--wx-text-dim); font-size: var(--wx-text-xs);
   font-family: var(--wx-font-mono);
@@ -879,3 +898,76 @@
 
 /* Cada extra del carrito en su renglon, con su precio. */
 .tp-linea__opt { display: block; white-space: pre; }
+
+/* ===================================================================== MESAS
+   Una cuenta de mesa dice de que mesa es; lo ya enviado se ve enviado y no
+   se toca; y «Enviar a cocina» vive encima de «Cobrar», porque son dos
+   gestos distintos que nunca se hacen con el mismo boton. */
+.tp-iconbtn--txt { width: auto; padding: 0 12px; gap: 6px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 600; }
+.tp-iconbtn--txt i { font-size: 20px; }
+
+.tp-cart__mesa { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.tp-cart__mesa i { align-self: center; color: var(--wx-accent-text); }
+.tp-cart__mesa small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 500; }
+.tp-cart__mesa .tp-cart__porcobrar {
+  padding: 1px 8px; border-radius: 999px;
+  background: var(--wx-warning-soft); color: var(--wx-warning); font-weight: 650;
+}
+
+.tp-linea.es-enviada .tp-linea__nombre { color: var(--wx-text-muted); }
+/* Donde esta cada linea. Discreto: un punto y dos palabras. */
+.tp-linea__estado {
+  display: inline-flex; align-items: center; gap: 5px; width: fit-content;
+  color: var(--wx-text-dim); font-size: var(--wx-text-xs); font-weight: 600;
+}
+.tp-linea__estado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.tp-linea__estado.es-pendiente { color: var(--wx-warning-ink); }
+.tp-linea__estado.es-enviado { color: var(--wx-accent-text); }
+.tp-linea__estado.es-listo { color: var(--wx-success-ink); }
+.tp-linea__estado.es-entregado { color: var(--wx-text-dim); }
+.tp-linea__qty--fija .tp-linea__num { color: var(--wx-text-muted); }
+
+.tp-enviar { margin-bottom: 8px; }
+.tp-enviar__n {
+  min-width: 24px; padding: 1px 8px; border-radius: 999px;
+  background: var(--wx-accent); color: var(--wx-accent-ink);
+  font-family: var(--wx-font-mono); font-size: var(--wx-text-sm);
+}
+
+/* ================================================================ CLIENTE
+   Una fila, no un formulario: el cliente es opcional y la caja no debe
+   perder espacio de lineas por el. La hoja usa los mismos piezas que la
+   busqueda de productos (campo y resultados). */
+.tp-cliente {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 16px 12px; padding: 0 12px; min-height: var(--tp-tap);
+  background: transparent; border: 1px solid var(--wx-edge-soft); border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font-size: var(--wx-text-sm); text-align: left;
+  transition: background-color var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tp-cliente:active { background: var(--wx-pressed); transform: scale(0.98); }
+.tp-cliente > .ph-user { color: var(--wx-text-dim); font-size: 18px; }
+.tp-cliente > .ph-caret-right { margin-left: auto; color: var(--wx-text-dim); }
+.tp-cliente__lbl { color: var(--wx-text-muted); }
+.tp-cliente__nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.tp-cliente__vacio { color: var(--wx-accent-text); font-weight: 600; }
+
+.tp-hoja--cliente { width: min(520px, 100%); }
+.tp-clientes { display: flex; flex-direction: column; gap: 10px; }
+.tp-clientes__lista { max-height: 44vh; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.tp-res--cliente.on { background: var(--wx-accent-soft); }
+.tp-res--cliente.on i { color: var(--wx-accent-text); }
+.tp-res--cliente .tp-res__p { color: var(--wx-text-muted); font-weight: 500; }
+.tp-hoja__foot--dos > * { flex: 1 1 0; }
+
+.tp-alta { display: flex; flex-direction: column; gap: 4px; }
+.tp-alta .tp-lbl small { color: var(--wx-text-dim); }
+.tp-campo {
+  width: 100%; min-height: var(--tp-touch); margin-bottom: 10px; padding: 0 14px;
+  background: var(--wx-sunken); border: 1px solid var(--wx-edge-soft); border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font-family: var(--wx-font); font-size: var(--wx-text-lg);
+}
+.tp-campo:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.tp-alta__error { margin: 0; color: var(--wx-danger); font-size: var(--wx-text-sm); }
+@media (prefers-reduced-motion: reduce) { .tp-cliente { transition: none; } }

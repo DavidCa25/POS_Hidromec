@@ -57,6 +57,23 @@ export const BASES = {
   GiroElectronica: 'Wybix_E2E_GiroElectronica',
   GiroMantenimiento: 'Wybix_E2E_GiroMantenimiento',
   GiroOtro: 'Wybix_E2E_GiroOtro',
+  /* Una demostracion como las del gestor: marcador is_demo e instancia. La
+     levanta y la borra e2e/wybix-guide-demos.spec.js. */
+  Demo: 'Wybix_E2E_Demo',
+  /* Wybix Guide en un taller y en una estetica. Las levanta y las borra
+     e2e/wybix-guide-giros.spec.js. */
+  GuiaTaller: 'Wybix_E2E_GuiaTaller',
+  GuiaBelleza: 'Wybix_E2E_GuiaBelleza',
+  /* Demos creadas por el camino del gestor (e2e/demo-real.js). Las levanta y
+     las borra e2e/wybix-guide-demos.spec.js. */
+  GuiaRetail: 'Wybix_E2E_GuiaRetail', GuiaRetail3: 'Wybix_E2E_GuiaRetail3',
+  GuiaHospT: 'Wybix_E2E_GuiaHospT', GuiaHospE: 'Wybix_E2E_GuiaHospE',
+  GuiaHospTk1: 'Wybix_E2E_GuiaHospTk1', GuiaHospTk2: 'Wybix_E2E_GuiaHospTk2', GuiaHospDom: 'Wybix_E2E_GuiaHospDom',
+  GuiaTallerD: 'Wybix_E2E_GuiaTallerD', GuiaBellezaD: 'Wybix_E2E_GuiaBellezaD', GuiaTallerH: 'Wybix_E2E_GuiaTallerH',
+  GuiaTimeout: 'Wybix_E2E_GuiaTimeout', GuiaTarde: 'Wybix_E2E_GuiaTarde',
+  /* Configuracion -> Dispositivos locales. La levanta y la borra
+     e2e/dispositivos-locales.spec.js. */
+  Dispositivos: 'Wybix_E2E_Dispositivos',
 };
 
 function lotesDe(ruta) {

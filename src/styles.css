@@ -39,6 +39,7 @@
 @import "./styles/settings.css";
 @import "./styles/detalles.css";
 @import "./styles/dialogo.css";
+@import "./styles/guia.css";
 
 /* ==========================================================================
    CONTROLES DE LOS PANELES DE CONFIGURACION
@@ -431,3 +432,7 @@ html.dark .cs-drawer-body .hint { color: var(--wx-text-muted); }
 
 html.dark .giro-op { border-color: var(--wx-edge, #1e293b); }
 html.dark .giro-op__txt b { color: var(--wx-text); }
+
+/* Teclado en pantalla abierto: la pagina gana un relleno abajo del alto del
+   teclado, para que el campo activo siempre tenga a donde desplazarse. */
+html.wx-teclado-abierto body { padding-bottom: var(--wx-teclado-alto, 0px); }

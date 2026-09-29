@@ -52,7 +52,15 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_register_sale]
     -- Identidad del equipo. Ver el bloque MULTICAJA mas abajo: NULO = no se
     -- exige nada, que es el contrato de MonoCaja y el de las versiones previas.
     @machine_id     NVARCHAR(64) = NULL,
-    @machine_name   NVARCHAR(120) = NULL
+    @machine_name   NVARCHAR(120) = NULL,
+    -- MODO VENTA ESENCIAL (licencia sin suscripcion activa). Lo decide el
+    -- proceso principal con la licencia firmada, nunca la pantalla. Se vende
+    -- y se cobra igual, pero el inventario NO se administra: no se valida
+    -- existencia, no se descuenta y no se crean movimientos. No se toca
+    -- ningun producto (vendible, modo de inventario, recetas, stock): al
+    -- renovar todo vuelve tal cual estaba. La venta queda marcada para poder
+    -- avisar cuantas hubo y desde cuando.
+    @venta_esencial BIT = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -78,6 +86,14 @@ BEGIN
 
     SET @is_credit =
       CASE WHEN @customer_id IS NOT NULL AND UPPER(@payment_method) = 'CREDITO' THEN 1 ELSE 0 END;
+
+    /* Una venta A CREDITO sin cliente quedaba con @is_credit = 0 y se
+       registraba como PAGADA: saldo 0, nadie a quien cobrarle. */
+    IF UPPER(@payment_method) = 'CREDITO' AND @customer_id IS NULL
+    BEGIN
+        RAISERROR('Una venta a credito necesita el cliente.', 16, 1);
+        RETURN;
+    END
 
 
     /* ---------------- MULTICAJA: esta caja es de este equipo ----------------
@@ -218,6 +234,29 @@ BEGIN
         SET @errmsg = N'El producto "' + @debaja + N'" esta dado de baja y ya no puede venderse.';
         RAISERROR(@errmsg, 16, 1);
         RETURN;
+    END
+
+    /* En Venta Esencial solo se vende lo COMERCIALMENTE vendible (sellable = 1).
+       Un ingrediente o insumo no aparece en la venta, y aqui tampoco entra
+       aunque alguien llame el canal a mano: la regla no depende de la
+       pantalla. Fuera de Venta Esencial no cambia nada (una orden de servicio
+       puede cobrar una refaccion que no se vende en mostrador, y en Venta
+       Esencial Servicios esta en pausa). */
+    IF ISNULL(@venta_esencial, 0) = 1
+    BEGIN
+        DECLARE @novendible NVARCHAR(100) = NULL;
+        SELECT TOP 1 @novendible = p.nombre
+        FROM #lines l
+        JOIN dbo.products p ON p.id = l.product_id
+        WHERE p.sellable = 0
+        ORDER BY l.line_no;
+
+        IF @novendible IS NOT NULL
+        BEGIN
+            SET @errmsg = N'"' + @novendible + N'" no es un producto de venta: no se puede cobrar en Venta Esencial.';
+            RAISERROR(@errmsg, 16, 1);
+            RETURN;
+        END
     END
 
     /* ---------------------------------------------- 1) Modificadores */
@@ -487,7 +526,7 @@ BEGIN
         SELECT TOP 1 @pid = product_id, @stk = stock, @rq = qty, @pname = nombre
         FROM #stk WHERE stock < qty ORDER BY product_id;
 
-        IF @pid IS NOT NULL
+        IF @pid IS NOT NULL AND ISNULL(@venta_esencial, 0) = 0
         BEGIN
             SET @errmsg =
                 CONCAT('No hay stock suficiente. ProductoId=', @pid,
@@ -501,8 +540,63 @@ BEGIN
         /* 5) Total */
         SELECT @total = SUM(quantity * unit_price) FROM #lines;
 
+        /* 5b) CREDITO: el cliente puede llevarselo fiado.
+           La pantalla ya filtra, pero la regla vive AQUI, donde no hay pantalla
+           que saltarse. La fila del cliente se bloquea: dos cajas vendiendole a
+           la vez no pueden gastar dos veces el mismo disponible.
+
+           Misma regla que sp_get_customers y sp_get_customers_with_credit_available:
+             - activo, con limite, y sin riesgo alto (3);
+             - sin ventas VENCIDAS: vencida = vencimiento + dias de gracia < hoy;
+             - la deuda abierta mas esta venta no pasa del limite.
+           Y si la venta no trae vencimiento, vence a los dias de plazo del cliente. */
+        IF @is_credit = 1
+        BEGIN
+            DECLARE @cr_limite DECIMAL(12,2), @cr_activo BIT, @cr_riesgo TINYINT,
+                    @cr_plazo INT, @cr_gracia INT, @cr_deuda DECIMAL(12,2), @cr_vencidas INT,
+                    @cr_hoy DATE = CONVERT(date, GETDATE());
+
+            SELECT @cr_limite = credit_limit, @cr_activo = active, @cr_riesgo = risk_level,
+                   @cr_plazo = terms_days, @cr_gracia = grace_days
+            FROM dbo.customers WITH (UPDLOCK, HOLDLOCK)
+            WHERE id = @customer_id;
+
+            IF @cr_limite IS NULL
+                RAISERROR('El cliente de la venta a credito no existe.', 16, 1);
+            IF @cr_activo = 0
+                RAISERROR('El cliente esta inactivo: no se le puede vender a credito.', 16, 1);
+            IF @cr_limite <= 0
+                RAISERROR('Este cliente no tiene credito autorizado.', 16, 1);
+            IF @cr_riesgo >= 3
+                RAISERROR('Este cliente esta en riesgo alto: el credito nuevo esta suspendido.', 16, 1);
+
+            SELECT @cr_deuda = ISNULL(SUM(balance), 0),
+                   @cr_vencidas = ISNULL(SUM(CASE WHEN due_date IS NOT NULL
+                                                   AND DATEADD(DAY, @cr_gracia, due_date) < @cr_hoy
+                                                  THEN 1 ELSE 0 END), 0)
+            FROM dbo.sales
+            WHERE customer_id = @customer_id
+              AND UPPER(payment_method) = 'CREDITO'
+              AND balance > 0;
+
+            IF @cr_vencidas > 0
+                RAISERROR('Este cliente tiene ventas a credito vencidas. Registra un abono antes de volver a venderle a credito.', 16, 1);
+
+            IF @cr_deuda + @total > @cr_limite
+            BEGIN
+                SET @errmsg = CONCAT('La venta ($', FORMAT(@total, 'N2', 'es-MX'),
+                                     ') supera el credito disponible del cliente ($',
+                                     FORMAT(CASE WHEN @cr_limite - @cr_deuda > 0 THEN @cr_limite - @cr_deuda ELSE 0 END, 'N2', 'es-MX'),
+                                     ').');
+                RAISERROR(@errmsg, 16, 1);
+            END
+
+            IF @due_date IS NULL AND @cr_plazo > 0
+                SET @due_date = DATEADD(DAY, @cr_plazo, @cr_hoy);
+        END
+
         /* 6) Venta */
-        INSERT INTO sales (datee, useer_id, total, payment_method, customer_id, paid_amount, balance, due_date, register_id, service_mode)
+        INSERT INTO sales (datee, useer_id, total, payment_method, customer_id, paid_amount, balance, due_date, register_id, service_mode, venta_esencial)
         VALUES (
           GETDATE(), @user_id, @total, @payment_method,
           @customer_id,
@@ -510,7 +604,8 @@ BEGIN
           CASE WHEN @is_credit = 1 THEN @total ELSE 0 END,
           @due_date,
           @register_id,
-          @service_mode
+          @service_mode,
+          ISNULL(@venta_esencial, 0)
         );
 
         SET @sale_id = SCOPE_IDENTITY();
@@ -547,6 +642,10 @@ BEGIN
         FROM #mods m
         JOIN #map mp ON mp.line_no = m.line_no;
 
+        /* 8 y 9) Inventario. En Venta Esencial NO se administra: ni stock ni
+              movimientos. La venta registrada es la evidencia. */
+        IF ISNULL(@venta_esencial, 0) = 0
+        BEGIN
         /* 8) Stock */
         UPDATE p
         SET p.stock = p.stock - n.qty
@@ -573,6 +672,7 @@ BEGIN
         JOIN #map mp ON mp.line_no = r.line_no
         JOIN dbo.products p ON p.id = r.product_id
         GROUP BY r.line_no, r.product_id, l.quantity, l.product_name, l.product_id, mp.sale_detail_id, p.cost;
+        END
 
         /* 10) Movimiento CAJA (solo EFECTIVO contado) - turno POR CAJA */
         IF @is_credit = 0 AND UPPER(@payment_method) = 'EFECTIVO'

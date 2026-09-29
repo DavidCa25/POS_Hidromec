@@ -1,9 +1,10 @@
 import { DecimalPipe, CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
+import { ActividadHorariaComponent } from './actividad-horaria/actividad-horaria.component';
 import { fechaLocal } from '../core';
 
-type Seg = 'ventas' | 'clientes' | 'productos' | 'caja';
+type Seg = 'ventas' | 'clientes' | 'productos' | 'caja' | 'horarios';
 type ViewMode = 'week' | 'month';
 
 @Component({
@@ -11,7 +12,7 @@ type ViewMode = 'week' | 'month';
   templateUrl: './estadisticas.html',
   styleUrls: ['./estadisticas.css'],
   standalone: true,
-  imports: [NgApexchartsModule, DecimalPipe, CommonModule]
+  imports: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadHorariaComponent]
 })
 export class Estadisticas {
   seg: Seg = 'ventas';

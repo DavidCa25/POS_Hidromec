@@ -93,6 +93,11 @@ export class Aplicaciones implements OnInit {
     this.cd.detectChanges();
   }
 
+  /** El modulo del que depende esta apagado. */
+  faltaRequisito(m: ModuleDefinition): boolean {
+    return !!m.requiere && !this.caps.capabilities()[m.requiere];
+  }
+
   encendido(m: ModuleDefinition): boolean {
     return !!this.caps.capabilities()[m.capability as keyof Capabilities];
   }
@@ -107,6 +112,7 @@ export class Aplicaciones implements OnInit {
   async alternar(m: ModuleDefinition): Promise<void> {
     if (!this.puedeAdministrar) return;
     const activo = this.encendido(m);
+    if (!activo && this.faltaRequisito(m)) return;
 
     if (activo) {
       const conf = await Swal.fire({

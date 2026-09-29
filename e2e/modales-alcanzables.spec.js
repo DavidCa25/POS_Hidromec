@@ -15,7 +15,13 @@
  *
  * 2) REGISTRAR COMPRA sin proveedores decia «No hay proveedores registrados»
  *    y no ofrecia nada: habia que salir de la compra a medias.
+ *
+ * 3) CLIENTE NUEVO / EDITAR. Una columna de 16 campos: en una pantalla chica
+ *    «Guardar» quedaba fuera y no habia X. Ahora es horizontal, con cabecera y
+ *    pie fijos, y Credito y Facturacion se pliegan con su flecha.
  */
+const fs = require('node:fs');
+const path = require('node:path');
 const { test, expect, CUENTAS, irPorDock } = require('./fixtures');
 
 async function entrar(app, cuenta) {
@@ -39,6 +45,82 @@ const alAlcance = (ventana, sel) => ventana.evaluate((s) => {
 }, sel);
 
 test.describe('Modales que se pueden usar enteros', () => {
+
+  test('cliente: horizontal, con X, Guardar siempre al alcance y el crédito plegable', async ({ app }, info) => {
+    const { ventana } = app;
+    await entrar(app, CUENTAS.admin);
+    /* Una caja de 10": ancha pero baja. */
+    await ventana.setViewportSize({ width: 1024, height: 600 });
+    await ventana.evaluate(() => { try { localStorage.removeItem('wx-clientes:pliegue:credito'); localStorage.removeItem('wx-clientes:pliegue:facturacion'); } catch { /* noop */ } });
+    const foto = async (nombre) => {
+      /* Tras la entrada del dialogo (230 ms): una foto a medio aparecer engaña. */
+      await ventana.waitForTimeout(350);
+      const png = await ventana.screenshot();
+      await info.attach(`${nombre}.png`, { body: png, contentType: 'image/png' });
+      if (process.env.WYBIX_CAPTURAS) {
+        fs.mkdirSync(process.env.WYBIX_CAPTURAS, { recursive: true });
+        fs.writeFileSync(path.join(process.env.WYBIX_CAPTURAS, `${nombre}.png`), png);
+      }
+    };
+
+    await ventana.locator('.wxdock a', { hasText: 'Clientes' }).click();
+    await ventana.locator('button', { hasText: '+ Nuevo cliente' }).click();
+    const dlg = ventana.locator('.cli-dlg');
+    await expect(dlg).toBeVisible();
+
+    /* Horizontal: mas ancho que alto, y cabe en la ventana. */
+    const caja = await dlg.boundingBox();
+    expect(caja.width, 'mas ancho que alto').toBeGreaterThan(caja.height);
+    expect(caja.y + caja.height, 'no pasa del borde').toBeLessThanOrEqual(600);
+
+    /* Plegado por defecto: dice lo que tiene. */
+    const credito = dlg.locator('.cli-sec__cab', { hasText: 'Crédito' });
+    await expect(credito).toHaveAttribute('aria-expanded', 'false');
+    await expect(credito.locator('.cli-sec__resumen')).toHaveText('Sin crédito');
+    await foto('cliente-nuevo-plegado');
+
+    /* Sin desplazar nada: la X, Guardar y Cancelar se pueden pulsar. */
+    for (const sel of ['.cli-dlg__x', '.cli-dlg__pie .btn-primary', '.cli-dlg__pie .btn-ghost']) {
+      const r = await alAlcance(ventana, sel);
+      expect(r.ok, `${sel} se puede pulsar (lo tapa: ${r.tapa})`).toBe(true);
+    }
+
+    /* La flecha lo abre; con TODO abierto, el pie sigue al alcance. */
+    await credito.click();
+    await expect(credito).toHaveAttribute('aria-expanded', 'true');
+    await dlg.locator('#cli-limite').fill('5000');
+    await dlg.locator('#cli-plazo').fill('30');
+    await dlg.locator('.cli-sec__cab', { hasText: 'Datos de facturación' }).click();
+    await foto('cliente-nuevo-abierto');
+    const cuerpo = await ventana.evaluate(() => {
+      const el = document.querySelector('.cli-dlg__cuerpo');
+      return { sh: el.scrollHeight, ch: el.clientHeight };
+    });
+    expect(cuerpo.sh, 'todo abierto no cabe: el cuerpo desplaza').toBeGreaterThan(cuerpo.ch);
+    const guardar = await alAlcance(ventana, '.cli-dlg__pie .btn-primary');
+    expect(guardar.ok, `Guardar sigue al alcance (lo tapa: ${guardar.tapa})`).toBe(true);
+
+    /* Plegado otra vez: el resumen dice el limite y el plazo. */
+    await credito.click();
+    await expect(credito.locator('.cli-sec__resumen')).toHaveText(/5,000\.00 · 30 días/);
+
+    /* Escape cierra; la X tambien. */
+    await ventana.keyboard.press('Escape');
+    await expect(dlg).toHaveCount(0);
+    await ventana.locator('button', { hasText: '+ Nuevo cliente' }).click();
+    await expect(dlg).toBeVisible();
+    await ventana.click('.cli-dlg__x');
+    await expect(dlg).toHaveCount(0);
+
+    /* Y en un telefono-tableta angosta (1 columna) sigue cabiendo. */
+    await ventana.setViewportSize({ width: 800, height: 600 });
+    await ventana.locator('button', { hasText: '+ Nuevo cliente' }).click();
+    await expect(dlg).toBeVisible();
+    await foto('cliente-nuevo-800');
+    const pie = await alAlcance(ventana, '.cli-dlg__pie .btn-primary');
+    expect(pie.ok, `en 800 px Guardar sigue al alcance (lo tapa: ${pie.tapa})`).toBe(true);
+    await ventana.click('.cli-dlg__x');
+  });
 
   test('editar producto: título, Guardar y Cancelar quedan al alcance en una pantalla baja', async ({ app }) => {
     const { ventana } = app;

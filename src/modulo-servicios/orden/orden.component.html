@@ -44,7 +44,7 @@
       Sin autorizar
     </span>
     <div class="der">
-      <button class="btn srv-sm" (click)="cajon.set(true)">Avance y acciones</button>
+      <button class="btn srv-sm" data-guide="srv-orden-acciones" (click)="cajon.set(true)">Avance y acciones</button>
     </div>
   </div>
 
@@ -81,6 +81,8 @@
                 </td>
                 <td>
                   <wx-select class="wx-sel-compacto" [opciones]="opcEstadoLinea"
+                             data-guide="srv-linea-estado" [attr.data-guide-clave]="l.product_id"
+                             [attr.data-guide-estado]="l.status"
                              [ngModel]="l.status"
                              (ngModelChange)="cambiarEstadoLinea(l, $event)"
                              [disabled]="!editable(o) || !puedeOperar"></wx-select>
@@ -113,7 +115,7 @@
         </div>
 
         <div class="os-add" *ngIf="editable(o) && puedeOperar">
-          <button class="btn srv-sm" (click)="agregar('SERVICIO')">+ Servicio</button>
+          <button class="btn srv-sm" data-guide="srv-orden-agregar-servicio" (click)="agregar('SERVICIO')">+ Servicio</button>
           <button class="btn srv-sm" (click)="agregar('PRODUCTO')">{{ giro.material.agregar }}</button>
         </div>
 
@@ -205,15 +207,15 @@
         <!-- Solo cuando de verdad espera una: nunca autorizada, o la
              cotización cambió después de que la autorizaran. Verlo debajo de
              una orden ya autorizada invita a autorizar dos veces lo mismo. -->
-        <button class="btn btn-primary" *ngIf="esperaAutorizacion(o)" (click)="autorizar()">
+        <button class="btn btn-primary" data-guide="srv-orden-autorizar" *ngIf="esperaAutorizacion(o)" (click)="autorizar()">
           {{ textoAutorizar(o) }}
         </button>
 
-        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'ABIERTA'"
+        <button class="btn" data-guide="srv-orden-en-proceso" *ngIf="puedeOperar && o.cabecera.status === 'ABIERTA'"
                 (click)="cambiarEstado('EN_PROCESO')">
           Marcar en proceso
         </button>
-        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'EN_PROCESO'"
+        <button class="btn" data-guide="srv-orden-terminar" *ngIf="puedeOperar && o.cabecera.status === 'EN_PROCESO'"
                 (click)="cambiarEstado('TERMINADA')">
           Marcar terminada
         </button>
@@ -234,7 +236,7 @@
           </span>
         </ng-container>
 
-        <button class="btn btn-primary" *ngIf="puedeOperar"
+        <button class="btn btn-primary" data-guide="srv-orden-cobrar" *ngIf="puedeOperar"
                 [disabled]="!puedeCobrar(o)"
                 [attr.aria-describedby]="puedeCobrar(o) ? null : 'os-porque'"
                 (click)="cobrar()">
@@ -242,7 +244,7 @@
         </button>
         <span class="os-nota" id="os-porque" *ngIf="!puedeCobrar(o)">{{ porQueNoCobrar(o) }}</span>
 
-        <button class="btn" *ngIf="puedeOperar && o.cabecera.status === 'TERMINADA' && o.cabecera.sale_id"
+        <button class="btn" data-guide="srv-orden-entregar" *ngIf="puedeOperar && o.cabecera.status === 'TERMINADA' && o.cabecera.sale_id"
                 (click)="cambiarEstado('ENTREGADA')">
           Entregar
         </button>
@@ -257,7 +259,7 @@
   </div>
 </div>
 
-<div class="srv-vacio" *ngIf="!orden() && !cargando()">
+<div class="srv-vacio" *ngIf="!orden() && !cargando() && dialogo() !== 'nueva'">
   <p>No se encontró la orden.</p>
   <button class="btn" (click)="volver()">Volver a órdenes</button>
 </div>
@@ -284,7 +286,7 @@
       <div class="modal-body px-4 pt-1 pb-4">
 
         <label class="form-label" for="srv-cliente">Cliente</label>
-        <wx-select id="srv-cliente" [opciones]="opcClientes" [buscable]="true"
+        <wx-select id="srv-cliente" data-guide="srv-orden-cliente" [opciones]="opcClientes" [buscable]="true"
                    placeholder="¿De quién es?" textoBusqueda="Buscar cliente…"
                    [ngModel]="formNueva.clienteId" (ngModelChange)="alElegirCliente($event)">
         </wx-select>
@@ -294,7 +296,7 @@
             {{ giro.activoSingular }}
             <span class="srv-opcional" *ngIf="!giro.activoCentral">· opcional</span>
           </label>
-          <wx-select id="srv-activo-n" [opciones]="opcActivos" [buscable]="true"
+          <wx-select id="srv-activo-n" data-guide="srv-orden-activo" [opciones]="opcActivos" [buscable]="true"
                      [placeholder]="giro.textos.elegirActivo"
                      [(ngModel)]="formActivo.activoId"></wx-select>
 
@@ -323,7 +325,7 @@
         </ng-container>
 
         <label class="form-label mt-3" for="srv-reportado">{{ giro.textos.reportado }}</label>
-        <textarea id="srv-reportado" class="form-control" rows="3"
+        <textarea id="srv-reportado" data-guide="srv-orden-reportado" class="form-control" rows="3"
                   [(ngModel)]="formNueva.reportado"
                   [placeholder]="giro.textos.reportadoEjemplo"></textarea>
         <div class="hint">Puedes cotizarlo después, cuando sepas qué hay que hacer.</div>
@@ -332,7 +334,7 @@
 
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button type="button" class="btn btn-outline-secondary" (click)="cancelarNueva()">Cancelar</button>
-          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+          <button type="button" class="btn btn-primary" data-guide="srv-orden-abrir" [disabled]="guardando()"
                   (click)="confirmarNueva()">
             {{ guardando() ? 'Abriendo…' : 'Abrir orden' }}
           </button>
@@ -358,7 +360,7 @@
         <label class="form-label" for="srv-prod">
           {{ claseLinea === 'SERVICIO' ? 'Servicio' : giro.material.singular }}
         </label>
-        <wx-select id="srv-prod" [opciones]="opcCatalogo" [buscable]="true"
+        <wx-select id="srv-prod" data-guide="srv-linea-item" [opciones]="opcCatalogo" [buscable]="true"
                    placeholder="Elige" textoBusqueda="Buscar por nombre o clave…"
                    [ngModel]="formLinea.productoId"
                    (ngModelChange)="claseLinea === 'SERVICIO' ? alElegirServicio($event) : formLinea.productoId = $event">
@@ -372,7 +374,7 @@
           </div>
           <div *ngIf="claseLinea === 'SERVICIO' && opcProfesionales.length">
             <label class="form-label" for="srv-pro">Quién lo hace</label>
-            <wx-select id="srv-pro" [opciones]="opcProfesionales" placeholder="Sin asignar por ahora"
+            <wx-select id="srv-pro" data-guide="srv-linea-profesional" [opciones]="opcProfesionales" placeholder="Sin asignar por ahora"
                        [(ngModel)]="formLinea.profesionalId"></wx-select>
           </div>
         </div>
@@ -388,6 +390,7 @@
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
           <button type="button" class="btn btn-primary"
+                  data-guide="srv-linea-confirmar"
                   [disabled]="guardando() || !formLinea.productoId"
                   (click)="confirmarLinea()">
             {{ guardando() ? 'Añadiendo…' : 'Añadir a la orden' }}
@@ -417,7 +420,7 @@
         </div>
 
         <label class="form-label mt-3" for="srv-aut-nombre">Quién autoriza</label>
-        <input id="srv-aut-nombre" class="form-control" [(ngModel)]="formAutorizar.nombre"
+        <input id="srv-aut-nombre" data-guide="srv-autorizacion-nombre" class="form-control" [(ngModel)]="formAutorizar.nombre"
                placeholder="Nombre de quien aprueba">
 
         <label class="form-label mt-3" for="srv-aut-via">Cómo lo autorizó</label>
@@ -427,7 +430,7 @@
 
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button type="button" class="btn btn-outline-secondary" (click)="cerrarDialogo()">Cancelar</button>
-          <button type="button" class="btn btn-primary" [disabled]="guardando()"
+          <button type="button" class="btn btn-primary" data-guide="srv-autorizacion-confirmar" [disabled]="guardando()"
                   (click)="confirmarAutorizacion()">
             {{ guardando() ? 'Registrando…' : 'Registrar' }}
           </button>

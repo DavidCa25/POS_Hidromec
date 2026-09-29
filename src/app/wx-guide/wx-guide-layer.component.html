@@ -1,0 +1,122 @@
+<ng-container *ngIf="runner.fase() !== 'oculta'">
+
+  <!-- El visor: cuatro esquinas sobre lo que se esta enseñando. -->
+  <div class="wxgl-visor" *ngIf="visor() as v" aria-hidden="true"
+       [style.left.px]="v.x - 12" [style.top.px]="v.y - 12"
+       [style.width.px]="v.w + 24" [style.height.px]="v.h + 24">
+    <i></i><i></i><i></i><i></i>
+  </div>
+
+  <section class="wxgl"
+           [ngClass]="['wxgl--' + runner.presencia(), 'es-' + runner.estado(), 'fase-' + runner.fase()]"
+           [class.es-arriba]="arriba()" [class.es-pausa]="runner.pausado()" [class.es-demo]="runner.esDemo()"
+           [style.--wxgl-base.px]="base()" [style.--wxgl-izq.px]="izquierda()"
+           role="region" aria-label="Wybix Guide">
+
+    <div class="wxgl__figura">
+      <wx-guide-speaker [estado]="runner.estado()" [objetivo]="runner.objetivo()"
+                        [variante]="guia.variante()" [size]="tam()"></wx-guide-speaker>
+    </div>
+
+    <div class="wxgl__franja">
+      <div class="wxgl__principal">
+        <div class="wxgl__cab" *ngIf="runner.escenario() as e">
+          <span class="wxgl__chip" *ngIf="runner.esDemo()">
+            <span class="wxgl__vivo" [class.es-quieto]="runner.pausado()"></span>
+            {{ runner.pausado() ? 'Demo en pausa' : 'Demo automática' }}
+          </span>
+          <span class="wxgl__titulo">{{ e.titulo }}</span>
+          <span class="wxgl__cuenta" *ngIf="runner.total() > 1">{{ runner.indice() + 1 }} de {{ runner.total() }}</span>
+        </div>
+        <div class="wxgl__segs" *ngIf="runner.total() > 1" aria-hidden="true">
+          <i *ngFor="let s of segmentos()" [class.es-hecho]="s.hecho" [class.es-actual]="s.actual"></i>
+        </div>
+
+        <!-- Tocar el texto: primero completa, despues avanza. -->
+        <button type="button" class="wxgl__texto" (click)="runner.tocarTexto()"
+                [attr.aria-label]="voz.escribiendo() ? 'Mostrar la frase completa' : null">
+          <span aria-hidden="true">{{ voz.texto() }}<span class="wx-guide-caret" *ngIf="voz.escribiendo()"></span></span>
+        </button>
+        <p class="wx-sr-only" aria-live="polite">{{ voz.completo() }}</p>
+        <p class="wxgl__aviso" *ngIf="runner.aviso() as a">{{ a }}</p>
+      </div>
+
+      <!-- ============================================================ mandos -->
+      <div class="wxgl__mandos">
+
+        <!-- Primer uso -->
+        <ng-container *ngIf="runner.fase() === 'saludo'">
+          <label class="wxgl__check">
+            <input type="checkbox" (change)="alternarNoVolver($event)"> No volver a mostrar automáticamente
+          </label>
+          <span class="wxgl__botones">
+            <button type="button" class="wxgl__btn wxgl__btn--suave" (click)="ahoraNo()">Ahora no</button>
+            <button type="button" class="wxgl__btn wxgl__btn--cta" (click)="aceptar()">Sí, enséñame</button>
+          </span>
+        </ng-container>
+
+        <!-- Una demo que aqui no puede correr -->
+        <ng-container *ngIf="runner.fase() === 'rechazo'">
+          <span class="wxgl__botones">
+            <button type="button" class="wxgl__btn wxgl__btn--cta" (click)="runner.detener()">Entendido</button>
+          </span>
+        </ng-container>
+
+        <!-- Cierre -->
+        <ng-container *ngIf="runner.fase() === 'cierre'">
+          <label class="wxgl__check" *ngIf="esInicial()">
+            <input type="checkbox" checked (change)="alternarSinAuto($event)"> No mostrar este recorrido automáticamente otra vez
+          </label>
+          <span class="wxgl__botones">
+            <button type="button" class="wxgl__btn wxgl__btn--suave" *ngIf="runner.esDemo()" (click)="repetir()">Otra vez</button>
+            <button type="button" class="wxgl__btn wxgl__btn--cta" (click)="runner.terminar()">Terminar</button>
+          </span>
+        </ng-container>
+
+        <!-- Recorrido guiado -->
+        <ng-container *ngIf="runner.fase() === 'recorrido' && !runner.esDemo()">
+          <span class="wxgl__turno" *ngIf="runner.esperando()?.tipo && runner.esperando()?.tipo !== 'boton' && !runner.perdido()">
+            <i class="ph ph-hand-pointing" aria-hidden="true"></i> Tu turno
+          </span>
+          <span class="wxgl__botones">
+            <button type="button" class="wxgl__btn wxgl__btn--icono" *ngIf="runner.indice() > 0 && !runner.perdido()"
+                    (click)="runner.anterior()" aria-label="Paso anterior"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+            <button type="button" class="wxgl__btn wxgl__btn--suave" (click)="runner.detener()">
+              {{ runner.perdido() ? 'Salir' : 'Omitir' }}
+            </button>
+
+            <ng-container *ngIf="runner.perdido(); else normal">
+              <button type="button" class="wxgl__btn wxgl__btn--cta" (click)="runner.siguiente()">Saltar este paso</button>
+            </ng-container>
+            <ng-template #normal>
+              <ng-container *ngIf="runner.esperando() as esp">
+                <button type="button" class="wxgl__btn wxgl__btn--cta" *ngIf="esp.tipo === 'boton'" (click)="runner.continuar()">
+                  {{ runner.paso()?.cta || 'Siguiente' }}
+                </button>
+                <ng-container *ngIf="esp.tipo !== 'boton'">
+                  <button type="button" class="wxgl__btn wxgl__btn--suave" (click)="runner.siguiente()">Saltar</button>
+                </ng-container>
+              </ng-container>
+            </ng-template>
+          </span>
+        </ng-container>
+
+        <!-- Demo automatica -->
+        <ng-container *ngIf="runner.fase() === 'recorrido' && runner.esDemo()">
+          <span class="wxgl__botones">
+            <button type="button" class="wxgl__btn wxgl__btn--cta wxgl__pausa" (click)="runner.pausado() ? runner.reanudar() : runner.pausar()">
+              <i class="ph" [ngClass]="runner.pausado() ? 'ph-play' : 'ph-pause'" aria-hidden="true"></i>
+              {{ runner.pausado() ? 'Continuar' : 'Pausar' }} <kbd>Espacio</kbd>
+            </button>
+            <button type="button" class="wxgl__btn wxgl__btn--icono" (click)="runner.siguiente()" aria-label="Siguiente paso">
+              <i class="ph ph-skip-forward" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="wxgl__btn wxgl__btn--suave wxgl__detener" (click)="runner.detener()">
+              <i class="ph ph-stop" aria-hidden="true"></i> Detener <kbd>Esc</kbd>
+            </button>
+          </span>
+        </ng-container>
+      </div>
+    </div>
+  </section>
+</ng-container>

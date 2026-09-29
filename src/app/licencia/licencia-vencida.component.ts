@@ -14,13 +14,24 @@ const COMPRA_URL = 'https://wybix-landing.vercel.app';
   <div class="lic-wrap">
     <div class="lic-card">
       <div class="lic-icon" [class.warn]="motivo === 'tamper'">
-        <i class="ph" [ngClass]="motivo === 'tamper' ? 'ph-shield-warning' : 'ph-clock-counter-clockwise'"></i>
+        <i class="ph" [ngClass]="motivo === 'tamper' ? 'ph-shield-warning' : motivo === 'actualizar' ? 'ph-arrows-clockwise' : 'ph-clock-counter-clockwise'"></i>
       </div>
-      <h1>{{ motivo === 'tamper' ? 'No pudimos validar tu licencia' : 'Tu prueba de 30 días terminó' }}</h1>
-      <p class="lic-sub" *ngIf="motivo !== 'tamper'">Para seguir usando Wybix POS, activa tu licencia. Tus datos siguen guardados y seguros.</p>
+      <h1>{{ motivo === 'tamper' ? 'No pudimos validar tu licencia' : motivo === 'actualizar' ? 'Esta licencia necesita actualizarse.' : 'Tu prueba de 30 días terminó' }}</h1>
+      <p class="lic-sub" *ngIf="motivo === 'vencida'">Para seguir usando Wybix POS, activa tu licencia. Tus datos siguen guardados y seguros.</p>
       <p class="lic-sub" *ngIf="motivo === 'tamper'">Detectamos un problema con la licencia de este equipo. Conéctate a internet para revalidar, o activa tu clave. Tus datos siguen guardados y seguros.</p>
+      <p class="lic-sub" *ngIf="motivo === 'actualizar'">Wybix ahora usa licencias firmadas. Conéctate a Internet y actualízala, o importa el archivo de licencia de este equipo. Tus datos siguen guardados y seguros.</p>
 
-      <button class="lic-btn buy" (click)="comprar()">
+      <ng-container *ngIf="motivo !== 'vencida'">
+        <button class="lic-btn buy" (click)="actualizar()" [disabled]="cargando">
+          <i class="ph ph-arrows-clockwise"></i> {{ cargando ? 'Actualizando...' : 'Actualizar licencia' }}
+        </button>
+        <button class="lic-btn" (click)="importar()" [disabled]="cargando">
+          <i class="ph ph-file-arrow-down"></i> Importar archivo de licencia
+        </button>
+        <p class="lic-help">¿Sin Internet en esta computadora? Descarga el archivo en {{ licenciaUrl }} desde otro equipo.</p>
+      </ng-container>
+
+      <button class="lic-btn buy" (click)="comprar()" *ngIf="motivo === 'vencida'">
         <i class="ph ph-bag"></i> Comprar licencia
       </button>
 
@@ -58,7 +69,9 @@ const COMPRA_URL = 'https://wybix-landing.vercel.app';
   `]
 })
 export class LicenciaVencidaComponent {
-  @Input() motivo: 'vencida' | 'tamper' = 'vencida';
+  /** vencida: terminó la prueba. tamper: no verifica. actualizar: licencia sin firma (formato anterior). */
+  @Input() motivo: 'vencida' | 'tamper' | 'actualizar' = 'vencida';
+  readonly licenciaUrl = 'wybix-landing.vercel.app/licencia';
   @Output() activado = new EventEmitter<void>();
   clave = '';
   cargando = false;
@@ -69,6 +82,23 @@ export class LicenciaVencidaComponent {
     const api = (window as any).electronAPI;
     if (api?.openExternal) { api.openExternal(COMPRA_URL); return; }
     try { window.open(COMPRA_URL, '_blank'); } catch { /* noop */ }
+  }
+
+  /** Pide al servidor el certificado firmado de este equipo. */
+  async actualizar() {
+    this.cargando = true;
+    await this.license.refrescar();
+    this.cargando = false;
+    if (this.license.puedeOperar) { this.activado.emit(); return; }
+    await Swal.fire({ icon: 'info', title: 'No se pudo actualizar',
+      text: 'Revisa tu conexión a Internet e intenta de nuevo, importa el archivo de licencia o activa tu clave.' });
+  }
+
+  async importar() {
+    const r = await this.license.importar();
+    if (r.cancelado) return;
+    if (r.ok && this.license.puedeOperar) { this.activado.emit(); return; }
+    await Swal.fire({ icon: 'error', title: 'No se pudo importar', text: r.error || 'El archivo no es una licencia válida para este equipo.' });
   }
 
   async activar() {

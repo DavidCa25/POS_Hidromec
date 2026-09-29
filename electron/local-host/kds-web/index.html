@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0A1119">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="robots" content="noindex">
+  <title>Wybix · Pantalla operativa</title>
+  <link rel="stylesheet" href="/app/app.css">
+  <!-- La carcasa compartida y una pieza por funcion. Todo sale del Host:
+       la CSP solo admite 'self'. -->
+  <script src="/app/app.js" defer></script>
+  <script src="/app/s-preparacion.js" defer></script>
+  <script src="/app/s-mesero.js" defer></script>
+  <script src="/app/s-jornada.js" defer></script>
+  <script src="/app/s-tecnico.js" defer></script>
+  <script src="/app/s-inventario.js" defer></script>
+  <script src="/app/s-cliente.js" defer></script>
+  <script src="/app/inicio.js" defer></script>
+</head>
+<body>
+  <main id="app" class="app" aria-live="polite">
+    <section class="aviso-pantalla">
+      <p>Conectando con Wybix…</p>
+    </section>
+  </main>
+  <noscript><p class="aviso-pantalla">Esta pantalla necesita JavaScript activado.</p></noscript>
+</body>
+</html>

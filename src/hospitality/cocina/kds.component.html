@@ -1,0 +1,112 @@
+<div class="kds">
+  <header class="kds-head">
+    <button type="button" class="kds-salir wx-pulsar" data-guide="kds-salir" (click)="salir()" aria-label="Salir de la pantalla de cocina">
+      <i class="ph ph-arrow-left" aria-hidden="true"></i>
+    </button>
+    <div class="kds-titulo">
+      <h1>Cocina</h1>
+      <span class="kds-hora" aria-label="Hora actual">{{ hora() }}</span>
+    </div>
+
+    <nav class="wx-seg wx-seg--lg kds-est" aria-label="Estación" data-guide="kds-estaciones">
+      <button type="button" class="wx-seg__op" [class.on]="estacion() === null" [attr.aria-pressed]="estacion() === null"
+              (click)="elegir(null)">
+        Todas <span class="wx-seg__n">{{ pendientesDe(null) }}</span>
+      </button>
+      <button type="button" class="wx-seg__op" *ngFor="let e of estaciones(); trackBy: porId"
+              [ngClass]="colorEstacion(e.id)"
+              [class.on]="estacion() === e.id" [attr.aria-pressed]="estacion() === e.id" (click)="elegir(e.id)">
+        <span class="wx-seg__dot kds-dot" aria-hidden="true"></span>
+        {{ e.nombre }} <span class="wx-seg__n">{{ pendientesDe(e.id) }}</span>
+      </button>
+    </nav>
+
+    <!-- Cifras en texto, sin cajas: se leen de un vistazo y no compiten con
+         las comandas. Lo atrasado es lo UNICO en rojo. -->
+    <ul class="kds-cifras" aria-live="polite" aria-label="Comandas">
+      <li><b>{{ cuentas().nuevas }}</b> {{ cuentas().nuevas === 1 ? 'nueva' : 'nuevas' }}</li>
+      <li><b>{{ cuentas().preparando }}</b> en preparación</li>
+      <li><b>{{ cuentas().listas }}</b> {{ cuentas().listas === 1 ? 'lista' : 'listas' }}</li>
+      <li class="es-tarde" *ngIf="cuentas().atrasadas"><b>{{ cuentas().atrasadas }}</b> {{ cuentas().atrasadas === 1 ? 'atrasada' : 'atrasadas' }}</li>
+    </ul>
+  </header>
+
+  <p class="kds-error" *ngIf="error()" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i> {{ error() }}</p>
+
+  <!-- ------------------------------------------------------------- al dia -->
+  <div class="kds-vacio" data-guide="kds-comandas" *ngIf="!comandas().length && !error()">
+    <div class="kds-vacio__sello" aria-hidden="true">
+      <span class="kds-vacio__anillo"></span>
+      <span class="kds-vacio__anillo kds-vacio__anillo--2"></span>
+      <i class="ph ph-cooking-pot"></i>
+    </div>
+    <h2>Todo al día</h2>
+    <p>
+      No hay comandas pendientes{{ estacion() !== null ? ' en esta estación' : '' }}.
+      Las nuevas aparecen aquí solas, en cuanto una caja las envía.
+    </p>
+    <span class="kds-vacio__pulso" *ngIf="haceSegundos() !== null">
+      <span class="wx-status wx-status--ok">Conectado</span>
+      <span>· revisado hace {{ haceSegundos() }} s</span>
+    </span>
+  </div>
+
+  <!-- ------------------------------------------------------------ tablero -->
+  <div class="kds-tablero" data-guide="kds-comandas" *ngIf="comandas().length" [style.--kds-cols]="columnas()">
+    <section class="kds-carril" *ngFor="let k of carriles(); trackBy: porCarril"
+             [ngClass]="'es-' + k.estado.toLowerCase()" [attr.aria-label]="k.titulo">
+      <header class="kds-carril__cab">
+        <span class="kds-carril__punto" aria-hidden="true"></span>
+        <h2>{{ k.titulo }}</h2>
+        <span class="kds-carril__n">{{ k.comandas.length }}</span>
+      </header>
+
+      <p class="kds-carril__nada" *ngIf="!k.comandas.length">{{ k.vacio }}</p>
+
+      <div class="kds-carril__lista">
+
+      <!-- Concepto A · carriles claros. La franja izquierda es la ESTACION;
+           el carril dice el estado; el reloj solo se colorea cuando importa. -->
+      <article class="kds-card hx-entra" *ngFor="let c of k.comandas; let i = index; trackBy: porId"
+               data-guide="kds-ticket" [attr.data-guide-clave]="c.id" [attr.data-guide-estado]="c.estado"
+               [style.--i]="i"
+               [ngClass]="['es-' + c.estado.toLowerCase(), 't-' + temperatura(c), colorEstacion(c.station_id)]"
+               [attr.aria-label]="'Comanda ' + c.id + ', ' + nombreDeMesa(c.destino) + ', ' + etiquetaEstado(c.estado)">
+        <header class="kds-card__cab">
+          <b class="kds-card__dest">{{ nombreDeMesa(c.destino) }}</b>
+          <small class="kds-card__donde">
+            <span *ngIf="estacion() === null" class="kds-card__est">{{ c.estacion }} · </span><span *ngIf="c.area">{{ c.area }} · </span><span class="kds-card__num">#{{ c.id }}</span>
+          </small>
+          <span class="kds-card__reloj" [attr.title]="minutos(c) + ' minutos'">
+            <i class="ph" [ngClass]="c.estado === 'LISTA' ? 'ph-check' : 'ph-timer'" aria-hidden="true"></i>{{ reloj(c) }}
+          </span>
+          <!-- El estado lo dice el carril; esto es para quien no lo ve. -->
+          <span class="kds-card__estado wx-sr-only">{{ etiquetaEstado(c.estado) }}</span>
+        </header>
+
+        <ul class="kds-card__lineas">
+          <li *ngFor="let l of c.lineas; trackBy: porId">
+            <span class="kds-l__cant">{{ l.cantidad }}</span>
+            <span class="kds-l__cuerpo">
+              <span class="kds-l__nom">{{ l.nombre }}</span>
+              <span class="kds-l__op" *ngFor="let o of l.opciones">{{ o }}</span>
+              <span class="kds-l__nota" *ngIf="l.nota">{{ l.nota }}</span>
+            </span>
+          </li>
+        </ul>
+
+        <footer class="kds-card__pie">
+          <button type="button" class="kds-paso" data-guide="kds-paso" [attr.data-guide-clave]="c.id" *ngIf="siguiente(c) as p"
+                  [disabled]="ocupada() === c.id" (click)="avanzar(c)">
+            <i class="ph" [ngClass]="icono(c.estado)" aria-hidden="true"></i>
+            {{ p.texto }}
+          </button>
+          <wx-menu *ngIf="accionesDe(c) as acc" [opciones]="acc" variante="neutral" [soloIcono]="true"
+                   etiqueta="Más acciones de la comanda" claseBoton="kds-mas"
+                   (elegir)="alElegir(c, $event)"></wx-menu>
+        </footer>
+      </article>
+      </div>
+    </section>
+  </div>
+</div>

@@ -14,6 +14,11 @@ const ipcHospitality = require('./ipc/hospitality');
 const ipcLoyalty = require('./ipc/loyalty');
 const ipcServicios = require('./ipc/servicios');
 const ipcQuickstart = require('./ipc/quickstart');
+const ipcSalon = require('./ipc/salon');
+const ipcTerminal = require('./ipc/terminal');
+const ipcGuide = require('./ipc/guide');
+const { crearLocalHost } = require('./local-host');
+const { imprimirHtml } = require('./lib/imprimir-html');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
 const { estaConfigurado } = require('./lib/setup-estado');
 /* FASE CORE 0 — seguridad real.
@@ -70,7 +75,9 @@ const cajaArrendada = require('./cajaArrendada');
 const { normalizarServidor } = require('./lib/servidor-sql');
 const arranque = require('./arranque');
 const redMulticaja = require('./redMulticaja');
-const { sellarComoPrueba } = require('./lib/licencia-prueba');
+const { crearLicencia } = require('./licencia');
+const { llavesDeConfianza, REVOCADAS } = require('./licencia/llaves-publicas');
+const { crearRevocaciones } = require('./licencia/revocaciones');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 const os = require('os');
@@ -122,6 +129,35 @@ ipcServicios.registrar({ ipcMain, sql, poolPromise,
    y lo primero que hace el usuario es cerrarla. */
 ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
   contexto: { businessProfile: () => businessConfig?.business_profile || 'RETAIL' } });
+
+/* IPC de mesas, cuentas, comandas y KDS. Las comandas que van a papel se
+   imprimen con el mismo `imprimirHtml` que el ticket de venta. */
+const hospitalityDominio = ipcSalon.registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig,
+  alCambiarComandas: () => localHost.avisar() });
+
+/* Wybix Local Host: el KDS en tablets por la red del local. Solo la
+   instalacion principal, solo con el arriendo de la base y solo si se
+   encendio en Configuracion. Ver electron/local-host/index.js. */
+const localHost = crearLocalHost({
+  sql, poolPromise,
+  machineId: () => machineIdDeEsteEquipo(),
+  esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+  leerConfig: () => loadDeviceConfig(),
+  guardarConfig: (cfg) => saveDeviceConfig(cfg),
+  /* El mesero envia a preparacion por las MISMAS funciones que Touch y Venta. */
+  dominios: { hospitality: hospitalityDominio },
+  /* La licencia firmada: qué pantallas incluye y cuántas por giro. `licencia`
+     se crea más abajo; aquí solo se guarda cómo preguntarle. */
+  licencia: () => licencia.evaluador(),
+});
+localHost.registrarIpc(ipcMain);
+
+/* Modo terminal: directivas oficiales de Windows, con respaldo y vuelta atras. */
+ipcTerminal.registrar({ ipcMain, loadDeviceConfig, saveDeviceConfig });
+
+/* Wybix Guide: si esta ventana puede correr una demo automatica. Solo el
+   gestor de demostraciones, sobre SU base marcada, dice que si. */
+ipcGuide.registrar({ ipcMain, poolPromise, app, demo, licencia: licenseStore });
 
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
@@ -429,10 +465,20 @@ async function bootMainApp(poolYaAbierto) {
     console.error('[CAJA] No se pudo iniciar el arriendo:', e.message);
   }
 
+  /* El Local Host arranca DESPUES de la caja: no compite por la base con el
+     arranque, y si no esta encendido en Configuracion no abre nada. */
+  localHost.iniciar().catch(e => console.error('[LOCAL HOST] No se pudo iniciar:', e.message));
+
   backup.startScheduler();
   // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
   if (!cachedMachineId) cachedMachineId = generarMachineId();
   cloudSync.setLicenseMachineId(cachedMachineId);
+  /* La nube va por la Edge Function pos-sync (sin service role) y se pausa
+     en Venta Esencial: es un servicio conectado. */
+  cloudSync.configurar({
+    url: SUPABASE_URL, anonKey: ANON_KEY,
+    licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
+  });
   cloudSync.startScheduler();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
 
@@ -995,7 +1041,29 @@ function autoOpenCustomerDisplay() {
 ipcMain.handle('customer-display:list-monitors', async () => listMonitors());
 ipcMain.handle('customer-display:open', async (_e, displayId = null) => openCustomerDisplay(displayId));
 ipcMain.handle('customer-display:close', async () => closeCustomerDisplay());
-ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(state); return { ok: true }; });
+/**
+ * El cobro de un pedido de mostrador lleva su numero, el nombre del cliente
+ * (si la venta tiene) y un QR hacia el tablero general de pedidos. La caja
+ * manda lo que su carrito sabe; la direccion del Local Host se lee aqui y a
+ * la pantalla del cliente llega el QR ya hecho imagen: esa pantalla no
+ * consulta nada. Sin Local Host vigente, va el pedido sin QR.
+ * Ver local-host/qr-pantalla-cliente.js.
+ */
+async function conSeguimiento(state) {
+  const p = state?.mode === 'checkout' ? state.pedido : null;
+  if (!p) return state;
+  const { pedidoParaPantallaCliente, nombreParaPantallaCliente } = require('./local-host/qr-pantalla-cliente');
+  try {
+    const pedido = await pedidoParaPantallaCliente({ pool: () => poolPromise, sql, QRCode: require('qrcode'), pedido: p });
+    return { ...state, pedido };
+  } catch (e) {
+    console.warn('[pantalla cliente] pedido:', e?.message);
+    const n = Number(p.numero);
+    return { ...state, pedido: Number.isInteger(n) && n > 0 ? { numero: n, cliente: nombreParaPantallaCliente(p.cliente), qr: null } : null };
+  }
+}
+
+ipcMain.handle('customer-display:state', async (_e, state) => { pushCustomerState(await conSeguimiento(state)); return { ok: true }; });
 ipcMain.handle('customer-display:status', async () => ({
   open: !!(customerWindow && !customerWindow.isDestroyed()),
   preview: !!(previewWindow && !previewWindow.isDestroyed()),
@@ -1440,14 +1508,24 @@ let soltandoCaja = false;
 app.on('before-quit', (e) => {
   if (soltandoCaja) return;
   const caja = cajaArrendada.instantanea();
-  if (!caja.registerId || !caja.vigente) return;
+  const conCaja = !!(caja.registerId && caja.vigente);
+  /* El Local Host tambien suelta su arriendo: si algun dia se cambia la
+     computadora principal, la nueva no espera a que caduque. */
+  const conHost = localHost.instantanea().fase === 'ACTIVO';
+  if (!conCaja && !conHost) return;
 
   soltandoCaja = true;
   e.preventDefault();
-  cajaArrendada.detener();
+  if (conCaja) cajaArrendada.detener();
 
   const aTiempo = new Promise(r => setTimeout(r, 3000));
-  Promise.race([cajaArrendada.soltar('EQUIPO'), aTiempo])
+  Promise.race([
+    Promise.allSettled([
+      conCaja ? cajaArrendada.soltar('EQUIPO') : null,
+      conHost ? localHost.detener() : null,
+    ]),
+    aTiempo,
+  ])
     .catch(() => { /* cerrar no puede fallar por esto */ })
     .finally(() => app.exit(0));
 });
@@ -1616,6 +1694,10 @@ sesion.configurar({
      a proposito: apagar un modulo desde otra caja tiene que surtir efecto sin
      que nadie cierre sesion. */
   modulosActivos: async () => modulosActivos(),
+  /* La licencia firmada (electron/licencia): lo que el negocio tiene derecho
+     a usar. Local y sin red; `licencia` se crea mas abajo, antes de que
+     llegue cualquier canal. */
+  licencia: () => licencia.evaluador(),
   registrar: (e) => console.warn(`[ACCESO] ${e.motivo} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`),
 });
 
@@ -2081,7 +2163,10 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
         // corte- y de paso RENUEVA el arriendo: vender es la senal de vida mas
         // fuerte que hay, y no puede depender de un temporizador de interfaz.
         .input('machine_id',     sql.NVarChar(64),  ident.machineId)
-        .input('machine_name',   sql.NVarChar(120), ident.machineName);
+        .input('machine_name',   sql.NVarChar(120), ident.machineName)
+        // Modo Venta Esencial: lo decide la LICENCIA FIRMADA, aqui, no la pantalla.
+        // Se vende igual; el inventario no se valida ni se descuenta.
+        .input('venta_esencial', sql.Bit,           licencia.evaluador().ventaEsencial ? 1 : 0);
 
       const result = await request.execute('sp_register_sale');
 
@@ -2298,13 +2383,17 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
 // CREATE
 ipcMain.handle(
   'sp-create-customer', sesion.proteger('sp-create-customer',
-  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial) => {
+  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
+    /* El alta ignoraba gracia, mora y riesgo: se capturaban en el formulario y
+       se perdian. `proteger` anexa la sesion al final de los argumentos; si un
+       llamador viejo manda menos, lo que cae aqui no es un numero y vale 0. */
+    const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0));
     try {
       const pool = await poolPromise;
       const request = pool.request();
 
       request
-        .input('code',           sql.NVarChar(30),  code)
+        .input('code',           sql.NVarChar(30),  code || null)
         .input('customerName',   sql.NVarChar(120), customerName)
         .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
         .input('email',          sql.NVarChar(120), email)
@@ -2314,7 +2403,11 @@ ipcMain.handle(
         .input('active',         sql.Bit,           active)
         .input('regimen_fiscal', sql.NVarChar(5),   regimenFiscal ?? null)
         .input('uso_cfdi',       sql.NVarChar(5),   usoCfdi ?? null)
-        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null);
+        .input('razon_social',   sql.NVarChar(255), razonSocial ?? null)
+        .input('grace_days',     sql.Int,           n(graceDays))
+        .input('late_fee_pct',   sql.Decimal(5, 2), n(lateFeePct))
+        .input('late_fee_fixed', sql.Decimal(12, 2), n(lateFeeFixed))
+        .input('risk_level',     sql.TinyInt,       Math.min(3, Math.max(0, Math.round(n(riskLevel)))));
 
       request.output('NewId', sql.Int);
 
@@ -2409,7 +2502,9 @@ ipcMain.handle(
 
       request
         .input('id',             sql.Int,           id)
-        .input('code',           sql.NVarChar(30),  code ?? null)
+        /* '' no es "sin codigo": UX_customers_code es unico sobre NOT NULL, y
+           el segundo cliente editado con codigo vacio chocaba con el primero. */
+        .input('code',           sql.NVarChar(30),  (typeof code === 'string' && code.trim()) ? code.trim() : null)
         .input('customerName',   sql.NVarChar(120), customerName)
         .input('tax_id',         sql.NVarChar(20),  taxId ?? null)
         .input('email',          sql.NVarChar(120), email ?? null)
@@ -2460,14 +2555,18 @@ ipcMain.handle('sp-get-customer-open-sales', async (event, customerId) => {
 
 ipcMain.handle(
   'sp-register-customer-payment', sesion.proteger('sp-register-customer-payment',
-  async (event, customerId, saleId, amount, userId, paymentMethod, note) => {
+  async (event, customerId, saleId, amount, userId, paymentMethod, note, ...resto) => {
+    /* Quien cobra es quien tiene la sesion. La pantalla mandaba `1` fijo: todos
+       los abonos quedaban a nombre del primer usuario, cobrara quien cobrara. */
+    const ses = resto.length ? resto[resto.length - 1] : null;
+    const quien = Number(ses?.userId) || Number(userId) || null;
     try {
       const pool = await poolPromise;
       const result = await pool.request()
         .input('customer_id',    sql.Int,          customerId)
         .input('sale_id',        sql.Int,          saleId)
         .input('amount',         sql.Decimal(10,2), amount)
-        .input('user_id',        sql.Int,          userId)
+        .input('user_id',        sql.Int,          quien)
         .input('payment_method', sql.NVarChar(50), paymentMethod)
         .input('note',           sql.NVarChar(255), note ?? null)
         .execute('sp_register_customer_payment');
@@ -2861,16 +2960,20 @@ ipcMain.handle('alerts:overdue-credit', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().query(`
+      /* Vencida = vencimiento + dias de gracia del cliente (misma regla que
+         sp_get_customers). */
       SELECT s.customer_id,
+             MAX(c.customerName) AS customerName,
              SUM(s.balance) AS deuda_vencida,
              MIN(s.due_date) AS vence,
-             DATEDIFF(DAY, MIN(s.due_date), CAST(GETDATE() AS DATE)) AS dias_vencido,
+             MAX(DATEDIFF(DAY, DATEADD(DAY, c.grace_days, s.due_date), CAST(GETDATE() AS DATE))) AS dias_vencido,
              COUNT(*) AS facturas
       FROM sales s
+      JOIN customers c ON c.id = s.customer_id
       WHERE UPPER(s.payment_method) = 'CREDITO'
         AND s.balance > 0
-        AND s.due_date < CAST(GETDATE() AS DATE)
-        AND s.customer_id IS NOT NULL
+        AND s.due_date IS NOT NULL
+        AND DATEADD(DAY, c.grace_days, s.due_date) < CAST(GETDATE() AS DATE)
       GROUP BY s.customer_id
       ORDER BY deuda_vencida DESC
     `);
@@ -2909,7 +3012,7 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
     const agotados   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock<=0`);
     const lowstock   = await one(`SELECT COUNT(*) c FROM products WHERE active=1 AND inventory_mode='DIRECT' AND stock>0 AND stock<=@min`, [['min', sql.Int, min]]);
     const cero       = await one(`SELECT COUNT(*) c FROM sales WHERE total=0 AND datee>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
-    const vencidos   = await one(`SELECT COUNT(DISTINCT customer_id) c FROM sales WHERE UPPER(payment_method)='CREDITO' AND balance>0 AND due_date<CAST(GETDATE() AS DATE) AND customer_id IS NOT NULL`);
+    const vencidos   = await one(`SELECT COUNT(DISTINCT s.customer_id) c FROM sales s JOIN customers cu ON cu.id = s.customer_id WHERE UPPER(s.payment_method)='CREDITO' AND s.balance>0 AND s.due_date IS NOT NULL AND DATEADD(DAY, cu.grace_days, s.due_date)<CAST(GETDATE() AS DATE)`);
     const descuadres = await one(`SELECT COUNT(*) c FROM cash_closures WHERE difference<>0 AND CAST(create_date AS DATE)>=DATEADD(DAY,-30,CAST(GETDATE() AS DATE))`);
     let reorden = 0;
     try {
@@ -2955,30 +3058,25 @@ ipcMain.handle('inventory:movements', sesion.proteger('inventory:movements', asy
 }));
 
 // ===== Conteo fisico: aplicar ajustes de inventario =====
-ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}) => {
+ipcMain.handle('inventory:apply-count', sesion.proteger('inventory:apply-count', async (_e, p = {}, s) => {
   try {
     const items = Array.isArray(p.items) ? p.items : [];
     if (!items.length) return { success: false, error: 'No hay conteos para aplicar.' };
     const pool = await poolPromise;
     let ajustados = 0;
+    /* El ajuste vive en sp_inventory_count_apply (0045): atomico, con la fila
+       bloqueada, y el mismo que usan los reportes de las Pantallas de
+       inventario. Antes era SQL suelto aqui. */
     for (const it of items) {
       const pid = Number(it.product_id);
       const fisico = Number(it.fisico);
       if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(fisico) || fisico < 0) continue;
-      const cur = await pool.request().input('id', sql.Int, pid).query('SELECT stock FROM products WHERE id=@id');
-      const teorico = Number(cur.recordset[0]?.stock ?? 0);
-      const diff = fisico - teorico;
-      if (diff === 0) continue;
-      await pool.request().input('id', sql.Int, pid).input('s', sql.Decimal(12, 2), fisico)
-        .query('UPDATE products SET stock=@s WHERE id=@id');
-      await pool.request()
-        .input('pid', sql.Int, pid)
-        .input('t', sql.NVarChar(20), diff > 0 ? 'entrada' : 'salida')
-        .input('q', sql.Decimal(12, 2), Math.abs(diff))
-        .input('d', sql.NVarChar(200), 'Ajuste por conteo fisico (dif ' + diff + ')')
-        .query(`INSERT INTO inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
-                VALUES (@pid, @t, 'CONTEO', @q, GETDATE(), @d)`);
-      ajustados++;
+      const r = await pool.request()
+        .input('product_id', sql.Int, pid)
+        .input('fisico', sql.Decimal(12, 2), fisico)
+        .input('user_id', sql.Int, s?.userId ?? null)
+        .execute('sp_inventory_count_apply');
+      if (Number(r.recordset?.[0]?.diferencia ?? 0) !== 0) ajustados++;
     }
     return { success: true, ajustados };
   } catch (e) { console.error('inventory:apply-count:', e); return { success: false, error: e.message }; }
@@ -3484,6 +3582,27 @@ async function loadSaleByFolioFromDb(saleId) {
   return { header, details };
 }
 
+/**
+ * El numero de pedido del dia de una venta de mostrador, para el ticket.
+ *
+ * Al cobrar, la caja lo manda (la cuenta se enlaza a la venta DESPUES de
+ * imprimir); en una reimpresion se lee de la cuenta ya enlazada. Si
+ * Hospitality no esta instalado, simplemente no hay.
+ */
+async function pedidoDelTicket(saleId, enviado) {
+  const n = Number(enviado);
+  if (Number.isInteger(n) && n > 0 && n < 100000) return n;
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().input('sale_id', sql.Int, saleId).query(`
+      IF COL_LENGTH(N'dbo.hosp_cuentas', N'numero_dia') IS NOT NULL
+        EXEC sp_executesql N'SELECT TOP 1 numero_dia FROM dbo.hosp_cuentas WHERE sale_id = @s AND numero_dia IS NOT NULL',
+                           N'@s INT', @s = @sale_id;`);
+    const v = Number(r.recordset?.[0]?.numero_dia);
+    return Number.isInteger(v) && v > 0 ? v : null;
+  } catch { return null; }
+}
+
 function escHtmlTicket(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -3624,12 +3743,11 @@ function buildTicketHtmlFromTemplate(header, details, extras = {}) {
     pagado: extras.pagado,
     cambio: extras.cambio,
     payment_method: extras.payment_method,
+    pedido: extras.pedido ?? null,
   });
 }
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
-  let printWin = null;
-
   try {
     const saleId = Number(payload?.saleId ?? payload?.sale_id ?? 0);
     if (!Number.isFinite(saleId) || saleId <= 0) {
@@ -3656,60 +3774,25 @@ ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (
       pagado: payload?.pagado ?? payload?.paid ?? null,
       cambio: payload?.cambio ?? payload?.change ?? null,
       payment_method: payload?.paymentMethod ?? payload?.payment_method ?? null,
+      pedido: await pedidoDelTicket(saleId, payload?.pedido),
       paperWidthMm
     });
 
-    printWin = new BrowserWindow({
-      show: false,
-      width: 420,
-      height: 800,
-      webPreferences: {
-        contextIsolation: true,
-        sandbox: false
-      }
+    /* La impresion en si es la misma para el ticket y para las comandas de
+       cocina: una sola implementacion en `lib/imprimir-html.js`. */
+    const ok = await imprimirHtml(html, {
+      paperWidthMm,
+      silent: payload?.silent !== false,
+      printerName: payload?.printerName || undefined,
     });
-
-    await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
-
-    // Esperar render y medir el alto real del contenido para no sacar papel en blanco de mas.
-    await new Promise(r => setTimeout(r, 200));
-    let heightPx = 0;
-    try { heightPx = Number(await printWin.webContents.executeJavaScript('document.body.scrollHeight')) || 0; } catch {}
-    if (!heightPx || heightPx < 40) heightPx = 500;
-
-    const MICRON_PER_PX = 25400 / 96; // 1px @96dpi = 264.58 micras
-    const widthMicrons  = Math.round(paperWidthMm * 1000);
-    const heightMicrons = Math.round((heightPx + 12) * MICRON_PER_PX);
-
-    const silent = payload?.silent !== false;
-    const deviceName = payload?.printerName || undefined;
-    const ok = await new Promise((resolve) => {
-      printWin.webContents.print(
-        {
-          silent,
-          printBackground: true,
-          deviceName,
-          margins: { marginType: 'none' },
-          pageSize: { width: widthMicrons, height: heightMicrons }
-        },
-        (success, failureReason) => {
-          if (!success) console.error('Print failed:', failureReason);
-          resolve(success);
-        }
-      );
-    });
-
-    try { printWin.close(); } catch {}
 
     if (!ok) {
       return { success: false, error: 'No se pudo imprimir (revisa impresora predeterminada / driver / deviceName).' };
     }
 
-
     return { success: true };
   } catch (err) {
     console.error('❌ print-sale-ticket:', err);
-    try { if (printWin) printWin.close(); } catch {}
     return { success: false, error: err?.message || String(err) };
   }
 }));
@@ -4861,50 +4944,87 @@ ipcMain.handle('setup-inicial', async (_e, p) => {
   }
 });
 
+// ============================================================================
+//  LICENCIA (proceso principal)
+// ----------------------------------------------------------------------------
+//  Todo lo que toca la licencia pasa por aquí y por electron/licencia/:
+//
+//   - La licencia es un CERTIFICADO FIRMADO por el servidor (ES256). Aquí se
+//     verifica con la clave pública; no se puede fabricar ni estirar.
+//   - Solo se guarda lo que ESTE proceso pidió al servidor o un archivo que
+//     verifica. El renderer ya no puede escribir una licencia (antes existía
+//     `license:save`, que guardaba lo que la pantalla le mandara).
+//   - Nada de esto bloquea una venta: refrescar es en segundo plano y con
+//     tiempo límite; sin red se usa el certificado local.
+// ============================================================================
+// En qué claves se confía: el instalador, SOLO producción. Sin empaquetar
+// también las de desarrollo, y en pruebas E2E la clave efímera del arnés.
+const E2E = process.env.WYBIX_E2E === '1' && !app.isPackaged;
+const licencia = crearLicencia({
+  store: licenseStore, contexto: contextoLicencia,
+  // KIDs revocados: aparte de la licencia y solo crecen (liberar el equipo no los borra).
+  revocaciones: crearRevocaciones({ archivo: path.join(app.getPath('userData'), 'licencia-kids-revocados.json'), fijas: REVOCADAS }),
+  llaves: llavesDeConfianza({
+    empaquetado: app.isPackaged,
+    extra: E2E && process.env.WYBIX_E2E_LLAVE_PUBLICA ? { 'e2e-1': process.env.WYBIX_E2E_LLAVE_PUBLICA } : null,
+  }),
+});
+
+// Solo pruebas E2E, y nunca en el instalador: el arnés firma un certificado
+// con SU clave efímera (arriba) para el machineId de este equipo y lo aplica
+// desde el PROCESO PRINCIPAL con electronApp.evaluate. El renderer sigue sin
+// poder escribir una licencia.
+if (E2E) {
+  global.__wybixE2E = {
+    machineId: () => licenseStore.machineIdEstable(contextoLicencia()),
+    sembrarCertificado(certificate) { const r = licencia.aplicarRespuesta({ certificate }); return { ...r, estado: licencia.estado(true) }; },
+  };
+}
+
+async function llamarLicencias(funcion, cuerpo, ms = 10000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${funcion}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}`, 'apikey': ANON_KEY },
+      body: JSON.stringify(cuerpo),
+      signal: controller.signal,
+    });
+    let data = null;
+    try { data = await res.json(); } catch { data = null; }
+    return { res, data };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Lo que la pantalla necesita saber de la licencia (para pintar; decide el proceso principal). */
+function estadoParaPantalla(forzar = false) {
+  const e = licencia.estado(forzar);
+  const ev = licencia.evaluador();
+  return { ...e, ventaEsencial: ev.ventaEsencial, machineCode: machineIdDeEsteEquipo() };
+}
+
 ipcMain.handle('license:activate', async (_event, payload) => {
   try {
     const licenseKey = typeof payload === 'string' ? payload : payload?.licenseKey;
     const machineAlias = typeof payload === 'object' ? payload?.machineAlias : null;
-
     if (!licenseKey) return { ok: false, error: 'Falta la clave de licencia.' };
 
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-
-    // Timeout para que la activacion nunca se quede colgada.
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 10000);
-    let res;
-    try {
-      res = await fetch(`${SUPABASE_URL}/functions/v1/license-check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${ANON_KEY}`,
-          'apikey': ANON_KEY
-        },
-        body: JSON.stringify({
-          action: 'activate',
-          licenseKey: String(licenseKey).trim().toUpperCase(),
-          machineId: cachedMachineId,
-          machineAlias
-        }),
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(t);
-    }
-
-    // Parseo seguro (si el servicio devuelve 404/HTML, no truena)
-    let data = null;
-    try { data = await res.json(); } catch { data = null; }
-
+    const { res, data } = await llamarLicencias('license-check', {
+      action: 'activate',
+      licenseKey: String(licenseKey).trim().toUpperCase(),
+      machineId: machineIdDeEsteEquipo(),
+      machineAlias,
+    });
     if (!res.ok || !data?.success) {
       const error = data?.error
         || (res.status === 404 ? 'El servicio de licencias no responde. Intenta más tarde.' : 'La clave no es válida o ya está en uso.');
       return { ok: false, error, code: data?.code };
     }
-
-    licenseStore.saveLicense(contextoLicencia(), data);
+    const r = licencia.aplicarRespuesta(data);
+    if (!r.ok) return { ok: false, error: r.error };
     return { ok: true, plan: data.plan, customerName: data.customerName };
   } catch (err) {
     console.error('license:activate:', err);
@@ -4915,60 +5035,31 @@ ipcMain.handle('license:activate', async (_event, payload) => {
   }
 });
 
-// 2. Leer la licencia (Para que Angular la consuma)
+// La licencia, resumida para la pantalla. Solo lectura.
 ipcMain.handle('license:get', async () => {
   try {
-    return licenseStore.readLicense(contextoLicencia()).data;
-  } catch (err) {
-    return null;
-  }
+    const e = licencia.estado();
+    if (!e || e.modo === 'NONE') return null;
+    return {
+      plan: e.plan, edition: e.edition ?? null, customerName: e.customerName ?? '',
+      machineId: machineIdDeEsteEquipo(), revalidateBy: e.validUntil ?? e.revalidateBy ?? null,
+      issuedAt: e.issuedAt ?? null, maxRegisters: e.registersMax ?? null,
+    };
+  } catch { return null; }
 });
 
-// 3. Escribir/Actualizar licencia (Para cuando Angular revalide en segundo plano)
-ipcMain.handle('license:save', async (event, licenseData) => {
-  try {
-    licenseStore.saveLicense(contextoLicencia(), licenseData);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false };
-  }
-});
-
-// 4. Borrar licencia (Liberar máquina)
-ipcMain.handle('license:clear', async () => {
-  try {
-    licenseStore.clearLicense();
-    return { ok: true };
-  } catch (err) {
-    return { ok: false };
-  }
-});
-
-// 5. Iniciar PRUEBA GRATIS de 30 dias (valida en la nube: una por maquina)
+// Iniciar PRUEBA GRATIS de 30 días (una por equipo, validada en la nube).
 ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
   try {
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/trial-license`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ANON_KEY}`,
-        'apikey': ANON_KEY
-      },
-      body: JSON.stringify({
-        action: 'start',
-        machineId: cachedMachineId,
-        businessName: payload?.businessName ?? null,
-        email: payload?.email ?? null
-      })
+    const { data } = await llamarLicencias('trial-license', {
+      action: 'start',
+      machineId: machineIdDeEsteEquipo(),
+      businessName: payload?.businessName ?? null,
+      email: payload?.email ?? null,
     });
-    const data = await res.json();
     if (!data?.success) return { ok: false, error: data?.error || 'No se pudo iniciar la prueba.' };
-
-    // Sellada como prueba antes de guardarse: sin `type`, computeStatus la
-    // clasificaria como licencia de pago y la caja anunciaria un plan que
-    // nadie compro. Los demas campos remotos se conservan intactos.
-    licenseStore.saveLicense(contextoLicencia(), sellarComoPrueba(data));
+    const r = licencia.aplicarRespuesta(data);
+    if (!r.ok) return { ok: false, error: r.error };
     return { ok: true, expiresAt: data.expiresAt, trialExpired: !!data.trialExpired };
   } catch (err) {
     console.error('license:start-trial:', err);
@@ -4977,62 +5068,160 @@ ipcMain.handle('license:start-trial', async (_event, payload = {}) => {
 });
 
 /**
- * EL NOMBRE DEFINITIVO DEL NEGOCIO, HACIA LA NUBE.
- *
- * El Gate ya no pide el nombre -lo pedia y el alta lo volvia a pedir-, asi que
- * la prueba se emite sin el. Cuando el alta termina, el nombre real existe y
- * se manda una vez.
- *
- * Es BEST EFFORT y a proposito: la prueba ya esta activa y el negocio ya esta
- * configurado; que la nube no se entere del nombre no puede impedir vender ni
- * mostrar un error a quien acaba de instalar. Si falla, se queda como estaba.
- *
- * ESTADO REAL DE LA OTRA PUNTA
- * ----------------------------
- * `action: 'rename'` NO estaba implementada en la funcion remota, y lo que
- * hacia no era fallar: caia en la rama de `start`, encontraba la prueba y
- * respondia `success: true` sin cambiar nada. Es decir, esto devolvia `ok` y
- * el nombre remoto seguia vacio.
- *
- * La accion ya esta escrita en `supabase/functions/trial-license` (repo
- * wybix-owner) y ahi tambien se cerro la caida a `start` de cualquier accion
- * desconocida. PERO HAY QUE DESPLEGARLA: hasta que se despliegue, esto sigue
- * devolviendo `ok` sin efecto remoto. No es una regresion -es lo que ya
- * pasaba- pero ahora se sabe.
+ * EL NOMBRE DEFINITIVO DEL NEGOCIO, HACIA LA NUBE. Best effort: la prueba ya
+ * está activa y el negocio configurado; si falla, se queda como estaba.
  */
 ipcMain.handle('license:sync-trial-name', async (_event, payload = {}) => {
   try {
     const businessName = String(payload?.businessName || '').trim();
     if (!businessName) return { ok: false, error: 'Sin nombre.' };
-    if (!cachedMachineId) cachedMachineId = generarMachineId();
-
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/trial-license`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ANON_KEY}`,
-        'apikey': ANON_KEY,
-      },
-      body: JSON.stringify({ action: 'rename', machineId: cachedMachineId, businessName }),
-    });
-    const data = await res.json().catch(() => null);
+    const { data } = await llamarLicencias('trial-license', { action: 'rename', machineId: machineIdDeEsteEquipo(), businessName });
     return { ok: !!data?.success };
   } catch {
-    /* Sin conexion, o la funcion todavia no conoce la accion. No se avisa a
-       nadie: no hay nada que la persona pueda hacer al respecto. */
     return { ok: false };
   }
 });
 
-// 6. Estado unificado y blindado (none | demo | trial | active | expired | tamper)
-ipcMain.handle('license:status', async () => {
+/**
+ * EL GIRO DE LA PRUEBA, elegido en el alta del negocio (Comercios,
+ * Restaurantes y Cafeterías o Servicios). Lo PIDE el alta; lo decide el
+ * servidor, que devuelve el certificado con ESE giro. El perfil del negocio
+ * no otorga nada por sí mismo. Sin red, queda pendiente y se manda en el
+ * siguiente refresco. Solo aplica a una prueba.
+ */
+const GIROS_PRUEBA = new Set(['COMMERCE', 'HOSPITALITY', 'SERVICES']);
+async function mandarGiroPrueba(giro) {
+  const { data } = await llamarLicencias('trial-license', { action: 'select_vertical', machineId: machineIdDeEsteEquipo(), vertical: giro }, 8000);
+  if (!data?.success) return { ok: false, error: data?.error, code: data?.code };
+  return licencia.aplicarRespuesta(data);
+}
+ipcMain.handle('license:trial-vertical', async (_event, payload = {}) => {
+  const giro = String(payload?.vertical || '').toUpperCase();
+  if (!GIROS_PRUEBA.has(giro)) return { ok: false, error: 'Giro desconocido.' };
+  if (licencia.tipoGuardado() !== 'trial') return { ok: false, motivo: 'NO_ES_PRUEBA' };
   try {
-    return licenseStore.computeStatus(contextoLicencia());
-  } catch (err) {
-    console.error('license:status:', err);
-    return { state: 'none' };
+    const r = await mandarGiroPrueba(giro);
+    return { ...r, estado: estadoParaPantalla(true) };
+  } catch {
+    licencia.recordarGiroPrueba(giro);
+    return { ok: false, pendiente: true, motivo: 'SIN_RED' };
   }
 });
+
+/**
+ * REFRESCAR EN SEGUNDO PLANO: pide al servidor el certificado vigente de
+ * este equipo (renovaciones, upgrades, cambios de plan). Sin red no pasa
+ * nada: se sigue con el local. Nunca se llama antes de vender.
+ *
+ * También cuando el certificado guardado ya no verifica (TAMPER por una clave
+ * revocada o retirada): quien decide es el servidor, por el machineId.
+ */
+async function refrescarLicencia() {
+  const e = licencia.estado(true);
+  if (!e || ['NONE', 'DEMO'].includes(e.modo)) return { ok: false, motivo: e?.modo };
+  const tipo = licencia.tipoGuardado();
+  const esPrueba = tipo === 'trial';
+  try {
+    const pendiente = esPrueba ? licencia.giroPruebaPendiente() : null;
+    if (pendiente) await mandarGiroPrueba(pendiente).catch(() => null);
+    const { res, data } = await llamarLicencias(esPrueba ? 'trial-license' : 'license-check',
+      { action: esPrueba ? 'status' : 'validate', machineId: machineIdDeEsteEquipo() }, 8000);
+    if (data?.success) {
+      const r = licencia.aplicarRespuesta(data);
+      return { ok: r.ok, error: r.error, estado: estadoParaPantalla(true) };
+    }
+    // La computadora fue liberada (se activó en otra) o la licencia se suspendió:
+    // esta deja de estar autorizada. Es el mismo criterio de antes. Con un
+    // certificado que no verifica no se borra nada: solo no se refrescó.
+    if (!esPrueba && e.modo !== 'TAMPER' && (data?.code === 'NOT_ACTIVATED' || data?.code === 'SUSPENDED')) {
+      licenseStore.clearLicense();
+      licencia.olvidar();
+      return { ok: false, motivo: data.code, estado: estadoParaPantalla(true) };
+    }
+    return { ok: false, motivo: `HTTP_${res.status}` };
+  } catch {
+    return { ok: false, motivo: 'SIN_RED' };
+  }
+}
+
+ipcMain.handle('license:refresh', async () => refrescarLicencia());
+
+/**
+ * IMPORTAR una licencia (.wybix-license) llevada en USB: para la caja sin
+ * Internet. Se verifica la firma, que sea de ESTE equipo y que no sea más
+ * vieja que la actual; si algo falla, la licencia actual no se toca.
+ */
+ipcMain.handle('license:import', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Importar licencia de Wybix',
+      properties: ['openFile'],
+      filters: [{ name: 'Licencia de Wybix', extensions: ['wybix-license', 'json'] }],
+    });
+    if (r.canceled || !r.filePaths?.[0]) return { ok: false, cancelado: true };
+    const st = fs.statSync(r.filePaths[0]);
+    if (st.size > 64 * 1024) return { ok: false, error: 'El archivo es demasiado grande para ser una licencia.' };
+    const out = licencia.importar(fs.readFileSync(r.filePaths[0], 'utf8'));
+    return out.ok ? { ok: true, estado: estadoParaPantalla(true) } : out;
+  } catch (err) {
+    console.error('license:import:', err);
+    return { ok: false, error: 'No se pudo leer el archivo.' };
+  }
+});
+
+/**
+ * LIBERAR esta computadora (cambio de PC). Sin límite de veces. El servidor
+ * exige la prueba de que es esta licencia: el certificado firmado del equipo.
+ */
+ipcMain.handle('license:release', sesion.proteger('license:release', async () => {
+  try {
+    const { data } = await llamarLicencias('license-check', {
+      action: 'release', machineId: machineIdDeEsteEquipo(), certificate: licencia.certificadoActual(),
+    });
+    if (!data?.success) return { ok: false, error: data?.error || 'No se pudo liberar la computadora.' };
+    licenseStore.clearLicense();
+    licencia.olvidar();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Necesitas Internet para liberar esta computadora.' };
+  }
+}));
+
+// Estado unificado: modo (TRIAL | ACTIVE | GRACE | SALE_ONLY | EXPIRED | ...),
+// giros, límites y avisos. Compatible con el `state` anterior.
+ipcMain.handle('license:status', async () => {
+  try {
+    return estadoParaPantalla(true);
+  } catch (err) {
+    console.error('license:status:', err);
+    return { state: 'none', modo: 'NONE' };
+  }
+});
+
+/**
+ * «El inventario no se actualizó durante la Venta Esencial»: cuántas ventas
+ * y entre qué fechas. La venta misma es la evidencia (sales.venta_esencial).
+ */
+ipcMain.handle('license:inventory-review', async () => {
+  try {
+    const rev = licencia.estado().revisionInventario;
+    if (!rev) return { success: true, data: null };
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_venta_esencial_resumen');
+    const f = r.recordset?.[0] ?? {};
+    return { success: true, data: { desde: f.desde ?? rev.desde, hasta: f.hasta ?? rev.hasta, ventas: Number(f.ventas) || 0 } };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('license:inventory-review-dismiss', sesion.proteger('license:inventory-review-dismiss',
+  async () => licencia.descartarRevisionInventario()));
+
+/* Refresco en segundo plano: al arrancar (sin esperar) y una vez al día. */
+setTimeout(() => { refrescarLicencia().catch(() => {}); }, 20_000);
+setInterval(() => { refrescarLicencia().catch(() => {}); }, 24 * 3600_000);
 
 
 

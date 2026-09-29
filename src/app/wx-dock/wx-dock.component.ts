@@ -219,7 +219,9 @@ export class WxDockComponent implements OnDestroy {
 
   @HostListener('document:click', ['$event'])
   alPulsarFuera(e: Event) {
-    const dentro = (e.target as HTMLElement)?.closest?.('.wxdock, .wxdock-pop, .wxdock-panel');
+    /* El tablero de Wybix Guide es del dock aunque se pinte en el <body>
+       (ver wx-guia): pulsar dentro de el no es pulsar fuera. */
+    const dentro = (e.target as HTMLElement)?.closest?.('.wxdock, .wxdock-pop, .wxdock-panel, .wxg');
     if (!dentro) this.cerrarTodo();
   }
 

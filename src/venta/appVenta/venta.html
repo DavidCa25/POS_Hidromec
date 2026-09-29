@@ -6,7 +6,7 @@
         <span class="pos-key">F1</span>
         <span class="pos-label">Abrir cajón</span>
       </div>
-      <div class="pos-shortcut" (click)="abrirModalProductos()">
+      <div class="pos-shortcut" data-guide="venta-agregar" (click)="abrirModalProductos()">
         <span class="pos-key">F7</span>
         <span class="pos-label">Buscar / Agregar producto</span>
       </div>
@@ -84,6 +84,20 @@
     </span>
     <button type="button" class="venta-orden-ver" (click)="verOrdenDeServicio(os.id)">
       Ver la orden
+    </button>
+  </div>
+
+  <!-- Una cuenta de mesa dice de que mesa es, y ofrece enviar lo nuevo a
+       cocina. Enviar no cobra; cobrar no envia. -->
+  <div class="venta-orden-servicio venta-mesa" *ngIf="cuentaMesa() as m">
+    <i class="ph ph-armchair"></i>
+    <span>
+      Atendiendo <b>{{ m.titulo }}</b><span *ngIf="m.area"> · {{ m.area }}</span>
+      <span *ngIf="pendientesMesa().length"> · {{ pendientesMesa().length }} sin enviar</span>
+    </span>
+    <button type="button" class="venta-orden-ver" data-guide="venta-enviar-mesa" *ngIf="pendientesMesa().length"
+            [disabled]="enviandoMesa" (click)="enviarMesa()">
+      {{ enviandoMesa ? 'Enviando…' : 'Enviar a cocina' }}
     </button>
   </div>
 
@@ -205,7 +219,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let it of items; let i = index">
+              <tr *ngFor="let it of items; let i = index" data-guide="venta-linea" [attr.data-guide-clave]="it.productId">
                 <td class="fw-semibold">
                   {{ it.productName }}
                   <!-- Las opciones elegidas NO se esconden al cerrar el modal: quien
@@ -269,7 +283,7 @@
 
           <div class="pos-footer-actions">
             <!-- Venta nueva => Cobrar -->
-            <button *ngIf="!isEditing" type="button"
+            <button *ngIf="!isEditing" type="button" data-guide="venta-cobrar"
                     class="btn btn-success d-flex align-items-center gap-2"
                     (click)="abrirModalCobrar()">
               <i class="ph ph-money"></i> Cobrar
@@ -321,7 +335,7 @@
      *ngIf="showOpenShiftModal"
      [ngStyle]="{'background': openShiftRequired ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.16)', 'z-index': '13000'}">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 open-shift-modal">
+    <div class="modal-content rounded-4 open-shift-modal" data-guide="turno-modal">
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold m-0">Abrir turno</h5>
         <button *ngIf="!openShiftRequired" type="button" class="btn-close" (click)="cerrarModalAbrirTurno()"></button>
@@ -347,7 +361,7 @@
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button type="button" class="btn btn-outline-secondary" *ngIf="openShiftRequired" (click)="salirDeVentas()">Salir</button>
-          <button type="button" class="btn btn-primary" [disabled]="openingShiftLoading" (click)="confirmarAbrirTurno()">
+          <button type="button" class="btn btn-primary" data-guide="turno-abrir-confirmar" [disabled]="openingShiftLoading" (click)="confirmarAbrirTurno()">
             <span *ngIf="!openingShiftLoading">Abrir turno</span>
             <span *ngIf="openingShiftLoading">Abriendo…</span>
           </button>
@@ -378,7 +392,7 @@
               <div class="mt-3">
                 <label class="form-label mb-1">Dinero recibido</label>
                 <input type="number" min="0" step="0.01" class="form-control form-control-lg"
-                       [(ngModel)]="dineroRecibido" name="dineroRecibido" placeholder="¿Cuánto recibió del cliente?" />
+                       data-guide="venta-recibido" [(ngModel)]="dineroRecibido" name="dineroRecibido" data-teclado="MONEY" placeholder="¿Cuánto recibió del cliente?" />
               </div>
               <div class="mt-3">
                 <label class="form-label mb-1">Cambio a regresar</label>
@@ -390,7 +404,7 @@
             <div class="mb-3">
               <label class="form-label mb-2">Método de pago</label>
               <div class="pay-methods">
-                <button type="button" class="pay-pill" [class.active]="paymentMethod === 'EFECTIVO'"
+                <button type="button" class="pay-pill" data-guide="venta-pago-efectivo" [class.active]="paymentMethod === 'EFECTIVO'"
                         (click)="onPaymentMethodChange('EFECTIVO')">
                   <i class="ph ph-coins"></i><span>Efectivo</span>
                 </button>
@@ -423,7 +437,11 @@
                            vacio="Ningún cliente coincide"></wx-select>
                 <small class="text-muted" *ngIf="loadingCreditCustomers">Cargando clientes con crédito...</small>
                 <small class="text-danger" *ngIf="!loadingCreditCustomers && creditCustomers.length === 0">
-                  No hay clientes con crédito activo y saldo disponible.
+                  No hay clientes con crédito autorizado. Se da en Clientes, en su límite de crédito.
+                </small>
+                <small class="text-danger d-block mt-1" *ngIf="excedeCredito">
+                  La venta supera su crédito disponible
+                  ({{ clienteCredito?.availableCredit | currency:'MXN':'symbol-narrow':'1.2-2' }}).
                 </small>
               </div>
               <div class="mb-2">
@@ -445,7 +463,7 @@
           </div>
         </div>
         <div class="d-flex justify-content-end mt-4">
-          <button type="button" class="btn btn-primary px-4 btn-cobrar"
+          <button type="button" class="btn btn-primary px-4 btn-cobrar" data-guide="venta-confirmar-cobro"
                   [class.is-procesando]="cobrando"
                   [class.is-listo]="cobroConfirmado"
                   [disabled]="cobrando"
@@ -470,7 +488,7 @@
         <button type="button" class="btn-close" (click)="cerrarModalProductos()"></button>
       </div>
       <div class="modal-body pt-0">
-        <input class="form-control mb-2 buscador"
+        <input class="form-control mb-2 buscador" data-guide="venta-buscar"
                placeholder="Buscar por nombre, número de parte, marca o categoría..."
                [(ngModel)]="filtro" name="filtro">
         <div class="prod-hint">
@@ -479,6 +497,7 @@
       
       <div class="listado prod-grid">
         <button type="button" class="prod-item" *ngFor="let p of productos"
+                data-guide="venta-producto" [attr.data-guide-clave]="p.part_number"
                 (click)="seleccionarProducto(p)"
                 [hidden]="filtro && !(
                   (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
@@ -588,6 +607,13 @@
       </div>
       <div class="modal-body px-4 pt-2 pb-4">
         <p class="mb-2">La venta se guardó correctamente.</p>
+        <!-- Cuenta sin mesa: el numero del dia que el cliente buscara en la
+             pantalla de pedidos. Va tambien impreso en su ticket. -->
+        <div class="venta-pedido mb-3" *ngIf="lastSalePedido" data-guide="venta-numero-pedido">
+          <span>Pedido</span>
+          <b>{{ lastSalePedido }}</b>
+          <small>Díselo al cliente · va impreso en su ticket</small>
+        </div>
         <p class="mb-3 small text-muted">
           Folio: <strong>{{ lastSaleId || 'N/D' }}</strong> ·
           Importe: <strong>{{ lastSaleTotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
@@ -736,12 +762,7 @@
             <tbody>
               <tr class="prod-pick-row" *ngFor="let c of clientesGenerales"
                   (click)="seleccionarCliente(c)"
-                  [hidden]="filtroClientes && !(
-                    (c.name || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
-                    (c.tax_id || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
-                    (c.phone || '').toLowerCase().includes(filtroClientes.toLowerCase()) ||
-                    (c.email || '').toLowerCase().includes(filtroClientes.toLowerCase())
-                  )">
+                  [hidden]="!coincideCliente(c)">
                 <td class="fw-semibold">
                   {{ c.name }}
                   <i class="ph-fill ph-check-circle text-success" *ngIf="clienteSeleccionado?.id === c.id"></i>

@@ -1,0 +1,122 @@
+<section class="ah">
+  <!-- --------------------------------------------------------------- filtros -->
+  <div class="ah-filtros">
+    <div class="ah-seg" role="group" aria-label="Periodo">
+      <button type="button" [class.on]="periodo() === 'hoy'" (click)="elegir('hoy')">Hoy</button>
+      <button type="button" [class.on]="periodo() === 'semana'" (click)="elegir('semana')">Semana</button>
+      <button type="button" [class.on]="periodo() === 'mes'" (click)="elegir('mes')">Mes</button>
+      <button type="button" [class.on]="periodo() === 'rango'" (click)="elegir('rango')">Rango</button>
+    </div>
+    <div class="ah-rango" *ngIf="periodo() === 'rango'">
+      <wx-date [(ngModel)]="desde" name="ah-desde" [max]="hasta" [limpiable]="false"></wx-date>
+      <span>a</span>
+      <wx-date [(ngModel)]="hasta" name="ah-hasta" [min]="desde" [limpiable]="false"></wx-date>
+      <button type="button" class="btn-primary btn-sm" (click)="leer()">Ver</button>
+    </div>
+    <div class="ah-seg ah-seg--medida" role="group" aria-label="Qué medir">
+      <button type="button" [class.on]="medida() === 'tickets'" (click)="medida.set('tickets')">Tickets</button>
+      <button type="button" [class.on]="medida() === 'ingresos'" (click)="medida.set('ingresos')">Ingresos</button>
+      <button type="button" [class.on]="medida() === 'promedio'" (click)="medida.set('promedio')">Ticket promedio</button>
+    </div>
+  </div>
+
+  <p class="ah-error" *ngIf="error()" role="alert">{{ error() }}</p>
+
+  <!-- ------------------------------------------------------------------ KPIs -->
+  <div class="ah-kpis" *ngIf="resumen() as r">
+    <div class="ah-kpi"><span class="ah-kpi__l">Tickets</span><span class="ah-kpi__v">{{ r.tickets | number }}</span></div>
+    <div class="ah-kpi"><span class="ah-kpi__l">Ingresos netos</span><span class="ah-kpi__v">{{ r.ingresos | currency:'MXN':'symbol-narrow':'1.0-0' }}</span></div>
+    <div class="ah-kpi">
+      <span class="ah-kpi__l">Hora pico</span>
+      <span class="ah-kpi__v">{{ horaPico() ? hora(horaPico()!.hora) : '—' }}</span>
+    </div>
+    <div class="ah-kpi">
+      <span class="ah-kpi__l">Día más activo</span>
+      <span class="ah-kpi__v">{{ diaPico() ? dias[diaPico()!.dia] : '—' }}</span>
+    </div>
+  </div>
+  <p class="ah-nota">
+    La hora es la del <b>cobro</b>. Los ingresos van netos de reembolsos, y el mapa promedia por día
+    del calendario: un día sin ventas también cuenta.
+    <span *ngIf="resumen() as r"> Ticket promedio del periodo: <b>{{ ticketPromedio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>.</span>
+  </p>
+
+  <div class="ah-vacio" *ngIf="resumen() && !resumen()!.tickets">Sin ventas en este periodo.</div>
+
+  <ng-container *ngIf="resumen()?.tickets">
+    <!-- --------------------------------------------------------- mapa de calor -->
+    <div class="ah-card">
+      <div class="ah-card-head">
+        <h3>Día y hora</h3>
+        <span class="ah-sub">{{ medida() === 'promedio' ? 'ticket promedio' : (medida() === 'tickets' ? 'tickets por día' : 'ingresos por día') }}</span>
+      </div>
+      <div class="ah-mapa-scroll">
+        <div class="ah-mapa" role="table" aria-label="Actividad por día de la semana y hora"
+             [style.gridTemplateColumns]="'56px repeat(' + horas().length + ', minmax(34px, 1fr))'">
+          <span class="ah-mapa__esq" role="columnheader"></span>
+          <span class="ah-mapa__h" role="columnheader" *ngFor="let h of horas()">{{ h }}</span>
+          <ng-container *ngFor="let d of [0,1,2,3,4,5,6]">
+            <span class="ah-mapa__d" role="rowheader">{{ diasCortos[d] }}</span>
+            <span *ngFor="let h of horas()" class="ah-celda" role="cell"
+                  [ngClass]="'n' + nivel(d, h)" [attr.title]="textoCelda(d, h)" [attr.aria-label]="textoCelda(d, h)"></span>
+          </ng-container>
+        </div>
+      </div>
+      <div class="ah-leyenda" aria-hidden="true">
+        <span>Menos</span>
+        <i class="ah-celda n1"></i><i class="ah-celda n2"></i><i class="ah-celda n3"></i><i class="ah-celda n4"></i><i class="ah-celda n5"></i>
+        <span>Más</span>
+      </div>
+    </div>
+
+    <div class="ah-grid2">
+      <!-- ------------------------------------------------------------ por hora -->
+      <div class="ah-card">
+        <div class="ah-card-head">
+          <h3>Por hora</h3>
+          <span class="ah-sub">{{ medida() === 'promedio' ? 'ticket promedio' : 'promedio por día' }}</span>
+        </div>
+        <div class="ah-barras">
+          <div class="ah-barra" *ngFor="let h of horas()">
+            <span class="ah-barra__h">{{ hora(h) }}</span>
+            <span class="ah-barra__pista"><span class="ah-barra__v" [style.width.%]="barra(h)"></span></span>
+            <span class="ah-barra__n">
+              {{ medida() === 'tickets' ? (valorHoraDe(h) | number:'1.1-1') : (valorHoraDe(h) | currency:'MXN':'symbol-narrow':'1.0-0') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------------------ por dia -->
+      <div class="ah-card">
+        <div class="ah-card-head"><h3>Días de la semana</h3><span class="ah-sub">tickets por día</span></div>
+        <ol class="ah-dias">
+          <li *ngFor="let d of diasOrdenados()">
+            <span>{{ dias[d.dia] }}</span>
+            <b>{{ promedioDia(d) | number:'1.1-1' }}</b>
+            <small>{{ d.ingresos | currency:'MXN':'symbol-narrow':'1.0-0' }} en {{ d.dias_calendario }} día{{ d.dias_calendario === 1 ? '' : 's' }}</small>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- --------------------------------------------------- ranking de fechas -->
+    <div class="ah-card">
+      <div class="ah-card-head">
+        <h3>¿Qué {{ dias[diaRanking()].toLowerCase() }} fueron más fuertes?</h3>
+        <div class="ah-seg ah-seg--dias" role="group" aria-label="Día de la semana">
+          <button type="button" *ngFor="let n of diasCortos; let i = index"
+                  [class.on]="diaRanking() === i" (click)="diaRanking.set(i)">{{ n }}</button>
+        </div>
+      </div>
+      <p class="ah-vacio" *ngIf="!ranking().length">Este periodo no incluye ese día.</p>
+      <ol class="ah-ranking" *ngIf="ranking().length">
+        <li *ngFor="let f of ranking()">
+          <span>{{ fechaCorta(f.fecha) }}</span>
+          <b>{{ f.ingresos | currency:'MXN':'symbol-narrow':'1.0-0' }}</b>
+          <small>{{ f.tickets }} tickets</small>
+        </li>
+      </ol>
+    </div>
+  </ng-container>
+</section>

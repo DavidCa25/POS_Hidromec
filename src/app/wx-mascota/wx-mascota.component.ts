@@ -202,6 +202,9 @@ export class WxMascotaComponent implements OnChanges, AfterViewInit {
 
   ngAfterViewInit(): void { void this.pintar(); }
 
+  /** El SVG ya dibujado, para quien necesita dirigirle la mirada (Wybix Guide). */
+  svg(): SVGSVGElement | null { return this.figura?.nativeElement ?? null; }
+
   ngOnChanges(): void {
     /* La primera pasada llega antes de que exista el SVG; de esa se encarga
        `ngAfterViewInit`. */

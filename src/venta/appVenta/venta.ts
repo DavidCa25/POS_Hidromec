@@ -12,9 +12,10 @@ import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
-  ShiftService, SoldLine,
+  MesaService, ShiftService, SoldLine, ClientesVentaService,
 } from '../../core';
 import { PremiosVenta } from '../../loyalty/premios-venta';
+import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
@@ -45,7 +46,17 @@ interface CreditCustomer {
   creditLimit: number;
   currentBalance: number;
   availableCredit: number;
+  termsDays: number;
+  riskLevel: number;
+  /** Por que no se le puede fiar (null = si). Lo decide la base. */
+  block: 'RIESGO' | 'VENCIDAS' | 'SIN_DISPONIBLE' | null;
 }
+
+const MOTIVO_CREDITO: Record<string, string> = {
+  RIESGO: 'Riesgo alto: crédito suspendido',
+  VENCIDAS: 'Tiene ventas vencidas',
+  SIN_DISPONIBLE: 'Sin crédito disponible',
+};
 
 interface RefundLine {
   productId: number;
@@ -73,6 +84,44 @@ export class Venta implements OnInit, OnDestroy {
      sabe pedir sus partidas y, al final, decir con que venta se cobraron. */
   private readonly servicios = inject(ServiciosService);
   private readonly ruta = inject(ActivatedRoute);
+
+  /*
+   * Mesas: una cuenta de mesa abierta desde el salon se atiende aqui igual
+   * que en Touch. Lo enviado ya esta en cocina; lo nuevo se envia con
+   * «Enviar a cocina»; el cobro es el de siempre y despues libera la mesa.
+   */
+  private readonly mesaSvc = inject(MesaService);
+  private readonly clientesSvc = inject(ClientesVentaService);
+  private readonly licencia = inject(LicenseService);
+  readonly cuentaMesa = this.mesaSvc.cuentaActiva;
+  readonly pendientesMesa = this.mesaSvc.pendientes;
+  enviandoMesa = false;
+
+  async enviarMesa() {
+    if (this.enviandoMesa) return;
+    this.enviandoMesa = true;
+    try {
+      const r = await this.mesaSvc.enviar();
+      if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se envió', text: r.error }); return; }
+      const { comandas, sinImprimir } = r.datos;
+      await Swal.fire({
+        icon: sinImprimir.length ? 'warning' : 'success',
+        title: comandas ? `Enviado a cocina · ${comandas} comanda${comandas > 1 ? 's' : ''}` : 'Guardado en la cuenta',
+        text: sinImprimir.length ? `Sin imprimir: ${sinImprimir.join(' · ')}` : undefined,
+        timer: sinImprimir.length ? undefined : 1400,
+        showConfirmButton: !!sinImprimir.length,
+      });
+    } finally {
+      this.enviandoMesa = false;
+    }
+  }
+
+  /** Tras cobrar una cuenta de mesa: enlazarla a su venta libera la mesa. */
+  private async cerrarMesa(mesa: { id: number } | null, saleId: number | null) {
+    if (!mesa) return;
+    const e = await this.mesaSvc.enlazarCobro(mesa.id, saleId);
+    if (!e.ok) await Swal.fire({ icon: 'warning', title: 'La mesa no se liberó', text: e.error });
+  }
 
   today = new Date();
 
@@ -111,6 +160,8 @@ export class Venta implements OnInit, OnDestroy {
 
   lastSalePaid: number = 0;
   lastSaleChange: number = 0;
+  /** Numero de pedido del dia de la ultima venta, si fue de una cuenta sin mesa. */
+  lastSalePedido: number | null = null;
 
   showModalProductos = false;
   filtro = '';
@@ -148,6 +199,11 @@ export class Venta implements OnInit, OnDestroy {
   // Turno (Abrir / estado)
   // =========================
   showOpenShiftModal = false;
+  /* El turno pudo abrirse por otro camino (la barra superior, otra pantalla,
+     la preparacion de una demo): el aviso de «abre el turno» ya sobra. */
+  private readonly cerrarAvisoConTurno = effect(() => {
+    if (this.shift.shift().open && this.showOpenShiftModal) this.cerrarModalAbrirTurno();
+  });
   openShiftRequired = false;
   openingShiftLoading = false;
 
@@ -306,7 +362,10 @@ export class Venta implements OnInit, OnDestroy {
       ordenServicio: { id: ordenId, folio: this.folioDeOrden(ordenId) },
     };
 
-    if (resumen.needs_reauthorization) {
+    /* Solo si nadie lo decidio antes: desde la orden, «Cobrar igual» ya es
+       esa decision y llega como `sinAutorizar=aceptado`. */
+    const yaDecidido = this.ruta.snapshot.queryParamMap.get('sinAutorizar') === 'aceptado';
+    if (resumen.needs_reauthorization && !yaDecidido) {
       await Swal.fire({
         icon: 'warning', title: 'Sin autorizar',
         text: 'El cliente no ha aprobado este importe. Puedes cobrar igual, '
@@ -380,7 +439,32 @@ export class Venta implements OnInit, OnDestroy {
 
   /** Cliente de credito elegido en el cobro. */
   get customerId(): number | null { return this.cart.activeCart().creditCustomerId; }
-  set customerId(v: number | null) { this.cart.setCreditCustomer(v); }
+  set customerId(v: number | null) {
+    this.cart.setCreditCustomer(v);
+    /* El vencimiento sale del plazo del cliente; se puede cambiar a mano. Si
+       no hay fecha, sp_register_sale pone la misma. */
+    const c = v == null ? null : this.creditCustomers.find(x => x.id === v);
+    this.dueDate = c && c.termsDays > 0 ? this.fechaEnDias(c.termsDays) : null;
+  }
+
+  /** 'YYYY-MM-DD' local, dentro de n dias. */
+  private fechaEnDias(n: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    const z = (x: number) => String(x).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  }
+
+  /** El cliente de credito elegido, con su disponible. */
+  get clienteCredito(): CreditCustomer | null {
+    return this.creditCustomers.find(c => c.id === this.customerId) ?? null;
+  }
+
+  /** La venta pasa del disponible del cliente: se dice ANTES de cobrar. */
+  get excedeCredito(): boolean {
+    const c = this.clienteCredito;
+    return !!c && this.totalVenta > c.availableCredit + 0.001;
+  }
 
   get shiftOpen(): boolean { return this.shift.isOpen; }
   get shiftId(): number | null { return this.shift.shift().id; }
@@ -555,6 +639,25 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
+    /* Una cuenta de mesa con productos que van a preparacion y no se
+       enviaron: se pregunta, no se cobra en silencio sin comanda. */
+    if (this.mesaSvc.cuentaActiva()) {
+      const pend = await this.mesaSvc.pendientesDePreparacion(this.cart.activeCart().lines);
+      if (pend.length) {
+        const r = await Swal.fire({
+          icon: 'question',
+          title: 'Hay productos sin enviar a preparación',
+          text: `${pend.length} ${pend.length === 1 ? 'producto aún no llega' : 'productos aún no llegan'} a cocina. Si cobras así, nadie ${pend.length === 1 ? 'lo' : 'los'} prepara.`,
+          showCancelButton: true,
+          confirmButtonText: 'Enviar y cobrar',
+          cancelButtonText: 'Volver',
+        });
+        if (!r.isConfirmed) return;
+        await this.enviarMesa();
+        if ((await this.mesaSvc.pendientesDePreparacion(this.cart.activeCart().lines)).length) return;
+      }
+    }
+
     this.dineroRecibido = null;
     this.showModal = true;
   }
@@ -570,7 +673,7 @@ export class Venta implements OnInit, OnDestroy {
 
       const cli = this.clienteSeleccionado;
       if (cli && this.creditCustomers.length > 0) {
-        const match = this.creditCustomers.find(c => c.id === cli.id);
+        const match = this.creditCustomers.find(c => c.id === cli.id && !c.block);
         if (match) this.customerId = match.id;
       }
     } else {
@@ -605,9 +708,14 @@ export class Venta implements OnInit, OnDestroy {
         creditLimit: Number(r.credit_limit ?? 0),
         currentBalance: Number(r.current_balance ?? 0),
         availableCredit: Number(r.available_credit ?? 0),
+        termsDays: Number(r.terms_days ?? 0),
+        riskLevel: Number(r.risk_level ?? 0),
+        block: (r.credit_block ?? null),
       }));
 
-      this.customerId = this.creditCustomers.length > 0 ? this.creditCustomers[0].id : null;
+      /* Se preselecciona el primero al que SI se le puede fiar. */
+      const primero = this.creditCustomers.find(c => !c.block);
+      this.customerId = primero ? primero.id : null;
     } catch (e: any) {
       await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al cargar los clientes con crédito.' });
     } finally {
@@ -650,6 +758,17 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     const isCredito = this.paymentMethod === 'CREDITO';
+    /* La base tiene la ultima palabra (sp_register_sale), pero decirlo aqui
+       ahorra un viaje y un mensaje menos claro. */
+    if (isCredito && this.excedeCredito) {
+      const c = this.clienteCredito!;
+      this.showModal = false;
+      await Swal.fire({
+        icon: 'warning', title: 'Supera el crédito disponible',
+        text: `${c.customerName} tiene ${c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} disponibles y la venta es de ${this.totalVenta.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}.`,
+      });
+      return;
+    }
     const payment: Payment = {
       method: this.paymentMethod,
       received: isCredito ? null : this.dineroRecibido,
@@ -669,6 +788,7 @@ export class Venta implements OnInit, OnDestroy {
     /* Se lee ANTES de cobrar: `checkout` cierra la cuenta activa y pasa a la
        vecina, así que después ya no hay de dónde sacar la orden. */
     const orden = this.ordenServicio;
+    const mesa = this.mesaSvc.cuentaActiva();
 
     const res = await this.sale.checkout(payment, {
       openDrawer: !isCredito,
@@ -682,8 +802,10 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
+    await this.cerrarMesa(mesa, res.saleId ?? null);
 
     this.afterSale(res.saleId ?? null, res, isCredito);
+    this.lastSalePedido = mesa?.numero ?? null;
     this.showModal = false;
     this.showPostSaleModal = true;
     await this.avisarCuponFallido(res.cupon);
@@ -992,6 +1114,8 @@ export class Venta implements OnInit, OnDestroy {
    * leche de almendra.
    */
   private async avisarSiNoAlcanza(p: CatalogProduct, opciones: SelectedOption[]): Promise<boolean> {
+    // Venta Esencial: el inventario no se administra, se vende lo vendible.
+    if (this.licencia.ventaEsencial) return false;
     const hosp = (window as any).wybix;
     if (typeof hosp?.catalog?.disponibilidad !== 'function') return false;
     try {
@@ -1894,6 +2018,7 @@ export class Venta implements OnInit, OnDestroy {
     /* Igual que en el cobro normal: la orden se lee antes, porque `checkout`
        cierra la cuenta activa. */
     const orden = this.ordenServicio;
+    const mesa = this.mesaSvc.cuentaActiva();
 
     const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
       openDrawer: false, // pago con tarjeta: no se abre el cajon
@@ -1910,6 +2035,7 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
+    await this.cerrarMesa(mesa, res.saleId ?? null);
 
     this.afterSale(res.saleId ?? null, res, false);
     this.paymentMethod = 'EFECTIVO';
@@ -1943,46 +2069,33 @@ export class Venta implements OnInit, OnDestroy {
   // ==================
   // CLIENTES
   // ==================
+  /* El dominio del cliente es el mismo que en Touch (ClientesVentaService y
+     MesaService.fijarCliente): aqui solo cambia como se pinta. */
   async abrirModalClientes() {
-    const api = (window as any).electronAPI;
-    if (!api || !api.getCustomers) {
-      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'La búsqueda de clientes no está disponible.' });
-      return;
-    }
+    this.filtroClientes = '';
+    const r = await this.clientesSvc.listar();
+    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No disponible', text: r.error }); return; }
+    this.clientesGenerales = r.datos;
+    this.showModalClientes = true;
+  }
 
-    try {
-      this.filtroClientes = '';
-      const res = await api.getCustomers();
-      if (res?.success) {
-        this.clientesGenerales = (res.data || []).map((row: any) => ({
-          id: row.id,
-          name: row.customerName,
-          tax_id: row.tax_id,
-          razon_social: row.razon_social,
-          regimen_fiscal: row.regimen_fiscal,
-          uso_cfdi: row.uso_cfdi,
-          phone: row.phone,
-          email: row.email
-        }));
-        this.showModalClientes = true;
-      }
-    } catch (e: any) {
-      console.error(e);
-      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los clientes.' });
-    }
+  coincideCliente(c: CartCustomer): boolean {
+    return ClientesVentaService.coincide(c, this.filtroClientes);
   }
 
   cerrarModalClientes() {
     this.showModalClientes = false;
   }
 
-  seleccionarCliente(cliente: CartCustomer) {
-    this.cart.setCustomer(cliente);
+  async seleccionarCliente(cliente: CartCustomer) {
+    const r = await this.mesaSvc.fijarCliente(cliente);
+    if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se asignó', text: r.error }); return; }
     this.cerrarModalClientes();
   }
 
-  quitarCliente() {
-    this.cart.setCustomer(null);
+  async quitarCliente() {
+    const r = await this.mesaSvc.fijarCliente(null);
+    if (!r.ok) await Swal.fire({ icon: 'error', title: 'No se quitó', text: r.error });
   }
 
   // =========================
@@ -2031,11 +2144,17 @@ export class Venta implements OnInit, OnDestroy {
    * Es solo presentacion: no cambia como se cargan ni que se hace con ellos.
    */
   get opcionesCredito(): WxOpcion[] {
+    /* Los que no pueden llevar fiado siguen en la lista, desactivados y con
+       su motivo: la caja sabe POR QUE, en vez de no encontrar al cliente. */
     return this.creditCustomers.map(c => ({
       valor: c.id,
       etiqueta: c.customerName,
-      nota: 'Disp.: ' + c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+      nota: c.block
+        ? MOTIVO_CREDITO[c.block]
+        : 'Disp.: ' + c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+          + (c.riskLevel === 2 ? ' · riesgo medio' : ''),
       busca: [c.phone, c.email].filter(Boolean).join(' '),
+      desactivada: !!c.block,
     }));
   }
 }

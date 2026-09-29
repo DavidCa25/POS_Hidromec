@@ -873,6 +873,11 @@ export class Alertas implements OnInit {
       await this.cargarClientesMap();
       const r = await this.api?.alertsOverdueCredit?.();
       this.vencidos = r?.success ? (r.data || []) : [];
+      /* El nombre ya viene con la alerta: un vencido sin credito disponible
+         no esta en la lista de credito y salia como «Cliente #id». */
+      for (const v of this.vencidos as any[]) {
+        if (v?.customer_id != null && v?.customerName) this.clientesMap[Number(v.customer_id)] = v.customerName;
+      }
     } catch { this.vencidos = []; } finally { this.cargandoVencidos = false; }
   }
 

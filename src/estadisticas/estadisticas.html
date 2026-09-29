@@ -6,8 +6,12 @@
       <button [class.on]="seg==='clientes'" (click)="segChange('clientes')"><i class="ph ph-users"></i> Clientes</button>
       <button [class.on]="seg==='productos'" (click)="segChange('productos')"><i class="ph ph-package"></i> Productos</button>
       <button [class.on]="seg==='caja'" (click)="segChange('caja')"><i class="ph ph-coins"></i> Caja y utilidad</button>
+      <button data-guide="est-horarios" [class.on]="seg==='horarios'" (click)="segChange('horarios')"><i class="ph ph-clock"></i> Horarios</button>
     </div>
   </div>
+
+  <!-- ============ HORARIOS ============ -->
+  <app-actividad-horaria *ngIf="seg==='horarios'"></app-actividad-horaria>
 
   <!-- ============ VENTAS ============ -->
   <div *ngIf="seg==='ventas'">

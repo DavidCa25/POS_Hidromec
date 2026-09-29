@@ -58,6 +58,11 @@ async function arrancar(base, use, testInfo) {
   const ventana = await app.firstWindow({ timeout: 120000 });
   await ventana.waitForFunction(() => !!(window).electronAPI, null, { timeout: 60000 });
   await ventana.waitForSelector('#username', { timeout: 60000 });
+  /* Wybix Guide se ofrece solo la primera vez que alguien entra. En estas
+     pruebas cada arranque es un equipo nuevo, asi que se apaga el ofrecimiento
+     automatico del EQUIPO (el mismo interruptor que tendria una caja
+     compartida). Las pruebas de la guia lo vuelven a encender. */
+  await ventana.evaluate(() => { try { localStorage.setItem('wx-guide:auto', '0'); } catch { /* noop */ } });
 
   await use({ app, ventana, perfil, base, invocar: (m, ...a) => invocar(ventana, m, ...a) });
 

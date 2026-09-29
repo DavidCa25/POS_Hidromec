@@ -13,7 +13,7 @@
   </div>
 
   <!-- Ctrl+K, el mismo buscador que la lupa del dock. -->
-  <button type="button" class="wxside__buscar" (click)="buscar()"
+  <button type="button" class="wxside__buscar" data-guide="buscar" (click)="buscar()"
           aria-label="Buscar en Wybix" [attr.title]="plegada() ? 'Buscar en Wybix (Ctrl K)' : null">
     <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
     <span class="wxside__buscartxt">Buscar</span>
@@ -25,7 +25,7 @@
     <li *ngFor="let a of areas(); trackBy: porId" class="wxside__area" [class.is-open]="estaAbierto(a)">
 
       <!-- Un area con un solo destino es un ENLACE: lleva a un sitio. -->
-      <a *ngIf="!tienePanel(a); else grupo" class="wxside__link"
+      <a *ngIf="!tienePanel(a); else grupo" class="wxside__link" [attr.data-guide]="'area-' + a.id"
          [class.active]="esActiva(a)" [attr.aria-current]="esActiva(a) ? 'page' : null"
          [routerLink]="a.ruta" [attr.title]="plegada() ? a.nombre : null">
         <i class="ph {{ a.icono }}" aria-hidden="true"></i>
@@ -36,7 +36,7 @@
 
       <!-- Con varios, un GRUPO que se despliega en su sitio. -->
       <ng-template #grupo>
-        <button type="button" class="wxside__link" [class.active]="esActiva(a)"
+        <button type="button" class="wxside__link" [attr.data-guide]="'area-' + a.id" [class.active]="esActiva(a)"
                 (click)="alternarGrupo(a)"
                 [attr.aria-expanded]="estaAbierto(a)" [attr.aria-controls]="'wxside-' + a.id"
                 [attr.title]="plegada() ? a.nombre : null">
@@ -100,7 +100,7 @@
   -->
   <div class="wxside__pie">
     <span class="wxside__anclaWybix">
-      <button type="button" class="wxside__pulso" (click)="alternarGuia($event)"
+      <button type="button" class="wxside__pulso" data-guide="wybix-guide" (click)="alternarGuia($event)"
               [class.is-abierto]="guia.abierta()"
               [attr.aria-expanded]="guia.abierta()" aria-haspopup="dialog"
               [attr.aria-label]="estadoWybix() === 'atencion' ? 'Wybix: hay cosas pendientes' : 'Wybix: todo en orden'">

@@ -1,0 +1,78 @@
+:host { display: block; }
+
+.ah { display: flex; flex-direction: column; gap: 14px; }
+
+.ah-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.ah-seg { display: inline-flex; gap: 3px; padding: 3px; background: var(--wx-sunken); border-radius: var(--wx-radius-md); }
+.ah-seg button {
+  min-height: 34px; padding: 0 12px;
+  border: 0; border-radius: var(--wx-radius-sm); background: transparent;
+  color: var(--wx-text-muted); font: inherit; font-size: var(--wx-text-sm); font-weight: 500; cursor: pointer;
+}
+.ah-seg button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+.ah-seg button:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.ah-seg--medida { margin-left: auto; }
+.ah-seg--dias button { min-height: 30px; padding: 0 9px; }
+.ah-rango { display: flex; align-items: center; gap: 8px; }
+.ah-rango wx-date { width: 170px; }
+
+.ah-error { margin: 0; color: var(--wx-danger); }
+.ah-nota { margin: -4px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.5; }
+.ah-vacio { margin: 0; padding: 18px; color: var(--wx-text-muted); text-align: center; }
+
+/* --------------------------------------------------------------- mapa */
+.ah-mapa-scroll { overflow-x: auto; }
+.ah-mapa { display: grid; gap: 3px; min-width: max-content; }
+.ah-mapa__h { text-align: center; color: var(--wx-text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ah-mapa__d { color: var(--wx-text-muted); font-size: 12px; font-weight: 600; align-self: center; }
+.ah-celda {
+  display: block; min-height: 28px; border-radius: 5px;
+  background: var(--wx-sunken);
+}
+/* Cinco niveles del acento. En oscuro el sunken ya es oscuro y los niveles
+   suben de opacidad igual: se leen en los dos temas. */
+.ah-celda.n1 { background: color-mix(in srgb, var(--wx-accent) 18%, var(--wx-sunken)); }
+.ah-celda.n2 { background: color-mix(in srgb, var(--wx-accent) 36%, var(--wx-sunken)); }
+.ah-celda.n3 { background: color-mix(in srgb, var(--wx-accent) 56%, var(--wx-sunken)); }
+.ah-celda.n4 { background: color-mix(in srgb, var(--wx-accent) 76%, var(--wx-sunken)); }
+.ah-celda.n5 { background: var(--wx-accent); }
+
+.ah-leyenda { display: flex; align-items: center; gap: 4px; margin-top: 10px; color: var(--wx-text-dim); font-size: 11px; }
+.ah-leyenda .ah-celda { width: 16px; min-height: 12px; }
+
+/* ------------------------------------------------------------- barras */
+.ah-barras { display: flex; flex-direction: column; gap: 5px; }
+.ah-barra { display: grid; grid-template-columns: 48px 1fr 70px; align-items: center; gap: 8px; }
+.ah-barra__h { color: var(--wx-text-muted); font-family: var(--wx-font-mono); font-size: 12px; }
+.ah-barra__pista { height: 12px; background: var(--wx-sunken); border-radius: 6px; overflow: hidden; }
+.ah-barra__v { display: block; height: 100%; background: var(--wx-accent); border-radius: 6px; }
+.ah-barra__n { text-align: right; font-family: var(--wx-font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------- listas */
+.ah-dias, .ah-ranking { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.ah-dias li, .ah-ranking li {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 10px;
+  padding: 8px 2px; border-bottom: 1px solid var(--wx-edge);
+}
+.ah-dias li:last-child, .ah-ranking li:last-child { border-bottom: 0; }
+.ah-dias b, .ah-ranking b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.ah-dias small, .ah-ranking small { grid-column: 1 / -1; color: var(--wx-text-dim); font-size: 11.5px; }
+
+/* ------------------------------------------------ KPIs y tarjetas
+   Las mismas medidas que Estadisticas: su hoja esta encapsulada en su
+   componente, asi que se repiten aqui con prefijo propio. */
+.ah-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.ah-kpi {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+}
+.ah-kpis > .ah-kpi:first-child { border-left: 3px solid var(--wx-accent); }
+.ah-kpi__l { font-size: var(--wx-text-sm); font-weight: 500; color: var(--wx-text-muted); }
+.ah-kpi__v { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; font-size: var(--wx-text-xl); font-weight: 600; letter-spacing: -0.02em; color: var(--wx-text); }
+.ah-card { padding: 18px 20px; background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 18px; box-shadow: var(--wx-shadow-raised); }
+.ah-card-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.ah-card-head h3 { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--wx-text); }
+.ah-sub { font-size: .78rem; color: var(--wx-text-dim); }
+.ah-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 1000px) { .ah-grid2 { grid-template-columns: 1fr; } .ah-kpis { grid-template-columns: repeat(2, 1fr); } }

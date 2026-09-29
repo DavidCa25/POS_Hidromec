@@ -161,10 +161,11 @@ Estados que produce: `none`, `trial`, `active`, `expired`, `tamper`. El
 renderer bloquea en `expired` y `tamper`
 ([`license.service.ts:43`](../src/services/license.service.ts#L43)).
 
-`sellarComoPrueba()` ([`electron/lib/licencia-prueba.js`](../electron/lib/licencia-prueba.js))
-fuerza `type: 'trial'` sobre la respuesta remota antes de guardarla, porque una
-respuesta sin `type` caía en la rama `paid` y la pantalla anunciaba un plan que
-nadie compró.
+> **Licencias v2.** Lo anterior describe el formato **sin firma**, que ya no
+> se acepta: el servicio de licencia lo rechaza como «Esta licencia necesita
+> actualizarse» (TAMPER, motivo `sin-firma`) y solo se trabaja con el
+> certificado firmado. Se eliminó `sellarComoPrueba()`, que sellaba ese
+> formato. El almacén sigue siendo el mismo. Ver [`licensing.md`](licensing.md).
 
 ---
 

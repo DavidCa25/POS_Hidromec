@@ -1,0 +1,297 @@
+/* ==========================================================================
+   SALON Y ESTACIONES
+   Una herramienta, no un formulario. El salon se dibuja como un plano -cada
+   area es un piso con sus mesas, cada mesa con sus lugares- y se edita ahi
+   mismo. Cada estacion es una tarjeta con identidad propia: su color es el
+   mismo que tendra en la cocina y junto a cada producto que prepara.
+   ========================================================================== */
+:host { display: block; }
+
+.sa { display: flex; flex-direction: column; gap: 18px; color: var(--wx-text); }
+.sa > .hx-head { padding-bottom: 16px; border-bottom: 1px solid var(--wx-edge); }
+
+.sa-salon, .sa-est { display: flex; flex-direction: column; gap: 16px; }
+
+.sa-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.sa-bar__txt { margin: 0 auto 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.sa-bar .hx-cifras + .sa-bar__txt { margin-left: 6px; }
+
+/* --------------------------------------------------------------- vacios */
+.sa-vacio {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 40px 24px; text-align: center;
+  background:
+    radial-gradient(circle at 1px 1px, var(--wx-edge) 1px, transparent 0) 0 0 / 18px 18px,
+    var(--wx-surface);
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-lg);
+  color: var(--wx-text-muted);
+}
+.sa-vacio__dibujo { display: flex; align-items: center; gap: 26px; margin-bottom: 12px; }
+.sa-vacio h3 { margin: 0; color: var(--wx-text); font-size: var(--wx-text-md); font-weight: 680; }
+.sa-vacio p { margin: 0 0 8px; max-width: 50ch; font-size: var(--wx-text-sm); line-height: 1.5; }
+.sa-vacio--chico { padding: 26px 18px; background: var(--wx-surface); }
+.sa-vacio--chico > .ph { font-size: 28px; color: var(--wx-text-dim); }
+
+/* Botones de icono de las cabeceras. */
+.sa-icono {
+  width: 36px; height: 36px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border: 1px solid transparent; border-radius: var(--wx-radius-sm);
+  background: transparent; color: var(--wx-text-muted); font-size: 17px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .sa-icono:hover { background: var(--wx-hover); color: var(--wx-text); border-color: var(--wx-edge); }
+  .sa-icono--peligro:hover { background: var(--wx-danger-soft); color: var(--wx-danger); border-color: transparent; }
+}
+.sa-icono:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+.sa-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sa-campo > span { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 650; letter-spacing: 0.02em; }
+
+/* ================================================================ SALON */
+.sa-area {
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+  overflow: hidden;
+}
+.sa-area__cab { display: flex; align-items: center; gap: 10px; padding: 14px 14px 12px 16px; }
+.sa-area__tit { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.sa-area__tit h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 700; letter-spacing: -0.01em; }
+.sa-area__tit small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-variant-numeric: tabular-nums; }
+.sa-area__uso { color: var(--wx-accent-text); font-weight: 600; }
+
+/* El piso: una cuadricula de puntos, como papel de plano. */
+.sa-plano {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--wx-edge-strong) 70%, transparent) 1px, transparent 0) 0 0 / 16px 16px,
+    var(--wx-raised);
+  border-top: 1px solid var(--wx-edge-soft);
+}
+
+.sa-mesa {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-height: 128px; padding: 14px 8px 12px;
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-surface);
+  color: var(--wx-text);
+  font: inherit; cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out),
+              border-color var(--wx-dur-micro) var(--wx-ease-out),
+              background-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.sa-mesa hx-mesita { margin: 2px 0 4px; }
+@media (hover: hover) and (pointer: fine) {
+  .sa-mesa:hover { transform: translateY(-2px); border-color: var(--wx-edge-strong); }
+}
+.sa-mesa:active { transform: scale(0.97); }
+.sa-mesa:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.sa-mesa.es-elegida { border-color: var(--wx-accent); box-shadow: inset 0 0 0 1px var(--wx-accent), 0 0 0 4px var(--wx-accent-soft); }
+
+.sa-mesa__nom { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-mesa__cap { color: var(--wx-text-dim); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.sa-mesa__uso {
+  position: absolute; top: 9px; right: 9px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--wx-accent); box-shadow: 0 0 0 3px var(--wx-accent-soft);
+}
+
+.sa-mesa--nueva {
+  justify-content: center;
+  border-style: dashed; border-color: var(--wx-edge-strong);
+  background: transparent;
+  color: var(--wx-accent-text);
+}
+.sa-mesa--nueva .sa-mesa__nom { font-size: 13.5px; }
+.sa-mesa__mas {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--wx-accent-soft); font-size: 18px;
+  transition: transform var(--wx-dur-micro) var(--wx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sa-mesa--nueva:hover { background: var(--wx-surface); border-color: var(--wx-accent-line); }
+  .sa-mesa--nueva:hover .sa-mesa__mas { transform: rotate(90deg); }
+}
+
+/* --------------------------------------------------------------- editor */
+.sa-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 22px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--wx-edge);
+  background: linear-gradient(180deg, var(--wx-accent-soft), transparent 90%), var(--wx-surface);
+}
+.sa-editor__vista { justify-self: center; padding: 0 8px; }
+.sa-editor__campos { display: grid; grid-template-columns: minmax(160px, 280px) auto; gap: 14px; align-items: end; }
+.sa-editor__acc { display: flex; align-items: center; gap: 8px; }
+.sa-editor__quitar:not(:disabled) { color: var(--wx-danger); }
+.sa-editor__nota {
+  grid-column: 1 / -1; margin: 0;
+  display: flex; align-items: center; gap: 6px;
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs);
+}
+
+.sa-pasos {
+  align-self: flex-start;
+  display: inline-flex; align-items: center;
+  height: var(--wx-control-h);
+  border: 1px solid var(--wx-edge-strong); border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface); overflow: hidden;
+}
+.sa-pasos button {
+  width: 38px; height: 100%; display: grid; place-items: center;
+  border: 0; background: transparent; color: var(--wx-text-muted); font-size: 15px; cursor: pointer;
+}
+@media (hover: hover) { .sa-pasos button:hover:not(:disabled) { background: var(--wx-hover); color: var(--wx-text); } }
+.sa-pasos button:disabled { opacity: 0.35; cursor: not-allowed; }
+.sa-pasos button:focus-visible { outline: none; box-shadow: inset var(--wx-focus-ring); }
+.sa-pasos output {
+  min-width: 40px; text-align: center;
+  font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
+  border-inline: 1px solid var(--wx-edge);
+  line-height: calc(var(--wx-control-h) - 2px);
+}
+
+/* ============================================================ ESTACIONES */
+.sa-est__rejilla {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+.sa-est__col { display: flex; flex-direction: column; gap: 12px; }
+.sa-sub {
+  margin: 0; color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.sa-estacion {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 14px 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--hx-c) 9%, transparent), transparent 42%),
+    var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+  transition: border-color var(--wx-dur-state) var(--wx-ease-out);
+}
+.sa-estacion.es-sucia { border-color: color-mix(in srgb, var(--wx-warning) 50%, var(--wx-edge)); }
+
+.sa-estacion__cab { display: flex; align-items: center; gap: 10px; }
+.sa-estacion__ic {
+  width: 40px; height: 40px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hx-c) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hx-c) 35%, transparent);
+  color: var(--hx-c);
+  font-size: 20px;
+}
+/* El nombre es el titulo, y se edita en su sitio. Se ve como texto hasta
+   que el cursor o el foco llegan: entonces se ve como campo. */
+.sa-estacion__nombre {
+  flex: 1 1 auto; min-width: 0;
+  height: 38px; padding: 0 10px; margin-left: -4px;
+  border: 1px solid transparent; border-radius: var(--wx-radius-sm);
+  background: transparent; color: var(--wx-text);
+  font: inherit; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out), background-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.sa-estacion__nombre::placeholder { color: var(--wx-text-dim); font-weight: 500; }
+@media (hover: hover) { .sa-estacion__nombre:hover { border-color: var(--wx-edge); background: var(--wx-surface); } }
+.sa-estacion__nombre:focus { outline: none; border-color: var(--wx-accent); background: var(--wx-surface); box-shadow: var(--wx-focus-ring); }
+/* La hoja global pinta cada input de texto en oscuro; este es un titulo. */
+:host-context(html.dark) .sa-estacion__nombre { background: transparent; border-color: transparent; }
+:host-context(html.dark) .sa-estacion__nombre:hover { border-color: var(--wx-edge); background: var(--wx-sunken); }
+:host-context(html.dark) .sa-estacion__nombre:focus { border-color: var(--wx-accent); background: var(--wx-sunken); }
+.sa-estacion__n {
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--hx-c) 12%, var(--wx-sunken));
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 650; font-variant-numeric: tabular-nums;
+}
+
+/* Cerrado, el bloque de impresora no debe sumar otro hueco a la tarjeta. */
+.sa-estacion > .wx-abrir.es-cerrado { margin-top: -14px; }
+.sa-estacion__imp { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 12px; padding-top: 2px; }
+
+.sa-estacion__pie {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 0 -16px -14px; padding: 10px 16px;
+  border-top: 1px solid var(--wx-edge-soft);
+  border-radius: 0 0 var(--wx-radius-lg) var(--wx-radius-lg);
+}
+.sa-estacion__estado { display: inline-flex; align-items: center; gap: 6px; color: var(--wx-success-ink); font-size: var(--wx-text-xs); font-weight: 650; }
+.sa-estacion__estado.es-sucia { color: var(--wx-warning-ink); }
+.sa-estacion__estado.es-sucia::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--wx-warning); }
+
+/* ------------------------------------------------ producto -> estacion */
+.sa-prod {
+  display: flex; flex-direction: column;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+  overflow: hidden;
+  position: sticky; top: 12px;
+}
+.sa-prod__cab { padding: 16px 18px 4px; }
+.sa-prod__cab h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 700; letter-spacing: -0.01em; }
+.sa-prod__cab p { margin: 3px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.sa-prod__filtros {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 18px 14px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.sa-prod__filtros .sa-dot { --dot: var(--hx-c); }
+.sa-prod__buscar { position: relative; flex: 1 1 200px; max-width: 280px; margin-left: auto; }
+.sa-prod__buscar .ph { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--wx-text-dim); pointer-events: none; }
+.sa-prod__buscar input { padding-left: 34px; width: 100%; }
+
+.sa-prod__lista { display: flex; flex-direction: column; max-height: 62vh; overflow-y: auto; padding: 4px 8px 8px; }
+.sa-prod__fila {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) minmax(200px, 270px); align-items: center; gap: 12px;
+  padding: 9px 10px;
+  border-radius: var(--wx-radius-sm);
+  transition: background-color var(--wx-dur-micro) var(--wx-ease-out);
+}
+.sa-prod__fila + .sa-prod__fila { box-shadow: 0 -1px 0 var(--wx-edge-soft); }
+@media (hover: hover) { .sa-prod__fila:hover { background: var(--wx-raised); } }
+.sa-prod__punto { width: 10px; height: 10px; border-radius: 50%; background: var(--hx-c); }
+.sa-prod__fila.hx-c-nada .sa-prod__punto { background: transparent; box-shadow: inset 0 0 0 1.5px var(--wx-edge-strong); }
+.sa-prod__nom { display: flex; flex-direction: column; min-width: 0; }
+.sa-prod__nom b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-prod__nom small { color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+.sa-prod__nada { margin: 0; padding: 28px 12px; text-align: center; color: var(--wx-text-dim); font-size: var(--wx-text-sm); }
+
+/* ------------------------------------------------------------ angosto */
+@media (max-width: 1180px) {
+  .sa-est__rejilla { grid-template-columns: 1fr; }
+  .sa-prod { position: static; }
+}
+@media (max-width: 760px) {
+  .sa-editor { grid-template-columns: 1fr; }
+  .sa-editor__vista { display: none; }
+  .sa-editor__campos { grid-template-columns: 1fr auto; }
+  .sa-editor__acc { flex-wrap: wrap; }
+  .sa-estacion__imp { grid-template-columns: 1fr; }
+  .sa-prod__fila { grid-template-columns: 10px minmax(0, 1fr); }
+  .sa-prod__fila wx-select { grid-column: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-mesa:hover, .sa-mesa:active { transform: none; }
+  .sa-mesa--nueva:hover .sa-mesa__mas { transform: none; }
+}
