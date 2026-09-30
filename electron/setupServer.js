@@ -178,8 +178,12 @@ function runElevated(psScript, params) {
  
         $argsList = "-ExecutionPolicy Bypass -NoProfile -File \`"$scriptPath\`" -ParamsFile \`"$jsonPath\`" -LogFile \`"$logPath\`""
  
+        # Ventana OCULTA: en una consola visible, un clic la pone en modo
+        # «Select» (QuickEdit) y Windows congela el script en su siguiente
+        # Write-Host; la instalacion queda esperando para siempre. El avance
+        # ya va al log y la app muestra su propia pantalla de progreso.
         try {
-          $p = Start-Process powershell -Verb RunAs -PassThru -Wait -ArgumentList $argsList
+          $p = Start-Process powershell -Verb RunAs -PassThru -Wait -WindowStyle Hidden -ArgumentList $argsList
           Set-Content -Path $exitPath -Value $p.ExitCode
           exit $p.ExitCode
         } catch {

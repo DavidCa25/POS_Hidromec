@@ -367,6 +367,8 @@
 
       show('step3');
       document.getElementById('installMsg').textContent = 'Instalando motor SQL Server...';
+      // Se fija aqui también: si antes se pulsó «prueba gratis», su texto se quedaba.
+      document.getElementById('installSub').textContent = 'Preparando tu equipo con tu licencia. Puede tardar unos minutos.';
 
       const res = await api.runSetup({ role: 'principal', server: 'localhost\\SQLEXPRESS', ocusPassword, saPassword });
       if (!res?.ok) {
