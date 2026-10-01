@@ -1,11 +1,20 @@
 {
-  "generado": "2026-09-12T20:13:36.060Z",
+  "generado": "2026-09-30T14:32:06.150Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
     "Wybix_Template"
   ],
   "objetos": [
+    {
+      "nombre": "fn_nombre_publico_cliente",
+      "tipo": "SQL_SCALAR_FUNCTION",
+      "archivo": "sql/functions/fn_nombre_publico_cliente.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "17b545269b0d82b9"
+    },
     {
       "nombre": "sp_add_brand",
       "tipo": "SQL_STORED_PROCEDURE",
@@ -61,13 +70,76 @@
       "checksum": "ae757f3181fd2753"
     },
     {
+      "nombre": "sp_appointment_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "473eca6a956d071e"
+    },
+    {
+      "nombre": "sp_appointment_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "818fba64cc743bdb"
+    },
+    {
+      "nombre": "sp_appointment_reschedule",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_reschedule.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "21152dd280f56b8f"
+    },
+    {
+      "nombre": "sp_appointment_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e6bf62de7d12d793"
+    },
+    {
+      "nombre": "sp_appointment_set_status",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_set_status.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b36e0a6af3279c90"
+    },
+    {
+      "nombre": "sp_appointment_to_order",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_appointment_to_order.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "537dfce684ed7c5b"
+    },
+    {
       "nombre": "sp_authorize_supervisor",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/security/sp_authorize_supervisor.sql",
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "18866dabb90f0669"
+      "checksum": "3496d5090b1bb5fd"
+    },
+    {
+      "nombre": "sp_bump_security_revision",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/security/sp_bump_security_revision.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "673c417a4716a844"
     },
     {
       "nombre": "sp_cancel_invoice",
@@ -85,7 +157,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2a7d1e7d0eee0bfb"
+      "checksum": "4641999eaa3fd027"
     },
     {
       "nombre": "sp_cashier_risk",
@@ -160,6 +232,33 @@
       "checksum": "05d5678b0db84461"
     },
     {
+      "nombre": "sp_comanda_cancelar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_comanda_cancelar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "78298fa576aed249"
+    },
+    {
+      "nombre": "sp_comanda_estado",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_comanda_estado.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "303e3f7549972b20"
+    },
+    {
+      "nombre": "sp_commissions_report",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_commissions_report.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "6fb519cfeabe72a2"
+    },
+    {
       "nombre": "sp_coupon_issue",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/loyalty/sp_coupon_issue.sql",
@@ -203,6 +302,24 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "f5ea1934b3fd6328"
+    },
+    {
+      "nombre": "sp_customer_asset_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_customer_asset_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "145735399c484dfd"
+    },
+    {
+      "nombre": "sp_customer_asset_set_active",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_customer_asset_set_active.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b273a4b69a1d4e43"
     },
     {
       "nombre": "sp_customers_kpis",
@@ -304,6 +421,42 @@
       "checksum": "dbc40ce39d4a5b6f"
     },
     {
+      "nombre": "sp_expense_category_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_expense_category_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "cb9f7d74064be704"
+    },
+    {
+      "nombre": "sp_expense_category_move",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_expense_category_move.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "414be7dd62bd06ec"
+    },
+    {
+      "nombre": "sp_expense_category_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_expense_category_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f76166af81377fd5"
+    },
+    {
+      "nombre": "sp_expense_staff_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_expense_staff_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "12f3a5e1ae5d2cbd"
+    },
+    {
       "nombre": "sp_get_active_products",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/inventory/sp_get_active_products.sql",
@@ -340,6 +493,15 @@
       "checksum": "f4c509de33e5e895"
     },
     {
+      "nombre": "sp_get_business_modules",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/core/sp_get_business_modules.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4849837fbffc8d9d"
+    },
+    {
       "nombre": "sp_get_cash_closures",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/cash/sp_get_cash_closures.sql",
@@ -355,7 +517,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "e5e90edb96299d91"
+      "checksum": "8dcb74dd4a9bab51"
     },
     {
       "nombre": "sp_get_categories",
@@ -376,13 +538,22 @@
       "checksum": "9f45294e10c53066"
     },
     {
+      "nombre": "sp_get_customer_assets",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_get_customer_assets.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "9dfa2c5e856cc60e"
+    },
+    {
       "nombre": "sp_get_customer_open_credit_sales",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/customers/sp_get_customer_open_credit_sales.sql",
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "17532fa2db4c9119"
+      "checksum": "47df36b876cd7dbe"
     },
     {
       "nombre": "sp_get_customers",
@@ -391,7 +562,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "b9eef0f2640ea1bd"
+      "checksum": "4ef77cbe6d67088b"
     },
     {
       "nombre": "sp_get_customers_credit_summary",
@@ -400,7 +571,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "c63da2b65d8724a8"
+      "checksum": "070cb921ffbfd690"
     },
     {
       "nombre": "sp_get_customers_open_credit_not_overdue",
@@ -418,7 +589,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "347c257fa11db981"
+      "checksum": "83858e89ba8108c9"
     },
     {
       "nombre": "sp_get_daily_sales_current_month",
@@ -437,6 +608,15 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "99d93f70e5ce5907"
+    },
+    {
+      "nombre": "sp_get_expenses",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_get_expenses.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "dc5caa55f297e435"
     },
     {
       "nombre": "sp_get_fiscal_config",
@@ -601,6 +781,24 @@
       "checksum": "6b6d232365c6551c"
     },
     {
+      "nombre": "sp_get_professional_schedule",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_get_professional_schedule.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2defa195f907e9d9"
+    },
+    {
+      "nombre": "sp_get_professionals",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_get_professionals.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3386ad701f4445e5"
+    },
+    {
       "nombre": "sp_get_profit_overview",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/reports/sp_get_profit_overview.sql",
@@ -671,6 +869,33 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "76ad4c34f378d73f"
+    },
+    {
+      "nombre": "sp_get_security_state",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/security/sp_get_security_state.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d370fb0eca610c01"
+    },
+    {
+      "nombre": "sp_get_services",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_get_services.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "fb1f1d26809f8af2"
+    },
+    {
+      "nombre": "sp_get_services_config",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_get_services_config.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "bec75e16add83220"
     },
     {
       "nombre": "sp_get_supplier_account_detail",
@@ -772,6 +997,168 @@
       "checksum": "89a6070f7c4d61e7"
     },
     {
+      "nombre": "sp_hosp_cuenta_abrir",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_abrir.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "a76f063e62366d92"
+    },
+    {
+      "nombre": "sp_hosp_cuenta_cliente",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_cliente.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0ebaf0c9511ef87f"
+    },
+    {
+      "nombre": "sp_hosp_cuenta_cobrar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_cobrar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ac8b6de8b3e039ca"
+    },
+    {
+      "nombre": "sp_hosp_cuenta_estado",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_estado.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "62ffe97d3e274a1a"
+    },
+    {
+      "nombre": "sp_hosp_cuenta_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "44b428fb60c1d757"
+    },
+    {
+      "nombre": "sp_hosp_cuenta_liberar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_cuenta_liberar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "17039c827e6b7c21"
+    },
+    {
+      "nombre": "sp_hosp_orden_enviar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_orden_enviar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ac9ff185b7a6b21a"
+    },
+    {
+      "nombre": "sp_hosp_productos_con_preparacion",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_hosp_productos_con_preparacion.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "dab73188bab7d84c"
+    },
+    {
+      "nombre": "sp_import_batch_create",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_create.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ca5d7bca4f69e445"
+    },
+    {
+      "nombre": "sp_import_batch_discard",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_discard.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e0e88ddd3e98ca7a"
+    },
+    {
+      "nombre": "sp_import_batch_drop_if_empty",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_drop_if_empty.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1b5b62df79d92fb5"
+    },
+    {
+      "nombre": "sp_import_batch_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d624691440a9fdc6"
+    },
+    {
+      "nombre": "sp_import_batch_set_mapping",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_set_mapping.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "33627d6c81ab80f2"
+    },
+    {
+      "nombre": "sp_import_batch_summary",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_summary.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b60b3efdf3e641ad"
+    },
+    {
+      "nombre": "sp_import_batch_touch",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_batch_touch.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ff2d363bfb0176f9"
+    },
+    {
+      "nombre": "sp_import_execute_chunk",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_execute_chunk.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2e83ef1d4d3e78f8"
+    },
+    {
+      "nombre": "sp_import_mapping_find",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_mapping_find.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8ca6c599bfe657bc"
+    },
+    {
+      "nombre": "sp_import_mapping_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_mapping_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "513c2f4b2efec430"
+    },
+    {
       "nombre": "sp_import_products",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/inventory/sp_import_products.sql",
@@ -779,6 +1166,87 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "dde4b2ecc69c436b"
+    },
+    {
+      "nombre": "sp_import_resolve_group",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_resolve_group.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "66cfe722a224d842"
+    },
+    {
+      "nombre": "sp_import_resolve_row",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_resolve_row.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0418a87d39d0ecd9"
+    },
+    {
+      "nombre": "sp_import_rows_add",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_rows_add.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3028c8150209a382"
+    },
+    {
+      "nombre": "sp_import_rows_clear",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_rows_clear.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f1eca8a8a3407de4"
+    },
+    {
+      "nombre": "sp_import_rows_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_rows_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7b2cae07ad96e1e4"
+    },
+    {
+      "nombre": "sp_import_undo",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_undo.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8adf90e563c5ed29"
+    },
+    {
+      "nombre": "sp_import_undo_check",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/quickstart/sp_import_undo_check.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b55f87f32649b104"
+    },
+    {
+      "nombre": "sp_inventory_count_apply",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_inventory_count_apply.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7b18a1632b1b706c"
+    },
+    {
+      "nombre": "sp_kds_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_kds_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b81e1210e1a70403"
     },
     {
       "nombre": "sp_log_security_event",
@@ -862,6 +1330,87 @@
       "checksum": "25dc390ad42e17fc"
     },
     {
+      "nombre": "sp_prep_station_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_prep_station_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0ee9e491a8f55e28"
+    },
+    {
+      "nombre": "sp_prep_stations_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_prep_stations_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "38856c05e425440b"
+    },
+    {
+      "nombre": "sp_product_prep_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_product_prep_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e6e7d6332f963b30"
+    },
+    {
+      "nombre": "sp_product_prep_set",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_product_prep_set.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "377889fffcabd11e"
+    },
+    {
+      "nombre": "sp_professional_availability",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_professional_availability.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "26466d43f1a6c176"
+    },
+    {
+      "nombre": "sp_professional_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_professional_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "66161727701b6c56"
+    },
+    {
+      "nombre": "sp_professional_set_active",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_professional_set_active.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8b9196905679745f"
+    },
+    {
+      "nombre": "sp_professional_time_off_delete",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_professional_time_off_delete.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "30d44a384cba866c"
+    },
+    {
+      "nombre": "sp_professional_time_off_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_professional_time_off_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "cf3eacaf2e3257a6"
+    },
+    {
       "nombre": "sp_raffle_close",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/loyalty/sp_raffle_close.sql",
@@ -931,7 +1480,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "a75fd9e0ed611b4c"
+      "checksum": "c75b585188996a57"
     },
     {
       "nombre": "sp_register_cash_out",
@@ -940,7 +1489,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "4a0b80341ace3e52"
+      "checksum": "1a9a53bff48b712a"
     },
     {
       "nombre": "sp_register_claim",
@@ -958,7 +1507,16 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "972b059e91866918"
+      "checksum": "eee220947976d920"
+    },
+    {
+      "nombre": "sp_register_expense",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_register_expense.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d52b5456914c2376"
     },
     {
       "nombre": "sp_register_lease_touch",
@@ -976,7 +1534,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "7c58021636f7100f"
+      "checksum": "29d6b122240b3a61"
     },
     {
       "nombre": "sp_register_release",
@@ -997,21 +1555,13 @@
       "checksum": "2f0fb722956958e2"
     },
     {
-      "nombre": "sp_venta_esencial_resumen",
-      "tipo": "SQL_STORED_PROCEDURE",
-      "archivo": "sql/procedures/sales/sp_venta_esencial_resumen.sql",
-      "origen": "repo",
-      "critico": false,
-      "clasificacion": "current"
-    },
-    {
       "nombre": "sp_register_supplier_payment",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/suppliers/sp_register_supplier_payment.sql",
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "bf69de9f8a07e09a"
+      "checksum": "d73c6d06a2403332"
     },
     {
       "nombre": "sp_remove_product_supplier",
@@ -1032,6 +1582,24 @@
       "checksum": "aea0f1da69275f1b"
     },
     {
+      "nombre": "sp_report_actividad_horaria",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/reports/sp_report_actividad_horaria.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "54f3784636ecbe80"
+    },
+    {
+      "nombre": "sp_resolve_cash_register",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/cash/sp_resolve_cash_register.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "52dfebf539f6bd5b"
+    },
+    {
       "nombre": "sp_resolver_receta_efectiva",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/hospitality/sp_resolver_receta_efectiva.sql",
@@ -1048,6 +1616,33 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "49b6f8d5d75cc4ab"
+    },
+    {
+      "nombre": "sp_salon_area_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_salon_area_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "edcf682f131f3201"
+    },
+    {
+      "nombre": "sp_salon_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_salon_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "08e261637a71816f"
+    },
+    {
+      "nombre": "sp_salon_mesa_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_salon_mesa_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7c433f5ea612de9d"
     },
     {
       "nombre": "sp_save_fiscal_config",
@@ -1104,6 +1699,141 @@
       "checksum": "dd7c3603cfdd1847"
     },
     {
+      "nombre": "sp_service_order_add_event",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_add_event.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b6edbe6bd25f7bdd"
+    },
+    {
+      "nombre": "sp_service_order_add_line",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_add_line.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f262e0cbf9ef3a7d"
+    },
+    {
+      "nombre": "sp_service_order_authorize",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_authorize.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "befd18a9d5410bff"
+    },
+    {
+      "nombre": "sp_service_order_cancel",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_cancel.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ddbf630ca78a4d5f"
+    },
+    {
+      "nombre": "sp_service_order_charge_preview",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_charge_preview.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "a2f40e48d4eb180c"
+    },
+    {
+      "nombre": "sp_service_order_create",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_create.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "17c9ab99f5c371f8"
+    },
+    {
+      "nombre": "sp_service_order_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8d97561c5b199473"
+    },
+    {
+      "nombre": "sp_service_order_link_sale",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_link_sale.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "af79948b798a7b95"
+    },
+    {
+      "nombre": "sp_service_order_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "55ad0865037b62ea"
+    },
+    {
+      "nombre": "sp_service_order_set_status",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_set_status.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "af336a79df8703aa"
+    },
+    {
+      "nombre": "sp_service_order_update",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_update.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3c9c2184a39def58"
+    },
+    {
+      "nombre": "sp_service_order_update_line",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_order_update_line.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "bcf2704a6a30889a"
+    },
+    {
+      "nombre": "sp_service_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "9abbf2b2aae65bab"
+    },
+    {
+      "nombre": "sp_service_set_active",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_service_set_active.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8586134efa47e82c"
+    },
+    {
+      "nombre": "sp_set_business_module",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/core/sp_set_business_module.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "5200a31955a548bc"
+    },
+    {
       "nombre": "sp_set_fiscal_issuer_ref",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/billing/sp_set_fiscal_issuer_ref.sql",
@@ -1140,6 +1870,15 @@
       "checksum": "b0978a26f3fd6d6c"
     },
     {
+      "nombre": "sp_set_professional_schedule",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_set_professional_schedule.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "979ae6e271e6d49d"
+    },
+    {
       "nombre": "sp_set_register_active",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/setup/sp_set_register_active.sql",
@@ -1149,13 +1888,31 @@
       "checksum": "25343a51e3e081f1"
     },
     {
+      "nombre": "sp_set_service_professionals",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_set_service_professionals.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "612b62b2379dd302"
+    },
+    {
+      "nombre": "sp_set_services_preset",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/servicios/sp_set_services_preset.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "a14b88a596b9e407"
+    },
+    {
       "nombre": "sp_setup_inicial",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/setup/sp_setup_inicial.sql",
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "601520a0b0b491ce"
+      "checksum": "08eca4c5b72585f7"
     },
     {
       "nombre": "sp_setup_status",
@@ -1165,6 +1922,15 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "4bb4451c4afc8764"
+    },
+    {
+      "nombre": "sp_supplier_payment_apply",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/suppliers/sp_supplier_payment_apply.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1a0e1de1e3497ed0"
     },
     {
       "nombre": "sp_supplier_save",
@@ -1191,7 +1957,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "090dc45b93d0bf2b"
+      "checksum": "063a3d68ea3e9e33"
     },
     {
       "nombre": "sp_update_customer",
@@ -1200,7 +1966,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "bfa682ef5a2f8607"
+      "checksum": "e23c1658c502abd0"
     },
     {
       "nombre": "sp_update_invoice_request_status",
@@ -1227,7 +1993,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "d2ea7a612a701953"
+      "checksum": "94ec9bd57900afdd"
     },
     {
       "nombre": "sp_update_user",
@@ -1255,6 +2021,24 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "45011fece0942bbc"
+    },
+    {
+      "nombre": "sp_venta_esencial_resumen",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/sales/sp_venta_esencial_resumen.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "72cdaec8b1df10cd"
+    },
+    {
+      "nombre": "sp_void_expense",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/expenses/sp_void_expense.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ee74d638c8d89d1f"
     },
     {
       "nombre": "sp_WA_AddHistorial",
@@ -1342,6 +2126,33 @@
       "checksum": "2ae5e8720f258538"
     },
     {
+      "nombre": "HospOrdenLineaV2Type",
+      "tipo": "USER_TABLE_TYPE",
+      "archivo": "sql/types/HospOrdenLineaV2Type.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "937d0ac7496c5122"
+    },
+    {
+      "nombre": "HospOrdenOpcionType",
+      "tipo": "USER_TABLE_TYPE",
+      "archivo": "sql/types/HospOrdenOpcionType.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "156836a210612794"
+    },
+    {
+      "nombre": "ImportRowType",
+      "tipo": "USER_TABLE_TYPE",
+      "archivo": "sql/types/ImportRowType.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "35a0f22c50186d33"
+    },
+    {
       "nombre": "ModifierOptionType",
       "tipo": "USER_TABLE_TYPE",
       "archivo": "sql/types/ModifierOptionType.sql",
@@ -1415,22 +2226,37 @@
     }
   ],
   "esquema": {
-    "generado": "2026-09-12T20:12:23.037Z",
+    "generado": "2026-09-30T14:32:16.477Z",
     "base": "Wybix_Production",
     "excluidas": [
+      "database_metadata",
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 53,
-      "columnas": 539,
-      "pk": 53,
-      "unicas": 4,
-      "foraneas": 52,
-      "chequeos": 22,
-      "predeterminados": 146,
-      "indices": 43
+      "tablas": 88,
+      "columnas": 929,
+      "pk": 88,
+      "unicas": 5,
+      "foraneas": 116,
+      "chequeos": 56,
+      "predeterminados": 227,
+      "indices": 90
     },
     "objetos": [
+      {
+        "nombre": "appointments",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/appointments.sql",
+        "origen": "Wybix_Production",
+        "columnas": 15,
+        "pk": "PK_appointments",
+        "unicas": 0,
+        "foraneas": 7,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 3,
+        "checksum": "79499e7c896f65af"
+      },
       {
         "nombre": "business_config",
         "tipo": "TABLE",
@@ -1444,6 +2270,20 @@
         "predeterminados": 5,
         "indices": 0,
         "checksum": "b0c8f085c98df53a"
+      },
+      {
+        "nombre": "business_modules",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/business_modules.sql",
+        "origen": "Wybix_Production",
+        "columnas": 5,
+        "pk": "PK_business_modules",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "c3c2115b35946de6"
       },
       {
         "nombre": "campaigns",
@@ -1474,6 +2314,20 @@
         "checksum": "4f89cc9d5a14846b"
       },
       {
+        "nombre": "cash_movement_types",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/cash_movement_types.sql",
+        "origen": "Wybix_Production",
+        "columnas": 4,
+        "pk": "PK_cash_movement_types",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "29feadd88f10bfc6"
+      },
+      {
         "nombre": "cash_movements",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/cash_movements.sql",
@@ -1481,11 +2335,11 @@
         "columnas": 10,
         "pk": "PK__cash_mov__3213E83F1021E9F5",
         "unicas": 0,
-        "foraneas": 1,
+        "foraneas": 2,
         "chequeos": 0,
         "predeterminados": 2,
         "indices": 5,
-        "checksum": "65b595a0ad32d24c"
+        "checksum": "5af1f4beae3f3e7f"
       },
       {
         "nombre": "cash_shifts",
@@ -1544,6 +2398,20 @@
         "checksum": "d6ff843b4af1da92"
       },
       {
+        "nombre": "comandas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/comandas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_comandas",
+        "unicas": 0,
+        "foraneas": 3,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 3,
+        "checksum": "cbced1c2badbc041"
+      },
+      {
         "nombre": "coupon_definitions",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/coupon_definitions.sql",
@@ -1572,6 +2440,20 @@
         "checksum": "2880c7b1520ae24a"
       },
       {
+        "nombre": "customer_assets",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/customer_assets.sql",
+        "origen": "Wybix_Production",
+        "columnas": 14,
+        "pk": "PK_customer_assets",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 2,
+        "checksum": "e1cf700f06b5d255"
+      },
+      {
         "nombre": "customer_payments",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/customer_payments.sql",
@@ -1598,6 +2480,34 @@
         "predeterminados": 8,
         "indices": 2,
         "checksum": "14bcca7ddd61de99"
+      },
+      {
+        "nombre": "dispositivos_emparejamientos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/dispositivos_emparejamientos.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_dispositivos_emparejamientos",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "78a43834ba4ba410"
+      },
+      {
+        "nombre": "dispositivos_locales",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/dispositivos_locales.sql",
+        "origen": "Wybix_Production",
+        "columnas": 17,
+        "pk": "PK_dispositivos_locales",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 4,
+        "indices": 1,
+        "checksum": "b06994b9d992dd75"
       },
       {
         "nombre": "dynamic_attempts",
@@ -1642,6 +2552,34 @@
         "checksum": "a534dd9dee753101"
       },
       {
+        "nombre": "expense_categories",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/expense_categories.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_expense_categories",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 2,
+        "predeterminados": 5,
+        "indices": 1,
+        "checksum": "b75ea989cbfb42f4"
+      },
+      {
+        "nombre": "expenses",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/expenses.sql",
+        "origen": "Wybix_Production",
+        "columnas": 20,
+        "pk": "PK_expenses",
+        "unicas": 0,
+        "foraneas": 7,
+        "chequeos": 6,
+        "predeterminados": 1,
+        "indices": 3,
+        "checksum": "f36478d4b996694c"
+      },
+      {
         "nombre": "fiscal_config",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/fiscal_config.sql",
@@ -1668,6 +2606,118 @@
         "predeterminados": 1,
         "indices": 1,
         "checksum": "4fb7229367d70ea3"
+      },
+      {
+        "nombre": "hosp_cuentas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/hosp_cuentas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 16,
+        "pk": "PK_hosp_cuentas",
+        "unicas": 0,
+        "foraneas": 3,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 5,
+        "checksum": "4b8dce0b9b3a34b6"
+      },
+      {
+        "nombre": "hosp_orden_linea_opciones",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/hosp_orden_linea_opciones.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_hosp_orden_linea_opciones",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "860748f5a407b299"
+      },
+      {
+        "nombre": "hosp_orden_lineas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/hosp_orden_lineas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 12,
+        "pk": "PK_hosp_orden_lineas",
+        "unicas": 0,
+        "foraneas": 5,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 3,
+        "checksum": "be070e5a5cd1430b"
+      },
+      {
+        "nombre": "hosp_ordenes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/hosp_ordenes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 4,
+        "pk": "PK_hosp_ordenes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "2949d4ae3aceaf89"
+      },
+      {
+        "nombre": "import_batches",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/import_batches.sql",
+        "origen": "Wybix_Production",
+        "columnas": 18,
+        "pk": "PK_import_batches",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 2,
+        "predeterminados": 7,
+        "indices": 1,
+        "checksum": "1606789d71281663"
+      },
+      {
+        "nombre": "import_mappings",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/import_mappings.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_import_mappings",
+        "unicas": 1,
+        "foraneas": 0,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "479acbb98264f005"
+      },
+      {
+        "nombre": "import_rows",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/import_rows.sql",
+        "origen": "Wybix_Production",
+        "columnas": 31,
+        "pk": "PK_import_rows",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 3,
+        "predeterminados": 3,
+        "indices": 2,
+        "checksum": "3af475b83bf69afd"
+      },
+      {
+        "nombre": "inventario_reportes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/inventario_reportes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 15,
+        "pk": "PK_inventario_reportes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "3f79782634f1e2dd"
       },
       {
         "nombre": "inventory_movements",
@@ -1726,6 +2776,20 @@
         "checksum": "1fe4e10258cbcd20"
       },
       {
+        "nombre": "local_host_lease",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/local_host_lease.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_local_host_lease",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "306c017bbd542bcb"
+      },
+      {
         "nombre": "loyalty_redemptions",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/loyalty_redemptions.sql",
@@ -1768,6 +2832,20 @@
         "checksum": "7b993d2ac97d8b20"
       },
       {
+        "nombre": "prep_stations",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/prep_stations.sql",
+        "origen": "Wybix_Production",
+        "columnas": 7,
+        "pk": "PK_prep_stations",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "a259492dc2c19541"
+      },
+      {
         "nombre": "product_images",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/product_images.sql",
@@ -1794,6 +2872,20 @@
         "predeterminados": 1,
         "indices": 0,
         "checksum": "4a30605fab097ae0"
+      },
+      {
+        "nombre": "product_prep_station",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/product_prep_station.sql",
+        "origen": "Wybix_Production",
+        "columnas": 3,
+        "pk": "PK_product_prep_station",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "b1972d7c41b71f2e"
       },
       {
         "nombre": "product_presentations",
@@ -1836,6 +2928,48 @@
         "predeterminados": 10,
         "indices": 0,
         "checksum": "8871e163cfde8fb9"
+      },
+      {
+        "nombre": "professional_schedules",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/professional_schedules.sql",
+        "origen": "Wybix_Production",
+        "columnas": 6,
+        "pk": "PK_professional_schedules",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "0d7887bddbd98cd5"
+      },
+      {
+        "nombre": "professional_time_off",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/professional_time_off.sql",
+        "origen": "Wybix_Production",
+        "columnas": 6,
+        "pk": "PK_professional_time_off",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "581e7fd32d471764"
+      },
+      {
+        "nombre": "professionals",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/professionals.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_professionals",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "6b7372ebf089fd7c"
       },
       {
         "nombre": "purchase",
@@ -2076,6 +3210,34 @@
         "checksum": "88d11dbb669ee03c"
       },
       {
+        "nombre": "salon_areas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salon_areas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 5,
+        "pk": "PK_salon_areas",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "d1c3bb6b0c3b19d8"
+      },
+      {
+        "nombre": "salon_mesas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salon_mesas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 6,
+        "pk": "PK_salon_mesas",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "5247ad3492335c24"
+      },
+      {
         "nombre": "security_events",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/security_events.sql",
@@ -2090,6 +3252,118 @@
         "checksum": "23d1418e28c516a4"
       },
       {
+        "nombre": "service_commissions",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/service_commissions.sql",
+        "origen": "Wybix_Production",
+        "columnas": 9,
+        "pk": "PK_service_commissions",
+        "unicas": 0,
+        "foraneas": 4,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 2,
+        "checksum": "aacb340a0812da75"
+      },
+      {
+        "nombre": "service_order_events",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/service_order_events.sql",
+        "origen": "Wybix_Production",
+        "columnas": 10,
+        "pk": "PK_service_order_events",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "bcb50fe70f55bd19"
+      },
+      {
+        "nombre": "service_order_lines",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/service_order_lines.sql",
+        "origen": "Wybix_Production",
+        "columnas": 18,
+        "pk": "PK_service_order_lines",
+        "unicas": 0,
+        "foraneas": 4,
+        "chequeos": 2,
+        "predeterminados": 4,
+        "indices": 2,
+        "checksum": "ebae1bd8f8f7ffc1"
+      },
+      {
+        "nombre": "service_orders",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/service_orders.sql",
+        "origen": "Wybix_Production",
+        "columnas": 22,
+        "pk": "PK_service_orders",
+        "unicas": 0,
+        "foraneas": 6,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 3,
+        "checksum": "d7faab52d7d936c7"
+      },
+      {
+        "nombre": "service_professionals",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/service_professionals.sql",
+        "origen": "Wybix_Production",
+        "columnas": 4,
+        "pk": "PK_service_professionals",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "f2c3acbaf35c97df"
+      },
+      {
+        "nombre": "services",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/services.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_services",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 4,
+        "indices": 0,
+        "checksum": "dc408abf58bdb583"
+      },
+      {
+        "nombre": "services_config",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/services_config.sql",
+        "origen": "Wybix_Production",
+        "columnas": 4,
+        "pk": "PK_services_config",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "f10b1295b08b9f88"
+      },
+      {
+        "nombre": "superficie_auditoria",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/superficie_auditoria.sql",
+        "origen": "Wybix_Production",
+        "columnas": 14,
+        "pk": "PK_superficie_auditoria",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 2,
+        "checksum": "4a6be1923e77d0f5"
+      },
+      {
         "nombre": "supplier_payments",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/supplier_payments.sql",
@@ -2102,6 +3376,34 @@
         "predeterminados": 1,
         "indices": 0,
         "checksum": "98b82942c42fb01a"
+      },
+      {
+        "nombre": "trabajador_sesiones",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/trabajador_sesiones.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_trabajador_sesiones",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 3,
+        "indices": 2,
+        "checksum": "3898cd16969cc684"
+      },
+      {
+        "nombre": "trabajadores_acceso",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/trabajadores_acceso.sql",
+        "origen": "Wybix_Production",
+        "columnas": 14,
+        "pk": "PK_trabajadores_acceso",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 3,
+        "checksum": "28b59297f16fc0bd"
       },
       {
         "nombre": "uoms",

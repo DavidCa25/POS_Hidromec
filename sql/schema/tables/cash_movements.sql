@@ -23,6 +23,9 @@ END;
 IF OBJECT_ID(N'dbo.FK_cash_movements_register', 'F') IS NULL
 ALTER TABLE dbo.cash_movements WITH CHECK ADD CONSTRAINT FK_cash_movements_register FOREIGN KEY (register_id) REFERENCES dbo.registers (id);
 
+IF OBJECT_ID(N'dbo.FK_cash_movements_type', 'F') IS NULL
+ALTER TABLE dbo.cash_movements WITH CHECK ADD CONSTRAINT FK_cash_movements_type FOREIGN KEY (typee) REFERENCES dbo.cash_movement_types (code);
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_movements_closure' AND object_id = OBJECT_ID(N'dbo.cash_movements'))
 CREATE NONCLUSTERED INDEX IX_cash_movements_closure ON dbo.cash_movements (closure_id);
 

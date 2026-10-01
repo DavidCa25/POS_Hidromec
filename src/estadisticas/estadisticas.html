@@ -130,6 +130,15 @@
       <div class="est-kpi"><span class="l">Salidas (30 dias)</span><span class="v">{{ money(cashSalidas) }}</span></div>
       <div class="est-kpi"><span class="l">Pagado a proveedores</span><span class="v">{{ money(cashPagosProv) }}</span></div>
     </div>
+    <!-- 0049: un retiro no es un gasto. Los egresos (renta, luz, personal...)
+         cuentan todos, salgan o no del cajon; su detalle esta en Egresos. -->
+    <div class="est-kpis two">
+      <div class="est-kpi"><span class="l">Retiros de caja (30 dias)</span><span class="v">{{ money(cashRetiros) }}</span></div>
+      <div class="est-kpi">
+        <span class="l">Egresos (30 dias)</span><span class="v">{{ money(cashEgresos) }}</span>
+        <a class="est-link" routerLink="/dashboard/egresos">Ver por concepto →</a>
+      </div>
+    </div>
 
     <div class="est-card">
       <div class="est-card-head"><h3>Utilidad de la semana</h3></div>

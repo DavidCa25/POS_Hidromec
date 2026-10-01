@@ -1,5 +1,6 @@
 /* sp_get_services_config
- * Definicion canonica. Modificar este archivo y crear una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

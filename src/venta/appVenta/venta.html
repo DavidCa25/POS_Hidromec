@@ -538,57 +538,9 @@
   </div>
 </div>
 
-<!-- MODAL SALIDA EFECTIVO -->
-<div class="modal fade show d-block"
-     *ngIf="showCashOutModal"
-     style="background:rgba(0,0,0,0.20);z-index:11000;">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4">
-      <div class="modal-header border-0 pb-1">
-        <h5 class="modal-title fw-bold">Registrar salida de efectivo</h5>
-        <button type="button" class="btn-close" (click)="cerrarSalidaEfectivo()"></button>
-      </div>
-      <div class="modal-body px-4 pt-1 pb-3">
-        <div class="mb-3">
-          <label class="form-label">Monto a retirar</label>
-          <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="cashOutAmount" name="cashOutAmount" placeholder="0.00" />
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Descripción / Nota</label>
-          <textarea class="form-control" rows="2" [(ngModel)]="cashOutNote" name="cashOutNote" placeholder="Ej. Pago a proveedor, gasolina, etc."></textarea>
-        </div>
-        <div class="mb-2 form-check">
-          <input class="form-check-input" type="checkbox" id="cashOutSup" [(ngModel)]="cashOutIsSupplier" name="cashOutIsSupplier">
-          <label class="form-check-label" for="cashOutSup">Es para pagar a un proveedor</label>
-        </div>
-        <div class="mb-3" *ngIf="cashOutIsSupplier">
-          <label class="form-label">Proveedor</label>
-          <div style="position:relative;">
-            <button type="button" class="form-control text-start d-flex justify-content-between align-items-center"
-                    (click)="cashOutSupAbierto = !cashOutSupAbierto">
-              <span [class.text-muted]="!cashOutSupplierId">{{ cashOutSupplierLabel }}</span>
-              <i class="ph ph-caret-down"></i>
-            </button>
-            <div *ngIf="cashOutSupAbierto" class="list-group shadow-sm"
-                 style="position:absolute; z-index:20; left:0; right:0; max-height:220px; overflow:auto;">
-              <button type="button" *ngFor="let s of cashOutSuppliers"
-                      class="list-group-item list-group-item-action text-start"
-                      (click)="seleccionarCashOutProveedor(s)">{{ s.nombre }}</button>
-              <div *ngIf="cashOutSuppliers.length === 0" class="list-group-item text-muted small">No hay proveedores.</div>
-            </div>
-          </div>
-        </div>
-        <div class="alert alert-info small">
-          Esta salida afectará el efectivo del cajón y aparecerá en el corte de caja como una <strong>salida</strong>.
-        </div>
-        <div class="d-flex justify-content-end mt-3 gap-2">
-          <button type="button" class="btn btn-outline-secondary" (click)="cerrarSalidaEfectivo()">Cancelar</button>
-          <button type="button" class="btn btn-danger" (click)="confirmarSalidaEfectivo()">Registrar salida</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- SALIDA DE DINERO: Retiro · Pago a proveedor · Gasto. Componente
+     compartido con Touch (src/venta/salida-efectivo). -->
+<app-salida-efectivo *ngIf="showCashOutModal" (cerrado)="showCashOutModal = false"></app-salida-efectivo>
 
 <!-- MODAL POST-VENTA: PDF / WHATSAPP / FACTURAR -->
 <div class="modal fade show d-block"

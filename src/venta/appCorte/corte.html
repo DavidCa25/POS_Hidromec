@@ -206,7 +206,9 @@
       <!-- DESGLOSE DETALLADO (Estilo Eleventa) -->
       <div class="desglose-section" *ngIf="!loading">
         
-        <!-- Tarjeta Izquierda: Flujo de Efectivo -->
+        <!-- Tarjeta Izquierda: Dinero en caja.
+             Cada renglon sale del desglose que arma SQL (0049): la suma de
+             todos es exactamente lo que el cierre guarda como esperado. -->
         <div class="desglose-card">
           <div class="desglose-header">
             <h4><i class="ph ph-money"></i> Dinero en Caja</h4>
@@ -214,27 +216,46 @@
           <div class="desglose-body">
             <div class="desglose-row text-muted">
               <span>Fondo de caja inicial</span>
-              <span>{{ (mode === 'TURNO' ? openShiftOpeningCash : 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+              <span>{{ fondoInicial | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
             </div>
-            <div class="desglose-row">
-              <span>Ventas en Efectivo</span>
-              <span class="text-success fw-bold">+ {{ breakdown.ventasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            <ng-container *ngFor="let l of lineasCaja">
+              <div class="desglose-row">
+                <span>{{ l.etiqueta }}</span>
+                <span class="fw-bold" [class.text-success]="l.total >= 0" [class.text-danger]="l.total < 0">
+                  {{ l.total >= 0 ? '+' : '−' }} {{ (l.total < 0 ? -l.total : l.total) | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                </span>
+              </div>
+              <!-- Los egresos, por concepto: renta no se confunde con un retiro. -->
+              <ng-container *ngIf="l.grupo === 'EGRESOS' && l.conceptos.length > 1">
+                <div class="desglose-row desglose-sub" *ngFor="let c of l.conceptos">
+                  <span>{{ c.concepto }}</span>
+                  <span>{{ (c.total < 0 ? -c.total : c.total) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                </div>
+              </ng-container>
+            </ng-container>
+            <div class="desglose-row text-muted" *ngIf="lineasCaja.length === 0">
+              <span>Sin movimientos de efectivo</span><span>—</span>
             </div>
-            <div class="desglose-row">
-              <span>Entradas / Abonos en efectivo</span>
-              <span class="text-success fw-bold">+ {{ breakdown.entradasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-            </div>
-            <div class="desglose-row">
-              <span>Salidas de efectivo</span>
-              <span class="text-danger fw-bold">- {{ breakdown.salidasEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-            </div>
-            <div class="desglose-row pb-3" style="border-bottom: 2px dashed var(--border);">
-              <span>Devoluciones en efectivo</span>
-              <span class="text-danger fw-bold">- {{ breakdown.devolucionesEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-            </div>
-            <div class="desglose-row total-row">
+            <div class="desglose-row total-row" style="border-top: 2px dashed var(--border); padding-top: .75rem;">
               <span>Total Efectivo Esperado</span>
               <span>{{ cashExpected | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Salidas agrupadas por concepto: retiro, proveedor y egreso
+             nunca en el mismo renglon. -->
+        <div class="desglose-card" *ngIf="salidasPorConcepto.length">
+          <div class="desglose-header">
+            <h4><i class="ph ph-arrow-circle-up"></i> Salidas por concepto</h4>
+          </div>
+          <div class="desglose-body">
+            <div class="desglose-row" *ngFor="let sal of salidasPorConcepto">
+              <span>
+                {{ sal.concepto }}
+                <small class="text-muted d-block">{{ sal.grupo }} · {{ sal.movimientos }} {{ sal.movimientos === 1 ? 'movimiento' : 'movimientos' }}</small>
+              </span>
+              <span class="text-danger fw-bold">− {{ sal.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
             </div>
           </div>
         </div>
@@ -349,16 +370,20 @@
                   <span class="type-badge" [attr.data-type]="m.typee">
                     <i class="ph" [ngClass]="{
                       'ph-shopping-cart-simple': m.typee === 'SALE',
-                      'ph-piggy-bank': m.typee === 'DEPOSIT',
+                      'ph-piggy-bank': m.typee === 'DEPOSIT' || m.typee === 'OPENING',
                       'ph-coins': m.typee === 'WITHDRAW',
-                      'ph-arrow-counter-clockwise': m.typee === 'REFUND'
+                      'ph-arrow-counter-clockwise': m.typee === 'REFUND',
+                      'ph-pencil-simple': m.typee === 'SALE_ADJ',
+                      'ph-hand-coins': m.typee === 'PAYMENT',
+                      'ph-truck': m.typee === 'SUPPLIER_PAYMENT',
+                      'ph-receipt': m.typee === 'EXPENSE'
                     }"></i>
-                    {{ m.typee }}
+                    {{ m.tipo_label || m.typee }}
                   </span>
                 </td>
                 <td class="col-ref">
                   <div class="ref-cell">
-                    <span class="ref-text">{{ m.reference || ('#' + (m.reference_id ?? '—')) }}</span>
+                    <span class="ref-text">{{ (m.typee === 'EXPENSE' || m.typee === 'SUPPLIER_PAYMENT') ? m.concepto : (m.reference || ('#' + (m.reference_id ?? '—'))) }}</span>
                     <span class="ref-note" *ngIf="m.note" [title]="m.note">
                       <i class="ph ph-note"></i>
                     </span>

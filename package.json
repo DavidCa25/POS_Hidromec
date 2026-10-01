@@ -1,6 +1,6 @@
 {
   "name": "wybix-pos",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
@@ -12,7 +12,8 @@
     "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\"",
     "pack": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && electron-builder --dir",
     "dist": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder",
-    "publish": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder --publish always",
+    "publish": "node scripts/publicar.mjs",
+    "publish:pasos": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder --publish always",
     "db:extract": "node scripts/db/extraer.mjs",
     "db:extract-schema": "node scripts/db/extraer-esquema.mjs",
     "db:verify": "node scripts/db/verificar.mjs",
@@ -29,6 +30,7 @@
     "db:test-baja": "node scripts/db/pruebas/baja-producto.mjs",
     "db:test-turno": "node scripts/db/pruebas/turno.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
+    "db:test-egresos": "node scripts/db/pruebas/egresos.mjs",
     "db:test-bebidas": "node scripts/db/pruebas/bebidas.mjs",
     "db:test-alertas": "node scripts/db/pruebas/alertas.mjs",
     "db:test-upgrade": "node scripts/db/pruebas/upgrade.mjs",

@@ -8,6 +8,7 @@
  *
  *     sql/schema/tables/          tablas -> CHECK -> FK -> indices
  *     sql/types/                  tipos de tabla
+ *     sql/functions/              funciones (antes que los procedures)
  *     sql/procedures/             procedures desplegables (current + incierto)
  *     sql/baseline/v1/00_*.sql    schema_migrations + database_metadata
  *     sql/baseline/v1/01_seed.sql seed estructural
@@ -103,6 +104,24 @@ try {
     if (!r.ok) { errT++; console.log(`          ${f}: ${r.error}`); }
   }
   if (errT) mal(`${errT} tipos fallaron`); else bien(`${tiposArch.length} tipos creados`);
+
+  /* ------------------------------------------------------------------------
+     FUNCIONES (sql/functions/). Van antes que los procedures, que pueden
+     llamarlas. Sin este paso, `fn_nombre_publico_cliente` (0047, la usa la
+     pantalla de pedidos del Local Host) no entraba al .bak, y el paso 8 marcaba
+     su migracion como aplicada: una instalacion nueva se quedaba sin la
+     funcion y sin forma de repararla.
+     ------------------------------------------------------------------------ */
+  const dirFn = join('sql', 'functions');
+  if (existsSync(dirFn)) {
+    const fns = readdirSync(dirFn).filter(x => x.endsWith('.sql')).sort();
+    let errF = 0;
+    for (const f of fns) {
+      const r = aplicarArchivo(join(dirFn, f));
+      if (!r.ok) { errF++; console.log(`          ${f}: ${r.error}`); }
+    }
+    if (errF) mal(`${errF} funciones fallaron`); else bien(`${fns.length} funciones creadas`);
+  }
 
   paso('4. Procedures desplegables desde sql/procedures/');
 
@@ -350,7 +369,13 @@ try {
   //                      Es estructura: sin el no se puede escribir una receta.
   //   schema_migrations  las migraciones que este baseline ya trae aplicadas
   const SEMBRADAS = {
-    registers: 1, register_assignments: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    registers: 1, register_assignments: 1, WA_Configuracion: 1, uoms: 14,
+    // baseline_version + security_model_version + security_revision (0029).
+    database_metadata: 3,
+    // 0049: el catalogo de tipos de caja es estructura (cash_movements.typee
+    // tiene llave foranea a el) y los conceptos de egreso son el punto de
+    // partida, con "Pago al personal" del sistema.
+    cash_movement_types: 9, expense_categories: 10,
     schema_migrations: migraciones.length,
   };
   for (const f of conFilas) console.log(`          ${String(f.filas).padStart(3)}  ${f.tabla}`);

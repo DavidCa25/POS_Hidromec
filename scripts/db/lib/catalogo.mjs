@@ -71,6 +71,8 @@ asignar('sales', [
   'sp_get_total_sales_today', 'sp_get_total_sales_month', 'sp_get_total_orders',
   'sp_get_top_selling_product', 'sp_get_daily_sales_current_month',
   'sp_get_daily_sales_last_7_days', 'sp_sales_by_payment', 'sp_import_sales',
+  // 0048: resumen de lo vendido en Venta Esencial (para el aviso al renovar).
+  'sp_venta_esencial_resumen',
 ]);
 
 asignar('purchases', [
@@ -82,6 +84,8 @@ asignar('inventory', [
   'sp_get_active_products', 'sp_get_product_by_id', 'sp_add_brand', 'sp_add_categories',
   'sp_get_brands', 'sp_get_categories', 'sp_dead_products', 'sp_reorder_suggestions',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
+  // Aplicar un conteo fisico al inventario.
+  'sp_inventory_count_apply',
   // Quien bloquea la baja de un producto (recetas vivas, modificadores
   // activos). Devuelve los nombres como DATOS y no dentro del mensaje de
   // error, porque el controlador degrada el texto de los errores a un byte
@@ -92,6 +96,15 @@ asignar('inventory', [
 asignar('cash', [
   'sp_open_shift', 'sp_close_shift', 'sp_get_open_shift', 'sp_register_cash_out',
   'sp_cash_summary', 'sp_get_cash_closures', 'sp_get_cash_movements',
+  // 0049: la unica respuesta a "de que caja es este dinero".
+  'sp_resolve_cash_register',
+]);
+
+// 0049: egresos (renta, luz, un Uber...) y pagos al personal. No es
+// contabilidad ni nomina: es lo que sale del negocio y no es una compra.
+asignar('expenses', [
+  'sp_expense_category_list', 'sp_expense_category_save', 'sp_expense_category_move',
+  'sp_register_expense', 'sp_void_expense', 'sp_get_expenses', 'sp_expense_staff_list',
 ]);
 
 asignar('customers', [
@@ -106,6 +119,8 @@ asignar('suppliers', [
   'sp_get_supplier_account_detail', 'sp_get_supplier_payments', 'sp_register_supplier_payment',
   'sp_get_product_suppliers', 'sp_get_product_default_supplier',
   'sp_set_product_default_supplier', 'sp_upsert_product_supplier', 'sp_remove_product_supplier',
+  // 0049: la unica logica que escribe un pago a proveedor y su salida del cajon.
+  'sp_supplier_payment_apply',
 ]);
 
 asignar('billing', [
@@ -134,6 +149,8 @@ asignar('security', [
 // producto. Un servicio es un producto con ficha propia, no un catalogo
 // aparte, asi que aqui solo esta lo que ese catalogo aparte habria tenido.
 asignar('servicios', [
+  // Bitacora de una orden de servicio.
+  'sp_service_order_add_event',
   'sp_appointment_get', 'sp_appointment_list', 'sp_appointment_reschedule',
   'sp_appointment_save', 'sp_appointment_set_status', 'sp_appointment_to_order',
   'sp_commissions_report', 'sp_customer_asset_save', 'sp_customer_asset_set_active',
@@ -153,7 +170,9 @@ asignar('servicios', [
 // registro de que modulos tiene encendidos la empresa.
 asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);
 
-asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit']);
+asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit',
+  // 0041: actividad del negocio por hora.
+  'sp_report_actividad_horaria']);
 
 asignar('setup', [
   'sp_setup_inicial', 'sp_setup_status', 'sp_add_register', 'sp_set_register_active',
@@ -182,6 +201,24 @@ asignar('hospitality', [
   // seleccion. `sp_resolver_receta_efectiva` es CRITICO: sin el,
   // `sp_register_sale` no puede resolver ninguna receta.
   'sp_resolver_receta_efectiva', 'sp_check_availability',
+  // 0040-0047: mesas, cuentas, comandas, estaciones de preparacion y KDS.
+  'sp_salon_get', 'sp_salon_area_save', 'sp_salon_mesa_save',
+  'sp_hosp_cuenta_abrir', 'sp_hosp_cuenta_get', 'sp_hosp_cuenta_estado', 'sp_hosp_cuenta_cliente',
+  'sp_hosp_cuenta_cobrar', 'sp_hosp_cuenta_liberar', 'sp_hosp_orden_enviar',
+  'sp_hosp_productos_con_preparacion',
+  'sp_comanda_estado', 'sp_comanda_cancelar', 'sp_kds_get',
+  'sp_prep_stations_get', 'sp_prep_station_save', 'sp_product_prep_get', 'sp_product_prep_set',
+]);
+
+// 0034-0038: QuickStart, la carga guiada del catalogo (lotes, mapeos, filas,
+// ejecucion por partes y deshacer).
+asignar('quickstart', [
+  'sp_import_batch_create', 'sp_import_batch_discard', 'sp_import_batch_drop_if_empty',
+  'sp_import_batch_list', 'sp_import_batch_set_mapping', 'sp_import_batch_summary',
+  'sp_import_batch_touch', 'sp_import_execute_chunk', 'sp_import_mapping_find',
+  'sp_import_mapping_save', 'sp_import_resolve_group', 'sp_import_resolve_row',
+  'sp_import_rows_add', 'sp_import_rows_clear', 'sp_import_rows_get',
+  'sp_import_undo', 'sp_import_undo_check',
 ]);
 
 asignar('loyalty', [

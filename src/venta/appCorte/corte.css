@@ -1229,3 +1229,6 @@
   transition: background-color var(--wx-dur-state) var(--wx-ease-out);
 }
 .step-line.active { background: var(--wx-success); }
+
+/* 0049: sub-renglones de egresos por concepto dentro de "Dinero en caja". */
+.desglose-row.desglose-sub { padding-left: 1.25rem; font-size: .85rem; color: var(--wx-text-muted); }

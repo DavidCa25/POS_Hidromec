@@ -55,14 +55,22 @@ BEGIN
         RETURN;
     END
 
-    IF @register_id IS NULL
-        SELECT TOP 1 @register_id = id FROM dbo.registers ORDER BY id;
-
     -- El efectivo sale del cajon: sin turno abierto no hay de donde sacarlo, y
-    -- el movimiento quedaria fuera de todo corte.
+    -- el movimiento quedaria fuera de todo corte. La caja la decide
+    -- sp_resolve_cash_register (ya no "la primera de la tabla").
     DECLARE @closure_id INT = NULL;
     IF @metodo = 'EFECTIVO'
     BEGIN
+        DECLARE @caja INT;
+        EXEC dbo.sp_resolve_cash_register
+            @register_id = @register_id, @user_id = @user_id, @resolved = @caja OUTPUT;
+        IF @caja IS NULL
+        BEGIN
+            RAISERROR('No se pudo determinar la caja de la que sale el efectivo. Abre el turno en esta caja e intenta de nuevo.', 16, 1);
+            RETURN;
+        END
+        SET @register_id = @caja;
+
         SELECT TOP (1) @closure_id = id
         FROM dbo.cash_closures
         WHERE register_id = @register_id
@@ -182,32 +190,19 @@ BEGIN
 
         -- Pago. A credito no hay nada que registrar aqui: la deuda ya quedo
         -- en purchase.balance y se salda por sp_register_supplier_payment.
-        DECLARE @payment_id INT = NULL, @cash_id INT = NULL;
-        IF @metodo <> 'CREDITO'
+        -- El pago y su salida del cajon (solo si es efectivo) los escribe la
+        -- logica unica de pago a proveedor, dentro de ESTA transaccion.
+        DECLARE @payment_id INT = NULL, @cash_id INT = NULL, @closure_pago INT = NULL;
+        IF @metodo <> 'CREDITO' AND ISNULL(@total, 0) > 0
         BEGIN
-            INSERT INTO dbo.supplier_payments (
-                supplier_id, purchase_id, datee, amount, payment_method, user_id, note
-            )
-            VALUES (@supplier_id, @purchase_id, GETDATE(), @total, @metodo, @user_id,
-                    CONCAT('Pago de la compra ', @purchase_id));
-            SET @payment_id = SCOPE_IDENTITY();
-
-            -- Solo el efectivo mueve el cajon. Una transferencia o una tarjeta
-            -- salen del banco: meterlas al corte descuadraria el arqueo.
-            IF @metodo = 'EFECTIVO'
-            BEGIN
-                INSERT INTO dbo.cash_movements (
-                    datee, userId, typee, reference_id, reference, amount, note,
-                    closure_id, register_id
-                )
-                VALUES (GETDATE(), @user_id, 'SUPPLIER_PAYMENT', @payment_id,
-                        CONCAT('Compra ', @purchase_id), -@total,
-                        CONCAT('Compra ', @purchase_id, ' pagada en efectivo'),
-                        @closure_id, @register_id);
-                SET @cash_id = SCOPE_IDENTITY();
-
-                UPDATE dbo.supplier_payments SET cash_movement_id = @cash_id WHERE id = @payment_id;
-            END
+            DECLARE @nota_pago NVARCHAR(255) = CONCAT('Pago de la compra ', @purchase_id);
+            DECLARE @ref_pago NVARCHAR(100) = CONCAT('Compra ', @purchase_id);
+            EXEC dbo.sp_supplier_payment_apply
+                @user_id = @user_id, @supplier_id = @supplier_id, @purchase_id = @purchase_id,
+                @amount = @total, @payment_method = @metodo, @note = @nota_pago,
+                @register_id = @register_id, @reference = @ref_pago,
+                @payment_id = @payment_id OUTPUT, @cash_id = @cash_id OUTPUT, @closure_id = @closure_pago OUTPUT;
+            IF @closure_pago IS NOT NULL SET @closure_id = @closure_pago;
         END
 
         COMMIT TRAN;

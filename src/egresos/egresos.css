@@ -1,0 +1,43 @@
+/* Egresos y Pagos al personal. La base (corte-container, filter-card,
+   kpi-card, tabla-corte) es la de Proveedores: mismo lenguaje de reporte. */
+.egr-intro { color: var(--wx-text-muted); margin: -.25rem 0 1rem; max-width: 70ch; }
+
+.egr-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: .75rem; }
+.egr-chip {
+  padding: 6px 12px; font-size: .875rem; cursor: pointer;
+  background: var(--wx-surface); color: var(--wx-text);
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out), background var(--wx-dur-micro) var(--wx-ease-out);
+}
+.egr-chip.activa { border-color: var(--wx-accent); background: var(--wx-accent-soft); color: var(--wx-accent-text); font-weight: 600; }
+.egr-chip:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+
+.egr-filtros { align-items: flex-end; flex-wrap: wrap; }
+.egr-check { display: flex; align-items: center; gap: .4rem; color: var(--wx-text-muted); font-size: .875rem; }
+.egr-error { margin: .5rem 0 1rem; padding: .75rem 1rem; border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-text); }
+
+.egr-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1rem 0 1.25rem; }
+.egr-bloque { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); padding: 1rem; background: var(--wx-surface); }
+.egr-bloque h3 { font-size: .95rem; margin: 0 0 .75rem; color: var(--wx-text); }
+.egr-barra { display: grid; grid-template-columns: minmax(90px, 1.1fr) 2fr auto; align-items: center; gap: .6rem; padding: .3rem 0; }
+.egr-barra-nombre { color: var(--wx-text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.egr-link { background: none; border: 0; padding: 0; cursor: pointer; }
+.egr-link:hover { color: var(--wx-accent-text); text-decoration: underline; }
+.egr-barra-pista { height: 8px; border-radius: 99px; background: var(--wx-sunken); overflow: hidden; }
+.egr-barra-lleno { display: block; height: 100%; border-radius: 99px; background: var(--wx-accent); }
+.egr-barra-monto { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.egr-barra-monto small { font-weight: 400; color: var(--wx-text-muted); }
+.egr-forma { display: flex; justify-content: space-between; padding: .35rem 0; border-bottom: 1px solid var(--wx-edge); }
+.egr-forma:last-child { border-bottom: 0; }
+.egr-forma strong { font-variant-numeric: tabular-nums; }
+.egr-vacio { color: var(--wx-text-muted); text-align: center; padding: .75rem; }
+
+.egr-cancelado td { color: var(--wx-text-muted); text-decoration: line-through; }
+.egr-cancelado .egr-motivo, .egr-cancelado .egr-acciones { text-decoration: none; }
+.egr-motivo { font-size: .75rem; color: var(--wx-text-muted); }
+.egr-caja { color: var(--wx-text-muted); }
+.egr-nota { max-width: 28ch; }
+.egr-acciones { white-space: nowrap; text-align: right; }
+.egr-peligro { color: var(--wx-danger, #c0392b); }
+
+@media (prefers-reduced-motion: reduce) { .egr-chip { transition: none; } }

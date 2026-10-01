@@ -1,0 +1,262 @@
+/* ==========================================================================
+   USUARIOS Y PERMISOS — organigrama + Wybix explica
+   Mismos tokens que Aplicaciones. Los botones (.btn-*) vienen de la global.
+   ========================================================================== */
+
+.us { display: flex; flex-direction: column; gap: 22px; color: var(--wx-text); }
+
+/* ------------------------------------------------------------- cabecera */
+.us-head {
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wx-edge);
+}
+.us-head__ic {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-md);
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 22px;
+}
+.us-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.us-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.us-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 1000px) { .us-cuerpo { grid-template-columns: 1fr; } }
+
+.us-cargando { color: var(--wx-text-muted); font-size: var(--wx-text-sm); text-align: center; padding: 30px 0; }
+
+/* ------------------------------------------------------------ organigrama */
+.org {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 18px 24px;
+  background: var(--wx-sunken);
+  border-radius: var(--wx-radius-lg);
+  min-width: 0;
+}
+
+.org-nivel {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%;
+}
+/* La linea que baja de un puesto al siguiente. */
+.org-nivel + .org-nivel { padding-top: 24px; }
+.org-nivel + .org-nivel::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  width: 2px; height: 24px; margin-left: -1px;
+  background: var(--wx-edge-strong);
+}
+
+.org-rol {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  min-width: 260px; max-width: 100%;
+  padding: 10px 14px;
+  background: var(--wx-surface);
+  border: 1.5px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  box-shadow: var(--wx-shadow-card);
+  color: var(--wx-text); text-align: left; font: inherit;
+  cursor: pointer;
+  transition: border-color var(--wx-dur-state) var(--wx-ease-out), transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.org-rol:hover { border-color: var(--wx-accent-line); }
+.org-rol:active { transform: scale(0.98); }
+.org-rol.es-elegido { border-color: var(--wx-accent); box-shadow: 0 0 0 3px var(--wx-accent-soft); }
+.org-rol:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.org-rol__ic {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-accent-soft); color: var(--wx-accent-text); font-size: 20px;
+}
+.org-rol__txt { display: flex; flex-direction: column; min-width: 0; }
+.org-rol__txt b { font-size: var(--wx-text-md); font-weight: 650; }
+.org-rol__txt small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.org-rol__n {
+  min-width: 26px; height: 26px; padding: 0 8px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--wx-sunken);
+  color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La gente cuelga del puesto: una linea corta y, si son varios, un travesano. */
+.org-gente {
+  position: relative;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  padding-top: 22px; margin-top: 0;
+  max-width: 100%;
+}
+.org-gente::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  width: 2px; height: 11px; margin-left: -1px;
+  background: var(--wx-edge-strong);
+}
+.org-gente.varios::after {
+  content: ''; position: absolute; top: 10px; left: 56px; right: 56px;
+  height: 2px; background: var(--wx-edge-strong);
+}
+
+.org-persona {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 112px; padding: 10px 8px 8px;
+  background: var(--wx-surface);
+  border: 1.5px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md);
+  color: var(--wx-text); font: inherit;
+  cursor: pointer;
+  transition: border-color var(--wx-dur-state) var(--wx-ease-out), transform var(--wx-dur-press) var(--wx-ease-out);
+}
+/* El talon que conecta con el travesano. */
+.org-gente.varios .org-persona::before {
+  content: ''; position: absolute; top: -13px; left: 50%;
+  width: 2px; height: 12px; margin-left: -1px;
+  background: var(--wx-edge-strong);
+}
+.org-persona:hover { border-color: var(--wx-accent-line); }
+.org-persona:active { transform: scale(0.97); }
+.org-persona:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.org-persona.es-elegido { border-color: var(--wx-accent); box-shadow: 0 0 0 3px var(--wx-accent-soft); }
+.org-persona.inactivo wx-avatar,
+.org-persona.inactivo .org-persona__nom { opacity: 0.5; filter: grayscale(1); }
+.org-persona__nom {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--wx-text-sm); font-weight: 600;
+}
+.org-persona__tag {
+  padding: 1px 8px; border-radius: 999px;
+  background: var(--wx-accent-soft); color: var(--wx-accent-text);
+  font-size: 11px; font-weight: 650;
+}
+.org-persona__tag.off { background: var(--wx-sunken); color: var(--wx-text-dim); }
+
+.org-vacio {
+  position: relative; margin-top: 22px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px;
+  background: transparent; border: 1.5px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-md);
+  color: var(--wx-text-muted); font: inherit; font-size: var(--wx-text-sm);
+  cursor: pointer;
+}
+.org-vacio::before {
+  content: ''; position: absolute; top: -23px; left: 50%;
+  width: 2px; height: 22px; margin-left: -1px;
+  background: var(--wx-edge-strong);
+}
+.org-vacio:hover { border-color: var(--wx-accent-line); color: var(--wx-accent-text); }
+
+.org-sinrol {
+  width: 100%; margin-top: 30px; padding-top: 18px;
+  border-top: 1px dashed var(--wx-edge-strong);
+  display: flex; flex-direction: column; align-items: center;
+}
+.org-sinrol p {
+  margin: 0; display: flex; align-items: center; gap: 6px;
+  color: var(--wx-warning-ink); font-size: var(--wx-text-sm); font-weight: 600;
+}
+.org-sinrol .org-gente { padding-top: 14px; }
+.org-sinrol .org-gente::before { display: none; }
+
+/* --------------------------------------------------------- Wybix explica */
+.exp {
+  position: sticky; top: 12px;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 18px;
+  background: var(--wx-surface);
+  border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-card);
+}
+@media (max-width: 1000px) { .exp { position: static; } }
+
+.exp-voz { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.exp-voz__fig { width: 72px; height: 72px; }
+.exp-voz__globo {
+  position: relative; margin: 4px 0 0;
+  padding: 12px 14px;
+  background: var(--wx-sunken);
+  border-radius: var(--wx-radius-md);
+  font-size: var(--wx-text-sm); line-height: var(--wx-leading);
+  text-wrap: pretty;
+}
+.exp-voz__globo::before {
+  content: ''; position: absolute; left: -6px; top: 18px;
+  width: 12px; height: 12px; transform: rotate(45deg);
+  background: var(--wx-sunken);
+}
+
+.exp-persona {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 14px; border-top: 1px solid var(--wx-edge-soft);
+}
+.exp-persona__cab { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-bottom: 4px; }
+.exp-persona__cab b { display: block; font-weight: 650; }
+.exp-persona__cab small { color: var(--wx-success); font-size: var(--wx-text-xs); font-weight: 600; }
+.exp-persona__cab small.off { color: var(--wx-text-dim); }
+.exp-persona .lbl { margin: 4px 0 0; }
+.exp-cerrar {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border: none; border-radius: var(--wx-radius-sm);
+  background: var(--wx-sunken); color: var(--wx-text-muted); cursor: pointer;
+}
+.exp-cerrar:hover { background: var(--wx-hover); color: var(--wx-text); }
+.exp-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.exp-acciones .btn-outline { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+
+.exp-accesos { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--wx-edge-soft); }
+.exp-accesos h2 {
+  margin: 4px 0 0; color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.exp-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.exp-lista li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+.exp-lista b { display: block; font-size: var(--wx-text-sm); font-weight: 600; }
+.exp-lista small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.4; }
+.exp-lista__ic {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: var(--wx-radius-sm);
+  background: var(--wx-sunken); color: var(--wx-text-dim); font-size: 16px;
+}
+.exp-lista__ic.si { background: var(--wx-success-soft); color: var(--wx-success); }
+.exp-lista.no li { align-items: center; }
+.exp-lista.no b { color: var(--wx-text-dim); font-weight: 500; }
+
+.exp-resumen { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.exp-resumen button {
+  width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+  padding: 11px 12px;
+  background: var(--wx-sunken); border: none; border-radius: var(--wx-radius-sm);
+  color: var(--wx-text); font: inherit; font-size: var(--wx-text-sm); text-align: left;
+  cursor: pointer;
+}
+.exp-resumen button:hover { background: var(--wx-hover); }
+.exp-resumen .ph-caret-right { color: var(--wx-text-dim); }
+
+/* ------------------------------------------------------------ nuevo usuario */
+.us-modal {
+  position: fixed; inset: 0; z-index: var(--wx-z-dialog);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--wx-scrim);
+}
+.us-dialog {
+  width: 96%; max-width: 420px;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 22px 24px;
+  background: var(--wx-surface);
+  border-radius: var(--wx-radius-lg);
+  box-shadow: var(--wx-shadow-dialog);
+}
+.us-dialog h3 { margin: 0 0 8px; font-size: var(--wx-text-lg); font-weight: 650; }
+.us-dialog .lbl { margin: 8px 0 0; }
+.us-modal__acc { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .org-rol, .org-persona { transition: none; }
+  .org-rol:active, .org-persona:active { transform: none; }
+}

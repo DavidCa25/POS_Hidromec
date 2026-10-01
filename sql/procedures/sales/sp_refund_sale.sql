@@ -19,7 +19,13 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_refund_sale]
   @payment_method NVARCHAR(50),
   @RefundDetails dbo.SaleDetailType READONLY,
   @note NVARCHAR(400) = NULL,
-  @apply_net_update BIT = 1
+  @apply_net_update BIT = 1,
+  -- 0049: la caja que DEVUELVE el efectivo. El turno se busca por caja, no
+  -- por quien lo abrio: si devolvia otra persona fallaba con "no hay turno", y
+  -- en MultiCaja el dinero podia salir del corte de otra caja.
+  @register_id INT = NULL,
+  @machine_id NVARCHAR(64) = NULL,
+  @machine_name NVARCHAR(120) = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
@@ -92,11 +98,18 @@ BEGIN
     END
 
     DECLARE @closure_id_open INT = NULL;
+    DECLARE @caja INT = NULL;
     IF UPPER(@payment_method) = 'EFECTIVO'
     BEGIN
+      EXEC dbo.sp_resolve_cash_register
+          @register_id = @register_id, @machine_id = @machine_id,
+          @machine_name = @machine_name, @user_id = @user_id, @resolved = @caja OUTPUT;
+      IF @caja IS NULL
+        RAISERROR('No se pudo determinar la caja de la que sale la devolucion. Abre el turno en esta caja e intenta de nuevo.',16,1);
+
       SELECT TOP(1) @closure_id_open = id
       FROM dbo.cash_closures WITH (UPDLOCK, HOLDLOCK)
-      WHERE userId = @user_id AND closed_at IS NULL
+      WHERE register_id = @caja AND closed_at IS NULL
       ORDER BY opened_at DESC, id DESC;
 
       IF @closure_id_open IS NULL
@@ -172,13 +185,14 @@ BEGIN
     IF UPPER(@payment_method)='EFECTIVO'
     BEGIN
       INSERT INTO dbo.cash_movements
-        (datee, userId, typee, reference_id, reference, amount, note, closure_id)
+        (datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id)
       VALUES
         (GETDATE(), @user_id, 'REFUND', @sale_id,
          CONCAT('Reembolso Venta ', @sale_id, ' (', @refund_id, ')'),
          -@refund_total,
          @note,
-         @closure_id_open);
+         @closure_id_open,
+         @caja);
     END
 
     IF @apply_net_update = 1

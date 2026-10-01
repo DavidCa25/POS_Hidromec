@@ -17,6 +17,7 @@ const ipcQuickstart = require('./ipc/quickstart');
 const ipcSalon = require('./ipc/salon');
 const ipcTerminal = require('./ipc/terminal');
 const ipcGuide = require('./ipc/guide');
+const ipcEgresos = require('./ipc/egresos');
 const { crearLocalHost } = require('./local-host');
 const { imprimirHtml } = require('./lib/imprimir-html');
 const { verificarObjetosCriticos } = require('./verificarObjetos');
@@ -123,6 +124,12 @@ ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEs
 ipcServicios.registrar({ ipcMain, sql, poolPromise,
   olvidarModulos: () => { modulosCache = { valor: null, leidoEn: 0 }; } });
 
+/* IPC de egresos y pagos al personal (0049). La caja de un egreso en
+   efectivo es la de ESTE equipo; SQL valida que lo sea en MultiCaja. */
+ipcEgresos.registrar({ ipcMain, sql, poolPromise,
+  cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null,
+  identidad: () => cajaArrendada.identidad() });
+
 /* IPC de QuickStart: la carga inicial del catalogo.
    Leer, mapear, validar y planificar corren AQUI y no en el renderer: diez
    mil filas analizadas en el hilo de la interfaz dejan la ventana congelada
@@ -162,7 +169,12 @@ ipcGuide.registrar({ ipcMain, poolPromise, app, demo, licencia: licenseStore });
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 const SUPABASE_URL = 'https://swlpspgmkwzlrowllvvj.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
+/* Las funciones que llama la caja (licencias, prueba gratis, pos-sync) van por
+   el dominio de Wybix, que hoy las reenvía a Supabase (vercel.json de la web).
+   Así, cambiar de backend es cambiar ese reenvío, no reinstalar cajas. La app
+   del dueño (QR) sigue usando SUPABASE_URL: habla con su autenticación. */
+const FUNCIONES_URL = 'https://www.wybixpos.com.mx/backend';
+const ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
 let businessConfig = null;
 
@@ -476,7 +488,7 @@ async function bootMainApp(poolYaAbierto) {
   /* La nube va por la Edge Function pos-sync (sin service role) y se pausa
      en Venta Esencial: es un servicio conectado. */
   cloudSync.configurar({
-    url: SUPABASE_URL, anonKey: ANON_KEY,
+    url: SUPABASE_URL, funciones: FUNCIONES_URL, anonKey: ANON_KEY,
     licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
   });
   cloudSync.startScheduler();
@@ -815,6 +827,25 @@ ipcMain.handle('import-database', sesion.proteger('import-database', async () =>
 
 function getDeviceConfigPath() {
   return path.join(app.getPath('userData'), 'device-config.json');
+}
+
+/**
+ * La caja y el equipo de una operacion de dinero (0049).
+ *
+ * La caja: la que mande la pantalla o, si no, la de ESTE equipo (su
+ * device-config). Nunca `null` "para que SQL escoja": SQL escogia la Caja 1.
+ * El equipo: su identidad, para que SQL (sp_resolve_cash_register) valide en
+ * MultiCaja que esa caja sea de este equipo.
+ */
+function cajaDeLaOperacion(payload) {
+  const pedida = Number(payload?.register_id ?? payload?.registerId);
+  let registerId = Number.isFinite(pedida) && pedida > 0 ? pedida : null;
+  if (registerId == null) {
+    try { registerId = Number(loadDeviceConfig()?.register?.id) || null; } catch { registerId = null; }
+  }
+  let ident = {};
+  try { ident = cajaArrendada.identidad() || {}; } catch { ident = {}; }
+  return { registerId, machineId: ident.machineId || null, machineName: ident.machineName || null };
 }
 
 function loadDeviceConfig() {
@@ -1801,6 +1832,10 @@ ipcMain.handle('security:catalogo', async () => {
     paquetes: permisos.PERMISOS,
     roles: permisos.ETIQUETAS,
     canales: canales.EXIGE,
+    /* Que incluye cada rol, de la MISMA tabla con la que se autoriza: la
+       pantalla "Usuarios y permisos" lo explica sin poder contradecirlo. */
+    paquetesPorRol: Object.fromEntries(Object.keys(permisos.ROLES)
+      .map(r => [r, [...permisos.permisosDeRol(r)]])),
   } };
 });
 
@@ -2350,7 +2385,8 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     user_id    = null,   // number o null
     typee      = null,   // string o null
     only_open  = 0,      // 0/1
-    closure_id = null    // number o null
+    closure_id = null,   // number o null
+    register_id = null   // number o null (modo dia: la caja elegida)
   } = payload;
 
   try {
@@ -2362,7 +2398,8 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
       .input('user_id',    sql.Int, user_id)
       .input('typee',      sql.NVarChar(20), typee)
       .input('only_open',  sql.Bit, only_open ? 1 : 0)
-      .input('closure_id', sql.Int, closure_id);
+      .input('closure_id', sql.Int, closure_id)
+      .input('register_id', sql.Int, Number(register_id) || null);
 
     const result = await req.execute('sp_get_cash_movements');
 
@@ -2371,7 +2408,11 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
       ? result.recordsets[1][0]
       : { total_entradas: 0, total_salidas: 0, neto: 0 };
 
-    return { success: true, data: { rows, summary } };
+    /* 0049: el desglose lo arma SQL con el catalogo de tipos; la pantalla ya
+       no clasifica tipos por su cuenta. */
+    const desglose = Array.isArray(result.recordsets?.[2]) ? result.recordsets[2] : [];
+
+    return { success: true, data: { rows, summary, desglose } };
   } catch (err) {
     console.error('❌ sp-get-cash-movements:', err);
     return { success: false, error: err.message };
@@ -2560,6 +2601,7 @@ ipcMain.handle(
        los abonos quedaban a nombre del primer usuario, cobrara quien cobrara. */
     const ses = resto.length ? resto[resto.length - 1] : null;
     const quien = Number(ses?.userId) || Number(userId) || null;
+    const opAbono = cajaDeLaOperacion(null);
     try {
       const pool = await poolPromise;
       const result = await pool.request()
@@ -2569,6 +2611,10 @@ ipcMain.handle(
         .input('user_id',        sql.Int,          quien)
         .input('payment_method', sql.NVarChar(50), paymentMethod)
         .input('note',           sql.NVarChar(255), note ?? null)
+        /* Solo si es EFECTIVO entra al cajon, y al de ESTA caja (0049). */
+        .input('register_id',    sql.Int,          opAbono.registerId)
+        .input('machine_id',     sql.NVarChar(64), opAbono.machineId)
+        .input('machine_name',   sql.NVarChar(120), opAbono.machineName)
         .execute('sp_register_customer_payment');
 
       return {
@@ -3197,17 +3243,24 @@ ipcMain.handle('users:set-active', sesion.proteger('users:set-active', async (_e
 
 // Pago a Proveedores
 
-ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supplier-payment', async (event, payload) => {
+/* LA PUERTA UNICA para pagar a un proveedor (Proveedores, Compras y la
+   "salida de efectivo" de Venta). Antes Venta hacia un WITHDRAW y un INSERT
+   directo (`sp-pay-supplier`), fuera de toda transaccion: se retiro. */
+ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supplier-payment', async (event, payload, ...resto) => {
   try {
+    const ses = resto.length ? resto[resto.length - 1] : null;
+    const op = cajaDeLaOperacion(payload);
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('user_id',        sql.Int,          payload.user_id)
+      .input('user_id',        sql.Int,          Number(ses?.userId) || Number(payload.user_id) || null)
       .input('supplier_id',    sql.Int,          payload.supplier_id)
-      .input('purchase_id',    sql.Int,          payload.purchase_id)
+      .input('purchase_id',    sql.Int,          payload.purchase_id ?? null)
       .input('amount',         sql.Decimal(10,2),payload.amount)
       .input('payment_method', sql.NVarChar(50), payload.payment_method)
       .input('note',           sql.NVarChar(255),payload.note || null)
-      .input('register_id',    sql.Int,          Number(payload.register_id) || null)
+      .input('register_id',    sql.Int,          op.registerId)
+      .input('machine_id',     sql.NVarChar(64), op.machineId)
+      .input('machine_name',   sql.NVarChar(120),op.machineName)
       .execute('sp_register_supplier_payment');
 
     return { success: true, data: result.recordset[0] ?? null };
@@ -3217,15 +3270,21 @@ ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supp
   }
 }));
 
-ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', async (event, payload) => {
+/* RETIRO DE CAJA (dinero que cambia de lugar). Un gasto va por
+   `egresos:registrar` y un pago a proveedor por `sp-register-supplier-payment`. */
+ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', async (event, payload, ...resto) => {
   try {
+    const ses = resto.length ? resto[resto.length - 1] : null;
+    const op = cajaDeLaOperacion(payload);
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .input('user_id', sql.Int, payload.user_id)
+      .input('user_id', sql.Int, Number(ses?.userId) || Number(payload.user_id) || null)
       .input('amount', sql.Decimal(10,2), payload.amount)
       .input('note', sql.NVarChar(255), payload.note || null)
-      .input('register_id', sql.Int, payload.register_id ?? null)
+      .input('register_id', sql.Int, op.registerId)
+      .input('machine_id', sql.NVarChar(64), op.machineId)
+      .input('machine_name', sql.NVarChar(120), op.machineName)
       .execute('sp_register_cash_out');
 
     return { success: true, data: result.recordset?.[0] ?? null };
@@ -3463,11 +3522,17 @@ ipcMain.handle('sp-update-sale', sesion.proteger('sp-update-sale', async (event,
       tvp.rows.add(pid, qty, up);
     }
 
+    /* La diferencia se cobra o se devuelve en ESTA caja (0049): el turno se
+       busca por caja, no por quien lo abrio. */
+    const op = cajaDeLaOperacion(payload);
     const req = pool.request()
       .input('sale_id',     sql.Int, saleId)
       .input('user_id',     sql.Int, userId)
       .input('SaleDetails', tvp)
-      .input('note',        sql.NVarChar(250), note);
+      .input('note',        sql.NVarChar(250), note)
+      .input('register_id', sql.Int, op.registerId)
+      .input('machine_id',  sql.NVarChar(64), op.machineId)
+      .input('machine_name', sql.NVarChar(120), op.machineName);
 
     const result = await req.execute('sp_update_sale');
 
@@ -3520,6 +3585,7 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
     const items = payload?.items ?? [];
     const note = payload?.note ?? null;
     const applyNetUpdate = payload?.apply_net_update ? 1 : 0;
+    const opDev = cajaDeLaOperacion(payload);
 
     if (!Number.isFinite(saleId) || saleId <= 0) throw new Error('sale_id inválido.');
     if (!Number.isFinite(userId) || userId <= 0) throw new Error('user_id inválido.');
@@ -3553,7 +3619,11 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
       .input('payment_method', sql.NVarChar(50), paymentMethod)
       .input('RefundDetails',  tvp)
       .input('note',           sql.NVarChar(250), note)
-      .input('apply_net_update', sql.Bit, applyNetUpdate ? 1 : 0);
+      .input('apply_net_update', sql.Bit, applyNetUpdate ? 1 : 0)
+      /* El efectivo sale de ESTA caja (0049), no del turno de quien lo abrio. */
+      .input('register_id',    sql.Int, opDev.registerId)
+      .input('machine_id',     sql.NVarChar(64), opDev.machineId)
+      .input('machine_name',   sql.NVarChar(120), opDev.machineName);
 
     const result = await req.execute('sp_refund_sale');
 
@@ -4317,28 +4387,6 @@ ipcMain.handle('sp-supplier-save', sesion.proteger('sp-supplier-save', async (_e
 }));
 
 // Pago a proveedor (desde salida de efectivo): registra en supplier_payments
-ipcMain.handle('sp-pay-supplier', sesion.proteger('sp-pay-supplier', async (_event, payload = {}) => {
-  try {
-    const supplierId = Number(payload?.supplier_id) || null;
-    const amount = Number(payload?.amount) || 0;
-    const userId = Number(payload?.user_id) || null;
-    if (!supplierId || amount <= 0 || !userId) return { success: false, error: 'Datos incompletos.' };
-    const pool = await poolPromise;
-    await pool.request()
-      .input('supplier_id', sql.Int, supplierId)
-      .input('amount', sql.Decimal(10, 2), amount)
-      .input('payment_method', sql.NVarChar(50), payload?.payment_method || 'EFECTIVO')
-      .input('user_id', sql.Int, userId)
-      .input('note', sql.NVarChar(255), payload?.note ? String(payload.note).trim() : null)
-      .input('cash_movement_id', sql.Int, Number(payload?.cash_movement_id) || null)
-      .query('INSERT INTO supplier_payments (supplier_id, datee, amount, payment_method, user_id, note, cash_movement_id) VALUES (@supplier_id, GETDATE(), @amount, @payment_method, @user_id, @note, @cash_movement_id)');
-    return { success: true };
-  } catch (err) {
-    console.error('sp-pay-supplier:', err);
-    return { success: false, error: err.message };
-  }
-}));
-
 // ===== Estadisticas =====
 ipcMain.handle('sp-top-customers', async (_e, payload = {}) => {
   try {
@@ -4985,7 +5033,7 @@ async function llamarLicencias(funcion, cuerpo, ms = 10000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/${funcion}`, {
+    const res = await fetch(`${FUNCIONES_URL}/functions/v1/${funcion}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}`, 'apikey': ANON_KEY },
       body: JSON.stringify(cuerpo),

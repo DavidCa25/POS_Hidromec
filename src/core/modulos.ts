@@ -40,7 +40,13 @@ export interface ModuleDefinition {
   icon: string;
   category: ModuleCategory;
   /** La capacidad de `Capabilities` que enciende. */
-  capability: keyof Capabilities;
+  capability?: keyof Capabilities;
+  /**
+   * Existe pero HOY no se puede activar, y se dice por que. No es un
+   * "Proximamente": es una integracion que depende de un contrato o de un
+   * tercero. La tarjeta se ve, no se enciende.
+   */
+  noDisponible?: string;
   /** Otro modulo sin el que este no tiene sentido. */
   requiere?: keyof Capabilities;
   /** Como se llama ese otro, para decirlo en la tarjeta. */
@@ -117,5 +123,18 @@ export const MODULOS: ModuleDefinition[] = [
     requiereNombre: 'Hospitality',
     route: '/cocina',
     aparece: 'Cocina, dentro de Venta',
+  },
+  {
+    /* Antes vivia en Configuracion, como si fuera un ajuste. Es una
+       integracion con un proveedor (TAECEL): recargas y pago de luz, agua,
+       gas... Sin contrato con el proveedor no hay nada que encender. */
+    id: 'pago-servicios',
+    name: 'Pago de servicios',
+    description: 'Recargas de tiempo aire y pago de luz, agua, gas y más desde la caja.',
+    detalle: 'Cobra el servicio como cualquier venta y el proveedor hace el pago. ' +
+             'Funciona a través de TAECEL.',
+    icon: 'device-mobile',
+    category: 'INTEGRACIONES',
+    noDisponible: 'No disponible: requiere un contrato con el proveedor (TAECEL).',
   },
 ];

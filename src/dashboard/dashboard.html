@@ -179,7 +179,8 @@
                   [class.is-abierto]="usuarioAbierto"
                   [attr.aria-expanded]="usuarioAbierto" aria-haspopup="menu"
                   [attr.aria-label]="userName" [title]="userName">
-            <wx-avatar [semilla]="'u:' + userName" [nombre]="userName" [size]="30"></wx-avatar>
+            <!-- Semilla del id, no del nombre: la misma cara que en Usuarios y permisos. -->
+            <wx-avatar [semilla]="'u:' + (auth.usuarioActualId ?? userName)" [nombre]="userName" [size]="30"></wx-avatar>
             <span class="wx-yo__nom">{{ userName }}</span>
             <i class="ph ph-caret-down" aria-hidden="true"></i>
           </button>
@@ -188,7 +189,7 @@
             SOLO LA SESION.
 
             Tenia «Crear usuario», que no es una accion sobre uno mismo y ademas
-            ya vive en Configuracion > Usuarios y permisos, con rol y
+            ya vive en Usuarios y permisos (/dashboard/usuarios), con rol y
             contrasena. Aqui queda lo que existe de verdad para quien esta
             dentro; administrar usuarios se ofrece aparte y solo a quien puede.
           -->
@@ -203,7 +204,7 @@
             <ng-container *ngIf="puedeAdministrarUsuarios">
               <span class="wx-yo__linea" aria-hidden="true"></span>
               <a class="wx-yo__fila wx-yo__fila--tenue" role="menuitem"
-                 routerLink="/dashboard/configuracion" (click)="usuarioAbierto = false">
+                 routerLink="/dashboard/usuarios" (click)="usuarioAbierto = false">
                 <i class="ph ph-identification-badge" aria-hidden="true"></i>
                 <span>Usuarios y permisos</span>
               </a>

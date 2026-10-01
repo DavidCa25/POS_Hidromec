@@ -58,17 +58,20 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 color: 'green',
                 size: '1x1',
                 load: () => import('../formas-pago-panel/formas-pago.component').then(m => m.FormasPagoPanelComponent)
+            },
+            {
+                id: 'conceptos-egreso',
+                title: 'Conceptos de egreso',
+                desc: 'Renta, luz, Uber, Didi, gas… en qué gasta tu negocio',
+                icon: 'receipt',
+                color: 'orange',
+                size: '1x1',
+                load: () => import('../conceptos-egreso-panel/conceptos-egreso.component').then(m => m.ConceptosEgresoPanelComponent)
             }
         ]
     },
-    {
-        id: 'servicios',
-        title: 'Servicios',
-        tiles: [
-            { id: 'pago-servicios', title: 'Pago de servicios', desc: 'Recargas y pago de luz, agua, gas… (TAECEL)', icon: 'device-mobile', color: 'green', size: '2x1',
-              load: () => import('../servicios-panel/servicios-config.component').then(m => m.ServiciosPanelComponent) }
-        ]
-    },
+    /* «Pago de servicios» (TAECEL) se mudo a Aplicaciones: es una integracion
+       con un proveedor, no un ajuste. Hoy aparece ahi como no disponible. */
     {
         id: 'dispositivos',
         title: 'Dispositivos',
@@ -141,8 +144,8 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         tiles: [
             { id: 'licencia', title: 'Licencia', desc: 'Activa tu clave y revisa tu plan', icon: 'key', color: 'green', size: '2x1',
               load: () => import('../licencia-panel/licencia.component').then(m => m.LicenciaPanelComponent) },
-            { id: 'usuarios', title: 'Usuarios y permisos', desc: 'Cajeros, supervisores y accesos', icon: 'identification-badge', color: 'gray', size: '2x1',
-              load: () => import('../usuarios-panel/usuarios.component').then(m => m.UsuariosPanelComponent) },
+            /* «Usuarios y permisos» tiene vista propia (/dashboard/usuarios): el
+               organigrama del negocio y lo que puede hacer cada rol. */
             { id: 'actualizaciones', title: 'Actualizaciones', desc: 'Buscar e instalar nuevas versiones', icon: 'arrows-clockwise', color: 'blue', size: '1x1',
               load: () => import('../actualizaciones-panel/actualizaciones.component').then(m => m.ActualizacionesPanelComponent) },
             { id: 'diagnostico', title: 'Diagnóstico', desc: 'Revisa los registros del sistema', icon: 'pulse', color: 'gray', size: '1x1',

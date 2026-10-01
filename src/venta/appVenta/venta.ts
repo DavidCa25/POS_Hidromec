@@ -13,7 +13,9 @@ import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
   MesaService, ShiftService, SoldLine, ClientesVentaService,
+  CajonService,
 } from '../../core';
+import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
@@ -69,13 +71,14 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly catalog = inject(CatalogService);
   private readonly shift = inject(ShiftService);
+  private readonly cajon = inject(CajonService);
   private readonly sale = inject(SaleService);
   // Solo para leer los grupos de opciones de un producto. Retail no pinta el
   // menu Touch; lo necesita para saber que variante lleva una linea.
@@ -166,14 +169,8 @@ export class Venta implements OnInit, OnDestroy {
   showModalProductos = false;
   filtro = '';
 
-  // Salida de efectivo (F10)
+  // Salida de efectivo (F10): el modal es un componente compartido con Touch.
   showCashOutModal = false;
-  cashOutAmount: number | null = null;
-  cashOutNote = '';
-  cashOutIsSupplier = false;
-  cashOutSupplierId: number | null = null;
-  cashOutSuppliers: { id: number; nombre: string }[] = [];
-  cashOutSupAbierto = false;
 
   // Post-venta (acciones: PDF / WhatsApp)
   showPostSaleModal = false;
@@ -1147,98 +1144,16 @@ export class Venta implements OnInit, OnDestroy {
   // ==================
   // CAJÓN MANUAL & SALIDA EFECTIVO
   // ==================
+  /* F1: abrir el cajon sin venta. Lo autoriza otra persona y queda
+     registrado (CajonService), igual que la pantalla que reemplaza. */
   async abrirCajonManual() {
-    try {
-      const ok = await this.sale.openDrawer();
-      if (!ok) {
-        await Swal.fire({ icon: 'info', title: 'No disponible', text: 'La apertura del cajón no está disponible en este entorno.' });
-      }
-    } catch {
-      await Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo abrir el cajón. Revisa la configuración.' });
-    }
+    await this.cajon.abrirSinVenta();
   }
 
   async abrirSalidaEfectivo() {
     const ok = await this.ensureShiftOpen('SALIDA');
     if (!ok) return;
-
-    this.cashOutAmount = null;
-    this.cashOutNote = '';
-    this.cashOutIsSupplier = false;
-    this.cashOutSupplierId = null;
-    this.cashOutSupAbierto = false;
-    await this.cargarProveedoresCashOut();
     this.showCashOutModal = true;
-  }
-
-  cerrarSalidaEfectivo() { this.showCashOutModal = false; }
-
-  private async cargarProveedoresCashOut() {
-    try {
-      const api = (window as any).electronAPI;
-      const rs = await api?.getSuppliers?.();
-      const rows = Array.isArray(rs?.recordset) ? rs.recordset : (Array.isArray(rs) ? rs : []);
-      this.cashOutSuppliers = rows.map((x: any) => ({ id: Number(x.id), nombre: x.nombre ?? x.name ?? '' }));
-    } catch { this.cashOutSuppliers = []; }
-  }
-  get cashOutSupplierLabel(): string {
-    const s = this.cashOutSuppliers.find(x => x.id === this.cashOutSupplierId);
-    return s ? s.nombre : 'Selecciona proveedor';
-  }
-  seleccionarCashOutProveedor(s: { id: number; nombre: string }) {
-    this.cashOutSupplierId = s.id;
-    this.cashOutSupAbierto = false;
-  }
-
-  async confirmarSalidaEfectivo() {
-    const ok = await this.ensureShiftOpen('SALIDA');
-    if (!ok) return;
-
-    const amount = Number(this.cashOutAmount ?? 0);
-
-    if (amount <= 0) {
-      await Swal.fire({ icon: 'error', title: 'Monto inválido', text: 'El monto a retirar debe ser mayor a cero.' });
-      return;
-    }
-
-    if (!this.cashOutNote.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Nota requerida', text: 'Describe brevemente para qué es la salida de efectivo.' });
-      return;
-    }
-
-    if (this.cashOutIsSupplier && !this.cashOutSupplierId) {
-      await Swal.fire({ icon: 'warning', title: 'Elige proveedor', text: 'Selecciona el proveedor al que le pagas.' });
-      return;
-    }
-
-    try {
-      const resp = await this.shift.registerCashOut(amount, this.cashOutNote);
-
-      if (resp?.success) {
-        // Si la salida es pago a proveedor, registrarlo tambien
-        if (this.cashOutIsSupplier && this.cashOutSupplierId) {
-          try {
-            await this.shift.paySupplier({
-              supplier_id: this.cashOutSupplierId,
-              amount,
-              note: this.cashOutNote,
-              cash_movement_id: resp?.cash_movement_id ?? resp?.id ?? null
-            });
-          } catch { /* el movimiento de caja ya quedo; el pago es complementario */ }
-        }
-        this.showCashOutModal = false;
-        this.cashOutAmount = null;
-        this.cashOutNote = '';
-        this.cashOutIsSupplier = false;
-        this.cashOutSupplierId = null;
-        await Swal.fire({ icon: 'success', title: 'Salida registrada', text: 'La salida de efectivo se registró correctamente.' });
-      } else {
-        const sinApi = /API no disponible/.test(resp?.error || '');
-        await Swal.fire({ icon: 'error', title: sinApi ? 'No disponible' : 'Error al registrar salida', text: resp?.error || 'No se pudo registrar la salida.' });
-      }
-    } catch (e: any) {
-      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al registrar la salida.' });
-    }
   }
 
   // ==================
