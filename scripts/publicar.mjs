@@ -25,11 +25,26 @@
  * Para crearlo: GitHub > Settings > Developer settings > Personal access
  * tokens > Fine-grained, con acceso solo a este repositorio y permiso
  * "Contents: Read and write" (lo que necesita para crear el release).
+ *
+ * NOTAS DE LA VERSION
+ * -------------------
+ * Se escriben en  notas-de-version/<version>.md  (la de package.json) y este
+ * script las pone en dos sitios:
+ *
+ *   - latest.yml, para el actualizador de la app (releaseInfo.releaseNotesFile);
+ *   - la descripcion del release en GitHub, que es lo que muestra la web
+ *     (wybixpos.com.mx/prueba lee el ultimo release). electron-builder NO la
+ *     llena: crea el release vacio, por eso se pone aqui despues.
+ *
+ * Para poner o corregir las notas de una version YA publicada, sin compilar:
+ *
+ *     npm run publish:notas              (la version de package.json)
+ *     npm run publish:notas -- 1.3.0     (otra)
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import readline from 'node:readline';
 
 const CARPETA = join(homedir(), '.wybix');
@@ -84,13 +99,83 @@ async function obtenerToken() {
   return { token, origen: ARCHIVO };
 }
 
+// ------------------------------------------------------------ notas
+const PKG = JSON.parse(readFileSync('package.json', 'utf8'));
+const { owner: DUENO, repo: REPO } = PKG.build?.publish ?? {};
+const SOLO_NOTAS = process.argv.includes('--solo-notas');
+const VERSION = process.argv.slice(2).find(a => /^\d+\.\d+\.\d+/.test(a)) ?? PKG.version;
+const NOTAS = resolve('notas-de-version', `${VERSION}.md`);
+
+function leerNotas() {
+  if (!existsSync(NOTAS)) return null;
+  const t = readFileSync(NOTAS, 'utf8').replace(/^﻿/, '').trim();
+  return t || null;
+}
+
+async function github(ruta, token, opciones = {}) {
+  const r = await fetch(`https://api.github.com/repos/${DUENO}/${REPO}${ruta}`, {
+    ...opciones,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+  });
+  const cuerpo = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`GitHub ${r.status}: ${cuerpo?.message || 'sin detalle'}`);
+  return cuerpo;
+}
+
+/** Pone las notas como descripcion del release v<version> (borrador o publicado). */
+async function ponerNotas(token, notas) {
+  /* Por etiqueta no sirve: un borrador todavia no tiene etiqueta en git. La
+     lista, con token, incluye los borradores. */
+  const lista = await github('/releases?per_page=30', token);
+  const rel = lista.find(x => x.tag_name === `v${VERSION}` || x.name === VERSION);
+  if (!rel) throw new Error(`No encuentro el release v${VERSION} en ${DUENO}/${REPO}.`);
+  await github(`/releases/${rel.id}`, token, { method: 'PATCH', body: JSON.stringify({ body: notas }) });
+  console.log(`\nNotas de la v${VERSION} puestas en GitHub.`);
+  if (rel.draft) {
+    console.log('El release sigue como BORRADOR: la web y el boton de descarga lo ignoran hasta'
+      + ` que lo publiques en\n  ${rel.html_url}`);
+  } else {
+    console.log('La web las mostrara en unos minutos (cache de 10 min).');
+  }
+}
+
+const notas = leerNotas();
+if (!notas) {
+  const aviso = `No hay notas para la v${VERSION} (${NOTAS}).`;
+  if (SOLO_NOTAS) { console.error(`\n${aviso}`); process.exit(1); }
+  console.warn(`\nAVISO: ${aviso}\nEl release saldra sin descripcion; puedes ponerla despues con`
+    + ' `npm run publish:notas`.\n');
+}
+
 const { token, origen } = await obtenerToken();
 console.log(`Token de GitHub: tomado de ${origen}.\n`);
 
-/* Los mismos pasos que antes hacia "publish", ahora con el token puesto. */
-const r = spawnSync('npm', ['run', 'publish:pasos'], {
+if (SOLO_NOTAS) {
+  try { await ponerNotas(token, notas); process.exit(0); }
+  catch (e) { console.error(`\nNo se pudieron poner las notas: ${e.message}`); process.exit(1); }
+}
+
+/* Los mismos pasos que antes hacia "publish", ahora con el token puesto. Lo
+   que va despues de `--` lo recibe electron-builder, el ultimo paso; la ruta
+   va entre comillas porque el shell la partiria si tuviera espacios. */
+const extra = notas ? ['--', `"-c.releaseInfo.releaseNotesFile=${NOTAS}"`] : [];
+const r = spawnSync('npm', ['run', 'publish:pasos', ...extra], {
   stdio: 'inherit',
   shell: true,
   env: { ...process.env, GH_TOKEN: token },
 });
-process.exit(r.status ?? 1);
+if (r.status !== 0) process.exit(r.status ?? 1);
+
+if (notas) {
+  try { await ponerNotas(token, notas); }
+  catch (e) {
+    console.error(`\nEl instalador se publico, pero no se pudieron poner las notas: ${e.message}`
+      + `\nReintenta con: npm run publish:notas -- ${VERSION}`);
+    process.exit(1);
+  }
+}

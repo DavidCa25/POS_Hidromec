@@ -13,6 +13,7 @@
     "pack": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && electron-builder --dir",
     "dist": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder",
     "publish": "node scripts/publicar.mjs",
+    "publish:notas": "node scripts/publicar.mjs --solo-notas",
     "publish:pasos": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && npm run build && electron-builder --publish always",
     "db:extract": "node scripts/db/extraer.mjs",
     "db:extract-schema": "node scripts/db/extraer-esquema.mjs",
