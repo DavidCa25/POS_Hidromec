@@ -136,11 +136,12 @@ export class NavegacionService {
           { texto: 'Nueva venta', ruta: '/dashboard/venta', icono: 'ph-cash-register', visible: true, principal: true, pie: pie('venta', 'turno') },
           { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
           { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
-          { texto: 'Abrir cajon', ruta: '/dashboard/abrir-cajon', icono: 'ph-vault', visible: this.supervisarVentas },
           /* Lo que sale del negocio y no es una compra. Verlo es ver numeros;
              registrar lo decide la pantalla (VENTAS_SUPERVISAR). */
           { texto: 'Egresos', ruta: '/dashboard/egresos', icono: 'ph-receipt', visible: this.verNumeros },
           { texto: 'Pagos al personal', ruta: '/dashboard/pagos-personal', icono: 'ph-hand-coins', visible: this.verNumeros },
+          /* «Abrir cajon» ya no es un destino: es un atajo de la caja (F1 en
+             Retail, boton en Touch), con su autorizacion (CajonService). */
           /* La operacion de un local con servicio: dentro de Venta, porque es
              vender. Cada una aparece solo con su modulo encendido; el dock no
              gana ningun icono. */
@@ -227,7 +228,12 @@ export class NavegacionService {
       { texto: 'Estadisticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Fidelizacion', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
       { texto: 'Facturacion', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
-      { texto: 'Pago de servicios', ruta: '/dashboard/servicios', icono: 'ph-device-mobile', grupo: 'negocio', visible: this.modulos().pagoServicios },
+      /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
+         sin contrato con el proveedor no se ofrece, aunque alguna vez se haya
+         configurado. */
+      /* Usuarios y permisos salio de Configuracion: organizar el equipo no es
+         configurar la caja. Vista propia, en forma de organigrama. */
+      { texto: 'Usuarios y permisos', ruta: '/dashboard/usuarios', icono: 'ph-identification-badge', grupo: 'sistema', visible: this.administrarNegocio },
       { texto: 'Aplicaciones', ruta: '/dashboard/aplicaciones', icono: 'ph-squares-four', grupo: 'sistema', visible: this.administrarNegocio },
       { texto: 'Configuracion', ruta: '/dashboard/configuracion', icono: 'ph-gear', grupo: 'sistema', visible: this.administrarNegocio },
       { texto: 'Migracion', ruta: '/dashboard/migracion', icono: 'ph-database', grupo: 'sistema', visible: this.administrarNegocio },

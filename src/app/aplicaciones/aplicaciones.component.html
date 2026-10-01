@@ -13,11 +13,11 @@
     <h2 class="apps-grupo__tit">{{ g.titulo }}</h2>
 
     <div class="apps-rejilla">
-      <article class="apps-card" *ngFor="let m of g.modulos" [class.on]="encendido(m)">
+      <article class="apps-card" *ngFor="let m of g.modulos" [class.on]="encendido(m)" [class.nodisp]="m.noDisponible">
         <div class="apps-card__top">
           <span class="apps-card__ic"><i class="ph ph-{{ m.icon }}"></i></span>
           <span class="apps-card__estado" [class.si]="encendido(m)">
-            {{ encendido(m) ? 'Activado' : 'Desactivado' }}
+            {{ m.noDisponible ? 'No disponible' : (encendido(m) ? 'Activado' : 'Desactivado') }}
           </span>
         </div>
 
@@ -40,7 +40,12 @@
                   [disabled]="cambiando() === m.id">Cambiar</button>
         </p>
 
-        <div class="apps-card__pie">
+        <!-- Integracion que hoy no se puede encender: se dice por que, sin boton. -->
+        <div class="apps-card__pie" *ngIf="m.noDisponible">
+          <span class="apps-card__falta"><i class="ph ph-lock-simple"></i> {{ m.noDisponible }}</span>
+        </div>
+
+        <div class="apps-card__pie" *ngIf="!m.noDisponible">
           <!-- Sin el modulo del que depende no se ofrece: encenderlo daria
                pantallas que no pueden funcionar. Se dice cual falta. -->
           <span class="apps-card__falta" *ngIf="!encendido(m) && faltaRequisito(m)">

@@ -99,3 +99,7 @@
   color: var(--wx-text-muted);
   font-size: var(--wx-text-sm);
 }
+
+/* Integracion que hoy no se puede encender: se ve, apagada, con su motivo. */
+.apps-card.nodisp { opacity: .72; }
+.apps-card.nodisp .apps-card__ic { filter: grayscale(1); }

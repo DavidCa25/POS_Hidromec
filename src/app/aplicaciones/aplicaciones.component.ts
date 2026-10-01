@@ -99,7 +99,8 @@ export class Aplicaciones implements OnInit {
   }
 
   encendido(m: ModuleDefinition): boolean {
-    return !!this.caps.capabilities()[m.capability as keyof Capabilities];
+    if (!m.capability || m.noDisponible) return false;
+    return !!this.caps.capabilities()[m.capability];
   }
 
   /**
@@ -111,6 +112,8 @@ export class Aplicaciones implements OnInit {
    */
   async alternar(m: ModuleDefinition): Promise<void> {
     if (!this.puedeAdministrar) return;
+    /* Una integracion sin contrato se ve pero no se enciende. */
+    if (m.noDisponible || !m.capability) return;
     const activo = this.encendido(m);
     if (!activo && this.faltaRequisito(m)) return;
 

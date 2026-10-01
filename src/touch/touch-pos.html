@@ -40,6 +40,15 @@
               (click)="aMesas()" aria-label="Mesas">
         <i class="ph ph-armchair"></i><span>Mesas</span>
       </button>
+      <!-- Atajos de la caja (los mismos que Retail): con texto, para el dedo. -->
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-cajon"
+              (click)="abrirCajon()" aria-label="Abrir cajón">
+        <i class="ph ph-vault"></i><span>Abrir cajón</span>
+      </button>
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-salida"
+              (click)="abrirSalida()" aria-label="Salida de efectivo">
+        <i class="ph ph-hand-coins"></i><span>Salida de efectivo</span>
+      </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
         <i class="ph ph-magnifying-glass"></i>
@@ -604,3 +613,6 @@
     (cerrado)="cerrarPremios()"></app-premios-venta>
 
 </div>
+
+<!-- Salida de dinero: el mismo componente que Retail. -->
+<app-salida-efectivo *ngIf="salidaAbierta()" (cerrado)="salidaAbierta.set(false)"></app-salida-efectivo>

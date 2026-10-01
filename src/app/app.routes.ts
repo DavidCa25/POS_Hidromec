@@ -77,7 +77,6 @@ export const routes: Routes = [
       { path: 'mesas', canActivate: [puedeUsarMesas], loadComponent: () => import('../hospitality/mesas/mesas.component').then(m => m.MesasComponent) },
       { path: 'salon', canActivate: [puedeConfigurarSalon], loadComponent: () => import('../hospitality/salon-admin/salon-admin.component').then(m => m.SalonAdminComponent) },
       { path: 'corte-dia', loadComponent: () => import('../venta/appCorte/corte').then(m => m.Corte) },
-      { path: 'abrir-cajon', loadComponent: () => import('../venta/appCajon/abrirCajon').then(m => m.Cajon) },
       /* Egresos y Pagos al personal: un solo componente, un solo modelo (un
          pago al personal ES un egreso). La ruta elige la vista. */
       { path: 'egresos', data: { modo: 'egresos' }, loadComponent: () => import('../egresos/egresos').then(m => m.Egresos) },
@@ -156,6 +155,9 @@ export const routes: Routes = [
       // Aplicaciones: que capacidades opcionales tiene encendidas el negocio.
       // Vive fuera de Configuracion a proposito: configurar la impresora y
       // decidir que Wybix tenga Fidelizacion no son la misma clase de cosa.
+      // Usuarios y permisos: el equipo como organigrama. Fuera de Configuracion
+      // por la misma razon que Aplicaciones.
+      { path: 'usuarios', loadComponent: () => import('./usuarios/usuarios.component').then(m => m.Usuarios) },
       { path: 'aplicaciones', loadComponent: () => import('./aplicaciones/aplicaciones.component').then(m => m.Aplicaciones) },
     ]
   },

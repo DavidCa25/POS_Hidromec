@@ -1832,6 +1832,10 @@ ipcMain.handle('security:catalogo', async () => {
     paquetes: permisos.PERMISOS,
     roles: permisos.ETIQUETAS,
     canales: canales.EXIGE,
+    /* Que incluye cada rol, de la MISMA tabla con la que se autoriza: la
+       pantalla "Usuarios y permisos" lo explica sin poder contradecirlo. */
+    paquetesPorRol: Object.fromEntries(Object.keys(permisos.ROLES)
+      .map(r => [r, [...permisos.permisosDeRol(r)]])),
   } };
 });
 

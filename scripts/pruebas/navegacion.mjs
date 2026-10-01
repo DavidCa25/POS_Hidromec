@@ -163,9 +163,13 @@ check(/'Usar menú lateral'/.test(modoTs) && /'Usar Dock'/.test(modoTs),
   'dice a donde lleva');
 check(/role="tooltip"/.test(modoTs) && /aria-describedby/.test(modoTs),
   'y el tooltip esta enlazado al boton');
-check(/@media \(hover: none\)/.test(modoCss) && /width: 44px/.test(modoCss),
-  'sin raton queda asomado y con zona de dedo',
-  'si dependiera del hover, en una caja tactil no existiria');
+check(/@media \(hover: none\), \(any-pointer: coarse\)/.test(modoCss) && /width: 56px/.test(modoCss),
+  'sin raton, o con cualquier pantalla tactil, queda fuera y con zona de dedo',
+  'si dependiera del hover, en una caja tactil con raton conectado seria una tira de 8 px');
+check(/html\.wx-tactil/.test(modoCss) && /classList\.add\('wx-tactil'\)/.test(carcasa),
+  'y tras el primer toque, aunque el sistema diga que hay raton');
+check(/'touchstart'/.test(carcasa) && /passive: true/.test(carcasa) && /cambiar\('sidebar'\)/.test(carcasa) && /cambiar\('dock'\)/.test(carcasa),
+  'deslizar desde el borde abre la barra, y deslizar la barra vuelve al dock');
 check(/:focus-visible \.wxmodo__pestana/.test(modoCss), 'con el teclado sale igual que con el cursor');
 check(/html\.dark/.test(modoCss) && /prefers-reduced-motion/.test(modoCss), 'oscuro y movimiento reducido');
 check(/--wx-tooltip-bg/.test(modoCss), 'el tooltip usa los tokens del primitivo de tooltip');

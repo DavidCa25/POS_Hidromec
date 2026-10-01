@@ -468,9 +468,14 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
   check(/async salir\(\)/.test(auth) && /api\?\.cerrarSesion\?\.\(\)/.test(auth),
     'y el servicio lo pide por su canal');
 
-  const cajon = readFileSync(join(raiz, 'src/venta/appCajon/abrirCajon.ts'), 'utf8');
+  /* La pantalla «Abrir cajon» se retiro: ahora es atajo de Retail (F1) y de
+     Touch, y las dos cajas pasan por CajonService. */
+  const cajon = readFileSync(join(raiz, 'src/core/cajon.service.ts'), 'utf8');
   check(/'open-cash-drawer', PAQUETES\.VENTAS_SUPERVISAR/.test(cajon),
     'abrir el cajon sin venta pide el paquete de supervision');
+  const touch = readFileSync(join(raiz, 'src/touch/touch-pos.ts'), 'utf8');
+  check(/this\.cajon\.abrirSinVenta\(\)/.test(touch) && /this\.cajon\.abrirSinVenta\(\)/.test(readFileSync(join(raiz, 'src/venta/appVenta/venta.ts'), 'utf8')),
+    'y Retail y Touch abren el cajon por ese mismo camino');
   const venta = readFileSync(join(raiz, 'src/venta/appVenta/venta.ts'), 'utf8');
   check(/'sp-refund-sale', PAQUETES\.VENTAS_SUPERVISAR/.test(venta),
     'y devolver, tambien');

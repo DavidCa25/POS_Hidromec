@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, ElementRef, HostListener, Injector, OnInit,
+  ChangeDetectionStrategy, Component, ElementRef, HostListener, Injector, NgZone, OnDestroy, OnInit,
   afterNextRender, inject,
 } from '@angular/core';
 import { NgIf } from '@angular/common';
@@ -36,6 +36,16 @@ const SALIDA = 140;
 const ENTRADA = 210;
 const CURVA = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
+/*
+ * EL GESTO TACTIL. Deslizar desde el borde izquierdo (con dock) abre la barra;
+ * deslizar la barra hacia la izquierda vuelve al dock. Basta la distancia o un
+ * golpe rapido: no se exige arrastrar media pantalla.
+ */
+const BORDE = 28;          // px desde el borde izquierdo donde empieza el gesto
+const DISTANCIA = 64;      // px en horizontal que bastan
+const GOLPE = 0.35;        // px/ms: un golpe rapido basta aunque sea corto
+const GOLPE_MIN = 24;      // ...pero no un temblor
+
 @Component({
   selector: 'wx-navegacion',
   standalone: true,
@@ -50,13 +60,14 @@ const CURVA = 'cubic-bezier(0.23, 1, 0.32, 1)';
   `,
   styles: [':host { display: contents; }'],
 })
-export class WxNavegacionComponent implements OnInit {
+export class WxNavegacionComponent implements OnInit, OnDestroy {
   readonly nav = inject(NavegacionService);
   private readonly router = inject(Router);
   private readonly guia = inject(GuiaService);
   private readonly paleta = inject(PaletaService);
   private readonly injector = inject(Injector);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly zona = inject(NgZone);
 
   private cambiando = false;
 
@@ -65,7 +76,58 @@ export class WxNavegacionComponent implements OnInit {
        la guia se comparte con Inicio. */
     void this.nav.cargarDatos();
     void this.guia.cargar();
+
+    /* Fuera de la zona de Angular y pasivos: escuchar el dedo no debe costar
+       un ciclo de deteccion por cada toque ni frenar el desplazamiento. */
+    this.zona.runOutsideAngular(() => {
+      document.addEventListener('touchstart', this.alTocar, { passive: true });
+      document.addEventListener('touchend', this.alSoltar, { passive: true });
+      document.addEventListener('touchcancel', this.alCancelar, { passive: true });
+    });
   }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('touchstart', this.alTocar);
+    document.removeEventListener('touchend', this.alSoltar);
+    document.removeEventListener('touchcancel', this.alCancelar);
+  }
+
+  // ------------------------------------------------------------ tactil
+  private gesto: { x: number; y: number; t: number; modo: ModoNavegacion } | null = null;
+
+  /*
+   * Se usan eventos `touch` y no `pointer`: un `pointer` se cancela en cuanto
+   * el navegador decide que el dedo esta desplazando algo, y la barra lateral
+   * se desplaza en vertical. `touchend` llega igual.
+   */
+  private readonly alTocar = (e: TouchEvent) => {
+    /* Hubo un dedo: el tirador pasa a su tamano tactil aunque el sistema diga
+       que tambien hay raton. */
+    document.documentElement.classList.add('wx-tactil');
+    if (e.touches.length !== 1) { this.gesto = null; return; }
+    const t = e.touches[0];
+    const modo = this.nav.modo();
+    const enBorde = modo === 'dock' && t.clientX <= BORDE;
+    const enBarra = modo === 'sidebar' && !!(e.target as Element | null)?.closest?.('.wxside');
+    this.gesto = (enBorde || enBarra) ? { x: t.clientX, y: t.clientY, t: performance.now(), modo } : null;
+  };
+
+  private readonly alSoltar = (e: TouchEvent) => {
+    const g = this.gesto;
+    this.gesto = null;
+    if (!g || e.changedTouches.length !== 1) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - g.x;
+    const dy = t.clientY - g.y;
+    if (Math.abs(dy) > Math.abs(dx) * 0.75) return;          // eso era desplazar, no deslizar
+    const v = Math.abs(dx) / Math.max(1, performance.now() - g.t);
+    const basta = Math.abs(dx) >= DISTANCIA || (Math.abs(dx) >= GOLPE_MIN && v >= GOLPE);
+    if (!basta) return;
+    if (g.modo === 'dock' && dx > 0) this.zona.run(() => void this.cambiar('sidebar'));
+    else if (g.modo === 'sidebar' && dx < 0) this.zona.run(() => void this.cambiar('dock'));
+  };
+
+  private readonly alCancelar = () => { this.gesto = null; };
 
   /**
    * DE UNA FORMA A LA OTRA, SIN QUE NADA BRINQUE.

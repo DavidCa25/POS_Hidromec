@@ -9,7 +9,9 @@ import {
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
   SelectedOption, ServiceMode, ShiftService,
   MesaService, MesaSalon,
+  CajonService,
 } from '../core';
+import { SalidaEfectivo } from '../venta/salida-efectivo/salida-efectivo.component';
 import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
 import { LicenseService } from '../services/license.service';
 import { nombreDeMesa } from '../hospitality/hx';
@@ -44,7 +46,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent],
+  imports: [CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -56,6 +58,7 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly sale = inject(SaleService);
   private readonly shift = inject(ShiftService);
+  private readonly cajon = inject(CajonService);
   private readonly licencia = inject(LicenseService);
   private readonly display = inject(CustomerDisplayService);
   private readonly auth = inject(AuthService);
@@ -926,6 +929,29 @@ export class TouchPos implements OnInit, OnDestroy {
   salir() {
     this.router.navigate(['/dashboard/inicio']);
   }
+
+  // ------------------------------------------------- atajos de la caja
+  /* Los mismos que Retail (F1 y F10), como botones grandes: en una pantalla
+     tactil no hay teclas de funcion. Las teclas tambien funcionan si hay
+     teclado conectado. */
+  readonly salidaAbierta = signal(false);
+
+  /** Salida de dinero: retiro, pago a proveedor o gasto. Sin turno, primero el turno. */
+  abrirSalida() {
+    if (!this.hayTurno()) { this.abrirTurno.set(true); return; }
+    this.salidaAbierta.set(true);
+  }
+
+  /** Abrir el cajon sin venta: lo autoriza otra persona y queda registrado. */
+  async abrirCajon() {
+    await this.cajon.abrirSinVenta();
+  }
+
+  @HostListener('window:keydown.f1', ['$event'])
+  onF1(e: Event) { e.preventDefault(); this.abrirCajon(); }
+
+  @HostListener('window:keydown.f10', ['$event'])
+  onF10(e: Event) { e.preventDefault(); this.abrirSalida(); }
 
   /** Escape cierra lo que este abierto: util con teclado conectado. */
   @HostListener('window:keydown.escape')

@@ -113,14 +113,38 @@
 .wxmodo:active .wxmodo__pestana { background: var(--wx-rail-raised); }
 
 /* ------------------------------------------------------------------ tactil
-   Sin cursor no hay «acercarse»: la pestana queda fuera y se pulsa con el
-   dedo. La zona sensible sube a 44 px de ancho, el minimo para un dedo. */
-@media (hover: none) {
-  .wxmodo { width: 44px; }
-  .wxmodo__pestana { transform: translateX(0); }
+   Sin cursor no hay «acercarse»: la pestana queda fuera, entera, y se pulsa
+   con el dedo.
+
+   Antes subia solo la zona sensible (44 px) con la pestana de 34x60, y solo
+   con `hover: none`. En una caja tactil con Windows eso no basta: si hay un
+   raton conectado -o el sistema dice que lo hay-, `hover: none` no aplica y
+   quedaba la tira de 8 px, imposible de atinar con el dedo.
+
+   Ahora el tamano tactil aplica si hay CUALQUIER puntero grueso
+   (`any-pointer: coarse`) o si ya se toco la pantalla (`html.wx-tactil`, lo
+   pone wx-navegacion al primer toque). Pestana de 44x96 dentro de una zona de
+   56x112, y el glifo en columna para que se lea a distancia de brazo. Ademas
+   del tirador hay gesto: deslizar desde el borde izquierdo abre la barra, y
+   deslizar la barra hacia la izquierda vuelve al dock. */
+@media (hover: none), (any-pointer: coarse) {
+  .wxmodo { width: 56px; height: 112px; }
+  .wxmodo__pestana { width: 44px; height: 96px; padding-right: 0; justify-content: center;
+                     border-radius: 0 16px 16px 0; transform: translateX(0); }
   .wxmodo.es-sidebar .wxmodo__pestana { clip-path: inset(-12px -24px -12px -12px); }
-  .wxmodo__glifo { opacity: 1; }
+  .wxmodo__glifo { opacity: 1; flex-direction: column; gap: 7px; }
+  .wxmodo__pantalla { width: 18px; height: 15px; }
+  .wxmodo__flecha { font-size: 15px; }
 }
+:host-context(html.wx-tactil) .wxmodo { width: 56px; height: 112px; }
+:host-context(html.wx-tactil) .wxmodo__pestana { width: 44px; height: 96px; padding-right: 0; justify-content: center;
+                                                  border-radius: 0 16px 16px 0; transform: translateX(0); }
+:host-context(html.wx-tactil) .wxmodo.es-sidebar .wxmodo__pestana { clip-path: inset(-12px -24px -12px -12px); }
+:host-context(html.wx-tactil) .wxmodo__glifo { opacity: 1; flex-direction: column; gap: 7px; }
+:host-context(html.wx-tactil) .wxmodo__pantalla { width: 18px; height: 15px; }
+:host-context(html.wx-tactil) .wxmodo__flecha { font-size: 15px; }
+/* Al pulsar con el dedo, la pestana responde: se hunde un poco. */
+.wxmodo:active .wxmodo__pestana { scale: 0.96; }
 
 /* ------------------------------------------------------------------ tooltip
    Los tokens son los del primitivo `.wx-tip`: la misma pastilla que el resto
@@ -162,4 +186,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .wxmodo__pestana, .wxmodo__glifo, .wxmodo__tip { transition: none; }
+  .wxmodo:active .wxmodo__pestana { scale: none; }
 }

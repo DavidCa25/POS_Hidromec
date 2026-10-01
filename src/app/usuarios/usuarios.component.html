@@ -1,0 +1,154 @@
+<div class="us">
+
+  <header class="us-head">
+    <div class="us-head__ic"><i class="ph ph-identification-badge"></i></div>
+    <div class="us-head__txt">
+      <h1>Usuarios y permisos</h1>
+      <p>Quién trabaja en el negocio y qué puede hacer cada puesto.</p>
+    </div>
+    <button class="btn-primary" type="button" data-guide="usuarios-nuevo" (click)="nuevo()">
+      <i class="ph ph-plus"></i> Nuevo usuario
+    </button>
+  </header>
+
+  <div class="us-cuerpo">
+
+    <!-- ============================================================ organigrama -->
+    <section class="org" aria-label="Organigrama del equipo" data-guide="usuarios-organigrama">
+      <p class="us-cargando" *ngIf="cargando() && !usuarios().length">Cargando el equipo…</p>
+
+      <ng-container *ngIf="!cargando() || usuarios().length">
+        <div class="org-nivel" *ngFor="let n of niveles()">
+          <button type="button" class="org-rol" [class.es-elegido]="puesto()?.clave === n.clave && !persona()"
+                  [attr.data-guide]="'usuarios-puesto'" [attr.data-guide-clave]="n.clave"
+                  [attr.aria-pressed]="rolElegido() === n.clave"
+                  (click)="elegirPuesto(n.clave)">
+            <span class="org-rol__ic"><i class="ph {{ n.icono }}"></i></span>
+            <span class="org-rol__txt">
+              <b>{{ n.nombre }}</b>
+              <small>{{ n.lema }}</small>
+            </span>
+            <span class="org-rol__n">{{ n.gente.length }}</span>
+          </button>
+
+          <div class="org-gente" [class.varios]="n.gente.length > 1" *ngIf="n.gente.length; else vacio">
+            <button type="button" class="org-persona" *ngFor="let u of n.gente"
+                    [class.es-elegido]="personaElegida() === u.id" [class.inactivo]="!u.active"
+                    data-guide="usuarios-persona" [attr.data-guide-clave]="u.id"
+                    [attr.data-guide-estado]="u.active ? 'activo' : 'inactivo'"
+                    [attr.aria-pressed]="personaElegida() === u.id"
+                    (click)="elegirPersona(u)">
+              <wx-avatar [semilla]="'u:' + u.id" [nombre]="u.usuario" [size]="40"></wx-avatar>
+              <span class="org-persona__nom">{{ u.usuario }}</span>
+              <span class="org-persona__tag" *ngIf="u.id === yo">Tú</span>
+              <span class="org-persona__tag off" *ngIf="!u.active">Inactivo</span>
+            </button>
+          </div>
+          <ng-template #vacio>
+            <button type="button" class="org-vacio" (click)="nuevo(n.clave)">
+              <i class="ph ph-user-plus"></i> Nadie como {{ n.nombre }} todavía · Agregar
+            </button>
+          </ng-template>
+        </div>
+
+        <!-- Un rol que esta versión no conoce: se dice, no se disfraza. -->
+        <div class="org-sinrol" *ngIf="sinRol().length">
+          <p><i class="ph ph-warning"></i> Sin puesto reconocido: entran pero no pueden hacer nada.</p>
+          <div class="org-gente">
+            <button type="button" class="org-persona" *ngFor="let u of sinRol()"
+                    [class.es-elegido]="personaElegida() === u.id" (click)="elegirPersona(u)">
+              <wx-avatar [semilla]="'u:' + u.id" [nombre]="u.usuario" [size]="40"></wx-avatar>
+              <span class="org-persona__nom">{{ u.usuario }}</span>
+            </button>
+          </div>
+        </div>
+      </ng-container>
+    </section>
+
+    <!-- ============================================================ Wybix explica -->
+    <aside class="exp" aria-live="polite" data-guide="usuarios-explica">
+      <div class="exp-voz">
+        <div class="exp-voz__fig">
+          <wx-guide-speaker [estado]="estadoWybix()" [variante]="guia.variante()" [size]="72"></wx-guide-speaker>
+        </div>
+        <p class="exp-voz__globo">{{ frase() }}</p>
+      </div>
+
+      <!-- La persona elegida: quién es y qué se le puede hacer. -->
+      <div class="exp-persona" *ngIf="persona() as p">
+        <div class="exp-persona__cab">
+          <wx-avatar [semilla]="'u:' + p.id" [nombre]="p.usuario" [size]="40"></wx-avatar>
+          <div>
+            <b>{{ p.usuario }}</b>
+            <small [class.off]="!p.active">{{ p.active ? 'Activo' : 'Inactivo' }}</small>
+          </div>
+          <button type="button" class="exp-cerrar" (click)="limpiar()" aria-label="Quitar selección">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+
+        <label class="lbl" for="us-rol">Puesto</label>
+        <wx-select id="us-rol" [ngModel]="p.rol" (ngModelChange)="cambiarRol(p, $event)"
+                   [opciones]="opcionesRol" placeholder="Elegir puesto"></wx-select>
+
+        <div class="exp-acciones">
+          <button type="button" class="btn-outline" (click)="resetPassword(p)">
+            <i class="ph ph-key"></i> Cambiar contraseña
+          </button>
+          <button type="button" class="btn-outline" (click)="toggleActivo(p)">
+            <i class="ph" [ngClass]="p.active ? 'ph-user-minus' : 'ph-user-check'"></i>
+            {{ p.active ? 'Desactivar' : 'Activar' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Qué incluye el puesto: de la misma tabla con la que se autoriza. -->
+      <div class="exp-accesos" *ngIf="accesos() as a">
+        <h2 *ngIf="a.puede.length">Puede</h2>
+        <ul class="exp-lista" *ngIf="a.puede.length">
+          <li *ngFor="let x of a.puede">
+            <span class="exp-lista__ic si"><i class="ph {{ x.icono }}"></i></span>
+            <span><b>{{ x.titulo }}</b><small>{{ x.detalle }}</small></span>
+          </li>
+        </ul>
+        <h2 *ngIf="a.noPuede.length">No puede</h2>
+        <ul class="exp-lista no" *ngIf="a.noPuede.length">
+          <li *ngFor="let x of a.noPuede">
+            <span class="exp-lista__ic"><i class="ph {{ x.icono }}"></i></span>
+            <span><b>{{ x.titulo }}</b></span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Sin nada elegido: los tres puestos de un vistazo. -->
+      <ul class="exp-resumen" *ngIf="!puesto() && !persona()">
+        <li *ngFor="let n of niveles()">
+          <button type="button" (click)="elegirPuesto(n.clave)">
+            <i class="ph {{ n.icono }}"></i>
+            <span><b>{{ n.nombre }}</b> · {{ n.lema }}</span>
+            <i class="ph ph-caret-right"></i>
+          </button>
+        </li>
+      </ul>
+    </aside>
+  </div>
+</div>
+
+<!-- ================================================================ nuevo usuario -->
+<div class="us-modal" *ngIf="showNuevo" (click)="cerrarNuevo()">
+  <div class="us-dialog" role="dialog" aria-labelledby="us-nuevo-tit" (click)="$event.stopPropagation()">
+    <h3 id="us-nuevo-tit">Nuevo usuario</h3>
+    <label class="lbl" for="us-nuevo-usuario">Usuario</label>
+    <input id="us-nuevo-usuario" class="ctl" [(ngModel)]="form.usuario" placeholder="cajero1" [disabled]="guardando">
+    <label class="lbl" for="us-nuevo-pass">Contraseña</label>
+    <input id="us-nuevo-pass" class="ctl" type="password" [(ngModel)]="form.password" placeholder="Mínimo 6 caracteres" [disabled]="guardando">
+    <label class="lbl" for="us-nuevo-rol">Puesto</label>
+    <wx-select id="us-nuevo-rol" [(ngModel)]="form.rol" [opciones]="opcionesRol"></wx-select>
+    <div class="us-modal__acc">
+      <button class="btn-outline" type="button" (click)="cerrarNuevo()" [disabled]="guardando">Cancelar</button>
+      <button class="btn-primary" type="button" (click)="guardarNuevo()" [disabled]="guardando">
+        {{ guardando ? 'Creando…' : 'Crear usuario' }}
+      </button>
+    </div>
+  </div>
+</div>

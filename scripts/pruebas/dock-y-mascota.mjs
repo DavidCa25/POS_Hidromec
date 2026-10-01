@@ -98,12 +98,19 @@ check(/<wx-navegacion/.test(panelHtml) && /<wx-dock/.test(carcasa),
  * Esta lista no se genera: se escribio mirando el rail que habia. Generarla
  * desde el dock seria comprobar que el dock es igual a si mismo.
  */
+/*
+ * Se retiraron a proposito, despues: «Abrir cajon» (ahora es atajo de la caja,
+ * F1 en Retail y boton en Touch, con la misma autorizacion) y «Pago de
+ * servicios» (vive en Aplicaciones como no disponible: no hay contrato con
+ * TAECEL). Que NO vuelvan se comprueba abajo.
+ */
+const RETIRADOS_DEL_RAIL = ['/dashboard/abrir-cajon', '/dashboard/servicios'];
 const DESTINOS_DEL_RAIL = [
   '/dashboard/estadisticas', '/dashboard/alertas',
-  '/dashboard/venta', '/dashboard/abrir-cajon', '/dashboard/corte-dia', '/dashboard/tablaVenta',
+  '/dashboard/venta', '/dashboard/corte-dia', '/dashboard/tablaVenta',
   '/dashboard/inventario', '/dashboard/conteo', '/dashboard/recetas',
   '/dashboard/tablaCompra', '/dashboard/registrarCompra', '/dashboard/proveedores',
-  '/dashboard/clientes', '/dashboard/servicios', '/dashboard/facturacion',
+  '/dashboard/clientes', '/dashboard/facturacion',
   '/dashboard/fidelizacion', '/dashboard/ordenes-de-servicio',
   '/dashboard/aplicaciones', '/dashboard/configuracion',
   '/dashboard/importador', '/dashboard/migracion',
@@ -113,6 +120,10 @@ const perdidos = DESTINOS_DEL_RAIL.filter(r => !registro.includes(`'${r}'`));
 check(perdidos.length === 0,
   `las ${DESTINOS_DEL_RAIL.length} entradas del rail siguen alcanzables`,
   perdidos.length ? `se perdieron: ${perdidos.join(', ')}` : 'ninguna se quedo por el camino');
+const vueltos = RETIRADOS_DEL_RAIL.filter(r => registro.includes(`'${r}'`));
+check(vueltos.length === 0,
+  'abrir cajon y pago de servicios ya no son destinos del menu',
+  vueltos.length ? `volvieron: ${vueltos.join(', ')}` : 'el cajon es atajo de la caja; servicios, una aplicacion no disponible');
 
 check(/path: 'inicio'/.test(rutas) && /redirectTo: 'inicio'/.test(rutas),
   'y el panel tiene por fin pantalla de entrada');
@@ -485,7 +496,7 @@ check(/wx-avatar/.test(panelHtml) && /wx-yo__btn/.test(panelHtml),
 
 /*
  * Tenia «Crear usuario», y eso no es una accion sobre uno mismo; ademas crear
- * usuarios ya vive en Configuracion > Usuarios y permisos, con rol y
+ * usuarios ya vive en Usuarios y permisos (/dashboard/usuarios), con rol y
  * contrasena.
  */
 const bloqueYo = panelHtml.slice(panelHtml.indexOf('wx-yo__menu'));

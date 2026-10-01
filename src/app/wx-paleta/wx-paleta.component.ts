@@ -134,7 +134,6 @@ export class WxPaletaComponent implements OnInit {
       a('Nuevo cliente', '/dashboard/clientes', 'ph-user-plus', this.operarVentas),
       a('Registrar compra', '/dashboard/registrarCompra', 'ph-bag', this.operarInventario),
       a('Nuevo producto', '/dashboard/inventario', 'ph-package', this.operarInventario),
-      a('Abrir cajón', '/dashboard/abrir-cajon', 'ph-vault', this.supervisarVentas),
       a('Hacer corte del día', '/dashboard/corte-dia', 'ph-calendar-check', this.verNumeros),
       a('Registrar egreso', '/dashboard/egresos', 'ph-receipt', this.supervisarVentas && this.verNumeros),
       a('Registrar pago al personal', '/dashboard/pagos-personal', 'ph-hand-coins', this.supervisarVentas && this.verNumeros),

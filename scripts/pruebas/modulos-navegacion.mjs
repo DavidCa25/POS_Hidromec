@@ -160,12 +160,27 @@ check(/id: 'servicios'/.test(modulos), 'y Servicios tambien');
  * dos anos ahi y dejan de leerse. Un modulo real tiene capacidad y tiene ruta;
  * uno inventado, no.
  */
+/*
+ * LA UNICA EXCEPCION: `noDisponible`. Una integracion que EXISTE en el codigo
+ * pero que este negocio no puede usar por algo de fuera -Pago de servicios sin
+ * contrato con TAECEL- se ensena apagada y con el motivo, sin capacidad ni
+ * ruta. No es un "proximamente": dice por que no, en una frase, y esa frase es
+ * obligatoria.
+ */
+const bloques = modulos.split(/\r?\n\s{2}\{\r?\n/).slice(1);
+const noDisponibles = bloques
+  .filter(b => /noDisponible: '[^']{10,}'/.test(b))
+  .map(b => (b.match(/id: '([a-z-]+)'/) || [])[1]);
 const entradas = (modulos.match(/^\s{4}id: '([a-z-]+)'/gm) || [])
-  .map(l => l.replace(/^\s+id: '/, '').replace(/'$/, ''));
+  .map(l => l.replace(/^\s+id: '/, '').replace(/'$/, ''))
+  .filter(id => !noDisponibles.includes(id));
 const capacidades = (modulos.match(/capability: '([A-Za-z]+)'/g) || []).length;
 const conRuta = (modulos.match(/route: '/g) || []).length;
 
 check(entradas.length >= 1, 'el catalogo declara modulos', entradas.join(', '));
+check(noDisponibles.every(id => id === 'pago-servicios'),
+  'solo Pago de servicios esta como no disponible, y dice por que',
+  noDisponibles.join(', ') || 'ninguno');
 check(capacidades === entradas.length,
   'cada modulo apunta a una capacidad real de Capabilities',
   `${capacidades} capacidades para ${entradas.length} modulos`);
