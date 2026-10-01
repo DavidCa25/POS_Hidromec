@@ -162,7 +162,12 @@ ipcGuide.registrar({ ipcMain, poolPromise, app, demo, licencia: licenseStore });
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 const SUPABASE_URL = 'https://swlpspgmkwzlrowllvvj.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
+/* Las funciones que llama la caja (licencias, prueba gratis, pos-sync) van por
+   el dominio de Wybix, que hoy las reenvía a Supabase (vercel.json de la web).
+   Así, cambiar de backend es cambiar ese reenvío, no reinstalar cajas. La app
+   del dueño (QR) sigue usando SUPABASE_URL: habla con su autenticación. */
+const FUNCIONES_URL = 'https://www.wybixpos.com.mx/backend';
+const ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
 let businessConfig = null;
 
@@ -476,7 +481,7 @@ async function bootMainApp(poolYaAbierto) {
   /* La nube va por la Edge Function pos-sync (sin service role) y se pausa
      en Venta Esencial: es un servicio conectado. */
   cloudSync.configurar({
-    url: SUPABASE_URL, anonKey: ANON_KEY,
+    url: SUPABASE_URL, funciones: FUNCIONES_URL, anonKey: ANON_KEY,
     licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
   });
   cloudSync.startScheduler();
@@ -4985,7 +4990,7 @@ async function llamarLicencias(funcion, cuerpo, ms = 10000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/${funcion}`, {
+    const res = await fetch(`${FUNCIONES_URL}/functions/v1/${funcion}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}`, 'apikey': ANON_KEY },
       body: JSON.stringify(cuerpo),

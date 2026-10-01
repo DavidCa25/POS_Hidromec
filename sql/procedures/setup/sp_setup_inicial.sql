@@ -5,16 +5,21 @@
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[sp_setup_inicial]
-    @usuario        NVARCHAR(50),
-    @password       NVARCHAR(255),
-    @business_name  NVARCHAR(200),
+/* ---------- sp_setup_inicial (SQL_STORED_PROCEDURE) ----------
+   Definicion canonica. Modificar este archivo y crear una migracion.
+
+   Lo unico que cambia respecto de 0007 es el bloque marcado abajo: el alta
+   del negocio siembra tambien el registro de modulos. Va DENTRO de la misma
+   transaccion a proposito: un negocio a medio dar de alta —con perfil y sin
+   modulo— es exactamente el estado que produjo este fallo.
+*/
+CREATE OR ALTER PROCEDURE dbo.sp_setup_inicial
+    @usuario        NVARCHAR(100),
+    @password       NVARCHAR(100),
+    @business_name  NVARCHAR(200) = NULL,
     @address        NVARCHAR(300) = NULL,
     @phone          NVARCHAR(50)  = NULL,
     @rfc            NVARCHAR(50)  = NULL,
-    -- Que vende el negocio. Decide si existen recetas, ingredientes y
-    -- modificadores, asi que forma parte de la configuracion inicial: si se
-    -- deja fuera, el alta nace en RETAIL y el giro elegido se pierde.
     @business_profile NVARCHAR(20) = NULL
 AS
 BEGIN
@@ -39,8 +44,6 @@ BEGIN
         RETURN;
     END
 
-    -- Mismo contrato que sp_update_business_config: se valida aqui para que el
-    -- error diga que valor se esperaba, en vez de dejarlo al CHECK de la tabla.
     IF @business_profile IS NOT NULL
     BEGIN
         SET @business_profile = UPPER(LTRIM(RTRIM(@business_profile)));
@@ -54,7 +57,6 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        -- Mismo hash que sp_login_user y sp_add_user
         INSERT INTO dbo.users (usuario, password_hash, rol, active, creation_date)
         VALUES (
             @usuario,
@@ -73,6 +75,28 @@ BEGIN
             VALUES
                 (@business_name, @address, @phone, @rfc,
                  ISNULL(@business_profile, 'RETAIL'), 0, GETDATE());
+        END
+
+        /* ------------------------------------------- EL REGISTRO DE MODULOS
+           Un negocio de alimentos nace con Hospitality encendido AQUI, y no
+           solo con el perfil escrito. El perfil quedo como «con que nacio el
+           negocio»; quien gobierna el comportamiento es el registro, y hasta
+           ahora nadie lo escribia en el alta. */
+        IF OBJECT_ID(N'dbo.business_modules', 'U') IS NOT NULL
+        BEGIN
+            DECLARE @hosp BIT =
+                CASE WHEN ISNULL(@business_profile, 'RETAIL') = 'HOSPITALITY' THEN 1 ELSE 0 END;
+
+            MERGE dbo.business_modules AS d
+            USING (SELECT 'hospitality' AS module_key) AS s ON d.module_key = s.module_key
+            WHEN MATCHED AND d.enabled <> @hosp
+              THEN UPDATE SET enabled = @hosp,
+                              enabled_at = CASE WHEN @hosp = 1 THEN SYSDATETIME() ELSE enabled_at END,
+                              updated_at = SYSDATETIME()
+            WHEN NOT MATCHED
+              THEN INSERT (module_key, enabled, enabled_at, updated_at)
+                   VALUES ('hospitality', @hosp,
+                           CASE WHEN @hosp = 1 THEN SYSDATETIME() END, SYSDATETIME());
         END
 
         COMMIT TRAN;

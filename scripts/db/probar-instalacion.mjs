@@ -179,7 +179,13 @@ try {
   // El invariante del arriendo es que toda caja tiene su fila; sin ella, la
   // unica caja de una instalacion recien entregada seria la unica sin arriendo.
   const SEMBRADAS = {
-    registers: 1, register_assignments: 1, WA_Configuracion: 1, database_metadata: 1, uoms: 14,
+    registers: 1, register_assignments: 1, WA_Configuracion: 1, uoms: 14,
+    // baseline_version + security_model_version + security_revision (0029).
+    database_metadata: 3,
+    // 0049: el catalogo de tipos de caja es estructura (cash_movements.typee
+    // tiene llave foranea a el) y los conceptos de egreso son el punto de
+    // partida, con "Pago al personal" del sistema.
+    cash_movement_types: 9, expense_categories: 10,
     schema_migrations: archivos.length,
   };
   const sobra = filas.filter(f => SEMBRADAS[f.tabla] !== Number(f.filas));

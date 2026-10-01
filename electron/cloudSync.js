@@ -29,10 +29,10 @@ function setLicenseMachineId(id) { licenseMachineId = id ? String(id) : null; }
 
 /* Destino por omision (el proyecto de Wybix) y la LICENCIA: en Venta
    Esencial los servicios conectados se pausan. Los pone main.js. */
-let destino = { url: '', anonKey: '' };
+let destino = { url: '', funciones: '', anonKey: '' };
 let permitido = () => true;
-function configurar({ url, anonKey, licenciaPermite } = {}) {
-  destino = { url: url || destino.url, anonKey: anonKey || destino.anonKey };
+function configurar({ url, funciones, anonKey, licenciaPermite } = {}) {
+  destino = { url: url || destino.url, funciones: funciones || destino.funciones, anonKey: anonKey || destino.anonKey };
   if (typeof licenciaPermite === 'function') permitido = licenciaPermite;
 }
 
@@ -130,7 +130,11 @@ function setAnonKey(anonKey) {
 /** Llama a la Edge Function pos-sync. Solo anon key + el token de la sucursal. */
 async function gateway(action, cuerpo = {}, conToken = true) {
   const cfg = loadConfig();
-  const url = cfg.url || destino.url;
+  /* pos-sync va por el dominio de Wybix (ver FUNCIONES_URL en main.js). La
+     `url` guardada es la de Supabase que viaja en el QR de la app del dueño;
+     solo si una sucursal apunta a OTRO proyecto se respeta tal cual. */
+  const propia = cfg.url && cfg.url !== destino.url;
+  const url = propia ? cfg.url : (destino.funciones || destino.url);
   const anon = cfg.anonKey || destino.anonKey;
   if (!url || !anon) throw new Error('Falta la configuracion de la nube.');
   const headers = { 'Content-Type': 'application/json', apikey: anon, Authorization: `Bearer ${anon}` };
