@@ -1,0 +1,240 @@
+<div class="corte-container">
+  <div class="corte-card">
+    <div class="corte-header">
+      <h2>{{ titulo }}</h2>
+      <div class="header-right">
+        <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
+        <button class="btn btn-primary" *ngIf="puedeRegistrar" (click)="abrirFormulario()" data-guide="egresos-registrar">
+          + {{ personal ? 'Registrar pago' : 'Registrar egreso' }}
+        </button>
+      </div>
+    </div>
+
+    <p class="egr-intro" *ngIf="!personal">
+      Lo que sale del negocio y no es una compra: renta, luz, un Uber, el pago al personal.
+      Si se paga en efectivo sale del cajón y aparece en el corte; si no, solo queda registrado.
+      Las compras y los pagos a proveedores siguen en <strong>Compras</strong>.
+    </p>
+    <p class="egr-intro" *ngIf="personal">
+      Registro de lo que se le paga a cada persona del personal. No es nómina: sin percepciones, deducciones ni impuestos.
+    </p>
+
+    <!-- Filtros -->
+    <div class="filter-card">
+      <div class="egr-presets" role="radiogroup" aria-label="Periodo">
+        <button type="button" role="radio" *ngFor="let p of [['HOY','Hoy'],['SEMANA','Esta semana'],['MES','Este mes'],['MES_ANTERIOR','Mes anterior'],['RANGO','Rango']]"
+                class="egr-chip" [class.activa]="preset === p[0]" [attr.aria-checked]="preset === p[0]"
+                (click)="aplicarPreset($any(p[0]))">{{ p[1] }}</button>
+      </div>
+      <div class="filter-row egr-filtros">
+        <div class="filter-group" *ngIf="preset === 'RANGO'">
+          <label>Desde</label>
+          <wx-date [(ngModel)]="desde" name="desde" [limpiable]="false" (ngModelChange)="consultar()"></wx-date>
+        </div>
+        <div class="filter-group" *ngIf="preset === 'RANGO'">
+          <label>Hasta</label>
+          <wx-date [(ngModel)]="hasta" name="hasta" [limpiable]="false" (ngModelChange)="consultar()"></wx-date>
+        </div>
+        <div class="filter-group" *ngIf="!personal">
+          <label>Concepto</label>
+          <wx-select [opciones]="opcionesConceptoFiltro" [(ngModel)]="fConcepto" name="fConcepto" (ngModelChange)="consultar()"
+                     [buscable]="conceptos.length > 8"></wx-select>
+        </div>
+        <div class="filter-group">
+          <label>Persona</label>
+          <wx-select [opciones]="opcionesPersonaFiltro" [(ngModel)]="fPersona" name="fPersona" (ngModelChange)="consultar()"
+                     [buscable]="personas.length > 8"></wx-select>
+        </div>
+        <div class="filter-group">
+          <label>Forma de pago</label>
+          <wx-select [opciones]="opcionesFormaFiltro" [(ngModel)]="fForma" name="fForma" (ngModelChange)="consultar()"></wx-select>
+        </div>
+        <label class="egr-check">
+          <input type="checkbox" [(ngModel)]="fCancelados" name="fCancelados" (ngModelChange)="consultar()"> Ver cancelados
+        </label>
+      </div>
+    </div>
+
+    <div class="egr-error" *ngIf="error">{{ error }}</div>
+
+    <ng-container *ngIf="reporte as r">
+      <!-- KPIs -->
+      <div class="resumen-grid two">
+        <div class="kpi-card total">
+          <div class="kpi-title">{{ personal ? 'Total pagado' : 'Total de egresos' }}</div>
+          <div class="kpi-value">{{ money(r.total.total) }}</div>
+          <div class="kpi-nota">{{ r.total.egresos }} {{ r.total.egresos === 1 ? 'registro' : 'registros' }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Salió del cajón</div>
+          <div class="kpi-value">{{ money(r.total.del_cajon) }}</div>
+          <div class="kpi-nota">en efectivo, ya está en los cortes</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Por otros medios</div>
+          <div class="kpi-value">{{ money(r.total.total - r.total.del_cajon) }}</div>
+          <div class="kpi-nota">transferencia, tarjeta u otro</div>
+        </div>
+        <div class="kpi-card" *ngIf="personal">
+          <div class="kpi-title">Personas</div>
+          <div class="kpi-value">{{ r.porPersona.length }}</div>
+        </div>
+      </div>
+
+      <!-- Resumen: por concepto (Egresos) o por persona (Personal) -->
+      <div class="egr-resumen">
+        <section class="egr-bloque" *ngIf="!personal">
+          <h3>Por concepto</h3>
+          <div class="egr-barra" *ngFor="let c of r.porConcepto">
+            <span class="egr-barra-nombre">{{ c.category_name }}</span>
+            <span class="egr-barra-pista"><span class="egr-barra-lleno" [style.width.%]="100 * c.total / maxConcepto"></span></span>
+            <span class="egr-barra-monto">{{ money(c.total) }}</span>
+          </div>
+          <div class="egr-vacio" *ngIf="!r.porConcepto.length">Sin egresos en este periodo.</div>
+        </section>
+        <section class="egr-bloque" *ngIf="personal || r.porPersona.length">
+          <h3>Por persona</h3>
+          <div class="egr-barra" *ngFor="let p of r.porPersona">
+            <button type="button" class="egr-barra-nombre egr-link" (click)="fPersona = p.staff_user_id; consultar()">{{ p.staff_name }}</button>
+            <span class="egr-barra-pista"><span class="egr-barra-lleno" [style.width.%]="100 * p.total / maxPersona"></span></span>
+            <span class="egr-barra-monto">{{ money(p.total) }} <small>· {{ p.pagos }} {{ p.pagos === 1 ? 'pago' : 'pagos' }}</small></span>
+          </div>
+          <div class="egr-vacio" *ngIf="!r.porPersona.length">Sin pagos al personal en este periodo.</div>
+        </section>
+        <section class="egr-bloque">
+          <h3>Por forma de pago</h3>
+          <div class="egr-forma" *ngFor="let f of r.porForma">
+            <span>{{ etiquetaForma(f.payment_method) }}</span><strong>{{ money(f.total) }}</strong>
+          </div>
+          <div class="egr-vacio" *ngIf="!r.porForma.length">—</div>
+        </section>
+      </div>
+
+      <!-- Historial -->
+      <div class="tabla-wrap">
+        <table class="tabla-corte">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th *ngIf="!personal">Concepto</th>
+              <th>{{ personal ? 'Persona' : 'A quién' }}</th>
+              <th *ngIf="personal">Periodo pagado</th>
+              <th>Forma</th>
+              <th class="right">Monto</th>
+              <th>Nota</th>
+              <th>Registró</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let f of r.filas" [class.egr-cancelado]="f.voided_at">
+              <td>{{ f.expense_date | date:'d MMM y' }}</td>
+              <td *ngIf="!personal">{{ f.category_name }}</td>
+              <td>{{ f.staff_name || f.beneficiary || '—' }}</td>
+              <td *ngIf="personal">{{ periodo(f) }}</td>
+              <td>
+                {{ etiquetaForma(f.payment_method) }}
+                <small class="egr-caja" *ngIf="f.payment_method === 'EFECTIVO' && f.register_name">· {{ f.register_name }}</small>
+              </td>
+              <td class="right">{{ money(f.amount) }}</td>
+              <td class="egr-nota">
+                {{ f.note }}
+                <div class="egr-motivo" *ngIf="f.voided_at">Cancelado por {{ f.voided_by_name }}: {{ f.void_reason }}</div>
+              </td>
+              <td>{{ f.user_name }}</td>
+              <td class="egr-acciones">
+                <button type="button" class="btn btn-ghost btn-sm" *ngIf="puedeRegistrar && !f.voided_at" (click)="abrirFormulario(f)" title="Registrar otro igual">
+                  <i class="ph ph-arrow-counter-clockwise"></i> Repetir
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm egr-peligro" *ngIf="puedeRegistrar && f.cancelable" (click)="cancelar(f)">
+                  Cancelar
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="!r.filas.length">
+              <td [attr.colspan]="9" class="egr-vacio">{{ personal ? 'No hay pagos al personal en este periodo.' : 'No hay egresos en este periodo.' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+    <div class="egr-vacio" *ngIf="cargando && !reporte">Cargando…</div>
+  </div>
+</div>
+
+<!-- Formulario de registro -->
+<div class="modal fade show d-block" *ngIf="formAbierto" style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">{{ formEsPersonal ? 'Pago al personal' : 'Registrar egreso' }}</h5>
+        <button type="button" class="btn-close" (click)="cerrarFormulario()"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-3">
+        <div class="mb-3" *ngIf="!personal">
+          <label class="form-label">Concepto</label>
+          <wx-select [opciones]="opcionesConcepto" [(ngModel)]="form.category_id" name="fcat" placeholder="¿En qué se gastó?"
+                     [buscable]="opcionesConcepto.length > 8"></wx-select>
+        </div>
+        <div class="mb-3" *ngIf="formEsPersonal">
+          <label class="form-label">¿A quién se le paga?</label>
+          <wx-select [opciones]="personas" [(ngModel)]="form.staff_user_id" name="fstaff" placeholder="Elige a la persona"
+                     [buscable]="personas.length > 8" vacio="No hay personal"></wx-select>
+        </div>
+        <div class="mb-3" *ngIf="formEsPersonal">
+          <label class="form-label">Periodo que se paga</label>
+          <div class="egr-presets" role="radiogroup" aria-label="Periodo que se paga">
+            <button type="button" role="radio" *ngFor="let p of periodos" class="egr-chip"
+                    [class.activa]="form.period_kind === p.valor" [attr.aria-checked]="form.period_kind === p.valor"
+                    (click)="form.period_kind = p.valor">{{ p.etiqueta }}</button>
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <div *ngIf="form.period_kind !== 'SEMANA'" style="flex:1">
+              <wx-date [(ngModel)]="form.period_from" name="fpf" [placeholder]="form.period_kind === 'DIA' ? 'Día (hoy si lo dejas vacío)' : 'Desde'"></wx-date>
+            </div>
+            <div *ngIf="form.period_kind === 'OTRO'" style="flex:1">
+              <wx-date [(ngModel)]="form.period_to" name="fpt" placeholder="Hasta"></wx-date>
+            </div>
+          </div>
+          <div class="small text-muted mt-1" *ngIf="form.period_kind === 'SEMANA'">Se registra la semana (lunes a domingo) de la fecha del pago.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Forma de pago</label>
+          <div class="egr-presets" role="radiogroup" aria-label="Forma de pago">
+            <button type="button" role="radio" *ngFor="let f of formas" class="egr-chip"
+                    [class.activa]="form.payment_method === f.valor" [attr.aria-checked]="form.payment_method === f.valor"
+                    (click)="form.payment_method = f.valor"><i class="ph {{ f.icono }}"></i> {{ f.etiqueta }}</button>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <div class="mb-3" style="flex:1">
+            <label class="form-label">Monto</label>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="form.amount" name="famount" placeholder="0.00">
+          </div>
+          <div class="mb-3" style="flex:1" *ngIf="form.payment_method !== 'EFECTIVO'">
+            <label class="form-label">Fecha del pago</label>
+            <wx-date [(ngModel)]="form.expense_date" name="fdate" [limpiable]="false"></wx-date>
+          </div>
+        </div>
+        <div class="mb-3" *ngIf="!formEsPersonal">
+          <label class="form-label">A quién se le pagó <span class="text-muted small">(opcional)</span></label>
+          <input class="form-control" [(ngModel)]="form.beneficiary" name="fben" maxlength="120" placeholder="Ej. Arrendador, CFE, Uber">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Nota <span class="text-muted small">(opcional)</span></label>
+          <textarea class="form-control" rows="2" [(ngModel)]="form.note" name="fnote" maxlength="255"></textarea>
+        </div>
+        <div class="alert small" [class.alert-info]="form.payment_method === 'EFECTIVO'" [class.alert-secondary]="form.payment_method !== 'EFECTIVO'">
+          <ng-container *ngIf="form.payment_method === 'EFECTIVO'">
+            Sale <strong>hoy</strong> del cajón de esta caja (necesita su turno abierto) y aparece en su corte.
+          </ng-container>
+          <ng-container *ngIf="form.payment_method !== 'EFECTIVO'">No sale del cajón: se registra y el corte no cambia.</ng-container>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarFormulario()">Cancelar</button>
+          <button type="button" class="btn btn-primary" (click)="guardar()" [disabled]="guardando">{{ guardando ? 'Registrando…' : 'Registrar' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

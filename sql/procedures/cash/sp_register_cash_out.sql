@@ -6,34 +6,38 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 /* ====================== sp_register_cash_out ====================== */
+/* RETIRO DE CAJA. Dinero que cambia de lugar (al dueno, al banco): no es un
+   gasto y sigue siendo WITHDRAW. Un gasto va por sp_register_expense y un
+   pago a proveedor por sp_register_supplier_payment.
+   0049: la caja ya no cae a "la primera de la tabla"; la decide
+   sp_resolve_cash_register, igual que el resto del dinero. */
 CREATE OR ALTER PROCEDURE [dbo].[sp_register_cash_out]
   @user_id       INT,
   @amount        DECIMAL(10,2),
   @note          NVARCHAR(255),
-  @register_id   INT = NULL             -- multicaja
+  @register_id   INT = NULL,            -- multicaja
+  @machine_id    NVARCHAR(64) = NULL,
+  @machine_name  NVARCHAR(120) = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
   SET XACT_ABORT ON;
   DECLARE @cash_id INT;
 
-  IF @register_id IS NULL
-      SELECT TOP 1 @register_id = id FROM dbo.registers ORDER BY id;
-
   BEGIN TRY
     BEGIN TRAN;
     IF (@amount IS NULL OR @amount <= 0)
-    BEGIN
       RAISERROR('El monto debe ser mayor a cero.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
-    END
     IF (LTRIM(RTRIM(ISNULL(@note,''))) = '')
-    BEGIN
       RAISERROR('La nota es obligatoria.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
-    END
+
+    DECLARE @caja INT;
+    EXEC dbo.sp_resolve_cash_register
+        @register_id = @register_id, @machine_id = @machine_id,
+        @machine_name = @machine_name, @user_id = @user_id, @resolved = @caja OUTPUT;
+    IF @caja IS NULL
+      RAISERROR('No se pudo determinar la caja del retiro. Abre el turno en esta caja e intenta de nuevo.',16,1);
+    SET @register_id = @caja;
 
     DECLARE @closure_id_open INT;
     SELECT TOP(1) @closure_id_open = id
@@ -43,11 +47,7 @@ BEGIN
     ORDER BY opened_at DESC, id DESC;
 
     IF @closure_id_open IS NULL
-    BEGIN
       RAISERROR('No hay un turno abierto en esta caja para registrar salida de efectivo.',16,1);
-      ROLLBACK TRAN;
-      RETURN;
-    END
 
     INSERT INTO cash_movements(
       datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id

@@ -1,5 +1,6 @@
 import { DecimalPipe, CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { ActividadHorariaComponent } from './actividad-horaria/actividad-horaria.component';
 import { fechaLocal } from '../core';
@@ -12,7 +13,7 @@ type ViewMode = 'week' | 'month';
   templateUrl: './estadisticas.html',
   styleUrls: ['./estadisticas.css'],
   standalone: true,
-  imports: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadHorariaComponent]
+  imports: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadHorariaComponent, RouterLink]
 })
 export class Estadisticas {
   seg: Seg = 'ventas';
@@ -43,6 +44,8 @@ export class Estadisticas {
   cashEntradas = 0;
   cashSalidas = 0;
   cashPagosProv = 0;
+  cashRetiros = 0;
+  cashEgresos = 0;
 
   // ---- Charts ----
   areaChartSeries = [{ name: 'Ventas', data: [] as number[] }];
@@ -186,6 +189,8 @@ export class Estadisticas {
       this.cashEntradas = this.asNumber(c.entradas);
       this.cashSalidas = this.asNumber(c.salidas);
       this.cashPagosProv = this.asNumber(c.pagos_proveedores);
+      this.cashRetiros = this.asNumber(c.retiros);
+      this.cashEgresos = this.asNumber(c.egresos);
     } catch (e) { console.error('loadCaja', e); }
   }
 }

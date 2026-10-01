@@ -63,7 +63,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSuppliersAccount: () => ipcRenderer.invoke('sp-get-suppliers-account'),
     getSupplierAccountDetail: (payload) => ipcRenderer.invoke('sp-get-supplier-account-detail', payload),
     supplierSave: (payload) => ipcRenderer.invoke('sp-supplier-save', payload),
-    paySupplier: (payload) => ipcRenderer.invoke('sp-pay-supplier', payload),
     topCustomers: (payload) => ipcRenderer.invoke('sp-top-customers', payload),
     salesByPayment: (payload) => ipcRenderer.invoke('sp-sales-by-payment', payload),
     deadProducts: (payload) => ipcRenderer.invoke('sp-dead-products', payload),
@@ -137,6 +136,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>
         ipcRenderer.invoke('sp-register-cash-out', payload),
+    /* Egresos y pagos al personal (0049). Un pago al personal es un egreso de
+       concepto "Pago al personal": mismo canal, misma fuente de verdad. */
+    egresosConceptos: (p) => ipcRenderer.invoke('egresos:conceptos', p),
+    egresosConceptoGuardar: (p) => ipcRenderer.invoke('egresos:concepto-guardar', p),
+    egresosConceptoMover: (p) => ipcRenderer.invoke('egresos:concepto-mover', p),
+    egresosPersonal: () => ipcRenderer.invoke('egresos:personal'),
+    egresosRegistrar: (p) => ipcRenderer.invoke('egresos:registrar', p),
+    egresosCancelar: (p) => ipcRenderer.invoke('egresos:cancelar', p),
+    egresosListar: (p) => ipcRenderer.invoke('egresos:listar', p),
     generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
     getConfig: () => ipcRenderer.invoke("getConfig"),
     // Solo lectura: dice si la BASE es de demostracion, para poder marcarlo en

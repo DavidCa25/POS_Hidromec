@@ -74,3 +74,54 @@ WHEN NOT MATCHED THEN
     INSERT (code, name, dimension, factor_to_base, is_base, sort_order)
     VALUES (s.code, s.name, s.dimension, s.factor_to_base, s.is_base, s.sort_order);
 GO
+
+/* Modelo de seguridad (migracion 0029). La aplicacion tolera que falten
+ * (usa valores por omision), pero una instalacion nueva debe quedar igual
+ * que una actualizada: mismas filas, mismos valores iniciales. */
+IF OBJECT_ID(N'dbo.database_metadata', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.database_metadata WHERE clave = 'security_model_version')
+    INSERT INTO dbo.database_metadata (clave, valor) VALUES ('security_model_version', '1');
+IF OBJECT_ID(N'dbo.database_metadata', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.database_metadata WHERE clave = 'security_revision')
+    INSERT INTO dbo.database_metadata (clave, valor) VALUES ('security_revision', '1');
+GO
+
+/* Catalogo de tipos de movimiento de caja (migracion 0049). OBLIGATORIO:
+ * cash_movements.typee tiene llave foranea a esta tabla, asi que sin estas
+ * filas la primera venta en efectivo de una instalacion nueva fallaria.
+ * Mismo MERGE que la migracion. */
+IF OBJECT_ID(N'dbo.cash_movement_types', 'U') IS NOT NULL
+MERGE dbo.cash_movement_types AS t
+USING (VALUES
+    ('OPENING',          N'Fondo inicial',                 'FONDO',        10),
+    ('SALE',             N'Venta en efectivo',             'VENTAS',       20),
+    ('SALE_ADJ',         N'Ajuste de venta',               'AJUSTES',      30),
+    ('PAYMENT',          N'Abono de cliente en efectivo',  'ABONOS',       40),
+    ('DEPOSIT',          N'Entrada de efectivo',           'ENTRADAS',     50),
+    ('REFUND',           N'Devolucion en efectivo',        'DEVOLUCIONES', 60),
+    ('WITHDRAW',         N'Retiro de caja',                'RETIROS',      70),
+    ('SUPPLIER_PAYMENT', N'Pago a proveedor en efectivo',  'PROVEEDORES',  80),
+    ('EXPENSE',          N'Egreso en efectivo',            'EGRESOS',      90)
+) AS s (code, label, grupo, sort_order)
+ON t.code = s.code
+WHEN NOT MATCHED THEN
+    INSERT (code, label, grupo, sort_order) VALUES (s.code, s.label, s.grupo, s.sort_order);
+GO
+
+/* Conceptos de egreso iniciales (migracion 0049). "Pago al personal" es del
+ * sistema: sin el no se puede registrar un pago al personal. El resto es un
+ * punto de partida que cada negocio edita. */
+IF OBJECT_ID(N'dbo.expense_categories', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.expense_categories)
+    INSERT INTO dbo.expense_categories (name, kind, is_system, sort_order) VALUES
+        (N'Pago al personal', 'PERSONAL', 1, 10),
+        (N'Renta',            'GENERAL',  0, 20),
+        (N'Luz',              'GENERAL',  0, 30),
+        (N'Agua',             'GENERAL',  0, 40),
+        (N'Gas',              'GENERAL',  0, 50),
+        (N'Internet',         'GENERAL',  0, 60),
+        (N'Publicidad',       'GENERAL',  0, 70),
+        (N'Limpieza',         'GENERAL',  0, 80),
+        (N'Mantenimiento',    'GENERAL',  0, 90),
+        (N'Otros',            'GENERAL',  0, 1000);
+GO

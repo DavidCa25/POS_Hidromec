@@ -105,12 +105,22 @@ export class ShiftService {
     });
   }
 
-  /** Pago a proveedor ligado a una salida de efectivo. */
-  async paySupplier(payload: { supplier_id: number; amount: number; note: string; cash_movement_id: number | null }): Promise<void> {
-    await this.bridge.api?.paySupplier?.({
+  /**
+   * Pago a proveedor en efectivo desde el cajon de ESTA caja.
+   *
+   * Va por la puerta unica (`sp-register-supplier-payment`), que registra el
+   * pago y su salida del cajon en una sola transaccion. Antes esto era un
+   * retiro (WITHDRAW) mas un INSERT aparte cuyo resultado se ignoraba: si el
+   * INSERT fallaba, el dinero salia del cajon sin abonarse al proveedor.
+   */
+  async paySupplierCash(payload: { supplier_id: number; amount: number; note: string }): Promise<any> {
+    const api = this.bridge.api;
+    if (!api?.registerSupplierPayment) return { success: false, error: 'No se pudo registrar el pago (API no disponible).' };
+    return api.registerSupplierPayment({
       ...payload,
       user_id: this.userId,
       payment_method: 'EFECTIVO',
+      register_id: this.register.registerId,
     });
   }
 

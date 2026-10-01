@@ -78,6 +78,10 @@ export const routes: Routes = [
       { path: 'salon', canActivate: [puedeConfigurarSalon], loadComponent: () => import('../hospitality/salon-admin/salon-admin.component').then(m => m.SalonAdminComponent) },
       { path: 'corte-dia', loadComponent: () => import('../venta/appCorte/corte').then(m => m.Corte) },
       { path: 'abrir-cajon', loadComponent: () => import('../venta/appCajon/abrirCajon').then(m => m.Cajon) },
+      /* Egresos y Pagos al personal: un solo componente, un solo modelo (un
+         pago al personal ES un egreso). La ruta elige la vista. */
+      { path: 'egresos', data: { modo: 'egresos' }, loadComponent: () => import('../egresos/egresos').then(m => m.Egresos) },
+      { path: 'pagos-personal', data: { modo: 'personal' }, loadComponent: () => import('../egresos/egresos').then(m => m.Egresos) },
       { path: 'tablaVenta', loadComponent: () => import('../venta/tablaVenta/tablaVenta').then(m => m.TablaVentaComponent) },
 
       // ---- Backoffice ----

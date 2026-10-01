@@ -58,6 +58,15 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 color: 'green',
                 size: '1x1',
                 load: () => import('../formas-pago-panel/formas-pago.component').then(m => m.FormasPagoPanelComponent)
+            },
+            {
+                id: 'conceptos-egreso',
+                title: 'Conceptos de egreso',
+                desc: 'Renta, luz, Uber, Didi, gas… en qué gasta tu negocio',
+                icon: 'receipt',
+                color: 'orange',
+                size: '1x1',
+                load: () => import('../conceptos-egreso-panel/conceptos-egreso.component').then(m => m.ConceptosEgresoPanelComponent)
             }
         ]
     },

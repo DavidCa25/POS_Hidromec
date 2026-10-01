@@ -14,6 +14,12 @@ GO
 --              arqueo salia corto por dinero que nunca estuvo ahi. Y el
 --              movimiento nacia sin closure_id ni register_id, asi que en
 --              multicaja podia acabar en el corte de otra.
+-- Update 0049: es la PUERTA UNICA para pagar a un proveedor desde cualquier
+--              pantalla (Proveedores y "salida de efectivo" en Venta). La
+--              escritura del pago y de su salida del cajon vive en
+--              sp_supplier_payment_apply, que tambien usa la compra de
+--              contado. La caja ya no cae a "la primera": la decide
+--              sp_resolve_cash_register, igual que el resto del dinero.
 -- =============================================
 CREATE OR ALTER PROCEDURE dbo.sp_register_supplier_payment
   @user_id        INT,
@@ -22,105 +28,56 @@ CREATE OR ALTER PROCEDURE dbo.sp_register_supplier_payment
   @amount         DECIMAL(10,2),
   @payment_method NVARCHAR(50),
   @note           NVARCHAR(255) = NULL,
-  @register_id    INT = NULL
+  @register_id    INT = NULL,
+  @machine_id     NVARCHAR(64) = NULL,
+  @machine_name   NVARCHAR(120) = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
   SET XACT_ABORT ON;
 
   DECLARE @currentBalance DECIMAL(10,2);
-  DECLARE @payment_id INT, @cash_id INT = NULL;
+  DECLARE @payment_id INT, @cash_id INT, @closure_id INT;
   DECLARE @metodo NVARCHAR(50) = UPPER(LTRIM(RTRIM(ISNULL(@payment_method, 'EFECTIVO'))));
-  DECLARE @closure_id INT = NULL;
-
-  IF @register_id IS NULL
-      SELECT TOP 1 @register_id = id FROM dbo.registers ORDER BY id;
-
-  IF @metodo = 'EFECTIVO'
-  BEGIN
-    SELECT TOP (1) @closure_id = id
-    FROM dbo.cash_closures
-    WHERE register_id = @register_id
-      AND closed_at IS NULL
-    ORDER BY opened_at DESC, id DESC;
-
-    IF @closure_id IS NULL
-    BEGIN
-      RAISERROR('Para pagar en efectivo hace falta un turno abierto en esta caja.',16,1);
-      RETURN;
-    END
-  END
+  DECLARE @caja INT;
 
   BEGIN TRY
     BEGIN TRAN;
 
+    /* Solo el efectivo necesita caja; lo demas no pasa por el cajon. */
+    IF @metodo = 'EFECTIVO'
+    BEGIN
+      EXEC dbo.sp_resolve_cash_register
+          @register_id = @register_id, @machine_id = @machine_id,
+          @machine_name = @machine_name, @user_id = @user_id,
+          @resolved = @caja OUTPUT;
+      IF @caja IS NULL
+        RAISERROR('No se pudo determinar la caja de la que sale el efectivo. Abre el turno en esta caja e intenta de nuevo.', 16, 1);
+    END
+
     IF @purchase_id IS NOT NULL
     BEGIN
       SELECT @currentBalance = balance
-      FROM purchase WITH (UPDLOCK, HOLDLOCK)
+      FROM dbo.purchase WITH (UPDLOCK, HOLDLOCK)
       WHERE id = @purchase_id
         AND supplier_id = @supplier_id;
 
       IF @currentBalance IS NULL
-      BEGIN
-        RAISERROR('La compra no existe o no pertenece al proveedor.',16,1);
-        ROLLBACK TRAN;
-        RETURN;
-      END
+        RAISERROR('La compra no existe o no pertenece al proveedor.', 16, 1);
 
       IF @amount > @currentBalance
-      BEGIN
-        RAISERROR('El pago no puede ser mayor al saldo de la compra.',16,1);
-        ROLLBACK TRAN;
-        RETURN;
-      END
+        RAISERROR('El pago no puede ser mayor al saldo de la compra.', 16, 1);
     END
 
-    -- 1) Registrar pago a proveedor
-    INSERT INTO supplier_payments(
-      supplier_id, purchase_id, amount, payment_method, user_id, note
-    )
-    VALUES(
-      @supplier_id, @purchase_id, @amount, @metodo, @user_id, @note
-    );
+    EXEC dbo.sp_supplier_payment_apply
+        @user_id = @user_id, @supplier_id = @supplier_id, @purchase_id = @purchase_id,
+        @amount = @amount, @payment_method = @metodo, @note = @note,
+        @register_id = @caja,
+        @payment_id = @payment_id OUTPUT, @cash_id = @cash_id OUTPUT, @closure_id = @closure_id OUTPUT;
 
-    SET @payment_id = SCOPE_IDENTITY();
-
-    -- 2) Movimiento de CAJA (salida). SOLO en efectivo: un cheque o una
-    --    transferencia salen del banco, no del cajon.
-    IF @metodo = 'EFECTIVO'
-    BEGIN
-      INSERT INTO cash_movements(
-        datee, userId, typee, reference_id, reference, amount, note,
-        closure_id, register_id
-      )
-      VALUES(
-        GETDATE(),
-        @user_id,
-        'SUPPLIER_PAYMENT',
-        @payment_id,
-        CONCAT('Pago prov. ', @supplier_id,
-               CASE WHEN @purchase_id IS NOT NULL
-                    THEN CONCAT(' compra ', @purchase_id)
-                    ELSE ''
-               END),
-        -@amount,
-        @note,
-        @closure_id,
-        @register_id
-      );
-
-      SET @cash_id = SCOPE_IDENTITY();
-
-      UPDATE supplier_payments
-        SET cash_movement_id = @cash_id
-      WHERE id = @payment_id;
-    END
-
-    -- 3) Actualizar saldo de la compra (si aplica)
     IF @purchase_id IS NOT NULL
     BEGIN
-      UPDATE purchase
+      UPDATE dbo.purchase
       SET balance = balance - @amount,
           payment_status = CASE
                              WHEN balance - @amount <= 0 THEN 'PAGADO'
@@ -131,7 +88,8 @@ BEGIN
 
     COMMIT TRAN;
 
-    SELECT @payment_id AS payment_id, @cash_id AS cash_movement_id;
+    SELECT @payment_id AS payment_id, @cash_id AS cash_movement_id,
+           @closure_id AS closure_id, @caja AS register_id;
   END TRY
   BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRAN;

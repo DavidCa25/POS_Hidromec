@@ -11,16 +11,27 @@ CREATE OR ALTER PROCEDURE dbo.sp_register_customer_payment
     @amount         DECIMAL(10,2),
     @user_id        INT,
     @payment_method NVARCHAR(50),     -- EFECTIVO / TARJETA / TRANSFERENCIA
-    @note           NVARCHAR(255) = NULL
+    @note           NVARCHAR(255) = NULL,
+    @register_id    INT = NULL,       -- 0049: la caja que recibe el efectivo
+    @machine_id     NVARCHAR(64) = NULL,
+    @machine_name   NVARCHAR(120) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    /* 0049: SOLO EL EFECTIVO ENTRA AL CAJON. Antes cada abono -tambien con
+       tarjeta o transferencia- dejaba un PAYMENT en la caja, sin caja ni
+       turno: el corte esperaba dinero que nunca estuvo en el cajon y reportaba
+       un faltante inexistente. En MultiCaja ademas caia en la Caja 1. */
     DECLARE @currentBalance DECIMAL(10,2);
     DECLARE @paidAmount     DECIMAL(10,2);
     DECLARE @saleMethod     NVARCHAR(50);
     DECLARE @payment_id     INT;
+    DECLARE @metodo         NVARCHAR(50) = UPPER(LTRIM(RTRIM(ISNULL(@payment_method, N''))));
+    DECLARE @caja           INT = NULL;
+    DECLARE @closure_id     INT = NULL;
+    DECLARE @cash_id        INT = NULL;
 
     IF @amount <= 0
     BEGIN
@@ -98,27 +109,31 @@ BEGIN
 
         SET @payment_id = SCOPE_IDENTITY();
 
-        -- 4) Movimiento de caja
-        INSERT INTO cash_movements
-        (
-            datee,
-            userId,
-            typee,
-            reference_id,
-            reference,
-            amount,
-            note
-        )
-        VALUES
-        (
-            SYSDATETIME(),
-            @user_id,
-            'PAYMENT',
-            @payment_id,   -- puedes usar @sale_id si prefieres
-            CONCAT('Abono venta ', @sale_id, ' cliente ', @customer_id),
-            @amount,
-            @note
-        );
+        -- 4) Movimiento de caja: SOLO si el abono fue en efectivo, en el turno
+        --    abierto de la caja que lo recibe.
+        IF @metodo = 'EFECTIVO'
+        BEGIN
+            EXEC dbo.sp_resolve_cash_register
+                @register_id = @register_id, @machine_id = @machine_id,
+                @machine_name = @machine_name, @user_id = @user_id, @resolved = @caja OUTPUT;
+            IF @caja IS NULL
+                RAISERROR('No se pudo determinar la caja que recibe el efectivo. Abre el turno en esta caja e intenta de nuevo.', 16, 1);
+
+            SELECT TOP (1) @closure_id = id
+              FROM dbo.cash_closures WITH (UPDLOCK, HOLDLOCK)
+             WHERE register_id = @caja AND closed_at IS NULL
+             ORDER BY opened_at DESC, id DESC;
+            IF @closure_id IS NULL
+                RAISERROR('Para recibir un abono en efectivo hace falta un turno abierto en esta caja.', 16, 1);
+
+            INSERT INTO cash_movements
+                (datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id)
+            VALUES
+                (SYSDATETIME(), @user_id, 'PAYMENT', @payment_id,
+                 CONCAT('Abono venta ', @sale_id, ' cliente ', @customer_id),
+                 @amount, @note, @closure_id, @caja);
+            SET @cash_id = SCOPE_IDENTITY();
+        END
 
         COMMIT TRAN;
 
@@ -128,7 +143,10 @@ BEGIN
             @sale_id    AS sale_id,
             @customer_id AS customer_id,
             @amount     AS amount,
-            (SELECT balance FROM sales WHERE id = @sale_id) AS new_balance;
+            (SELECT balance FROM sales WHERE id = @sale_id) AS new_balance,
+            @cash_id    AS cash_movement_id,
+            @closure_id AS closure_id,
+            @caja       AS register_id;
 
     END TRY
     BEGIN CATCH

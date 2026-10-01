@@ -89,7 +89,6 @@ const EXIGE = {
   'inventory:apply-count': INVENTARIO_OPERAR,
   'sp-register-purchase': INVENTARIO_OPERAR,
   'sp-register-supplier-payment': INVENTARIO_OPERAR,
-  'sp-pay-supplier': INVENTARIO_OPERAR,
   'sp-add-supplier': INVENTARIO_OPERAR,
   'sp-supplier-save': INVENTARIO_OPERAR,
   'sp-upsert-product-supplier': INVENTARIO_OPERAR,
@@ -108,6 +107,18 @@ const EXIGE = {
   'modifiers:delete': INVENTARIO_OPERAR,
   'modifiers:set-product-groups': INVENTARIO_OPERAR,
 
+  // -------------------------------------------------------------- egresos
+  // Un egreso saca dinero del negocio (renta, luz, un Uber, el pago de la
+  // semana a alguien): lo registra quien responde del turno, no el Operador.
+  // El retiro de caja simple (`sp-register-cash-out`) sigue como estaba.
+  'egresos:conceptos': VENTAS_SUPERVISAR,
+  'egresos:personal': VENTAS_SUPERVISAR,
+  'egresos:registrar': VENTAS_SUPERVISAR,
+  'egresos:cancelar': VENTAS_SUPERVISAR,
+  // Que conceptos existen es una decision del negocio, como las formas de pago.
+  'egresos:concepto-guardar': CONFIGURACION_ADMINISTRAR,
+  'egresos:concepto-mover': CONFIGURACION_ADMINISTRAR,
+
   // ------------------------------------------------------------------ reportes
   // Solo lo que enseña el dinero del negocio o señala a una persona. Las
   // consultas que el mostrador necesita para trabajar —su turno, sus ventas,
@@ -115,6 +126,9 @@ const EXIGE = {
   // del Operador en una pantalla de errores.
   'export-sales-pdf': REPORTES_VER,
   'sp-cash-summary': REPORTES_VER,
+  // Historial y reporte de egresos y de pagos al personal: es dinero del
+  // negocio y dice cuanto se le paga a cada persona.
+  'egresos:listar': REPORTES_VER,
   'sp-get-profit-overview': REPORTES_VER,
   'sp-dead-products': REPORTES_VER,
   'security:by-cashier': REPORTES_VER,

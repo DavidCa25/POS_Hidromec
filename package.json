@@ -29,6 +29,7 @@
     "db:test-baja": "node scripts/db/pruebas/baja-producto.mjs",
     "db:test-turno": "node scripts/db/pruebas/turno.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
+    "db:test-egresos": "node scripts/db/pruebas/egresos.mjs",
     "db:test-bebidas": "node scripts/db/pruebas/bebidas.mjs",
     "db:test-alertas": "node scripts/db/pruebas/alertas.mjs",
     "db:test-upgrade": "node scripts/db/pruebas/upgrade.mjs",

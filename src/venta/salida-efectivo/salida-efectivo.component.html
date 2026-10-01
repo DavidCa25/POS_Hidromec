@@ -1,0 +1,114 @@
+<!-- MODAL SALIDA EFECTIVO
+     Tres cosas distintas: RETIRO (dinero que cambia de lugar, no es gasto),
+     PAGO A PROVEEDOR (va a su cuenta) y GASTO (renta, luz, un Uber, el pago
+     al personal). Cada una aparece asi en el corte, sin mezclarse. -->
+<div class="modal fade show d-block"
+     style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Registrar salida de dinero</h5>
+        <button type="button" class="btn-close" (click)="cerrar()"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-3">
+
+        <div class="salida-tipos mb-3" role="radiogroup" aria-label="Tipo de salida" data-guide="salida-tipo">
+          <button type="button" role="radio" class="salida-tipo" [class.activa]="cashOutTipo === 'RETIRO'"
+                  [attr.aria-checked]="cashOutTipo === 'RETIRO'" (click)="elegirTipoSalida('RETIRO')" data-guide-clave="RETIRO">
+            <i class="ph ph-hand-coins"></i><span>Retiro</span><small>Al dueño o al banco</small>
+          </button>
+          <button type="button" role="radio" class="salida-tipo" [class.activa]="cashOutTipo === 'PROVEEDOR'"
+                  [attr.aria-checked]="cashOutTipo === 'PROVEEDOR'" [disabled]="!puedePagarProveedor"
+                  [attr.title]="puedePagarProveedor ? null : 'Pagar a un proveedor lo hace quien opera compras'"
+                  (click)="elegirTipoSalida('PROVEEDOR')" data-guide-clave="PROVEEDOR">
+            <i class="ph" [class.ph-truck]="puedePagarProveedor" [class.ph-lock-simple]="!puedePagarProveedor"></i>
+            <span>Pago a proveedor</span><small>Abona a su cuenta</small>
+          </button>
+          <button type="button" role="radio" class="salida-tipo" [class.activa]="cashOutTipo === 'GASTO'"
+                  [attr.aria-checked]="cashOutTipo === 'GASTO'" [disabled]="!puedeGasto"
+                  [attr.title]="puedeGasto ? null : 'Registrar un gasto lo hace el encargado o el administrador'"
+                  (click)="elegirTipoSalida('GASTO')" data-guide-clave="GASTO">
+            <i class="ph" [class.ph-receipt]="puedeGasto" [class.ph-lock-simple]="!puedeGasto"></i>
+            <span>Gasto</span><small>Renta, luz, personal…</small>
+          </button>
+        </div>
+
+        <!-- Pago a proveedor -->
+        <div class="mb-3" *ngIf="cashOutTipo === 'PROVEEDOR'">
+          <label class="form-label">Proveedor</label>
+          <wx-select [opciones]="cashOutProveedores" [(ngModel)]="cashOutSupplierId" name="cashOutSupplierId"
+                     [buscable]="cashOutProveedores.length > 8" placeholder="Selecciona proveedor"
+                     vacio="No hay proveedores registrados"></wx-select>
+        </div>
+
+        <!-- Gasto -->
+        <ng-container *ngIf="cashOutTipo === 'GASTO'">
+          <div class="mb-3">
+            <label class="form-label">Concepto</label>
+            <wx-select [opciones]="gastoConceptoOpciones" [(ngModel)]="gastoConceptoId" name="gastoConceptoId"
+                       [buscable]="gastoConceptos.length > 8" placeholder="¿En qué se gastó?"
+                       vacio="No hay conceptos activos"></wx-select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Forma de pago</label>
+            <div class="salida-formas" role="radiogroup" aria-label="Forma de pago">
+              <button type="button" role="radio" *ngFor="let f of formasEgreso" class="salida-forma"
+                      [class.activa]="gastoForma === f.valor" [attr.aria-checked]="gastoForma === f.valor"
+                      (click)="gastoForma = f.valor">
+                <i class="ph {{ f.icono }}"></i> {{ f.etiqueta }}
+              </button>
+            </div>
+          </div>
+          <ng-container *ngIf="gastoEsPersonal">
+            <div class="mb-3">
+              <label class="form-label">¿A quién se le paga?</label>
+              <wx-select [opciones]="gastoPersonas" [(ngModel)]="gastoPersonaId" name="gastoPersonaId"
+                         [buscable]="gastoPersonas.length > 8" placeholder="Elige a la persona"
+                         vacio="No hay personal activo"></wx-select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Periodo que se paga</label>
+              <div class="salida-formas" role="radiogroup" aria-label="Periodo que se paga">
+                <button type="button" role="radio" *ngFor="let pr of periodosPago" class="salida-forma"
+                        [class.activa]="gastoPeriodo === pr.valor" [attr.aria-checked]="gastoPeriodo === pr.valor"
+                        (click)="gastoPeriodo = pr.valor">{{ pr.etiqueta }}</button>
+              </div>
+              <div class="small text-muted mt-1" *ngIf="gastoPeriodo === 'DIA'">Se registra como el pago del día de hoy.</div>
+              <div class="small text-muted mt-1" *ngIf="gastoPeriodo === 'SEMANA'">Se registra como el pago de esta semana (lunes a domingo).</div>
+              <div class="d-flex gap-2 mt-2" *ngIf="gastoPeriodo === 'OTRO'">
+                <wx-date [(ngModel)]="gastoDesde" name="gastoDesde" placeholder="Desde"></wx-date>
+                <wx-date [(ngModel)]="gastoHasta" name="gastoHasta" placeholder="Hasta"></wx-date>
+              </div>
+            </div>
+          </ng-container>
+        </ng-container>
+
+        <div class="mb-3">
+          <label class="form-label">Monto</label>
+          <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="cashOutAmount" name="cashOutAmount" placeholder="0.00" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">
+            Nota <span class="text-muted small" *ngIf="cashOutTipo !== 'RETIRO'">(opcional)</span>
+          </label>
+          <textarea class="form-control" rows="2" [(ngModel)]="cashOutNote" name="cashOutNote"
+                    [placeholder]="cashOutTipo === 'RETIRO' ? 'Ej. Retiro al banco' : 'Detalle, folio o referencia'"></textarea>
+        </div>
+
+        <div class="alert small" [class.alert-info]="cashOutTipo !== 'GASTO' || gastoForma === 'EFECTIVO'"
+             [class.alert-secondary]="cashOutTipo === 'GASTO' && gastoForma !== 'EFECTIVO'">
+          <ng-container *ngIf="cashOutTipo === 'RETIRO'">Sale del cajón y aparece en el corte como <strong>retiro</strong>, no como gasto.</ng-container>
+          <ng-container *ngIf="cashOutTipo === 'PROVEEDOR'">Sale del cajón, aparece en el corte como <strong>pago a proveedor</strong> y se abona a su cuenta.</ng-container>
+          <ng-container *ngIf="cashOutTipo === 'GASTO' && gastoForma === 'EFECTIVO'">Sale del cajón y aparece en el corte como <strong>egreso</strong> con su concepto.</ng-container>
+          <ng-container *ngIf="cashOutTipo === 'GASTO' && gastoForma !== 'EFECTIVO'">No sale del cajón: se registra el egreso y el corte no cambia.</ng-container>
+        </div>
+        <div class="d-flex justify-content-end mt-3 gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrar()">Cancelar</button>
+          <button type="button" class="btn btn-danger" (click)="confirmar()" [disabled]="cashOutGuardando">
+            {{ cashOutGuardando ? 'Registrando…' : 'Registrar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

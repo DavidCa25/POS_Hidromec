@@ -10,7 +10,12 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_update_sale]
   @sale_id INT,
   @user_id INT,
   @SaleDetails dbo.SaleDetailType READONLY,
-  @note NVARCHAR(400) = NULL
+  @note NVARCHAR(400) = NULL,
+  -- 0049: la caja donde se cobra o se devuelve la diferencia. El turno se
+  -- busca por caja, no por quien lo abrio (mismo criterio que la devolucion).
+  @register_id INT = NULL,
+  @machine_id NVARCHAR(64) = NULL,
+  @machine_name NVARCHAR(120) = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
@@ -166,31 +171,37 @@ BEGIN
     IF (@customer_id IS NULL OR UPPER(@payment_method) <> 'CREDITO')
        AND UPPER(@payment_method)='EFECTIVO'
     BEGIN
-      DECLARE @closure_id_open INT;
-      SELECT TOP(1) @closure_id_open = id
-      FROM dbo.cash_closures WITH (UPDLOCK, HOLDLOCK)
-      WHERE userId = @user_id AND closed_at IS NULL
-      ORDER BY opened_at DESC, id DESC;
-
-      IF @closure_id_open IS NULL
-      BEGIN
-        RAISERROR('No hay turno abierto para registrar el ajuste en caja.',16,1);
-        ROLLBACK TRAN;
-        RETURN;
-      END
-
       DECLARE @delta_total DECIMAL(12,2) = (@new_total - ISNULL(@old_total,0));
 
+      /* Sin diferencia no se toca el cajon, y por lo tanto no hace falta ni
+         caja ni turno: editar una venta sin cambiar su total no debe fallar
+         porque la caja este cerrada. */
       IF @delta_total <> 0
       BEGIN
+        DECLARE @caja INT, @closure_id_open INT;
+        EXEC dbo.sp_resolve_cash_register
+            @register_id = @register_id, @machine_id = @machine_id,
+            @machine_name = @machine_name, @user_id = @user_id, @resolved = @caja OUTPUT;
+        IF @caja IS NULL
+          RAISERROR('No se pudo determinar la caja del ajuste. Abre el turno en esta caja e intenta de nuevo.',16,1);
+
+        SELECT TOP(1) @closure_id_open = id
+        FROM dbo.cash_closures WITH (UPDLOCK, HOLDLOCK)
+        WHERE register_id = @caja AND closed_at IS NULL
+        ORDER BY opened_at DESC, id DESC;
+
+        IF @closure_id_open IS NULL
+          RAISERROR('No hay turno abierto para registrar el ajuste en caja.',16,1);
+
         INSERT INTO dbo.cash_movements
-          (datee, userId, typee, reference_id, reference, amount, note, closure_id)
+          (datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id)
         VALUES
           (GETDATE(), @user_id, 'SALE_ADJ', @sale_id,
            CONCAT('Ajuste Venta ', @sale_id),
            @delta_total,
            @note,
-           @closure_id_open);
+           @closure_id_open,
+           @caja);
       END
     END
 

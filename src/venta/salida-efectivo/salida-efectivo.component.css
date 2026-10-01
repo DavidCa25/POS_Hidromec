@@ -1,0 +1,36 @@
+/* ------------------------------------------------------------------------
+   Salida de dinero (0049): Retiro · Pago a proveedor · Gasto.
+   Tres botones grandes y no un <select>: son decisiones distintas y cada una
+   aparece distinta en el corte.
+   ------------------------------------------------------------------------ */
+.salida-tipos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.salida-tipo {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--wx-surface); color: var(--wx-text);
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md);
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out), background var(--wx-dur-micro) var(--wx-ease-out);
+}
+.salida-tipo i { font-size: 1.25rem; color: var(--wx-accent-text); }
+.salida-tipo span { font-weight: 600; }
+.salida-tipo small { color: var(--wx-text-muted); font-size: .75rem; }
+.salida-tipo:hover:not(:disabled) { border-color: var(--wx-accent-line); }
+.salida-tipo.activa { border-color: var(--wx-accent); background: var(--wx-accent-soft); }
+.salida-tipo:disabled { opacity: .55; cursor: not-allowed; }
+.salida-tipo:disabled i { color: var(--wx-text-muted); }
+.salida-tipo:focus-visible, .salida-forma:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.salida-tipo:active:not(:disabled), .salida-forma:active { transform: scale(0.98); }
+
+.salida-formas { display: flex; flex-wrap: wrap; gap: 6px; }
+.salida-forma {
+  padding: 6px 12px; cursor: pointer; font-size: .875rem;
+  background: var(--wx-surface); color: var(--wx-text);
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out), background var(--wx-dur-micro) var(--wx-ease-out);
+}
+.salida-forma.activa { border-color: var(--wx-accent); background: var(--wx-accent-soft); color: var(--wx-accent-text); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .salida-tipo, .salida-forma { transition: none; }
+  .salida-tipo:active:not(:disabled), .salida-forma:active { transform: none; }
+}

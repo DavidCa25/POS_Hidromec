@@ -137,6 +137,10 @@ export class NavegacionService {
           { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
           { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
           { texto: 'Abrir cajon', ruta: '/dashboard/abrir-cajon', icono: 'ph-vault', visible: this.supervisarVentas },
+          /* Lo que sale del negocio y no es una compra. Verlo es ver numeros;
+             registrar lo decide la pantalla (VENTAS_SUPERVISAR). */
+          { texto: 'Egresos', ruta: '/dashboard/egresos', icono: 'ph-receipt', visible: this.verNumeros },
+          { texto: 'Pagos al personal', ruta: '/dashboard/pagos-personal', icono: 'ph-hand-coins', visible: this.verNumeros },
           /* La operacion de un local con servicio: dentro de Venta, porque es
              vender. Cada una aparece solo con su modulo encendido; el dock no
              gana ningun icono. */

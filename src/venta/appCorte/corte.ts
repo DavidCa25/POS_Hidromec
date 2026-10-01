@@ -21,7 +21,29 @@ interface CashMovementRow {
   note: string | null;
   closure_id: number | null;
   payment_method?: string | null;
+  /* 0049: los clasifica SQL con el catalogo de tipos. */
+  grupo?: GrupoCaja;
+  tipo_label?: string;
+  concepto?: string;
 }
+
+/** Renglones del corte, en el orden en que suman al efectivo esperado. */
+type GrupoCaja = 'FONDO' | 'VENTAS' | 'ABONOS' | 'ENTRADAS' | 'DEVOLUCIONES' | 'AJUSTES'
+  | 'RETIROS' | 'PROVEEDORES' | 'EGRESOS' | 'OTROS';
+
+interface LineaDesglose { grupo: GrupoCaja; concepto: string; total: number; movimientos: number; }
+
+const GRUPOS_CAJA: { grupo: GrupoCaja; etiqueta: string }[] = [
+  { grupo: 'VENTAS', etiqueta: 'Ventas en efectivo' },
+  { grupo: 'ABONOS', etiqueta: 'Abonos de clientes en efectivo' },
+  { grupo: 'ENTRADAS', etiqueta: 'Otras entradas de efectivo' },
+  { grupo: 'RETIROS', etiqueta: 'Retiros de caja' },
+  { grupo: 'PROVEEDORES', etiqueta: 'Pagos a proveedores' },
+  { grupo: 'EGRESOS', etiqueta: 'Egresos' },
+  { grupo: 'DEVOLUCIONES', etiqueta: 'Devoluciones' },
+  { grupo: 'AJUSTES', etiqueta: 'Ajustes de venta' },
+  { grupo: 'OTROS', etiqueta: 'Otros movimientos' },
+];
 
 interface Summary {
   total_entradas: number;
@@ -96,6 +118,9 @@ export class Corte {
 
   movimientos: CashMovementRow[] = [];
   summary: Summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
+  /* El desglose por grupo y concepto, tal como lo arma SQL. La suma de sus
+     totales es exactamente el neto: nada que sume al esperado queda fuera. */
+  desglose: LineaDesglose[] = [];
 
   breakdown: Breakdown = {
     ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
@@ -277,6 +302,7 @@ export class Corte {
       };
 
       const res = await (window as any).electronAPI.getCashMovements(payload);
+      this.desglose = [];
 
       this.breakdown = {
         ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
@@ -292,6 +318,9 @@ export class Corte {
         
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
+        this.desglose = (res.data?.desglose ?? []).map((d: any) => ({
+          grupo: d.grupo, concepto: d.concepto, total: Number(d.total ?? 0), movimientos: Number(d.movimientos ?? 0),
+        }));
         this.showFilters = false;
 
         this.breakdown.ventasEfectivo = Number(this.summary.ventas_efectivo || 0);
@@ -299,23 +328,6 @@ export class Corte {
         this.breakdown.ventasTransferencia = Number(this.summary.ventas_transferencia || 0);
         this.breakdown.ventasMercadoPago = Number(this.summary.ventas_mp || 0);
         this.breakdown.ventasCredito = Number(this.summary.ventas_credito || 0);
-        // --- CÁLCULO DEL DESGLOSE EN MEMORIA ---
-
-        console.log(this.movimientos);
-        this.movimientos.forEach(m => {
-          const amt = Number(m.amount);
-          
-          if (m.typee === 'DEPOSIT') {
-            this.breakdown.entradasEfectivo += amt;
-          } 
-          else if (m.typee === 'WITHDRAW') {
-            this.breakdown.salidasEfectivo += Math.abs(amt);
-          } 
-          else if (m.typee === 'REFUND') {
-            this.breakdown.devolucionesEfectivo += Math.abs(amt);
-          }
-        });
-
       } else {
         this.movimientos = [];
         this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
@@ -327,6 +339,30 @@ export class Corte {
     } finally {
       this.loading = false;
     }
+  }
+
+  /** Fondo inicial del periodo: el del turno, o el de los turnos del rango. */
+  get fondoInicial(): number {
+    const f = (this.summary as any)?.opening_cash;
+    return Number(f ?? (this.mode === 'TURNO' ? this.openShiftOpeningCash : 0));
+  }
+
+  /** Lineas del efectivo esperado: solo los grupos con movimientos. */
+  get lineasCaja(): { grupo: GrupoCaja; etiqueta: string; total: number; conceptos: LineaDesglose[] }[] {
+    return GRUPOS_CAJA
+      .map(g => {
+        const conceptos = this.desglose.filter(d => d.grupo === g.grupo);
+        return { ...g, total: conceptos.reduce((a, d) => a + d.total, 0), conceptos };
+      })
+      .filter(l => l.conceptos.length > 0);
+  }
+
+  /** Lo que salio del cajon, agrupado: retiro, proveedor y egreso por separado. */
+  get salidasPorConcepto(): { grupo: string; concepto: string; total: number; movimientos: number }[] {
+    const etiqueta = (g: GrupoCaja) => GRUPOS_CAJA.find(x => x.grupo === g)?.etiqueta ?? g;
+    return this.desglose
+      .filter(d => d.total < 0 && ['RETIROS', 'PROVEEDORES', 'EGRESOS', 'DEVOLUCIONES', 'AJUSTES', 'OTROS'].includes(d.grupo))
+      .map(d => ({ grupo: etiqueta(d.grupo), concepto: d.concepto, total: -d.total, movimientos: d.movimientos }));
   }
 
   get cashExpected(): number {
