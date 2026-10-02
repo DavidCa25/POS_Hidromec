@@ -95,6 +95,9 @@
           <button type="button" class="btn-outline" (click)="resetPassword(p)">
             <i class="ph ph-key"></i> Cambiar contraseña
           </button>
+          <button type="button" class="btn-outline" (click)="asignarPin(p)">
+            <i class="ph ph-password"></i> {{ conPin().has(p.id) ? 'Cambiar PIN' : 'Asignar PIN' }}
+          </button>
           <button type="button" class="btn-outline" (click)="toggleActivo(p)">
             <i class="ph" [ngClass]="p.active ? 'ph-user-minus' : 'ph-user-check'"></i>
             {{ p.active ? 'Desactivar' : 'Activar' }}

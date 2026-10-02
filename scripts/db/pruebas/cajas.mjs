@@ -267,15 +267,17 @@ try {
 
   // =============================================================== 12
   seccion('12. Cerrar el turno tambien valida el arriendo');
+  // Fase 1: cerrar exige decir QUE turno (ya no "el que este abierto").
+  const turnoC1 = Number(escalar('SELECT id FROM dbo.cash_closures WHERE register_id = 1 AND closed_at IS NULL;'));
   const cerrarAjeno = falla(
-    `EXEC dbo.sp_close_shift @user_id=${userId}, @cash_delivered=0, @register_id=1, ` +
-    `@machine_id=N'${M2}', @machine_name=N'LAPTOP-BARRA';`);
+    `EXEC dbo.sp_close_shift @closure_id=${turnoC1}, @user_id=${userId}, @cash_delivered=0, @register_id=1, ` +
+    `@machine_id=N'${M2}', @machine_name=N'LAPTOP-BARRA';`, 'Dos equipos');
   check(cerrarAjeno.ok, 'cerrar el corte de una caja ajena: RECHAZADO', cerrarAjeno.error?.slice(0, 70));
   check(Number(escalar(
     'SELECT COUNT(*) FROM dbo.cash_closures WHERE register_id = 1 AND closed_at IS NULL;')) === 1,
     'el turno del otro equipo sigue abierto: nadie le cerro el corte por detras');
   const cerrarPropio = falla(
-    `EXEC dbo.sp_close_shift @user_id=${userId}, @cash_delivered=0, @register_id=1, ` +
+    `EXEC dbo.sp_close_shift @closure_id=${turnoC1}, @user_id=${userId}, @cash_delivered=0, @register_id=1, ` +
     `@machine_id=N'${M1}', @machine_name=N'CAJA-MOSTRADOR';`);
   check(cerrarPropio.error === null, 'y el dueno si lo cierra', cerrarPropio.error ?? 'sin error');
 

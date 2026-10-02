@@ -43,4 +43,29 @@
   font-weight: 600; font-size: 13px; cursor: pointer;
   background: #2563eb; color: #fff;
 }
-.pq-btn.ghost { background: var(--wx-sunken); color: var(--wx-text); }
+.pq-btn.ghost { background: var(--wx-sunken); color: var(--wx-text); }.pq-btn:disabled { opacity: .6; cursor: default; }
+
+/* Fase 1: negocio nuevo / sucursal de un negocio existente / agregar sucursal */
+.pq-opcion {
+  display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--wx-edge); padding: 16px 0 4px; margin-top: 12px;
+}
+.pq-opcion h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--wx-text); }
+.pq-opcion p { margin: 0; font-size: 13px; color: var(--wx-text-muted); line-height: 1.5; }
+.pq-fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pq-input {
+  flex: 1 1 180px; min-width: 0; border: 1px solid var(--wx-edge); border-radius: 11px;
+  padding: 10px 12px; font-size: 14px; background: var(--wx-surface); color: var(--wx-text);
+  font-variant-numeric: tabular-nums; letter-spacing: .04em;
+}
+.pq-input:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; }
+.pq-aviso {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.5;
+  background: var(--wx-sunken); color: var(--wx-text); border-radius: 12px; padding: 12px 14px;
+}
+.pq-codigo {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  background: var(--wx-sunken); border-radius: 12px; padding: 12px 14px;
+}
+.pq-codigo strong { font-size: 22px; letter-spacing: .12em; font-variant-numeric: tabular-nums; color: var(--wx-text); }
+.pq-codigo-nombre, .pq-codigo-vence { font-size: 12px; color: var(--wx-text-muted); }

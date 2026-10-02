@@ -379,7 +379,8 @@ seccion('4. Autorizacion presencial: dos identidades, no una');
 {
   const main = readFileSync(join(raiz, 'electron/main.js'), 'utf8');
   const i = main.indexOf("ipcMain.handle('security:authorize'");
-  const handler = i < 0 ? '' : main.slice(i, i + 2600);
+  // Fase 1: el handler acepta PIN o contraseña y emite un comprobante; es más largo.
+  const handler = i < 0 ? '' : main.slice(i, i + 4500);
 
   check(i >= 0, 'el canal de autorizacion presencial sigue existiendo');
   check(/performedBy/.test(handler) && /authorizedBy/.test(handler),

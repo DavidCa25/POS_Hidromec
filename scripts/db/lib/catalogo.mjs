@@ -107,6 +107,12 @@ asignar('expenses', [
   'sp_register_expense', 'sp_void_expense', 'sp_get_expenses', 'sp_expense_staff_list',
 ]);
 
+// 0051: hechos hacia la nube. El capturador convierte cambios confirmados
+// (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
+asignar('sync', [
+  'sp_sync_capture', 'sp_sync_outbox_next', 'sp_sync_outbox_ack',
+]);
+
 asignar('customers', [
   'sp_create_customer', 'sp_update_customer', 'sp_get_customer', 'sp_get_customers',
   'sp_get_customer_open_credit_sales', 'sp_get_customers_credit_summary',

@@ -13,11 +13,35 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_close_shift]
     @closure_id     INT = NULL,
     @register_id    INT = NULL,         -- multicaja
     @machine_id     NVARCHAR(64) = NULL,
-    @machine_name   NVARCHAR(120) = NULL
+    @machine_name   NVARCHAR(120) = NULL,
+    /* 0051. Quien AUTORIZA cerrar un turno ajeno: un Encargado o Administrador
+       que ya se reautentico en el proceso principal (PIN o contrasena). El
+       procedimiento vuelve a comprobar su rol: no confia en que quien llama lo
+       haya hecho. */
+    @authorized_by  INT = NULL,
+    @blind_count    BIT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+
+    /* ------------------------- QUE TURNO Y QUIEN -------------------------------
+       0051: el turno se identifica SIEMPRE por `@closure_id`. Antes, sin el, se
+       cerraba "el turno abierto que se encontrara" en la caja: una llamada
+       incompleta podia cerrar el turno de otra persona sin decir cual. Y quien
+       cierra (`@user_id`) es obligatorio: es el actor de la sesion, que el
+       proceso principal toma de la sesion y no de la pantalla.
+       -------------------------------------------------------------------------- */
+    IF @closure_id IS NULL
+    BEGIN
+        RAISERROR('Indica el turno que se va a cerrar.', 16, 1);
+        RETURN;
+    END
+    IF @user_id IS NULL
+    BEGIN
+        RAISERROR('Falta quien cierra el turno.', 16, 1);
+        RETURN;
+    END
 
     DECLARE @now DATETIME2(0) = SYSDATETIME();
     IF @closure_date IS NULL
@@ -132,32 +156,26 @@ BEGIN
                 RETURN;
             END
 
-            IF @user_id IS NOT NULL AND @user_id <> @shift_user_id
+            /* Cerrar un turno AJENO esta controlado de forma explicita: hace
+               falta un autorizador activo con rol de Encargado o
+               Administrador. Puede ser el propio actor si el es Encargado (se
+               reautentico con su PIN); un Operador nunca se autoriza solo. El
+               codigo REQUIERE_AUTORIZACION lo reconoce el proceso principal
+               para pedir el PIN. Sin acentos: ver la nota de MULTICAJA. */
+            IF @user_id <> @shift_user_id
             BEGIN
-                RAISERROR('El turno no pertenece al usuario indicado.', 16, 1);
-                ROLLBACK TRAN;
-                RETURN;
+                IF @authorized_by IS NULL OR NOT EXISTS (
+                    SELECT 1 FROM dbo.users
+                     WHERE id = @authorized_by AND active = 1
+                       AND LOWER(LTRIM(RTRIM(rol))) IN (N'admin', N'supervisor'))
+                BEGIN
+                    RAISERROR('REQUIERE_AUTORIZACION: este turno es de otra persona. Para cerrarlo hace falta la autorizacion de un encargado.', 16, 1);
+                    ROLLBACK TRAN;
+                    RETURN;
+                END
             END
-        END
-        ELSE
-        BEGIN
-            /* Sin closure_id: cerrar el turno abierto de ESTA CAJA */
-            SELECT TOP (1)
-                @cid          = id,
-                @shift_user_id= userId,
-                @opened_at    = opened_at,
-                @opening_cash = opening_cash
-            FROM dbo.cash_closures WITH (UPDLOCK, HOLDLOCK)
-            WHERE register_id = @register_id
-              AND closed_at IS NULL
-            ORDER BY opened_at DESC, id DESC;
-
-            IF @cid IS NULL
-            BEGIN
-                RAISERROR('No hay un turno abierto en esta caja.', 16, 1);
-                ROLLBACK TRAN;
-                RETURN;
-            END
+            ELSE
+                SET @authorized_by = NULL;   -- el propio turno no necesita autorizador
         END
 
         /* 2) Sumar movimientos del turno (amarrados + sueltos por caja y rango) */
@@ -186,8 +204,26 @@ BEGIN
                cash_delivered = @cash_delivered,
                difference     = @difference,
                closed_at      = @now,
-               create_date    = ISNULL(create_date, CAST(@opened_at AS DATE))
+               create_date    = ISNULL(create_date, CAST(@opened_at AS DATE)),
+               closed_by_user_id   = @user_id,
+               close_authorized_by = @authorized_by,
+               closed_machine_id   = NULLIF(LTRIM(RTRIM(ISNULL(@machine_id, N''))), N''),
+               closed_machine_name = @machine_name,
+               blind_count         = @blind_count
          WHERE id = @cid;
+
+        /* Bitacora: SIEMPRE queda el cierre, y aparte si fue de un turno ajeno. */
+        DECLARE @detalle NVARCHAR(400) = CONCAT(
+            N'turno ', @cid, N' · esperado ', @cash_expected, N' · contado ', @cash_delivered,
+            CASE WHEN @blind_count = 1 THEN N' · a ciegas' ELSE N'' END,
+            CASE WHEN NULLIF(LTRIM(RTRIM(ISNULL(@machine_name, N''))), N'') IS NULL THEN N''
+                 ELSE CONCAT(N' · equipo ', @machine_name) END);
+        INSERT INTO dbo.security_events (datee, user_id, authorized_by, register_id, event_type, amount, detail)
+        VALUES (SYSDATETIME(), @user_id, @authorized_by, @register_id, N'SHIFT_CLOSED', @difference, @detalle);
+        IF @user_id <> @shift_user_id
+            INSERT INTO dbo.security_events (datee, user_id, authorized_by, register_id, event_type, amount, detail)
+            VALUES (SYSDATETIME(), @user_id, @authorized_by, @register_id, N'SHIFT_CLOSED_BY_OTHER', @difference,
+                    CONCAT(N'turno ', @cid, N' de usuario ', @shift_user_id));
 
         /* 4) Amarrar sueltos de esta caja al cierre */
         UPDATE dbo.cash_movements
@@ -209,7 +245,10 @@ BEGIN
             @cash_expected  AS cash_expected,
             @cash_delivered AS cash_delivered,
             @difference     AS difference,
-            @register_id    AS register_id;
+            @register_id    AS register_id,
+            @shift_user_id  AS opened_by_user_id,
+            @user_id        AS closed_by_user_id,
+            @authorized_by  AS close_authorized_by;
 
     END TRY
     BEGIN CATCH

@@ -327,7 +327,8 @@
           </div>
         </div>
 
-        <div class="kpi-card esperado" *ngIf="mode === 'TURNO'">
+        <!-- Corte ciego: quien cuenta sin ser encargado no ve el esperado antes de contar. -->
+        <div class="kpi-card esperado" *ngIf="mode === 'TURNO' && !corteCiego">
           <div class="kpi-icon">
             <i class="ph ph-wallet"></i>
           </div>
@@ -446,7 +447,18 @@
             </div>
           </div>
 
-          <div class="amount-display expected">
+          <div class="amount-display expected" *ngIf="corteCiego">
+            <div class="amount-label">
+              <i class="ph-fill ph-eye-slash"></i>
+              Corte a ciegas
+            </div>
+            <div class="amount-hint">
+              Cuenta el efectivo del cajón y escríbelo abajo. Lo esperado y la diferencia
+              aparecen al confirmar, cuando el corte ya quedó registrado.
+            </div>
+          </div>
+
+          <div class="amount-display expected" *ngIf="!corteCiego">
             <div class="amount-label">
               <i class="ph-fill ph-calculator"></i>
               Efectivo esperado
@@ -476,7 +488,7 @@
             </div>
           </div>
 
-          <div class="amount-display difference" [class.positive]="cashDiff >= 0" [class.negative]="cashDiff < 0">
+          <div class="amount-display difference" *ngIf="!corteCiego" [class.positive]="cashDiff >= 0" [class.negative]="cashDiff < 0">
             <div class="amount-label">
               <i class="ph" [ngClass]="cashDiff >= 0 ? 'ph-fill ph-check-circle' : 'ph-fill ph-warning'"></i>
               Diferencia

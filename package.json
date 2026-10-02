@@ -79,6 +79,8 @@
     "db:test-demo": "node scripts/db/pruebas/demo-entornos.mjs",
     "test:presentaciones": "node scripts/pruebas/presentaciones-compra.mjs",
     "test:seguridad": "node scripts/pruebas/sesion-permisos.mjs",
+    "test:fase1": "node scripts/pruebas/fase1-unidad.mjs",
+    "db:test-fase1": "node scripts/db/pruebas/fase1-cortes-outbox.mjs",
     "test:hospitality-operacion": "node scripts/pruebas/hospitality-operacion.mjs",
     "test:wybix-guide": "node scripts/pruebas/wybix-guide.mjs",
     "test:terminal": "node scripts/pruebas/modo-terminal.mjs",

@@ -52,7 +52,7 @@
 const TTL_REVISION_MS = 5000;
 
 const { normalizarRol, permisosDeRol, etiquetaDeRol, esAltoRiesgo } = require('./permisos');
-const { exigePara } = require('./canales');
+const { exigePara, actorPara } = require('./canales');
 
 /** webContents.id -> sesion */
 const sesiones = new Map();
@@ -259,8 +259,46 @@ function proteger(canal, handler, opciones = {}) {
       deps.registrar({ tipo: 'ACCESO_DENEGADO', canal, motivo: r.motivo, permiso, webContentsId: id });
       return { success: false, ok: false, error: MENSAJES[r.motivo] || 'No autorizado.', motivo: r.motivo };
     }
-    return handler(evento, ...args, r.sesion);
+    return handler(evento, ...conActorDeSesion(canal, args, r.sesion, id), r.sesion);
   };
+}
+
+/**
+ * EL ACTOR SALE DE LA SESIÓN.
+ *
+ * Para los canales de `canales.ACTOR`, sustituye en los argumentos el usuario
+ * que mandó el renderer por el de la sesión. No muta el objeto original del
+ * renderer (lo copia). Si el renderer mandaba OTRO usuario, lo registra: es
+ * exactamente el intento que esta capa existe para neutralizar.
+ */
+function conActorDeSesion(canal, args, s, webContentsId) {
+  const def = actorPara(canal);
+  if (!def || !s) return args;
+  const yo = Number(s.userId);
+  const salida = [...args];
+  const avisar = (mandado) => {
+    if (mandado == null || mandado === '' || Number(mandado) === yo) return;
+    deps.registrar({ tipo: 'ACTOR_IGNORADO', canal, motivo: 'el renderer mandó otro usuario', userId: yo, webContentsId });
+  };
+  const primero = salida[0];
+  if (primero && typeof primero === 'object' && !Array.isArray(primero) && def.campos?.length) {
+    const copia = { ...primero };
+    for (const campo of def.campos) {
+      if (Object.prototype.hasOwnProperty.call(copia, campo)) avisar(copia[campo]);
+      copia[campo] = yo;
+    }
+    salida[0] = copia;
+  } else if (Number.isInteger(def.posicion)) {
+    avisar(salida[def.posicion]);
+    while (salida.length <= def.posicion) salida.push(undefined);
+    salida[def.posicion] = yo;
+  }
+  return salida;
+}
+
+/** El usuario que opera, para manejadores que lo leen directo de la sesión. */
+function actorDe(s) {
+  return Number(s?.userId) || null;
 }
 
 /** Lo que el renderer puede saber de si mismo: para pintar, no para decidir. */
@@ -281,5 +319,6 @@ module.exports = {
   TTL_REVISION_MS, MENSAJES,
   configurar, abrir, cerrar, cerrarTodas, de, vigente,
   comprobar, proteger, retrato, revisionActual, invalidarRevision,
+  actorDe, conActorDeSesion,
   _sesiones: sesiones,
 };

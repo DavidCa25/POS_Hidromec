@@ -1,29 +1,88 @@
 <div class="pq">
-  <p class="pq-intro">
-    Conecta la app del dueño para ver las ventas desde el celular.
-    Descarga <b>Wybix</b> en el telefono y escanea este codigo.
-  </p>
-
   <div class="pq-box" *ngIf="loading">
     <div class="pq-spinner"></div>
-    <span>Preparando el codigo...</span>
+    <span>Preparando...</span>
   </div>
 
   <div class="pq-error" *ngIf="error && !loading">
     <i class="ph ph-warning"></i>
     <span>{{ error }}</span>
-    <button class="pq-btn" (click)="generar()">Reintentar</button>
   </div>
 
-  <div class="pq-qr" *ngIf="qrDataUrl && !loading">
-    <img [src]="qrDataUrl" alt="Codigo de vinculacion" />
-    <div class="pq-steps">
-      <div class="pq-step"><span>1</span> Descarga la app Wybix en el celular</div>
-      <div class="pq-step"><span>2</span> Toca "Escanear codigo del negocio"</div>
-      <div class="pq-step"><span>3</span> Apunta la camara a este codigo</div>
+  <!-- Caja secundaria: la sucursal la registra la principal. -->
+  <p class="pq-intro" *ngIf="!loading && !esPrincipal" data-guide="nube-secundaria">
+    Esta es una caja secundaria. La sucursal y la app del dueño se conectan desde la <b>caja principal</b>;
+    esta caja la sigue sola.
+  </p>
+
+  <!-- Principal todavía sin registrar: negocio nuevo o sucursal de uno existente. -->
+  <ng-container *ngIf="!loading && esPrincipal && !registrado">
+    <p class="pq-intro">Conecta esta sucursal a la nube para ver las ventas desde el celular.</p>
+
+    <section class="pq-opcion" data-guide="nube-negocio-nuevo">
+      <h4>Es un negocio nuevo en Wybix</h4>
+      <p>Esta sucursal será la primera de tu negocio.</p>
+      <button class="pq-btn" (click)="registrarNegocio()">
+        <i class="ph ph-storefront"></i> Registrar mi negocio
+      </button>
+    </section>
+
+    <section class="pq-opcion" data-guide="nube-unir-sucursal">
+      <h4>Es otra sucursal de un negocio que ya usa Wybix</h4>
+      <p>Captura el código que generaste en la app del dueño o en la caja principal de otra sucursal.</p>
+      <div class="pq-fila">
+        <input id="pq-codigo-union" class="pq-input" [(ngModel)]="codigoUnion" placeholder="XXXX-XXXX-XXXX"
+               maxlength="14" autocomplete="off" spellcheck="false" />
+        <button class="pq-btn" (click)="unirConCodigo()" [disabled]="uniendo">
+          <i class="ph ph-link"></i> {{ uniendo ? 'Uniendo...' : 'Unir sucursal' }}
+        </button>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- Principal registrada: app del dueño y otras sucursales. -->
+  <ng-container *ngIf="!loading && esPrincipal && registrado">
+    <p class="pq-intro">
+      Conecta la app del dueño para ver las ventas desde el celular.
+      Descarga <b>Wybix</b> en el teléfono y escanea este código.
+    </p>
+
+    <div class="pq-aviso" *ngIf="aviso">
+      <i class="ph ph-info"></i><span>{{ aviso }}</span>
     </div>
-    <button class="pq-btn ghost" (click)="copiarDatos()">
-      <i class="ph ph-clipboard"></i> Copiar datos manualmente
-    </button>
-  </div>
+
+    <div class="pq-qr" *ngIf="qrDataUrl" data-guide="nube-qr-dueno">
+      <img [src]="qrDataUrl" alt="Código de vinculación" />
+      <div class="pq-steps">
+        <div class="pq-step"><span>1</span> Descarga la app Wybix en el celular</div>
+        <div class="pq-step"><span>2</span> Toca "Escanear código del negocio"</div>
+        <div class="pq-step"><span>3</span> Apunta la cámara a este código (vale 30 minutos y una sola vez)</div>
+      </div>
+      <div class="pq-fila">
+        <button class="pq-btn ghost" (click)="copiarDatos()">
+          <i class="ph ph-clipboard"></i> Copiar datos manualmente
+        </button>
+        <button class="pq-btn ghost" (click)="generar()">
+          <i class="ph ph-arrows-clockwise"></i> Código nuevo
+        </button>
+      </div>
+    </div>
+
+    <section class="pq-opcion" data-guide="nube-agregar-sucursal">
+      <h4>Agregar otra sucursal</h4>
+      <p>Genera un código y captúralo en la caja principal de la nueva sucursal. Las dos quedan en el mismo negocio.</p>
+      <div class="pq-fila">
+        <input id="pq-nombre-sucursal" class="pq-input" [(ngModel)]="nombreSucursal" placeholder="Nombre (p. ej. Norte)"
+               maxlength="120" autocomplete="off" />
+        <button class="pq-btn" (click)="crearSucursal()" [disabled]="creandoSucursal">
+          <i class="ph ph-plus"></i> {{ creandoSucursal ? 'Creando...' : 'Generar código' }}
+        </button>
+      </div>
+      <div class="pq-codigo" *ngIf="codigoSucursal">
+        <span class="pq-codigo-nombre">{{ codigoSucursal.nombre }}</span>
+        <strong>{{ codigoSucursal.codigo }}</strong>
+        <span class="pq-codigo-vence">Vale 72 horas y una sola vez.</span>
+      </div>
+    </section>
+  </ng-container>
 </div>

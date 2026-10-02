@@ -18,6 +18,15 @@ CREATE TABLE dbo.cash_closures (
     opening_note NVARCHAR(255) COLLATE Modern_Spanish_CI_AS NULL,
     opening_user_id INT NULL,
     register_id INT NULL CONSTRAINT DF_cash_closures_register_id DEFAULT ((1)),
+    closed_by_user_id INT NULL,
+    close_authorized_by INT NULL,
+    opened_machine_id NVARCHAR(64) COLLATE Modern_Spanish_CI_AS NULL,
+    opened_machine_name NVARCHAR(120) COLLATE Modern_Spanish_CI_AS NULL,
+    closed_machine_id NVARCHAR(64) COLLATE Modern_Spanish_CI_AS NULL,
+    closed_machine_name NVARCHAR(120) COLLATE Modern_Spanish_CI_AS NULL,
+    blind_count BIT NULL,
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_cash_closures_uuid DEFAULT (newid()),
+    rv TIMESTAMP NOT NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -27,3 +36,9 @@ ALTER TABLE dbo.cash_closures WITH CHECK ADD CONSTRAINT FK_cash_closures_registe
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_closures_register_id' AND object_id = OBJECT_ID(N'dbo.cash_closures'))
 CREATE NONCLUSTERED INDEX IX_cash_closures_register_id ON dbo.cash_closures (register_id);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_closures_rv' AND object_id = OBJECT_ID(N'dbo.cash_closures'))
+CREATE NONCLUSTERED INDEX IX_cash_closures_rv ON dbo.cash_closures (rv);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_cash_closures_uuid' AND object_id = OBJECT_ID(N'dbo.cash_closures'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_cash_closures_uuid ON dbo.cash_closures (uuid);

@@ -111,10 +111,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('sp-get-daily-sales-current-month'),
     getProfitOverview: (fromDate, toDate) =>
         ipcRenderer.invoke('sp-get-profit-overview', { fromDate, toDate }),
-    closeShift: (payload) => {
-        console.log('ðŸ§¾ preload closeShift payload:', payload);
-        return ipcRenderer.invoke('sp-close-shift', payload);
-    },
+    // Sin console.log: el payload lleva el comprobante de autorización.
+    closeShift: (payload) => ipcRenderer.invoke('sp-close-shift', payload),
 
     getActiveUsers: () => ipcRenderer.invoke('sp-get-active-users'),
     alertsReorder: (p) => ipcRenderer.invoke('alerts:reorder', p),
@@ -131,6 +129,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     usersCreate: (p) => ipcRenderer.invoke('users:create', p),
     usersUpdateRole: (p) => ipcRenderer.invoke('users:update-role', p),
     usersResetPassword: (p) => ipcRenderer.invoke('users:reset-password', p),
+    // Fase 1: PIN personal (el mismo de Local Host).
+    usersSetPin: (p) => ipcRenderer.invoke('users:set-pin', p),
+    usersPinStatus: () => ipcRenderer.invoke('users:pin-status'),
     usersSetActive: (p) => ipcRenderer.invoke('users:set-active', p),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
@@ -218,6 +219,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Blindaje / seguridad (anti robo hormiga)
     securityAuthorize: (creds) => ipcRenderer.invoke('security:authorize', creds),
+    securityAutorizadores: (p) => ipcRenderer.invoke('security:autorizadores', p),
 
     /* ---- FASE CORE 0: sesion, permisos y modulos ----
        `sesion()` no recibe ni devuelve credenciales: pregunta al proceso
@@ -370,10 +372,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cloudGetPairing: () => ipcRenderer.invoke('cloud-get-pairing'),
     cloudSetAnonKey: (key) => ipcRenderer.invoke('cloud-set-anon-key', key),
     cloudDeleteAccount: () => ipcRenderer.invoke('cloud-delete-account'),
+    // Fase 1: empresa -> sucursal -> equipo.
+    cloudUnirseCodigo: (codigo) => ipcRenderer.invoke('cloud:unirse-codigo', codigo),
+    cloudCrearSucursal: (p) => ipcRenderer.invoke('cloud:crear-sucursal', p),
+    cloudEstado: () => ipcRenderer.invoke('cloud:estado'),
 
 
     //FACTURACION
     setFiscalIssuerRef: (issuerId) => ipcRenderer.invoke('fiscal-set-issuer-ref', issuerId),
+    // Fase 1: CFDI por la nube; la credencial del equipo la pone el proceso principal.
+    fiscalTimbrar: (cuerpo) => ipcRenderer.invoke('fiscal:timbrar', cuerpo),
+    fiscalCancelar: (cuerpo) => ipcRenderer.invoke('fiscal:cancelar', cuerpo),
+    fiscalArchivos: (cuerpo) => ipcRenderer.invoke('fiscal:archivos', cuerpo),
+    fiscalRegistrarEmisor: (cuerpo) => ipcRenderer.invoke('fiscal:registrar-emisor', cuerpo),
     getFiscalConfig: () => ipcRenderer.invoke('fiscal-get-config'),
     saveFiscalConfig: (cfg) => ipcRenderer.invoke('fiscal-save-config', cfg),
 

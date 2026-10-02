@@ -29,6 +29,11 @@ const { estaConfigurado } = require('./lib/setup-estado');
 const permisos = require('./seguridad/permisos');
 const sesion = require('./seguridad/sesion');
 const canales = require('./seguridad/canales');
+/* Fase 1: contraseñas en scrypt (con migración desde SHA-256), PIN personal
+   compartido con Local Host y comprobantes de autorización de un solo uso. */
+const contrasenas = require('./seguridad/contrasenas');
+const { crearPin } = require('./seguridad/pin');
+const reautenticacion = require('./seguridad/reautenticacion');
 const mpPoint  = require('./mercadoPoint');
 const backup = require('./backupManager');
 const logger = require('./logger');
@@ -490,6 +495,15 @@ async function bootMainApp(poolYaAbierto) {
   cloudSync.configurar({
     url: SUPABASE_URL, funciones: FUNCIONES_URL, anonKey: ANON_KEY,
     licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
+    /* Fase 1: la base de SQL Server es la sucursal; solo la principal la da
+       de alta, sincroniza y manda hechos. */
+    esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+    nombres: () => ({
+      negocio: businessConfig?.business_name || os.hostname() || 'Mi negocio',
+      sucursal: 'Matriz',
+      equipo: os.hostname() || 'Caja',
+    }),
+    version: app.getVersion(),
   });
   cloudSync.startScheduler();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
@@ -1272,9 +1286,24 @@ ipcMain.handle('services:operate', sesion.proteger('services:operate', async (_e
  * resultan ser la misma persona se rechaza: eso no es autorización presencial,
  * es alguien saltándose el control con su propia contraseña.
  */
+/*
+ * AUTORIZAR UNA OPERACIÓN: contraseña o PIN de quien autoriza.
+ *
+ * Fase 1: además de validar, EMITE un comprobante de un solo uso (ver
+ * `seguridad/reautenticacion.js`). La operación o la bitácora lo consumen y de
+ * ahí sale `authorized_by`; el número que devolvemos al renderer es solo para
+ * pintar el nombre, ya no es autoridad.
+ *
+ *   { usuario, password, canal }       como siempre
+ *   { userId | usuario, pin, canal }   con el PIN personal
+ *   { reautenticar: true, pin, canal } el propio actor confirma con SU PIN una
+ *                                      operación que su rol ya le permite (p. ej.
+ *                                      un encargado cerrando el turno de otro)
+ */
 ipcMain.handle('security:authorize', async (evento, p = {}) => {
   try {
-    const exigido = canales.exigePara(String(p.canal || '')) || permisos.BUNDLES.VENTAS_SUPERVISAR;
+    const canal = String(p.canal || '');
+    const exigido = canales.autorizaPara(canal);
 
     /* Quién opera sale de la sesión de la ventana. Si nadie inició sesión no
        hay nada que autorizar: la operación ni siquiera debería haber llegado. */
@@ -1282,32 +1311,89 @@ ipcMain.handle('security:authorize', async (evento, p = {}) => {
     if (!actor) return { ok: false, error: sesion.MENSAJES.SIN_SESION };
 
     const pool = await poolPromise;
-    const r = await pool.request()
-      .input('usuario', sql.NVarChar(50), String(p.usuario || '').trim())
-      .input('password', sql.NVarChar(255), String(p.password || ''))
-      .execute('sp_authorize_supervisor');
+    let row = null, via = null;
 
-    const row = r.recordset?.[0];
-    if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+    if (p.pin != null && String(p.pin) !== '') {
+      let uid = p.reautenticar ? actor.userId : Number(p.userId) || null;
+      if (!uid && p.usuario) {
+        const u = await pool.request().input('u', sql.NVarChar(50), String(p.usuario).trim())
+          .query('SELECT id FROM dbo.users WHERE usuario = @u AND active = 1;');
+        uid = u.recordset?.[0]?.id ?? null;
+      }
+      const v = uid ? await pinPos.verificar(uid, String(p.pin)) : { ok: false, error: 'PIN incorrecto.' };
+      if (!v.ok) return { ok: false, error: v.error, bloqueado: !!v.bloqueado };
+      row = { id: v.usuario.id, usuario: v.usuario.usuario, rol: v.usuario.rol };
+      via = p.reautenticar ? 'PIN_PROPIO' : 'PIN';
+    } else {
+      const r = await pool.request()
+        .input('usuario', sql.NVarChar(50), String(p.usuario || '').trim())
+        .query('SELECT id, usuario, rol, password_hash FROM dbo.users WHERE usuario = @usuario AND active = 1;');
+      const f = r.recordset?.[0];
+      const v = f ? contrasenas.verificar(String(p.password || ''), f.password_hash) : { ok: false };
+      if (!v.ok) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+      if (v.rehash) await guardarHashNuevo(pool, f.id, String(p.password || ''));
+      row = { id: f.id, usuario: f.usuario, rol: f.rol };
+      via = 'PASSWORD';
+    }
 
-    if (Number(row.id) === Number(actor.userId)) {
+    const esElMismo = Number(row.id) === Number(actor.userId);
+    if (esElMismo && !p.reautenticar) {
       return { ok: false, error: 'La autorización tiene que darla otra persona.' };
     }
     if (!permisos.permisosDeRol(row.rol).has(exigido)) {
-      return { ok: false, error: 'Ese usuario no puede autorizar esta operación.' };
+      return { ok: false, error: esElMismo
+        ? 'Tu usuario no puede autorizar esta operación.'
+        : 'Ese usuario no puede autorizar esta operación.' };
     }
+
+    const comprobante = reautenticacion.emitir({
+      webContentsId: evento.sender.id, actorId: actor.userId,
+      autorizadorId: row.id, autorizadorUsuario: row.usuario, autorizadorRol: row.rol,
+      canal, via,
+    });
 
     return {
       ok: true,
       userId: row.id, name: row.usuario, rol: row.rol,
       rolEtiqueta: permisos.etiquetaDeRol(row.rol),
-      /* Las dos identidades, para que quien registre el evento no tenga que
-         inventárselas ni pueda mandar una sola. */
       performedBy: actor.userId, performedByName: actor.usuario,
       authorizedBy: row.id, authorizedByName: row.usuario,
+      /* Lo único que vale como autorización: se gasta al usarse. */
+      autorizacion: comprobante.token, expira: comprobante.expira, via,
     };
   } catch (e) { return { ok: false, error: e.message }; }
 });
+
+/* Quiénes pueden autorizar una operación con su PIN: solo nombres, para que la
+   pantalla ofrezca la lista. No expone nada más. */
+ipcMain.handle('security:autorizadores', async (evento, p = {}) => {
+  try {
+    if (!sesion.de(evento?.sender?.id)) return { ok: false, error: sesion.MENSAJES.SIN_SESION };
+    const exigido = canales.autorizaPara(String(p.canal || ''));
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT u.id, u.usuario, u.rol
+        FROM dbo.users u
+        JOIN dbo.trabajadores_acceso a ON a.user_id = u.id
+       WHERE u.active = 1 AND a.pin_hash IS NOT NULL AND a.revocado_en IS NULL
+       ORDER BY u.usuario;`);
+    const data = (r.recordset || [])
+      .filter(u => permisos.permisosDeRol(u.rol).has(exigido))
+      .map(u => ({ id: u.id, usuario: u.usuario, rolEtiqueta: permisos.etiquetaDeRol(u.rol) }));
+    return { ok: true, data };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+/** Guarda el hash scrypt de una contraseña que acaba de verificarse con el formato legado. */
+async function guardarHashNuevo(pool, userId, contrasena) {
+  try {
+    await pool.request().input('id', sql.Int, userId).input('h', sql.NVarChar(255), contrasenas.hashear(contrasena))
+      .query('UPDATE dbo.users SET password_hash = @h WHERE id = @id;');
+  } catch (e) {
+    /* No impide entrar: se reintenta en el siguiente inicio de sesión. */
+    console.error('[AUTH] No se pudo migrar el hash de un usuario:', e.message);
+  }
+}
 
 // Eventos que disparan una alerta EN VIVO (además de quedar en la bitácora)
 const CRITICOS_ALERTA = {
@@ -1320,12 +1406,33 @@ const CRITICOS_ALERTA = {
   ELIMINADO: 'Producto eliminado del ticket'
 };
 
-ipcMain.handle('security:log', async (_e, p = {}) => {
+/*
+ * BITÁCORA DE SEGURIDAD.
+ *
+ * Sigue abierta (registrar no puede fallar por permisos), pero ya no cree lo
+ * que dice el renderer sobre QUIÉN:
+ *   user_id        la sesión de la ventana;
+ *   authorized_by  el comprobante de `security:authorize`, que se gasta aquí.
+ *                  Sin comprobante, solo si quien opera ya tiene el paquete de
+ *                  la operación (se autorizó a sí mismo con su rol); si no, NULL.
+ */
+ipcMain.handle('security:log', async (evento, p = {}) => {
   try {
+    const s = sesion.de(evento?.sender?.id);
+    const actorId = s ? Number(s.userId) : null;
+    let autorizadoPor = null;
+    if (p.autorizacion && actorId) {
+      const c = reautenticacion.consumir(String(p.autorizacion), {
+        webContentsId: evento?.sender?.id, actorId, canal: p.canal ? String(p.canal) : undefined,
+      });
+      autorizadoPor = c ? Number(c.autorizadorId) : null;
+    } else if (s && p.canal && s.permisos.has(canales.autorizaPara(String(p.canal)))) {
+      autorizadoPor = actorId;
+    }
     const pool = await poolPromise;
     await pool.request()
-      .input('user_id', sql.Int, p.userId ?? null)
-      .input('authorized_by', sql.Int, p.authorizedBy ?? null)
+      .input('user_id', sql.Int, actorId)
+      .input('authorized_by', sql.Int, autorizadoPor)
       .input('register_id', sql.Int, p.registerId ?? null)
       .input('event_type', sql.NVarChar(40), String(p.eventType || 'OTHER'))
       .input('amount', sql.Decimal(18, 2), p.amount ?? null)
@@ -1729,8 +1836,23 @@ sesion.configurar({
      a usar. Local y sin red; `licencia` se crea mas abajo, antes de que
      llegue cualquier canal. */
   licencia: () => licencia.evaluador(),
-  registrar: (e) => console.warn(`[ACCESO] ${e.motivo} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`),
+  registrar: (e) => {
+    console.warn(`[ACCESO] ${e.tipo ?? ''} ${e.motivo} · canal=${e.canal ?? '-'} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`);
+    /* Un renderer que intenta operar como otro usuario queda en la bitácora:
+       el intento ya no tiene efecto, pero alguien tiene que poder verlo. */
+    if (e.tipo === 'ACTOR_IGNORADO') {
+      poolPromise.then(pool => pool.request()
+        .input('u', sql.Int, e.userId ?? null)
+        .input('d', sql.NVarChar(400), `canal ${e.canal}`)
+        .query(`INSERT INTO dbo.security_events (datee, user_id, event_type, detail)
+                VALUES (SYSDATETIME(), @u, N'ACTOR_IGNORADO', @d);`))
+        .catch(() => {});
+    }
+  },
 });
+
+/* PIN personal en caja: la misma fila y el mismo scrypt que Local Host. */
+const pinPos = crearPin({ sql, pool: () => poolPromise });
 
 /* La sesion muere con su ventana. Sin esto, el id de un webContents
    destruido podria reutilizarse y heredar permisos ajenos. */
@@ -1842,19 +1964,25 @@ ipcMain.handle('security:catalogo', async () => {
 ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
   try {
     const pool = await poolPromise;
+    /* La contraseña se verifica AQUÍ y no en SQL: scrypt vive en Node. Un hash
+       legado (SHA-256) que coincide se migra a scrypt en este mismo momento,
+       así nadie tiene que cambiar su contraseña. `sp_login_user` se conserva
+       para cajas con versiones anteriores, que no saben verificar scrypt. */
     const result = await pool.request()
-      .input('username', sql.NVarChar, usuario)
-      .input('password', sql.NVarChar, contrasena)
-      .execute('sp_login_user');
+      .input('username', sql.NVarChar(50), usuario)
+      .query('SELECT id, usuario, rol, active, creation_date, password_hash FROM dbo.users WHERE usuario = @username AND active = 1;');
 
-    const row = result.recordset[0];
+    const fila = result.recordset[0];
+    const v = fila ? contrasenas.verificar(contrasena, fila.password_hash) : { ok: false };
 
-    if (!row) {
+    if (!v.ok) {
       return {
         success: false,
         message: 'Usuario o contraseña incorrectos'
       };
     }
+    if (v.rehash) await guardarHashNuevo(pool, fila.id, contrasena);
+    const row = { id: fila.id, usuario: fila.usuario, rol: fila.rol, active: fila.active, creation_date: fila.creation_date };
 
     /* AQUI, Y SOLO AQUI, NACE UNA SESION.
        Lo que se le pasa es la fila que devolvio SQL, no lo que mando el
@@ -2820,11 +2948,21 @@ ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview
 
 //CIERRE DE CAJA
 
-ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event, payload) => {
+/*
+ * CERRAR UN TURNO (Fase 1).
+ *
+ *   - Quien cierra es la SESIÓN: `sesion.proteger` sustituye el `user_id` del
+ *     payload (canales.ACTOR) y aquí se lee de la sesión directamente.
+ *   - El turno se identifica SIEMPRE por `closure_id`: ya no existe «si no
+ *     mandaron cuál, cierro el abierto que encuentre».
+ *   - Cerrar un turno ajeno exige un comprobante de `security:authorize` para
+ *     este canal (PIN de un encargado, o el del propio encargado). Quién
+ *     autorizó lo dice el comprobante, no la pantalla.
+ *   - `blind`: la pantalla capturó el efectivo sin mostrar el esperado.
+ */
+ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event, payload, ses) => {
   try {
-    console.log('sp-close-shift payload RAW:', payload);
-
-    const userId = parseInt(payload?.user_id ?? payload?.userId, 10);
+    const userId = sesion.actorDe(ses);
     const cashDelivered = Number(payload?.cash_delivered ?? payload?.cashDelivered);
     const closureId = Number(payload?.closure_id ?? payload?.closureId);
     /* La caja de ESTE equipo como respaldo, nunca `null`.
@@ -2836,10 +2974,8 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
       ?? loadDeviceConfig()?.register?.id ?? null;
 
 
-    console.log('parsed:', { userId, cashDelivered });
-
-    if (!Number.isFinite(userId)) {
-      return { success: false, error: `user_id inválido: ${payload?.user_id ?? payload?.userId}` };
+    if (!Number.isFinite(userId) || !userId) {
+      return { success: false, error: sesion.MENSAJES.SIN_SESION };
     }
     if (!Number.isFinite(cashDelivered)) {
       return { success: false, error: `cash_delivered inválido: ${payload?.cash_delivered ?? payload?.cashDelivered}` };
@@ -2855,19 +2991,39 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
       .input('machine_id', sql.NVarChar(64), identCorte.machineId)
       .input('machine_name', sql.NVarChar(120), identCorte.machineName);
 
-    if (Number.isFinite(closureId) && closureId > 0) {
-      req.input('closure_id', sql.Int, closureId);
+    if (!(Number.isFinite(closureId) && closureId > 0)) {
+      return { success: false, error: 'Indica el turno que se va a cerrar.' };
     }
+    req.input('closure_id', sql.Int, closureId);
+
+    let autorizador = null;
+    if (payload?.autorizacion) {
+      autorizador = reautenticacion.consumir(String(payload.autorizacion), {
+        webContentsId: event.sender.id, actorId: userId, canal: 'sp-close-shift',
+      });
+      if (!autorizador) return { success: false, error: 'La autorización ya no es válida. Pídela de nuevo.', requiereAutorizacion: true };
+    }
+    req.input('authorized_by', sql.Int, autorizador ? Number(autorizador.autorizadorId) : null);
+    req.input('blind_count', sql.Bit, payload?.blind ? 1 : 0);
 
     const result = await req.execute('sp_close_shift');
+
+    /* El corte ya está cerrado: la nube se entera en el siguiente ciclo, y
+       aquí solo se adelanta la captura. Si la nube falla, el corte no. */
+    cloudSync.hechosAhora?.();
 
     return {
       success: true,
       data: result.recordset && result.recordset[0] ? result.recordset[0] : null
     };
   } catch (err) {
-    console.error('Error en sp_close_shift:', err);
-    return { success: false, error: err.message };
+    const msg = String(err?.message || '');
+    if (msg.includes('REQUIERE_AUTORIZACION')) {
+      return { success: false, requiereAutorizacion: true,
+        error: 'Este turno es de otra persona. Para cerrarlo, un encargado tiene que autorizarlo con su PIN.' };
+    }
+    console.error('Error en sp_close_shift:', msg);
+    return { success: false, error: msg };
   }
 }));
 
@@ -3171,10 +3327,10 @@ ipcMain.handle('users:create', sesion.proteger('users:create', async (_e, p = {}
 
     await pool.request()
       .input('usuario', sql.NVarChar(50), usuario)
-      .input('password', sql.NVarChar(255), password)
+      .input('hash', sql.NVarChar(255), contrasenas.hashear(password))
       .input('rol', sql.NVarChar(20), rol)
       .query(`INSERT INTO users (usuario, password_hash, rol, active, creation_date)
-              VALUES (@usuario, CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2), @rol, 1, GETDATE())`);
+              VALUES (@usuario, @hash, @rol, 1, GETDATE())`);
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 }));
@@ -3212,9 +3368,31 @@ ipcMain.handle('users:reset-password', sesion.proteger('users:reset-password', a
     if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
     if (password.length < 6) return { success: false, error: 'La contrasena debe tener al menos 6 caracteres.' };
     const pool = await poolPromise;
-    await pool.request().input('id', sql.Int, id).input('password', sql.NVarChar(255), password)
-      .query(`UPDATE users SET password_hash = CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', @password), 2) WHERE id = @id`);
+    await pool.request().input('id', sql.Int, id).input('hash', sql.NVarChar(255), contrasenas.hashear(password))
+      .query(`UPDATE users SET password_hash = @hash WHERE id = @id`);
     return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
+/* PIN personal de un usuario (el mismo que usa Local Host). Lo fija un
+   administrador; el PIN nunca vuelve al renderer ni se escribe en logs. */
+ipcMain.handle('users:set-pin', sesion.proteger('users:set-pin', async (_e, p = {}, ses) => {
+  try {
+    const id = Number(p.id);
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
+    const r = await pinPos.fijar(id, String(p.pin ?? ''), sesion.actorDe(ses));
+    return r.ok ? { success: true } : { success: false, error: r.error };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
+/* Quién tiene PIN: solo sí/no por usuario. */
+ipcMain.handle('users:pin-status', sesion.proteger('users:pin-status', async () => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().query(`
+      SELECT a.user_id AS id FROM dbo.trabajadores_acceso a
+       WHERE a.user_id IS NOT NULL AND a.pin_hash IS NOT NULL AND a.revocado_en IS NULL;`);
+    return { success: true, data: (r.recordset || []).map(x => x.id) };
   } catch (e) { return { success: false, error: e.message }; }
 }));
 
@@ -3252,7 +3430,7 @@ ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supp
     const op = cajaDeLaOperacion(payload);
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('user_id',        sql.Int,          Number(ses?.userId) || Number(payload.user_id) || null)
+      .input('user_id',        sql.Int,          sesion.actorDe(ses))
       .input('supplier_id',    sql.Int,          payload.supplier_id)
       .input('purchase_id',    sql.Int,          payload.purchase_id ?? null)
       .input('amount',         sql.Decimal(10,2),payload.amount)
@@ -3279,7 +3457,7 @@ ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', a
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .input('user_id', sql.Int, Number(ses?.userId) || Number(payload.user_id) || null)
+      .input('user_id', sql.Int, sesion.actorDe(ses))
       .input('amount', sql.Decimal(10,2), payload.amount)
       .input('note', sql.NVarChar(255), payload.note || null)
       .input('register_id', sql.Int, op.registerId)
@@ -3463,17 +3641,19 @@ ipcMain.handle('sp-get-open-shift', async (event, payload) => {
   }
 });
 
-ipcMain.handle('sp-open-shift', sesion.proteger('sp-open-shift', async (event, payload) => {
+ipcMain.handle('sp-open-shift', sesion.proteger('sp-open-shift', async (event, payload, ses) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('user_id', sql.Int, payload.user_id)
+      /* Fase 1: quien abre es la sesión (el payload ya llega corregido por
+         canales.ACTOR; aquí se lee de la fuente directamente). */
+      .input('user_id', sql.Int, sesion.actorDe(ses))
       .input('opening_cash', sql.Decimal(12,2), Number(payload.opening_cash ?? 0))
       // El servicio manda `opening_note`, con el mismo nombre que el
       // parametro del procedimiento. Este handler solo leia `note`, asi que la
       // nota que escribe el cajero al abrir el turno se perdia en silencio.
       .input('opening_note', sql.NVarChar(255), payload.opening_note ?? payload.note ?? null)
-      .input('opening_user_id', sql.Int, payload.opening_user_id ?? payload.user_id)
+      .input('opening_user_id', sql.Int, sesion.actorDe(ses))
       .input('register_id', sql.Int, payload.register_id ?? null)
       // Abrir turno en una caja ajena crearia un turno compartido entre dos
       // equipos. Lo rechaza el procedimiento, no la pantalla.
@@ -4787,9 +4967,66 @@ ipcMain.handle('cloud-set-config', sesion.proteger('cloud-set-config', async (_e
 ipcMain.handle('cloud-push-now', sesion.proteger('cloud-push-now', async () => cloudSync.pushNow()));
 
 ipcMain.handle('cloud-ensure-provisioned', sesion.proteger('cloud-ensure-provisioned', async (_e, nombre) => cloudSync.ensureProvisioned(nombre)));
-ipcMain.handle('cloud-get-pairing', async () => cloudSync.getPairingPayload());
+// Fase 1: el QR lleva una invitacion de un solo uso; generarla es administrar.
+ipcMain.handle('cloud-get-pairing', sesion.proteger('cloud-get-pairing', async () => cloudSync.getPairingPayload()));
 ipcMain.handle('cloud-set-anon-key', sesion.proteger('cloud-set-anon-key', async (_e, key) => cloudSync.setAnonKey(key)));
 ipcMain.handle('cloud-delete-account', sesion.proteger('cloud-delete-account', async () => cloudSync.deleteAccount()));
+
+/* FASE 1 · EMPRESA -> SUCURSAL -> EQUIPO
+   Una sucursal NUEVA (otra base de SQL Server) entra a una empresa existente
+   con el codigo que genera el dueño o la principal de otra sucursal. Nunca
+   SQL a SQL: cada sucursal habla con la nube. */
+async function nubeSegura(fn) {
+  try { return await fn(); }
+  catch (e) { return { success: false, code: e.code ?? null, error: e.message }; }
+}
+ipcMain.handle('cloud:unirse-codigo', sesion.proteger('cloud:unirse-codigo',
+  async (_e, codigo) => nubeSegura(() => cloudSync.unirseConCodigo(codigo))));
+ipcMain.handle('cloud:crear-sucursal', sesion.proteger('cloud:crear-sucursal',
+  async (_e, p) => nubeSegura(() => cloudSync.crearSucursal({ nombre: p?.nombre, tipo: p?.tipo, starts_at: p?.starts_at, ends_at: p?.ends_at }))));
+ipcMain.handle('cloud:estado', sesion.proteger('cloud:estado', async () => nubeSegura(() => cloudSync.estadoNube())));
+
+/* FASE 1 · CFDI POR LA NUBE CON LA CREDENCIAL DEL EQUIPO (P0 fiscal)
+   Antes la pantalla llamaba a las funciones fiscales con la llave anonima
+   publica y un `issuerId` propio: con conocer un id se timbraba a nombre de
+   otro RFC. Ahora va por aqui: el proceso principal agrega la credencial del
+   EQUIPO (que nunca llega al renderer) y la nube resuelve empresa -> emisor
+   -> factura. Lo que mande la pantalla sobre el emisor solo elige DENTRO de
+   la empresa. */
+const FISCAL_NUBE = {
+  'fiscal:timbrar': 'fiscal-stamp-invoice',
+  'fiscal:cancelar': 'fiscal-cancel-invoice',
+  'fiscal:archivos': 'fiscal-invoice-files',
+  'fiscal:registrar-emisor': 'fiscal-register-issuer',
+};
+let historicoFiscalReclamado = null;
+/* TRANSICION: el emisor y las facturas de antes de la Fase 1 se reclaman una
+   vez para que la nube sepa de que empresa son (si otra empresa reclama lo
+   mismo, queda en conflicto y lo revisa Wybix; no se inventa dueño). */
+async function reclamarHistoricoFiscal() {
+  if ((loadInstallConfig()?.role ?? 'principal') !== 'principal') return;
+  const pool = await poolPromise;
+  const cfg = (await pool.request().execute('sp_get_fiscal_config')).recordset?.[0];
+  const persona = cfg?.fiscalapi_issuer_id;
+  if (!persona || historicoFiscalReclamado === persona) return;
+  const facturas = (await pool.request().query(`
+    SELECT fiscalapi_invoice_id AS invoiceId, uuid, serie, folio, total, CAST(CASE WHEN estado = 'cancelada' THEN 1 ELSE 0 END AS BIT) AS cancelada
+      FROM dbo.invoices WHERE fiscalapi_invoice_id IS NOT NULL;`)).recordset ?? [];
+  await cloudSync.llamarFiscal('fiscal-claim-history', { issuerId: persona, invoices: facturas });
+  historicoFiscalReclamado = persona;
+}
+function fiscalPorNube(canal) {
+  return async (_e, cuerpo) => nubeSegura(async () => {
+    if (canal !== 'fiscal:registrar-emisor') {
+      await reclamarHistoricoFiscal().catch(e => console.error('[FISCAL] historico pendiente:', e.message));
+    }
+    return cloudSync.llamarFiscal(FISCAL_NUBE[canal], cuerpo && typeof cuerpo === 'object' ? cuerpo : {});
+  });
+}
+ipcMain.handle('fiscal:timbrar', sesion.proteger('fiscal:timbrar', fiscalPorNube('fiscal:timbrar')));
+ipcMain.handle('fiscal:cancelar', sesion.proteger('fiscal:cancelar', fiscalPorNube('fiscal:cancelar')));
+ipcMain.handle('fiscal:archivos', sesion.proteger('fiscal:archivos', fiscalPorNube('fiscal:archivos')));
+ipcMain.handle('fiscal:registrar-emisor', sesion.proteger('fiscal:registrar-emisor', fiscalPorNube('fiscal:registrar-emisor')));
 
 
 //FACTURACION

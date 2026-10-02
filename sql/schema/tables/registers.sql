@@ -11,9 +11,13 @@ CREATE TABLE dbo.registers (
     name NVARCHAR(60) COLLATE Modern_Spanish_CI_AS NOT NULL,
     is_active BIT NOT NULL CONSTRAINT DF_registers_is_active DEFAULT ((1)),
     created_at DATETIME2(0) NOT NULL CONSTRAINT DF_registers_created_at DEFAULT (sysutcdatetime()),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_registers_uuid DEFAULT (newid()),
     CONSTRAINT PK_registers PRIMARY KEY CLUSTERED (id)
 );
 END;
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_registers_code' AND object_id = OBJECT_ID(N'dbo.registers'))
 CREATE UNIQUE NONCLUSTERED INDEX UX_registers_code ON dbo.registers (code);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_registers_uuid' AND object_id = OBJECT_ID(N'dbo.registers'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_registers_uuid ON dbo.registers (uuid);
