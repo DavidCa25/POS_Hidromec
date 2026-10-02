@@ -45,70 +45,13 @@
   position: sticky;
   top: 0;
   z-index: var(--wx-z-sticky);
-  height: 60px;
-  padding: 0 14px !important;
+  height: 64px;
+  padding: 0 16px !important;
   background: var(--wx-workspace) !important;
   border-bottom: 1px solid var(--wx-edge) !important;
   box-shadow: none !important;
   flex: 0 0 auto;
 }
-
-/* Botones de icono de la barra (tema, alertas, descarga). */
-.dashboard-header .btn-light,
-.dark-toggle-btn {
-  display: inline-grid !important;
-  place-items: center;
-  width: var(--wx-control-h);
-  height: var(--wx-control-h);
-  padding: 0 !important;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  border-radius: var(--wx-radius-sm) !important;
-  color: var(--wx-text-muted) !important;
-  box-shadow: none !important;
-  transition: background-color var(--wx-dur-micro) ease,
-              color var(--wx-dur-micro) ease,
-              transform var(--wx-dur-press) var(--wx-ease-out);
-}
-.dashboard-header .btn-light:hover,
-.dark-toggle-btn:hover { background: var(--wx-raised) !important; color: var(--wx-text) !important; }
-.dashboard-header .btn-light:active,
-.dark-toggle-btn:active { transform: scale(0.94); }
-.dashboard-header .btn-light i,
-.dark-toggle-btn i { font-size: 19px; }
-
-/* Contador sobre la campana. */
-.dashboard-header .badge.bg-danger {
-  min-width: 17px;
-  height: 17px;
-  padding: 0 5px;
-  border: 2px solid var(--wx-workspace);
-  border-radius: 999px !important;
-  font-family: var(--wx-font-mono);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-/* Selector de color de las tablas. */
-/* --------------------------------------------------------------------------
-   SELECTOR DE COLOR DE TABLAS
-   El disparador mostraba cuatro cuadros fijos: no decia cual estaba puesto.
-   Ahora muestra el color vigente.
-   -------------------------------------------------------------------------- */
-.theme-swatch-btn {
-  display: inline-grid;
-  place-items: center;
-  width: var(--wx-control-h);
-  height: var(--wx-control-h);
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--wx-radius-sm);
-  cursor: pointer;
-  transition: background-color var(--wx-dur-micro) ease,
-              border-color var(--wx-dur-micro) ease;
-}
-.theme-swatch-btn:hover { background: var(--wx-raised); border-color: var(--wx-edge); }
 
 /* Los paneles flotantes de la barra (color, notificaciones) escalan desde su
    esquina superior derecha, que es donde vive el disparador. Escalar desde el
@@ -149,32 +92,46 @@
 
 /* ==========================================================================
    CONTEXTO DEL NEGOCIO
-   Vivia en el pie del rail, sobre navy. Ahora vive en la cabecera, sobre
-   superficie clara, asi que cambian los colores pero no lo que dice: en que
-   negocio se esta trabajando, con que rol y si la base es de demostracion.
+   Un pill: icono, nombre y, si es demo, una cola ambar pegada al final. Antes
+   era el nombre con una fila de badges debajo (DEMO · rol · version); el rol
+   ya vive en el pill de la persona y la version en su menu.
    ========================================================================== */
-.wx-negocio { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wx-negocio {
+  /* La demo se pinta con el ambar del sistema, con tinta oscura encima. En
+     claro se usa el 500: el 600 de advertencia no sostiene la tinta. */
+  --wx-demo-bg: var(--wx-amber-500);
+  --wx-demo-ink: #1A1203;
+
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--wx-edge);
+  border-radius: 999px;
+  background: var(--wx-surface);
+  overflow: hidden;
+}
+:host-context(html.dark) .wx-negocio { --wx-demo-bg: var(--wx-warning); }
 
 .wx-negocio__tile {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  align-self: center;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
-  border-radius: var(--wx-radius-sm);
+  margin-left: 4px;
+  border-radius: 999px;
   background: var(--wx-navy-800);
   color: var(--wx-accent);
   font-size: 17px;
 }
-.wx-negocio__tile.es-demo {
-  background: var(--wx-warning-soft);
-  color: var(--wx-warning-ink);
-}
-
-.wx-negocio__txt { display: flex; flex-direction: column; min-width: 0; }
+:host-context(html.dark) .wx-negocio__tile { background: var(--wx-navy-900); }
 
 .wx-negocio__nombre {
+  align-self: center;
+  padding: 0 16px 0 10px;
   font-size: var(--wx-text-base);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -185,12 +142,21 @@
   max-width: 34ch;
 }
 
-.wx-negocio__meta {
-  font-size: 11.5px;
-  color: var(--wx-text-muted);
-  white-space: nowrap;
-  text-transform: capitalize;
+.wx-negocio__demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 0 16px 0 13px;
+  background: var(--wx-demo-bg);
+  color: var(--wx-demo-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: default;
 }
+.wx-negocio__demo i { font-size: 15px; }
+
 @keyframes wx-fade { from { opacity: 0; } to { opacity: 1; } }
 
 @media (max-width: 900px) {
@@ -335,75 +301,113 @@
 }
 
 /* ==========================================================================
-   TOPBAR: BOTONES DE ICONO
+   PILL NAV
    --------------------------------------------------------------------------
-   Antes cada control traia su propia caja: `btn btn-light` de Bootstrap con
-   `p-2`, y margenes distintos por boton (`me-1`, `me-2`, `me-3`). El resultado
-   era una fila con separaciones irregulares y superficies que no coincidian.
+   Tablas, tema y avisos en una capsula. Es el Pill Nav de React Bits hecho
+   con CSS: al pasar el cursor, un circulo sube desde abajo y rellena el pill,
+   y el texto cambia de tinta encima. Sin React, sin Motion: `transform` y
+   `color`, que no recalculan layout.
 
-   Ahora comparten tamano, superficie, hover, foco y peso de icono, y la
-   separacion la pone el contenedor.
+   Abierto (paleta o avisos desplegados) se queda relleno: dice cual de los
+   tres tiene el panel.
    ========================================================================== */
-.topbar-acciones { gap: 6px; }
+.topbar-acciones { gap: 10px; }
 
-.wx-iconbtn {
+.wx-pills {
+  /* Relleno del pill activo: navy sobre claro, claro sobre navy. */
+  --wx-pill-fill: var(--wx-rail);
+  --wx-pill-fill-ink: var(--wx-rail-text-strong);
+
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--wx-sunken);
+  border: 1px solid var(--wx-edge);
+}
+:host-context(html.dark) .wx-pills {
+  --wx-pill-fill: var(--wx-rail-text-strong);
+  --wx-pill-fill-ink: var(--wx-navy-800);
+  background: var(--wx-surface);
+}
+
+.wx-pill {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
   height: 36px;
-  min-width: 36px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: var(--wx-radius-sm);
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--wx-text-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--wx-dur-press) ease,
-              color var(--wx-dur-press) ease,
+  transition: color var(--wx-dur-state) var(--wx-ease-out),
               transform var(--wx-dur-press) var(--wx-ease-out);
 }
-.wx-iconbtn > i { font-size: 19px; line-height: 1; }
+/* El circulo: vive debajo del pill y sube a cubrirlo. */
+.wx-pill::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 100%;
+  width: 150%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: var(--wx-pill-fill);
+  transform: translate(-50%, 0) scale(0.6);
+  transition: transform 280ms var(--wx-ease-out);
+}
+.wx-pill__dentro { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.wx-pill__dentro > i { font-size: 17px; line-height: 1; }
 
 @media (hover: hover) and (pointer: fine) {
-  .wx-iconbtn:hover { background: var(--wx-hover); color: var(--wx-text); }
+  .wx-pill:hover { color: var(--wx-pill-fill-ink); }
+  .wx-pill:hover::before { transform: translate(-50%, -62%) scale(1); }
 }
-.wx-iconbtn:active { transform: scale(0.94); }
-.wx-iconbtn:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.wx-pill.is-activo { color: var(--wx-pill-fill-ink); }
+.wx-pill.is-activo::before { transform: translate(-50%, -62%) scale(1); }
+.wx-pill:active { transform: scale(0.96); }
+.wx-pill:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
 
-/* Variante con etiqueta: el unico control de la barra que necesita palabra,
-   porque su icono solo no se entiende. */
-.wx-iconbtn--etiqueta { padding: 0 11px 0 9px; }
-.wx-iconbtn__txt { white-space: nowrap; }
-
-/* El icono de paleta va tenido con el color vigente de las tablas: hace de
-   muestra sin anadir un segundo elemento al boton. */
-.theme-swatch-btn__ph { color: var(--wx-user-accent); }
-.wx-iconbtn.theme-swatch-btn:hover .theme-swatch-btn__ph { color: var(--wx-user-accent); }
-
-@media (prefers-reduced-motion: reduce) {
-  .wx-iconbtn:active { transform: none; }
+/* Muestra del color vigente de las tablas, con su aro. */
+.wx-pill__muestra {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--wx-user-accent);
+  box-shadow: 0 0 0 2px var(--wx-sunken), 0 0 0 3.5px var(--wx-edge-strong);
 }
-/* ENTORNO DE DEMOSTRACION.
-   Una marca pequena junto al rol, no un rediseno de la barra. Tiene que
-   bastar para no confundir una demo con los datos de un negocio, y nada mas:
-   quien la usa para ensenar Wybix no quiere una pantalla llena de avisos.
-   Se pinta con el ambar de advertencia del propio sistema, no con un color
-   nuevo. */
-.sidebar-demo {
-  display: inline-block;
-  margin-right: 7px;
+:host-context(html.dark) .wx-pill__muestra { box-shadow: 0 0 0 2px var(--wx-surface), 0 0 0 3.5px var(--wx-edge-strong); }
+
+/* Avisos sin leer, dentro del pill y no colgando de la esquina. */
+.wx-pill__cuenta {
+  min-width: 20px;
+  height: 20px;
+  margin-right: -4px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--wx-warning-soft, rgb(200 135 27 / 0.18));
-  color: var(--wx-warning-ink, #E0A63A);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  vertical-align: 1px;
+  background: var(--wx-danger);
+  color: #FFFFFF;
+  font-family: var(--wx-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+:host-context(html.dark) .wx-pill__cuenta { color: #1A0607; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-pill, .wx-pill::before { transition: none; }
+  .wx-pill:active { transform: none; }
 }
 
 /* ==========================================================================
@@ -414,30 +418,43 @@
    La barra de trabajo es para navegar; quien ha entrado es CONTEXTO, igual que
    el negocio del otro extremo de esta misma cabecera.
    ========================================================================== */
-.wx-yo { position: relative; margin-left: 6px; }
+.wx-yo { position: relative; }
 
+/* Un pill, como el resto de la barra: la persona y su rol. */
 .wx-yo__btn {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: var(--wx-control-h);
-  padding: 0 10px 0 4px;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px 0 4px;
   border: 1px solid transparent;
-  border-radius: var(--wx-radius-sm);
-  background: transparent;
-  color: var(--wx-text);
-  font-weight: 550;
-  font-size: var(--wx-text-sm);
+  border-radius: 999px;
+  background: var(--wx-rail);
+  color: var(--wx-rail-text-strong);
+  font: inherit;
   cursor: pointer;
   transition: background-color var(--wx-dur-micro) ease,
               transform var(--wx-dur-press) var(--wx-ease-out);
 }
-.wx-yo__btn:hover, .wx-yo__btn.is-abierto { background: var(--wx-raised); }
+.wx-yo__btn:hover, .wx-yo__btn.is-abierto { background: var(--wx-rail-raised); }
 .wx-yo__btn:active { transform: scale(0.97); }
 .wx-yo__btn:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
-.wx-yo__btn > i { font-size: 13px; color: var(--wx-text-dim); }
+.wx-yo__btn > i { font-size: 13px; color: var(--wx-rail-text); }
+:host-context(html.dark) .wx-yo__btn { background: var(--wx-surface); border-color: var(--wx-edge); color: var(--wx-text); }
+:host-context(html.dark) .wx-yo__btn:hover, :host-context(html.dark) .wx-yo__btn.is-abierto { background: var(--wx-raised); }
+:host-context(html.dark) .wx-yo__btn > i { color: var(--wx-text-dim); }
 
-.wx-yo__nom { max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-yo__txt { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.wx-yo__nom {
+  max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13.5px; font-weight: 600; line-height: 1.2;
+}
+.wx-yo__rol { font-size: 11.5px; line-height: 1.2; color: var(--wx-rail-text); white-space: nowrap; }
+:host-context(html.dark) .wx-yo__rol { color: var(--wx-text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-yo__btn:active { transform: none; }
+}
 
 .wx-yo__menu {
   position: absolute;
@@ -483,3 +500,15 @@
 .wx-yo__fila--tenue { font-weight: 400; color: var(--wx-text-muted); }
 
 .wx-yo__linea { display: block; height: 1px; margin: 6px 10px; background: var(--wx-edge); }
+
+/* La version, al pie del menu de la persona. */
+.wx-yo__version {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 10px 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wx-edge);
+  font-size: 12px;
+  color: var(--wx-text-dim);
+}
+.wx-yo__version-num { font-family: var(--wx-font-mono); }

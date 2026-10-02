@@ -24,35 +24,45 @@
 
     <header class="dashboard-header d-flex align-items-center px-3 py-2">
 
-      <!-- Contexto del negocio. Vivia en el pie del rail; el rail se fue y
-           esto no puede irse con el: saber en que base se esta trabajando
-           -y si es una demo- es lo que evita el error caro. -->
-      <div class="wx-negocio">
-        <span class="wx-negocio__tile" [class.es-demo]="esDemo" aria-hidden="true">
+      <!-- Contexto del negocio: saber en que base se esta trabajando -y si es
+           una demo- es lo que evita el error caro.
+
+           Es UN pill, no un nombre con una fila de badges debajo. La demo es
+           la cola ambar del mismo pill: se ve siempre, pero como parte del
+           negocio y no como una etiqueta suelta. El rol se fue al pill de la
+           persona (es de quien entro, no del negocio) y la version al pie de
+           su menu (se consulta, no se vigila). -->
+      <div class="wx-negocio" [class.es-demo]="esDemo">
+        <span class="wx-negocio__tile" aria-hidden="true">
           <i class="ph-fill ph-storefront"></i>
         </span>
-        <div class="wx-negocio__txt">
-          <span class="wx-negocio__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
-          <span class="wx-negocio__meta">
-            <span class="sidebar-demo" *ngIf="esDemo">DEMO</span>{{ rolTexto }}<span *ngIf="appVersion"> · v{{ appVersion }}</span>
-          </span>
-        </div>
+        <span class="wx-negocio__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
+        <span class="wx-negocio__demo" *ngIf="esDemo"
+              title="Base de demostración: nada de lo que hagas aquí toca un negocio real.">
+          <i class="ph ph-flask" aria-hidden="true"></i>Demo
+        </span>
       </div>
 
       <div class="topbar-acciones d-flex align-items-center ms-auto">
+        <!-- PILL NAV. Las tres acciones viven en una capsula, como el Pill Nav
+             de React Bits pero sin React: CSS puro (dashboard.css, «Pill nav»).
+             Al pasar el cursor un circulo sube y rellena el pill. -->
+        <div class="wx-pills" role="group" aria-label="Apariencia y avisos">
         <div class="position-relative" id="theme-wrapper">
           <!-- El disparador muestra el color vigente, no cuatro cuadros fijos:
                asi se sabe de un vistazo cual esta puesto. -->
           <!-- El icono de paleta dice "esto cambia el aspecto" y va tenido con
                el color vigente, asi que hace de muestra al mismo tiempo. La
                etiqueta dice de que. Un icono solo no se entendia. -->
-          <button class="wx-iconbtn wx-iconbtn--etiqueta theme-swatch-btn" type="button"
+          <button class="wx-pill theme-swatch-btn" type="button"
                   popovertarget="paletaTablas"
+                  [class.is-activo]="themeOpen"
                   [attr.aria-expanded]="themeOpen"
                   aria-haspopup="dialog"
-                  title="Personalizar tablas">
-            <i class="ph-fill ph-palette theme-swatch-btn__ph" aria-hidden="true"></i>
-            <span class="wx-iconbtn__txt">Tablas</span>
+                  title="Color de las tablas">
+            <span class="wx-pill__dentro">
+              <span class="wx-pill__muestra" aria-hidden="true"></span>Tablas
+            </span>
           </button>
 
           <!-- Popover nativo: top layer, cierre por clic fuera y Escape, y
@@ -101,22 +111,22 @@
         </div>
 
         <!-- Modo oscuro -->
-        <button class="wx-iconbtn dark-toggle-btn" type="button" (click)="toggleDark()"
-                [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'"
-                [attr.aria-label]="isDark ? 'Modo claro' : 'Modo oscuro'">
-          <i [ngClass]="isDark ? 'ph-fill ph-sun' : 'ph-fill ph-moon'" aria-hidden="true"></i>
+        <button class="wx-pill dark-toggle-btn" type="button" (click)="toggleDark()"
+                [attr.title]="isDark ? 'Modo claro' : 'Modo oscuro'">
+          <span class="wx-pill__dentro">
+            <i [ngClass]="isDark ? 'ph ph-sun' : 'ph ph-moon'" aria-hidden="true"></i>{{ isDark ? 'Claro' : 'Oscuro' }}
+          </span>
         </button>
 
         <!-- Icono de notificación -->
         <div class="position-relative" id="notif-wrapper">
-          <button class="wx-iconbtn position-relative" type="button" (click)="toggleNotif()"
-                  title="Notificaciones" aria-label="Notificaciones">
-            <i class="ph ph-bell" aria-hidden="true"></i>
-
-            <span
-              *ngIf="unreadCount > 0"
-              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-              {{ unreadCount }}
+          <button class="wx-pill" type="button" (click)="toggleNotif()"
+                  [class.is-activo]="notifOpen"
+                  [attr.aria-expanded]="notifOpen"
+                  [attr.aria-label]="unreadCount > 0 ? 'Avisos, ' + unreadCount + ' sin leer' : 'Avisos'">
+            <span class="wx-pill__dentro">
+              <i class="ph ph-bell" aria-hidden="true"></i>Avisos
+              <span class="wx-pill__cuenta" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
             </span>
           </button>
 
@@ -164,6 +174,7 @@
 
           </div>
         </div>
+        </div><!-- /wx-pills -->
 
         <!--
           QUIEN ESTA DENTRO.
@@ -180,8 +191,11 @@
                   [attr.aria-expanded]="usuarioAbierto" aria-haspopup="menu"
                   [attr.aria-label]="userName" [title]="userName">
             <!-- Semilla del id, no del nombre: la misma cara que en Usuarios y permisos. -->
-            <wx-avatar [semilla]="'u:' + (auth.usuarioActualId ?? userName)" [nombre]="userName" [size]="30"></wx-avatar>
-            <span class="wx-yo__nom">{{ userName }}</span>
+            <wx-avatar [semilla]="'u:' + (auth.usuarioActualId ?? userName)" [nombre]="userName" [size]="34"></wx-avatar>
+            <span class="wx-yo__txt">
+              <span class="wx-yo__nom">{{ userName }}</span>
+              <span class="wx-yo__rol">{{ rolTexto }}</span>
+            </span>
             <i class="ph ph-caret-down" aria-hidden="true"></i>
           </button>
 
@@ -209,6 +223,10 @@
                 <span>Usuarios y permisos</span>
               </a>
             </ng-container>
+            <!-- La version: se consulta, no se vigila. -->
+            <p class="wx-yo__version" *ngIf="appVersion">
+              <span>Wybix</span><span class="wx-yo__version-num">v{{ appVersion }}</span>
+            </p>
           </div>
         </div>
       </div>
