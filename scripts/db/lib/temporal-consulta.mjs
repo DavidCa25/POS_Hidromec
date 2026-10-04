@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SERVIDOR } from './sql.mjs';
 import { exigirTemporal } from './temporal.mjs';
+import { consultarPersistente } from './temporal-persistente.mjs';
 
 const rutaPs = (p) => p.split('\\').join('\\\\');
 
@@ -78,6 +79,7 @@ function comoError(e) {
 }
 
 export function consultarTemporal(db, sql) {
+  if (process.env.WYBIX_QA_SQL_PERSISTENTE === '1') return consultarPersistente(db, sql);
   const { dir, fPs, fOut } = preparar(db, sql);
   try {
     execFileSync('powershell', [...ARGS_PS, fPs],

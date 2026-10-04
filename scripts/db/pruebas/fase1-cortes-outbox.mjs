@@ -131,6 +131,12 @@ try {
 
   // ================================================================ OUTBOX
   seccion('Outbox: hechos con UUID, idempotentes');
+  // Como la app al arrancar (electron/nube/identidad.js): el template del
+  // instalador ya trae la 0051 aplicada pero SIN instance_uuid (cada
+  // instalación genera el suyo), así que la prueba no puede esperar que la
+  // migración lo cree.
+  q(`IF NOT EXISTS (SELECT 1 FROM dbo.database_metadata WHERE clave = 'instance_uuid')
+       INSERT INTO dbo.database_metadata (clave, valor) VALUES ('instance_uuid', LOWER(CONVERT(NVARCHAR(36), NEWID())));`);
   abrir(ana);  // turno abierto: un retiro de efectivo necesita turno
   q(`EXEC dbo.sp_register_cash_out @user_id=${ana}, @amount=20, @note=N'cambio', @register_id=1, @machine_id=N'PC-CENTRO-1', @machine_name=N'CAJA-CENTRO-1';`);
   const cap1 = uno('EXEC dbo.sp_sync_capture;');
@@ -153,8 +159,10 @@ try {
   check(vs.length === 2 && vs[1].event_type === 'SALE_UPDATED' && Number(vs[1].aggregate_version) > Number(vs[0].aggregate_version),
     'editar una venta produce SALE_UPDATED con versión mayor (no pisa saldos: la nube aplica la mayor)');
   const lote = sets('EXEC dbo.sp_sync_outbox_next @max_rows = 100;');
-  check(lote[0].length === Number(escalar(`SELECT COUNT(*) FROM dbo.sync_outbox WHERE status = 'PENDING'`)) && !!lote[1][0].instance_uuid,
-    'el lote sale en orden y con la identidad de la base (instance_uuid)');
+  const pendientesOutbox = Number(escalar(`SELECT COUNT(*) FROM dbo.sync_outbox WHERE status = 'PENDING'`));
+  check(lote[0].length === pendientesOutbox && !!lote[1]?.[0]?.instance_uuid,
+    'el lote sale en orden y con la identidad de la base (instance_uuid)',
+    `lote ${lote[0].length} · pendientes ${pendientesOutbox} · instance ${lote[1]?.[0]?.instance_uuid ?? 'sin'}`);
   const [a, b, c] = lote[0];
   q(`EXEC dbo.sp_sync_outbox_ack @acuses = N'${JSON.stringify([
     { event_uuid: a.event_uuid, result: 'APPLIED' }, { event_uuid: b.event_uuid, result: 'DUPLICATE' }, { event_uuid: c.event_uuid, result: 'ERROR', error: 'red' }])}';`);

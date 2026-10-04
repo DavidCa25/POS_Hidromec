@@ -17,9 +17,12 @@
  *
  * SECUENCIAL A PROPÓSITO. Cada giro restaura una base entera.
  *
- * SOLO TOCA `Wybix_Demo_Servicios`. El nombre lo compone `guardas.js` a partir
- * del identificador del perfil, igual que el gestor, y antes de cada borrado
- * pasa por las mismas cuatro guardas.
+ * SOLO TOCA `Wybix_Demo_PruebaServicios`. Antes usaba `Wybix_Demo_Servicios`,
+ * el MISMO nombre que crea el gestor de demos en un equipo real: restauraba
+ * encima con REPLACE y, si la encontraba al empezar, la "adoptaba" y la
+ * borraba. Ahora la prueba tiene su propio identificador de perfil
+ * ("prueba-servicios"), con la semilla del perfil real, y antes de cada
+ * borrado pasa por las mismas cuatro guardas.
  */
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
@@ -33,8 +36,11 @@ const GESTOR = require('../../../electron/demo/gestor.js');
 const PRESETS = require('../../../electron/servicios/presets.js');
 
 const SERVIDOR = process.env.WYBIX_DB_SERVER || 'localhost';
-const PERFIL = 'servicios';
-const BASE = G.nombreDeBase(PERFIL);
+const PERFIL = 'servicios';                 // el perfil real: su semilla y sus giros
+const PERFIL_PRUEBA = 'prueba-servicios';   // la identidad de la base de prueba
+const BASE = G.nombreDeBase(PERFIL_PRUEBA);  // Wybix_Demo_PruebaServicios
+const PREFIJO_PRUEBA = 'Wybix_Demo_Prueba';
+if (!BASE.startsWith(PREFIJO_PRUEBA)) throw new Error(`La prueba solo toca bases ${PREFIJO_PRUEBA}*; compuso ${BASE}.`);
 const SOLO = (process.argv[2] || '').toUpperCase() || null;
 
 let ok = 0;
@@ -195,8 +201,8 @@ function eliminar(instanciaLocal) {
   const m = {};
   for (const f of sql(BASE, 'SELECT clave, valor FROM dbo.database_metadata')) m[f.clave] = f.valor;
   const v = G.sePuedeDestruir({
-    perfilId: PERFIL, nombre: BASE,
-    perfilesInstalados: [{ id: 'retail' }, { id: 'hospitality' }, { id: 'servicios' }],
+    perfilId: PERFIL_PRUEBA, nombre: BASE,
+    perfilesInstalados: [{ id: PERFIL_PRUEBA }],
     metadatos: m,
     instanciaLocal: instanciaLocal === undefined ? REGISTRO.get(PERFIL) : instanciaLocal,
   });
@@ -334,6 +340,12 @@ function comprobarGiro(id) {
 // ===========================================================================
 console.log(`Servidor ${SERVIDOR}  ·  base ${BASE}`);
 
+/** Las demos reales que hubiera (nombre -> fecha de creacion), para comprobar al final que nadie las toco. */
+const demosReales = () => new Map(sql('master',
+  `SELECT name, CONVERT(VARCHAR(30), create_date, 126) AS creada FROM sys.databases
+    WHERE name LIKE 'Wybix[_]Demo[_]%' AND name NOT LIKE '${PREFIJO_PRUEBA}%'`).map(x => [x.name, x.creada]));
+const REALES_ANTES = demosReales();
+
 /*
  * Una corrida anterior interrumpida deja la base viva y sin nadie que la
  * reclame: el identificador de instancia esta en la base, pero el «registro
@@ -431,6 +443,12 @@ try {
     if (!r.ok) console.log(`   …      quedo ${BASE} sin borrar: ${r.motivo}`);
   } catch { /* noop */ }
 }
+
+seccion('Las demos reales del gestor siguen intactas');
+const REALES_DESPUES = demosReales();
+const tocadas = [...REALES_ANTES].filter(([n, c]) => REALES_DESPUES.get(n) !== c).map(([n]) => n);
+check(tocadas.length === 0 && REALES_DESPUES.size === REALES_ANTES.size,
+  `mismas bases y mismas fechas de creacion (${[...REALES_ANTES.keys()].join(', ') || 'ninguna en este equipo'})`, tocadas.join(', '));
 
 console.log(`\n${fallos.length === 0 ? 'TODO BIEN' : 'HAY FALLOS'} · ${ok}/${ok + fallos.length}`);
 process.exit(fallos.length === 0 ? 0 : 1);
