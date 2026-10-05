@@ -4986,6 +4986,70 @@ ipcMain.handle('cloud:crear-sucursal', sesion.proteger('cloud:crear-sucursal',
   async (_e, p) => nubeSegura(() => cloudSync.crearSucursal({ nombre: p?.nombre, tipo: p?.tipo, starts_at: p?.starts_at, ends_at: p?.ends_at }))));
 ipcMain.handle('cloud:estado', sesion.proteger('cloud:estado', async () => nubeSegura(() => cloudSync.estadoNube())));
 
+/* FASE 2 · TRANSFERENCIAS CON EVENTOS (ferias)
+   Esta sucursal es la autoridad de SU inventario: mandar a una feria es una
+   SALIDA aqui (sp_transfer_send) y recibir el sobrante es una ENTRADA
+   (sp_transfer_receive_return). Quien lo hace sale de la sesion. Al enviar
+   se firma el comprobante QR para que la tablet pueda recibir sin Internet. */
+ipcMain.handle('transferencias:listar', sesion.proteger('transferencias:listar', async () => nubeSegura(async () => {
+  const pool = await poolPromise;
+  const r = await pool.request().input('max_rows', sql.Int, 50).execute('sp_transfer_list');
+  let nube = { returns: [], events: [], received: [], sinConexion: false };
+  try { nube = await cloudSync.bandejaTransferencias(); }
+  catch (e) { nube.sinConexion = true; nube.error = e.message; }
+  return { success: true, transferencias: r.recordsets?.[0] ?? [], lineas: r.recordsets?.[1] ?? [], ...nube };
+})));
+
+ipcMain.handle('transferencias:enviar', sesion.proteger('transferencias:enviar', async (_e, p, ses) => nubeSegura(async () => {
+  const pool = await poolPromise;
+  // La pantalla trabaja con ids locales; la transferencia viaja con UUID (lo que entiende la tablet).
+  const ids = (p?.lines ?? []).map((l) => Number(l.product_id)).filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length) {
+    const u = await pool.request().query(`SELECT id, LOWER(CONVERT(VARCHAR(36), uuid)) AS uuid FROM dbo.products WHERE id IN (${ids.join(',')});`);
+    const mapa = new Map(u.recordset.map((x) => [Number(x.id), x.uuid]));
+    p = { ...p, lines: p.lines.map((l) => ({ ...l, product_uuid: l.product_uuid ?? mapa.get(Number(l.product_id)) })) };
+  }
+  const op = (() => { try { return cajaDeLaOperacion({}); } catch { return {}; } })();
+  const r = await pool.request()
+    .input('user_id', sql.Int, sesion.actorDe(ses))
+    .input('event_location_uuid', sql.UniqueIdentifier, p?.event_location_uuid)
+    .input('event_name', sql.NVarChar(120), p?.event_name ?? null)
+    .input('lines', sql.NVarChar(sql.MAX), JSON.stringify((p?.lines ?? []).map((l) => ({ product_uuid: l.product_uuid, qty: Number(l.qty) }))))
+    .input('note', sql.NVarChar(255), p?.note ?? null)
+    .input('machine_name', sql.NVarChar(120), op?.machineName ?? os.hostname())
+    .input('transfer_uuid', sql.UniqueIdentifier, p?.transfer_uuid ?? null)
+    .execute('sp_transfer_send');
+  const cab = r.recordsets?.[0]?.[0];
+  const lineas = r.recordsets?.[1] ?? [];
+  let qr = null;
+  try {
+    const f = await cloudSync.firmarTransferencia({ transfer_uuid: cab.transfer_uuid, event_location_uuid: p.event_location_uuid,
+      lines: lineas.map((l) => ({ product_uuid: l.product_uuid, qty: l.qty_sent })) });
+    if (f) {
+      qr = f.qr;
+      await pool.request().input('u', sql.UniqueIdentifier, cab.transfer_uuid).input('f', sql.NVarChar(200), f.firma)
+        .query('UPDATE dbo.stock_transfers SET manifest_signature = @f WHERE uuid = @u AND manifest_signature IS NULL;');
+    }
+  } catch (e) { console.error('[TRANSFERENCIAS] sin comprobante QR:', e.message); }
+  cloudSync.hechosAhora?.();
+  return { success: true, transfer_uuid: cab.transfer_uuid, ya_existia: !!cab.ya_existia, lineas, qr };
+})));
+
+ipcMain.handle('transferencias:recibir-retorno', sesion.proteger('transferencias:recibir-retorno', async (_e, p, ses) => nubeSegura(async () => {
+  const pool = await poolPromise;
+  const op = (() => { try { return cajaDeLaOperacion({}); } catch { return {}; } })();
+  const r = await pool.request()
+    .input('user_id', sql.Int, sesion.actorDe(ses))
+    .input('transfer_uuid', sql.UniqueIdentifier, p?.transfer_uuid)
+    .input('event_location_uuid', sql.UniqueIdentifier, p?.event_location_uuid)
+    .input('event_name', sql.NVarChar(120), p?.event_name ?? null)
+    .input('lines', sql.NVarChar(sql.MAX), JSON.stringify((p?.lines ?? []).map((l) => ({ product_uuid: l.product_uuid, qty_sent: Number(l.qty_sent), qty_received: Number(l.qty_received) }))))
+    .input('machine_name', sql.NVarChar(120), op?.machineName ?? os.hostname())
+    .execute('sp_transfer_receive_return');
+  cloudSync.hechosAhora?.();
+  return { success: true, ...(r.recordset?.[0] ?? {}) };
+})));
+
 /* FASE 1 · CFDI POR LA NUBE CON LA CREDENCIAL DEL EQUIPO (P0 fiscal)
    Antes la pantalla llamaba a las funciones fiscales con la llave anonima
    publica y un `issuerId` propio: con conocer un id se timbraba a nombre de

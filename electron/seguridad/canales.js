@@ -176,6 +176,10 @@ const EXIGE = {
   'cloud:crear-sucursal': CONFIGURACION_ADMINISTRAR,
   'cloud:estado': CONFIGURACION_ADMINISTRAR,
   'fiscal:registrar-emisor': CONFIGURACION_ADMINISTRAR,
+  // Fase 2: transferencias con eventos (ferias). Mover inventario es operar inventario.
+  'transferencias:listar': INVENTARIO_OPERAR,
+  'transferencias:enviar': INVENTARIO_OPERAR,
+  'transferencias:recibir-retorno': INVENTARIO_OPERAR,
   'mp-set-config': CONFIGURACION_ADMINISTRAR,
   'mp-set-pdv': CONFIGURACION_ADMINISTRAR,
   'mp-create-pos': CONFIGURACION_ADMINISTRAR,

@@ -91,6 +91,9 @@ asignar('inventory', [
   // error, porque el controlador degrada el texto de los errores a un byte
   // por caracter y los acentos se pierden.
   'sp_get_product_dependencies',
+  // 0052: transferencias con eventos (ferias). La sucursal manda y recibe
+  // el sobrante; el evento lleva su propio inventario en la tablet.
+  'sp_transfer_send', 'sp_transfer_receive_return', 'sp_transfer_confirm_out', 'sp_transfer_list',
 ]);
 
 asignar('cash', [
@@ -111,6 +114,8 @@ asignar('expenses', [
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [
   'sp_sync_capture', 'sp_sync_outbox_next', 'sp_sync_outbox_ack',
+  // 0052: lo que la sucursal publica para las tablets de sus eventos.
+  'sp_catalog_publication', 'sp_staff_publication',
 ]);
 
 asignar('customers', [

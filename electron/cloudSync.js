@@ -6,6 +6,7 @@ const { poolPromise, sql } = require('./db');
 const { crearSecretos } = require('./seguridad/secretos');
 const { crearIdentidad, metadataSql } = require('./nube/identidad');
 const { crearEnvioHechos } = require('./nube/hechos');
+const crypto = require('crypto');
 
 // ============================================================
 // cloudSync.js - Emisor hacia Supabase (espejo de solo lectura)
@@ -85,7 +86,9 @@ function writeConfig(cfg) {
 // una vez y se vuelve a guardar cifrado.
 
 const secretos = crearSecretos(safeStorage);
-const CAMPOS = { equipo: ['deviceTokenEnc', 'deviceTokenMethod'], legado: ['syncTokenEnc', 'syncTokenMethod'] };
+const CAMPOS = { equipo: ['deviceTokenEnc', 'deviceTokenMethod'], legado: ['syncTokenEnc', 'syncTokenMethod'],
+                 // Fase 2: llave PRIVADA Ed25519 de esta caja (firma comprobantes de transferencia).
+                 firma: ['signingKeyEnc', 'signingKeyMethod'] };
 const enMemoria = {};   // si el sistema no ofrece cifrado, la credencial vive solo en esta sesion
 
 const secreto = {
@@ -239,9 +242,11 @@ async function llamarFiscal(funcion, cuerpo) {
   return llamarFuncion(funcion, cuerpo, { token: await credencial(), ms: 60000 });
 }
 
+const metaSql = metadataSql({ pool: () => poolPromise, sql });
 const hechos = crearEnvioHechos({
   pool: () => poolPromise, sql,
   llamar: (action, cuerpo) => gateway(action, cuerpo),
+  huella: () => metaSql.huellaServidor().catch(() => null),
   puedeEnviar: async () => instalacion.esPrincipal() && !!loadConfig().enabled && permitido(),
   log,
 });
@@ -267,6 +272,79 @@ async function ensureProvisioned(nombreNegocio) {
   }
   const e = await identidad.asegurar();
   return { success: true, sucursalId: e.locationId, negocioId: e.companyId, kind: e.kind };
+}
+
+// ---- Fase 2: la sucursal y sus eventos (ferias) -------------------------
+
+const b64url = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/**
+ * Llave Ed25519 de ESTA caja principal. La privada se guarda cifrada
+ * (safeStorage) y nunca sale de la computadora; la pública se registra en la
+ * nube y llega a las tablets como "llave de confianza" de la empresa.
+ */
+async function asegurarLlaveFirma() {
+  let priv = secreto.leer('firma');
+  if (!priv) {
+    const { privateKey } = crypto.generateKeyPairSync('ed25519');
+    priv = privateKey.export({ format: 'pem', type: 'pkcs8' });
+    secreto.guardar('firma', priv);
+  }
+  const cfg = loadConfig();
+  const publica = b64url(crypto.createPublicKey(crypto.createPrivateKey(priv)).export({ format: 'der', type: 'spki' }).subarray(-32));
+  if (cfg.signingPublicKey !== publica) {
+    await gateway('register_key', { public_key: publica });
+    writeConfig({ ...loadConfig(), signingPublicKey: publica });
+  }
+  return priv;
+}
+
+/**
+ * Comprobante de transferencia firmado (QR). Mismo formato que verifica la
+ * tablet (@wybix/sync, manifiesto.ts): WXT1.<manifiesto>.<firma>. Cambiar una
+ * cantidad o un producto invalida la firma.
+ */
+async function firmarTransferencia({ transfer_uuid, event_location_uuid, lines }) {
+  const cfg = loadConfig();
+  if (!cfg.deviceId || !cfg.companyId || !cfg.locationId) return null;   // sin identidad en la nube: sin QR (el envío sí queda)
+  const priv = await asegurarLlaveFirma();
+  const m = { v: 1, t: String(transfer_uuid).toLowerCase(), c: cfg.companyId, f: cfg.locationId, to: String(event_location_uuid).toLowerCase(),
+              k: cfg.deviceId, at: new Date().toISOString(), l: lines.map((l) => [String(l.product_uuid).toLowerCase(), Number(l.qty).toFixed(2)]) };
+  const cuerpo = `WXT1.${b64url(Buffer.from(JSON.stringify(m), 'utf8'))}`;
+  const firma = crypto.sign(null, Buffer.from(cuerpo, 'utf8'), crypto.createPrivateKey(priv));
+  return { qr: `${cuerpo}.${b64url(firma)}`, firma: b64url(firma) };
+}
+
+/** Catálogo y personal con PIN para las tablets de los eventos. Solo si cambió. */
+async function publicarSucursal() {
+  const pool = await poolPromise;
+  const cat = (await pool.request().execute('sp_catalog_publication')).recordset?.[0]?.catalog_json;
+  const staff = (await pool.request().execute('sp_staff_publication')).recordset?.[0]?.staff_json;
+  if (!cat) return { publicado: false };
+  const catalog = JSON.parse(cat), personal = JSON.parse(staff || '[]');
+  const huella = crypto.createHash('sha256').update(JSON.stringify({ catalog, personal })).digest('hex');
+  if (loadConfig().publishHash === huella) return { publicado: false };
+  const r = await gateway('publish', { catalog, staff: personal });
+  writeConfig({ ...loadConfig(), publishHash: huella });
+  return { publicado: true, catalog_version: r.catalog_version };
+}
+
+/**
+ * Lo que la nube tiene para esta sucursal: retornos de eventos por recibir,
+ * envíos que el evento ya recibió (se confirman aquí con lo que llegó) y la
+ * lista de eventos de los que es base.
+ */
+async function bandejaTransferencias() {
+  const r = await gateway('transfer_inbox');
+  const pool = await poolPromise;
+  for (const t of r.received ?? []) {
+    try {
+      await pool.request().input('transfer_uuid', sql.UniqueIdentifier, t.transfer_uuid)
+        .input('lines', sql.NVarChar(sql.MAX), JSON.stringify(t.lines ?? []))
+        .execute('sp_transfer_confirm_out');
+    } catch (e) { log('confirmar envio: ' + e.message); }
+  }
+  return { returns: r.returns ?? [], events: r.events ?? [], received: r.received ?? [] };
 }
 
 /** Una sucursal nueva se une a una empresa existente con el codigo del dueño. */
@@ -485,6 +563,10 @@ async function pushOnce() {
   if (!cfg.sucursalId) return { success: false, error: 'Falta sucursalId en la config.' };
   // Hechos primero: son la fuente de la Fase 1 (el espejo queda para el tablero actual).
   await hechos.enviar();
+  // Fase 2: catálogo y personal para los eventos, llave de firma y bandeja de transferencias.
+  try { await publicarSucursal(); } catch (e) { log('publicar: ' + e.message); }
+  try { await asegurarLlaveFirma(); } catch (e) { log('llave de firma: ' + e.message); }
+  try { await bandejaTransferencias(); } catch (e) { log('transferencias: ' + e.message); }
 
   const { daily, top, shifts } = await fetchSummaries();
   const sucursalId = cfg.sucursalId;
@@ -681,6 +763,9 @@ function stopScheduler() {
 
 module.exports = {
   hechosAhora: () => hechos.pronto(),
+  firmarTransferencia,
+  publicarSucursal,
+  bandejaTransferencias,
   enviarHechos: () => hechos.enviar(),
   unirseConCodigo,
   crearSucursal,

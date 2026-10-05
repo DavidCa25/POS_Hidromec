@@ -37,6 +37,10 @@ GO
        SALE          SALE_RECORDED / SALE_UPDATED
        SHIFT         SHIFT_OPENED / SHIFT_CLOSED
        CASH_MOVEMENT CASH_MOVEMENT_RECORDED (todo menos SALE, que ya va en la venta)
+       TRANSFER      0052: TRANSFER_SENT / TRANSFER_RECEIVED (salida a un evento
+                     y su confirmación) · RETURN_RECEIVED (el sobrante que volvió).
+                     Lleva sus líneas con UUID de producto: la nube arma el ledger
+                     del evento y la tablet recibe la mercancía.
    ============================================================== */
 CREATE OR ALTER PROCEDURE dbo.sp_sync_capture
     @max_rows INT = 500
@@ -62,6 +66,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'CASH_MOVEMENT')
         INSERT INTO dbo.sync_capture_state (aggregate_type, last_rv)
         SELECT 'CASH_MOVEMENT', ISNULL(MAX(rv), 0x0000000000000000) FROM dbo.cash_movements WHERE datee < DATEADD(DAY, -62, SYSDATETIME());
+    /* Las transferencias se capturan TODAS (son pocas y la feria las necesita). */
+    IF NOT EXISTS (SELECT 1 FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'TRANSFER')
+        INSERT INTO dbo.sync_capture_state (aggregate_type, last_rv) VALUES ('TRANSFER', 0x0000000000000000);
 
     DECLARE @wm BINARY(8);
 
@@ -192,6 +199,54 @@ BEGIN
     IF EXISTS (SELECT 1 FROM #movs)
         UPDATE dbo.sync_capture_state SET last_rv = (SELECT MAX(rv) FROM #movs), updated_at = SYSUTCDATETIME()
          WHERE aggregate_type = 'CASH_MOVEMENT';
+
+    /* ------------------------------------------------------ TRANSFERENCIAS */
+    SELECT @wm = last_rv FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'TRANSFER';
+
+    SELECT TOP (@max_rows) t.id, t.uuid, t.rv, CAST(t.rv AS BIGINT) AS version
+      INTO #transf
+      FROM dbo.stock_transfers t
+     WHERE t.rv > @wm AND t.rv < @tope
+     ORDER BY t.rv;
+
+    INSERT INTO dbo.sync_outbox (event_uuid, event_type, aggregate_type, aggregate_uuid, aggregate_version, occurred_at, payload)
+    SELECT k.event_uuid,
+           CASE WHEN t.kind = 'RETURN_IN' THEN 'RETURN_RECEIVED'
+                WHEN t.status = 'RECEIVED' THEN 'TRANSFER_RECEIVED'
+                ELSE 'TRANSFER_SENT' END,
+           'TRANSFER', t.uuid, x.version,
+           TODATETIMEOFFSET(ISNULL(t.received_at, t.created_at), @offset),
+           (SELECT
+                t.uuid                 AS transfer_uuid,
+                t.kind                 AS kind,
+                t.status               AS status,
+                t.event_location_uuid  AS event_location_uuid,
+                t.event_name           AS event_name,
+                t.note                 AS note,
+                CONVERT(VARCHAR(19), t.created_at, 126)  AS created_local,
+                CONVERT(VARCHAR(19), t.received_at, 126) AS received_local,
+                t.created_machine_name AS device,
+                t.manifest_signature   AS signature,
+                u.uuid AS [created_by.uuid], u.usuario AS [created_by.name],
+                (SELECT p.uuid AS product_uuid, p.nombre AS product_name,
+                        CONVERT(VARCHAR(20), l.qty_sent) AS qty_sent,
+                        CONVERT(VARCHAR(20), l.qty_received) AS qty_received
+                   FROM dbo.stock_transfer_lines l JOIN dbo.products p ON p.id = l.product_id
+                  WHERE l.transfer_id = t.id
+                  ORDER BY l.id
+                    FOR JSON PATH) AS lines
+              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)
+      FROM #transf x
+      JOIN dbo.stock_transfers t ON t.id = x.id
+      LEFT JOIN dbo.users u ON u.id = t.created_by
+     CROSS APPLY (SELECT CAST(CAST(HASHBYTES('SHA2_256',
+                    CONCAT('TRANSFER|', CONVERT(VARCHAR(36), t.uuid), '|', x.version)) AS BINARY(16)) AS UNIQUEIDENTIFIER) AS event_uuid) k
+     WHERE NOT EXISTS (SELECT 1 FROM dbo.sync_outbox o WHERE o.event_uuid = k.event_uuid);
+    SET @capturados += @@ROWCOUNT;
+
+    IF EXISTS (SELECT 1 FROM #transf)
+        UPDATE dbo.sync_capture_state SET last_rv = (SELECT MAX(rv) FROM #transf), updated_at = SYSUTCDATETIME()
+         WHERE aggregate_type = 'TRANSFER';
 
     COMMIT TRAN;
 

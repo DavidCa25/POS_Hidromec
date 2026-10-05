@@ -15,7 +15,7 @@
  * Solo la caja PRINCIPAL envía (las secundarias comparten la base: mandar
  * desde todas sería repetir el mismo outbox).
  */
-function crearEnvioHechos({ pool, sql, llamar, puedeEnviar, log = () => {}, esperaMs = 3000 }) {
+function crearEnvioHechos({ pool, sql, llamar, puedeEnviar, huella = async () => null, log = () => {}, esperaMs = 3000 }) {
   let enCurso = null;
   let reloj = null;
 
@@ -41,7 +41,9 @@ function crearEnvioHechos({ pool, sql, llamar, puedeEnviar, log = () => {}, espe
       const eventos = r.recordsets?.[0] ?? [];
       if (!eventos.length) break;
       const s = r.recordsets?.[1]?.[0] ?? {};
-      const envelope = { instance_uuid: s.instance_uuid ?? null, company_uuid: s.company_uuid ?? null, location_uuid: s.location_uuid ?? null };
+      // Fase 2: la huella del servidor viaja en el sobre; la nube detecta una copia restaurada en otro equipo.
+      const envelope = { instance_uuid: s.instance_uuid ?? null, company_uuid: s.company_uuid ?? null, location_uuid: s.location_uuid ?? null,
+                         server_fingerprint: await huella() };
       const resp = await llamar('events', { envelope, events: eventos.map(normalizar) });
       const acuses = (resp.results ?? []).map(x => ({ event_uuid: x.event_uuid, result: x.result, error: x.error ?? null }));
       await p.request().input('acuses', sql.NVarChar(sql.MAX), JSON.stringify(acuses)).execute('sp_sync_outbox_ack');

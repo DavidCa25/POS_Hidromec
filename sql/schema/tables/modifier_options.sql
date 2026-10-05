@@ -17,6 +17,7 @@ CREATE TABLE dbo.modifier_options (
     qty_factor DECIMAL(8, 4) NULL,
     active BIT NOT NULL CONSTRAINT DF_modifier_options_active DEFAULT ((1)),
     sort_order INT NOT NULL CONSTRAINT DF_modifier_options_sort_order DEFAULT ((0)),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_modifier_options_uuid DEFAULT (newid()),
     CONSTRAINT PK_modifier_options PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -35,3 +36,6 @@ ALTER TABLE dbo.modifier_options WITH CHECK ADD CONSTRAINT FK_modifier_options_r
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_modifier_options_group' AND object_id = OBJECT_ID(N'dbo.modifier_options'))
 CREATE NONCLUSTERED INDEX IX_modifier_options_group ON dbo.modifier_options (group_id, sort_order);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_modifier_options_uuid' AND object_id = OBJECT_ID(N'dbo.modifier_options'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_modifier_options_uuid ON dbo.modifier_options (uuid);

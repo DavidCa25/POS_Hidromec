@@ -26,6 +26,7 @@ CREATE TABLE dbo.products (
     base_uom NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_products_base_uom DEFAULT ('pza'),
     allow_decimal_qty BIT NOT NULL CONSTRAINT DF_products_allow_decimal_qty DEFAULT ((0)),
     image_version INT NOT NULL CONSTRAINT DF_products_image_version DEFAULT ((0)),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_products_uuid DEFAULT (newid()),
     PRIMARY KEY CLUSTERED (id),
     UNIQUE NONCLUSTERED (part_number)
 );
@@ -42,3 +43,6 @@ ALTER TABLE dbo.products WITH CHECK ADD CONSTRAINT fk_products_brand FOREIGN KEY
 
 IF OBJECT_ID(N'dbo.fk_products_category', 'F') IS NULL
 ALTER TABLE dbo.products WITH CHECK ADD CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES dbo.CAT_categories (id);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_products_uuid' AND object_id = OBJECT_ID(N'dbo.products'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_products_uuid ON dbo.products (uuid);

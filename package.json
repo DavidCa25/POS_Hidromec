@@ -81,6 +81,8 @@
     "test:seguridad": "node scripts/pruebas/sesion-permisos.mjs",
     "test:fase1": "node scripts/pruebas/fase1-unidad.mjs",
     "db:test-fase1": "node scripts/db/pruebas/fase1-cortes-outbox.mjs",
+    "db:test-paridad-recetas": "node scripts/db/pruebas/paridad-recetas.mjs",
+    "db:test-0052": "node scripts/db/pruebas/actualizar-0052.mjs",
     "test:hospitality-operacion": "node scripts/pruebas/hospitality-operacion.mjs",
     "test:wybix-guide": "node scripts/pruebas/wybix-guide.mjs",
     "test:terminal": "node scripts/pruebas/modo-terminal.mjs",

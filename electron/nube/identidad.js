@@ -39,7 +39,7 @@ class ErrorNube extends Error {
 
 /** database_metadata vía SQL Server. */
 function metadataSql({ pool, sql }) {
-  const CLAVES = ['instance_uuid', 'company_uuid', 'location_uuid', 'install_secret', 'is_demo'];
+  const CLAVES = ['instance_uuid', 'company_uuid', 'location_uuid', 'install_secret', 'is_demo', 'server_fingerprint'];
   return {
     async asegurarInstancia() {
       // Instalaciones nuevas (restauradas del baseline) no la traen: cada base
@@ -47,6 +47,18 @@ function metadataSql({ pool, sql }) {
       await (await pool()).request().query(`
         IF NOT EXISTS (SELECT 1 FROM dbo.database_metadata WHERE clave = 'instance_uuid')
           INSERT INTO dbo.database_metadata (clave, valor) VALUES ('instance_uuid', LOWER(CONVERT(NVARCHAR(36), NEWID())));`);
+    },
+    /**
+     * Fase 2 · HUELLA DEL SERVIDOR: equipo + instancia de SQL Server + nombre
+     * de la base. Una copia de esta base restaurada en OTRO servidor tiene
+     * otra huella: la nube no la deja sincronizar como si fuera la original.
+     */
+    async huellaServidor() {
+      const r = await (await pool()).request().query(`
+        SELECT LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONCAT(
+                 CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')), N'|',
+                 ISNULL(CONVERT(NVARCHAR(128), SERVERPROPERTY('InstanceName')), N'MSSQLSERVER'), N'|', DB_NAME())), 2)) AS fp;`);
+      return r.recordset?.[0]?.fp ?? null;
     },
     async leer() {
       const r = await (await pool()).request().query(
@@ -99,7 +111,8 @@ function crearIdentidad(deps) {
     deps.secreto.guardar('equipo', r.token);
     deps.cfg.escribir({ deviceId: r.device_id, companyId: r.company_id, locationId: r.location_id, deviceKind: r.kind,
                         sucursalId: r.location_id, negocioId: r.company_id });
-    await deps.meta.escribir({ company_uuid: r.company_id, location_uuid: r.location_id, install_secret: r.install_secret ?? null });
+    await deps.meta.escribir({ company_uuid: r.company_id, location_uuid: r.location_id, install_secret: r.install_secret ?? null,
+                               server_fingerprint: deps.meta.huellaServidor ? await deps.meta.huellaServidor() : null });
     // El token por sucursal de versiones anteriores ya no vale tras actualizar.
     if (r.upgraded) deps.secreto.borrar('legado');
     log(`equipo ${r.kind} de la ubicación ${r.location_id}`);

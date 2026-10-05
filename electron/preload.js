@@ -376,6 +376,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cloudUnirseCodigo: (codigo) => ipcRenderer.invoke('cloud:unirse-codigo', codigo),
     cloudCrearSucursal: (p) => ipcRenderer.invoke('cloud:crear-sucursal', p),
     cloudEstado: () => ipcRenderer.invoke('cloud:estado'),
+    // Fase 2: transferencias con eventos (ferias).
+    transferenciasListar: () => ipcRenderer.invoke('transferencias:listar'),
+    transferenciasEnviar: (p) => ipcRenderer.invoke('transferencias:enviar', p),
+    transferenciasRecibirRetorno: (p) => ipcRenderer.invoke('transferencias:recibir-retorno', p),
 
 
     //FACTURACION

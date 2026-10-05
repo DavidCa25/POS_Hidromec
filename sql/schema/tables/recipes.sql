@@ -12,6 +12,7 @@ CREATE TABLE dbo.recipes (
     active BIT NOT NULL CONSTRAINT DF_recipes_active DEFAULT ((1)),
     notes NVARCHAR(300) COLLATE Modern_Spanish_CI_AS NULL,
     updated_at DATETIME2(0) NOT NULL CONSTRAINT DF_recipes_updated_at DEFAULT (sysdatetime()),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_recipes_uuid DEFAULT (newid()),
     CONSTRAINT PK_recipes PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -24,3 +25,6 @@ ALTER TABLE dbo.recipes WITH CHECK ADD CONSTRAINT FK_recipes_variant_option FORE
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_recipes_product_variant' AND object_id = OBJECT_ID(N'dbo.recipes'))
 CREATE UNIQUE NONCLUSTERED INDEX UX_recipes_product_variant ON dbo.recipes (product_id, variant_option_id);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_recipes_uuid' AND object_id = OBJECT_ID(N'dbo.recipes'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_recipes_uuid ON dbo.recipes (uuid);

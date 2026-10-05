@@ -1,0 +1,40 @@
+/* Envíos a eventos: mismo lenguaje de reporte que Egresos y Proveedores. */
+.ev-cab h2 { margin: 0 0 .25rem; }
+.ev-intro { color: var(--wx-text-muted); margin: 0 0 1rem; max-width: 70ch; }
+.ev-aviso, .ev-error { margin: 0 0 1rem; padding: .75rem 1rem; border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-text); }
+.ev-error { border-left: 3px solid var(--wx-danger); }
+
+.ev-bloque { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); padding: 1rem; background: var(--wx-surface); margin-bottom: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+.ev-bloque h3 { font-size: 1rem; margin: 0; color: var(--wx-text); }
+.ev-bloque h4 { font-size: .95rem; margin: 0; }
+.ev-vacio { color: var(--wx-text-muted); margin: 0; }
+
+.ev-fila { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
+.ev-campo { display: flex; flex-direction: column; gap: .3rem; min-width: 220px; color: var(--wx-text-muted); font-size: .875rem; }
+.ev-crece { flex: 1 1 280px; }
+.ev-cant { min-width: 120px; width: 120px; }
+.ev-campo input, .ev-input-cant {
+  height: 38px; padding: 0 .65rem; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+  background: var(--wx-surface); color: var(--wx-text); font-size: .95rem; font-variant-numeric: tabular-nums;
+}
+.ev-input-cant { width: 90px; text-align: right; }
+.ev-campo input:focus-visible, .ev-input-cant:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; }
+
+.ev-tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.ev-tabla th { text-align: left; font-weight: 600; color: var(--wx-text-muted); padding: .4rem .5rem; border-bottom: 1px solid var(--wx-edge); }
+.ev-tabla td { padding: .45rem .5rem; border-bottom: 1px solid var(--wx-edge); color: var(--wx-text); }
+.ev-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ev-dif { color: var(--wx-danger); font-weight: 600; }
+
+.ev-link { background: none; border: 0; padding: 0; color: var(--wx-accent-text); cursor: pointer; font-size: .875rem; align-self: flex-start; }
+.ev-link:hover { text-decoration: underline; }
+.ev-principal { align-self: flex-start; }
+
+.ev-qr { align-items: flex-start; }
+.ev-qr img { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm); background: #fff; padding: 8px; max-width: 100%; height: auto; }
+.ev-retorno { display: flex; flex-direction: column; gap: .5rem; padding-top: .5rem; border-top: 1px solid var(--wx-edge); }
+
+@media print {
+  .ev > :not(.ev-qr) { display: none !important; }
+  .ev-qr button { display: none !important; }
+}
