@@ -40,8 +40,24 @@ export class CommercialService {
     } }
     private payload(cart: Cart) { return { version: this.policy?.version, coupon: cart.coupon?.code, orderReference: cart.commercial?.orderReference, channel: cart.commercial?.channel ?? 'LOCAL', audiences: cart.commercial?.audiences ?? [], lines: cart.lines.map(l => ({ key: String(l.lineId), productId: l.productId, qty: l.qty, note: l.note, options: l.options, combo: l.combo })), registerId: null }; }
     signature(cart: Cart) { return JSON.stringify(this.payload(cart)); }
-    catalogPrice(id: number, base: number): number | null { const channel = this.carts.activeCart().commercial?.channel ?? 'LOCAL', product = this.data()?.ids.find((x: any) => x.id === id)?.uuid, policy = this.policy; if (!policy)
-        return base; const c = policy.channels.find(c => c.id === channel && c.active), price = policy.prices.find(x => x.channel === channel && x.product === product && !x.variant); return price ? Number(price.price) : c?.inheritBase ? base : null; }
+    catalogPrice(id: number, base: number, variant?: string): number | null {
+        this.carts.version();
+        const channel = this.carts.activeCart().commercial?.channel ?? 'LOCAL';
+        const product = this.data()?.ids.find((x: any) => x.id === id)?.uuid;
+        const policy = this.policy;
+        if (!policy) return base;
+        const c = policy.channels.find(c => c.id === channel && c.active);
+        if (!c) return null;
+        const price = policy.prices.find(x => x.channel === channel && x.product === product && x.variant === variant)
+          ?? policy.prices.find(x => x.channel === channel && x.product === product && !x.variant);
+        return price ? Number(price.price) : c.inheritBase ? base : null;
+    }
+    hasVariantPrices(id: number): boolean {
+        this.carts.version();
+        const channel = this.carts.activeCart().commercial?.channel ?? 'LOCAL';
+        const product = this.data()?.ids.find((x: any) => x.id === id)?.uuid;
+        return !!this.policy?.prices.some(x => x.channel === channel && x.product === product && !!x.variant);
+    }
     enabled(cart: Cart) { return !cart.transient && !cart.meta?.['ordenServicio'] && !!this.policy && ((cart.commercial?.channel ?? 'LOCAL') !== 'LOCAL' || this.policy.prices.some(x => x.channel === 'LOCAL') || this.policy.promotions.some(x => x.active) || cart.lines.some(l => l.combo) || !!cart.coupon); }
     private schedule(cart: Cart) { if (!this.enabled(cart) || !cart.lines.length) {
         if (cart.commercial?.quote) {

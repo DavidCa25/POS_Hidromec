@@ -1,5 +1,11 @@
 import { AuthService } from '../../services/auth.service';
-import { Component, inject, ElementRef, HostListener } from '@angular/core';
+import {
+  Component,
+  Input,
+  inject,
+  ElementRef,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CommercialService } from '../../core/commercial.service';
@@ -18,48 +24,62 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
   template: ` <section
       *ngIf="service.policy as p"
       class="cs"
+      [class.cs--touch]="touch"
       aria-label="Canal y ofertas de la cuenta"
     >
       <p *ngIf="cart.activeCart().meta?.['commercialNotice']" role="status">
         {{ cart.activeCart().meta?.['commercialNotice'] }}
       </p>
       <label
-        >Canal
+        >{{ touch ? 'Precios por canal' : 'Canal' }}
         <wx-select
           [opciones]="channelOptions"
+          [disabled]="channelLocked"
           [ngModel]="cart.activeCart().commercial?.channel ?? 'LOCAL'"
           (ngModelChange)="change($event)"
         ></wx-select
       ></label>
-      <button
-        *ngIf="p.combos.some(active)"
-        type="button"
-        (click)="showCombo($event)"
-      >
-        Agregar combo
-      </button>
-      <ng-container *ngIf="cart.activeCart().commercial as c"
-        ><label *ngIf="c.channel !== 'LOCAL'"
-          >Folio de plataforma<input
-            aria-label="Folio de plataforma"
-            maxlength="100"
-            [(ngModel)]="c.orderReference"
-            (ngModelChange)="cart.notify()" /></label
+      <ng-template #accountOptions>
+        <button
+          *ngIf="p.combos.some(active)"
+          type="button"
+          (click)="showCombo($event)"
+        >
+          Agregar combo
+        </button>
+        <ng-container *ngIf="cart.activeCart().commercial as c"
+          ><label *ngIf="c.channel !== 'LOCAL'"
+            >Folio de plataforma<input
+              aria-label="Folio de plataforma"
+              maxlength="100"
+              [(ngModel)]="c.orderReference"
+              (ngModelChange)="cart.notify()" /></label
+        ></ng-container>
+        <label *ngFor="let audience of audiences"
+          ><input
+            type="checkbox"
+            [disabled]="!auth.puede('VENTAS_SUPERVISAR')"
+            [ngModel]="
+              cart.activeCart().commercial?.audiences?.includes(audience)
+            "
+            (ngModelChange)="eligible(audience, $event)"
+          />
+          {{ audience }}</label
+        >
+      </ng-template>
+      <ng-container
+        *ngIf="!touch"
+        [ngTemplateOutlet]="accountOptions"
       ></ng-container>
-      <label *ngFor="let audience of audiences"
-        ><input
-          type="checkbox"
-          [disabled]="!auth.puede('VENTAS_SUPERVISAR')"
-          [ngModel]="
-            cart.activeCart().commercial?.audiences?.includes(audience)
-          "
-          (ngModelChange)="eligible(audience, $event)"
-        />
-        {{ audience }}</label
-      >
+      <details *ngIf="touch" class="cs-options">
+        <summary>Combos y opciones</summary>
+        <ng-container [ngTemplateOutlet]="accountOptions"></ng-container>
+      </details>
       <span *ngIf="cart.activeCart().commercial?.pending" role="status"
         >Calculando precios…</span
-      ><span *ngIf="cart.activeCart().commercial?.quote as q"
+      ><span
+        *ngIf="cart.activeCart().commercial?.quote as q"
+        [hidden]="touch && +q.discount === 0"
         >{{ q.channelName }} · Ahorro
         {{ q.discount | currency: 'MXN' : 'symbol-narrow' }}</span
       >
@@ -137,6 +157,38 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
         align-items: center;
         gap: 8px;
       }
+      .cs--touch {
+        flex-direction: column;
+        align-items: stretch;
+        margin: 8px 12px 0;
+        padding: 12px;
+        gap: 10px;
+        border-radius: 12px;
+      }
+      .cs--touch label {
+        display: grid;
+        gap: 6px;
+      }
+      .cs--touch wx-select {
+        width: 100%;
+      }
+      .cs-options summary {
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--wx-text-muted);
+        padding: 4px 0;
+      }
+      .cs-options[open] {
+        max-height: 180px;
+        overflow: auto;
+      }
+      .cs-options label {
+        margin-top: 10px;
+      }
+      .cs-options button {
+        margin: 8px 0;
+        width: 100%;
+      }
       .cs input:not([type='checkbox']),
       .cs button,
       .cs-panel button {
@@ -191,6 +243,10 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
   ],
 })
 export class CommercialSaleComponent {
+  @Input() touch = false;
+  get channelLocked() {
+    return this.cart.activeCart().lines.some((l) => l.enviada != null);
+  }
   async ngOnInit() {
     await this.service.load();
   }

@@ -743,7 +743,13 @@ test("Centro de ofertas: composición aprobada en claro, oscuro y tablet", async
   await editor
     .getByRole("button", { name: "Productos elegibles", exact: true })
     .click();
-  await expect.poll(() => editor.locator('.wm-panel:popover-open').evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+  await expect
+    .poll(() =>
+      editor
+        .locator(".wm-panel:popover-open")
+        .evaluate((el) => Number(getComputedStyle(el).opacity)),
+    )
+    .toBe(1);
   await p.screenshot({
     path: "docs/evidencia/comercial-20261007/centro-ofertas-editor.png",
   });
@@ -766,6 +772,252 @@ test("Centro de ofertas: composición aprobada en claro, oscuro y tablet", async
       .locator("wx-inventory-tabs")
       .getByRole("link", { name: "Promociones y combos", exact: true }),
   ).toBeVisible();
+});
+
+test("Touch: canal visible bajo cliente, precio y cobro independientes por cuenta", async ({
+  app,
+}) => {
+  test.setTimeout(180000);
+  await login(app, CUENTAS.admin);
+  const { data, dona, cafe, n } = await seed(app),
+    p = app.ventana;
+  data.policy.channels.push({
+    id: "TOUCH_" + n,
+    name: "Uber Touch " + n,
+    active: true,
+    inheritBase: false,
+  });
+  data.policy.prices.push({
+    channel: "TOUCH_" + n,
+    product: dona.uuid,
+    price: "32.00",
+  });
+  expect(
+    (
+      await app.invocar("commercialSave", {
+        version: data.policy.version,
+        policy: data.policy,
+      })
+    ).success,
+  ).toBeTruthy();
+  await app.invocar("setDeviceConfig", { deviceProfile: "TOUCH_POS" });
+  await p.locator(".wx-yo__btn").click();
+  await p.locator(".wx-yo__fila").filter({ hasText: "Cerrar sesión" }).click();
+  await p.waitForSelector("#username");
+  await login(app, CUENTAS.admin);
+  try {
+    await p.waitForSelector("app-touch-pos .tp-card");
+    await p.setViewportSize({ width:1280, height:640 });
+    const turn = p
+      .getByRole("dialog")
+      .filter({
+        has: p.getByRole("heading", { name: "Abrir turno", exact: true }),
+      });
+    await expect
+      .poll(
+        async () =>
+          (await turn.count()) + (await p.locator(".tp-turno__dot.on").count()),
+      )
+      .toBeGreaterThan(0);
+    if (await turn.count())
+      await turn
+        .getByRole("button", { name: "Abrir turno", exact: true })
+        .click();
+    const commercial = p.locator(".tp-cart app-commercial-sale"),
+      picker = commercial.locator("wx-select").first().getByRole("combobox");
+    await expect(picker).toBeVisible();
+    const customer = await p.locator(".tp-cliente").boundingBox(),
+      position = await picker.boundingBox();
+    expect(position.y).toBeGreaterThan(customer.y + customer.height);
+    const selectChannel = async (name) => {
+      await picker.click();
+      await commercial.getByRole("option", { name, exact: true }).click();
+    };
+    const card = p
+      .locator(".tp-card")
+      .filter({ hasText: "Dona comercial " + n });
+    await selectChannel("Uber Touch " + n);
+    await expect(card.locator(".tp-card__precio")).toContainText("$32.00");
+    await card.click();
+    await expect(p.locator(".tp-cart__total")).toContainText("$32.00");
+    await p.getByRole("button", { name: "Nueva cuenta", exact: true }).click();
+    await expect(picker).toContainText("Mostrador");
+    await card.click();
+    await expect(p.locator(".tp-cart__total")).toContainText("$25.00");
+    const tabs = p
+      .getByRole("tablist", { name: "Cuentas abiertas" })
+      .getByRole("tab");
+    await tabs.nth(0).click();
+    await expect(picker).toContainText("Uber Touch " + n);
+    await expect(p.locator(".tp-cart__total")).toContainText("$32.00");
+    await p
+      .locator(".tp-card")
+      .filter({ hasText: "Café comercial " + n })
+      .click();
+    await expect(p.locator(".tp-linea")).toHaveCount(1);
+    await expect(
+      p
+        .locator(".tp-card")
+        .filter({ hasText: "Café comercial " + n })
+        .locator(".tp-card__precio"),
+    ).toContainText("Sin precio en este canal");
+    await p.screenshot({
+      path: "docs/evidencia/comercial-20261007/touch-canal-por-cuenta.png",
+    });
+    const before = new Set(
+      rows(await app.invocar("getSales")).map((x) => x.id),
+    );
+    await p.locator(".tp-cart__foot .tp-primaria").click();
+    await p.locator(".tp-metodo").filter({ hasText: "Plataforma" }).click();
+    await p.locator(".tp-cobro__confirmar").click();
+    await expect
+      .poll(
+        async () =>
+          rows(await app.invocar("getSales")).filter(
+            (x) => !before.has(x.id) && Number(x.total) === 32,
+          ).length,
+      )
+      .toBe(1);
+    await p
+      .locator(".tp-exito")
+      .getByRole("button", { name: "Listo", exact: true })
+      .click();
+    await expect(picker).toContainText("Mostrador");
+    await expect(p.locator(".tp-cart__total")).toContainText("$25.00");
+  } finally {
+    await app.invocar("setDeviceConfig", { deviceProfile: "RETAIL_POS" });
+  }
+});
+
+test("Touch: precios por tamaño, extras y cantidad coinciden al cobrar", async ({
+  app,
+}) => {
+  test.setTimeout(180000);
+  await login(app, CUENTAS.admin);
+  const { cafe, n } = await seed(app),
+    p = app.ventana;
+  await app.invocar("modulosSet", "hospitality", true);
+  const group = await p.evaluate(
+    (name) =>
+      window.wybix.modifiers.save({
+        name,
+        role: "SIZE",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        options: [
+          { name: "Chico", priceDelta: 0, effect: "NONE" },
+          { name: "Grande", priceDelta: 10, effect: "NONE" },
+        ],
+      }),
+    "Tamaño Touch " + n,
+  );
+  expect(group.success, JSON.stringify(group)).toBeTruthy();
+  let data = (await app.invocar("commercialCatalog")).data;
+  const productId = data.ids.find((x) => x.uuid === cafe.uuid).id;
+  expect(
+    (
+      await p.evaluate(
+        ([productId, groupId]) =>
+          window.wybix.modifiers.setProductGroups({
+            productId,
+            groupIds: [groupId],
+          }),
+        [productId, group.groupId],
+      )
+    ).success,
+  ).toBeTruthy();
+  data = (await app.invocar("commercialCatalog")).data;
+  const sizes = data.catalog.modifier_groups.find(
+    (g) => g.name === "Tamaño Touch " + n,
+  ).options;
+  data.policy.channels.push({
+    id: "SIZE_" + n,
+    name: "Delivery tamaños " + n,
+    active: true,
+    inheritBase: false,
+  });
+  for (const [i, size] of sizes.entries())
+    data.policy.prices.push({
+      channel: "SIZE_" + n,
+      product: cafe.uuid,
+      variant: size.uuid,
+      price: i ? "50.00" : "40.00",
+    });
+  expect(
+    (
+      await app.invocar("commercialSave", {
+        version: data.policy.version,
+        policy: data.policy,
+      })
+    ).success,
+  ).toBeTruthy();
+  await app.invocar("setDeviceConfig", { deviceProfile: "TOUCH_POS" });
+  await p.locator(".wx-yo__btn").click();
+  await p.locator(".wx-yo__fila").filter({ hasText: "Cerrar sesión" }).click();
+  await p.waitForSelector("#username");
+  await login(app, CUENTAS.admin);
+  try {
+    await p.waitForSelector("app-touch-pos .tp-card");
+    const turn = p
+      .getByRole("dialog")
+      .filter({
+        has: p.getByRole("heading", { name: "Abrir turno", exact: true }),
+      });
+    await expect
+      .poll(
+        async () =>
+          (await turn.count()) + (await p.locator(".tp-turno__dot.on").count()),
+      )
+      .toBeGreaterThan(0);
+    if (await turn.count())
+      await turn
+        .getByRole("button", { name: "Abrir turno", exact: true })
+        .click();
+    const commercial = p.locator(".tp-cart app-commercial-sale");
+    await commercial.locator("wx-select").first().getByRole("combobox").click();
+    await commercial
+      .getByRole("option", { name: "Delivery tamaños " + n, exact: true })
+      .click();
+    const card = p
+      .locator(".tp-card")
+      .filter({ hasText: "Café comercial " + n });
+    await expect(card.locator(".tp-card__precio")).toContainText(
+      "Elige tamaño",
+    );
+    await card.click();
+    await p.locator(".tp-opcion").filter({ hasText: "Chico" }).click();
+    await expect(p.locator("[data-guide=touch-hoja-agregar]")).toContainText(
+      "$40.00",
+    );
+    await p.locator(".tp-opcion").filter({ hasText: "Grande" }).click();
+    await expect(p.locator("[data-guide=touch-hoja-agregar]")).toContainText(
+      "$60.00",
+    );
+    await p.locator(".tp-hoja__qty button").last().click();
+    await expect(p.locator("[data-guide=touch-hoja-agregar]")).toContainText(
+      "$120.00",
+    );
+    await p.locator("[data-guide=touch-hoja-agregar]").click();
+    await expect(p.locator(".tp-cart__total")).toContainText("$120.00");
+    const before = new Set(
+      rows(await app.invocar("getSales")).map((x) => x.id),
+    );
+    await p.locator(".tp-cart__foot .tp-primaria").click();
+    await p.locator(".tp-metodo").filter({ hasText: "Plataforma" }).click();
+    await p.locator(".tp-cobro__confirmar").click();
+    await expect
+      .poll(
+        async () =>
+          rows(await app.invocar("getSales")).filter(
+            (x) => !before.has(x.id) && Number(x.total) === 120,
+          ).length,
+      )
+      .toBe(1);
+  } finally {
+    await app.invocar("setDeviceConfig", { deviceProfile: "RETAIL_POS" });
+    await app.invocar("modulosSet", "hospitality", false);
+  }
 });
 
 test("combo entre dos estaciones: cancelar dona, cobrar solo café y liberar mesa", async ({

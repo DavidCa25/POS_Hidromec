@@ -305,7 +305,11 @@ export class TouchPos implements OnInit, OnDestroy {
   readonly precioHoja = computed(() => {
     const p = this.hoja();
     if (!p) return 0;
-    let precio = Number(p.price);
+    const sizeGroup = this.grupos().find(g => g.role === 'SIZE');
+    const size = sizeGroup ? this.seleccion().get(sizeGroup.id)?.[0] : undefined;
+    const variant = this.commercial.data()?.optionIds.find((o:any) => o.id === size?.id)?.uuid;
+    let precio = this.commercial.catalogPrice(p.id, Number(p.price), variant);
+    if (precio === null) return null;
     for (const [gid, opts] of this.seleccion()) {
       const g = this.grupos().find(x => x.id === gid);
       const conCantidad = !!g && admiteCantidad(g);
@@ -323,7 +327,7 @@ export class TouchPos implements OnInit, OnDestroy {
      no habia receta. Una sola regla, dos pantallas. */
   readonly faltantes = computed(() => faltanPorElegir(this.grupos(), this.seleccion()));
 
-  readonly puedeAgregar = computed(() => this.faltantes().length === 0);
+  readonly puedeAgregar = computed(() => this.faltantes().length === 0 && this.precioHoja() !== null);
 
   // ------------------------------------------------------------------ cobro
   metodo = signal<PaymentMethod>('EFECTIVO');
@@ -498,6 +502,10 @@ export class TouchPos implements OnInit, OnDestroy {
   tocar(p: MenuProduct) {
     if (this.agotado(p)) { this.mostrar(this.porQueAgotado(p)); return; }
     if (this.menu.needsChoice(p)) { this.abrirHoja(p); return; }
+    if (this.commercial.catalogPrice(p.id, p.price) === null) {
+      this.mostrar('Este producto no tiene precio en el canal seleccionado.');
+      return;
+    }
     this.agregar(p, 1, [], null);
     this.mostrar(`${p.product_name} agregado`, 'ok');
   }
@@ -668,7 +676,7 @@ export class TouchPos implements OnInit, OnDestroy {
     const p = this.hoja();
     if (!p) return;
     if (!this.puedeAgregar()) {
-      this.mostrar(`Falta elegir ${this.faltantes()[0].name}`);
+      this.mostrar(this.faltantes().length ? `Falta elegir ${this.faltantes()[0].name}` : 'Este producto no tiene precio en el canal seleccionado.');
       return;
     }
     const opciones: SelectedOption[] = [];

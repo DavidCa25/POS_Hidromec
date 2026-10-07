@@ -17,6 +17,8 @@ La administración de Windows usa el diseño **A · Centro de ofertas**, aprobad
 9. Abrir un turno en Venta. Elegir el canal en la cuenta, agregar productos o armar un combo, revisar total y ahorro y cobrar. Para una venta ya pagada en Uber/DiDi/Rappi, elegir **Pagado en plataforma**; se registra el total sin incrementar el efectivo esperado del cajón. El folio de plataforma es opcional.
 10. Revisar el ticket, inventario y corte. En una cuenta nueva el canal vuelve a Mostrador. Una devolución devuelve el importe realmente cobrado y repone las unidades correspondientes.
 
+En **Venta Touch**, el selector **Precios por canal** está debajo del cliente. Cada cuenta abierta conserva su propio canal, productos y total; cambiar de pestaña no copia la selección de otra cuenta. Combos, folio de plataforma y elegibilidad están en **Combos y opciones**. Una cuenta con comandas enviadas conserva su canal. Si un canal exige precios explícitos y el producto no tiene uno, se indica **Sin precio en este canal**; si sus precios dependen del tamaño, se indica **Elige tamaño** y la hoja calcula el precio de la variante, extras y cantidad antes de agregarla.
+
 Para I Do Nut pueden configurarse un precio especial del martes, frappés 2x1, media docena con seis elecciones, café adicional al comprar dos donas y descuento por elegibilidad. No cargar automáticamente los precios de los carteles: aparecen importes distintos para algunos combos y deben confirmarse comercialmente.
 
 ## Comportamiento
