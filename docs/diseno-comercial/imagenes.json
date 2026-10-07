@@ -1,0 +1,23 @@
+{
+  "method": "imagegen integrada",
+  "status": "concepto A aprobado e implementado con tipografía Geist",
+  "reference": "docs/evidencia/comercial-20261007/combo-venta.png",
+  "concepts": [
+    {
+      "id": "A",
+      "file": "concepto-a-centro-ofertas.png",
+      "name": "Centro de ofertas"
+    },
+    {
+      "id": "B",
+      "file": "concepto-b-lista-editor.png",
+      "name": "Lista y editor"
+    },
+    {
+      "id": "C",
+      "file": "concepto-c-catalogo.png",
+      "name": "Catálogo conectado"
+    }
+  ],
+  "applicationModified": true
+}

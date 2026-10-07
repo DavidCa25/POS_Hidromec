@@ -85,3 +85,12 @@
 }
 
 .wx-menu__btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.wx-menu__btn--primary,
+.wx-menu__btn--primary:hover:not(:disabled) {
+  background: var(--wx-cyan-500);
+  border-color: var(--wx-cyan-500);
+  color: var(--wx-cyan-ink);
+}
+.wx-menu__btn--primary:hover:not(:disabled) { filter: brightness(.97); }
+.wx-menu__btn--primary:focus-visible { outline-color: var(--wx-cyan-500); }

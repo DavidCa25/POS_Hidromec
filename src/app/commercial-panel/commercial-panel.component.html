@@ -1,14 +1,835 @@
-<div class="cp-head"><div><h3>Precios, promociones y combos</h3><p class="cp-small">Conserva tus productos y existencias. Publica precios por canal y ofertas con vigencia.</p></div><button class="btn btn-primary" (click)="save()" [disabled]="busy||!policy">{{busy?'Guardando…':'Publicar cambios'}}</button></div>
-<p role="status" [class.cp-error]="!message.startsWith('Configuración publicada')">{{message}}</p>
-<ng-container *ngIf="policy as p">
-<nav class="cp-tabs" aria-label="Configuración comercial"><button *ngFor="let t of [['channels','Canales'],['prices','Precios'],['promotions','Promociones'],['combos','Combos'],['preview','Vista previa']]" [class.on]="tab===t[0]" (click)="tab=t[0]">{{t[1]}}</button></nav>
-<section *ngIf="tab==='channels'"><p class="cp-small">El canal pertenece a cada cuenta. Para llevar y forma de pago se eligen por separado.</p><div class="cp-card" *ngFor="let c of p.channels;let i=index"><div class="cp-row"><label>Nombre<input class="form-control" [(ngModel)]="c.name" maxlength="100" [disabled]="c.id==='LOCAL'"></label><label>Disponible<input type="checkbox" [(ngModel)]="c.active" [disabled]="c.id==='LOCAL'"></label><label>Usar precio base si falta uno<input type="checkbox" [(ngModel)]="c.inheritBase" [disabled]="c.id==='LOCAL'"></label></div></div><button class="btn btn-outline-primary" (click)="channel()">Agregar canal</button></section>
-<section *ngIf="tab==='prices'"><p class="cp-small">Precios finales por producto. Los extras se agregan por separado; el inventario es el mismo.</p><div class="cp-card" *ngFor="let x of p.prices;let i=index"><div class="cp-row"><label>Canal<select class="form-select" [(ngModel)]="x.channel"><option *ngFor="let c of p.channels" [value]="c.id">{{c.name}}</option></select></label><label>Producto<select class="form-select" [(ngModel)]="x.product"><option *ngFor="let pr of products" [value]="pr.uuid">{{pr.nombre}}</option></select></label><label>Variante (opcional)<select class="form-select" [(ngModel)]="x.variant"><option [ngValue]="undefined">Cualquier tamaño</option><option *ngFor="let v of variants(x.product)" [value]="v.uuid">{{v.name}}</option></select></label><label>Precio<input class="form-control" type="number" min="0" step="0.01" [ngModel]="x.price" (ngModelChange)="x.price=($event??0).toFixed(2)"></label><button class="btn btn-outline-danger" (click)="p.prices.splice(i,1)">Quitar precio</button></div></div><button class="btn btn-outline-primary" (click)="price()">Agregar precio</button></section>
-<section *ngIf="tab==='promotions'"><p class="cp-small">La prioridad menor se aplica primero. Las mismas unidades no acumulan promociones ni combos. Los extremos finales de los horarios quedan excluidos.</p>
-<div class="cp-card" *ngFor="let r of p.promotions;let i=index"><div class="cp-row"><label>Nombre<input class="form-control" [(ngModel)]="r.name" maxlength="100"></label><label>Activa<input type="checkbox" [(ngModel)]="r.active"></label><label>Tipo<select class="form-select" [(ngModel)]="r.kind" (ngModelChange)="changeKind(r)"><option value="PRICE">Precio especial</option><option value="PERCENT">Porcentaje</option><option value="AMOUNT">Descuento por unidad</option><option value="BUY_PAY">Compra N / paga M</option><option value="ADDON">Producto adicional</option></select></label><label>Prioridad<input class="form-control" type="number" min="0" [(ngModel)]="r.priority"></label></div>
-<div class="cp-row"><label>Productos elegibles<select multiple class="form-select" [(ngModel)]="r.selector.products"><option *ngFor="let pr of products" [value]="pr.uuid">{{pr.nombre}}</option></select></label><label>Categorías (se suman a productos)<select multiple class="form-select" [(ngModel)]="r.selector.categories"><option *ngFor="let c of categories" [value]="c.uuid">{{c.nombre}}</option></select></label><label>Tamaños elegibles (opcional)<select multiple class="form-select" [(ngModel)]="r.selector.variants"><option *ngFor="let v of variants()" [value]="v.uuid">{{v.name}}</option></select></label><label>Canales (vacío: todos)<select multiple class="form-select" [(ngModel)]="r.channels"><option *ngFor="let c of p.channels" [value]="c.id">{{c.name}}</option></select></label><label *ngIf="r.kind!=='BUY_PAY'">{{r.kind==='PERCENT'?'Porcentaje':'Importe'}}<input class="form-control" type="number" min="0" step="0.01" [ngModel]="r.value" (ngModelChange)="r.value=($event??0).toFixed(2)"></label><ng-container *ngIf="r.kind==='BUY_PAY'"><label>Compra<input class="form-control" type="number" min="2" [(ngModel)]="r.buy"></label><label>Paga<input class="form-control" type="number" min="1" [(ngModel)]="r.pay"></label></ng-container></div>
-<div class="cp-row" *ngIf="r.kind==='ADDON'"><label>Compra estos productos<select multiple class="form-select" [(ngModel)]="r.trigger!.products"><option *ngFor="let pr of products" [value]="pr.uuid">{{pr.nombre}}</option></select></label><label>Cantidad necesaria<input class="form-control" type="number" min="1" [(ngModel)]="r.triggerQty"></label></div>
-<div class="cp-row"><label>Desde<input class="form-control" type="date" [(ngModel)]="r.starts"></label><label>Hasta<input class="form-control" type="date" [(ngModel)]="r.ends"></label><label>Elegibilidad (requiere supervisor)<input class="form-control" [(ngModel)]="r.audience" placeholder="Ej. ESTUDIANTE"></label><label>Incluir extras en descuento<input type="checkbox" [(ngModel)]="r.extrasIncluded"></label></div>
-<div class="cp-row"><label *ngFor="let d of ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];let j=index">{{d}}<input type="checkbox" [ngModel]="r.weekdays?.includes(j)" (ngModelChange)="day(r,j,$event)"></label></div><p class="cp-small">Sin días seleccionados: todos los días. Sin horarios: todo el día.</p><div class="cp-row" *ngFor="let w of r.windows;let j=index"><label>Inicio<input class="form-control" type="time" [(ngModel)]="w.from"></label><label>Fin<input class="form-control" type="time" [(ngModel)]="w.to"></label><button class="btn btn-outline-danger" (click)="r.windows!.splice(j,1)">Quitar horario</button></div><div class="cp-row"><button class="btn btn-outline-primary" (click)="window(r)">Agregar horario</button><button class="btn btn-outline-danger" (click)="p.promotions.splice(i,1)">Quitar promoción</button></div></div><button class="btn btn-outline-primary" (click)="promo()">Agregar promoción</button></section>
-<section *ngIf="tab==='combos'"><p class="cp-small">El combo agrupa productos reales. Los extras se cobran aparte; no acumula promociones.</p><div class="cp-card" *ngFor="let c of p.combos;let i=index"><div class="cp-row"><label>Nombre<input class="form-control" [(ngModel)]="c.name"></label><label>Precio conjunto<input class="form-control" type="number" min="0" step="0.01" [ngModel]="c.price" (ngModelChange)="c.price=($event??0).toFixed(2)"></label><label>Activo<input type="checkbox" [(ngModel)]="c.active"></label><label>Canales (vacío: todos)<select multiple class="form-select" [(ngModel)]="c.channels"><option *ngFor="let ch of p.channels" [value]="ch.id">{{ch.name}}</option></select></label></div><div class="cp-card" *ngFor="let g of c.groups;let j=index"><div class="cp-row"><label>Grupo<input class="form-control" [(ngModel)]="g.name"></label><label>Cantidad<input class="form-control" type="number" min="1" [(ngModel)]="g.quantity"></label><label>Opciones<select multiple class="form-select" [(ngModel)]="g.selector.products"><option *ngFor="let pr of products" [value]="pr.uuid">{{pr.nombre}}</option></select></label><button class="btn btn-outline-danger" (click)="c.groups.splice(j,1)">Quitar grupo</button></div></div><div class="cp-row"><button class="btn btn-outline-primary" (click)="group(c)">Agregar grupo</button><button class="btn btn-outline-danger" (click)="p.combos.splice(i,1)">Quitar combo</button></div></div><button class="btn btn-outline-primary" (click)="combo()">Agregar combo</button></section>
-<section *ngIf="tab==='preview'"><p class="cp-small">Prueba los cambios antes de publicar. Esta cuenta no registra ventas ni mueve inventario.</p><div class="cp-row"><label>Canal<select class="form-select" [(ngModel)]="previewChannel"><option *ngFor="let c of p.channels" [value]="c.id">{{c.name}}</option></select></label><label>Fecha<input type="date" class="form-control" [(ngModel)]="previewDate"></label><label>Hora<input type="time" class="form-control" [(ngModel)]="previewTime"></label><label>Elegibilidad<input class="form-control" [(ngModel)]="previewAudience"></label></div><div class="cp-row" *ngFor="let l of previewLines;let i=index"><label>Producto<select class="form-select" [(ngModel)]="l.product"><option *ngFor="let pr of products" [value]="pr.uuid">{{pr.nombre}}</option></select></label><label>Cantidad<input class="form-control" [(ngModel)]="l.quantity"></label><label>Extras<input class="form-control" [(ngModel)]="l.extras"></label><button class="btn btn-outline-danger" (click)="previewLines.splice(i,1)">Quitar</button></div><div class="cp-row"><button class="btn btn-outline-primary" (click)="previewAdd()">Agregar producto de prueba</button><button class="btn btn-primary" (click)="preview()">Calcular vista previa</button></div><p role="alert">{{previewError}}</p><div *ngIf="previewResult as q" class="cp-card"><p>Antes de ofertas: {{q.gross|currency:'MXN':'symbol-narrow'}}</p><p>Ahorro: {{q.discount|currency:'MXN':'symbol-narrow'}}</p><h3>Total: {{q.total|currency:'MXN':'symbol-narrow'}}</h3><p *ngFor="let l of q.lines">{{l.quantity}} × {{l.unitPrice|currency:'MXN':'symbol-narrow'}} · {{l.ruleName??'Precio del canal'}}</p></div></section></ng-container>
+<main class="offers-page">
+  <div class="breadcrumb">
+    <a routerLink="/dashboard/inventario">Inventario</a><span>/</span
+    ><span>{{
+      view === "offers"
+        ? "Ofertas"
+        : view === "prices"
+          ? "Precios por canal"
+          : "Canales"
+    }}</span>
+  </div>
+  <header class="offers-head">
+    <div>
+      <h1>
+        {{
+          view === "offers"
+            ? "Promociones y combos"
+            : view === "prices"
+              ? "Precios por canal"
+              : "Canales de venta"
+        }}
+      </h1>
+      <p>
+        {{
+          view === "offers"
+            ? "Precios y ofertas, en el mismo lugar que tus productos."
+            : "El mismo producto y sus existencias, con precios por canal."
+        }}
+      </p>
+    </div>
+    <wx-menu
+      *ngIf="view === 'offers'"
+      etiqueta="Nueva oferta"
+      icono="ph ph-plus"
+      variante="primary"
+      [opciones]="createOptions"
+      [deshabilitado]="busy || !policy"
+      (elegir)="create($event)"
+    ></wx-menu
+    ><button
+      *ngIf="view !== 'offers'"
+      class="primary"
+      [disabled]="busy || !settings"
+      (click)="saveSettings()"
+    >
+      {{ busy ? "Guardando…" : "Guardar cambios" }}
+    </button>
+  </header>
+  <wx-inventory-tabs
+    [active]="view === 'offers' ? 'offers' : 'prices'"
+  ></wx-inventory-tabs>
+  <p class="notice" *ngIf="message" role="status">
+    {{ message }}
+    <button type="button" (click)="reload()" [disabled]="busy">
+      Actualizar
+    </button>
+  </p>
+  <p class="muted" *ngIf="loading" role="status">Cargando ofertas…</p>
+  <ng-container *ngIf="policy as p">
+    <ng-container *ngIf="view === 'offers'">
+      <div
+        class="offers-tools"
+        *ngIf="offers.length > 6 || filter || statusFilter !== 'all'"
+      >
+        <div class="search-field">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i
+          ><input
+            type="search"
+            aria-label="Buscar ofertas"
+            placeholder="Buscar ofertas…"
+            [(ngModel)]="filter"
+          />
+        </div>
+        <div class="filter-pills" aria-label="Estado de ofertas">
+          <button
+            *ngFor="
+              let f of [
+                ['all', 'Todas'],
+                ['active', 'Activas'],
+                ['scheduled', 'Programadas'],
+              ]
+            "
+            [class.on]="statusFilter === f[0]"
+            [attr.aria-pressed]="statusFilter === f[0]"
+            (click)="statusFilter = f[0]"
+          >
+            {{ f[1] }}
+          </button>
+        </div>
+      </div>
+      <div class="offers-workspace">
+        <section class="offer-grid" aria-label="Ofertas del negocio">
+          <article
+            class="offer-card"
+            *ngFor="let o of visibleOffers; trackBy: trackOffer"
+            [class.selected]="selected?.id === o.id"
+            [attr.data-offer-id]="o.id"
+          >
+            <div class="card-top">
+              <span
+                class="status"
+                [class.active]="status(o) === 'Activa'"
+                [class.scheduled]="status(o) === 'Programada'"
+                ><span></span>{{ status(o) }}</span
+              ><wx-menu
+                [etiqueta]="'Acciones de ' + o.item.name"
+                variante="neutral"
+                [soloIcono]="true"
+                [opciones]="actions(o)"
+                [deshabilitado]="busy"
+                (elegir)="action($event, o)"
+              ></wx-menu>
+            </div>
+            <button
+              class="offer-main"
+              [attr.aria-label]="'Ver oferta ' + o.item.name"
+              [attr.aria-pressed]="selected?.id === o.id"
+              (click)="select(o)"
+            >
+              <div class="rule-mark">
+                <span>{{ kindLabel(o) }}</span
+                ><strong [style.font-size]="badgeFont(o)">{{
+                  badge(o)
+                }}</strong>
+              </div>
+              <div class="card-copy">
+                <h2>{{ o.item.name }}</h2>
+                <p>{{ description(o) }}</p>
+              </div>
+            </button>
+            <div class="card-meta">
+              <span
+                ><i class="ph ph-package" aria-hidden="true"></i
+                >{{ productLabel(o) || "Sin productos" }}</span
+              ><span
+                ><i class="ph ph-calendar-blank" aria-hidden="true"></i
+                >{{ schedule(o, true) }}</span
+              ><span
+                ><i class="ph ph-storefront" aria-hidden="true"></i
+                >{{ channelLabel(o) }}</span
+              >
+            </div>
+          </article>
+          <div class="empty-state" *ngIf="!visibleOffers.length">
+            <i class="ph ph-tag" aria-hidden="true"></i>
+            <h2>
+              {{
+                offers.length
+                  ? "No encontramos esa oferta"
+                  : "Tu primera oferta empieza aquí"
+              }}
+            </h2>
+            <p>
+              {{
+                offers.length
+                  ? "Prueba otro nombre o estado."
+                  : "Crea promociones y combos con los productos que ya tienes."
+              }}
+            </p>
+            <button
+              class="primary"
+              (click)="create('promotion')"
+              *ngIf="!offers.length"
+            >
+              Crear promoción
+            </button>
+          </div>
+        </section>
+        <aside class="preview-panel" aria-label="Vista previa">
+          <h2>Vista previa</h2>
+          <ng-container *ngIf="selected; else noSelection"
+            ><p class="muted">
+              {{ selected.item.name }} · Simulación de esta oferta
+            </p>
+            <div class="preview-products">
+              <div class="preview-product" *ngFor="let l of previewLines">
+                <span class="product-icon"
+                  ><i class="ph ph-package" aria-hidden="true"></i
+                ></span>
+                <div>
+                  <strong>{{ productsName(l.product) }}</strong
+                  ><small>{{
+                    previewUnit(l) | currency: "MXN" : "symbol-narrow"
+                  }}</small>
+                </div>
+                <span class="qty">×{{ l.quantity }}</span
+                ><strong>{{
+                  previewLineAmount(l) | currency: "MXN" : "symbol-narrow"
+                }}</strong>
+              </div>
+            </div>
+            <ng-container *ngIf="previewResult as q"
+              ><div class="preview-discount">
+                <div>
+                  <strong>{{ selected.item.name }}</strong
+                  ><small>Ahorro en esta cuenta</small>
+                </div>
+                <strong
+                  >−{{ q.discount | currency: "MXN" : "symbol-narrow" }}</strong
+                >
+              </div>
+              <div class="preview-total">
+                <span>Total</span
+                ><strong>{{
+                  q.total | currency: "MXN" : "symbol-narrow"
+                }}</strong>
+              </div></ng-container
+            >
+            <p class="error" role="alert" *ngIf="previewError">
+              {{ previewError }}
+            </p>
+            <div class="preview-meta">
+              <div>
+                <i class="ph ph-storefront" aria-hidden="true"></i
+                ><small>Aplica en</small
+                ><strong>{{
+                  previewResult?.channelName || channelLabel(selected)
+                }}</strong>
+              </div>
+              <div>
+                <i class="ph ph-calendar-blank" aria-hidden="true"></i
+                ><small>Vigencia</small
+                ><strong>{{ schedule(selected) }}</strong>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="secondary edit-offer"
+              (click)="edit(selected)"
+            >
+              <i class="ph ph-pencil-simple" aria-hidden="true"></i>Editar
+              oferta
+            </button>
+            <details class="simulation">
+              <summary>Ajustar cuenta de prueba</summary>
+              <label class="switch"
+                ><input
+                  type="checkbox"
+                  [(ngModel)]="previewIncludeOthers"
+                  (ngModelChange)="preview()"
+                /><span></span>Incluir otras ofertas activas</label
+              ><label
+                >Canal<wx-select
+                  [opciones]="channelOptions"
+                  [(ngModel)]="previewChannel"
+                  (ngModelChange)="preview()"
+                ></wx-select
+              ></label>
+              <div class="field-grid">
+                <label
+                  >Fecha<wx-date
+                    [(ngModel)]="previewDate"
+                    (ngModelChange)="preview()"
+                  ></wx-date></label
+                ><label
+                  >Hora<input
+                    class="field"
+                    type="time"
+                    [(ngModel)]="previewTime"
+                    (ngModelChange)="preview()"
+                /></label>
+              </div>
+              <label
+                >Elegibilidad<input
+                  class="field"
+                  [(ngModel)]="previewAudience"
+                  (ngModelChange)="preview()"
+                  placeholder="Ej. ESTUDIANTE"
+              /></label>
+              <div
+                class="test-line"
+                *ngFor="let l of previewLines; let i = index"
+              >
+                <label
+                  >Producto<wx-select
+                    [opciones]="previewProductOptions(l)"
+                    [buscable]="true"
+                    [(ngModel)]="l.product"
+                    (ngModelChange)="preview()"
+                  ></wx-select
+                ></label>
+                <div class="field-grid">
+                  <label
+                    >Cantidad<input
+                      class="field"
+                      type="number"
+                      min="0.01"
+                      [(ngModel)]="l.quantity"
+                      (ngModelChange)="
+                        l.quantity = '' + $event; preview()
+                      " /></label
+                  ><label
+                    >Extras<input
+                      class="field"
+                      type="number"
+                      step="0.01"
+                      [ngModel]="number(l.extras)"
+                      (ngModelChange)="l.extras = amount($event); preview()"
+                  /></label>
+                </div>
+                <label
+                  >Tamaño<wx-select
+                    [opciones]="priceVariants(l.product)"
+                    [(ngModel)]="l.variant"
+                    (ngModelChange)="preview()"
+                  ></wx-select></label
+                ><button
+                  class="text-button"
+                  (click)="previewLines.splice(i, 1); preview()"
+                >
+                  Quitar de la prueba
+                </button>
+              </div>
+              <button class="secondary" (click)="previewAdd()">
+                Agregar producto de prueba
+              </button>
+              <p class="muted">
+                Esta prueba no registra ventas ni mueve inventario. Una oferta
+                pausada se simula sin activarla.
+              </p>
+            </details></ng-container
+          ><ng-template #noSelection
+            ><div class="preview-placeholder">
+              <i class="ph ph-receipt" aria-hidden="true"></i>
+              <p>Selecciona una oferta para revisar cómo quedaría la cuenta.</p>
+            </div></ng-template
+          >
+        </aside>
+      </div></ng-container
+    >
+    <ng-container *ngIf="settings as s"
+      ><section class="settings-surface" *ngIf="view === 'prices'">
+        <div class="section-heading">
+          <div>
+            <h2>Lista de precios</h2>
+            <p class="muted">
+              Los ajustes de tamaño y extras se suman por separado al precio
+              base.
+            </p>
+          </div>
+          <a
+            class="secondary"
+            routerLink="/dashboard/inventario/ofertas"
+            [queryParams]="{ view: 'channels' }"
+            >Administrar canales</a
+          >
+        </div>
+        <div class="price-row" *ngFor="let x of s.prices; let i = index">
+          <label
+            >Canal<wx-select
+              [opciones]="channelOptions"
+              [(ngModel)]="x.channel"
+            ></wx-select></label
+          ><label
+            >Producto<wx-select
+              [opciones]="productOptions"
+              [buscable]="true"
+              [(ngModel)]="x.product"
+              (ngModelChange)="x.variant = undefined"
+            ></wx-select></label
+          ><label
+            >Variante<wx-select
+              [opciones]="priceVariants(x.product)"
+              [(ngModel)]="x.variant"
+            ></wx-select></label
+          ><label
+            >Precio base
+            <div class="currency-field">
+              <span>$</span
+              ><input
+                aria-label="Precio base"
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="number(x.price)"
+                (ngModelChange)="x.price = amount($event)"
+              /></div></label
+          ><button
+            class="icon-button danger"
+            [attr.aria-label]="'Quitar precio ' + (i + 1)"
+            (click)="s.prices.splice(i, 1)"
+          >
+            <i class="ph ph-trash" aria-hidden="true"></i>
+          </button>
+        </div>
+        <p class="muted" *ngIf="!s.prices.length">
+          Todavía no hay precios específicos por canal.
+        </p>
+        <button class="secondary" (click)="addPrice()">
+          <i class="ph ph-plus" aria-hidden="true"></i>Agregar precio
+        </button>
+      </section>
+      <section class="settings-surface" *ngIf="view === 'channels'">
+        <div class="section-heading">
+          <div>
+            <h2>Canales de venta</h2>
+            <p class="muted">
+              El canal pertenece a la cuenta; es independiente de Aquí / Para
+              llevar y del pago.
+            </p>
+          </div>
+          <a
+            class="secondary"
+            routerLink="/dashboard/inventario/ofertas"
+            [queryParams]="{ view: 'prices' }"
+            >Volver a precios</a
+          >
+        </div>
+        <div class="channel-row" *ngFor="let c of s.channels">
+          <label
+            >Nombre del canal<input
+              class="field"
+              maxlength="100"
+              [(ngModel)]="c.name"
+              [disabled]="c.id === 'LOCAL'" /></label
+          ><label class="switch"
+            ><input
+              type="checkbox"
+              [(ngModel)]="c.active"
+              [disabled]="c.id === 'LOCAL'"
+            /><span></span>Disponible</label
+          ><label class="switch"
+            ><input
+              type="checkbox"
+              [(ngModel)]="c.inheritBase"
+              [disabled]="c.id === 'LOCAL'"
+            /><span></span>Usar precio base si falta uno</label
+          >
+        </div>
+        <button class="secondary" (click)="addChannel()">
+          <i class="ph ph-plus" aria-hidden="true"></i>Agregar canal
+        </button>
+      </section></ng-container
+    >
+  </ng-container>
+</main>
+<dialog
+  #editor
+  class="offer-dialog"
+  aria-labelledby="offer-editor-title"
+  (close)="editorClosed()"
+  (cancel)="cancelDialog($event)"
+>
+  <ng-container *ngIf="draft as d"
+    ><header class="dialog-header">
+      <div>
+        <small>{{ d.type === "combo" ? "Combo" : "Promoción" }}</small>
+        <h2 id="offer-editor-title">
+          {{ newDraft ? "Nueva oferta" : d.item.name }}
+        </h2>
+      </div>
+      <button
+        class="icon-button"
+        aria-label="Cerrar editor"
+        [disabled]="busy"
+        (click)="closeEditor()"
+      >
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
+    </header>
+    <nav class="editor-steps" aria-label="Pasos de la oferta">
+      <button
+        *ngFor="let name of ['Oferta', 'Productos', 'Vigencia']; let i = index"
+        [class.on]="step === i"
+        [attr.aria-pressed]="step === i"
+        (click)="step = i"
+      >
+        <span>{{ i + 1 }}</span
+        >{{ name }}
+      </button>
+    </nav>
+    <div class="dialog-body">
+      <section *ngIf="step === 0">
+        <h3>Define la oferta</h3>
+        <p class="muted">Un nombre claro y una regla fácil de reconocer.</p>
+        <label
+          >Nombre<input
+            class="field"
+            aria-label="Nombre de la oferta"
+            maxlength="100"
+            [(ngModel)]="d.item.name" /></label
+        ><label class="switch"
+          ><input
+            aria-label="Oferta activa"
+            type="checkbox"
+            [(ngModel)]="d.item.active"
+          /><span></span>Oferta activa</label
+        >
+        <p class="muted">
+          Puedes guardarla pausada y activarla cuando esté lista.
+        </p>
+        <ng-container *ngIf="d.type === 'promotion'; else comboPrice"
+          ><label
+            >Tipo de promoción<wx-select
+              [opciones]="typeOptions"
+              [(ngModel)]="d.item.kind"
+              (ngModelChange)="changeKind(d.item)"
+            ></wx-select
+          ></label>
+          <div
+            class="buy-pay"
+            *ngIf="d.item.kind === 'BUY_PAY'; else valueField"
+          >
+            <label
+              >Compra<input
+                class="field"
+                type="number"
+                min="2"
+                [(ngModel)]="d.item.buy"
+                (ngModelChange)="makePreview(draft)" /></label
+            ><label
+              >Paga<input
+                class="field"
+                type="number"
+                min="1"
+                [(ngModel)]="d.item.pay"
+                (ngModelChange)="makePreview(draft)" /></label
+            ><strong>{{ d.item.buy }}×{{ d.item.pay }}</strong>
+          </div>
+          <ng-template #valueField
+            ><label
+              >{{
+                d.item.kind === "PERCENT" ? "Porcentaje" : "Importe por unidad"
+              }}
+              <div class="currency-field">
+                <span>{{ d.item.kind === "PERCENT" ? "%" : "$" }}</span
+                ><input
+                  aria-label="Importe de la oferta"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="number(d.item.value)"
+                  (ngModelChange)="d.item.value = amount($event); preview()"
+                /></div></label
+          ></ng-template>
+          <div class="field-grid" *ngIf="d.item.kind === 'ADDON'">
+            <label
+              >Cantidad necesaria<input
+                class="field"
+                type="number"
+                min="1"
+                [(ngModel)]="d.item.triggerQty"
+                (ngModelChange)="makePreview(draft)"
+            /></label>
+          </div>
+          <details class="advanced">
+            <summary>Prioridad y condiciones de descuento</summary>
+            <label
+              >Prioridad<input
+                class="field"
+                type="number"
+                min="0"
+                max="10000"
+                [(ngModel)]="d.item.priority"
+            /></label>
+            <p class="muted">
+              La prioridad menor se aplica primero. Una unidad no acumula
+              ofertas.
+            </p>
+            <label
+              >Elegibilidad<input
+                class="field"
+                maxlength="100"
+                placeholder="Ej. ESTUDIANTE"
+                [(ngModel)]="d.item.audience"
+                (ngModelChange)="previewAudience = $event; preview()"
+            /></label>
+            <p class="muted">
+              La elegibilidad se confirma con permiso de supervisor.
+            </p>
+            <label
+              >Límite de aplicaciones por cuenta<input
+                class="field"
+                aria-label="Límite de aplicaciones por cuenta"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Sin límite"
+                [ngModel]="d.item.maxApplications"
+                (ngModelChange)="
+                  d.item.maxApplications = $event === null ? undefined : $event;
+                  preview()
+                " /></label
+            ><label class="switch"
+              ><input
+                type="checkbox"
+                [(ngModel)]="d.item.extrasIncluded"
+                (ngModelChange)="preview()"
+              /><span></span>Incluir extras en el descuento</label
+            >
+          </details></ng-container
+        ><ng-template #comboPrice
+          ><label
+            >Precio del combo
+            <div class="currency-field">
+              <span>$</span
+              ><input
+                aria-label="Precio del combo"
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="number(d.item.price)"
+                (ngModelChange)="d.item.price = amount($event); preview()"
+              /></div
+          ></label>
+          <p class="muted">
+            El precio agrupa los componentes. Los extras se cobran aparte.
+          </p></ng-template
+        >
+      </section>
+      <section *ngIf="step === 1">
+        <h3>Productos incluidos</h3>
+        <p class="muted">
+          Selecciona productos reales del catálogo. Conservan sus recetas y
+          existencias.
+        </p>
+        <ng-container *ngIf="d.type === 'promotion'; else comboGroups"
+          ><label
+            >Productos elegibles<wx-multi-select
+              etiqueta="Productos elegibles"
+              [opciones]="productOptions"
+              [(values)]="d.item.selector.products"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select></label
+          ><label
+            >Categorías elegibles<wx-multi-select
+              etiqueta="Categorías elegibles"
+              [opciones]="categoryOptions"
+              [(values)]="d.item.selector.categories"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select
+          ></label>
+          <p class="muted">
+            Las categorías se suman a los productos. Sin productos ni categorías
+            seleccionados: todo el catálogo.
+          </p>
+          <label
+            >Tamaños elegibles<wx-multi-select
+              etiqueta="Tamaños elegibles"
+              [opciones]="variantOptions"
+              [(values)]="d.item.selector.variants"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select
+          ></label>
+          <div class="component-group" *ngIf="d.item.kind === 'ADDON'">
+            <h4>Compra necesaria para obtener el adicional</h4>
+            <wx-multi-select
+              etiqueta="Productos de la compra necesaria"
+              [opciones]="productOptions"
+              [(values)]="d.item.trigger.products"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select
+            ><wx-multi-select
+              etiqueta="Categorías de la compra necesaria"
+              [opciones]="categoryOptions"
+              [(values)]="d.item.trigger.categories"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select></div></ng-container
+        ><ng-template #comboGroups
+          ><div
+            class="component-group"
+            *ngFor="let g of d.item.groups; let i = index"
+          >
+            <div class="group-top">
+              <span>Componente {{ i + 1 }}</span
+              ><button
+                class="icon-button danger"
+                [attr.aria-label]="'Quitar componente ' + (i + 1)"
+                (click)="d.item.groups.splice(i, 1); makePreview(draft)"
+              >
+                <i class="ph ph-trash" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="field-grid">
+              <label
+                >Nombre del grupo<input
+                  class="field"
+                  [(ngModel)]="g.name" /></label
+              ><label
+                >Cantidad<input
+                  class="field"
+                  type="number"
+                  min="1"
+                  max="50"
+                  [(ngModel)]="g.quantity"
+                  (ngModelChange)="makePreview(draft)"
+              /></label>
+            </div>
+            <wx-multi-select
+              [etiqueta]="'Productos del componente ' + (i + 1)"
+              [opciones]="productOptions"
+              [(values)]="g.selector.products"
+              (valuesChange)="makePreview(draft)"
+            ></wx-multi-select>
+            <details class="advanced">
+              <summary>Categorías y tamaños del grupo</summary>
+              <wx-multi-select
+                etiqueta="Categorías del componente"
+                [opciones]="categoryOptions"
+                [(values)]="g.selector.categories"
+                (valuesChange)="makePreview(draft)"
+              ></wx-multi-select
+              ><wx-multi-select
+                etiqueta="Tamaños del componente"
+                [opciones]="variantOptions"
+                [(values)]="g.selector.variants"
+                (valuesChange)="makePreview(draft)"
+              ></wx-multi-select>
+            </details>
+          </div>
+          <button class="secondary" (click)="addGroup(d.item)">
+            <i class="ph ph-plus" aria-hidden="true"></i>Agregar componente
+          </button></ng-template
+        >
+      </section>
+      <section *ngIf="step === 2">
+        <h3>Cuándo y dónde aplica</h3>
+        <label
+          >Canales de venta<wx-multi-select
+            etiqueta="Canales de la oferta"
+            [opciones]="channelOptions"
+            [(values)]="d.item.channels"
+            (valuesChange)="makePreview(draft)"
+          ></wx-multi-select
+        ></label>
+        <p class="muted">
+          Sin canales seleccionados: todos los canales disponibles.
+        </p>
+        <ng-container *ngIf="d.type === 'promotion'"
+          ><div class="field-grid">
+            <label
+              >Desde<wx-date
+                [(ngModel)]="d.item.starts"
+                (ngModelChange)="makePreview(draft)"
+              ></wx-date></label
+            ><label
+              >Hasta<wx-date
+                [(ngModel)]="d.item.ends"
+                (ngModelChange)="makePreview(draft)"
+              ></wx-date
+            ></label>
+          </div>
+          <h4>Días de la semana</h4>
+          <div class="weekday-pills">
+            <button
+              *ngFor="let day of weekdayOrder"
+              [class.on]="d.item.weekdays?.includes(day)"
+              [attr.aria-pressed]="!!d.item.weekdays?.includes(day)"
+              (click)="this.day(d.item, day)"
+            >
+              {{ days[day] }}
+            </button>
+          </div>
+          <p class="muted">Sin días seleccionados: todos los días.</p>
+          <h4>Horarios</h4>
+          <div
+            class="window-row"
+            *ngFor="let w of d.item.windows; let i = index"
+          >
+            <label
+              >Inicio<input
+                class="field"
+                type="time"
+                [(ngModel)]="w.from"
+                (ngModelChange)="makePreview(draft)" /></label
+            ><label
+              >Fin<input
+                class="field"
+                type="time"
+                [(ngModel)]="w.to"
+                (ngModelChange)="makePreview(draft)" /></label
+            ><button
+              class="icon-button danger"
+              aria-label="Quitar horario"
+              (click)="d.item.windows.splice(i, 1); makePreview(draft)"
+            >
+              <i class="ph ph-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+          <button class="secondary" (click)="addWindow(d.item)">
+            Agregar horario
+          </button>
+          <p class="muted">
+            Sin horarios: todo el día. El extremo final queda excluido.
+          </p></ng-container
+        >
+        <p class="muted" *ngIf="d.type === 'combo'">
+          El combo estará disponible todos los días en sus canales. Para
+          retirarlo temporalmente, pausa la oferta.
+        </p>
+      </section>
+    </div>
+    <footer class="dialog-footer">
+      <div class="editor-total">
+        <small>Vista previa · sin guardar</small
+        ><strong *ngIf="previewResult as q">{{
+          q.total | currency: "MXN" : "symbol-narrow"
+        }}</strong
+        ><span class="error" *ngIf="previewError">{{ previewError }}</span>
+      </div>
+      <p class="error" role="alert" *ngIf="editorError">{{ editorError }}</p>
+      <div>
+        <button class="secondary" [disabled]="busy" (click)="closeEditor()">
+          Cancelar</button
+        ><button class="primary" [disabled]="busy" (click)="saveDraft()">
+          {{ busy ? "Guardando…" : "Guardar oferta" }}
+        </button>
+      </div>
+    </footer></ng-container
+  >
+</dialog>
+<dialog
+  #removeDialog
+  class="remove-dialog"
+  aria-labelledby="remove-title"
+  (cancel)="cancelDialog($event)"
+>
+  <h2 id="remove-title">Eliminar oferta</h2>
+  <p>
+    ¿Eliminar «{{ pendingDelete?.item?.name }}»? Las ventas anteriores conservan
+    sus importes y reglas.
+  </p>
+  <p class="error" role="alert" *ngIf="editorError">{{ editorError }}</p>
+  <div class="dialog-actions">
+    <button
+      class="secondary"
+      [disabled]="busy"
+      (click)="removeDialog.close(); pendingDelete = null"
+    >
+      Cancelar</button
+    ><button class="primary" [disabled]="busy" (click)="deleteConfirmed()">
+      Eliminar oferta
+    </button>
+  </div>
+</dialog>

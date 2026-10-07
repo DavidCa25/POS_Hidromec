@@ -91,6 +91,8 @@ export class WxSelectComponent implements ControlValueAccessor {
   }
 
   esSeleccionada(o: WxOpcion) { return this.mismoValor(o.valor, this.valor); }
+  // Conserva el control enfocado cuando la pantalla recalcula sus opciones.
+  trackOpcion(_indice: number, o: WxOpcion) { return o.valor; }
 
   elegirPuntero(e: PointerEvent, o: WxOpcion) {
     if (e.button !== 0 || o.desactivada) return;

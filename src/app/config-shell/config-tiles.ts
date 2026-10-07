@@ -36,7 +36,6 @@ const devices: TileLoader = () => import('../devices-panel/devices-panel.compone
 const ticket: TileLoader = () => import('../ticket-panel/ticket-panel.component').then(m => m.TicketPanelComponent);
 
 export const CONFIG_SECTIONS: ConfigSection[] = [
-    {id:'comercial',title:'Precios y ofertas',tiles:[{id:'comercial',title:'Precios, promociones y combos',desc:'Canales de venta, precios especiales y paquetes',icon:'tag',color:'blue',size:'2x1',amplio:true,load:()=>import('../commercial-panel/commercial-panel.component').then(m=>m.CommercialPanelComponent)}]},
     {
         id: 'cobros',
         title: 'Cobros',

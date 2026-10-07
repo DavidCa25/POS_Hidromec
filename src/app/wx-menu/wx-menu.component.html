@@ -1,6 +1,7 @@
 <button type="button"
         class="wx-menu__btn"
         [class.wx-menu__btn--neutral]="variante === 'neutral'"
+        [class.wx-menu__btn--primary]="variante === 'primary'"
         [ngClass]="claseBoton"
         [attr.popovertarget]="idPanel"
         [style.anchor-name]="ancla"
@@ -16,7 +17,7 @@
      [style.--wx-anchor]="ancla"
      role="menu">
   <ul class="wx-pop__list">
-    <li *ngFor="let o of opciones">
+    <li *ngFor="let o of opciones; trackBy: trackOpcion">
       <button type="button" class="wx-opt" role="menuitem"
               [disabled]="o.desactivada"
               (click)="elegirOpcion(o)">

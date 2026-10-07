@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
-import { Routes } from '@angular/router';
+import { Router, Routes } from '@angular/router';
 import { GiroServiciosService } from '../core';
+import { AuthService } from '../services/auth.service';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
@@ -84,6 +85,8 @@ export const routes: Routes = [
       { path: 'tablaVenta', loadComponent: () => import('../venta/tablaVenta/tablaVenta').then(m => m.TablaVentaComponent) },
 
       // ---- Backoffice ----
+      { path: 'inventario/precios', redirectTo: () => inject(Router).parseUrl('/dashboard/inventario/ofertas?view=prices') },
+      { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('CONFIGURACION_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
       { path: 'quickstart', loadComponent: () => import('./wx-quickstart/wx-quickstart.component').then(m => m.WxQuickstartComponent) },
       /* `/importador` era el camino viejo. Se conserva como REDIRECCION y no

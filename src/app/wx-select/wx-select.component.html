@@ -24,7 +24,7 @@
   </div>
 
   <ul class="wx-pop__list" role="listbox">
-    <li *ngFor="let o of visibles; let i = index">
+    <li *ngFor="let o of visibles; let i = index; trackBy: trackOpcion">
       <button type="button" class="wx-opt"
               role="option" [attr.data-guide-opcion]="o.etiqueta" [attr.data-guide-valor]="o.valor"
               [attr.aria-selected]="esSeleccionada(o)"
