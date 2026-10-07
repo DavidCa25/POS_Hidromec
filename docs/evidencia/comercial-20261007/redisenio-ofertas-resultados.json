@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-07",
+  "concept": "A · Centro de ofertas",
+  "typography": "Geist",
+  "commercial_flows_passed": 8,
+  "existing_regressions_passed": 16,
+  "domain_tests_passed": 17,
+  "navigation_checks_passed": 52,
+  "ui_contract_checks_passed": 8,
+  "visual_checks_passed": true,
+  "package_checks_passed": 68,
+  "frontend_files_verified": 125,
+  "exact_match": true,
+  "installer_bytes": 925970846,
+  "installer_sha256": "faeec964c0f9c2f2cd738472649290a04ef687c538388b48a782a6b6e45524ff",
+  "sql_changes": false,
+  "published": false
+}

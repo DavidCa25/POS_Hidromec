@@ -1,3 +1,4 @@
+import { InventoryTabsComponent } from '../app/inventory-tabs/inventory-tabs.component';
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -101,7 +102,7 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
+  imports: [InventoryTabsComponent, WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {

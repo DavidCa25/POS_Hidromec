@@ -157,6 +157,8 @@ export class NavegacionService {
         aviso: dato('inventario').aviso,
         destinos: [
           { texto: 'Ver inventario', ruta: '/dashboard/inventario', icono: 'ph-package', visible: true, principal: true, pie: pie('inventario', 'stock') },
+          { texto: 'Promociones y combos', ruta: '/dashboard/inventario/ofertas', icono: 'ph-tag', visible: this.administrarNegocio },
+          { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarNegocio },
           { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
           /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
           { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: true },

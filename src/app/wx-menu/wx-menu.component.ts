@@ -65,7 +65,7 @@ export class WxMenuComponent {
    * El disparador trae su propio estilo, con los mismos valores que ya usaban
    * esas cabeceras. `claseBoton` sigue existiendo para casos puntuales.
    */
-  @Input() variante: 'sobre-color' | 'neutral' = 'sobre-color';
+  @Input() variante: 'sobre-color' | 'neutral' | 'primary' = 'sobre-color';
   /** Clase extra opcional, si una pantalla necesita algo propio. */
   @Input() claseBoton = '';
   @Input() deshabilitado = false;
@@ -73,6 +73,7 @@ export class WxMenuComponent {
   @Input() soloIcono = false;
 
   @Output() elegir = new EventEmitter<any>();
+  trackOpcion(_indice: number, o: WxMenuOpcion) { return o.valor; }
 
   /**
    * Un id por instancia: `popovertarget` empareja por id, y dos menus en la

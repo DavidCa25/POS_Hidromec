@@ -1,0 +1,68 @@
+<button
+  #trigger
+  type="button"
+  class="wm-field"
+  [disabled]="disabled"
+  [attr.popovertarget]="id"
+  [style.anchor-name]="anchor"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open"
+  [attr.aria-label]="etiqueta"
+>
+  <i class="ph ph-plus" aria-hidden="true"></i>{{ placeholder
+  }}<span *ngIf="selected.length">{{ selected.length }}</span
+  ><i class="ph ph-caret-down" aria-hidden="true"></i>
+</button>
+<div class="wm-chips" *ngIf="selected.length">
+  <span *ngFor="let o of selected; trackBy: trackOption"
+    >{{ o.etiqueta
+    }}<button
+      type="button"
+      [disabled]="disabled"
+      [attr.aria-label]="'Quitar ' + o.etiqueta"
+      (click)="toggle(o.valor)"
+    >
+      <i class="ph ph-x" aria-hidden="true"></i></button
+  ></span>
+</div>
+<div
+  #panel
+  [id]="id"
+  popover
+  data-anclado
+  class="wx-pop wm-panel"
+  [style.--wx-anchor]="anchor"
+  role="dialog"
+  [attr.aria-label]="etiqueta"
+  (toggle)="onToggle($event)"
+  (keydown)="onKeydown($event)"
+>
+  <div class="wm-search">
+    <i class="ph ph-magnifying-glass" aria-hidden="true"></i
+    ><input
+      #search
+      type="search"
+      [(ngModel)]="filter"
+      [attr.aria-label]="'Buscar ' + etiqueta"
+      placeholder="Buscar…"
+    />
+  </div>
+  <div class="wm-options">
+    <label
+      *ngFor="let o of visible; trackBy: trackOption"
+      [class.checked]="values?.includes(o.valor)"
+      ><input
+        type="checkbox"
+        [checked]="values?.includes(o.valor)"
+        [disabled]="o.desactivada || disabled"
+        (change)="toggle(o.valor)"
+      /><span
+        >{{ o.etiqueta }}<small *ngIf="o.nota">{{ o.nota }}</small></span
+      ></label
+    >
+    <p *ngIf="!visible.length">Sin resultados.</p>
+  </div>
+  <div class="wm-foot">
+    {{ selected.length }} seleccionados · Escape para cerrar
+  </div>
+</div>
