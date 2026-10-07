@@ -1,3 +1,4 @@
+<app-commercial-sale></app-commercial-sale>
 <div class="tp" [class.tp--cobro]="vista() === 'cobro'">
 
   <!-- ===================================================== BARRA SUPERIOR -->
@@ -119,7 +120,7 @@
           <span class="tp-card__txt">
             <span class="tp-card__nombre">{{ p.product_name }}</span>
             <span class="tp-card__pie">
-              <span class="tp-card__precio">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+              <span class="tp-card__precio">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</span>
               <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones"></i>
             </span>
           </span>
@@ -191,7 +192,7 @@
             </button>
           </div>
 
-          <span class="tp-linea__imp">{{ l.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span class="tp-linea__imp">{{ priced(l).amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
         </div>
 
         <div class="tp-cart__vacia" *ngIf="!lineas().length">
@@ -353,7 +354,7 @@
                 (click)="tocar(p); cerrarBusqueda()">
           <i class="ph {{ icono(p) }}"></i>
           <span class="tp-res__n">{{ p.product_name }}</span>
-          <span class="tp-res__p">{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span class="tp-res__p">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</span>
         </button>
         <p class="tp-res__vacio" *ngIf="!productos().length">Nada coincide todavía.</p>
       </div>
@@ -369,7 +370,7 @@
           <span class="tp-hoja__media"><i class="ph {{ icono(p) }}"></i></span>
           <div>
             <h3>{{ p.product_name }}</h3>
-            <p>{{ p.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</p>
+            <p>{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</p>
           </div>
         </div>
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarHoja()" aria-label="Cerrar">
@@ -455,6 +456,7 @@
       </div>
 
       <div class="tp-metodos" role="group" aria-label="Método de pago">
+        <button type="button" class="tp-metodo" [class.on]="metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped"></i><span>Plataforma</span></button>
         <button type="button" class="tp-metodo" [class.on]="metodo() === 'EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
           <i class="ph ph-coins"></i> Efectivo
         </button>
@@ -497,7 +499,7 @@
       <!-- Tarjeta y transferencia: solo presentación, sin lógica financiera -->
       <div class="tp-otro" *ngIf="metodo() !== 'EFECTIVO'">
         <i class="ph" [class.ph-credit-card]="metodo() === 'TARJETA'" [class.ph-bank]="metodo() === 'TRANSFERENCIA'"></i>
-        <h3>{{ metodo() === 'TARJETA' ? 'Cobro con tarjeta' : 'Transferencia' }}</h3>
+        <h3>{{ metodo() === 'PLATAFORMA' ? 'Pagado en plataforma' : (metodo() === 'TARJETA' ? 'Cobro con tarjeta' : 'Transferencia') }}</h3>
         <p>
           {{ metodo() === 'TARJETA'
             ? 'Cobra en la terminal y confirma aquí cuando el pago quede aprobado.'
@@ -523,7 +525,7 @@
             {{ l.productName }}
             <small *ngIf="l.optionsLabel">{{ l.optionsLabel }}</small>
           </span>
-          <span class="tp-resumen__i">{{ l.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span class="tp-resumen__i">{{ priced(l).amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
         </div>
       </div>
       <div class="tp-resumen__pie">

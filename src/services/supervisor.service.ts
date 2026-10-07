@@ -48,7 +48,7 @@ export class SupervisorAuthService {
    * proceso principal cuando se ejecute la operación.
    */
   async autorizar(motivo: string, canal: string, paquete: Paquete):
-      Promise<{ ok: boolean; authorizedBy?: number; performedBy?: number }> {
+      Promise<{ ok: boolean; authorizedBy?: number; performedBy?: number; autorizacion?: string }> {
 
     if (this.auth.puede(paquete)) {
       const yo = this.auth.usuarioActualId ?? undefined;
@@ -83,19 +83,23 @@ export class SupervisorAuthService {
       });
       return { ok: false };
     }
-    return { ok: true, authorizedBy: val.authorizedBy, performedBy: val.performedBy };
+    /* `autorizacion` es el comprobante de un solo uso que emite el proceso
+       principal. Es lo único que la bitácora acepta como prueba de quién
+       autorizó; los números de arriba son solo para mostrar. */
+    return { ok: true, authorizedBy: val.authorizedBy, performedBy: val.performedBy, autorizacion: val.autorizacion };
   }
 
   async registrar(eventType: string, opts: {
     amount?: number; detail?: string; saleId?: number | null;
-    authorizedBy?: number; performedBy?: number;
+    autorizacion?: string; canal?: string;
   } = {}) {
     try {
       await this.api?.securityLog?.({
-        /* Quien operó. Cuando la autorización fue presencial viene del proceso
-           principal; si no, es quien tiene la sesión abierta. */
-        userId: opts.performedBy ?? this.auth.usuarioActualId ?? null,
-        authorizedBy: opts.authorizedBy ?? null,
+        /* Quién operó y quién autorizó los decide el proceso principal: el
+           actor sale de la sesión y el autorizador del comprobante. Aquí solo
+           viajan el comprobante y el canal de la operación. */
+        autorizacion: opts.autorizacion ?? null,
+        canal: opts.canal ?? null,
         registerId: await this.regId(),
         eventType,
         amount: opts.amount ?? null,
@@ -105,12 +109,52 @@ export class SupervisorAuthService {
     } catch { /* silencioso: la bitácora nunca debe frenar la operación */ }
   }
 
+  /**
+   * AUTORIZAR CON PIN (Fase 1). Para operaciones que el proceso principal
+   * rechazó pidiendo autorización (p. ej. cerrar el turno de otra persona).
+   *
+   *   propio = true   quien opera ya tiene el rol para hacerlo: confirma con
+   *                   SU PIN (reautenticación). Un encargado cerrando el turno
+   *                   de un cajero.
+   *   propio = false  autoriza otra persona: su usuario y su PIN.
+   *
+   * Devuelve el comprobante de un solo uso que la operación consume. El PIN
+   * nunca se guarda ni vuelve de ningún lado.
+   */
+  async autorizarConPin(motivo: string, canal: string, propio: boolean): Promise<string | null> {
+    const res = await Swal.fire({
+      title: 'Autorización',
+      html: `<p style="font-size:14px;color: var(--wx-text-muted);margin:0 0 10px;">${motivo}</p>
+             ${propio ? '' : '<input id="sup-user" class="swal2-input" placeholder="Usuario del encargado" autocomplete="off">'}
+             <input id="sup-pin" type="password" inputmode="numeric" class="swal2-input"
+                    placeholder="${propio ? 'Tu PIN' : 'PIN del encargado'}" autocomplete="off" maxlength="8">`,
+      focusConfirm: false, showCancelButton: true,
+      confirmButtonText: 'Autorizar', cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const u = propio ? '' : (document.getElementById('sup-user') as HTMLInputElement)?.value.trim();
+        const p = (document.getElementById('sup-pin') as HTMLInputElement)?.value;
+        if ((!propio && !u) || !p) { Swal.showValidationMessage(propio ? 'Captura tu PIN' : 'Captura usuario y PIN'); return false; }
+        return { u, p };
+      }
+    });
+    if (!res.isConfirmed || !res.value) return null;
+    const v = res.value as { u: string; p: string };
+    const val = await this.api?.securityAuthorize?.(propio
+      ? { reautenticar: true, pin: v.p, canal }
+      : { usuario: v.u, pin: v.p, canal });
+    if (!val?.ok || !val.autorizacion) {
+      await Swal.fire({ icon: 'error', title: 'No autorizado', text: val?.error || 'PIN incorrecto.' });
+      return null;
+    }
+    return val.autorizacion as string;
+  }
+
   /** Candado completo: pide autorización y, si se concede, registra el evento. */
   async autorizarYregistrar(motivo: string, eventType: string, canal: string, paquete: Paquete,
       opts: { amount?: number; detail?: string; saleId?: number | null } = {}): Promise<boolean> {
     const a = await this.autorizar(motivo, canal, paquete);
     if (!a.ok) return false;
-    await this.registrar(eventType, { ...opts, authorizedBy: a.authorizedBy, performedBy: a.performedBy });
+    await this.registrar(eventType, { ...opts, autorizacion: a.autorizacion, canal });
     return true;
   }
 }

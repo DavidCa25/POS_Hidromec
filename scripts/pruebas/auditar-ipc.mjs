@@ -103,7 +103,7 @@ for (const f of archivos('src', ['.ts'])) {
    */
   const puentes = new Set();
   for (const m of txt.matchAll(
-    /get\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\{[\s\S]{0,200}?this\.[A-Za-z_$][\w$]*\.api\b/g
+    /get\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\{[^}]{0,200}?this\.[A-Za-z_$][\w$]*\.api\b/g
   )) {
     puentes.add(m[1]);
   }

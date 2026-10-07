@@ -1,8 +1,9 @@
 import {
   ChangeDetectionStrategy, Component, ElementRef, HostListener, Injector, NgZone, OnDestroy, OnInit,
-  afterNextRender, inject,
+  Type, afterNextRender, effect, inject, signal,
 } from '@angular/core';
-import { NgIf } from '@angular/common';
+import { NgComponentOutlet, NgIf } from '@angular/common';
+import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
 import { Router } from '@angular/router';
 import { ModoNavegacion, NavegacionService } from './navegacion.service';
 import { WxNavModoComponent } from './wx-nav-modo.component';
@@ -49,7 +50,7 @@ const GOLPE_MIN = 24;      // ...pero no un temblor
 @Component({
   selector: 'wx-navegacion',
   standalone: true,
-  imports: [NgIf, WxDockComponent, WxSidebarComponent, WxNavModoComponent],
+  imports: [NgIf, NgComponentOutlet, WxDockComponent, WxSidebarComponent, WxNavModoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <wx-sidebar *ngIf="nav.modo() === 'sidebar'" (usarDock)="cambiar('dock')"></wx-sidebar>
@@ -57,11 +58,14 @@ const GOLPE_MIN = 24;      // ...pero no un temblor
       <wx-dock></wx-dock>
       <wx-nav-modo desde="dock" (cambiar)="cambiar('sidebar')"></wx-nav-modo>
     </ng-container>
+    <ng-container *ngIf="apps.abierta()"><ng-container *ngComponentOutlet="appsPanel()"></ng-container></ng-container>
   `,
   styles: [':host { display: contents; }'],
 })
 export class WxNavegacionComponent implements OnInit, OnDestroy {
   readonly nav = inject(NavegacionService);
+  readonly apps = inject(AppsWybixService);
+  readonly appsPanel = signal<Type<unknown> | null>(null);
   private readonly router = inject(Router);
   private readonly guia = inject(GuiaService);
   private readonly paleta = inject(PaletaService);
@@ -70,6 +74,14 @@ export class WxNavegacionComponent implements OnInit, OnDestroy {
   private readonly zona = inject(NgZone);
 
   private cambiando = false;
+
+  constructor() {
+    effect(() => {
+      if (this.apps.abierta() && !this.appsPanel()) {
+        void import('../apps-wybix/apps-wybix.component').then(m => this.appsPanel.set(m.AppsWybixComponent));
+      }
+    });
+  }
 
   ngOnInit(): void {
     /* Una sola carga para las dos formas: las cifras son de la navegacion, y
@@ -154,6 +166,7 @@ export class WxNavegacionComponent implements OnInit, OnDestroy {
       /* Nada flotando huerfano: el panel de la guia y Ctrl+K se cierran. Los
          paneles del dock y sus menus se van con el propio dock. */
       this.guia.cerrar();
+      this.apps.cerrar();
       this.paleta.cerrar();
 
       const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

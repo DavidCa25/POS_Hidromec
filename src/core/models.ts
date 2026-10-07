@@ -10,7 +10,7 @@
 export type InventoryMode = 'DIRECT' | 'RECIPE' | 'NONE';
 
 /** Metodos de pago que entiende sp_register_sale hoy. */
-export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP';
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP' | 'PLATAFORMA';
 
 /** Atributo de la VENTA, no del producto. V1 no altera impuestos. */
 export type ServiceMode = 'DINE_IN' | 'TAKEAWAY';
@@ -146,6 +146,8 @@ export interface SaleIntentLine {
 }
 
 export interface SaleIntent {
+  commercialQuote?:string;
+  mpOrderId?:string;
   userId: number;
   paymentMethod: PaymentMethod;
   lines: SaleIntentLine[];

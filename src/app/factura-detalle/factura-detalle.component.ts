@@ -1,7 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
-import { CatalogosService } from '../../services/catalogos.service';
 import { FacturaCancelar } from '../factura-cancelar/factura-cancelar.component';
 
 interface InvoiceDetail {
@@ -39,7 +38,6 @@ export class FacturaDetalle implements OnInit {
     this.oculto = v;
   }
 
-  constructor(private catalogos: CatalogosService) {}
 
   private get api() { return (window as any).electronAPI; }
 
@@ -87,17 +85,9 @@ export class FacturaDetalle implements OnInit {
     }
     this.descargando = true;
     try {
-      const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-invoice-files`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.catalogos.anonKey}`,
-          'apikey': this.catalogos.anonKey
-        },
-        body: JSON.stringify({ invoiceId: this.data.fiscalapi_invoice_id })
-      });
-      const out = await res.json();
+      // Fase 1: por el proceso principal, con la credencial del EQUIPO. La
+      // llave anonima ya no basta: la nube decide empresa -> emisor -> factura.
+      const out = await this.api?.fiscalArchivos?.({ invoiceId: this.data.fiscalapi_invoice_id });
       if (!out?.success) throw new Error(out?.error || 'No se pudieron obtener los archivos.');
 
       const base = this.data.uuid || 'factura';

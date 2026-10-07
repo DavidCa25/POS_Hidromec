@@ -11,6 +11,7 @@ CREATE TABLE dbo.sale_refund_detail (
     product_id INT NOT NULL,
     quantity DECIMAL(12, 2) NOT NULL,
     unitary_price DECIMAL(12, 2) NOT NULL,
+    commercial_amount DECIMAL(12, 2) NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

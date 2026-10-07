@@ -12,7 +12,11 @@ CREATE TABLE dbo.users (
     rol NVARCHAR(20) COLLATE Modern_Spanish_CI_AS NOT NULL,
     active BIT NULL DEFAULT ((1)),
     creation_date DATETIME NULL DEFAULT (getdate()),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_users_uuid DEFAULT (newid()),
     PRIMARY KEY CLUSTERED (id),
     UNIQUE NONCLUSTERED (usuario)
 );
 END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_users_uuid' AND object_id = OBJECT_ID(N'dbo.users'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_users_uuid ON dbo.users (uuid);

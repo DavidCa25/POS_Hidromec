@@ -18,6 +18,7 @@ CREATE TABLE dbo.hosp_orden_lineas (
     comanda_id INT NULL,
     estado NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NOT NULL CONSTRAINT DF_hosp_orden_lineas_estado DEFAULT ('ACTIVA'),
     origen UNIQUEIDENTIFIER NULL,
+    commercial_component NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     CONSTRAINT PK_hosp_orden_lineas PRIMARY KEY CLUSTERED (id)
 );
 END;

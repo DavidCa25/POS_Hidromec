@@ -98,6 +98,8 @@ export const routes: Routes = [
       { path: 'estadisticas', loadComponent: () => import('../estadisticas/estadisticas').then(m => m.Estadisticas) },
       { path: 'alertas', loadComponent: () => import('../alertas/alertas').then(m => m.Alertas) },
       { path: 'conteo', loadComponent: () => import('../conteo/conteo').then(m => m.Conteo) },
+      /* Fase 2: envíos a eventos (ferias) y retornos. La sucursal es la autoridad de su inventario. */
+      { path: 'eventos', loadComponent: () => import('../eventos/eventos').then(m => m.Eventos) },
       { path: 'clientes', loadComponent: () => import('../clientes/clientes').then(m => m.Clientes) },
       { path: 'servicios', loadComponent: () => import('../servicios/servicios').then(m => m.Servicios) },
       { path: 'facturacion', loadComponent: () => import('../facturacion/facturacion').then(m => m.Facturacion) },

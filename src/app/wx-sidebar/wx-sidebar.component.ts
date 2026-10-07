@@ -9,6 +9,7 @@ import { WxMascotaComponent } from '../wx-mascota/wx-mascota.component';
 import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { GuiaService } from '../wx-guia/guia.service';
 import { PaletaService } from '../wx-paleta/paleta.service';
+import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
 
 /**
  * WX-SIDEBAR — la barra lateral de Wybix.
@@ -38,6 +39,8 @@ export class WxSidebarComponent {
   @Output() usarDock = new EventEmitter<void>();
 
   readonly nav = inject(NavegacionService);
+  readonly apps = inject(AppsWybixService);
+  abrirApps(e: Event) { this.guia.cerrar(); this.apps.abrir(e.currentTarget as HTMLElement); }
   readonly guia = inject(GuiaService);
   private readonly paleta = inject(PaletaService);
 

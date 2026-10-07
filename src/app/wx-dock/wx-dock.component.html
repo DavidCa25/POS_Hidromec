@@ -133,6 +133,13 @@
   </span>
 
   <!-- ------------------------------------------------------------- mas -->
+  <span class="wxdock__item">
+    <button type="button" class="wxdock__btn wxdock__btn--apps" (click)="abrirApps($event)"
+            [class.is-abierto]="apps.abierta()" [attr.aria-expanded]="apps.abierta()"
+            aria-haspopup="dialog" aria-label="Apps Wybix">
+      <i class="ph ph-device-mobile" aria-hidden="true"></i><span class="wxdock__txt">Apps</span>
+    </button>
+  </span>
   <span class="wxdock__item" *ngIf="mas().length">
     <button type="button" class="wxdock__btn wxdock__btn--mas" (click)="alternarMas()"
             [class.is-abierto]="masAbierto()"

@@ -40,6 +40,8 @@ BEGIN
   BEGIN TRY
     BEGIN TRAN;
 
+    DECLARE @commercial BIT = CASE WHEN EXISTS(SELECT 1 FROM dbo.sales WHERE id=@sale_id AND commercial_snapshot IS NOT NULL) THEN 1 ELSE 0 END;
+    IF @commercial=1 AND @apply_net_update=1 THROW 51000,'Las ventas con ofertas conservan su historial. Devuelve sin modificar la venta original.',1;
     DECLARE @sale_total DECIMAL(12,2);
     DECLARE @sale_method NVARCHAR(50);
     DECLARE @customer_id INT;
@@ -63,13 +65,13 @@ BEGIN
     )
     SELECT * INTO #req FROM r;
 
-    SELECT d.product_id, SUM(d.quantity) AS sold_qty, MAX(d.unitary_price) AS price
+    SELECT d.product_id, SUM(d.quantity) AS sold_qty, MAX(d.unitary_price) AS price, SUM(d.quantity*d.unitary_price) AS net_amount
     INTO #sold
     FROM dbo.sale_detail d WITH (UPDLOCK, HOLDLOCK)
     WHERE d.sale_id = @sale_id
     GROUP BY d.product_id;
 
-    SELECT srd.product_id, SUM(srd.quantity) AS refunded_qty
+    SELECT srd.product_id, SUM(srd.quantity) AS refunded_qty, SUM(COALESCE(srd.commercial_amount,srd.quantity*srd.unitary_price)) AS refunded_amount
     INTO #ref
     FROM dbo.sale_refunds sr
     JOIN dbo.sale_refund_detail srd ON srd.refund_id = sr.id
@@ -87,12 +89,16 @@ BEGIN
       RAISERROR('Reembolso inválido: excede lo vendido/disponible para devolver.',16,1);
     END
 
+    IF EXISTS(SELECT 1 FROM #req WHERE qty<=0) THROW 51000,'Cantidad de devolución inválida.',1;
+    IF NOT EXISTS(SELECT 1 FROM #req) THROW 51000,'Selecciona productos para devolver.',1;
+    SELECT q.product_id,q.qty,CAST(CASE WHEN @commercial=1 THEN
+      ROUND(s.net_amount*(ISNULL(r.refunded_qty,0)+q.qty)/s.sold_qty,2)-ISNULL(r.refunded_amount,0)
+      ELSE q.qty*s.price END AS DECIMAL(12,2)) amount
+    INTO #refund_amount FROM #req q JOIN #sold s ON s.product_id=q.product_id LEFT JOIN #ref r ON r.product_id=q.product_id;
     DECLARE @refund_total DECIMAL(12,2);
-    SELECT @refund_total = ISNULL(SUM(q.qty * s.price),0)
-    FROM #req q
-    JOIN #sold s ON s.product_id = q.product_id;
+    SELECT @refund_total=ISNULL(SUM(amount),0) FROM #refund_amount;
 
-    IF @refund_total <= 0
+    IF @refund_total < 0 OR (@refund_total=0 AND @commercial=0)
     BEGIN
       RAISERROR('El total del reembolso debe ser mayor a cero.',16,1);
     END
@@ -124,14 +130,11 @@ BEGIN
 
     SET @refund_id = SCOPE_IDENTITY();
 
-    INSERT INTO dbo.sale_refund_detail (refund_id, product_id, quantity, unitary_price)
-    SELECT
-      @refund_id,
-      q.product_id,
-      q.qty,
-      s.price
-    FROM #req q
-    JOIN #sold s ON s.product_id = q.product_id;
+    INSERT INTO dbo.sale_refund_detail(refund_id,product_id,quantity,unitary_price,commercial_amount)
+    SELECT @refund_id,q.product_id,q.qty,
+      CASE WHEN @commercial=1 THEN CAST(a.amount/q.qty AS DECIMAL(10,2)) ELSE s.price END,
+      CASE WHEN @commercial=1 THEN a.amount ELSE NULL END
+    FROM #req q JOIN #sold s ON s.product_id=q.product_id JOIN #refund_amount a ON a.product_id=q.product_id;
 
     /* ---- Que repone cada producto devuelto: consumo REAL de esta venta ---- */
     SELECT q.product_id AS sold_product_id, m.product_id, SUM(m.quantity) AS consumed, SUM(m.units) AS units

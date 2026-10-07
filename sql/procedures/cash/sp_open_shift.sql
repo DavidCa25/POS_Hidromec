@@ -97,17 +97,20 @@ BEGIN
             RETURN;
         END
 
+        /* 0051: queda el equipo que abrio, y quien abrio nunca queda vacio:
+           si no se dice otra cosa, es el mismo usuario dueno del turno. */
         INSERT INTO dbo.cash_closures (
             userId, create_date, opened_at, closed_at,
             opening_cash, opening_note, opening_user_id,
             cash_expected, cash_delivered, difference,
-            register_id
+            register_id, opened_machine_id, opened_machine_name
         )
         VALUES (
             @user_id, CAST(@now AS DATE), @now, NULL,
-            ISNULL(@opening_cash, 0), @opening_note, @opening_user_id,
+            ISNULL(@opening_cash, 0), @opening_note, ISNULL(@opening_user_id, @user_id),
             0, 0, 0,
-            @register_id
+            @register_id,
+            NULLIF(LTRIM(RTRIM(ISNULL(@machine_id, N''))), N''), @machine_name
         );
 
         DECLARE @closure_id INT = SCOPE_IDENTITY();

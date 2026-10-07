@@ -167,26 +167,17 @@ export class FacturacionConfig implements OnInit {
     try {
       // Llama a la Edge Function (backend con la credencial del PAC).
       // Envia datos del emisor + certificados; recibe el issuerId.
-      const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-register-issuer`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.catalogos.anonKey}`,
-          'apikey': this.catalogos.anonKey
-        },
-        body: JSON.stringify({
-          rfc: this.config.rfc,
-          razonSocial: this.config.razon_social,
-          regimenFiscal: this.config.regimen_fiscal,
-          zipCode: this.config.codigo_postal,
-          cerBase64: this.cerBase64,
-          keyBase64: this.keyBase64,
-          password: this.csdPassword,
-          existingPersonId: this.config.fiscalapi_issuer_id || undefined
-        })
+      // Fase 1: por el proceso principal, con la credencial del EQUIPO. La
+      // llave anonima ya no basta: la nube decide empresa -> emisor -> factura.
+      const out = await this.api?.fiscalRegistrarEmisor?.({
+        rfc: this.config.rfc,
+        razonSocial: this.config.razon_social,
+        regimenFiscal: this.config.regimen_fiscal,
+        zipCode: this.config.codigo_postal,
+        cerBase64: this.cerBase64,
+        keyBase64: this.keyBase64,
+        password: this.csdPassword
       });
-      const out = await res.json();
       if (!out?.success) {
         throw new Error(out?.error || 'No se pudieron registrar los certificados.');
       }

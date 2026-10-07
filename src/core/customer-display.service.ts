@@ -39,13 +39,13 @@ export class CustomerDisplayService {
       items: c.lines.map(l => ({
         name: l.productName,
         qty: l.qty,
-        unitPrice: l.effectiveUnitPrice,
-        importe: l.subtotal,
-        options: l.optionsLabel || undefined,
+        unitPrice: CartService.displayOf(c,l).unit,
+        importe: CartService.displayOf(c,l).amount,
+        options: [l.optionsLabel,CartService.displayOf(c,l).label].filter(Boolean).join(' · ') || undefined,
       })),
       subtotal: t.subtotal,
       tax: t.tax,
-      discount: 0,
+      discount: !c.commercial?.pending?Number(c.commercial?.quote?.discount??0):0,
       total: t.total,
       serviceMode: c.serviceMode,
       /* Solo el nombre: nunca telefono, correo ni RFC en la pantalla del cliente. */

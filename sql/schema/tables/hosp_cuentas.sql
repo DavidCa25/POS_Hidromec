@@ -22,6 +22,7 @@ CREATE TABLE dbo.hosp_cuentas (
     abierta_dia AS (CONVERT([date],[abierta_en])) PERSISTED,
     seguimiento CHAR(32) COLLATE Modern_Spanish_CI_AS NULL,
     customer_id INT NULL,
+    commercial_context NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     CONSTRAINT PK_hosp_cuentas PRIMARY KEY CLUSTERED (id)
 );
 END;

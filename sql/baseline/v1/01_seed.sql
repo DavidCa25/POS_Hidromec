@@ -16,6 +16,11 @@ IF NOT EXISTS (SELECT 1 FROM dbo.registers WHERE code = 'C1')
     INSERT INTO dbo.registers (code, name, is_active) VALUES ('C1', 'Caja 1', 1);
 GO
 
+/* Política comercial inicial: solo precio base, sin ofertas activas. */
+IF OBJECT_ID(N'dbo.commercial_policy','U') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM dbo.commercial_policy WHERE id=1)
+INSERT dbo.commercial_policy(id,version,payload) VALUES(1,0,N'{"version":0,"channels":[{"id":"LOCAL","name":"Mostrador","active":true,"inheritBase":true}],"prices":[],"promotions":[],"combos":[]}');
+GO
+
 /* Y su fila de arriendo, LIBRE.
  *
  * El invariante del arriendo de caja es que TODA caja tiene su fila en

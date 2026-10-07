@@ -231,4 +231,4 @@ try {
   borrarBase(DB);
 }
 const { falla } = resumen({ grupos: { 'Venta Esencial': 'V', 'Matriz Venta Esencial': 'M', 'Cuota de pantallas': 'Q', 'Licencia en pantallas': 'L' } });
-process.exit(falla ? 1 : 0);
+process.exit(falla.length ? 1 : 0);

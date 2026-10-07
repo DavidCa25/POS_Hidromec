@@ -317,7 +317,8 @@ try {
     'los egresos salen por concepto (Luz -$150), no mezclados con el retiro');
   check(c8.desglose.some(r => r.grupo === 'RETIROS' && n(r.total) === -100), 'el retiro va aparte (-$100)');
   check(c8.filas.every(r => r.grupo && r.concepto), 'cada movimiento del detalle trae su grupo y su concepto');
-  const cierre = uno(`EXEC dbo.sp_close_shift @closure_id=${t1}, @cash_delivered=560, @register_id=1;`);
+  // Fase 1: el cierre registra quién cierra (closed_by): sale de la sesión.
+  const cierre = uno(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${dueno}, @cash_delivered=560, @register_id=1;`);
   check(n(cierre?.cash_expected) === 570, 'el cierre guarda el MISMO esperado que mostro el corte', String(cierre?.cash_expected));
   check(n(cierre?.cash_delivered) === 560 && n(cierre?.difference) === -10, 'contado $560, diferencia -$10');
 

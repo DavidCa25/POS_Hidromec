@@ -2,7 +2,6 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
-import { CatalogosService } from '../../services/catalogos.service';
 
 interface MotivoCancelacion {
   code: string;
@@ -39,7 +38,6 @@ export class FacturaCancelar {
   // Oculta este modal (y el de detalle) mientras el SweetAlert esta arriba
   oculto = false;
 
-  constructor(private catalogos: CatalogosService) {}
 
   private get api() { return (window as any).electronAPI; }
 
@@ -99,17 +97,9 @@ export class FacturaCancelar {
     });
 
     try {
-      const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-cancel-invoice`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.catalogos.anonKey}`,
-          'apikey': this.catalogos.anonKey
-        },
-        body: JSON.stringify({ invoiceId: fiscalapiId, motivo, folioSustitucion: folioSust })
-      });
-      const out = await res.json();
+      // Fase 1: por el proceso principal, con la credencial del EQUIPO. La
+      // llave anonima ya no basta: la nube decide empresa -> emisor -> factura.
+      const out = await this.api?.fiscalCancelar?.({ invoiceId: fiscalapiId, motivo, folioSustitucion: folioSust });
       if (!out?.success) throw new Error(out?.error || 'No se pudo cancelar la factura.');
 
       await this.api?.cancelInvoice?.({

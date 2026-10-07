@@ -171,7 +171,8 @@ function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, 
       .input('cuenta_id', sql.Int, numero(p.cuentaId))
       .input('user_id', sql.Int, userId ?? null)
       .input('lineas', tl)
-      .input('opciones', to), 'enviar la orden');
+      .input('opciones', to)
+      .input('commercial', sql.NVarChar(sql.MAX),p.commercial?JSON.stringify(p.commercial):null), 'enviar la orden');
     if (!r.success) return r;
 
     const comandas = r.sets[1] || [];

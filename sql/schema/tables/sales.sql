@@ -19,6 +19,9 @@ CREATE TABLE dbo.sales (
     register_id INT NULL CONSTRAINT DF_sales_register_id DEFAULT ((1)),
     service_mode NVARCHAR(10) COLLATE Modern_Spanish_CI_AS NULL,
     venta_esencial BIT NOT NULL CONSTRAINT DF_sales_venta_esencial DEFAULT ((0)),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_sales_uuid DEFAULT (newid()),
+    rv TIMESTAMP NOT NULL,
+    commercial_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -36,3 +39,9 @@ ALTER TABLE dbo.sales WITH CHECK ADD CONSTRAINT FK_sales_register FOREIGN KEY (r
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sales_register_id' AND object_id = OBJECT_ID(N'dbo.sales'))
 CREATE NONCLUSTERED INDEX IX_sales_register_id ON dbo.sales (register_id);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sales_rv' AND object_id = OBJECT_ID(N'dbo.sales'))
+CREATE NONCLUSTERED INDEX IX_sales_rv ON dbo.sales (rv);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_sales_uuid' AND object_id = OBJECT_ID(N'dbo.sales'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_sales_uuid ON dbo.sales (uuid);

@@ -1,0 +1,99 @@
+<div class="corte-container ev">
+  <header class="ev-cab">
+    <h2>Envíos a eventos</h2>
+    <p class="ev-intro">La mercancía que mandas a una feria sale de esta sucursal. La tablet del evento la recibe por la nube o, si no tiene Internet, escaneando el comprobante.</p>
+  </header>
+
+  <div class="ev-aviso" *ngIf="sinConexion()">Sin conexión con la nube: puedes enviar mercancía; la feria y los retornos se actualizan cuando vuelva el Internet.</div>
+  <div class="ev-error" *ngIf="error()" role="alert">{{ error() }}</div>
+
+  <section class="ev-bloque" data-guide="eventos-enviar">
+    <h3>Nuevo envío</h3>
+    <p class="ev-vacio" *ngIf="!cargando() && !eventos().length">Esta sucursal no es base de ningún evento todavía. El dueño crea el evento en Wybix Owner.</p>
+    <ng-container *ngIf="eventos().length">
+      <div class="ev-fila">
+        <label class="ev-campo">
+          <span>Evento</span>
+          <wx-select [opciones]="opcionesEventos()" [(ngModel)]="eventoElegido" placeholder="Elige el evento"></wx-select>
+        </label>
+      </div>
+      <div class="ev-fila">
+        <label class="ev-campo ev-crece">
+          <span>Producto</span>
+          <wx-select [opciones]="opcionesProductos()" [(ngModel)]="productoElegido" [buscable]="true" placeholder="Busca un producto" textoBusqueda="Nombre del producto"></wx-select>
+        </label>
+        <label class="ev-campo ev-cant">
+          <span>Cantidad</span>
+          <input id="ev-cantidad" type="number" min="0" step="1" [(ngModel)]="cantidad" (keyup.enter)="agregar()" />
+        </label>
+        <button class="btn btn-primary" type="button" (click)="agregar()" [disabled]="!productoElegido || !cantidad">Agregar</button>
+      </div>
+      <table class="ev-tabla" *ngIf="lineas().length">
+        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let l of lineas()">
+            <td>{{ l.nombre }}</td><td class="num">{{ l.qty }}</td>
+            <td class="num"><button class="ev-link" type="button" (click)="quitar(l.product_id)">Quitar</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <label class="ev-campo">
+        <span>Nota (opcional)</span>
+        <input id="ev-nota" type="text" maxlength="255" [(ngModel)]="nota" placeholder="Ej. salida en la camioneta de las 8:00" />
+      </label>
+      <button class="btn btn-primary ev-principal" type="button" data-guide="eventos-confirmar-envio" (click)="enviar()" [disabled]="!eventoElegido || !lineas().length || enviando()">
+        {{ enviando() ? 'Enviando…' : 'Enviar al evento' }}
+      </button>
+    </ng-container>
+  </section>
+
+  <section class="ev-bloque ev-qr" *ngIf="resultado() as r" data-guide="eventos-comprobante">
+    <h3>Comprobante de envío</h3>
+    <p>{{ r.total }} piezas salieron hacia <strong>{{ r.evento }}</strong>.</p>
+    <ng-container *ngIf="r.qr; else sinQr">
+      <img [src]="r.qr" alt="Comprobante QR de la transferencia" width="300" height="300" />
+      <p class="ev-intro">Si la tablet no tiene Internet al recibir, que escanee este código en Inventario → Escanear comprobante. Está firmado por esta caja: no se puede alterar.</p>
+      <button class="btn btn-ghost" type="button" (click)="imprimirQr()">Imprimir</button>
+    </ng-container>
+    <ng-template #sinQr><p class="ev-intro">Esta caja todavía no está registrada en la nube: la tablet recibirá el envío cuando ambas sincronicen.</p></ng-template>
+    <button class="ev-link" type="button" (click)="resultado.set(null)">Cerrar</button>
+  </section>
+
+  <section class="ev-bloque" data-guide="eventos-retornos">
+    <h3>Retornos por recibir</h3>
+    <p class="ev-vacio" *ngIf="!retornos().length">No hay mercancía de regreso pendiente.</p>
+    <div class="ev-retorno" *ngFor="let r of retornos()">
+      <h4>{{ r.event_name }}</h4>
+      <table class="ev-tabla">
+        <thead><tr><th>Producto</th><th class="num">Envió la feria</th><th class="num">Llegó</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let l of r.lines">
+            <td>{{ l.product_name }}</td>
+            <td class="num">{{ l.qty_sent }}</td>
+            <td class="num"><input class="ev-input-cant" type="number" min="0" [(ngModel)]="l.qty_received" [attr.aria-label]="'Llegó de ' + l.product_name" /></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn btn-primary" type="button" (click)="recibir(r)">Recibir en esta sucursal</button>
+    </div>
+  </section>
+
+  <section class="ev-bloque">
+    <h3>Historial</h3>
+    <p class="ev-vacio" *ngIf="!historial().length">Aún no hay transferencias.</p>
+    <table class="ev-tabla" *ngIf="historial().length">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Evento</th><th class="num">Enviado</th><th class="num">Recibido</th><th class="num">Diferencia</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let t of historial()">
+          <td>{{ t.created_at | date:'dd/MM/yy HH:mm' }}</td>
+          <td>{{ t.kind === 'OUT' ? 'Envío' : 'Retorno' }}</td>
+          <td>{{ t.event_name }}</td>
+          <td class="num">{{ t.total_sent }}</td>
+          <td class="num">{{ t.total_received ?? '—' }}</td>
+          <td class="num" [class.ev-dif]="t.difference && t.difference != 0">{{ t.total_received == null ? '—' : t.difference }}</td>
+          <td>{{ t.status === 'SENT' ? 'En camino' : t.status === 'RECEIVED' ? 'Recibido' : t.status }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>

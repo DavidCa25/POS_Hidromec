@@ -256,46 +256,38 @@ export class FacturaNueva implements OnInit {
 
     this.timbrando = true;
     try {
-      const endpoint = `${this.catalogos.supabaseUrl}/functions/v1/fiscal-stamp-invoice`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.catalogos.anonKey}`,
-          'apikey': this.catalogos.anonKey
+      // Fase 1: por el proceso principal, con la credencial del EQUIPO. La
+      // llave anonima ya no basta: la nube decide empresa -> emisor -> factura.
+      const out = await this.api?.fiscalTimbrar?.({
+        issuerId: this.issuerId,
+        issuerRfc: this.issuerRfc,
+        issuerLegalName: this.issuerLegalName,
+        issuerRegimen: this.issuerRegimen,
+        expeditionZipCode: this.expeditionZipCode,
+        series: this.serie,
+        receptor: {
+          rfc,
+          razonSocial: this.receptor.razonSocial.trim(),
+          regimenFiscal: this.receptor.regimenFiscal,
+          usoCfdi: this.receptor.usoCfdi,
+          zipCode: this.receptor.zipCode.trim(),
+          email: this.receptor.email.trim() || null
         },
-        body: JSON.stringify({
-          issuerId: this.issuerId,
-          issuerRfc: this.issuerRfc,
-          issuerLegalName: this.issuerLegalName,
-          issuerRegimen: this.issuerRegimen,
-          expeditionZipCode: this.expeditionZipCode,
-          series: this.serie,
-          receptor: {
-            rfc,
-            razonSocial: this.receptor.razonSocial.trim(),
-            regimenFiscal: this.receptor.regimenFiscal,
-            usoCfdi: this.receptor.usoCfdi,
-            zipCode: this.receptor.zipCode.trim(),
-            email: this.receptor.email.trim() || null
-          },
-          formaPago: this.formaPago,
-          metodoPago: this.metodoPago,
-          items: this.conceptos.map(c => ({
-            description: c.description,
-            quantity: Number(c.quantity),
-            // Base sin IVA: el PAC vuelve a sumar el IVA sobre esta base,
-            // de modo que el total coincide con el precio con IVA del ticket.
-            unitPrice: Number(this.baseUnitaria(c).toFixed(6)),
-            claveProdServ: c.claveProdServ || null,
-            claveUnidad: c.claveUnidad || null,
-            taxObject: c.taxObject || '02',
-            taxRate: this.tasaConcepto(c),
-            discount: 0
-          }))
-        })
+        formaPago: this.formaPago,
+        metodoPago: this.metodoPago,
+        items: this.conceptos.map(c => ({
+          description: c.description,
+          quantity: Number(c.quantity),
+          // Base sin IVA: el PAC vuelve a sumar el IVA sobre esta base,
+          // de modo que el total coincide con el precio con IVA del ticket.
+          unitPrice: Number(this.baseUnitaria(c).toFixed(6)),
+          claveProdServ: c.claveProdServ || null,
+          claveUnidad: c.claveUnidad || null,
+          taxObject: c.taxObject || '02',
+          taxRate: this.tasaConcepto(c),
+          discount: 0
+        }))
       });
-      const out = await res.json();
       if (!out?.success) throw new Error(out?.error || 'No se pudo timbrar la factura.');
 
       await this.api?.saveInvoice?.({

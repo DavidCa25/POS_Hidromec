@@ -16,6 +16,8 @@ CREATE TABLE dbo.cash_movements (
     note NVARCHAR(200) COLLATE Modern_Spanish_CI_AS NULL,
     closure_id INT NULL,
     register_id INT NULL CONSTRAINT DF_cash_movements_register_id DEFAULT ((1)),
+    uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_cash_movements_uuid DEFAULT (newid()),
+    rv TIMESTAMP NOT NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -38,5 +40,11 @@ CREATE NONCLUSTERED INDEX IX_cash_movements_datee ON dbo.cash_movements (datee);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_movements_register_id' AND object_id = OBJECT_ID(N'dbo.cash_movements'))
 CREATE NONCLUSTERED INDEX IX_cash_movements_register_id ON dbo.cash_movements (register_id);
 
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_movements_rv' AND object_id = OBJECT_ID(N'dbo.cash_movements'))
+CREATE NONCLUSTERED INDEX IX_cash_movements_rv ON dbo.cash_movements (rv);
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cash_movements_user_type_dt' AND object_id = OBJECT_ID(N'dbo.cash_movements'))
 CREATE NONCLUSTERED INDEX IX_cash_movements_user_type_dt ON dbo.cash_movements (userId, typee, datee);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_cash_movements_uuid' AND object_id = OBJECT_ID(N'dbo.cash_movements'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_cash_movements_uuid ON dbo.cash_movements (uuid);

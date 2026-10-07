@@ -43,6 +43,9 @@ const EXIGE = {
   // ------------------------------------------------------------ venta diaria
   // El trabajo del turno. Un Operador tiene todo esto y nada más.
   'sp-register-sale': VENTAS_OPERAR,
+  'commercial:catalog': VENTAS_OPERAR,
+  'commercial:quote': VENTAS_OPERAR,
+  'commercial:save': CONFIGURACION_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
   'sp-register-cash-out': VENTAS_OPERAR,
@@ -52,6 +55,9 @@ const EXIGE = {
   'print-sale-ticket': VENTAS_OPERAR,
   'generate-sale-pdf': VENTAS_OPERAR,
   'fiscal-save-invoice': VENTAS_OPERAR,
+  // Fase 1: CFDI por la nube con la credencial del equipo.
+  'fiscal:timbrar': VENTAS_OPERAR,
+  'fiscal:archivos': VENTAS_OPERAR,
   // La caja que atiende reclama y suelta su propio equipo: es operación, no
   // configuración. Liberar el de OTRA caja sí es administrar, y va abajo.
   'register-set-current': VENTAS_OPERAR,
@@ -76,6 +82,7 @@ const EXIGE = {
   'sp-update-sale': VENTAS_SUPERVISAR,
   'open-cash-drawer': VENTAS_SUPERVISAR,
   'fiscal-cancel-invoice': VENTAS_SUPERVISAR,
+  'fiscal:cancelar': VENTAS_SUPERVISAR,
   // Un sorteo reparte premio: quien lo cierra o lo celebra responde de él.
   'raffles:draw': VENTAS_SUPERVISAR,
   'raffles:close': VENTAS_SUPERVISAR,
@@ -140,6 +147,9 @@ const EXIGE = {
   'users:create': CONFIGURACION_ADMINISTRAR,
   'users:update-role': CONFIGURACION_ADMINISTRAR,
   'users:reset-password': CONFIGURACION_ADMINISTRAR,
+  // Fase 1: PIN personal (el mismo de Local Host). Lo fija un administrador.
+  'users:set-pin': CONFIGURACION_ADMINISTRAR,
+  'users:pin-status': CONFIGURACION_ADMINISTRAR,
   'users:set-active': CONFIGURACION_ADMINISTRAR,
   'modules:set': CONFIGURACION_ADMINISTRAR,
   'update-business-config': CONFIGURACION_ADMINISTRAR,
@@ -163,6 +173,16 @@ const EXIGE = {
   'cloud-ensure-provisioned': CONFIGURACION_ADMINISTRAR,
   'cloud-push-now': CONFIGURACION_ADMINISTRAR,
   'cloud-delete-account': CONFIGURACION_ADMINISTRAR,
+  // Fase 1: el QR del dueño lleva una invitación; generarla es administrar.
+  'cloud-get-pairing': CONFIGURACION_ADMINISTRAR,
+  'cloud:unirse-codigo': CONFIGURACION_ADMINISTRAR,
+  'cloud:crear-sucursal': CONFIGURACION_ADMINISTRAR,
+  'cloud:estado': CONFIGURACION_ADMINISTRAR,
+  'fiscal:registrar-emisor': CONFIGURACION_ADMINISTRAR,
+  // Fase 2: transferencias con eventos (ferias). Mover inventario es operar inventario.
+  'transferencias:listar': INVENTARIO_OPERAR,
+  'transferencias:enviar': INVENTARIO_OPERAR,
+  'transferencias:recibir-retorno': INVENTARIO_OPERAR,
   'mp-set-config': CONFIGURACION_ADMINISTRAR,
   'mp-set-pdv': CONFIGURACION_ADMINISTRAR,
   'mp-create-pos': CONFIGURACION_ADMINISTRAR,
@@ -396,6 +416,7 @@ const ABIERTOS = {
   'auth:cerrar-sesion': 'cerrar sesión no puede depender de tener permisos',
   'security:authorize': 'valida credenciales de un tercero; comprueba el paquete por dentro',
   'security:log': 'registrar lo ocurrido no puede fallar por permisos',
+  'security:autorizadores': 'solo nombres de quien puede autorizar con PIN; exige sesion por dentro',
   'security:catalogo': 'el catálogo que la interfaz necesita para pintarse',
   'security:modelo': 'versión del modelo de seguridad, para avisar de desajustes',
 
@@ -468,7 +489,6 @@ const ABIERTOS = {
   'devices:list-printers': 'lectura del hardware del equipo',
   'devices:list-serial-ports': 'lectura del hardware del equipo',
   'cloud-get-config': 'lectura de la configuración de nube, sin secretos',
-  'cloud-get-pairing': 'código de vinculación de la app del dueño',
   'mp-get-config': 'lectura de la configuración de terminal',
   'mp-get-order': 'lectura del estado de un cobro en curso',
   'mp-list-terminals': 'lectura de terminales disponibles',
@@ -507,6 +527,64 @@ function exigePara(canal) {
   return Object.prototype.hasOwnProperty.call(EXIGE, canal) ? EXIGE[canal] : null;
 }
 
+/**
+ * QUIÉN OPERA LO DICE LA SESIÓN, NO EL PAYLOAD.
+ *
+ * Estos canales reciben del renderer un campo con el usuario que opera
+ * (`user_id`, `userId`...). Ese campo ya no es fuente de autoridad:
+ * `sesion.proteger` lo SUSTITUYE por el usuario de la sesión de la ventana
+ * antes de llamar al manejador, y registra `ACTOR_IGNORADO` si el renderer
+ * mandaba otro. El manejador puede seguir leyendo `payload.user_id` como antes:
+ * lo que lea ya es la sesión.
+ *
+ *   campos     claves del primer argumento cuando es un objeto;
+ *   posicion   índice del argumento cuando el canal usa argumentos sueltos
+ *              (contrato heredado de `sp-register-sale` y del abono).
+ *
+ * Un canal nuevo que reciba el actor del renderer va AQUÍ. La prueba
+ * `autoridad-sesion` comprueba que cada uno exista y esté protegido.
+ */
+const ACTOR = {
+  'sp-register-sale':             { campos: ['userId', 'user_id'], posicion: 0 },
+  'sp-register-customer-payment': { posicion: 3 },
+  'sp-register-purchase':         { campos: ['user_id', 'userId'] },
+  'sp-open-shift':                { campos: ['user_id', 'userId', 'opening_user_id'] },
+  'sp-close-shift':               { campos: ['user_id', 'userId'] },
+  'sp-update-sale':               { campos: ['user_id', 'userId'] },
+  'sp-refund-sale':               { campos: ['user_id', 'userId'] },
+  'sp-import-sales':              { campos: ['user_id', 'userId'] },
+  'sp-register-cash-out':         { campos: ['user_id', 'userId'] },
+  'sp-register-supplier-payment': { campos: ['user_id', 'userId'] },
+  'raffles:draw':                 { campos: ['userId'] },
+  'raffles:close':                { campos: ['userId'] },
+  'quickstart:carga-manual':      { campos: ['userId'] },
+  'quickstart:ejecutar':          { campos: ['userId'] },
+  'quickstart:undo':              { campos: ['userId'] },
+  'quickstart:guardar-perfil':    { campos: ['userId'] },
+};
+
+/**
+ * QUIÉN PUEDE AUTORIZAR, cuando no es lo mismo que quién puede operar.
+ *
+ * Cerrar el PROPIO turno es venta diaria (`VENTAS_OPERAR`), pero autorizar el
+ * cierre del turno de OTRA persona es de un Encargado. Sin esta tabla, la
+ * autorización heredaría el paquete del canal y un Operador podría autorizar
+ * a otro Operador.
+ */
+const AUTORIZA = {
+  'sp-close-shift': VENTAS_SUPERVISAR,
+};
+
+/** Paquete que debe tener quien AUTORIZA una operación de este canal. */
+function autorizaPara(canal) {
+  if (Object.prototype.hasOwnProperty.call(AUTORIZA, canal)) return AUTORIZA[canal];
+  return exigePara(canal) || VENTAS_SUPERVISAR;
+}
+
+function actorPara(canal) {
+  return Object.prototype.hasOwnProperty.call(ACTOR, canal) ? ACTOR[canal] : null;
+}
+
 /** Todos los canales protegidos. Para la prueba de cobertura. */
 function canalesProtegidos() {
   return Object.keys(EXIGE);
@@ -518,4 +596,4 @@ function estaClasificado(canal) {
       || Object.prototype.hasOwnProperty.call(ABIERTOS, canal);
 }
 
-module.exports = { EXIGE, ABIERTOS, exigePara, canalesProtegidos, estaClasificado };
+module.exports = { EXIGE, ABIERTOS, ACTOR, AUTORIZA, exigePara, actorPara, autorizaPara, canalesProtegidos, estaClasificado };

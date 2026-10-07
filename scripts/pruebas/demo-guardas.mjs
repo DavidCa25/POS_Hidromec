@@ -258,8 +258,10 @@ seccion('Una demo abre directamente: ni Gate ni asistente');
     'y la carcasa deja entrar a `demo` sin pasar por el Gate');
 
   const svc = readFileSync(join('src', 'services', 'license.service.ts'), 'utf8');
-  check(/\['demo', 'trial', 'active'\]\.includes/.test(svc),
-    'porque `puedeOperar` incluye demo');
+  const body = svc.match(/get puedeOperar\(\): boolean \{([^}]+)\}/)?.[1];
+  const operate = body ? new Function(body) : () => false;
+  check(operate.call({modo:'DEMO'}) && !operate.call({modo:'NONE'}) && !operate.call({modo:'TAMPER'}),
+    'la demo puede operar y los estados sin permiso siguen bloqueados');
 
   /* Y el alta ya viene sembrada, asi que tampoco ve el asistente. */
   for (const f of ['demo-profiles/retail/seed.sql', 'demo-profiles/servicios/comun.sql']) {

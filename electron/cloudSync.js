@@ -1,9 +1,12 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const crypto = require('crypto');
 const { app, safeStorage } = require('electron');
 const { poolPromise, sql } = require('./db');
+const { crearSecretos } = require('./seguridad/secretos');
+const { crearIdentidad, metadataSql } = require('./nube/identidad');
+const { crearEnvioHechos } = require('./nube/hechos');
+const crypto = require('crypto');
 
 // ============================================================
 // cloudSync.js - Emisor hacia Supabase (espejo de solo lectura)
@@ -18,6 +21,12 @@ const { poolPromise, sql } = require('./db');
 // `pos-sync` con un token propio de la sucursal (que entrega al
 // aprovisionar); el servidor solo deja escribir filas de ESA sucursal. La
 // service key ya no se pide, no se lee y se borra de la config si estaba.
+//
+// FASE 1. La credencial es del EQUIPO, no de la sucursal (nube/identidad.js):
+// empresa -> ubicacion -> equipo. Ademas del espejo, la caja principal manda
+// HECHOS (ventas, turnos, cortes, movimientos) por el outbox (nube/hechos.js).
+// Los secretos se guardan con safeStorage o no se guardan: base64 no es
+// cifrado (seguridad/secretos.js).
 // ============================================================
 
 function log(msg) { console.log(`[CLOUD] ${msg}`); }
@@ -31,9 +40,19 @@ function setLicenseMachineId(id) { licenseMachineId = id ? String(id) : null; }
    Esencial los servicios conectados se pausan. Los pone main.js. */
 let destino = { url: '', funciones: '', anonKey: '' };
 let permitido = () => true;
-function configurar({ url, funciones, anonKey, licenciaPermite } = {}) {
+/* Lo que la nube necesita saber de esta instalacion (lo pone main.js). */
+const instalacion = {
+  esPrincipal: () => true,
+  nombres: () => ({ negocio: os.hostname() || 'Mi negocio', sucursal: 'Matriz', equipo: os.hostname() || 'Caja' }),
+  huella: () => licenseMachineId,
+  version: null,
+};
+function configurar({ url, funciones, anonKey, licenciaPermite, esPrincipal, nombres, version } = {}) {
   destino = { url: url || destino.url, funciones: funciones || destino.funciones, anonKey: anonKey || destino.anonKey };
   if (typeof licenciaPermite === 'function') permitido = licenciaPermite;
+  if (typeof esPrincipal === 'function') instalacion.esPrincipal = esPrincipal;
+  if (typeof nombres === 'function') instalacion.nombres = nombres;
+  if (version) instalacion.version = version;
 }
 
 // ---- Configuracion (cloud-config.json en userData) ----
@@ -62,31 +81,45 @@ function writeConfig(cfg) {
   fs.writeFileSync(getConfigPath(), JSON.stringify(cfg, null, 2), 'utf8');
 }
 
-// ---- Cifrado del token de sincronizacion (mismo patron que db.js) ----
+// ---- Secretos: credencial del equipo y token anterior de la sucursal ----
+// safeStorage o nada. Lo que venga en base64 de versiones anteriores se lee
+// una vez y se vuelve a guardar cifrado.
 
-function encryptSecret(plain) {
-  try {
-    if (safeStorage && safeStorage.isEncryptionAvailable()) {
-      return { enc: safeStorage.encryptString(String(plain)).toString('base64'), method: 'safeStorage' };
-    }
-  } catch (e) {
-    console.error('[CLOUD] safeStorage no disponible:', e.message);
-  }
-  return { enc: Buffer.from(String(plain), 'utf8').toString('base64'), method: 'base64' };
-}
+const secretos = crearSecretos(safeStorage);
+const CAMPOS = { equipo: ['deviceTokenEnc', 'deviceTokenMethod'], legado: ['syncTokenEnc', 'syncTokenMethod'],
+                 // Fase 2: llave PRIVADA Ed25519 de esta caja (firma comprobantes de transferencia).
+                 firma: ['signingKeyEnc', 'signingKeyMethod'] };
+const enMemoria = {};   // si el sistema no ofrece cifrado, la credencial vive solo en esta sesion
 
-function decryptSecret(b64, method) {
-  if (!b64) return '';
-  try {
-    if (method === 'safeStorage' && safeStorage && safeStorage.isEncryptionAvailable()) {
-      return safeStorage.decryptString(Buffer.from(b64, 'base64'));
+const secreto = {
+  leer(nombre) {
+    if (enMemoria[nombre]) return enMemoria[nombre];
+    const cfg = loadConfig();
+    const [e, m] = CAMPOS[nombre];
+    const { valor, legado } = secretos.descifrar(cfg[e], cfg[m]);
+    if (valor && legado) secreto.guardar(nombre, valor);
+    return valor;
+  },
+  guardar(nombre, valor) {
+    const cfg = loadConfig();
+    const [e, m] = CAMPOS[nombre];
+    const c = secretos.cifrar(valor);
+    if (c) { cfg[e] = c.enc; cfg[m] = c.method; delete enMemoria[nombre]; }
+    else {
+      // Nunca base64: sin cifrado del sistema se usa en memoria y se pide de nuevo al reiniciar.
+      enMemoria[nombre] = valor; cfg[e] = ''; cfg[m] = '';
+      log('El sistema no ofrece cifrado: la credencial de la nube no se guarda en disco.');
     }
-    return Buffer.from(b64, 'base64').toString('utf8');
-  } catch (e) {
-    console.error('[CLOUD] No se pudo descifrar el token de sincronizacion:', e.message);
-    return '';
-  }
-}
+    delete cfg.serviceKeyEnc; delete cfg.serviceKeyMethod;
+    writeConfig(cfg);
+  },
+  borrar(nombre) {
+    const cfg = loadConfig();
+    const [e, m] = CAMPOS[nombre];
+    cfg[e] = ''; cfg[m] = ''; delete enMemoria[nombre];
+    writeConfig(cfg);
+  },
+};
 
 function setCloudConfig(partial = {}) {
   const cfg = loadConfig();
@@ -95,6 +128,10 @@ function setCloudConfig(partial = {}) {
   delete merged.serviceKey; delete merged.serviceKeyEnc; delete merged.serviceKeyMethod;
   // Cambiar de sucursal a mano obliga a reclamarla de nuevo (y solo si es de este equipo).
   if (partial.sucursalId && partial.sucursalId !== cfg.sucursalId) { merged.syncTokenEnc = ''; merged.syncTokenMethod = ''; }
+  // La identidad del equipo no se edita a mano.
+  for (const k of ['deviceTokenEnc', 'deviceTokenMethod', 'deviceId', 'companyId', 'locationId', 'deviceKind', 'deviceUuid']) {
+    if (k in partial) merged[k] = cfg[k];
+  }
   writeConfig(merged);
   return { success: true };
 }
@@ -113,7 +150,10 @@ function getCloudConfig() {
     umbralDiferencia: cfg.umbralDiferencia,
     // Ya no hay clave que pegar: la caja se vincula sola con su token.
     hasServiceKey: true,
-    vinculadaConToken: !!cfg.syncTokenEnc
+    vinculadaConToken: !!(cfg.deviceTokenEnc || cfg.syncTokenEnc),
+    // Fase 1: identidad del equipo (sin secretos).
+    equipo: { registrado: !!cfg.deviceTokenEnc, kind: cfg.deviceKind || null, companyId: cfg.companyId || null, locationId: cfg.locationId || null },
+    esPrincipal: instalacion.esPrincipal(),
   };
 }
 
@@ -127,8 +167,7 @@ function setAnonKey(anonKey) {
 
 // ---- Llamada REST a Supabase ----
 
-/** Llama a la Edge Function pos-sync. Solo anon key + el token de la sucursal. */
-async function gateway(action, cuerpo = {}, conToken = true) {
+function baseFunciones() {
   const cfg = loadConfig();
   /* pos-sync va por el dominio de Wybix (ver FUNCIONES_URL en main.js). La
      `url` guardada es la de Supabase que viaja en el QR de la app del dueño;
@@ -137,94 +176,214 @@ async function gateway(action, cuerpo = {}, conToken = true) {
   const url = propia ? cfg.url : (destino.funciones || destino.url);
   const anon = cfg.anonKey || destino.anonKey;
   if (!url || !anon) throw new Error('Falta la configuracion de la nube.');
+  return { url, anon };
+}
+
+/**
+ * Llama a una Edge Function. `token` = credencial del equipo; `legado` = el
+ * token de sucursal anterior (solo para actualizar un POS que ya sincronizaba).
+ * Los errores llevan `code` y `status` de la respuesta.
+ */
+async function llamarFuncion(funcion, cuerpo = {}, { token = null, legado = null, ms = 20000 } = {}) {
+  const { url, anon } = baseFunciones();
   const headers = { 'Content-Type': 'application/json', apikey: anon, Authorization: `Bearer ${anon}` };
-  if (conToken) headers['x-wybix-sync'] = await tokenDeSync();
-  const res = await fetch(`${url}/functions/v1/pos-sync`, { method: 'POST', headers, body: JSON.stringify({ action, ...cuerpo }) });
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data?.success) throw new Error(data?.error || `pos-sync ${action} HTTP ${res.status}`);
-  return data;
+  if (token) headers['x-wybix-device'] = token;
+  else if (legado) headers['x-wybix-sync'] = legado;
+  if (instalacion.version) headers['x-wybix-version'] = String(instalacion.version);
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(`${url}/functions/v1/${funcion}`, { method: 'POST', headers, body: JSON.stringify(cuerpo), signal: controller.signal });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) {
+      const err = new Error(data?.error || `${funcion} HTTP ${res.status}`);
+      err.code = data?.code; err.status = res.status; err.data = data;
+      throw err;
+    }
+    return data;
+  } finally { clearTimeout(t); }
 }
 
-function guardarToken(token) {
-  const cfg = loadConfig();
-  const { enc, method } = encryptSecret(token);
-  cfg.syncTokenEnc = enc; cfg.syncTokenMethod = method;
-  delete cfg.serviceKeyEnc; delete cfg.serviceKeyMethod;
-  writeConfig(cfg);
-}
+const identidad = crearIdentidad({
+  meta: metadataSql({ pool: () => poolPromise, sql }),
+  llamar: (action, cuerpo, opt = {}) => llamarFuncion('pos-sync', { action, ...cuerpo }, opt),
+  cfg: { leer: loadConfig, escribir: (parcial) => writeConfig({ ...loadConfig(), ...parcial }) },
+  secreto,
+  esPrincipal: () => instalacion.esPrincipal(),
+  nombres: () => instalacion.nombres(),
+  huella: () => instalacion.huella(),
+  get version() { return instalacion.version; },
+  log,
+});
 
-/** El token de esta caja. Una instalacion previa lo reclama con su equipo. */
-async function tokenDeSync() {
-  const cfg = loadConfig();
-  const t = decryptSecret(cfg.syncTokenEnc, cfg.syncTokenMethod);
+/** La credencial con la que habla ESTE equipo (la da de alta si hace falta). */
+async function credencial() {
+  const t = secreto.leer('equipo');
   if (t) return t;
-  if (cfg.sucursalId) {
-    const r = await gateway('claim', { deviceKey: cfg.deviceKey || getStableDeviceKey(), sucursalId: cfg.sucursalId }, false);
-    guardarToken(r.token);
-    return r.token;
-  }
-  throw new Error('Esta caja aun no esta vinculada a la nube.');
+  await identidad.asegurar();
+  return secreto.leer('equipo');
 }
+
+/** pos-sync con la credencial del equipo. */
+async function gateway(action, cuerpo = {}, conToken = true) {
+  if (!conToken) return llamarFuncion('pos-sync', { action, ...cuerpo });
+  try {
+    return await llamarFuncion('pos-sync', { action, ...cuerpo }, { token: await credencial() });
+  } catch (e) {
+    // La nube revoco esta credencial (otra principal tomo la sucursal, o se
+    // reinstalo): se olvida y la proxima vez se vuelve a dar de alta.
+    if (e.status === 401 && secreto.leer('equipo')) secreto.borrar('equipo');
+    throw e;
+  }
+}
+
+/** Funciones fiscales: SIEMPRE con la credencial del equipo (P0 fiscal). */
+async function llamarFiscal(funcion, cuerpo) {
+  return llamarFuncion(funcion, cuerpo, { token: await credencial(), ms: 60000 });
+}
+
+const metaSql = metadataSql({ pool: () => poolPromise, sql });
+const hechos = crearEnvioHechos({
+  pool: () => poolPromise, sql,
+  llamar: (action, cuerpo) => gateway(action, cuerpo),
+  huella: () => metaSql.huellaServidor().catch(() => null),
+  puedeEnviar: async () => instalacion.esPrincipal() && !!loadConfig().enabled && permitido(),
+  log,
+});
 
 async function supabaseUpsert(table, rows) {
   return gateway('upsert', { table, rows });
 }
 
-// ---- Aprovisionamiento (crear negocio/sucursal) + QR ----
+// ---- Alta del equipo + QR ----
+// (El MachineGuid ya no identifica a nadie: la identidad es empresa ->
+// ubicacion -> equipo, ver nube/identidad.js.)
 
-// Huella ESTABLE de la máquina: sobrevive a reinstalaciones del POS.
-// Así, al reinstalar, se reusa el mismo negocio/sucursal en vez de crear uno nuevo.
-function getStableDeviceKey() {
-  const cfg = loadConfig();
-  if (cfg.deviceKey) return cfg.deviceKey;
-  // Windows: MachineGuid del registro (constante por equipo)
-  try {
-    const out = require('child_process')
-      .execSync('reg query "HKLM\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid', { windowsHide: true })
-      .toString();
-    const m = out.match(/MachineGuid\s+REG_SZ\s+([\w-]+)/i);
-    if (m && m[1]) return 'win-' + m[1];
-  } catch { /* no disponible: cae al aleatorio */ }
-  return crypto.randomUUID();
-}
-
+/**
+ * Alta de ESTE equipo en la nube (Fase 1): empresa -> ubicacion -> equipo.
+ * Ya no crea un negocio por computadora: la base de SQL Server decide la
+ * ubicacion (ver nube/identidad.js). Un POS que ya sincronizaba conserva su
+ * empresa: su token anterior viaja para que la nube lo reconozca.
+ */
 async function ensureProvisioned(nombreNegocio) {
-  const cfg = loadConfig();
-  // Idempotente local: si ya hay negocio y sucursal, no recrea
-  if (cfg.sucursalId && cfg.negocioId) {
-    return { success: true, sucursalId: cfg.sucursalId, negocioId: cfg.negocioId, already: true };
+  if (nombreNegocio && String(nombreNegocio).trim()) {
+    const previo = instalacion.nombres;
+    instalacion.nombres = () => ({ ...previo(), negocio: String(nombreNegocio).trim().slice(0, 120) });
   }
-
-  const nombre = (nombreNegocio && String(nombreNegocio).trim()) || (os.hostname() || 'Mi negocio');
-  const deviceKey = getStableDeviceKey();
-
-  // El servidor reusa la sucursal de este equipo si ya existe (reinstalar no
-  // duplica) o crea negocio + sucursal, y entrega el token de sincronizacion.
-  const r = await gateway('provision', { deviceKey, nombre, equipo: os.hostname() || 'Matriz' }, false);
-  cfg.negocioId = r.negocioId;
-  cfg.sucursalId = r.sucursalId;
-  cfg.deviceKey = deviceKey;
-  writeConfig(cfg);
-  guardarToken(r.token);
-
-  return { success: true, sucursalId: r.sucursalId, negocioId: r.negocioId };
+  const e = await identidad.asegurar();
+  return { success: true, sucursalId: e.locationId, negocioId: e.companyId, kind: e.kind };
 }
 
-// Arma el contenido del QR que escanea la app del dueno (nada secreto).
-function getPairingPayload() {
-  const cfg = loadConfig();
-  if (!cfg.url || !cfg.anonKey || !cfg.sucursalId || !cfg.negocioId) {
-    return { success: false, error: 'Falta aprovisionar o configurar (url/anonKey/sucursal/negocio).' };
+// ---- Fase 2: la sucursal y sus eventos (ferias) -------------------------
+
+const b64url = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/**
+ * Llave Ed25519 de ESTA caja principal. La privada se guarda cifrada
+ * (safeStorage) y nunca sale de la computadora; la pública se registra en la
+ * nube y llega a las tablets como "llave de confianza" de la empresa.
+ */
+async function asegurarLlaveFirma() {
+  let priv = secreto.leer('firma');
+  if (!priv) {
+    const { privateKey } = crypto.generateKeyPairSync('ed25519');
+    priv = privateKey.export({ format: 'pem', type: 'pkcs8' });
+    secreto.guardar('firma', priv);
   }
-  const payload = {
-    v: 1,
-    url: cfg.url,
-    anonKey: cfg.anonKey,
-    negocioId: cfg.negocioId,
-    sucursalId: cfg.sucursalId,
-    nombre: os.hostname() || 'Mi negocio'
-  };
-  return { success: true, payload, qrText: JSON.stringify(payload) };
+  const cfg = loadConfig();
+  const publica = b64url(crypto.createPublicKey(crypto.createPrivateKey(priv)).export({ format: 'der', type: 'spki' }).subarray(-32));
+  if (cfg.signingPublicKey !== publica) {
+    await gateway('register_key', { public_key: publica });
+    writeConfig({ ...loadConfig(), signingPublicKey: publica });
+  }
+  return priv;
+}
+
+/**
+ * Comprobante de transferencia firmado (QR). Mismo formato que verifica la
+ * tablet (@wybix/sync, manifiesto.ts): WXT1.<manifiesto>.<firma>. Cambiar una
+ * cantidad o un producto invalida la firma.
+ */
+async function firmarTransferencia({ transfer_uuid, event_location_uuid, lines }) {
+  const cfg = loadConfig();
+  if (!cfg.deviceId || !cfg.companyId || !cfg.locationId) return null;   // sin identidad en la nube: sin QR (el envío sí queda)
+  const priv = await asegurarLlaveFirma();
+  const m = { v: 1, t: String(transfer_uuid).toLowerCase(), c: cfg.companyId, f: cfg.locationId, to: String(event_location_uuid).toLowerCase(),
+              k: cfg.deviceId, at: new Date().toISOString(), l: lines.map((l) => [String(l.product_uuid).toLowerCase(), Number(l.qty).toFixed(2)]) };
+  const cuerpo = `WXT1.${b64url(Buffer.from(JSON.stringify(m), 'utf8'))}`;
+  const firma = crypto.sign(null, Buffer.from(cuerpo, 'utf8'), crypto.createPrivateKey(priv));
+  return { qr: `${cuerpo}.${b64url(firma)}`, firma: b64url(firma) };
+}
+
+/** Catálogo y personal con PIN para las tablets de los eventos. Solo si cambió. */
+async function publicarSucursal() {
+  const pool = await poolPromise;
+  const cat = (await pool.request().execute('sp_catalog_publication')).recordset?.[0]?.catalog_json;
+  const staff = (await pool.request().execute('sp_staff_publication')).recordset?.[0]?.staff_json;
+  if (!cat) return { publicado: false };
+  const catalog = JSON.parse(cat), personal = JSON.parse(staff || '[]');
+  const huella = crypto.createHash('sha256').update(JSON.stringify({ catalog, personal })).digest('hex');
+  if (loadConfig().publishHash === huella) return { publicado: false };
+  const r = await gateway('publish', { catalog, staff: personal });
+  writeConfig({ ...loadConfig(), publishHash: huella });
+  return { publicado: true, catalog_version: r.catalog_version };
+}
+
+/**
+ * Lo que la nube tiene para esta sucursal: retornos de eventos por recibir,
+ * envíos que el evento ya recibió (se confirman aquí con lo que llegó) y la
+ * lista de eventos de los que es base.
+ */
+async function bandejaTransferencias() {
+  const r = await gateway('transfer_inbox');
+  const pool = await poolPromise;
+  for (const t of r.received ?? []) {
+    try {
+      await pool.request().input('transfer_uuid', sql.UniqueIdentifier, t.transfer_uuid)
+        .input('lines', sql.NVarChar(sql.MAX), JSON.stringify(t.lines ?? []))
+        .execute('sp_transfer_confirm_out');
+    } catch (e) { log('confirmar envio: ' + e.message); }
+  }
+  return { returns: r.returns ?? [], events: r.events ?? [], received: r.received ?? [] };
+}
+
+/** Una sucursal nueva se une a una empresa existente con el codigo del dueño. */
+async function unirseConCodigo(codigo) {
+  const e = await identidad.unirseConCodigo(codigo);
+  return { success: true, sucursalId: e.locationId, negocioId: e.companyId };
+}
+
+/** La caja principal crea otra ubicacion de SU empresa y entrega el codigo. */
+async function crearSucursal({ nombre, tipo = 'BRANCH', starts_at = null, ends_at = null } = {}) {
+  const r = await gateway('create_location', { nombre, tipo, starts_at, ends_at });
+  return { success: true, codigo: r.code, expira: r.expires_at, locationId: r.location_id };
+}
+
+async function estadoNube() {
+  const r = await gateway('whoami');
+  return { success: true, company: r.company, location: r.location, device: r.device, entitlements: r.entitlements };
+}
+
+/**
+ * QR de la app del dueño. Fase 1: lleva una INVITACION de un solo uso (30
+ * min). Sin ella, conocer el negocio ya no da acceso a nada. Desde el POS solo
+ * se invita al PRIMER dueño; despues invita el dueño desde su app.
+ */
+async function getPairingPayload() {
+  const cfg = loadConfig();
+  const url = cfg.url || destino.url;
+  const anonKey = cfg.anonKey || destino.anonKey;
+  let e;
+  try { e = await identidad.asegurar(); }
+  catch (err) { return { success: false, error: err.message }; }
+  let codigo = null, aviso = null;
+  try { codigo = (await gateway('invite_owner')).code; }
+  catch (err) {
+    if (err.code === 'OWNER_EXISTS') aviso = 'Este negocio ya tiene dueño. Para agregar a otra persona, invitala desde la app del dueño.';
+    else return { success: false, error: err.message };
+  }
+  const payload = { v: 2, url, anonKey, negocioId: e.companyId, sucursalId: e.locationId, codigo, nombre: instalacion.nombres().negocio };
+  return { success: true, payload, qrText: JSON.stringify(payload), aviso };
 }
 
 // ---- Lectura de los SPs de resumen ----
@@ -395,9 +554,19 @@ async function evaluarAlertas(sucursalId, shifts, cfg, daily = null) {
 // ---- Empuje de un ciclo completo ----
 
 async function pushOnce() {
+  const cfg0 = loadConfig();
+  if (!cfg0.enabled) return { success: false, skipped: 'deshabilitado' };
+  // Las secundarias comparten la base: el espejo y los hechos los manda la principal.
+  if (!instalacion.esPrincipal()) return { success: false, skipped: 'secundaria' };
+  await credencial();
   const cfg = loadConfig();
-  if (!cfg.enabled) return { success: false, skipped: 'deshabilitado' };
   if (!cfg.sucursalId) return { success: false, error: 'Falta sucursalId en la config.' };
+  // Hechos primero: son la fuente de la Fase 1 (el espejo queda para el tablero actual).
+  await hechos.enviar();
+  // Fase 2: catálogo y personal para los eventos, llave de firma y bandeja de transferencias.
+  try { await publicarSucursal(); } catch (e) { log('publicar: ' + e.message); }
+  try { await asegurarLlaveFirma(); } catch (e) { log('llave de firma: ' + e.message); }
+  try { await bandejaTransferencias(); } catch (e) { log('transferencias: ' + e.message); }
 
   const { daily, top, shifts } = await fetchSummaries();
   const sucursalId = cfg.sucursalId;
@@ -411,7 +580,7 @@ async function pushOnce() {
   // para que el panel de admin pueda ligar licencias y prueba con este negocio.
   if (licenseMachineId && !stampedLicense) {
     try {
-      await gateway('stamp_license', { licenseMachineId });
+      await gateway('link_license', { licenseMachineId }).catch(e => { if (e.code !== 'NO_ACTIVATION') throw e; });
       stampedLicense = true;
     } catch (e) { log('stamp licencia: ' + e.message); }
   }
@@ -543,10 +712,16 @@ async function pushOnce() {
 async function deleteAccount() {
   const cfg = loadConfig();
   if (!cfg.sucursalId || !cfg.negocioId) return { success: false, error: 'No hay una cuenta vinculada en este equipo.' };
-  // El servidor borra, con SU llave, solo lo de la sucursal de este token.
-  await gateway('delete_account');
+  // El servidor decide: solo la principal, y solo si la empresa tiene UNA
+  // ubicacion (una sucursal no puede borrar a las demas).
+  try { await gateway('delete_account'); }
+  catch (e) {
+    if (e.code === 'MULTI_LOCATION') return { success: false, error: e.message };
+    throw e;
+  }
   // Limpiar config local: deja de sincronizar (no borra device_key para no reprovisionar solo)
   cfg.enabled = false; cfg.sucursalId = ''; cfg.negocioId = ''; cfg.syncTokenEnc = ''; cfg.syncTokenMethod = '';
+  cfg.deviceTokenEnc = ''; cfg.deviceTokenMethod = ''; cfg.deviceId = ''; cfg.companyId = ''; cfg.locationId = '';
   writeConfig(cfg);
   stopScheduler();
   return { success: true };
@@ -587,6 +762,15 @@ function stopScheduler() {
 // ---- Exports (todo en un solo lugar) ----
 
 module.exports = {
+  hechosAhora: () => hechos.pronto(),
+  firmarTransferencia,
+  publicarSucursal,
+  bandejaTransferencias,
+  enviarHechos: () => hechos.enviar(),
+  unirseConCodigo,
+  crearSucursal,
+  estadoNube,
+  llamarFiscal,
   getCloudConfig,
   setCloudConfig,
   setAnonKey,

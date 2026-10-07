@@ -1,0 +1,67 @@
+const {test,expect,CUENTAS,irPorMas,irPorDock}=require('./fixtures');
+const rows=r=>Array.isArray(r)?r:r?.data??r?.recordset??[];
+async function login(app,c){const p=app.ventana;await p.fill('#username',c.usuario);await p.fill('#password',c.password);await p.click('#btnLogin');await expect.poll(async()=>{try{return (await app.invocar('sesion'))?.data?.usuario;}catch{return null;}}).toBe(c.usuario);}
+async function seed(app){let categories=rows(await app.invocar('getCategories'));if(!categories.length){await app.invocar('createCategory',{nombre:'QA Comercial'});categories=rows(await app.invocar('getCategories'));}let brands=rows(await app.invocar('getBrands'));if(!brands.length){await app.invocar('createBrand',{nombre:'QA Comercial'});brands=rows(await app.invocar('getBrands'));}
+ const n=Date.now().toString().slice(-6);for(const [code,name,price]of [['D','Dona',25],['C','Café',35]]){const r=await app.invocar('agregarProducto',Number(brands[0].id),Number(categories[0].id),'COM-'+code+n,name+' comercial '+n,price,100,null,null,'02',.16,null,{inventory_mode:'DIRECT',sellable:1,base_uom:'pza'});expect(r?.success??true,JSON.stringify(r)).toBeTruthy();}
+ const data=(await app.invocar('commercialCatalog')).data;const dona=data.catalog.products.find(p=>p.nombre==='Dona comercial '+n),cafe=data.catalog.products.find(p=>p.nombre==='Café comercial '+n);return {data,dona,cafe,n};}
+test('canal y promoción por la pantalla: cobrar, stock y no duplicar',async({app})=>{
+ test.setTimeout(180000);await login(app,CUENTAS.admin);const {data,dona,n}=await seed(app);const p=app.ventana;
+ const beforeIds=new Set(rows(await app.invocar('getSales')).map(x=>x.id));
+ const policy=data.policy;policy.channels=policy.channels.filter(c=>c.id!=='UBER');policy.prices=policy.prices.filter(x=>x.channel!=='UBER');policy.promotions=policy.promotions.filter(x=>x.id!=='QA2x1');policy.channels.push({id:'UBER',name:'Uber Eats QA',active:true,inheritBase:false});policy.prices.push({channel:'UBER',product:dona.uuid,price:'32.00'});policy.promotions.push({id:'QA2x1',name:'Donas QA 2x1',active:true,priority:1,kind:'BUY_PAY',selector:{products:[dona.uuid]},channels:['LOCAL'],buy:2,pay:1});expect((await app.invocar('commercialSave',{version:policy.version,policy})).success).toBeTruthy();
+ await irPorDock(p,'Venta');await p.waitForSelector('.pos-wrap');const shift=p.locator('.open-shift-modal');if(await shift.count()){await shift.locator('input[type=number]').fill('100');await shift.getByRole('button',{name:/Abrir turno/}).click();}await p.locator('app-commercial-sale').getByLabel('Canal',{exact:true}).selectOption('UBER');
+ await p.keyboard.press('F7');await p.locator('.modal-productos .prod-item').filter({hasText:'Dona comercial '+n}).click();await expect(p.locator('.modal-productos')).toHaveCount(0);await expect(p.locator('app-commercial-sale')).toContainText('Uber Eats QA · Ahorro');await p.keyboard.press('F8');await expect(p.locator('.total-amount')).toContainText('32.00');await p.getByRole('button',{name:/Pagado en plataforma/}).click();await p.locator('[data-guide=venta-confirmar-cobro]').click();await expect.poll(async()=>rows(await app.invocar('getSales')).filter(s=>!beforeIds.has(s.id)&&Number(s.total)===32).length).toBe(1);
+ await p.getByRole('button',{name:'Nada más, cerrar'}).click();
+ const updated=rows(await app.invocar('getActiveProducts')).find(p=>p.product_name==='Dona comercial '+n);expect(Number(updated.stock)).toBe(99);
+ // Otra cuenta no hereda el canal. El mismo SKU recibe 2x1 y consume dos.
+ await expect(p.locator('app-commercial-sale').getByLabel('Canal',{exact:true})).toHaveValue('LOCAL');for(let i=0;i<2;i++){await p.keyboard.press('F7');await p.locator('.modal-productos .prod-item').filter({hasText:'Dona comercial '+n}).click();await expect(p.locator('.modal-productos')).toHaveCount(0);}await expect(p.locator('app-commercial-sale')).toContainText('25.00');await p.keyboard.press('F8');await expect(p.locator('.total-amount')).toContainText('25.00');await p.locator('.pay-pill').filter({hasText:'Tarjeta'}).click();await p.locator('[data-guide=venta-recibido]').fill('25');await p.locator('[data-guide=venta-confirmar-cobro]').click();await expect.poll(async()=>rows(await app.invocar('getSales')).filter(s=>!beforeIds.has(s.id)&&Number(s.total)===25).length).toBe(1);expect(Number(rows(await app.invocar('getActiveProducts')).find(p=>p.product_name==='Dona comercial '+n).stock)).toBe(97);
+});
+test('cajera no publica reglas ni fuerza elegibilidad de descuentos',async({app})=>{
+ await login(app,CUENTAS.operador);expect((await app.invocar('commercialSave',{version:0,policy:{}})).success).toBeFalsy();const r=await app.invocar('commercialQuote',{version:0,channel:'LOCAL',lines:[],audiences:['ESTUDIANTE']});expect(r.success).toBeFalsy();expect(r.error).toContain('supervisor');
+});
+
+test('combo real: elegir componentes, cobrar 59 y devolver sin usar precio normal',async({app})=>{
+ test.setTimeout(180000);await login(app,CUENTAS.admin);const {data,dona,cafe,n}=await seed(app),p=app.ventana;
+ const before=new Set(rows(await app.invocar('getSales')).map(x=>x.id));
+ data.policy.combos=data.policy.combos.filter(x=>x.id!=='QA_MENU');data.policy.combos.push({id:'QA_MENU',name:'Dona y café QA',active:true,price:'59.00',channels:['LOCAL'],groups:[{id:'d',name:'Dona',quantity:1,selector:{products:[dona.uuid]}},{id:'c',name:'Café',quantity:1,selector:{products:[cafe.uuid]}}]});expect((await app.invocar('commercialSave',{version:data.policy.version,policy:data.policy})).success).toBeTruthy();
+ await irPorDock(p,'Venta');await p.waitForSelector('.pos-wrap');const shift=p.locator('.open-shift-modal');if(await shift.count()){await shift.locator('input[type=number]').fill('100');await shift.getByRole('button',{name:/Abrir turno/}).click();}
+ const addCombo=p.locator('app-commercial-sale').getByRole('button',{name:'Agregar combo',exact:true});await addCombo.click();await p.keyboard.press('Escape');await expect(p.locator('.cs-panel')).toHaveCount(0);await expect(addCombo).toBeFocused();await addCombo.click();const select=p.locator('.cs-panel select');await select.nth(0).selectOption('QA_MENU');await select.nth(1).selectOption(dona.uuid);await select.nth(2).selectOption(cafe.uuid);await p.locator('.cs-panel').getByRole('button',{name:'Agregar combo',exact:true}).click();
+ await expect(p.locator('#total-venta')).toContainText('59.00');await p.screenshot({path:'docs/evidencia/comercial-20261007/combo-venta.png'});await expect(p.locator('[data-guide=venta-linea]')).toHaveCount(2);await expect(p.locator('[data-guide=venta-linea]').first()).toContainText('Dona y café QA');
+ await p.keyboard.press('F8');await p.getByRole('button',{name:/Pagado en plataforma/}).click();await p.locator('[data-guide=venta-confirmar-cobro]').click();await expect.poll(async()=>rows(await app.invocar('getSales')).filter(x=>!before.has(x.id)&&Number(x.total)===59).length).toBe(1);
+ const sale=rows(await app.invocar('getSales')).find(x=>!before.has(x.id)&&Number(x.total)===59);await p.getByRole('button',{name:'Nada más, cerrar'}).click();
+ const ids=data.ids;let refunded=0;for(const product of [dona,cafe]){const r=await app.invocar('refundSale',{sale_id:sale.id,payment_method:'PLATAFORMA',items:[{productId:ids.find(x=>x.uuid===product.uuid).id,qty:1}]});expect(r.success,JSON.stringify(r)).toBeTruthy();refunded+=Number(rows(r)[0].refund_total);}expect(Number(refunded.toFixed(2))).toBe(59);
+ const stock=rows(await app.invocar('getActiveProducts'));for(const name of ['Dona comercial '+n,'Café comercial '+n])expect(Number(stock.find(x=>x.product_name===name).stock)).toBe(100);
+});
+
+test('configurar 2x1 por interfaz y previsualizar sin venta ni movimiento de inventario',async({app})=>{
+ test.setTimeout(180000);await login(app,CUENTAS.admin);const {dona,n}=await seed(app),p=app.ventana;
+ const before=rows(await app.invocar('getSales')).length;
+ await irPorMas(p,'Configuracion');await p.locator('app-config-shell').getByRole('button',{name:/Precios, promociones y combos/}).click();const panel=p.locator('app-commercial-panel');
+ await panel.getByRole('button',{name:'Promociones',exact:true}).click();await panel.getByRole('button',{name:'Agregar promoción',exact:true}).click();
+ const card=panel.locator('section .cp-card').last();await card.getByLabel('Nombre',{exact:true}).fill('2x1 desde interfaz '+n);await card.getByRole('combobox',{name:'Tipo',exact:true}).selectOption('BUY_PAY');await card.getByLabel('Activa',{exact:true}).check();await card.getByRole('listbox',{name:'Productos elegibles',exact:true}).selectOption({label:'Dona comercial '+n});
+ await panel.getByRole('button',{name:'Publicar cambios',exact:true}).click();await expect(panel.getByRole('status')).toContainText('Configuración publicada');
+ const published=(await app.invocar('commercialCatalog')).data.policy;expect(published.promotions.find(x=>x.name==='2x1 desde interfaz '+n)?.buy).toBe(2);
+ await panel.getByRole('button',{name:'Vista previa',exact:true}).click();await panel.getByRole('button',{name:'Agregar producto de prueba',exact:true}).click();await panel.getByRole('combobox',{name:'Producto',exact:true}).selectOption(dona.uuid);await panel.getByLabel('Cantidad',{exact:true}).fill('2');await panel.getByRole('button',{name:'Calcular vista previa',exact:true}).click();
+ await expect(panel.locator('section h3')).toContainText('25.00');await expect(panel.locator('section')).toContainText('Ahorro: $25.00');
+ expect(rows(await app.invocar('getSales')).length).toBe(before);expect(Number(rows(await app.invocar('getActiveProducts')).find(x=>x.product_name==='Dona comercial '+n).stock)).toBe(100);
+ await p.screenshot({path:'docs/evidencia/comercial-20261007/configuracion-vista-previa.png'});
+});
+
+test('combo entre dos estaciones: cancelar dona, cobrar solo café y liberar mesa',async({app})=>{
+ test.setTimeout(180000);await login(app,CUENTAS.admin);const {data,dona,cafe,n}=await seed(app),p=app.ventana;
+ const call=(fn,arg)=>p.evaluate(([f,a])=>{const [g,m]=f.split('.');return window.wybix[g][m](a)},[fn,arg]);
+ for(const m of ['hospitality','mesas','comandas'])expect((await app.invocar('modulosSet',m,true)).success).toBeTruthy();
+ try{
+  const stations=[];for(const name of ['Dona','Café']){const r=await call('estaciones.guardar',{nombre:name+' combo '+n});expect(r.success).toBeTruthy();stations.push(r.data[0].id);}
+  for(const [i,pr]of [dona,cafe].entries())expect((await call('estaciones.asignar',{productId:data.ids.find(x=>x.uuid===pr.uuid).id,stationId:stations[i]})).success).toBeTruthy();
+  const ar=await call('salon.guardarArea',{nombre:'Combos '+n}),mesa=await call('salon.guardarMesa',{areaId:ar.data[0].id,nombre:'Mesa combo '+n});const account=await call('cuentas.abrir',{mesaId:mesa.data[0].id});expect(account.success).toBeTruthy();const cuentaId=account.data[0].id;
+  data.policy.combos.push({id:'cancel'+n,name:'Menú cancelable QA',active:true,price:'59.00',groups:[{id:'d',name:'Dona',quantity:1,selector:{products:[dona.uuid]}},{id:'c',name:'Café',quantity:1,selector:{products:[cafe.uuid]}}]});expect((await app.invocar('commercialSave',{version:data.policy.version,policy:data.policy})).success).toBeTruthy();
+  const instance='instance'+n,lineas=[dona,cafe].map(pr=>({productId:data.ids.find(x=>x.uuid===pr.uuid).id,cantidad:1,origen:require('node:crypto').randomUUID(),opciones:[]}));
+  const send=await call('cuentas.enviar',{cuentaId,lineas,commercial:{channel:'LOCAL',lines:lineas.map((_,i)=>({linea:i+1,combo:{id:'cancel'+n,instance,group:i?'c':'d'}}))}});expect(send.success,JSON.stringify(send)).toBeTruthy();
+  await app.invocar('setDeviceConfig',{deviceProfile:'TOUCH_POS'});await p.locator('.wx-yo__btn').click();await p.locator('.wx-yo__fila').filter({hasText:'Cerrar sesión'}).click();await p.waitForSelector('#username');await login(app,CUENTAS.admin);await p.waitForSelector('app-touch-pos .tp-card');
+  await p.getByRole('button',{name:'Mesas',exact:true}).click();await p.locator('hx-selector-mesas .sm-mesa').filter({hasText:'Mesa combo '+n}).click();await expect(p.locator('.tp-linea')).toHaveCount(2);await expect(p.locator('app-commercial-sale')).toContainText('Ahorro $1.00');
+  const loaded=await call('cuentas.obtener',{cuentaId}),cancelId=loaded.sets[1].find(x=>x.product_id===lineas[0].productId).comanda_id;expect((await call('kds.cancelar',{comandaId:cancelId,motivo:'QA faltó dona'})).success).toBeTruthy();
+  await expect(p.locator('.tp-linea')).toHaveCount(1,{timeout:20000});await expect(p.locator('app-commercial-sale')).toContainText('Los productos restantes se cobran por separado');
+  const before=new Set(rows(await app.invocar('getSales')).map(x=>x.id));await p.locator('.tp-cart__foot .tp-primaria').click();await p.locator('.tp-metodo').filter({hasText:'Plataforma'}).click();await p.locator('.tp-cobro__confirmar').click();await expect.poll(async()=>rows(await app.invocar('getSales')).filter(x=>!before.has(x.id)&&Number(x.total)===35).length).toBe(1);
+  await expect.poll(async()=>(await call('cuentas.obtener',{cuentaId})).sets[0][0].estado,{timeout:20000}).toBe('COBRADA');const stock=rows(await app.invocar('getActiveProducts'));expect(Number(stock.find(x=>x.product_name==='Dona comercial '+n).stock)).toBe(100);expect(Number(stock.find(x=>x.product_name==='Café comercial '+n).stock)).toBe(99);
+ }finally{for(const m of ['comandas','mesas','hospitality'])await app.invocar('modulosSet',m,false);await app.invocar('setDeviceConfig',{deviceProfile:'RETAIL_POS'});}
+});

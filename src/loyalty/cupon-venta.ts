@@ -16,20 +16,10 @@ import { AppliedCoupon, CartService, CouponCheck, LoyaltyService } from '../core
  * un error del sistema: es un papel viejo, y el cajero necesita poder decirle
  * al cliente exactamente por que no se lo puede aceptar.
  *
- * APLICAR = PONER LA LINEA A CERO
- * -------------------------------
- * El unico beneficio que hoy se puede aplicar es el producto gratis, y se
- * aplica poniendo a cero el precio de esa linea. Encaja con el contrato de
- * venta tal y como esta: la linea sigue descontando inventario, el ticket
- * dice "0.00" -que es la verdad- y el total se calcula solo.
- *
- * Importe y porcentaje se validan y se explican, pero no se aplican: la venta
- * no tiene concepto de descuento. Ver la nota larga en `sp_coupon_redeem`.
- *
- * CONSUMIR ES DESPUES
- * -------------------
- * Esto no gasta el cupon. Lo gasta `SaleService.checkout()` cuando la venta
- * ya esta cobrada, porque la redencion se liga a la venta.
+ * El producto gratis se calcula en la cotización: una unidad, con sus extras
+ * cobrados aparte. SQL consume el cupón en la misma transacción que la venta.
+ * Importe y porcentaje siguen reservados; las promociones automáticas tienen
+ * su propia configuración comercial.
  */
 @Component({
   selector: 'app-cupon-venta',
@@ -71,7 +61,7 @@ export class CuponVenta {
   }
 
   /**
-   * Aplicar: pone a cero la linea del producto que regala el cupon.
+   * Aplicar: solicita el beneficio para una unidad del producto del cupón.
    *
    * Si ese producto no esta en el carrito no se aplica nada y se dice: es la
    * situacion normal de un cupon de cafe cuando nadie pidio cafe, y descontar
@@ -94,8 +84,8 @@ export class CuponVenta {
 
     const precioOriginal = linea.unitPrice;
     // Lo que de verdad se rebaja: una unidad, la que regala el cupon.
-    const rebajado = linea.effectiveUnitPrice;
-    this.cart.setPrice(linea, 0);
+    const rebajado = linea.unitPrice;
+    // La cotización autorizada rebaja una sola unidad; no cambia todas las unidades de la línea.
     this.cart.setCoupon({
       code: r.code,
       instanceId: r.instance_id ?? 0,
@@ -120,11 +110,6 @@ export class CuponVenta {
   quitar(): void {
     const c = this.aplicado();
     if (!c) return;
-    if (c.precioOriginal != null) {
-      const linea = this.cart.activeCart().lines
-        .find(l => l.productId === c.productId && l.unitPrice === 0);
-      if (linea) this.cart.setPrice(linea, c.precioOriginal);
-    }
     this.cart.setCoupon(null);
     this.cd.detectChanges();
   }

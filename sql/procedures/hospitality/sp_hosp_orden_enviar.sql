@@ -9,7 +9,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_hosp_orden_enviar
     @cuenta_id INT,
     @user_id INT = NULL,
     @lineas dbo.HospOrdenLineaV2Type READONLY,
-    @opciones dbo.HospOrdenOpcionType READONLY
+    @opciones dbo.HospOrdenOpcionType READONLY,
+    @commercial NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -33,6 +34,21 @@ BEGIN
     DECLARE @pendientes TABLE (linea INT PRIMARY KEY, product_id INT, cantidad DECIMAL(12, 3), nota NVARCHAR(200), origen UNIQUEIDENTIFIER NULL);
 
     BEGIN TRAN;
+
+    /* El canal pertenece a la cuenta; los componentes sobreviven a cerrar la caja. */
+    IF @commercial IS NOT NULL
+    BEGIN
+      IF ISJSON(@commercial)<>1 OR JSON_VALUE(@commercial,'$.channel') IS NULL
+      BEGIN ROLLBACK; THROW 51000,'Contexto comercial inválido.',1; END;
+      DECLARE @channel NVARCHAR(64)=JSON_VALUE(@commercial,'$.channel'), @stored NVARCHAR(MAX);
+      SELECT @stored=commercial_context FROM dbo.hosp_cuentas WITH(UPDLOCK,HOLDLOCK) WHERE id=@cuenta_id;
+      IF EXISTS(SELECT 1 FROM dbo.hosp_orden_lineas WHERE cuenta_id=@cuenta_id)
+        AND @channel<>ISNULL(JSON_VALUE(@stored,'$.channel'),'LOCAL')
+      BEGIN ROLLBACK; THROW 51000,'Conserva el canal de la cuenta enviada.',1; END;
+      IF NOT EXISTS(SELECT 1 FROM dbo.commercial_policy p CROSS APPLY OPENJSON(p.payload,'$.channels') WITH(id NVARCHAR(64),active BIT) c WHERE c.id=@channel AND c.active=1)
+      BEGIN ROLLBACK; THROW 51000,'Canal no disponible.',1; END;
+      UPDATE dbo.hosp_cuentas SET commercial_context=(SELECT @channel AS channel FOR JSON PATH,WITHOUT_ARRAY_WRAPPER) WHERE id=@cuenta_id;
+    END;
 
     /* Lo que ya esta en la base NO se vuelve a enviar. El bloqueo sobre el
        indice de origen serializa dos envios de la misma linea. */
@@ -77,6 +93,11 @@ BEGIN
         INSERT (orden_id, cuenta_id, product_id, nombre, cantidad, precio_unitario, nota, station_id, origen)
         VALUES (@orden_id, @cuenta_id, s.product_id, s.nombre, s.cantidad, s.price, s.nota, s.station_id, s.origen)
     OUTPUT s.linea, inserted.id, inserted.station_id INTO @mapa (linea, linea_id, station_id);
+
+    IF @commercial IS NOT NULL
+      UPDATE l SET commercial_component=x.combo FROM dbo.hosp_orden_lineas l
+      JOIN @mapa m ON m.linea_id=l.id
+      JOIN OPENJSON(@commercial,'$.lines') WITH(linea INT,combo NVARCHAR(MAX) AS JSON) x ON x.linea=m.linea;
 
     INSERT INTO dbo.hosp_orden_linea_opciones
         (linea_id, modifier_option_id, group_id, group_name, option_name, price_delta, quantity)

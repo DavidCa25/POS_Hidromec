@@ -11,7 +11,8 @@
  * SECUENCIAL A PROPOSITO. Cada perfil restaura una base entera; dos a la vez
  * se pelean por el disco y por el propio motor.
  *
- * SOLO TOCA BASES Wybix_Demo_*. Antes de borrar nada pasa por las mismas
+ * SOLO TOCA BASES Wybix_Demo_Prueba* (nunca las del gestor de demos de un
+ * equipo real; ver PRUEBA mas abajo). Antes de borrar nada pasa por las mismas
  * guardas que usa el gestor, que se prueban aparte en
  * scripts/pruebas/demo-guardas.mjs.
  */
@@ -134,9 +135,38 @@ const contar = (base, tabla, donde = '1=1') =>
 const meta = (base, clave) =>
   sql(base, `SELECT valor FROM dbo.database_metadata WHERE clave = '${clave}'`)[0]?.valor ?? null;
 
+/*
+ * BASES PROPIAS DE LA PRUEBA, NUNCA LAS DEL GESTOR.
+ *
+ * Antes la prueba usaba `Wybix_Demo_Retail` y `Wybix_Demo_Hospitality`, los
+ * mismos nombres que crea el gestor de demos en un equipo real, y `crear()`
+ * restaura con REPLACE: en un equipo con una demo de verdad, la sobrescribia
+ * (eliminar() si respetaba las guardas; crear() no pasaba por ellas).
+ *
+ * Ahora cada perfil se prueba con un identificador propio ("prueba-retail" ->
+ * `Wybix_Demo_PruebaRetail`). Sigue pasando por las MISMAS guardas (patron,
+ * perfil instalado, marcador e instancia), con la semilla del perfil real.
+ */
+const PRUEBA = { retail: 'prueba-retail', hospitality: 'prueba-hospitality' };
+const PREFIJO_PRUEBA = 'Wybix_Demo_Prueba';
+const nombreDePrueba = (perfil) => G.nombreDeBase(PRUEBA[perfil]);
+
+/** Ultima barrera de la prueba: nunca restaura ni borra algo que no sea suyo. */
+function exigirBaseDePrueba(nombre) {
+  if (!String(nombre).startsWith(PREFIJO_PRUEBA)) {
+    throw new Error(`La prueba solo toca bases ${PREFIJO_PRUEBA}*; se le pidio ${nombre}.`);
+  }
+}
+
+/** Las demos reales que hubiera antes de empezar (nombre -> fecha de creacion). */
+const demosReales = () => new Map(sql('master',
+  `SELECT name, CONVERT(VARCHAR(30), create_date, 126) AS creada FROM sys.databases
+    WHERE name LIKE 'Wybix[_]Demo[_]%' AND name NOT LIKE '${PREFIJO_PRUEBA}%'`).map(x => [x.name, x.creada]));
+
 /** Igual que hace el gestor: plantilla, migraciones y semilla. */
 function crear(perfil) {
-  const nombre = G.nombreDeBase(perfil);
+  const nombre = nombreDePrueba(perfil);
+  exigirBaseDePrueba(nombre);
   const bak = join(process.cwd(), 'installer', 'template.bak').replace(/\\/g, '\\\\');
 
   const dataDir = sql('master',
@@ -188,13 +218,14 @@ const REGISTRO = new Map();
 
 /** Igual que hace el gestor: con las guardas delante. */
 function eliminar(perfil, instanciaLocal) {
-  const nombre = G.nombreDeBase(perfil);
+  const nombre = nombreDePrueba(perfil);
+  exigirBaseDePrueba(nombre);
   if (!existe(nombre)) return { ok: true, borrada: false };
   const m = {};
   for (const f of sql(nombre, 'SELECT clave, valor FROM dbo.database_metadata')) m[f.clave] = f.valor;
   const v = G.sePuedeDestruir({
-    perfilId: perfil, nombre,
-    perfilesInstalados: [{ id: 'retail' }, { id: 'hospitality' }],
+    perfilId: PRUEBA[perfil], nombre,
+    perfilesInstalados: Object.values(PRUEBA).map((id) => ({ id })),
     metadatos: m,
     instanciaLocal: instanciaLocal === undefined ? REGISTRO.get(perfil) : instanciaLocal,
   });
@@ -205,10 +236,11 @@ function eliminar(perfil, instanciaLocal) {
 }
 
 const PERFILES = SOLO ? [SOLO] : ['retail', 'hospitality'];
-console.log(`Servidor ${SERVIDOR}  ·  perfiles: ${PERFILES.join(', ')}`);
+console.log(`Servidor ${SERVIDOR}  ·  perfiles: ${PERFILES.join(', ')}  ·  bases ${PREFIJO_PRUEBA}*`);
+const REALES_ANTES = demosReales();
 
 for (const perfil of PERFILES) {
-  const nombre = G.nombreDeBase(perfil);
+  const nombre = nombreDePrueba(perfil);
 
   // Se parte de limpio, sin suponer en que estado quedo la ejecucion anterior.
   eliminar(perfil);
@@ -336,8 +368,15 @@ for (const perfil of PERFILES) {
 seccion('Ninguna base de demo queda por ahi');
 
 const restos = sql('master',
-  "SELECT name FROM sys.databases WHERE name LIKE 'Wybix[_]Demo[_]%'").map(x => x.name);
-check(restos.length === 0, 'no quedan bases Wybix_Demo_*', restos.join(', '));
+  `SELECT name FROM sys.databases WHERE name LIKE '${PREFIJO_PRUEBA}%'`).map(x => x.name);
+check(restos.length === 0, `no quedan bases ${PREFIJO_PRUEBA}*`, restos.join(', '));
+
+/* Las demos del gestor que hubiera en este equipo: las mismas, sin recrear. */
+const REALES_DESPUES = demosReales();
+const tocadas = [...REALES_ANTES].filter(([n, c]) => REALES_DESPUES.get(n) !== c).map(([n]) => n);
+check(tocadas.length === 0 && REALES_DESPUES.size === REALES_ANTES.size,
+  `las demos reales del gestor siguen intactas (${[...REALES_ANTES.keys()].join(', ') || 'ninguna en este equipo'})`,
+  tocadas.join(', '));
 
 // ===================================================================
 seccion('Y las de verdad siguen intactas');

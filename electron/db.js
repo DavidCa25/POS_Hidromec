@@ -2,6 +2,8 @@ const sql = require('mssql/msnodesqlv8');
 const path = require('path');
 const fs = require('fs');
 const { app, safeStorage } = require('electron');
+const { crearSecretos } = require('./seguridad/secretos');
+const secretos = crearSecretos(safeStorage);
 
 // ============================================================
 // Configuracion
@@ -70,32 +72,8 @@ function loadConfig() {
   }
 }
 
-// Cifrado de la contraseña (SQL Auth) con el almacen del SO
-
-function encryptSecret(plain) {
-  try {
-    if (safeStorage && safeStorage.isEncryptionAvailable()) {
-      return { enc: safeStorage.encryptString(String(plain)).toString('base64'), method: 'safeStorage' };
-    }
-  } catch (e) {
-    console.error('[DB] safeStorage no disponible:', e.message);
-  }
-  // Fallback: base64 (ofuscacion, no es cifrado real). Mejor que texto plano.
-  return { enc: Buffer.from(String(plain), 'utf8').toString('base64'), method: 'base64' };
-}
-
-function decryptSecret(b64, method) {
-  if (!b64) return '';
-  try {
-    if (method === 'safeStorage' && safeStorage && safeStorage.isEncryptionAvailable()) {
-      return safeStorage.decryptString(Buffer.from(b64, 'base64'));
-    }
-    return Buffer.from(b64, 'base64').toString('utf8');
-  } catch (e) {
-    console.error('[DB] No se pudo descifrar la contrasena:', e.message);
-    return '';
-  }
-}
+// Cifrado de la contraseña (SQL Auth) con el almacen del SO.
+// safeStorage o nada: base64 no es cifrado (ver seguridad/secretos.js).
 
 // Resolver el config real del pool segun el modo de auth
 
@@ -125,15 +103,27 @@ function resolvePoolConfig() {
     base.user = cfg.user || 'ocus_app';
 
     if (cfg.password) {
-      const { enc, method } = encryptSecret(cfg.password);
-      const persisted = { ...cfg };
-      delete persisted.password;
-      persisted.passwordEnc = enc;
-      persisted.passwordEncMethod = method;
-      writeConfigFile(persisted);
+      // El asistente deja la contraseña en claro; aquí se cifra y se quita.
+      // Si el sistema no ofrece cifrado se usa en memoria y se reintenta en
+      // la siguiente conexión: nunca se reescribe como base64.
+      const c = secretos.cifrar(cfg.password);
+      if (c) {
+        const persisted = { ...cfg };
+        delete persisted.password;
+        persisted.passwordEnc = c.enc;
+        persisted.passwordEncMethod = c.method;
+        writeConfigFile(persisted);
+      } else {
+        console.error('[DB] El sistema no ofrece cifrado: la contraseña no se guarda cifrada todavía.');
+      }
       base.password = cfg.password;
     } else {
-      base.password = decryptSecret(cfg.passwordEnc, cfg.passwordEncMethod);
+      const { valor, legado } = secretos.descifrar(cfg.passwordEnc, cfg.passwordEncMethod);
+      base.password = valor;
+      // Instalaciones anteriores con `base64`: se vuelve a guardar cifrada.
+      const c = legado && valor ? secretos.cifrar(valor) : null;
+      if (c) writeConfigFile({ ...cfg, passwordEnc: c.enc, passwordEncMethod: c.method });
+      else if (legado) console.error('[DB] Contraseña en base64 (sin cifrar): se cifrará cuando el sistema lo permita.');
     }
   } else {
     base.options.trustedConnection = true;
@@ -393,9 +383,11 @@ async function setConnectionConfig(partial = {}) {
   if (!forma.ok) return { success: false, error: forma.error };
 
   if (partial.password) {
-    const { enc, method } = encryptSecret(partial.password);
-    merged.passwordEnc = enc;
-    merged.passwordEncMethod = method;
+    const c = secretos.cifrar(partial.password);
+    // Sin cifrado del sistema no se guarda: base64 sería dejarla a la vista.
+    if (!c) return { success: false, error: 'Windows no ofrece cifrado para guardar la contraseña. Reinicia Wybix e inténtalo de nuevo.' };
+    merged.passwordEnc = c.enc;
+    merged.passwordEncMethod = c.method;
   }
   delete merged.password; // nunca en claro
 

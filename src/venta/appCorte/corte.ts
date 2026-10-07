@@ -2,7 +2,8 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, PAQUETES } from '../../services/auth.service';
+import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ShiftService, fechaLocal } from '../../core';
 import Swal from 'sweetalert2';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
@@ -46,6 +47,7 @@ const GRUPOS_CAJA: { grupo: GrupoCaja; etiqueta: string }[] = [
 ];
 
 interface Summary {
+  ventas_plataforma?:number;
   total_entradas: number;
   total_salidas: number;
   neto: number;
@@ -65,6 +67,7 @@ interface RegisterOption {
 }
 
 interface Breakdown {
+  ventasPlataforma:number;
   ventasEfectivo: number;
   ventasTarjeta: number;
   ventasTransferencia: number;
@@ -124,11 +127,11 @@ export class Corte {
 
   breakdown: Breakdown = {
     ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
-    ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+    ventasPlataforma:0, ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
     salidasEfectivo: 0, devolucionesEfectivo: 0
   };
 
-  constructor(private auth: AuthService, private shift: ShiftService) {
+  constructor(private auth: AuthService, private shift: ShiftService, private supervisor: SupervisorAuthService) {
     this.setPreset('HOY');
   }
 
@@ -306,7 +309,7 @@ export class Corte {
 
       this.breakdown = {
         ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
-        ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+        ventasPlataforma:0, ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
         salidasEfectivo: 0, devolucionesEfectivo: 0
       };
 
@@ -315,7 +318,7 @@ export class Corte {
           ...r,
           datee: new Date(r.datee)
         }));
-        
+
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
         this.desglose = (res.data?.desglose ?? []).map((d: any) => ({
@@ -327,6 +330,7 @@ export class Corte {
         this.breakdown.ventasTarjeta = Number(this.summary.ventas_tarjeta || 0);
         this.breakdown.ventasTransferencia = Number(this.summary.ventas_transferencia || 0);
         this.breakdown.ventasMercadoPago = Number(this.summary.ventas_mp || 0);
+        this.breakdown.ventasPlataforma=Number(this.summary.ventas_plataforma||0);
         this.breakdown.ventasCredito = Number(this.summary.ventas_credito || 0);
       } else {
         this.movimientos = [];
@@ -363,6 +367,17 @@ export class Corte {
     return this.desglose
       .filter(d => d.total < 0 && ['RETIROS', 'PROVEEDORES', 'EGRESOS', 'DEVOLUCIONES', 'AJUSTES', 'OTROS'].includes(d.grupo))
       .map(d => ({ grupo: etiqueta(d.grupo), concepto: d.concepto, total: -d.total, movimientos: d.movimientos }));
+  }
+
+  /**
+   * CORTE CIEGO. Quien cuenta el cajón sin ser Encargado captura lo que contó
+   * SIN ver antes lo esperado ni la diferencia: así no hay número al que
+   * «cuadrar» el conteo. Esperado y diferencia aparecen al confirmar, cuando el
+   * corte ya quedó registrado. El Encargado los sigue viendo: revisar es su
+   * trabajo. El cierre guarda si fue a ciegas.
+   */
+  get corteCiego(): boolean {
+    return !this.auth.puede(PAQUETES.VENTAS_SUPERVISAR);
   }
 
   get cashExpected(): number {
@@ -431,22 +446,17 @@ export class Corte {
     }
     this.closing = true;
 
-    // Quien CIERRA el turno es el usuario actual autenticado (ej. supervisor)
-    const userId = Number(this.auth.usuarioActualId);
+    // Quien CIERRA el turno lo decide el proceso principal con la SESIÓN: aquí
+    // ya no se manda `user_id` (si se mandara, se ignoraría).
     const closureId = Number(this.openShiftId);
 
-    if (!Number.isFinite(userId) || userId <= 0) {
-      await Swal.fire({ icon: 'error', title: 'Usuario inválido', text: 'Sesión no válida para cerrar.' });
-      this.closing = false;
-      return;
-    }
     if (!Number.isFinite(closureId) || closureId <= 0) {
       await Swal.fire({ icon: 'error', title: 'closure_id inválido', text: String(this.openShiftId) });
       this.closing = false;
       return;
     }
     try {
-      const resp = await (window as any).electronAPI.closeShift({
+      const cerrar = (autorizacion?: string) => (window as any).electronAPI.closeShift({
         closure_id: closureId,
         // La caja que se está cerrando, la misma que usan `getOpenShift` y el
         // resumen de esta pantalla. Faltaba: sin ella el proceso principal
@@ -456,10 +466,24 @@ export class Corte {
         // Caja 1, que no era la suya. Abrir, vender y cerrar tienen que
         // hablar todos de la MISMA caja.
         register_id: this.selectedRegisterId,
-        user_id: userId, // Auditoría: quién cerró el turno
         cash_delivered: Number(this.cashDelivered),
-        note: (this.closeNotes || '').trim() || null
+        note: (this.closeNotes || '').trim() || null,
+        blind: this.corteCiego,
+        autorizacion,
       });
+      let resp = await cerrar();
+
+      /* El turno es de otra persona: hace falta que un encargado lo autorice
+         con su PIN (o que el encargado que está cerrando confirme con el suyo).
+         El comprobante se gasta en ese cierre y no sirve para nada más. */
+      if (!resp?.success && resp?.requiereAutorizacion) {
+        const propio = this.auth.puede(PAQUETES.VENTAS_SUPERVISAR);
+        const token = await this.supervisor.autorizarConPin(
+          'Este turno es de otra persona. Cerrarlo requiere la autorización de un encargado.',
+          'sp-close-shift', propio);
+        if (!token) return;
+        resp = await cerrar(token);
+      }
 
       if (!resp?.success) {
         await Swal.fire({
@@ -503,7 +527,7 @@ export class Corte {
         `,
         confirmButtonColor: '#10b981'
       });
-      
+
       this.showCloseModal = false;
       this.openShiftId = null;
       this.openShiftOpenedAt = null;
@@ -552,10 +576,10 @@ export class Corte {
   }
 
   get totalVentasGenerales(): number {
-    return this.breakdown.ventasEfectivo + 
-           this.breakdown.ventasTarjeta + 
-           this.breakdown.ventasTransferencia + 
-           this.breakdown.ventasMercadoPago + 
+    return this.breakdown.ventasPlataforma + this.breakdown.ventasEfectivo +
+           this.breakdown.ventasTarjeta +
+           this.breakdown.ventasTransferencia +
+           this.breakdown.ventasMercadoPago +
            this.breakdown.ventasCredito;
   }
 }

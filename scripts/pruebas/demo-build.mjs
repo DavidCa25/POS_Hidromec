@@ -269,7 +269,7 @@ if (PAQUETE) {
     const asar = join(dir, 'resources', 'app.asar');
     if (!existsSync(asar)) return null;
     try {
-      return execFileSync('npx', ['asar', 'list', asar], { encoding: 'utf8', shell: true });
+      return require('@electron/asar').listPackage(asar).join('\n');
     } catch { return null; }
   };
 
@@ -283,11 +283,18 @@ if (PAQUETE) {
       continue;
     }
     const lista = dentro(dir);
-    if (lista == null) { console.log(`   —      ${etiqueta}: no se pudo leer el asar`); continue; }
+    if (lista == null) { check(false, `${etiqueta}: se puede inspeccionar el asar construido`); continue; }
     const tieneGestor = /electron[\\/]demo[\\/]/.test(lista);
     check(tieneGestor === debeTenerlo,
       `${etiqueta}: ${debeTenerlo ? 'lleva' : 'NO lleva'} electron/demo dentro del asar`,
       `encontrado: ${tieneGestor}`);
+
+    if (debeTenerlo) {
+      const asar = require('@electron/asar');
+      const packed = JSON.parse(asar.extractFile(join(dir,'resources','app.asar'),'package.json').toString());
+      check(packed.version === pkg.version, 'interno: versión actual del código');
+      check(/electron[\\/]comercial[\\/]motor.cjs/.test(lista) && existsSync(join(dir,'resources','migrations','0053_comercial.sql')), 'interno: motor comercial y migración viajan en el instalador');
+    }
 
     const perfiles = existsSync(join(dir, 'resources', 'demo-profiles'));
     check(perfiles === debeTenerlo,

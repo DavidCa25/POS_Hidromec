@@ -97,6 +97,8 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly opcionesRol: WxOpcion[] = PUESTOS.map(p => ({ valor: p.clave, etiqueta: p.nombre, nota: p.lema }));
 
   readonly usuarios = signal<Usuario[]>([]);
+  /** Ids de quienes ya tienen PIN personal (solo sí/no; el PIN nunca viaja). */
+  readonly conPin = signal<Set<number>>(new Set());
   readonly cargando = signal(true);
   /** Paquetes de cada rol, tal como los autoriza el proceso principal. */
   private readonly paquetesPorRol = signal<Record<string, string[]>>({});
@@ -192,6 +194,8 @@ export class Usuarios implements OnInit, OnDestroy {
     try {
       const r = await this.api?.usersList?.();
       this.usuarios.set(r?.success ? (r.data || []) : []);
+      const pins = await this.api?.usersPinStatus?.();
+      this.conPin.set(new Set<number>(pins?.success ? (pins.data || []) : []));
     } catch {
       this.usuarios.set([]);
     } finally {
@@ -252,6 +256,35 @@ export class Usuarios implements OnInit, OnDestroy {
     const r = await this.api?.usersResetPassword?.({ id: u.id, password: pass });
     if (r?.success) await Swal.fire({ icon: 'success', title: 'Contraseña actualizada', timer: 1200, showConfirmButton: false });
     else await Swal.fire({ icon: 'error', title: 'No se pudo', text: r?.error || 'Error.' });
+  }
+
+  /**
+   * PIN PERSONAL. Sirve para autorizar en caja (p. ej. cerrar el turno de otra
+   * persona) y es el mismo con el que se entra a las Pantallas Operativas. Lo
+   * pone un administrador; se teclea dos veces y no se muestra.
+   */
+  async asignarPin(u: Usuario) {
+    const res = await Swal.fire({
+      title: `PIN de ${u.usuario}`,
+      html: `<p style="font-size:14px;color: var(--wx-text-muted);margin:0 0 10px;">
+               De 4 a 8 números. Sirve para autorizar en caja y para entrar a las Pantallas Operativas.</p>
+             <input id="pin-1" type="password" inputmode="numeric" maxlength="8" class="swal2-input" placeholder="PIN" autocomplete="off">
+             <input id="pin-2" type="password" inputmode="numeric" maxlength="8" class="swal2-input" placeholder="Repite el PIN" autocomplete="off">`,
+      showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', focusConfirm: false,
+      preConfirm: () => {
+        const a = (document.getElementById('pin-1') as HTMLInputElement)?.value ?? '';
+        const b = (document.getElementById('pin-2') as HTMLInputElement)?.value ?? '';
+        if (!/^\d{4,8}$/.test(a)) { Swal.showValidationMessage('De 4 a 8 números.'); return false; }
+        if (a !== b) { Swal.showValidationMessage('Los dos PIN no coinciden.'); return false; }
+        return a;
+      },
+    });
+    if (!res.isConfirmed || !res.value) return;
+    const r = await this.api?.usersSetPin?.({ id: u.id, pin: res.value });
+    if (r?.success) {
+      await this.cargar();
+      await Swal.fire({ icon: 'success', title: 'PIN guardado', timer: 1200, showConfirmButton: false });
+    } else await Swal.fire({ icon: 'error', title: 'No se pudo', text: r?.error || 'Error.' });
   }
 
   async toggleActivo(u: Usuario) {

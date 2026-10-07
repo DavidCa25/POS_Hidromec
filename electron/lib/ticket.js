@@ -77,6 +77,7 @@ function filaProducto(l) {
 
   const extras = [];
   if (l.modifiers) extras.push(esc(String(l.modifiers)));
+  if (l.commercial_offer) extras.push(esc(String(l.commercial_offer)));
   if (l.note) extras.push(esc(String(l.note)));
 
   return `
@@ -95,7 +96,7 @@ function etiquetaPago(metodo) {
   const m = String(metodo || '').toUpperCase();
   const mapa = {
     EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia',
-    CREDITO: 'Crédito', MIXTO: 'Mixto',
+    CREDITO: 'Crédito', MIXTO: 'Mixto', PLATAFORMA: 'Pagado en plataforma',
   };
   return mapa[m] || (metodo ? String(metodo) : '—');
 }
@@ -132,6 +133,7 @@ function construirTicketHtml(header, lineas, extras = {}) {
   if (header?.cashier) meta.push(['Atendió', header.cashier]);
   if (header?.register_name) meta.push(['Caja', header.register_name]);
   if (header?.customer_name) meta.push(['Cliente', header.customer_name]);
+  if (header?.commercial_channel) meta.push(['Canal', header.commercial_channel]);
   if (header?.service_mode) {
     meta.push(['Servicio', header.service_mode === 'DINE_IN' ? 'Para tomar aquí' : 'Para llevar']);
   }
@@ -141,6 +143,7 @@ function construirTicketHtml(header, lineas, extras = {}) {
 
   // --- totales ---
   const totales = [];
+  if(Number(header?.commercial_discount)>0.004)totales.push(`<div><span>Ahorro en esta compra</span><span class="num">$${dinero(header.commercial_discount)}</span></div>`);
   totales.push(`<div><span>Subtotal</span><span class="num">$${dinero(base)}</span></div>`);
   // Un negocio que no cobra impuesto no necesita una linea de impuesto en 0.
   if (impuesto > 0.004) {

@@ -1,3 +1,4 @@
+import { separarCombosCancelados } from '../../shared/comandas-comerciales';
 import { Injectable, computed, inject } from '@angular/core';
 import { Cart, CartLine, CartService } from './cart.service';
 import { CartCustomer, SelectedOption } from './models';
@@ -217,10 +218,15 @@ export class MesaService {
         linea.enviada = Number(l.id);
         linea.origen = l.origen ? String(l.origen).toLowerCase() : null;
         linea.prep = { estacion: l.estacion ?? null, estado: l.comanda_estado ?? null };
+        linea.combo = l.commercial_component ? JSON.parse(l.commercial_component) : undefined;
         return linea;
       });
 
-    carrito.lines = [...enviadas, ...pendientes];
+    const revisadas = separarCombosCancelados([...enviadas, ...pendientes], lineas as any[]);
+    carrito.lines = revisadas.lines;
+    carrito.meta = { ...(carrito.meta ?? {}), commercialNotice: revisadas.changed
+      ? 'Se canceló parte de un combo. Los productos restantes se cobran por separado; revisa el total.' : undefined };
+    if(c.commercial_context){const context=JSON.parse(c.commercial_context);carrito.commercial={channel:context.channel,audiences:carrito.commercial?.audiences??[]};}
     /* Una mesa es «aqui». Una cuenta sin mesa conserva lo que la caja eligio. */
     if (cuenta.mesaId) carrito.serviceMode = 'DINE_IN';
     carrito.meta = { ...(carrito.meta ?? {}), cuentaMesa: cuenta };
@@ -296,6 +302,7 @@ export class MesaService {
 
     const r = await this.api?.cuentas?.enviar({
       cuentaId: cuenta.id,
+      commercial: {channel:this.cart.activeCart().commercial?.channel??'LOCAL',lines:lineas.map((l,i)=>({linea:i+1,combo:l.combo}))},
       lineas: lineas.map(l => ({
         productId: l.productId,
         cantidad: l.qty,

@@ -427,6 +427,10 @@
 .wxdock-pop__mas:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
 
 /* ============================================================== estrecho */
+.wxdock__btn--apps { color: var(--wx-cyan-400); }
+.wxdock__btn--apps.is-abierto { background: rgb(69 179 195 / .16); }
+@media (max-width: 1280px) { .wxdock__btn--apps .wxdock__txt { display: inline; } }
+@media (max-width: 700px) { .wxdock { flex-wrap: wrap; justify-content: center; } }
 /* Por debajo de 1280 px las etiquetas se van y quedan los iconos: seis iconos
    caben donde seis iconos con texto no. */
 @media (max-width: 1280px) {

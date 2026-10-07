@@ -158,6 +158,8 @@ export class NavegacionService {
         destinos: [
           { texto: 'Ver inventario', ruta: '/dashboard/inventario', icono: 'ph-package', visible: true, principal: true, pie: pie('inventario', 'stock') },
           { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
+          /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
+          { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: true },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },
         ],

@@ -65,6 +65,8 @@ export const NO_INVOCADOS = {
 const DOMINIO = new Map();
 const asignar = (carpeta, nombres) => nombres.forEach(n => DOMINIO.set(n, carpeta));
 
+asignar('commercial',['sp_commercial_policy_save']);
+
 asignar('sales', [
   'sp_register_sale', 'sp_refund_sale', 'sp_update_sale', 'sp_get_sale_by_folio',
   'sp_get_sale_ticket', 'sp_get_sales_filtered', 'sp_get_actual_folio',
@@ -91,6 +93,9 @@ asignar('inventory', [
   // error, porque el controlador degrada el texto de los errores a un byte
   // por caracter y los acentos se pierden.
   'sp_get_product_dependencies',
+  // 0052: transferencias con eventos (ferias). La sucursal manda y recibe
+  // el sobrante; el evento lleva su propio inventario en la tablet.
+  'sp_transfer_send', 'sp_transfer_receive_return', 'sp_transfer_confirm_out', 'sp_transfer_list',
 ]);
 
 asignar('cash', [
@@ -105,6 +110,14 @@ asignar('cash', [
 asignar('expenses', [
   'sp_expense_category_list', 'sp_expense_category_save', 'sp_expense_category_move',
   'sp_register_expense', 'sp_void_expense', 'sp_get_expenses', 'sp_expense_staff_list',
+]);
+
+// 0051: hechos hacia la nube. El capturador convierte cambios confirmados
+// (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
+asignar('sync', [
+  'sp_sync_capture', 'sp_sync_outbox_next', 'sp_sync_outbox_ack',
+  // 0052: lo que la sucursal publica para las tablets de sus eventos.
+  'sp_catalog_publication', 'sp_staff_publication',
 ]);
 
 asignar('customers', [
