@@ -18,3 +18,14 @@ Verificación: npm run build; node scripts/pruebas/navegacion.mjs; node scripts/
 Windows 1.3.1 está publicado como latest en POS_Hidromec. Instalador 925 881 064 bytes, SHA-256 60dae0aa59e0c6891fd31bf7c9c3cdd8e8270714511ecd366224ab1229bd080e. Los tres assets públicos (exe, blockmap, latest.yml) coinciden con los locales; latest.yml conserva el hash SHA-512 correcto. Dos bundles de Apps dentro de app.asar coinciden con el build probado. El borrador anterior de 1.3.1 se respaldó localmente antes de sustituir sus tres assets. No se modificó el release anterior 1.3.0.
 
 El código permanece en el working tree (HEAD 2f6cc79 más los cambios de Apps); no equivale a un checkout limpio del tag publicado. No se hicieron commits adicionales ni push de fuentes. Esta publicación de instaladores no cambia el estado pendiente de las pruebas físicas de impresora y notificaciones.
+
+## iPhone / iPad y web (1.3.2)
+
+En Apps, cada app permite elegir Android o iPhone / iPad · Web. El QR público cambia con la elección; la opción web abre Safari y explica Compartir → Agregar a pantalla de inicio. Los QR existentes sin plataforma también reconocen iPhone, conservando APK para Android. La vinculación y sus permisos no cambian.
+
+Owner web: https://wybix-owner.expo.app
+POS Mobile web: https://wybix-pos-mobile.expo.app
+
+Owner necesita red para sus consultas. POS Mobile conserva operación local cifrada con catálogo previamente descargado; sincroniza con la app abierta. La impresión web usa el diálogo del navegador, sin TCP directo; no se añadieron notificaciones Web Push. Instala el icono antes de vincular para no cambiar de perfil de almacenamiento.
+
+Validación: build/instalador 1.3.2 correctos; dos E2E Electron de Apps (selección Android/Web, ambas apps, permisos de cajera/admin, foco y navegación). El chunk de Apps del app.asar coincide con el build probado. Release público y latest.yml verificados por hash y disponibilidad anónima.

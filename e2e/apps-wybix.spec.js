@@ -23,11 +23,11 @@ test('Apps: descarga de las dos apps, pasos separados, foco y paridad de navegac
  await dialog.getByRole('button',{name:/Wybix Owner/}).click();
  await expect(p.locator('.apps__qr img')).toBeVisible();
  await expect(p.getByRole('link',{name:'Descargar APK',exact:true})).toHaveAttribute('href',/app-download\?app=owner$/);
- await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('app-pairing-qr')).toBeVisible();
+ await p.getByRole('button',{name:'iPhone / iPad · Web',exact:true}).click();await expect(p.getByRole('link',{name:'Abrir versión web',exact:true})).toHaveAttribute('href',/app=owner&platform=web$/);await expect(p.locator('.apps__panel')).toContainText('Agregar a pantalla de inicio');await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('app-pairing-qr')).toBeVisible();
  await p.getByRole('button',{name:'Apps Wybix',exact:true}).last().click();
  await p.getByRole('button',{name:/Wybix POS Mobile/}).click();
- await expect(p.locator('.apps__qr img')).toBeVisible();await expect(p.getByRole('link',{name:'Descargar APK',exact:true})).toHaveAttribute('href',/app-download\?app=mobile$/);
- await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('.apps__lista')).toContainText('Agregar tablet');
+ await p.getByRole('button',{name:'Android',exact:true}).click();await expect(p.locator('.apps__qr img')).toBeVisible();await expect(p.getByRole('link',{name:'Descargar APK',exact:true})).toHaveAttribute('href',/app-download\?app=mobile$/);
+ await p.getByRole('button',{name:'iPhone / iPad · Web',exact:true}).click();await expect(p.getByRole('link',{name:'Abrir versión web',exact:true})).toHaveAttribute('href',/app=mobile&platform=web$/);await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('.apps__lista')).toContainText('Agregar tablet');
  await p.keyboard.press('Escape');await expect(p.locator('.apps__panel')).toHaveCount(0);await expect(p.locator('.wxdock__btn--apps')).toBeFocused();
  await irPorMas(p,'Configuracion');await expect(p.locator('app-config-shell')).toBeVisible();
  await expect(p.locator('app-config-shell')).not.toContainText('Emparejamiento QR');await expect(p.locator('app-config-shell')).not.toContainText('Descarga la app movil');

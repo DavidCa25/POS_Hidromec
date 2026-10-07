@@ -15,6 +15,7 @@ export class AppsWybixComponent implements AfterViewInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   readonly paso = signal<1 | 2>(1);
+  readonly plataforma = signal<'android'|'web'>('android');
   readonly qr = signal<string | null>(null);
   readonly error = signal('');
   readonly mensaje = signal('');
@@ -26,7 +27,8 @@ export class AppsWybixComponent implements AfterViewInit, OnDestroy {
   private viva = true;
 
   get elegida() { return this.opciones.find(a => a.id === this.apps.app()); }
-  get enlace() { return DESCARGAS_WYBIX[this.apps.app() ?? 'owner']; }
+  get enlace() { return DESCARGAS_WYBIX[this.apps.app() ?? 'owner'] + (this.plataforma() === 'web' ? '&platform=web' : ''); }
+  async cambiarPlataforma(p: 'android'|'web') { this.plataforma.set(p); await this.verPaso(1); }
   get puedeVincular() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
 
   ngAfterViewInit() {
