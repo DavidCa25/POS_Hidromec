@@ -118,6 +118,8 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // IPC del dominio Fidelizacion (campanas, recompensas, cupones, dinamicas y
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
+require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion});
+
 ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEsteEquipo() });
 
 // IPC del dominio Servicios (catalogo, activos del cliente, profesionales,
@@ -2331,6 +2333,15 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
         // Se vende igual; el inventario no se valida ni se descuenta.
         .input('venta_esencial', sql.Bit,           licencia.evaluador().ventaEsencial ? 1 : 0);
 
+      if (p.commercialQuote) request.input('commercial_quote',sql.UniqueIdentifier,p.commercialQuote);
+      if(p.mpOrderId&&p.commercialQuote){
+        const bound=(await pool.request().input('quote',sql.UniqueIdentifier,p.commercialQuote).input('actor',sql.Int,p.userId).input('reference',sql.NVarChar(100),String(p.mpOrderId)).query('SELECT payload FROM dbo.commercial_quotes WHERE id=@quote AND actor_id=@actor AND payment_reference=@reference AND sale_id IS NULL')).recordset[0];
+        if(!bound||p.paymentMethod!=='TERMINAL_MP')return {success:false,error:'El pago no pertenece a esta cotización.'};
+        const verified=await mpPoint.getOrder(p.mpOrderId);
+        const amount=Number(verified?.order?.transactions?.payments?.[0]?.amount);
+        if(!verified?.success||verified.state!=='approved'||!Number.isFinite(amount)||Math.abs(amount-Number(JSON.parse(bound.payload).total))>.001)return {success:false,error:'No se confirmó el importe aprobado de esta cotización.'};
+        request.input('commercial_payment_reference',sql.NVarChar(100),String(p.mpOrderId));
+      }
       const result = await request.execute('sp_register_sale');
 
       const fila = result.recordset?.[0] ?? null;
@@ -4610,13 +4621,23 @@ ipcMain.handle('sp-customers-kpis', async () => {
 
  //Mercado Pago
 
-  ipcMain.handle('mp-create-order', sesion.proteger('mp-create-order', async (_event, payload = {}) => {
-    return mpPoint.createPointOrder({
+  ipcMain.handle('mp-create-order', sesion.proteger('mp-create-order', async (_event, payload = {}, session) => {
+    const pool=await poolPromise,actor=sesion.actorDe(session);
+    const reservation=payload.commercialQuote?`PENDING-${require('node:crypto').randomUUID()}`:null;
+    if(reservation){
+      const claim=await pool.request().input('quote',sql.UniqueIdentifier,payload.commercialQuote).input('actor',sql.Int,actor).input('amount',sql.Decimal(10,2),Number(payload.amount)).input('ref',sql.NVarChar(100),reservation).query("UPDATE dbo.commercial_quotes SET payment_reference=@ref WHERE id=@quote AND actor_id=@actor AND sale_id IS NULL AND payment_reference IS NULL AND expires_at>SYSUTCDATETIME() AND TRY_CONVERT(DECIMAL(10,2),JSON_VALUE(payload,'$.total'))=@amount AND policy_version=(SELECT version FROM dbo.commercial_policy WHERE id=1)");
+      if(claim.rowsAffected[0]!==1)return {success:false,error:'La cotización cambió o ya tiene un cobro en terminal. Revisa la cuenta.'};
+    }
+    const result=await mpPoint.createPointOrder({
       amount: payload?.amount,
       externalReference: payload?.externalReference,
       expirationTime: payload?.expirationTime,        
       printOnTerminal: payload?.printOnTerminal      
     });
+    if(reservation){
+      await pool.request().input('quote',sql.UniqueIdentifier,payload.commercialQuote).input('old',sql.NVarChar(100),reservation).input('ref',sql.NVarChar(100),result.success&&result.orderId?String(result.orderId):null).query('UPDATE dbo.commercial_quotes SET payment_reference=@ref WHERE id=@quote AND payment_reference=@old');
+    }
+    return result;
   }));
 
   ipcMain.handle('mp-get-order', async (_event, orderId) => {

@@ -42,6 +42,7 @@ BEGIN
     )
     SELECT (
         SELECT
+            JSON_QUERY((SELECT payload FROM dbo.commercial_policy WHERE id=1)) AS commercial,
             JSON_QUERY(ISNULL((
                 SELECT LOWER(CONVERT(VARCHAR(36), p.uuid)) AS uuid,
                        p.nombre,

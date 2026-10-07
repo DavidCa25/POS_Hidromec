@@ -1,3 +1,5 @@
+import {CommercialService} from '../../core/commercial.service';
+import {CommercialSaleComponent} from '../../app/commercial-sale/commercial-sale.component';
 import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -71,14 +73,17 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
+  imports: [CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
+  priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
+
   private readonly cart = inject(CartService);
   private readonly catalog = inject(CatalogService);
   private readonly shift = inject(ShiftService);
   private readonly cajon = inject(CajonService);
+  readonly commercial=inject(CommercialService);
   private readonly sale = inject(SaleService);
   // Solo para leer los grupos de opciones de un producto. Retail no pinta el
   // menu Touch; lo necesita para saber que variante lleva una linea.
@@ -663,6 +668,7 @@ export class Venta implements OnInit, OnDestroy {
 
   async onPaymentMethodChange(method: PaymentMethod) {
     this.paymentMethod = method;
+    if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
@@ -788,7 +794,7 @@ export class Venta implements OnInit, OnDestroy {
     const mesa = this.mesaSvc.cuentaActiva();
 
     const res = await this.sale.checkout(payment, {
-      openDrawer: !isCredito,
+      openDrawer: !isCredito && this.paymentMethod!=='PLATAFORMA',
       autoPrint: this.autoPrintTicketOnSale,
     });
 
@@ -1804,10 +1810,14 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
+    const before=this.totalVenta;
+    try{await this.commercial.prepare(this.cart.activeCart(),true);}catch(e){await Swal.fire({icon:'error',title:'Revisa la cuenta',text:(e as Error).message});return;}
+    if(Math.abs(before-this.totalVenta)>.001){await Swal.fire({icon:'info',title:'Cambió el total',text:'Revisa el importe antes de iniciar el cobro en terminal.'});return;}
     let orderId: string | null = null;
     try {
       const createResp = await api.mpCreateOrder({
         amount: this.totalVenta,
+        commercialQuote:this.cart.activeCart().commercial?.quote?.id,
         externalReference: `POS-${Date.now()}-${Math.floor(Math.random() * 100000)}`
       });
 
@@ -1936,6 +1946,7 @@ export class Venta implements OnInit, OnDestroy {
     const mesa = this.mesaSvc.cuentaActiva();
 
     const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
+      mpOrderId:orderId,
       openDrawer: false, // pago con tarjeta: no se abre el cajon
       autoPrint: this.autoPrintTicketOnSale,
     });

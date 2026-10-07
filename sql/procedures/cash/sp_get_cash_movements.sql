@@ -166,6 +166,9 @@ BEGIN
       (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'TERMINAL_MP'   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
           AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_mp,
+      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'PLATAFORMA'   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+          AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_plataforma,
       (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'CREDITO'       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
           AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_credito

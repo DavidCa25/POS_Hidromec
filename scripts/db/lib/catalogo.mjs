@@ -65,6 +65,8 @@ export const NO_INVOCADOS = {
 const DOMINIO = new Map();
 const asignar = (carpeta, nombres) => nombres.forEach(n => DOMINIO.set(n, carpeta));
 
+asignar('commercial',['sp_commercial_policy_save']);
+
 asignar('sales', [
   'sp_register_sale', 'sp_refund_sale', 'sp_update_sale', 'sp_get_sale_by_folio',
   'sp_get_sale_ticket', 'sp_get_sales_filtered', 'sp_get_actual_folio',

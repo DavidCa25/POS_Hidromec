@@ -1,3 +1,4 @@
+import {CommercialService} from './commercial.service';
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { RegisterService } from '../services/register.service';
@@ -10,6 +11,8 @@ import { LoyaltyService } from './loyalty.service';
 import { ShiftService } from './shift.service';
 
 export interface CheckoutOptions {
+  /** Cotización vinculada en backend al importe aprobado por Point. */
+  mpOrderId?:string;
   /** Abrir el cajon tras registrar (Retail: cualquier contado que no sea terminal). */
   openDrawer?: boolean;
   /** Imprimir ticket en silencio tras registrar. */
@@ -30,6 +33,7 @@ export interface CheckoutOptions {
  */
 @Injectable({ providedIn: 'root' })
 export class SaleService {
+  private readonly commercial=inject(CommercialService);
   private readonly bridge = inject(ElectronBridge);
   private readonly auth = inject(AuthService);
   private readonly register = inject(RegisterService);
@@ -49,9 +53,10 @@ export class SaleService {
   buildIntent(cart: Cart, payment: Payment): SaleIntent {
     const isCredit = payment.method === 'CREDITO';
     return {
+      commercialQuote:cart.commercial?.quote?.id,
       userId: this.auth.usuarioActualId as number,
       paymentMethod: payment.method,
-      lines: cart.lines.map(l => ({
+      lines: cart.commercial?.quote&&!cart.commercial.pending ? cart.commercial.quote.lines.map(l=>({productId:l.productId,qty:l.qty,unitPrice:l.unitPrice,note:l.note,options:(cart.lines.find(x=>String(x.lineId)===l.audit.source)?.options??[])})) : cart.lines.map(l => ({
         productId: l.productId,
         qty: l.qty,
         // El precio que viaja es el efectivo (base + opciones): SQL guarda lo
@@ -62,7 +67,7 @@ export class SaleService {
       })),
       customerId: isCredit ? (payment.creditCustomerId ?? null) : (cart.customer?.id ?? null),
       dueDate: isCredit ? (payment.dueDate ?? null) : null,
-      registerId: this.register.registerId,
+      registerId: cart.commercial?.quote?.registerId ?? this.register.registerId,
       serviceMode: cart.serviceMode,
     };
   }
@@ -91,7 +96,12 @@ export class SaleService {
    */
   async checkout(payment: Payment, opts: CheckoutOptions = {}): Promise<CheckoutResult> {
     if (this.inflight) return { ok: false, error: 'Hay una venta en proceso.' };
+    this.inflight = true;
+    try {
     const cart = this.cart.activeCart();
+    const before=CartService.totalsOf(cart).total;
+    try{if(!opts.mpOrderId)await this.commercial.prepare(cart,true);}catch(e){return {ok:false,error:(e as Error).message};}
+    if(Math.abs(before-CartService.totalsOf(cart).total)>.001)return {ok:false,error:'Cambió el precio de la cuenta. Revisa el total antes de cobrar.'};
     const err = this.validate(cart, payment);
     if (err) return { ok: false, error: err };
 
@@ -108,13 +118,14 @@ export class SaleService {
     if (!api?.registerSale) return { ok: false, error: 'No se pudo registrar la venta (API no disponible).' };
 
     const intent = this.buildIntent(cart, payment);
+    intent.mpOrderId=opts.mpOrderId;
     const totals = CartService.totalsOf(cart);
     const isCredit = payment.method === 'CREDITO';
-    const sold: SoldLine[] = cart.lines.map(l => ({
-      productId: l.productId, productName: l.productName, qty: l.qty, unitPrice: l.effectiveUnitPrice,
-      claveProdServ: l.claveProdServ, claveUnidad: l.claveUnidad, objetoImpuesto: l.objetoImpuesto,
-      tasaIva: l.tasaIva, options: l.options,
-    }));
+    const sold: SoldLine[] = intent.lines.map(l => {const src=cart.lines.find(x=>x.productId===l.productId)!;return {
+      productId:l.productId, productName:src.productName,qty:l.qty,unitPrice:l.unitPrice,
+      claveProdServ:src.claveProdServ,claveUnidad:src.claveUnidad,objetoImpuesto:src.objetoImpuesto,
+      tasaIva:src.tasaIva,options:l.options,
+    };});
     const customer = cart.customer;
     // Se copia ANTES de registrar: `completeActive()` deja el carrito vacio y
     // con el se iria el cupon que hay que canjear justo despues.
@@ -125,8 +136,6 @@ export class SaleService {
     const cuentaPedido = cart.meta?.['cuentaMesa'] as { id?: number; numero?: number | null } | undefined;
     const pedido = Number(cuentaPedido?.numero) || null;
 
-    this.inflight = true;
-    try {
       const resp = await this.registerIntent(intent);
       if (!resp?.success) {
         return { ok: false, error: resp?.error || 'No se pudo registrar la venta.' };
@@ -175,11 +184,8 @@ export class SaleService {
       // despues, un cobro que se cae no.
       const premios = await this.evaluarFidelizacion(saleId);
 
-      // El cupon se CONSUME aqui, con la venta ya confirmada.
-      //
-      // No antes: la redencion apunta a `sale_id`, y ese id no existe hasta
-      // que SQL confirmo. Un cupon gastado por una venta que acabo en
-      // ROLLBACK seria un cupon perdido sin que nadie comprara nada.
+      // Con cotización, SQL ya consumió el cupón en la misma transacción de venta.
+      // Esta llamada confirma el recibo de forma idempotente para ambos caminos.
       const cupon = await this.canjearCupon(saleId, cuponAplicado);
 
       this.cart.completeActive();
@@ -204,6 +210,8 @@ export class SaleService {
     const api = this.bridge.api;
     if (api.registerSaleV2) {
       return api.registerSaleV2({
+        commercialQuote:intent.commercialQuote,
+        mpOrderId:intent.mpOrderId,
         userId: intent.userId,
         paymentMethod: intent.paymentMethod,
         lines: intent.lines.map(l => ({

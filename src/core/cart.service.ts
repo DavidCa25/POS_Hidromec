@@ -1,3 +1,4 @@
+import type {Cotizacion} from './commercial.service';
 import { Injectable, computed, signal } from '@angular/core';
 import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon } from './models';
 
@@ -6,6 +7,7 @@ import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon } 
  * las plantillas que ya usaban `it.subtotal` sigan funcionando.
  */
 export class CartLine {
+  combo?: {id:string;instance:string;group:string};
   lineId: number;
   productId: number;
   productName: string;
@@ -81,6 +83,7 @@ export interface Cart {
    */
   transient: boolean;
   /** El cupon aplicado a ESTA cuenta, si lo hay. */
+  commercial?: {channel:string;audiences:string[];orderReference?:string;quote?:Cotizacion;signature?:string;requestedSignature?:string;pending?:boolean;error?:string};
   coupon?: AppliedCoupon | null;
   meta?: Record<string, unknown>;
 }
@@ -168,6 +171,7 @@ export class CartService {
     };
   }
 
+  notify(){this.touch();}
   private touch() { this.version.update(v => v + 1); }
 
   /** Crea una cuenta nueva y la activa. Devuelve null si se alcanzo el limite. */
@@ -226,6 +230,8 @@ export class CartService {
       active.customer = null;
       active.creditCustomerId = null;
       active.serviceMode = null;
+      active.commercial=undefined;
+      active.coupon=null;
       /* La venta se cerro: lo que la ataba a algo -la cuenta de una mesa, una
          orden de servicio- se cerro con ella. Antes `meta` sobrevivia y la
          caja seguia mostrando «Mesa 1» sobre una cuenta ya COBRADA: el
@@ -297,7 +303,7 @@ export class CartService {
     /* Ni en una enviada ni en una con envio en vuelo (tiene origen): lo que
        ya salio hacia la cocina no crece por detras. */
     const existing = cart.lines.find(l => l.enviada == null && l.origen == null
-      && l.productId === src.productId && CartService.optionsKey(l.options) === key);
+      && !l.combo && l.productId === src.productId && CartService.optionsKey(l.options) === key);
     if (existing) {
       existing.qty += qty;
       this.touch();
@@ -317,6 +323,7 @@ export class CartService {
   }
 
   adjustQty(line: CartLine, delta: number, min = 1): void {
+    if(line.combo)return;
     this.setQty(line, Number(line.qty || 0) + delta, min);
   }
 
@@ -342,7 +349,8 @@ export class CartService {
   removeLine(line: CartLine): void {
     if (line.enviada != null) return;
     const cart = this.activeCart();
-    cart.lines = cart.lines.filter(l => l !== line);
+    if(line.combo&&cart.lines.some(l=>l.combo?.instance===line.combo!.instance&&l.enviada!=null))return;
+    cart.lines = cart.lines.filter(l => line.combo?l.combo?.instance!==line.combo.instance:l!==line);
     this.touch();
   }
 
@@ -370,6 +378,12 @@ export class CartService {
   }
 
   // ------------------------------------------------------------------ totales
+  /** Presentación de la asignación congelada; nunca modifica el precio base. */
+  static displayOf(cart:Cart,line:CartLine){
+    const priced=!cart.commercial?.pending?cart.commercial?.quote?.lines.filter((x:any)=>x.audit.source===String(line.lineId)):undefined;
+    const amount=priced?.length?priced.reduce((n:number,x:any)=>n+Number(x.qty)*Number(x.unitPrice),0):line.subtotal;
+    return {amount,unit:amount/line.qty,label:[...new Set((priced??[]).map((x:any)=>x.audit.ruleName).filter(Boolean))].join(' · '),applied:!!priced?.length};
+  }
 
   static totalsOf(cart: Cart): CartTotals {
     let total = 0;
@@ -382,6 +396,7 @@ export class CartService {
       tax += imp - imp / (1 + rate);
       itemCount += Number(l.qty) || 0;
     }
+    if(cart.commercial?.quote&&!cart.commercial.pending){const q=cart.commercial.quote;const byKey=new Map(cart.lines.map(l=>[String(l.lineId),l]));total=Number(q.total);tax=q.lines.reduce((a:number,l:any)=>{const rate=byKey.get(l.audit.source)?.tasaIva??IVA_POR_DEFECTO;const amount=l.qty*l.unitPrice;return a+amount-amount/(1+rate);},0);}
     return { total, tax, subtotal: total - tax, itemCount };
   }
 

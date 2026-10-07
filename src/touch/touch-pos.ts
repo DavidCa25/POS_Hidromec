@@ -1,3 +1,5 @@
+import {CommercialService} from '../core/commercial.service';
+import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.component';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -46,11 +48,14 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
+  imports: [CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
 export class TouchPos implements OnInit, OnDestroy {
+  readonly commercial=inject(CommercialService);
+  priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
+
   /** Si este negocio tiene Servicios encendido. Decide si la agenda existe. */
   readonly caps = inject(CapabilityService);
 

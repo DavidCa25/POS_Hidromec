@@ -19,7 +19,7 @@ BEGIN
                          THEN CONCAT(N'Pedido ', c.numero_dia, CASE WHEN c.etiqueta IS NOT NULL THEN N' · ' + c.etiqueta END) END,
                     c.etiqueta) AS titulo,
            c.etiqueta, c.numero_dia, c.estado, c.personas, c.abierta_en, c.abierta_por, c.cerrada_en, c.sale_id,
-           c.customer_id, cu.customerName AS customer_name,
+           c.customer_id, cu.customerName AS customer_name, c.commercial_context,
            DATEDIFF(MINUTE, c.abierta_en, SYSDATETIME()) AS minutos
       FROM dbo.hosp_cuentas c
       LEFT JOIN dbo.salon_mesas m ON m.id = c.mesa_id
@@ -29,7 +29,7 @@ BEGIN
 
     SELECT l.id, l.orden_id, l.product_id, l.nombre, l.cantidad, l.precio_unitario, l.nota,
            l.station_id, s.nombre AS estacion, l.comanda_id, k.estado AS comanda_estado, l.estado,
-           l.origen, o.enviada_en,
+           l.origen, o.enviada_en, l.commercial_component,
            p.inventory_mode, p.clave_prod_serv, p.clave_unidad, p.objeto_impuesto, p.tasa_iva
       FROM dbo.hosp_orden_lineas l
       JOIN dbo.hosp_ordenes o ON o.id = l.orden_id

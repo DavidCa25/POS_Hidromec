@@ -40,7 +40,9 @@ BEGIN
         c.customerName AS customer_name,
         s.service_mode,
         s.register_id,
-        r.name AS register_name
+        r.name AS register_name,
+        JSON_VALUE(s.commercial_snapshot,'$.channelName') AS commercial_channel,
+        TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(s.commercial_snapshot,'$.discount')) AS commercial_discount
     FROM dbo.sales s
     INNER JOIN dbo.users u ON u.id = s.useer_id
     LEFT JOIN dbo.customers c ON c.id = s.customer_id
@@ -58,7 +60,8 @@ BEGIN
         p.objeto_impuesto,
         p.tasa_iva,
         p.base_uom,
-        mods.modifiers
+        mods.modifiers,
+        JSON_VALUE(d.commercial_snapshot,'$.ruleName') AS commercial_offer
     FROM dbo.sale_detail d
     INNER JOIN dbo.products p ON p.id = d.product_id
     /* Los modificadores TAL COMO SE COBRARON, con su importe.

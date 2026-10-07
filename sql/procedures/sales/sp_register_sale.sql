@@ -60,7 +60,9 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_register_sale]
     -- ningun producto (vendible, modo de inventario, recetas, stock): al
     -- renovar todo vuelve tal cual estaba. La venta queda marcada para poder
     -- avisar cuantas hubo y desde cuando.
-    @venta_esencial BIT = 0
+    @venta_esencial BIT = 0,
+    @commercial_quote UNIQUEIDENTIFIER = NULL,
+    @commercial_payment_reference NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -444,6 +446,29 @@ BEGIN
            origen, modifier_option_id
     FROM #ef_requerimientos;
 
+    /* Una cotización proviene del proceso principal, nunca de precios enviados por UI.
+       La lista de partidas/opciones debe coincidir exactamente. Su consumo es atómico abajo. */
+    DECLARE @cq NVARCHAR(MAX) = NULL;
+    IF @commercial_quote IS NOT NULL
+    BEGIN
+      SELECT @cq=payload FROM dbo.commercial_quotes WHERE id=@commercial_quote AND actor_id=@user_id
+        AND ISNULL(register_id,-1)=ISNULL(@register_id,-1) AND sale_id IS NULL
+        AND ((@commercial_payment_reference IS NULL AND payment_reference IS NULL AND expires_at>SYSUTCDATETIME())
+          OR (@payment_method='TERMINAL_MP' AND payment_reference=@commercial_payment_reference));
+      IF @cq IS NULL THROW 51000,'La cotización venció o pertenece a otra cuenta.',1;
+      IF (SELECT COUNT(*) FROM OPENJSON(@cq,'$.lines'))<>(SELECT COUNT(*) FROM #lines)
+        THROW 51000,'Las partidas no coinciden con la cotización.',1;
+      IF EXISTS(SELECT 1 FROM OPENJSON(@cq,'$.lines') WITH(line_no INT, productId INT, qty DECIMAL(12,2), unitPrice DECIMAL(10,2)) c
+        LEFT JOIN #lines l ON l.line_no=c.line_no WHERE l.line_no IS NULL OR l.product_id<>c.productId OR l.quantity<>c.qty OR l.unit_price<>c.unitPrice)
+        THROW 51000,'El precio o cantidad no coincide con la cotización.',1;
+      IF EXISTS(SELECT 1 FROM (SELECT line_no,option_id,qty FROM #mods EXCEPT
+        SELECT c.line_no,m.optionId,m.quantity FROM OPENJSON(@cq,'$.lines') WITH(line_no INT,options NVARCHAR(MAX) AS JSON) c
+        CROSS APPLY OPENJSON(c.options) WITH(optionId INT,quantity INT) m) x)
+        OR EXISTS(SELECT 1 FROM (SELECT c.line_no,m.optionId,m.quantity FROM OPENJSON(@cq,'$.lines') WITH(line_no INT,options NVARCHAR(MAX) AS JSON) c
+        CROSS APPLY OPENJSON(c.options) WITH(optionId INT,quantity INT) m EXCEPT SELECT line_no,option_id,qty FROM #mods) x)
+        THROW 51000,'Las opciones no coinciden con la cotización.',1;
+    END;
+
     /* ------------------------ PRECIO DE LOS MODIFICADORES --------------------
        El precio de las opciones lo decide SQL, no la pantalla.
 
@@ -461,7 +486,7 @@ BEGIN
        La tolerancia de un centavo absorbe el redondeo decimal; cualquier cosa
        mayor es una discrepancia de verdad.
        ------------------------------------------------------------------------ */
-    IF EXISTS (SELECT 1 FROM #mods WHERE ISNULL(price_delta, 0) <> 0)
+    IF @commercial_quote IS NULL AND EXISTS (SELECT 1 FROM #mods WHERE ISNULL(price_delta, 0) <> 0)
     BEGIN
         DECLARE @linea_mal INT, @esperado DECIMAL(10,2), @recibido DECIMAL(10,2), @prod NVARCHAR(100);
 
@@ -512,6 +537,19 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRAN;
+        IF @commercial_quote IS NOT NULL
+        BEGIN
+          IF NOT EXISTS(SELECT 1 FROM dbo.commercial_quotes WITH(UPDLOCK,HOLDLOCK) WHERE id=@commercial_quote
+              AND sale_id IS NULL AND ((@commercial_payment_reference IS NULL AND payment_reference IS NULL AND expires_at>SYSUTCDATETIME() AND policy_version=(SELECT version FROM dbo.commercial_policy WITH(HOLDLOCK) WHERE id=1))
+                OR (@payment_method='TERMINAL_MP' AND payment_reference=@commercial_payment_reference)))
+            THROW 51000,'La cotización cambió o ya se utilizó. Revisa la cuenta.',1;
+          IF @commercial_payment_reference IS NULL AND EXISTS(SELECT 1 FROM OPENJSON(@cq,'$.catalog') WITH(id INT,price DECIMAL(10,2)) c
+             JOIN dbo.products p WITH(HOLDLOCK) ON p.id=c.id WHERE p.price<>c.price)
+            THROW 51000,'Cambió el precio del catálogo. Revisa la cuenta.',1;
+          IF @commercial_payment_reference IS NULL AND EXISTS(SELECT 1 FROM OPENJSON(@cq,'$.optionPrices') WITH(id INT,price DECIMAL(10,2)) c
+             LEFT JOIN dbo.modifier_options o WITH(HOLDLOCK) ON o.id=c.id WHERE o.id IS NULL OR o.active=0 OR o.price_delta<>c.price)
+            THROW 51000,'Cambió el precio de una opción. Revisa la cuenta.',1;
+        END;
 
         /* 4) Bloqueo consistente y validacion de stock.
            LOOP JOIN + FORCE ORDER: se recorre #need por su clave y se toma el
@@ -609,6 +647,23 @@ BEGIN
         );
 
         SET @sale_id = SCOPE_IDENTITY();
+        IF @commercial_quote IS NOT NULL BEGIN
+          UPDATE dbo.commercial_quotes SET sale_id=@sale_id WHERE id=@commercial_quote;
+          UPDATE dbo.sales SET commercial_snapshot=@cq WHERE id=@sale_id;
+        END;
+
+        /* El cupón de una cotización se consume DENTRO de la transacción de venta. */
+        DECLARE @coupon_code NVARCHAR(24)=JSON_VALUE(@cq,'$.coupon.code'),@coupon_id INT;
+        IF @coupon_code IS NOT NULL
+        BEGIN
+          UPDATE ci SET uses_count=ci.uses_count+1,status=CASE WHEN ci.uses_count+1>=ci.uses_allowed THEN 'REDEEMED' ELSE ci.status END,sale_id=ISNULL(ci.sale_id,@sale_id)
+          FROM dbo.coupon_instances ci JOIN dbo.coupon_definitions cd ON cd.id=ci.definition_id
+          WHERE ci.code=@coupon_code AND ci.id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.instanceId')) AND cd.kind='FREE_PRODUCT' AND cd.product_id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.productId')) AND ci.status='ISSUED' AND cd.active=1 AND ci.uses_count<ci.uses_allowed AND (ci.expires_at IS NULL OR ci.expires_at>=SYSDATETIME());
+          IF @@ROWCOUNT<>1 THROW 51000,'El cupón venció o ya se utilizó. La venta no se registró.',1;
+          SELECT @coupon_id=id FROM dbo.coupon_instances WHERE code=@coupon_code;
+          INSERT dbo.loyalty_redemptions(kind,reward_instance_id,coupon_instance_id,sale_id,register_id,machine_id,amount_applied,created_at)
+          VALUES('COUPON',NULL,@coupon_id,@sale_id,@register_id,@machine_id,TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(@cq,'$.coupon.amountApplied')),SYSDATETIME());
+        END;
 
         /* 7) Detalle (MERGE para recuperar line_no -> sale_detail_id) */
         /* `recipe_id` y `variant_option_id` dejan constancia de CON QUE receta
@@ -626,6 +681,10 @@ BEGIN
             VALUES (@sale_id, s.product_id, s.quantity, s.unit_price, s.unit_cost, s.inventory_mode, s.note,
                     s.recipe_id, s.variant_option_id)
         OUTPUT inserted.id, s.line_no INTO #map (sale_detail_id, line_no);
+
+        IF @cq IS NOT NULL UPDATE d SET commercial_snapshot=c.audit
+          FROM dbo.sale_detail d JOIN #map m ON m.sale_detail_id=d.id
+          JOIN OPENJSON(@cq,'$.lines') WITH(line_no INT,audit NVARCHAR(MAX) AS JSON) c ON c.line_no=m.line_no;
 
         /* El snapshot guarda lo que se COBRO y ahora tambien lo que el
            modificador HIZO fisicamente: que ingrediente metio, cual quito y

@@ -96,6 +96,7 @@ BEGIN
                 s.payment_method                AS payment_method,
                 s.service_mode                  AS service_mode,
                 s.venta_esencial                AS venta_esencial,
+                JSON_QUERY(s.commercial_snapshot) AS commercial,
                 ISNULL((SELECT SUM(r.refund_total) FROM dbo.sale_refunds r WHERE r.sale_id = s.id), 0) AS refunded_total,
                 rg.uuid AS [register.uuid], rg.code AS [register.code], rg.name AS [register.name],
                 u.uuid  AS [user.uuid],     u.usuario AS [user.name]

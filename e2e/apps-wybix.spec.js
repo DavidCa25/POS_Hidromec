@@ -5,7 +5,7 @@ async function entrar(app, cuenta) {
   await p.waitForSelector('.wxdock');
   if (cuenta === CUENTAS.operador) {
     const salir=p.locator('.open-shift-modal').getByRole('button',{name:'Salir',exact:true});
-    await salir.click();
+    if(await salir.isVisible())await salir.click();
     await p.getByRole('link',{name:'Inicio',exact:true}).click();
     await p.waitForSelector('app-inicio');
   }

@@ -47,6 +47,7 @@ const GRUPOS_CAJA: { grupo: GrupoCaja; etiqueta: string }[] = [
 ];
 
 interface Summary {
+  ventas_plataforma?:number;
   total_entradas: number;
   total_salidas: number;
   neto: number;
@@ -66,6 +67,7 @@ interface RegisterOption {
 }
 
 interface Breakdown {
+  ventasPlataforma:number;
   ventasEfectivo: number;
   ventasTarjeta: number;
   ventasTransferencia: number;
@@ -125,7 +127,7 @@ export class Corte {
 
   breakdown: Breakdown = {
     ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
-    ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+    ventasPlataforma:0, ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
     salidasEfectivo: 0, devolucionesEfectivo: 0
   };
 
@@ -307,7 +309,7 @@ export class Corte {
 
       this.breakdown = {
         ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
-        ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
+        ventasPlataforma:0, ventasMercadoPago: 0, ventasCredito: 0, entradasEfectivo: 0,
         salidasEfectivo: 0, devolucionesEfectivo: 0
       };
 
@@ -316,7 +318,7 @@ export class Corte {
           ...r,
           datee: new Date(r.datee)
         }));
-        
+
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
         this.desglose = (res.data?.desglose ?? []).map((d: any) => ({
@@ -328,6 +330,7 @@ export class Corte {
         this.breakdown.ventasTarjeta = Number(this.summary.ventas_tarjeta || 0);
         this.breakdown.ventasTransferencia = Number(this.summary.ventas_transferencia || 0);
         this.breakdown.ventasMercadoPago = Number(this.summary.ventas_mp || 0);
+        this.breakdown.ventasPlataforma=Number(this.summary.ventas_plataforma||0);
         this.breakdown.ventasCredito = Number(this.summary.ventas_credito || 0);
       } else {
         this.movimientos = [];
@@ -524,7 +527,7 @@ export class Corte {
         `,
         confirmButtonColor: '#10b981'
       });
-      
+
       this.showCloseModal = false;
       this.openShiftId = null;
       this.openShiftOpenedAt = null;
@@ -573,10 +576,10 @@ export class Corte {
   }
 
   get totalVentasGenerales(): number {
-    return this.breakdown.ventasEfectivo + 
-           this.breakdown.ventasTarjeta + 
-           this.breakdown.ventasTransferencia + 
-           this.breakdown.ventasMercadoPago + 
+    return this.breakdown.ventasPlataforma + this.breakdown.ventasEfectivo +
+           this.breakdown.ventasTarjeta +
+           this.breakdown.ventasTransferencia +
+           this.breakdown.ventasMercadoPago +
            this.breakdown.ventasCredito;
   }
 }

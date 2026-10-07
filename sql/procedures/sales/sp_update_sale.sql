@@ -30,6 +30,7 @@ BEGIN
   BEGIN TRY
     BEGIN TRAN;
 
+    IF EXISTS(SELECT 1 FROM dbo.sales WHERE id=@sale_id AND commercial_snapshot IS NOT NULL) THROW 51000,'Las ventas con ofertas se corrigen mediante devolución y una nueva venta.',1;
     IF EXISTS (SELECT 1 FROM dbo.sale_refunds WHERE sale_id = @sale_id)
     BEGIN
       RAISERROR('No se puede actualizar: la venta ya tiene reembolsos.',16,1);

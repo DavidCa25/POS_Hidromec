@@ -43,6 +43,9 @@ const EXIGE = {
   // ------------------------------------------------------------ venta diaria
   // El trabajo del turno. Un Operador tiene todo esto y nada más.
   'sp-register-sale': VENTAS_OPERAR,
+  'commercial:catalog': VENTAS_OPERAR,
+  'commercial:quote': VENTAS_OPERAR,
+  'commercial:save': CONFIGURACION_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
   'sp-register-cash-out': VENTAS_OPERAR,

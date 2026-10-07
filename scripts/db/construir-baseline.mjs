@@ -369,6 +369,7 @@ try {
   //                      Es estructura: sin el no se puede escribir una receta.
   //   schema_migrations  las migraciones que este baseline ya trae aplicadas
   const SEMBRADAS = {
+    commercial_policy:1,
     registers: 1, register_assignments: 1, WA_Configuracion: 1, uoms: 14,
     // baseline_version + security_model_version + security_revision (0029).
     database_metadata: 3,

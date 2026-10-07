@@ -21,6 +21,7 @@ CREATE TABLE dbo.sales (
     venta_esencial BIT NOT NULL CONSTRAINT DF_sales_venta_esencial DEFAULT ((0)),
     uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_sales_uuid DEFAULT (newid()),
     rv TIMESTAMP NOT NULL,
+    commercial_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

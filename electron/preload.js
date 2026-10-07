@@ -147,6 +147,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     egresosCancelar: (p) => ipcRenderer.invoke('egresos:cancelar', p),
     egresosListar: (p) => ipcRenderer.invoke('egresos:listar', p),
     generateSalePdf: (saleId) => ipcRenderer.invoke('generate-sale-pdf', saleId),
+    commercialCatalog: () => ipcRenderer.invoke('commercial:catalog'),
+    commercialSave: p => ipcRenderer.invoke('commercial:save',p),
+    commercialQuote: p => ipcRenderer.invoke('commercial:quote',p),
     getConfig: () => ipcRenderer.invoke("getConfig"),
     // Solo lectura: dice si la BASE es de demostracion, para poder marcarlo en
     // pantalla. No habilita ninguna operacion del gestor.

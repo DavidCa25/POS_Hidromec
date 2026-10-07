@@ -76,3 +76,7 @@ Thumbs.db
 /test-results
 /playwright-report
 /blob-report
+
+# Artefactos locales de QA comercial; la evidencia JSON depurada sí se versiona.
+/docs/evidencia/comercial-20261007/*.log
+/docs/evidencia/comercial-20261007/*.png

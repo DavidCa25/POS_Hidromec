@@ -1,10 +1,10 @@
 {
   "name": "wybix-pos",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
-    "build": "npm run assets:rive && ng build --configuration production --base-href ./",
+    "build": "node scripts/comercial-compilar.cjs && npm run assets:rive && ng build --configuration production --base-href ./",
     "electron": "electron ./electron/main.js",
     "start": "npm run build && npm run electron",
     "start:ng": "npm run assets:rive && ng serve",
@@ -104,7 +104,9 @@
     "e2e:guide": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/wybix-guide.spec.js e2e/wybix-guide-demos.spec.js e2e/wybix-guide-giros.spec.js",
     "e2e:operacion": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/mesas-kds.spec.js e2e/actividad-horaria.spec.js e2e/teclado.spec.js e2e/modo-terminal.spec.js",
     "test:licencia-v2": "node scripts/pruebas/licencia-v2.mjs",
-    "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs"
+    "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs",
+    "test:comercial": "node --test scripts/pruebas/comercial.test.mjs",
+    "db:test-comercial": "node scripts/db/pruebas/comercial.mjs"
   },
   "prettier": {
     "overrides": [
