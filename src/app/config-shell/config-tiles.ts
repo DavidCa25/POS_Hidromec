@@ -97,14 +97,10 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
      */
     {
         id: 'nube',
-        title: 'Nube y app del dueño',
+        title: 'Nube y cuenta',
         tiles: [
             { id: 'sync-nube', title: 'Sincronización en la nube', desc: 'Activa el envío de datos a la app del dueño', icon: 'cloud-arrow-up', color: 'blue', size: '2x1',
               load: () => import('../sync-nube-panel/sync-nube.component').then(m => m.SyncNubePanelComponent) },
-            { id: 'pairing-qr', title: 'Emparejamiento QR', desc: 'Código QR para emparejar con la nube', icon: 'qr-code', color: 'green', size: '1x1',
-              load: () => import('../pairing-qr-panel/pairing-qr.component').then(m => m.PairingQr) },
-            { id: 'descarga-app', title: 'Descarga la app movil', desc: 'QR para instalar la app del dueño', icon: 'device-mobile', color: 'blue', size: '1x1',
-              load: () => import('../descarga-app-panel/descarga-app.component').then(m => m.DescargaAppPanel) },
             { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
               load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
         ]

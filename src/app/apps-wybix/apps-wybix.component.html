@@ -1,0 +1,30 @@
+<div class="apps__fondo" (click)="apps.cerrar()"></div>
+<section class="apps__panel" role="dialog" aria-modal="true" aria-labelledby="apps-titulo"
+         [style.left.px]="izquierda()" [style.bottom.px]="abajo()" [style.max-height]="'calc(100dvh - ' + (abajo() + 16) + 'px)'">
+  <button *ngIf="elegida" type="button" class="apps__volver" (click)="volver()"><i class="ph ph-arrow-left" aria-hidden="true"></i>Apps Wybix</button>
+  <header class="apps__cab"><h2 id="apps-titulo">{{ elegida?.nombre || 'Apps Wybix' }}</h2><button class="apps__cerrar" type="button" (click)="apps.cerrar()" aria-label="Cerrar Apps"><i class="ph ph-x" aria-hidden="true"></i></button></header>
+  <ng-container *ngIf="!elegida">
+    <p class="apps__sub">Tu negocio, también fuera de la caja.</p>
+    <button *ngFor="let a of opciones" class="apps__opcion" type="button" (click)="elegir(a.id)"><span class="apps__icono"><i class="ph {{ a.icono }}" aria-hidden="true"></i></span><span><b>{{ a.nombre }}</b><small>{{ a.descripcion }}</small></span><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+    <p class="apps__nota">Descarga la app y después vincúlala a tu negocio.</p>
+  </ng-container>
+  <ng-container *ngIf="elegida">
+    <div class="apps__pasos" aria-label="Pasos para usar la app"><button type="button" [attr.aria-pressed]="paso() === 1" (click)="verPaso(1)">1 · Descargar app</button><button type="button" [attr.aria-pressed]="paso() === 2" (click)="verPaso(2)">2 · Vincular negocio</button></div>
+    <p *ngIf="cargando()" class="apps__nota" role="status">Preparando…</p>
+    <p *ngIf="error()" class="apps__error" role="alert">{{ error() }}</p>
+    <ng-container *ngIf="paso() === 1">
+      <div class="apps__qr" *ngIf="qr()"><img [src]="qr()" [alt]="'QR para descargar ' + elegida.nombre" width="280" height="280"/><span>QR de descarga</span></div>
+      <p class="apps__instruccion">Escanea con la cámara del dispositivo donde instalarás la app.</p>
+      <p class="apps__nota">Android 7 o posterior. Descarga el APK y ábrelo; Android puede pedirte permiso para instalar desde tu navegador.</p>
+      <div class="apps__acciones"><a [href]="enlace" target="_blank" rel="noopener noreferrer" (click)="abrirEnlace($event)"><i class="ph ph-download-simple" aria-hidden="true"></i>Descargar APK</a><button type="button" (click)="copiar()"><i class="ph ph-link" aria-hidden="true"></i>Copiar enlace</button></div>
+      <a class="apps__url" [href]="enlace" target="_blank" rel="noopener noreferrer" (click)="abrirEnlace($event)">{{ enlace }}</a>
+      <p class="apps__nota" role="status">{{ mensaje() }}</p>
+    </ng-container>
+    <ng-container *ngIf="paso() === 2">
+      <p class="apps__instruccion">Abre la app instalada para vincularla. El QR de descarga no vincula tu negocio.</p>
+      <p *ngIf="!puedeVincular" class="apps__nota">Pide a un administrador del negocio que genere el código de vinculación.</p>
+      <ng-container *ngIf="puedeVincular && elegida?.id === 'owner'"><ng-container *ngComponentOutlet="vinculacion()"></ng-container></ng-container>
+      <ng-container *ngIf="puedeVincular && elegida?.id === 'mobile'"><ol class="apps__lista"><li>En Wybix Owner, abre <b>Eventos</b> y selecciona el evento.</li><li>En <b>Tablets</b>, toca <b>Agregar tablet</b> y confirma tu segundo factor cuando se solicite.</li><li>En POS Mobile, escribe ese código para vincular la tablet.</li></ol><p class="apps__nota">Necesitas el complemento POS Mobile y cupo disponible. El código dura 24 horas y se usa una sola vez.</p></ng-container>
+    </ng-container>
+  </ng-container>
+</section>

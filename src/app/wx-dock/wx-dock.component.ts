@@ -9,6 +9,7 @@ import { PaletaService } from '../wx-paleta/paleta.service';
 import { GuiaService } from '../wx-guia/guia.service';
 import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { Area, Destino, NavegacionService } from '../wx-nav/navegacion.service';
+import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
 
 /**
  * WX-DOCK — la barra de trabajo de Wybix.
@@ -98,6 +99,14 @@ export class WxDockComponent implements OnDestroy {
   private readonly nav = inject(NavegacionService);
   private readonly paleta = inject(PaletaService);
   readonly guia = inject(GuiaService);
+  readonly apps = inject(AppsWybixService);
+
+  abrirApps(e: Event) {
+    const abierta = this.apps.abierta();
+    this.cerrarTodo();
+    if (abierta) this.apps.cerrar();
+    else this.apps.abrir(e.currentTarget as HTMLElement);
+  }
 
   constructor() {
     /* Navegar cierra lo que estuviera abierto: el panel ya cumplio. */
