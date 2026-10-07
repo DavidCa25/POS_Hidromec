@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-07",
+  "fix": "Fila de precios Touch del mismo tamaño que Cliente",
+  "row_height_px": 44,
+  "customer_row_width_height_alignment_verified": true,
+  "options_popover_preserves_cart_height_verified": true,
+  "platform_reference_and_escape_focus_verified": true,
+  "viewport_1280x640_verified": true,
+  "independent_accounts_and_payment_verified": true,
+  "commercial_electron_flows_passed": 10,
+  "validation": "9 flujos pasaron en la suite; el flujo Touch de cuentas pasó al corregir una expectativa de altura absoluta del test por la comprobación relativa al tamaño de Cliente.",
+  "ui_contract_checks_passed": 8,
+  "production_build_passed": true,
+  "sql_changes": false,
+  "installer_rebuilt_for_this_fix": false
+}

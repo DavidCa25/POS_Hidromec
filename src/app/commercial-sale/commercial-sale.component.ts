@@ -27,11 +27,10 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
       [class.cs--touch]="touch"
       aria-label="Canal y ofertas de la cuenta"
     >
-      <p *ngIf="cart.activeCart().meta?.['commercialNotice']" role="status">
-        {{ cart.activeCart().meta?.['commercialNotice'] }}
-      </p>
       <label
-        >{{ touch ? 'Precios por canal' : 'Canal' }}
+        class="cs-channel"
+        ><i *ngIf="touch" class="ph ph-storefront" aria-hidden="true"></i>
+        <span>{{ touch ? 'Precios' : 'Canal' }}</span>
         <wx-select
           [opciones]="channelOptions"
           [disabled]="channelLocked"
@@ -71,10 +70,26 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
         *ngIf="!touch"
         [ngTemplateOutlet]="accountOptions"
       ></ng-container>
-      <details *ngIf="touch" class="cs-options">
-        <summary>Combos y opciones</summary>
+      <button *ngIf="touch" type="button" class="cs-more"
+        aria-label="Combos y opciones" [attr.popovertarget]="optionsId"
+        [style.anchor-name]="optionsAnchor"
+        [class.cs-more--alert]="message || cart.activeCart().commercial?.error"
+        [attr.title]="message || cart.activeCart().commercial?.error || 'Combos y opciones'">
+        <i class="ph" [class.ph-warning-circle]="message || cart.activeCart().commercial?.error"
+          [class.ph-dots-three]="!(message || cart.activeCart().commercial?.error)" aria-hidden="true"></i>
+      </button>
+      <div *ngIf="touch" [id]="optionsId" popover data-anclado
+        class="wx-pop cs-options" [style.--wx-anchor]="optionsAnchor"
+        role="dialog" aria-label="Combos y opciones">
+        <strong>Combos y opciones</strong>
         <ng-container [ngTemplateOutlet]="accountOptions"></ng-container>
-      </details>
+        <ng-container [ngTemplateOutlet]="accountStatus"></ng-container>
+      </div>
+      <ng-container *ngIf="!touch" [ngTemplateOutlet]="accountStatus"></ng-container>
+      <ng-template #accountStatus>
+      <p *ngIf="cart.activeCart().meta?.['commercialNotice']" role="status">
+        {{ cart.activeCart().meta?.['commercialNotice'] }}
+      </p>
       <span *ngIf="cart.activeCart().commercial?.pending" role="status"
         >Calculando precios…</span
       ><span
@@ -86,6 +101,7 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
       <p *ngIf="message || cart.activeCart().commercial?.error" role="alert">
         {{ message || cart.activeCart().commercial?.error }}
       </p>
+      </ng-template>
     </section>
     <div
       *ngIf="open"
@@ -158,33 +174,57 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
         gap: 8px;
       }
       .cs--touch {
-        flex-direction: column;
-        align-items: stretch;
-        margin: 8px 12px 0;
-        padding: 12px;
+        flex-wrap: nowrap;
+        height: var(--tp-tap, 44px);
+        box-sizing: border-box;
+        margin: 0 16px 12px;
+        padding: 0 0 0 12px;
+        gap: 0;
+        border-color: var(--wx-edge-soft);
+        border-radius: var(--wx-radius-md);
+        background: transparent;
+        font-size: var(--wx-text-sm);
+      }
+      .cs--touch .cs-channel {
+        flex: 1;
+        min-width: 0;
         gap: 10px;
-        border-radius: 12px;
-      }
-      .cs--touch label {
-        display: grid;
-        gap: 6px;
-      }
-      .cs--touch wx-select {
-        width: 100%;
-      }
-      .cs-options summary {
-        cursor: pointer;
-        font-size: 12px;
         color: var(--wx-text-muted);
-        padding: 4px 0;
       }
-      .cs-options[open] {
-        max-height: 180px;
+      .cs-channel > i { font-size: 18px; color: var(--wx-text-dim); }
+      .cs--touch wx-select {
+        flex: 1;
+        min-width: 0;
+        --wx-select-height: 42px;
+        --wx-select-padding: 0;
+        --wx-select-background: transparent;
+        --wx-select-border: 0;
+        --wx-select-color: var(--wx-accent-text);
+      }
+      .cs.cs--touch .cs-more {
+        flex: 0 0 44px;
+        height: 42px;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--wx-text-muted);
+        font-size: 20px;
+      }
+      .cs.cs--touch .cs-more--alert { color: var(--wx-danger); }
+      .cs-options {
+        --wx-pop-area: bottom span-left;
+        width: min(300px, calc(100vw - 32px));
+        max-height: min(360px, 70dvh);
+        padding: 16px;
         overflow: auto;
       }
       .cs-options label {
+        display: flex;
+        flex-wrap: wrap;
         margin-top: 10px;
       }
+      .cs-options span, .cs-options p { display: block; margin-top: 10px; }
       .cs-options button {
         margin: 8px 0;
         width: 100%;
@@ -252,8 +292,14 @@ export class CommercialSaleComponent {
   }
   private host: ElementRef<HTMLElement> = inject(ElementRef);
   private returnFocus: HTMLElement | null = null;
+  readonly optionsId = 'cs-options-' + crypto.randomUUID();
+  readonly optionsAnchor = '--' + this.optionsId;
   showCombo(event: Event) {
-    this.returnFocus = event.currentTarget as HTMLElement;
+    const options = this.host.nativeElement.querySelector<HTMLElement>('.cs-options');
+    this.returnFocus = this.touch
+      ? this.host.nativeElement.querySelector<HTMLElement>('.cs-more')
+      : event.currentTarget as HTMLElement;
+    if (options?.matches(':popover-open')) options.hidePopover();
     this.open = true;
     this.message = '';
     setTimeout(

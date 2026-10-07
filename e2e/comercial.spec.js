@@ -829,6 +829,12 @@ test("Touch: canal visible bajo cliente, precio y cobro independientes por cuent
     const customer = await p.locator(".tp-cliente").boundingBox(),
       position = await picker.boundingBox();
     expect(position.y).toBeGreaterThan(customer.y + customer.height);
+    const row = await commercial.locator('.cs--touch').boundingBox();
+    expect(Math.abs(row.height - customer.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(row.width - customer.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(row.x - customer.x)).toBeLessThanOrEqual(1);
+    const cartSpace = await p.locator('.tp-lineas').boundingBox();
+    expect(cartSpace.height).toBeGreaterThan(3 * customer.height);
     const selectChannel = async (name) => {
       await picker.click();
       await commercial.getByRole("option", { name, exact: true }).click();
@@ -837,6 +843,16 @@ test("Touch: canal visible bajo cliente, precio y cobro independientes por cuent
       .locator(".tp-card")
       .filter({ hasText: "Dona comercial " + n });
     await selectChannel("Uber Touch " + n);
+    const options = commercial.getByRole('button', { name: 'Combos y opciones', exact: true });
+    await options.click();
+    const optionsPanel = commercial.getByRole('dialog', { name: 'Combos y opciones', exact: true });
+    await expect(optionsPanel).toBeVisible();
+    expect((await p.locator('.tp-lineas').boundingBox()).height).toBe(cartSpace.height);
+    await optionsPanel.getByRole('textbox', { name: 'Folio de plataforma' }).fill('TOUCH-' + n);
+    await optionsPanel.getByRole('textbox', { name: 'Folio de plataforma' }).press('Escape');
+    await expect(optionsPanel).toBeHidden();
+    await expect(options).toBeFocused();
+    expect((await commercial.locator('.cs--touch').boundingBox()).height).toBe(row.height);
     await expect(card.locator(".tp-card__precio")).toContainText("$32.00");
     await card.click();
     await expect(p.locator(".tp-cart__total")).toContainText("$32.00");
