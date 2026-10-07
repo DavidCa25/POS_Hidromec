@@ -1,4 +1,3 @@
-<app-commercial-sale></app-commercial-sale>
 <div class="tp" [class.tp--cobro]="vista() === 'cobro'">
 
   <!-- ===================================================== BARRA SUPERIOR -->
@@ -120,7 +119,7 @@
           <span class="tp-card__txt">
             <span class="tp-card__nombre">{{ p.product_name }}</span>
             <span class="tp-card__pie">
-              <span class="tp-card__precio">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</span>
+              <span class="tp-card__precio">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</span>
               <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones"></i>
             </span>
           </span>
@@ -165,6 +164,8 @@
         <ng-template #sinCliente><span class="tp-cliente__vacio">Seleccionar</span></ng-template>
         <i class="ph ph-caret-right" aria-hidden="true"></i>
       </button>
+
+      <app-commercial-sale [touch]="true"></app-commercial-sale>
 
       <div class="tp-lineas">
         <div class="tp-linea" *ngFor="let l of lineas()" [class.es-enviada]="l.enviada != null" data-guide="touch-linea" [attr.data-guide-clave]="l.productId">
@@ -354,7 +355,7 @@
                 (click)="tocar(p); cerrarBusqueda()">
           <i class="ph {{ icono(p) }}"></i>
           <span class="tp-res__n">{{ p.product_name }}</span>
-          <span class="tp-res__p">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</span>
+          <span class="tp-res__p">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</span>
         </button>
         <p class="tp-res__vacio" *ngIf="!productos().length">Nada coincide todavía.</p>
       </div>
@@ -370,7 +371,7 @@
           <span class="tp-hoja__media"><i class="ph {{ icono(p) }}"></i></span>
           <div>
             <h3>{{ p.product_name }}</h3>
-            <p>{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</p>
+            <p>{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</p>
           </div>
         </div>
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarHoja()" aria-label="Cerrar">
@@ -434,7 +435,7 @@
             <span>Agregar</span>
             <span class="tp-hoja__precio">{{ precioHoja() | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
           </ng-container>
-          <span *ngIf="!puedeAgregar()">Elige {{ faltantes()[0].name }}</span>
+          <span *ngIf="!puedeAgregar()">{{ faltantes().length ? 'Elige '+faltantes()[0].name : 'Sin precio en este canal' }}</span>
         </button>
       </footer>
     </div>

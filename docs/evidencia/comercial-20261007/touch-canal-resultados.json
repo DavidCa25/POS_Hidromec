@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-07",
+  "fix": "Selector de precios por canal visible debajo del cliente en Touch",
+  "independent_open_accounts_verified": true,
+  "variant_extras_quantity_and_actual_payment_verified": true,
+  "viewport_1280x640_verified": true,
+  "commercial_electron_flows_passed": 10,
+  "commercial_domain_tests_passed": 17,
+  "ui_contract_checks_passed": 8,
+  "production_build_passed": true,
+  "sql_changes": false,
+  "installer_rebuilt_for_this_fix": false
+}
