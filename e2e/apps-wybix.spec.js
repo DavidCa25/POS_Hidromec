@@ -39,3 +39,66 @@ test('Apps: descarga de las dos apps, pasos separados, foco y paridad de navegac
 test('una cajera puede descargar, pero no generar invitaciones de Owner',async({app})=>{
  const p=app.ventana;await entrar(app,CUENTAS.operador);await p.getByRole('button',{name:'Apps Wybix',exact:true}).click();await p.getByRole('button',{name:/Wybix Owner/}).click();await expect(p.locator('.apps__qr img')).toBeVisible();await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('.apps__panel')).toContainText('Pide a un administrador');await expect(p.locator('app-pairing-qr')).toHaveCount(0);
 });
+
+test('Owner: el QR y los errores asíncronos terminan la carga sin otro clic', async ({app}) => {
+  const p = app.ventana;
+  // Respuestas locales aisladas: esta prueba no crea invitaciones en la nube.
+  await app.app.evaluate(({ipcMain}) => {
+    ipcMain.removeHandler('cloud-get-config');
+    ipcMain.handle('cloud-get-config', async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return {success:true, data:{equipo:{registrado:true}, esPrincipal:true}};
+    });
+    ipcMain.removeHandler('cloud-get-pairing');
+    let attempts = 0;
+    ipcMain.handle('cloud-get-pairing', async () => {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (++attempts === 2) throw new Error('Prueba: nube sin conexión');
+      return {success:true, payload:{codigo:'QA-INVITACION',nombre:'Negocio QA'},
+        qrText:JSON.stringify({v:2,codigo:'QA-INVITACION'})};
+    });
+  });
+  await entrar(app, CUENTAS.admin);
+  await p.getByRole('button',{name:'Apps Wybix',exact:true}).click();
+  await p.getByRole('button',{name:/Wybix Owner/}).click();
+  await p.getByRole('button',{name:'2 · Vincular negocio'}).click();
+  const panel = p.locator('app-pairing-qr');
+  await expect(panel.getByAltText('Código de vinculación')).toBeVisible({timeout:5000});
+  await expect(panel.locator('.pq-spinner')).toHaveCount(0);
+  await panel.getByRole('button',{name:'Código nuevo'}).click();
+  await expect(panel.locator('.pq-error')).toContainText('nube sin conexión',{timeout:5000});
+  await expect(panel.locator('.pq-spinner')).toHaveCount(0);
+  await panel.getByRole('button',{name:'Reintentar',exact:true}).click();
+  await expect(panel.getByAltText('Código de vinculación')).toBeVisible({timeout:5000});
+  await expect(panel.locator('.pq-error')).toHaveCount(0);
+});
+
+test('Owner: fallos de consulta y registro liberan la carga y permiten reintentar', async ({app}) => {
+  const p = app.ventana;
+  await app.app.evaluate(({ipcMain}) => {
+    ipcMain.removeHandler('cloud-get-config');
+    let attempts = 0;
+    ipcMain.handle('cloud-get-config', async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (++attempts === 1) throw new Error('Prueba: consulta no disponible');
+      return {success:true, data:{equipo:{registrado:false}, esPrincipal:true}};
+    });
+    ipcMain.removeHandler('cloud-ensure-provisioned');
+    ipcMain.handle('cloud-ensure-provisioned', async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      throw new Error('Prueba: registro sin conexión');
+    });
+  });
+  await entrar(app, CUENTAS.admin);
+  await p.getByRole('button',{name:'Apps Wybix',exact:true}).click();
+  await p.getByRole('button',{name:/Wybix Owner/}).click();
+  await p.getByRole('button',{name:'2 · Vincular negocio'}).click();
+  const panel = p.locator('app-pairing-qr');
+  await expect(panel.locator('.pq-error')).toContainText('consulta no disponible',{timeout:5000});
+  await expect(panel.locator('.pq-spinner')).toHaveCount(0);
+  await panel.getByRole('button',{name:'Reintentar',exact:true}).click();
+  await expect(panel.locator('.pq-error')).toHaveCount(0);
+  await panel.getByRole('button',{name:/Registrar mi negocio/}).click();
+  await expect(panel.locator('.pq-error')).toContainText('registro sin conexión',{timeout:5000});
+  await expect(panel.locator('.pq-spinner')).toHaveCount(0);
+});

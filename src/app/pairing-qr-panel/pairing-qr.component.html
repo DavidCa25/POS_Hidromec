@@ -7,6 +7,7 @@
   <div class="pq-error" *ngIf="error && !loading">
     <i class="ph ph-warning"></i>
     <span>{{ error }}</span>
+    <button type="button" class="pq-btn ghost" (click)="reintentar()">Reintentar</button>
   </div>
 
   <!-- Caja secundaria: la sucursal la registra la principal. -->
