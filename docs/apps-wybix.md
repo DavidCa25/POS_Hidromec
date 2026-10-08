@@ -29,3 +29,9 @@ POS Mobile web: https://wybix-pos-mobile.expo.app
 Owner necesita red para sus consultas. POS Mobile conserva operación local cifrada con catálogo previamente descargado; sincroniza con la app abierta. La impresión web usa el diálogo del navegador, sin TCP directo; no se añadieron notificaciones Web Push. Instala el icono antes de vincular para no cambiar de perfil de almacenamiento.
 
 Validación: build/instalador 1.3.2 correctos; dos E2E Electron de Apps (selección Android/Web, ambas apps, permisos de cajera/admin, foco y navegación). El chunk de Apps del app.asar coincide con el build probado. Release público y latest.yml verificados por hash y disponibilidad anónima.
+
+## Corrección de carga del QR (7 de octubre de 2026)
+
+El panel de vinculación notifica a Angular después de las respuestas IPC para actualizarse dentro de Apps, que usa OnPush. Antes podía permanecer en «Preparando…» aunque ya tuviera el QR o un error. Consulta, registro, unión y creación de sucursal liberan sus indicadores también si el IPC rechaza la petición. Los errores ofrecen Reintentar; las cajas secundarias no solicitan invitaciones de Owner.
+
+El E2E reproduce el bloqueo anterior y verifica QR, renovación fallida, reintento y errores de consulta/registro mediante respuestas IPC locales aisladas, sin crear invitaciones reales. Esta corrección de fuentes requiere reconstruir el instalador; no reemplaza por sí sola el release público.

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import * as QRCode from 'qrcode';
@@ -24,6 +24,7 @@ import Swal from 'sweetalert2';
   styleUrls: ['./pairing-qr.component.css']
 })
 export class PairingQr implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   qrDataUrl: string | null = null;
   private qrText = '';
   nombre = '';
@@ -52,27 +53,40 @@ export class PairingQr implements OnInit {
     this.loading = true;
     this.error = '';
     try {
-      const cfg = (await this.api?.cloudGetConfig?.())?.data;
+      const response = await this.api?.cloudGetConfig?.();
+      if (!response?.success) throw new Error(response?.error || 'No se pudo consultar la conexión del negocio.');
+      const cfg = response.data;
       this.registrado = !!cfg?.equipo?.registrado;
       this.esPrincipal = cfg?.esPrincipal !== false;
-      if (this.registrado) await this.generar();
+      if (this.registrado && this.esPrincipal) await this.generar();
+    } catch (e: any) {
+      this.error = e?.message || 'No se pudo consultar la conexión del negocio.';
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
+
+  reintentar() { return this.cargarEstado(); }
 
   /** Negocio nuevo: esta base se registra como empresa + sucursal. */
   async registrarNegocio() {
     this.loading = true;
     this.error = '';
-    const prov = await this.api?.cloudEnsureProvisioned?.();
-    if (!prov?.success) {
-      this.error = prov?.error || 'No se pudo preparar el negocio en la nube.';
+    try {
+      const prov = await this.api?.cloudEnsureProvisioned?.();
+      if (!prov?.success) {
+        this.error = prov?.error || 'No se pudo preparar el negocio en la nube.';
+        return;
+      }
+      this.registrado = true;
+      await this.generar();
+    } catch (e: any) {
+      this.error = e?.message || 'No se pudo preparar el negocio en la nube.';
+    } finally {
       this.loading = false;
-      return;
+      this.cdr.markForCheck();
     }
-    this.registrado = true;
-    await this.generar();
   }
 
   /** Sucursal nueva de un negocio existente: entra con el código. */
@@ -91,8 +105,11 @@ export class PairingQr implements OnInit {
       this.codigoUnion = '';
       await Swal.fire({ icon: 'success', title: 'Sucursal unida', text: 'Esta sucursal ya es parte del negocio.', timer: 1800, showConfirmButton: false });
       await this.generar();
+    } catch (e: any) {
+      this.error = e?.message || 'No se pudo unir la sucursal.';
     } finally {
       this.uniendo = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -101,6 +118,7 @@ export class PairingQr implements OnInit {
     this.error = '';
     this.aviso = '';
     this.qrDataUrl = null;
+    this.qrText = '';
     try {
       const pair = await this.api?.cloudGetPairing?.();
       if (!pair?.success) {
@@ -121,6 +139,8 @@ export class PairingQr implements OnInit {
       this.error = e?.message || 'Error inesperado.';
     } finally {
       this.loading = false;
+      // El panel Apps usa OnPush: las respuestas IPC no marcan su vista.
+      this.cdr.markForCheck();
     }
   }
 
@@ -144,8 +164,11 @@ export class PairingQr implements OnInit {
       if (!r?.success) { this.error = r?.error || 'No se pudo crear la sucursal.'; return; }
       this.codigoSucursal = { codigo: r.codigo, expira: r.expira, nombre };
       this.nombreSucursal = '';
+    } catch (e: any) {
+      this.error = e?.message || 'No se pudo crear la sucursal.';
     } finally {
       this.creandoSucursal = false;
+      this.cdr.markForCheck();
     }
   }
 }
