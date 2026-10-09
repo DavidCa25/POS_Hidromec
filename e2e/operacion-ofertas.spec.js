@@ -144,18 +144,24 @@ test("Touch: mayoreo, quitar una pieza, pago dividido y acciones posventa reales
         .getByRole("button", { name: k, exact: true })
         .click();
   };
-  await key("20");
-  await p
-    .locator(".tp-dinero")
-    .getByRole("button", { name: /Recibido/ })
-    .click();
-  await key("50");
+  // Por defecto: efectivo y tarjeta; lo no tecleado se llena con lo que falta.
+  await expect(p.locator(".tp-dinero--mixto")).toContainText("$60.00");
   await p
     .locator(".tp-metodos")
     .getByRole("button", { name: "Tarjeta", exact: true })
     .click();
+  await key("40");
+  await expect(
+    p.locator(".tp-dinero--mixto").getByRole("button", { name: /Efectivo recibido/ }),
+  ).toContainText("$20.00");
+  await p
+    .locator(".tp-dinero--mixto")
+    .getByRole("button", { name: /Efectivo recibido/ })
+    .click();
+  await key("50");
   await expect(p.locator(".tp-pagos")).toContainText("$40.00");
-  await expect(p.locator(".tp-pagos")).toContainText("$30.00");
+  await expect(p.locator(".tp-pagos")).toContainText("$20.00");
+  await expect(p.locator(".tp-pagos")).toContainText("Cambio $30.00");
   const before = new Set(rows(await app.invocar("getSales")).map((x) => x.id));
   await p.screenshot({
     path: "docs/evidencia/comercial-20261007/cobro-mixto-touch.png",

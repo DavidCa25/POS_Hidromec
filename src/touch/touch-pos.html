@@ -459,27 +459,39 @@
       </div>
 
       <div class="tp-metodos" role="group" aria-label="Método de pago">
-        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped" aria-hidden="true"></i><span>Plataforma</span></button>
-        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodo() === 'EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('PLATAFORMA')" [class.foco]="pagoMixto() && metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped" aria-hidden="true"></i><span>Plataforma</span></button>
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('EFECTIVO')" [class.foco]="pagoMixto() && metodo()==='EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
           <i class="ph ph-coins" aria-hidden="true"></i> Efectivo
         </button>
-        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodo() === 'TARJETA'" (click)="elegirMetodo('TARJETA')">
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('TARJETA')" [class.foco]="pagoMixto() && metodo()==='TARJETA'" (click)="elegirMetodo('TARJETA')">
           <i class="ph ph-credit-card" aria-hidden="true"></i> Tarjeta
         </button>
-        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodo() === 'TRANSFERENCIA'" (click)="elegirMetodo('TRANSFERENCIA')">
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('TRANSFERENCIA')" [class.foco]="pagoMixto() && metodo()==='TRANSFERENCIA'" (click)="elegirMetodo('TRANSFERENCIA')">
           <i class="ph ph-bank" aria-hidden="true"></i> Transferencia
         </button>
       </div>
 
       <ng-container *ngIf="metodo() === 'EFECTIVO' || pagoMixto()">
-        <div class="tp-dinero" [class.tp-dinero--mixto]="pagoMixto()">
-          <button type="button" *ngIf="pagoMixto()" class="tp-dinero__campo" [class.on]="entradaPago()==='amount'" (click)="enfocarPago('amount')"><span>Importe de este pago</span><b>{{pagoSeleccionado()?.amount|currency:'MXN':'symbol-narrow':'1.2-2'}}</b></button>
-          <button type="button" [disabled]="cobrando()" class="tp-dinero__campo" *ngIf="metodo()==='EFECTIVO'" [class.on]="pagoMixto() && entradaPago()==='received'" (click)="pagoMixto() && enfocarPago('received')">
-            <span>Recibido</span>
-            <b>{{ (pagoMixto() ? pagoSeleccionado()?.received ?? 0 : recibidoNum()) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+        <!-- Pago dividido: un campo por método, lo que se recibió en cada uno.
+             El que no se ha tecleado se calcula solo con lo que falta. -->
+        <div class="tp-dinero tp-dinero--mixto" *ngIf="pagoMixto()">
+          <button type="button" *ngFor="let m of metodosMixtos()" [disabled]="cobrando()" class="tp-dinero__campo"
+                  [class.on]="metodo()===m" (click)="enfocarPago(m)">
+            <span>{{ m==='EFECTIVO' ? 'Efectivo recibido' : m==='TARJETA' ? 'Tarjeta' : m==='TRANSFERENCIA' ? 'Transferencia' : 'Plataforma' }}<small *ngIf="montosMixtos().auto===m"> · lo que falta</small></span>
+            <b>{{ (montosMixtos().valores[m] ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
           </button>
+          <div class="tp-dinero__campo tp-dinero__campo--cambio" *ngIf="metodosMixtos().includes('EFECTIVO')" [class.activo]="cambio() > 0">
+            <span>Cambio</span>
+            <b>{{ cambio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+        </div>
+        <div class="tp-dinero" *ngIf="!pagoMixto()">
+          <div class="tp-dinero__campo">
+            <span>Recibido</span>
+            <b>{{ recibidoNum() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
           <!-- El cambio toma protagonismo solo cuando ya hay recibido -->
-          <div class="tp-dinero__campo tp-dinero__campo--cambio" *ngIf="metodo()==='EFECTIVO'" [class.activo]="recibidoNum() > 0">
+          <div class="tp-dinero__campo tp-dinero__campo--cambio" [class.activo]="recibidoNum() > 0">
             <span>Cambio</span>
             <b>{{ cambio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
           </div>
@@ -543,7 +555,10 @@
           <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
         </div>
       </div>
-      <section class="tp-pagos" *ngIf="pagoMixto()"><h3>Distribución del pago</h3><button type="button" *ngFor="let p of pagos()" [class.on]="metodo()===p.method" (click)="elegirMetodo(p.method)"><i class="ph" [class.ph-coins]="p.method==='EFECTIVO'" [class.ph-credit-card]="p.method==='TARJETA'" [class.ph-bank]="p.method==='TRANSFERENCIA'" [class.ph-moped]="p.method==='PLATAFORMA'" aria-hidden="true"></i><span>{{p.method}}<small *ngIf="p.method==='EFECTIVO'">Recibido {{p.received|currency:'MXN':'symbol-narrow'}} · Cambio {{cambio()|currency:'MXN':'symbol-narrow'}}</small></span><b>{{p.amount|currency:'MXN':'symbol-narrow'}}</b><i class="ph ph-pencil-simple" aria-hidden="true"></i></button><p>Por cubrir <b>{{saldoPagos()|currency:'MXN':'symbol-narrow'}}</b></p><small>Toca un pago para editarlo con el teclado. Confirma tarjeta o transferencia antes de registrar.</small></section>
+      <section class="tp-pagos" *ngIf="pagoMixto()"><h3>Distribución del pago</h3>
+        <div *ngFor="let p of pagos()" class="tp-pagos__l"><i class="ph" [class.ph-coins]="p.method==='EFECTIVO'" [class.ph-credit-card]="p.method==='TARJETA'" [class.ph-bank]="p.method==='TRANSFERENCIA'" [class.ph-moped]="p.method==='PLATAFORMA'" aria-hidden="true"></i><span>{{ p.method==='EFECTIVO' ? 'Efectivo' : p.method==='TARJETA' ? 'Tarjeta' : p.method==='TRANSFERENCIA' ? 'Transferencia' : 'Plataforma' }}<small *ngIf="p.method==='EFECTIVO' && cambio() > 0">Recibido {{p.received|currency:'MXN':'symbol-narrow'}} · Cambio {{cambio()|currency:'MXN':'symbol-narrow'}}</small></span><b>{{p.amount|currency:'MXN':'symbol-narrow'}}</b></div>
+        <p *ngIf="saldoPagos() > 0">Por cubrir <b>{{saldoPagos()|currency:'MXN':'symbol-narrow'}}</b></p>
+        <small>Confirma tarjeta o transferencia en la terminal antes de registrar.</small></section>
     </aside>
   </div>
 

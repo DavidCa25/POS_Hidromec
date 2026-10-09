@@ -340,25 +340,80 @@ export class TouchPos implements OnInit, OnDestroy {
   cobrando = signal(false);
 
   readonly recibidoNum = computed(() => Number(this.recibido() || 0));
+  /* ---------------------------------------------------------------------
+     Pago dividido. La persona solo escribe lo que recibió por método:
+     el efectivo que le dieron y lo que pasó por tarjeta (o transferencia,
+     plataforma). Un método que no ha tecleado se llena solo con lo que
+     falta; del efectivo sale lo aplicado y el cambio. Nada de «importe de
+     este pago» y «recibido» por separado.
+     --------------------------------------------------------------------- */
   readonly pagoMixto = signal(false);
-  readonly pagos = signal<PagoAplicado[]>([]);
-  readonly entradaPago = signal<'amount'|'received'>('received');
-  readonly pagoSeleccionado = computed(() => this.pagos().find(p => p.method === this.metodo()));
+  readonly metodosMixtos = signal<PagoAplicado['method'][]>([]);
+  readonly capturados = signal<Partial<Record<PagoAplicado['method'], number>>>({});
+  /** Lo que muestra cada campo: tecleado o calculado. */
+  readonly montosMixtos = computed(() => {
+    const total = this.totales().total, ms = this.metodosMixtos(), cap = this.capturados();
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const auto = [...ms].reverse().find(m => cap[m] === undefined);
+    const tecleado = ms.reduce((a, m) => a + (m !== auto ? (cap[m] ?? 0) : 0), 0);
+    const out: Partial<Record<PagoAplicado['method'], number>> = {};
+    for (const m of ms) out[m] = m === auto ? Math.max(0, r2(total - tecleado)) : (cap[m] ?? 0);
+    return { valores: out, auto };
+  });
+  /** Distribución que se registra: el efectivo aplica solo lo que falta. */
+  readonly pagos = computed<PagoAplicado[]>(() => {
+    const total = this.totales().total, { valores } = this.montosMixtos();
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const otros = this.metodosMixtos().filter(m => m !== 'EFECTIVO').map(m => ({ method: m, amount: r2(valores[m] ?? 0) }));
+    const out: PagoAplicado[] = otros.filter(p => p.amount > 0);
+    if (this.metodosMixtos().includes('EFECTIVO')) {
+      const recibido = r2(valores.EFECTIVO ?? 0), falta = Math.max(0, r2(total - otros.reduce((a, p) => a + p.amount, 0)));
+      const aplicado = Math.min(recibido, falta);
+      if (aplicado > 0) out.unshift({ method: 'EFECTIVO', amount: aplicado, received: recibido });
+    }
+    return out;
+  });
   readonly saldoPagos = computed(() => Math.round((this.totales().total-this.pagos().reduce((a,p)=>a+p.amount,0))*100)/100);
-  readonly cambio = computed(() => { const cash=this.pagos().find(p=>p.method==='EFECTIVO'); return this.pagoMixto() ? Math.max(0,(cash?.received??cash?.amount??0)-(cash?.amount??0)) : Math.max(0,this.recibidoNum()-this.totales().total); });
-  alternarMixto(enabled:boolean) { if(this.cobrando())return; this.pagoMixto.set(enabled); this.pagos.set(enabled ? [{method:'EFECTIVO',amount:0,received:0}] : []); this.elegirMetodo('EFECTIVO'); }
-  enfocarPago(field:'amount'|'received') { if(this.cobrando())return;this.entradaPago.set(field);const p=this.pagoSeleccionado();this.recibido.set(String((field==='amount'?p?.amount:p?.received)??0)); }
-  aplicarEntrada(value:string) { this.recibido.set(value); if(this.pagoMixto()) { const n=Number(value||0);this.pagos.update(ps=>ps.map(p=>p.method===this.metodo()?{...p,[this.entradaPago()]:Number.isFinite(n)?n:0}:p)); } }
-  readonly errorPagos = computed(() => { if(!this.pagoMixto()) return '';try{validarPagos(this.totales().total,this.pagos().filter(p=>p.amount>0));return '';}catch(e){return (e as Error).message;} });
+  readonly cambio = computed(() => { if (!this.pagoMixto()) return Math.max(0,this.recibidoNum()-this.totales().total); const c=this.pagos().find(p=>p.method==='EFECTIVO'); return c ? Math.max(0,Math.round(((c.received??c.amount)-c.amount)*100)/100) : 0; });
+  alternarMixto(enabled:boolean) {
+    if(this.cobrando())return;
+    this.pagoMixto.set(enabled); this.capturados.set({}); this.recibido.set('');
+    this.metodosMixtos.set(enabled ? ['EFECTIVO','TARJETA'] : []);
+    this.metodo.set('EFECTIVO');
+  }
+  /** Enfocar un método: el teclado escribe sobre él desde cero. */
+  enfocarPago(m:PagoAplicado['method']) { if(this.cobrando())return; this.metodo.set(m); this.recibido.set(''); }
+  metodoIncluido(m:PaymentMethod) { return this.pagoMixto() ? this.metodosMixtos().includes(m as PagoAplicado['method']) : this.metodo()===m; }
+  aplicarEntrada(value:string) {
+    this.recibido.set(value);
+    if(!this.pagoMixto())return;
+    const m=this.metodo() as PagoAplicado['method'], n=Number(value);
+    this.capturados.update(c=>{ const x={...c}; if(value===''||!Number.isFinite(n)) delete x[m]; else x[m]=n; return x; });
+  }
+  readonly errorPagos = computed(() => {
+    if(!this.pagoMixto()) return '';
+    const total=this.totales().total, { valores }=this.montosMixtos();
+    const otros=this.metodosMixtos().filter(m=>m!=='EFECTIVO').reduce((a,m)=>a+(valores[m]??0),0);
+    if(Math.round(otros*100)>Math.round(total*100)) return 'Tarjeta, transferencia y plataforma suman más que el total.';
+    try{validarPagos(total,this.pagos());return '';}catch(e){return (e as Error).message;}
+  });
   readonly alcanza = computed(() => this.pagoMixto() ? !this.errorPagos() : this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total);
 
   /** Sugerencias de billete: el importe exacto y los redondeos utiles. */
   readonly sugerencias = computed(() => {
-    const t = this.pagoMixto() ? (this.entradaPago()==='received' ? this.pagoSeleccionado()?.amount??0 : Math.max(0,this.saldoPagos())+(this.pagoSeleccionado()?.amount??0)) : this.totales().total;
+    const t = this.pagoMixto() ? this.faltaPara(this.metodo() as PagoAplicado['method']) : this.totales().total;
+    if (this.pagoMixto() && this.metodo() !== 'EFECTIVO') return t > 0 ? [t] : [];
     if (t <= 0) return [];
     const base = [Math.ceil(t), 50, 100, 200, 500, 1000];
     return [...new Set(base.filter(v => v >= t))].sort((a, b) => a - b).slice(0, 4);
   });
+
+  /** Lo que le falta cubrir a un método con lo que ya llevan los demás. */
+  faltaPara(m:PagoAplicado['method']) {
+    const cap=this.capturados();
+    const otros=this.metodosMixtos().filter(x=>x!==m).reduce((a,x)=>a+(cap[x]??0),0);
+    return Math.max(0,Math.round((this.totales().total-otros)*100)/100);
+  }
 
   private offBarcode: (() => void) | null = null;
 
@@ -812,7 +867,7 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   private abrirCobro() {
-    this.pagoMixto.set(false);this.pagos.set([]);
+    this.pagoMixto.set(false);this.metodosMixtos.set([]);this.capturados.set({});
     this.recibido.set('');
     this.metodo.set('EFECTIVO');
     this.vista.set('cobro');
@@ -841,12 +896,23 @@ export class TouchPos implements OnInit, OnDestroy {
   usarSugerencia(v:number) { if(!this.cobrando())this.aplicarEntrada(String(v)); }
   elegirMetodo(m:PaymentMethod) {
     if(this.cobrando())return;
-    this.metodo.set(m);
     if(this.pagoMixto()) {
-      if(!['EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA'].includes(m))return;
-      if(!this.pagos().some(p=>p.method===m))this.pagos.update(ps=>[...ps,{method:m as PagoAplicado['method'],amount:Math.max(0,this.saldoPagos()),...(m==='EFECTIVO'?{received:0}:{})}]);
-      this.enfocarPago('amount');
-    } else if(m!=='EFECTIVO')this.recibido.set('');
+      const pm=m as PagoAplicado['method'];
+      if(!['EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA'].includes(pm))return;
+      const ms=this.metodosMixtos();
+      if(!ms.includes(pm)) { if(ms.length>=4)return; this.metodosMixtos.set([...ms,pm]); this.enfocarPago(pm); return; }
+      // Tocar el método que ya se está editando lo quita (si queda al menos uno).
+      if(this.metodo()===pm && ms.length>1) {
+        this.metodosMixtos.set(ms.filter(x=>x!==pm));
+        this.capturados.update(c=>{ const x={...c}; delete x[pm]; return x; });
+        this.enfocarPago(this.metodosMixtos()[0]);
+        return;
+      }
+      this.enfocarPago(pm);
+      return;
+    }
+    this.metodo.set(m);
+    if(m!=='EFECTIVO')this.recibido.set('');
   }
 
   async confirmar() {
