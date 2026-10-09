@@ -27,6 +27,11 @@ CREATE TABLE dbo.products (
     allow_decimal_qty BIT NOT NULL CONSTRAINT DF_products_allow_decimal_qty DEFAULT ((0)),
     image_version INT NOT NULL CONSTRAINT DF_products_image_version DEFAULT ((0)),
     uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_products_uuid DEFAULT (newid()),
+    corporate BIT NOT NULL CONSTRAINT DF_products_corporate DEFAULT ((0)),
+    corporate_price DECIMAL(10, 2) NULL,
+    corporate_sellable BIT NULL,
+    corporate_override DECIMAL(10, 2) NULL,
+    corporate_available BIT NULL,
     PRIMARY KEY CLUSTERED (id),
     UNIQUE NONCLUSTERED (part_number)
 );
