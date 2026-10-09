@@ -19,6 +19,8 @@ CREATE TABLE dbo.sale_detail (
     recipe_id INT NULL,
     variant_option_id INT NULL,
     commercial_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
+    tax_rate DECIMAL(9, 6) NULL,
+    tax_object NVARCHAR(2) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

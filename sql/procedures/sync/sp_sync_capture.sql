@@ -94,6 +94,7 @@ BEGIN
                 s.paid_amount                   AS paid_amount,
                 s.balance                       AS balance,
                 s.payment_method                AS payment_method,
+                JSON_QUERY((SELECT payment_method method,amount,received,reference FROM dbo.sale_payments WHERE sale_id=s.id FOR JSON PATH)) AS payments,
                 s.service_mode                  AS service_mode,
                 s.venta_esencial                AS venta_esencial,
                 JSON_QUERY(s.commercial_snapshot) AS commercial,

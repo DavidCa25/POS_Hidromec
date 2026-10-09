@@ -99,6 +99,7 @@ asignar('inventory', [
 ]);
 
 asignar('cash', [
+  'sp_cash_closure_ticket',
   'sp_open_shift', 'sp_close_shift', 'sp_get_open_shift', 'sp_register_cash_out',
   'sp_cash_summary', 'sp_get_cash_closures', 'sp_get_cash_movements',
   // 0049: la unica respuesta a "de que caja es este dinero".

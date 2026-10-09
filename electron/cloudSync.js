@@ -192,16 +192,32 @@ async function llamarFuncion(funcion, cuerpo = {}, { token = null, legado = null
   if (instalacion.version) headers['x-wybix-version'] = String(instalacion.version);
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
+  let res;
   try {
-    const res = await fetch(`${url}/functions/v1/${funcion}`, { method: 'POST', headers, body: JSON.stringify(cuerpo), signal: controller.signal });
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.success) {
-      const err = new Error(data?.error || `${funcion} HTTP ${res.status}`);
-      err.code = data?.code; err.status = res.status; err.data = data;
-      throw err;
-    }
-    return data;
+    res = await fetch(`${url}/functions/v1/${funcion}`, { method: 'POST', headers, body: JSON.stringify(cuerpo), signal: controller.signal });
+  } catch (e) {
+    log(`${funcion}: sin respuesta (${e.name === 'AbortError' ? 'tiempo agotado' : e.message})`);
+    const err = new Error('No hay conexión con Wybix en este momento. Revisa internet e intenta de nuevo.');
+    err.code = 'OFFLINE';
+    throw err;
   } finally { clearTimeout(t); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.success) {
+    /* El texto técnico (función y código HTTP) va al registro; a la persona
+       en caja solo le llega un mensaje que puede entender y atender. */
+    log(`${funcion}: HTTP ${res.status}${data?.code ? ' ' + data.code : ''}`);
+    const err = new Error(data?.error || mensajeNube(res.status));
+    err.code = data?.code; err.status = res.status; err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function mensajeNube(status) {
+  if (status === 401 || status === 403) return 'Este equipo no está autorizado en la nube de Wybix. Revisa la conexión en Configuración.';
+  if (status === 413) return 'El archivo es demasiado grande para enviarlo.';
+  if (status === 429) return 'Se hicieron demasiadas solicitudes. Espera un momento e intenta de nuevo.';
+  return 'El servicio de Wybix no está disponible en este momento. Intenta de nuevo en unos minutos.';
 }
 
 const identidad = crearIdentidad({

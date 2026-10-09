@@ -55,6 +55,7 @@ export class CommercialPanelComponent implements OnDestroy {
   loading = true;
   filter = '';
   statusFilter = 'all';
+  offerKind = 'all';
   selected: Offer | null = null;
   draft: Offer | null = null;
   newDraft = false;
@@ -62,6 +63,7 @@ export class CommercialPanelComponent implements OnDestroy {
   editorError = '';
   pendingDelete: Offer | null = null;
   previewLines: PartidaComercial[] = [];
+  get hasVolume(){return this.policy?.promotions.some(p=>p.kind==='VOLUME')??false;}
   previewResult: CuentaComercial | null = null;
   previewChannel = 'LOCAL';
   previewDate = this.today();
@@ -72,6 +74,7 @@ export class CommercialPanelComponent implements OnDestroy {
   readonly days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   readonly weekdayOrder = [1, 2, 3, 4, 5, 6, 0];
   readonly typeOptions: WxOpcion[] = [
+    { valor: 'VOLUME', etiqueta: 'Mayoreo por cantidad', nota: 'Precio desde un mínimo de piezas' },
     {
       valor: 'PRICE',
       etiqueta: 'Precio especial',
@@ -101,6 +104,7 @@ export class CommercialPanelComponent implements OnDestroy {
   readonly createOptions: WxMenuOpcion[] = [
     { valor: 'promotion', etiqueta: 'Crear promoción', icono: 'ph ph-tag' },
     { valor: 'combo', etiqueta: 'Crear combo', icono: 'ph ph-stack' },
+    { valor: 'volume', etiqueta: 'Crear mayoreo', icono: 'ph ph-package' },
   ];
   constructor() {
     this.subscription = this.route.queryParamMap.subscribe(
@@ -218,6 +222,7 @@ export class CommercialPanelComponent implements OnDestroy {
     const q = this.filter.trim().toLowerCase();
     return this.offers.filter(
       (o) =>
+        (this.offerKind === 'all' || (this.offerKind === 'volume' ? o.item.kind === 'VOLUME' : this.offerKind === 'combo' ? o.type === 'combo' : o.type === 'promotion' && o.item.kind !== 'VOLUME')) &&
         o.item.name.toLowerCase().includes(q) &&
         (this.statusFilter === 'all' ||
           (this.statusFilter === 'active'
@@ -256,6 +261,7 @@ export class CommercialPanelComponent implements OnDestroy {
       : null;
   }
   kindLabel(o: Offer) {
+    if(o.item.kind === 'VOLUME') return 'Desde ' + o.item.minimumQty + ' piezas';
     return o.type === 'combo'
       ? 'Combo'
       : o.item.kind === 'ADDON'
@@ -270,6 +276,7 @@ export class CommercialPanelComponent implements OnDestroy {
     const r = o.item;
     if (o.type === 'combo')
       return r.groups.map((g: any) => g.quantity + ' ' + g.name).join(' + ');
+    if (r.kind === 'VOLUME') return 'Mayoreo desde ' + r.minimumQty + ' piezas' + (r.mixProducts !== false ? ' · Puedes mezclar productos elegibles.' : ' del mismo producto y tamaño.');
     if (r.kind === 'BUY_PAY')
       return 'Lleva ' + r.buy + ' y paga ' + r.pay + '.';
     if (r.kind === 'ADDON')
@@ -288,7 +295,6 @@ export class CommercialPanelComponent implements OnDestroy {
   }
   schedule(o: Offer, compact = false) {
     const r = o.item;
-    if (o.type === 'combo') return 'Todos los días';
     const weekdays = [...(r.weekdays ?? [])].sort();
     const days =
       weekdays.join(',') === '1,2,3,4,5'
@@ -432,7 +438,7 @@ export class CommercialPanelComponent implements OnDestroy {
     if (o.type === 'combo')
       for (const g of o.item.groups) add(g.selector, g.quantity, g.id);
     else {
-      add(o.item.selector, o.item.kind === 'BUY_PAY' ? o.item.buy : 1);
+      add(o.item.selector, o.item.kind === 'BUY_PAY' ? o.item.buy : o.item.kind === 'VOLUME' ? o.item.minimumQty : 1);
       if (o.item.kind === 'ADDON') add(o.item.trigger, o.item.triggerQty);
     }
     this.preview();
@@ -507,7 +513,8 @@ export class CommercialPanelComponent implements OnDestroy {
       0,
     );
   }
-  create(type: 'promotion' | 'combo') {
+  create(requested: 'promotion' | 'combo' | 'volume') {
+    const type = requested === 'volume' ? 'promotion' : requested;
     const id = this.id();
     this.newDraft = true;
     this.draft = {
@@ -520,6 +527,7 @@ export class CommercialPanelComponent implements OnDestroy {
               name: 'Nuevo combo',
               active: false,
               price: '0.00',
+              weekdays:[],windows:[],
               groups: [
                 {
                   id: this.id(),
@@ -531,10 +539,12 @@ export class CommercialPanelComponent implements OnDestroy {
             }
           : {
               id,
-              name: 'Nueva promoción',
+              name: requested === 'volume' ? 'Nuevo mayoreo' : 'Nueva promoción',
               active: false,
               priority: 10,
-              kind: 'PRICE',
+              kind: requested === 'volume' ? 'VOLUME' : 'PRICE',
+              minimumQty: requested === 'volume' ? 6 : undefined,
+              mixProducts: true,
               selector: { products: [] },
               value: '0.00',
               channels: ['LOCAL'],
@@ -569,6 +579,7 @@ export class CommercialPanelComponent implements OnDestroy {
     if (this.busy) event.preventDefault();
   }
   changeKind(r: any) {
+    if (r.kind === 'VOLUME') { r.minimumQty ??= 6; r.mixProducts ??= true; delete r.maxApplications; }
     if (r.kind === 'BUY_PAY') {
       r.buy = 2;
       r.pay = 1;

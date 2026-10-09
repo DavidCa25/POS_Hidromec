@@ -31,6 +31,7 @@ BEGIN
     BEGIN TRAN;
 
     IF EXISTS(SELECT 1 FROM dbo.sales WHERE id=@sale_id AND commercial_snapshot IS NOT NULL) THROW 51000,'Las ventas con ofertas se corrigen mediante devolución y una nueva venta.',1;
+    IF EXISTS(SELECT 1 FROM dbo.sales WHERE id=@sale_id AND payment_method='MIXTO') THROW 51000,'Corrige un pago mixto mediante devolución y una nueva venta.',1;
     IF EXISTS (SELECT 1 FROM dbo.sale_refunds WHERE sale_id = @sale_id)
     BEGIN
       RAISERROR('No se puede actualizar: la venta ya tiene reembolsos.',16,1);
@@ -206,6 +207,7 @@ BEGIN
       END
     END
 
+    UPDATE p SET amount=s.total FROM dbo.sale_payments p JOIN dbo.sales s ON s.id=p.sale_id WHERE s.id=@sale_id;
     COMMIT TRAN;
 
     SELECT

@@ -31,6 +31,7 @@ BEGIN
         s.id,
         s.datee,
         s.total,
+        (SELECT payment_method,amount,received,reference FROM dbo.sale_payments WHERE sale_id=s.id FOR JSON PATH) payments_json,
         s.payment_method,
         s.paid_amount,
         s.balance,
@@ -57,8 +58,8 @@ BEGIN
         d.note,
         /* La tasa de CADA producto: sin esto el ticket tiene que suponer que
            todo lleva IVA general, y con un producto exento miente. */
-        p.objeto_impuesto,
-        p.tasa_iva,
+        COALESCE(d.tax_object,p.objeto_impuesto) objeto_impuesto,
+        COALESCE(d.tax_rate,p.tasa_iva) tasa_iva,
         p.base_uom,
         mods.modifiers,
         JSON_VALUE(d.commercial_snapshot,'$.ruleName') AS commercial_offer

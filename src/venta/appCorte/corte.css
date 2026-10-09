@@ -1232,3 +1232,5 @@
 
 /* 0049: sub-renglones de egresos por concepto dentro de "Dinero en caja". */
 .desglose-row.desglose-sub { padding-left: 1.25rem; font-size: .85rem; color: var(--wx-text-muted); }
+
+.corte-reprint{display:flex;gap:12px;align-items:center;max-width:650px;margin-bottom:16px}.corte-reprint wx-select{flex:1;min-width:0}

@@ -233,6 +233,7 @@ BEGIN
            AND datee >= @opened_at
            AND datee <= @now;
 
+        EXEC dbo.sp_cash_closure_ticket @closure_id=@cid,@freeze=1;
         COMMIT TRAN;
 
         SELECT

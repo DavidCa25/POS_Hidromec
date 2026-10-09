@@ -1,3 +1,4 @@
+import { validarPagos } from '../../shared/pagos';
 import {CommercialService} from './commercial.service';
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
@@ -52,7 +53,12 @@ export class SaleService {
   /** Carrito -> intencion de venta. Puro: no toca IPC. */
   buildIntent(cart: Cart, payment: Payment): SaleIntent {
     const isCredit = payment.method === 'CREDITO';
+    const signature = JSON.stringify({lines:cart.lines.map(l=>[l.productId,l.qty,l.options,l.combo]),quote:cart.commercial?.quote?.total,customer:cart.customer?.id,payment});
+    cart.meta ??= {};
+    if(cart.meta['checkoutSignature']!==signature){ cart.meta['checkoutSignature']=signature;cart.meta['checkoutKey']=crypto.randomUUID(); }
     return {
+      clientSaleKey:String(cart.meta['checkoutKey']),
+      payments:payment.payments,
       commercialQuote:cart.commercial?.quote?.id,
       userId: this.auth.usuarioActualId as number,
       paymentMethod: payment.method,
@@ -77,6 +83,7 @@ export class SaleService {
     const t = CartService.totalsOf(cart);
     if (!cart.lines.length) return 'Agrega productos a la venta';
     if (t.total <= 0) return 'El total de la venta debe ser mayor a cero';
+    if (payment.payments || payment.method === 'MIXTO') { try { validarPagos(t.total,payment.payments!); return null; } catch(e){ return (e as Error).message; } }
     if (payment.method === 'CREDITO') {
       if (payment.creditCustomerId == null) return 'Selecciona el cliente para la venta a crédito.';
       return null;
@@ -146,13 +153,13 @@ export class SaleService {
       let paid = totals.total;
       let change = 0;
       if (!isCredit) {
-        if (payment.method === 'TERMINAL_MP') {
+        if (payment.payments) { const distribution=validarPagos(totals.total,payment.payments);paid=totals.total+distribution.change;change=distribution.change; } else if (payment.method === 'TERMINAL_MP') {
           paid = totals.total; change = 0;
         } else {
           paid = payment.received ?? totals.total;
           change = Math.max(0, paid - totals.total);
         }
-        if (opts.openDrawer) {
+        if (opts.openDrawer && (!payment.payments || payment.payments.some(p=>p.method==='EFECTIVO'))) {
           try { await api.openCashDrawer?.({ reason: 'payment' }); } catch { /* noop */ }
         }
       }
@@ -210,6 +217,8 @@ export class SaleService {
     const api = this.bridge.api;
     if (api.registerSaleV2) {
       return api.registerSaleV2({
+        payments:intent.payments,
+        clientSaleKey:intent.clientSaleKey,
         commercialQuote:intent.commercialQuote,
         mpOrderId:intent.mpOrderId,
         userId: intent.userId,
@@ -227,6 +236,7 @@ export class SaleService {
         serviceMode: intent.serviceMode,
       });
     }
+    if(intent.payments)return Promise.resolve({success:false,error:'Actualiza el proceso principal para aceptar pagos divididos.'});
     const items = intent.lines.map(l => ({ productId: l.productId, qty: l.qty, unitPrice: l.unitPrice }));
     return api.registerSale(
       intent.userId,

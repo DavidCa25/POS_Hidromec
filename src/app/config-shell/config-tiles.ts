@@ -76,7 +76,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'dispositivos',
         title: 'Dispositivos',
         tiles: [
-            { id: 'impresora', title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', load: ticket },
+            { id: 'impresora', amplio: true, title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', load: ticket },
             { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'barcode', color: 'orange', size: '1x1', statusKey: 'scanner', load: devices },
             { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', load: devices },
             { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', load: devices },
@@ -121,7 +121,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'personalizacion',
         title: 'Personalización',
         tiles: [
-            { id: 'ticket', title: 'Ticket', desc: 'Logo, pie de página y datos fiscales', icon: 'receipt', color: 'purple', size: '1x1', load: ticket },
+            { id: 'ticket', amplio: true, title: 'Tickets y cortes', desc: 'Papel, campos, vista previa e impresión', icon: 'receipt', color: 'purple', size: '1x1', load: ticket },
             { id: 'negocio', title: 'Datos del negocio', desc: 'Nombre, RFC, dirección y moneda', icon: 'storefront', color: 'green', size: '2x1',
               load: () => import('../negocio-panel/negocio-panel.component').then(m => m.NegocioPanelComponent) }
         ]

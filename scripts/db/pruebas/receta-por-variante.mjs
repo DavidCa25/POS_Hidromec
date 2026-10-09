@@ -211,7 +211,7 @@ try {
   // =========================================================================
   seccion('B1. Cada caja cierra la SUYA (el fallo de la laptop)');
 
-  q('DELETE FROM dbo.cash_movements; DELETE FROM dbo.sale_detail; DELETE FROM dbo.sales; DELETE FROM dbo.cash_closures;');
+  q('DELETE FROM dbo.cash_movements; DELETE FROM dbo.ticket_email_jobs; DELETE FROM dbo.sale_payments; DELETE FROM dbo.sale_detail; DELETE FROM dbo.sales; DELETE FROM dbo.cash_closures;');
   const c2 = Number(uno(`EXEC dbo.sp_add_register @name=N'Caja 2';`)?.id);
   q(`EXEC dbo.sp_register_release @register_id=1, @machine_id=NULL, @por=N'ADMIN';`);
   q(`EXEC dbo.sp_register_claim @register_id=1, @machine_id=N'${M1}', @machine_name=N'${NOMBRE[M1]}';`);

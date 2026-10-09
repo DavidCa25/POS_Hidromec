@@ -1,3 +1,5 @@
+import {ReceiptEmail} from '../../app/receipt-email/receipt-email.component';
+import {validarPagos,type PagoAplicado} from '../../../shared/pagos';
 import {CommercialService} from '../../core/commercial.service';
 import {CommercialSaleComponent} from '../../app/commercial-sale/commercial-sale.component';
 import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
@@ -73,7 +75,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
+  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -152,6 +154,7 @@ export class Venta implements OnInit, OnDestroy {
   private readonly BARCODE_MIN_LEN = 6;
 
   printingTicket = false;
+  enviarCorreo=false;
 
   autoPrintTicketOnSale = true;
 
@@ -160,6 +163,11 @@ export class Venta implements OnInit, OnDestroy {
   showModal = false;
   dineroRecibido: number | null = null;
   paymentMethod: PaymentMethod = 'EFECTIVO';
+  pagosMixtos:PagoAplicado[]=[];
+  readonly mixedMethods=[{valor:'EFECTIVO',etiqueta:'Efectivo'},{valor:'TARJETA',etiqueta:'Tarjeta'},{valor:'TRANSFERENCIA',etiqueta:'Transferencia'},{valor:'PLATAFORMA',etiqueta:'Pagado en plataforma'}];
+  get errorMixto(){if(this.paymentMethod!=='MIXTO')return '';try{validarPagos(this.totalVenta,this.pagosMixtos);return '';}catch(e){return (e as Error).message;}}
+  agregarPago(){if(this.cobrando)return;const m=this.mixedMethods.find(m=>!this.pagosMixtos.some(p=>p.method===m.valor));if(m)this.pagosMixtos.push({method:m.valor as PagoAplicado['method'],amount:Math.max(0,Math.round((this.totalVenta-this.pagosMixtos.reduce((a,p)=>a+p.amount,0))*100)/100)});}
+
 
   dueDate: string | null = null;
 
@@ -667,7 +675,9 @@ export class Venta implements OnInit, OnDestroy {
   cerrarModalCobrar() { this.showModal = false; }
 
   async onPaymentMethodChange(method: PaymentMethod) {
+    if(this.cobrando)return;
     this.paymentMethod = method;
+    if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
 
     if (method === 'CREDITO') {
@@ -774,6 +784,7 @@ export class Venta implements OnInit, OnDestroy {
     }
     const payment: Payment = {
       method: this.paymentMethod,
+      payments:this.paymentMethod==='MIXTO'?this.pagosMixtos:undefined,
       received: isCredito ? null : this.dineroRecibido,
       creditCustomerId: isCredito ? this.customerId : null,
       dueDate: isCredito ? this.dueDate : null,
@@ -794,7 +805,7 @@ export class Venta implements OnInit, OnDestroy {
     const mesa = this.mesaSvc.cuentaActiva();
 
     const res = await this.sale.checkout(payment, {
-      openDrawer: !isCredito && this.paymentMethod!=='PLATAFORMA',
+      openDrawer: this.paymentMethod==='MIXTO'?this.pagosMixtos.some(p=>p.method==='EFECTIVO'):this.paymentMethod==='EFECTIVO',
       autoPrint: this.autoPrintTicketOnSale,
     });
 
@@ -1641,7 +1652,7 @@ export class Venta implements OnInit, OnDestroy {
 
     const confirm = await Swal.fire({
       icon: 'question',
-      title: this.refundKind === 'EFECTIVO' ? 'Confirmar reembolso en efectivo' : 'Confirmar cambio',
+      title: this.refundKind === 'EFECTIVO' ? 'Confirmar reembolso' : 'Confirmar cambio',
       html: `<div style="text-align:left">Total: <b>$${totalPreview.toFixed(2)}</b></div>`,
       showCancelButton: true,
       confirmButtonText: 'Sí, confirmar',
@@ -1677,7 +1688,7 @@ export class Venta implements OnInit, OnDestroy {
 
         note: (this.refundNote || '').trim() || null,
 
-        apply_net_update: 1
+        apply_net_update: 0
       };
 
       const resp = await this.sale.refundSale(payload);

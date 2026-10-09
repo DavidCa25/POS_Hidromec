@@ -27,6 +27,7 @@ CREATE TABLE dbo.cash_closures (
     blind_count BIT NULL,
     uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_cash_closures_uuid DEFAULT (newid()),
     rv TIMESTAMP NOT NULL,
+    receipt_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

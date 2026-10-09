@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.politicaVacia = void 0;
 exports.centavos = centavos;
 exports.validarPolitica = validarPolitica;
+exports.vigente = vigente;
 exports.cotizar = cotizar;
 const politicaVacia = () => ({ version: 0, channels: [{ id: 'LOCAL', name: 'Mostrador', active: true, inheritBase: true }], prices: [], promotions: [], combos: [] });
 exports.politicaVacia = politicaVacia;
@@ -58,11 +59,14 @@ function validarPolitica(p) {
         }
     };
     for (const r of p.promotions) {
+        validarVigencia(r);
         if (r.maxApplications !== undefined && !entero(r.maxApplications))
             throw new Error('Límite por cuenta inválido.');
         selector(r.selector);
-        if (!['PRICE', 'PERCENT', 'AMOUNT', 'BUY_PAY', 'ADDON'].includes(r.kind) || !entero(r.priority, 0, 10000))
+        if (!['PRICE', 'PERCENT', 'AMOUNT', 'BUY_PAY', 'ADDON', 'VOLUME'].includes(r.kind) || !entero(r.priority, 0, 10000))
             throw new Error('Tipo o prioridad de promoción inválida.');
+        if (r.kind === 'VOLUME' && (!entero(r.minimumQty, 2) || (r.mixProducts !== undefined && typeof r.mixProducts !== 'boolean') || r.maxApplications !== undefined))
+            throw new Error('Mayoreo inválido: mínimo de 2 a 500 piezas y sin límite parcial de aplicaciones.');
         if (r.kind === 'BUY_PAY') {
             if (!entero(r.buy, 2) || !entero(r.pay, 1) || r.pay >= r.buy)
                 throw new Error('Compra/paga inválido.');
@@ -90,6 +94,7 @@ function validarPolitica(p) {
             throw new Error('Vigencia inválida.');
     }
     for (const c of p.combos) {
+        validarVigencia(c);
         centavos(c.price);
         if (!c.groups.length || c.groups.length > 10)
             throw new Error('El combo necesita de uno a diez grupos.');
@@ -102,13 +107,27 @@ function validarPolitica(p) {
         }
     }
 }
+function validarVigencia(r) {
+    if (r.weekdays && (!Array.isArray(r.weekdays) || r.weekdays.some(d => !entero(d, 0, 6))))
+        throw Error('Día inválido.');
+    if (r.windows && (!Array.isArray(r.windows) || r.windows.some(w => !/^([01]\d|2[0-3]):[0-5]\d$/.test(w.from) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(w.to) || w.from === w.to)))
+        throw Error('Horario inválido.');
+    for (const d of [r.starts, r.ends])
+        if (d && (!/^\d{4}-\d{2}-\d{2}$/.test(d) || new Date(d + 'T12:00:00Z').toISOString().slice(0, 10) !== d))
+            throw Error('Fecha inválida.');
+    if (r.starts && r.ends && r.starts > r.ends)
+        throw Error('Vigencia inválida.');
+}
+function vigente(r, ctx) {
+    return r.active && (!r.channels?.length || r.channels.includes(ctx.channel)) && (!r.starts || ctx.date >= r.starts) && (!r.ends || ctx.date <= r.ends) && (!r.weekdays?.length || r.weekdays.includes(ctx.weekday)) && (!r.windows?.length || r.windows.some(w => w.from < w.to ? ctx.time >= w.from && ctx.time < w.to : ctx.time >= w.from || ctx.time < w.to));
+}
 /** Prioridad explícita: una unidad reservada por combo/oferta no recibe otra oferta. */
 function cotizar(p, products, cart, ctx) {
     validarPolitica(p);
     const channel = p.channels.find(c => c.id === ctx.channel && c.active);
     if (!channel)
         throw new Error('Canal no disponible.');
-    const active = p.promotions.filter(r => r.active && (!r.channels?.length || r.channels.includes(ctx.channel)) && (!r.starts || ctx.date >= r.starts) && (!r.ends || ctx.date <= r.ends) && (!r.weekdays?.length || r.weekdays.includes(ctx.weekday)) && (!r.windows?.length || r.windows.some(w => w.from < w.to ? ctx.time >= w.from && ctx.time < w.to : ctx.time >= w.from || ctx.time < w.to)) && (!r.audience || ctx.audiences?.includes(r.audience))).sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+    const active = p.promotions.filter(r => vigente(r, ctx) && (!r.audience || ctx.audiences?.includes(r.audience))).sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
     const byProduct = new Map(products.map(x => [x.id, x]));
     const keys = new Set();
     const units = [];
@@ -128,7 +147,7 @@ function cotizar(p, products, cart, ctx) {
         const base = centavos(price?.price ?? prod.price), extras = signedCentavos(l.extras);
         if (base + extras < 0n)
             throw Error('El precio con opciones no puede ser negativo.');
-        const needsUnits = !!l.combo || active.some(r => (r.kind === 'BUY_PAY' || r.kind === 'ADDON' || r.maxApplications !== undefined) && (coincide(r.selector, prod, l.variant) || (r.trigger && coincide(r.trigger, prod, l.variant))));
+        const needsUnits = !!l.combo || active.some(r => (r.kind === 'BUY_PAY' || r.kind === 'ADDON' || r.kind === 'VOLUME' || r.maxApplications !== undefined) && (coincide(r.selector, prod, l.variant) || (r.trigger && coincide(r.trigger, prod, l.variant))));
         if (needsUnits && qty % 100n !== 0n)
             throw new Error('Las ofertas requieren unidades completas.');
         if (needsUnits && qty > 50000n)
@@ -143,7 +162,7 @@ function cotizar(p, products, cart, ctx) {
     for (const instance of instances) {
         const selected = units.filter(u => u.src.combo?.instance === instance);
         const id = selected[0].src.combo.id;
-        const combo = p.combos.find(c => c.id === id && c.active && (!c.channels?.length || c.channels.includes(ctx.channel)));
+        const combo = p.combos.find(c => c.id === id && vigente(c, ctx));
         if (!instance || !combo || selected.some(u => u.src.combo.id !== id))
             throw new Error('Combo no disponible.');
         for (const g of combo.groups) {
@@ -179,7 +198,20 @@ function cotizar(p, products, cart, ctx) {
             u.rule = r.id;
             u.locked = true;
         };
-        if (r.kind === 'BUY_PAY') {
+        if (r.kind === 'VOLUME') {
+            const groups = new Map();
+            for (const u of eligible) {
+                const key = r.mixProducts !== false ? '*' : JSON.stringify([u.p.id, u.src.variant ?? null]);
+                const group = groups.get(key) ?? [];
+                group.push(u);
+                groups.set(key, group);
+            }
+            for (const group of groups.values())
+                if (group.length >= r.minimumQty)
+                    for (const u of group)
+                        apply(u, centavos(r.value) + (r.extrasIncluded ? 0n : u.extras));
+        }
+        else if (r.kind === 'BUY_PAY') {
             const sorted = eligible.sort((a, b) => a.price < b.price ? -1 : a.price > b.price ? 1 : a.src.key.localeCompare(b.src.key));
             const groups = Math.floor(sorted.length / r.buy);
             const freebies = groups * (r.buy - r.pay);

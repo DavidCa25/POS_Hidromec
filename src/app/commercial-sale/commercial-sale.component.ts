@@ -1,3 +1,4 @@
+import {vigente} from '../../../shared/comercial';
 import { AuthService } from '../../services/auth.service';
 import {
   Component,
@@ -23,7 +24,7 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
   ],
   template: ` <section
       *ngIf="service.policy as p"
-      class="cs"
+      class="cs" [hidden]="offersOnly"
       [class.cs--touch]="touch"
       aria-label="Canal y ofertas de la cuenta"
     >
@@ -39,6 +40,7 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
         ></wx-select
       ></label>
       <ng-template #accountOptions>
+        <button type="button" (click)="showToday = !showToday">Ofertas de hoy y mayoreo</button>
         <button
           *ngIf="p.combos.some(active)"
           type="button"
@@ -103,6 +105,17 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
       </p>
       </ng-template>
     </section>
+    <section *ngIf="offersOnly || showToday" class="cs-offers" aria-label="Ofertas y mayoreo disponibles">
+      <h3>Ofertas de hoy</h3><p>Se aplican automáticamente al cumplir las condiciones. Una pieza no acumula descuentos.</p>
+      <article *ngFor="let r of service.offersNow">
+        <strong>{{r.name}}</strong>
+        <span>{{offerText(r)}}</span>
+        <button *ngIf="isCombo(r)" type="button" (click)="chooseCombo(r.id,$event)">Armar combo</button>
+        <small *ngIf="$any(r).audience">Requiere confirmar {{$any(r).audience}}</small>
+      </article>
+      <p *ngIf="!service.offersNow.length">No hay ofertas vigentes en este canal y horario.</p>
+    </section>
+    <div *ngIf="!offersOnly" class="cs-volume" aria-live="polite"><span *ngFor="let h of service.volumeHints().slice(0,1)"><strong>{{h.name}}</strong> · {{h.text}}</span></div>
     <div
       *ngIf="open"
       class="cs-modal"
@@ -155,6 +168,12 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
     </div>`,
   styles: [
     `
+      .cs-offers { padding:16px; color:var(--wx-text); }
+      .cs-offers h3 { font-size:var(--wx-text-lg); margin:0 0 10px; }
+      .cs-offers p,.cs-offers small { color:var(--wx-text-muted); font-size:var(--wx-text-sm); }
+      .cs-offers article { display:flex;flex-direction:column;gap:8px;padding:16px;margin:10px 0;background:var(--wx-surface);border-radius:var(--wx-radius-lg);box-shadow:var(--wx-shadow-card); }
+      .cs-offers article button { min-height:44px;background:var(--wx-accent-soft);border:0;border-radius:var(--wx-radius-sm);color:var(--wx-accent-text); }
+      .cs-volume { display:flex;flex-direction:column;gap:4px;padding:0 16px;color:var(--wx-accent-text);font-size:var(--wx-text-xs); }
       .cs {
         display: flex;
         gap: 12px;
@@ -284,6 +303,11 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
 })
 export class CommercialSaleComponent {
   @Input() touch = false;
+  showToday=false;
+  @Input() offersOnly = false;
+  isCombo(r:any) { return Array.isArray(r.groups); }
+  offerText(r:any) { return this.isCombo(r) ? 'Combo · '+Number(r.price).toLocaleString('es-MX',{style:'currency',currency:'MXN'}) : r.kind === 'VOLUME' ? 'Mayoreo desde '+r.minimumQty+' piezas · '+Number(r.value).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+' por pieza' : r.kind === 'BUY_PAY' ? 'Lleva '+r.buy+' y paga '+r.pay : r.kind === 'PERCENT' ? r.value+'% de descuento' : r.kind === 'ADDON' ? 'Precio adicional al comprar '+r.triggerQty+' piezas elegibles' : 'Precio especial · '+r.value; }
+  chooseCombo(id:string,event:Event) { this.comboId=id; this.showCombo(event); }
   get channelLocked() {
     return this.cart.activeCart().lines.some((l) => l.enviada != null);
   }
@@ -352,7 +376,7 @@ export class CommercialSaleComponent {
   selections: Record<string, string> = {};
   optionSelections: Record<string, string[]> = {};
   message = '';
-  active = (x: any) => x.active;
+  active = (x: any) => vigente(x,this.service.context());
   get channelOptions(): WxOpcion[] {
     return (
       this.service.policy?.channels.map((c) => ({
@@ -368,7 +392,7 @@ export class CommercialSaleComponent {
         valor: c.id,
         etiqueta: c.name,
         nota: this.money(c.price),
-        desactivada: !c.active,
+        desactivada: !vigente(c,this.service.context()),
       })) ?? []
     );
   }
@@ -451,7 +475,7 @@ export class CommercialSaleComponent {
     this.message = '';
     try {
       const c = this.combo;
-      if (!c?.active) throw Error('Elige un combo activo.');
+      if (!c || !vigente(c,this.service.context())) throw Error('Elige un combo vigente en este canal y horario.');
       const channel = this.cart.activeCart().commercial?.channel ?? 'LOCAL';
       if (c.channels?.length && !c.channels.includes(channel))
         throw Error('Este combo no está disponible en el canal elegido.');

@@ -18,7 +18,7 @@
         <span class="tp-cuenta__n" *ngIf="itemsDe(c) > 0">{{ itemsDe(c) }}</span>
       </button>
       <button type="button" class="tp-cuenta tp-cuenta--add" (click)="nuevaCuenta()" aria-label="Nueva cuenta">
-        <i class="ph ph-plus"></i>
+        <i class="ph ph-plus" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -33,28 +33,28 @@
            no una pantalla que se visita dos veces al dia. -->
       <button type="button" class="tp-iconbtn" *ngIf="caps.servicios"
               (click)="aServicios()" aria-label="Agenda del día">
-        <i class="ph ph-calendar-blank"></i>
+        <i class="ph ph-calendar-blank" aria-hidden="true"></i>
       </button>
       <!-- El salon, cuando el negocio atiende en mesa. -->
       <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-mesas" *ngIf="caps.mesas"
               (click)="aMesas()" aria-label="Mesas">
-        <i class="ph ph-armchair"></i><span>Mesas</span>
+        <i class="ph ph-armchair" aria-hidden="true"></i><span>Mesas</span>
       </button>
       <!-- Atajos de la caja (los mismos que Retail): con texto, para el dedo. -->
       <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-cajon"
               (click)="abrirCajon()" aria-label="Abrir cajón">
-        <i class="ph ph-vault"></i><span>Abrir cajón</span>
+        <i class="ph ph-vault" aria-hidden="true"></i><span>Abrir cajón</span>
       </button>
       <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-salida"
               (click)="abrirSalida()" aria-label="Salida de efectivo">
-        <i class="ph ph-hand-coins"></i><span>Salida de efectivo</span>
+        <i class="ph ph-hand-coins" aria-hidden="true"></i><span>Salida de efectivo</span>
       </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
-        <i class="ph ph-magnifying-glass"></i>
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
       </button>
       <button type="button" class="tp-iconbtn" (click)="salir()" aria-label="Salir del punto de venta">
-        <i class="ph ph-sign-out"></i>
+        <i class="ph ph-sign-out" aria-hidden="true"></i>
       </button>
     </div>
   </header>
@@ -65,31 +65,33 @@
     <!-- ------------------------------------------------------ CATEGORIAS -->
     <nav class="tp-cats" aria-label="Categorías">
       <button type="button" class="tp-cat" [class.on]="categoriaSel() === null" (click)="elegirCategoria(null)">
-        <i class="ph ph-squares-four"></i>
+        <i class="ph ph-squares-four" aria-hidden="true"></i>
         <span class="tp-cat__txt">Todo</span>
       </button>
       <button type="button" class="tp-cat" *ngFor="let c of categorias()"
               [class.on]="categoriaSel() === c.category_id" (click)="elegirCategoria(c.category_id)">
-        <i class="ph ph-tag"></i>
+        <i class="ph ph-tag" aria-hidden="true"></i>
         <span class="tp-cat__txt">{{ c.category_name }}</span>
       </button>
+      <div class="tp-cats__extras"><button class="tp-cat" type="button" [class.on]="ofertasAbiertas()" (click)="ofertasAbiertas.set(!ofertasAbiertas())" aria-label="Ofertas de hoy y mayoreo"><i class="ph ph-tag" aria-hidden="true"></i><span>Ofertas de hoy</span><small *ngIf="commercial.policy?.promotions?.length">Mayoreo y promociones</small></button></div>
     </nav>
 
     <!-- --------------------------------------------------------- PRODUCTOS -->
     <main class="tp-main">
+      <section class="tp-ofertas" *ngIf="ofertasAbiertas()"><button class="tp-iconbtn tp-iconbtn--claro" (click)="ofertasAbiertas.set(false)" aria-label="Cerrar ofertas"><i class="ph ph-x" aria-hidden="true"></i></button><app-commercial-sale [touch]="true" [offersOnly]="true"></app-commercial-sale></section>
       <div class="tp-estado" *ngIf="cargando()">
-        <i class="ph ph-circle-notch spin"></i>
+        <i class="ph ph-circle-notch spin" aria-hidden="true"></i>
         <p>Cargando catálogo…</p>
       </div>
 
       <div class="tp-estado" *ngIf="!cargando() && errorCatalogo()">
-        <i class="ph ph-warning-circle"></i>
+        <i class="ph ph-warning-circle" aria-hidden="true"></i>
         <h3>No se pudo cargar el catálogo</h3>
         <p>{{ errorCatalogo() }}</p>
       </div>
 
       <div class="tp-estado" *ngIf="!cargando() && !errorCatalogo() && !productos().length">
-        <i class="ph ph-tray"></i>
+        <i class="ph ph-tray" aria-hidden="true"></i>
         <h3>{{ termino() ? 'Sin resultados' : 'Sin productos' }}</h3>
         <p *ngIf="termino()">Nada coincide con “{{ termino() }}”.</p>
         <p *ngIf="!termino()">Marca productos como vendibles en Inventario para que aparezcan aquí.</p>
@@ -120,7 +122,7 @@
             <span class="tp-card__nombre">{{ p.product_name }}</span>
             <span class="tp-card__pie">
               <span class="tp-card__precio">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</span>
-              <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones"></i>
+              <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones" aria-hidden="true"></i>
             </span>
           </span>
         </button>
@@ -148,10 +150,10 @@
       <!-- Estado de la CUENTA completa, no del producto -->
       <div class="tp-servicio" role="group" aria-label="Modo de servicio">
         <button type="button" data-guide="venta-servicio" [class.on]="serviceMode() === 'DINE_IN'" (click)="fijarServicio('DINE_IN')">
-          <i class="ph ph-fork-knife"></i> Aquí
+          <i class="ph ph-fork-knife" aria-hidden="true"></i> Aquí
         </button>
         <button type="button" [class.on]="serviceMode() === 'TAKEAWAY'" (click)="fijarServicio('TAKEAWAY')">
-          <i class="ph ph-bag"></i> Para llevar
+          <i class="ph ph-bag" aria-hidden="true"></i> Para llevar
         </button>
       </div>
 
@@ -185,11 +187,11 @@
           </div>
           <div class="tp-linea__qty" *ngIf="l.enviada == null">
             <button type="button" (click)="mas(l, -1)" [attr.aria-label]="'Quitar uno de ' + l.productName">
-              <i class="ph" [class.ph-minus]="l.qty > 1" [class.ph-trash]="l.qty === 1"></i>
+              <i class="ph" [class.ph-minus]="l.qty > 1" aria-hidden="true" [class.ph-trash]="l.qty === 1"></i>
             </button>
             <span class="tp-linea__num">{{ l.qty }}</span>
             <button type="button" (click)="mas(l, 1)" [attr.aria-label]="'Agregar uno de ' + l.productName">
-              <i class="ph ph-plus"></i>
+              <i class="ph ph-plus" aria-hidden="true"></i>
             </button>
           </div>
 
@@ -197,7 +199,7 @@
         </div>
 
         <div class="tp-cart__vacia" *ngIf="!lineas().length">
-          <i class="ph ph-hand-tap"></i>
+          <i class="ph ph-hand-tap" aria-hidden="true"></i>
           <p>Toca un producto para empezar</p>
         </div>
       </div>
@@ -224,7 +226,7 @@
           <i class="ph ph-armchair" aria-hidden="true"></i> Elegir mesa
         </button>
         <button type="button" class="tp-primaria" data-guide="touch-cobrar" [disabled]="!lineas().length" (click)="irACobro()">
-          <i class="ph ph-arrow-right"></i> Cobrar
+          <i class="ph ph-arrow-right" aria-hidden="true"></i> Cobrar
         </button>
       </div>
     </aside>
@@ -245,7 +247,7 @@
     <div class="tp-hoja tp-hoja--cliente" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="tp-cli-titulo">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
-          <span class="tp-hoja__media"><i class="ph ph-user"></i></span>
+          <span class="tp-hoja__media"><i class="ph ph-user" aria-hidden="true"></i></span>
           <div>
             <h3 id="tp-cli-titulo">{{ nuevoCliente() ? 'Nuevo cliente' : 'Cliente de la venta' }}</h3>
             <p *ngIf="!nuevoCliente()">{{ cliente() ? 'Ahora: ' + cliente()!.name : 'Opcional' }}</p>
@@ -253,7 +255,7 @@
           </div>
         </div>
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarClientes()" aria-label="Cerrar">
-          <i class="ph ph-x"></i>
+          <i class="ph ph-x" aria-hidden="true"></i>
         </button>
       </header>
 
@@ -261,7 +263,7 @@
       <ng-container *ngIf="!nuevoCliente()">
         <div class="tp-hoja__body tp-clientes">
           <div class="tp-buscador__campo">
-            <i class="ph ph-magnifying-glass"></i>
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
             <input id="tp-buscar-cliente" type="search" data-teclado="TEXT" placeholder="Nombre, teléfono o RFC…"
                    autocomplete="off" maxlength="60"
                    [value]="filtroCliente()" (input)="filtroCliente.set($any($event.target).value)"
@@ -270,7 +272,7 @@
           <div class="tp-clientes__lista" role="list">
             <button type="button" class="tp-res tp-res--cliente" role="listitem" *ngFor="let c of clientesFiltrados()"
                     [class.on]="cliente()?.id === c.id" (click)="elegirCliente(c)" [attr.data-cliente]="c.id">
-              <i class="ph" [class.ph-check-circle]="cliente()?.id === c.id" [class.ph-user]="cliente()?.id !== c.id"></i>
+              <i class="ph" [class.ph-check-circle]="cliente()?.id === c.id" [class.ph-user]="cliente()?.id !== c.id" aria-hidden="true"></i>
               <span class="tp-res__n">{{ c.name }}</span>
               <span class="tp-res__p" *ngIf="c.phone">{{ c.phone }}</span>
             </button>
@@ -282,10 +284,10 @@
         </div>
         <footer class="tp-hoja__foot tp-hoja__foot--dos">
           <button type="button" class="tp-secundaria" *ngIf="cliente()" (click)="quitarCliente()">
-            <i class="ph ph-user-minus"></i> Quitar cliente
+            <i class="ph ph-user-minus" aria-hidden="true"></i> Quitar cliente
           </button>
           <button type="button" class="tp-secundaria" (click)="empezarAlta()">
-            <i class="ph ph-user-plus"></i> Nuevo cliente
+            <i class="ph ph-user-plus" aria-hidden="true"></i> Nuevo cliente
           </button>
         </footer>
       </ng-container>
@@ -316,7 +318,7 @@
     <div class="tp-hoja tp-hoja--sm" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="tp-sin-enviar">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
-          <span class="tp-hoja__media"><i class="ph ph-paper-plane-tilt"></i></span>
+          <span class="tp-hoja__media"><i class="ph ph-paper-plane-tilt" aria-hidden="true"></i></span>
           <div>
             <h3 id="tp-sin-enviar">Hay productos sin enviar a preparación</h3>
             <p>{{ n }} {{ n === 1 ? 'producto aún no llega' : 'productos aún no llegan' }} a cocina. Si cobras así, nadie {{ n === 1 ? 'lo' : 'los' }} prepara.</p>
@@ -336,7 +338,7 @@
   <div class="tp-overlay" *ngIf="buscando()" (click)="cerrarBusqueda()">
     <div class="tp-buscador" (click)="$event.stopPropagation()">
       <div class="tp-buscador__campo">
-        <i class="ph ph-magnifying-glass"></i>
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
         <!-- Un campo de verdad: escribe el teclado de Wybix y escribe el
              fisico, a la vez. Antes era de solo lectura y un teclado
              conectado no servia de nada. -->
@@ -345,7 +347,7 @@
                [value]="termino()" (input)="termino.set($any($event.target).value)"
                aria-label="Buscar producto">
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarBusqueda()" aria-label="Cerrar búsqueda">
-          <i class="ph ph-x"></i>
+          <i class="ph ph-x" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -353,7 +355,7 @@
         <button type="button" class="tp-res" *ngFor="let p of productos() | slice:0:8"
                 [class.off]="agotado(p)" [disabled]="agotado(p)"
                 (click)="tocar(p); cerrarBusqueda()">
-          <i class="ph {{ icono(p) }}"></i>
+          <i class="ph {{ icono(p) }}" aria-hidden="true"></i>
           <span class="tp-res__n">{{ p.product_name }}</span>
           <span class="tp-res__p">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</span>
         </button>
@@ -368,14 +370,14 @@
     <div class="tp-hoja" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
-          <span class="tp-hoja__media"><i class="ph {{ icono(p) }}"></i></span>
+          <span class="tp-hoja__media"><i class="ph {{ icono(p) }}" aria-hidden="true"></i></span>
           <div>
             <h3>{{ p.product_name }}</h3>
             <p>{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</p>
           </div>
         </div>
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="cerrarHoja()" aria-label="Cerrar">
-          <i class="ph ph-x"></i>
+          <i class="ph ph-x" aria-hidden="true"></i>
         </button>
       </header>
 
@@ -399,11 +401,11 @@
                    No existe "dos veces sin azucar" ni "dos tamanos". -->
               <div class="tp-cant" *ngIf="admiteCantidad(g) && elegido(g, o)">
                 <button type="button" (click)="cambiarCantidad(g, o, -1)" aria-label="Menos">
-                  <i class="ph ph-minus"></i>
+                  <i class="ph ph-minus" aria-hidden="true"></i>
                 </button>
                 <span>{{ cantidadDe(o) }}</span>
                 <button type="button" (click)="cambiarCantidad(g, o, 1)" aria-label="Más">
-                  <i class="ph ph-plus"></i>
+                  <i class="ph ph-plus" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -426,9 +428,9 @@
 
       <footer class="tp-hoja__foot">
         <div class="tp-hoja__qty">
-          <button type="button" (click)="masHoja(-1)" aria-label="Menos"><i class="ph ph-minus"></i></button>
+          <button type="button" (click)="masHoja(-1)" aria-label="Menos"><i class="ph ph-minus" aria-hidden="true"></i></button>
           <span>{{ cantidadHoja() }}</span>
-          <button type="button" (click)="masHoja(1)" aria-label="Más"><i class="ph ph-plus"></i></button>
+          <button type="button" (click)="masHoja(1)" aria-label="Más"><i class="ph ph-plus" aria-hidden="true"></i></button>
         </div>
         <button type="button" class="tp-primaria tp-hoja__add" data-guide="touch-hoja-agregar" [disabled]="!puedeAgregar()" (click)="confirmarHoja()">
           <ng-container *ngIf="puedeAgregar()">
@@ -446,9 +448,9 @@
     <div class="tp-cobro__panel">
       <header class="tp-cobro__head">
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="volverAlMenu()" aria-label="Volver">
-          <i class="ph ph-arrow-left"></i>
+          <i class="ph ph-arrow-left" aria-hidden="true"></i>
         </button>
-        <h2>Cobrar</h2>
+        <h2>Cobrar</h2><div class="tp-dividir" role="group" aria-label="Distribución de pago"><button type="button" [disabled]="cobrando()" [class.on]="!pagoMixto()" (click)="alternarMixto(false)">Un método</button><button type="button" [disabled]="cobrando()" [class.on]="pagoMixto()" (click)="alternarMixto(true)">Dividir pago</button></div>
       </header>
 
       <div class="tp-cobro__total">
@@ -457,20 +459,33 @@
       </div>
 
       <div class="tp-metodos" role="group" aria-label="Método de pago">
-        <button type="button" class="tp-metodo" [class.on]="metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped"></i><span>Plataforma</span></button>
-        <button type="button" class="tp-metodo" [class.on]="metodo() === 'EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
-          <i class="ph ph-coins"></i> Efectivo
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('PLATAFORMA')" [class.foco]="pagoMixto() && metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped" aria-hidden="true"></i><span>Plataforma</span></button>
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('EFECTIVO')" [class.foco]="pagoMixto() && metodo()==='EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">
+          <i class="ph ph-coins" aria-hidden="true"></i> Efectivo
         </button>
-        <button type="button" class="tp-metodo" [class.on]="metodo() === 'TARJETA'" (click)="elegirMetodo('TARJETA')">
-          <i class="ph ph-credit-card"></i> Tarjeta
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('TARJETA')" [class.foco]="pagoMixto() && metodo()==='TARJETA'" (click)="elegirMetodo('TARJETA')">
+          <i class="ph ph-credit-card" aria-hidden="true"></i> Tarjeta
         </button>
-        <button type="button" class="tp-metodo" [class.on]="metodo() === 'TRANSFERENCIA'" (click)="elegirMetodo('TRANSFERENCIA')">
-          <i class="ph ph-bank"></i> Transferencia
+        <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('TRANSFERENCIA')" [class.foco]="pagoMixto() && metodo()==='TRANSFERENCIA'" (click)="elegirMetodo('TRANSFERENCIA')">
+          <i class="ph ph-bank" aria-hidden="true"></i> Transferencia
         </button>
       </div>
 
-      <ng-container *ngIf="metodo() === 'EFECTIVO'">
-        <div class="tp-dinero">
+      <ng-container *ngIf="metodo() === 'EFECTIVO' || pagoMixto()">
+        <!-- Pago dividido: un campo por método, lo que se recibió en cada uno.
+             El que no se ha tecleado se calcula solo con lo que falta. -->
+        <div class="tp-dinero tp-dinero--mixto" *ngIf="pagoMixto()">
+          <button type="button" *ngFor="let m of metodosMixtos()" [disabled]="cobrando()" class="tp-dinero__campo"
+                  [class.on]="metodo()===m" (click)="enfocarPago(m)">
+            <span>{{ m==='EFECTIVO' ? 'Efectivo recibido' : m==='TARJETA' ? 'Tarjeta' : m==='TRANSFERENCIA' ? 'Transferencia' : 'Plataforma' }}<small *ngIf="montosMixtos().auto===m"> · lo que falta</small></span>
+            <b>{{ (montosMixtos().valores[m] ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </button>
+          <div class="tp-dinero__campo tp-dinero__campo--cambio" *ngIf="metodosMixtos().includes('EFECTIVO')" [class.activo]="cambio() > 0">
+            <span>Cambio</span>
+            <b>{{ cambio() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+        </div>
+        <div class="tp-dinero" *ngIf="!pagoMixto()">
           <div class="tp-dinero__campo">
             <span>Recibido</span>
             <b>{{ recibidoNum() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
@@ -492,14 +507,14 @@
         <div class="tp-num">
           <button type="button" *ngFor="let t of ['1','2','3','4','5','6','7','8','9','.','0']" (click)="tecla(t)">{{ t }}</button>
           <button type="button" class="tp-num__del" (click)="tecla('<')" aria-label="Borrar">
-            <i class="ph ph-backspace"></i>
+            <i class="ph ph-backspace" aria-hidden="true"></i>
           </button>
         </div>
       </ng-container>
 
       <!-- Tarjeta y transferencia: solo presentación, sin lógica financiera -->
-      <div class="tp-otro" *ngIf="metodo() !== 'EFECTIVO'">
-        <i class="ph" [class.ph-credit-card]="metodo() === 'TARJETA'" [class.ph-bank]="metodo() === 'TRANSFERENCIA'"></i>
+      <div class="tp-otro" *ngIf="metodo() !== 'EFECTIVO' && !pagoMixto()">
+        <i class="ph" [class.ph-credit-card]="metodo() === 'TARJETA'" [class.ph-bank]="metodo() === 'TRANSFERENCIA'" aria-hidden="true"></i>
         <h3>{{ metodo() === 'PLATAFORMA' ? 'Pagado en plataforma' : (metodo() === 'TARJETA' ? 'Cobro con tarjeta' : 'Transferencia') }}</h3>
         <p>
           {{ metodo() === 'TARJETA'
@@ -508,10 +523,11 @@
         </p>
       </div>
 
+      <p *ngIf="pagoMixto() && errorPagos()" class="tp-error" role="status">{{errorPagos()}}</p>
       <button type="button" class="tp-primaria tp-cobro__confirmar" data-guide="touch-cobro-confirmar"
               [disabled]="!alcanza() || cobrando()" (click)="confirmar()">
-        <i class="ph ph-check-circle" *ngIf="!cobrando()"></i>
-        <i class="ph ph-circle-notch spin" *ngIf="cobrando()"></i>
+        <i class="ph ph-check-circle" *ngIf="!cobrando()" aria-hidden="true"></i>
+        <i class="ph ph-circle-notch spin" *ngIf="cobrando()" aria-hidden="true"></i>
         {{ cobrando() ? 'Cobrando…' : 'Confirmar cobro' }}
       </button>
     </div>
@@ -531,7 +547,7 @@
       </div>
       <div class="tp-resumen__pie">
         <span *ngIf="serviceMode()" class="tp-resumen__modo">
-          <i class="ph" [class.ph-fork-knife]="serviceMode() === 'DINE_IN'" [class.ph-bag]="serviceMode() === 'TAKEAWAY'"></i>
+          <i class="ph" [class.ph-fork-knife]="serviceMode() === 'DINE_IN'" [class.ph-bag]="serviceMode() === 'TAKEAWAY'" aria-hidden="true"></i>
           {{ serviceMode() === 'DINE_IN' ? 'Para consumir aquí' : 'Para llevar' }}
         </span>
         <div class="tp-resumen__total">
@@ -539,6 +555,10 @@
           <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
         </div>
       </div>
+      <section class="tp-pagos" *ngIf="pagoMixto()"><h3>Distribución del pago</h3>
+        <div *ngFor="let p of pagos()" class="tp-pagos__l"><i class="ph" [class.ph-coins]="p.method==='EFECTIVO'" [class.ph-credit-card]="p.method==='TARJETA'" [class.ph-bank]="p.method==='TRANSFERENCIA'" [class.ph-moped]="p.method==='PLATAFORMA'" aria-hidden="true"></i><span>{{ p.method==='EFECTIVO' ? 'Efectivo' : p.method==='TARJETA' ? 'Tarjeta' : p.method==='TRANSFERENCIA' ? 'Transferencia' : 'Plataforma' }}<small *ngIf="p.method==='EFECTIVO' && cambio() > 0">Recibido {{p.received|currency:'MXN':'symbol-narrow'}} · Cambio {{cambio()|currency:'MXN':'symbol-narrow'}}</small></span><b>{{p.amount|currency:'MXN':'symbol-narrow'}}</b></div>
+        <p *ngIf="saldoPagos() > 0">Por cubrir <b>{{saldoPagos()|currency:'MXN':'symbol-narrow'}}</b></p>
+        <small>Confirma tarjeta o transferencia en la terminal antes de registrar.</small></section>
     </aside>
   </div>
 
@@ -547,11 +567,11 @@
     <div class="tp-hoja tp-hoja--sm" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
-          <span class="tp-hoja__media"><i class="ph ph-vault"></i></span>
+          <span class="tp-hoja__media"><i class="ph ph-vault" aria-hidden="true"></i></span>
           <div><h3>Abrir turno</h3><p>Necesario para vender en esta caja</p></div>
         </div>
         <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="abrirTurno.set(false)" aria-label="Cerrar">
-          <i class="ph ph-x"></i>
+          <i class="ph ph-x" aria-hidden="true"></i>
         </button>
       </header>
       <div class="tp-hoja__body">
@@ -560,7 +580,7 @@
         <div class="tp-num tp-num--sm">
           <button type="button" *ngFor="let t of ['1','2','3','4','5','6','7','8','9','.','0']" (click)="teclaFondo(t)">{{ t }}</button>
           <button type="button" class="tp-num__del" (click)="teclaFondo('<')" aria-label="Borrar">
-            <i class="ph ph-backspace"></i>
+            <i class="ph ph-backspace" aria-hidden="true"></i>
           </button>
         </div>
       </div>
@@ -573,7 +593,7 @@
   <!-- ================================================= VENTA COMPLETADA -->
   <div class="tp-overlay tp-overlay--exito" *ngIf="mostrarCambio()" (click)="cerrarCambio()">
     <div class="tp-exito" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-      <span class="tp-exito__ic"><i class="ph-fill ph-check"></i></span>
+      <span class="tp-exito__ic"><i class="ph-fill ph-check" aria-hidden="true"></i></span>
 
       <ng-container *ngIf="ultimoCambio() > 0; else sinCambio">
         <p class="tp-exito__lbl">Cambio a devolver</p>
@@ -595,8 +615,11 @@
 
       <div class="tp-exito__acciones">
         <button type="button" class="tp-secundaria" (click)="imprimirUltimo()">
-          <i class="ph ph-printer"></i> Reimprimir
+          <i class="ph ph-printer" aria-hidden="true"></i> Reimprimir
         </button>
+        <button type="button" class="tp-secundaria" (click)="verTicket=true"><i class="ph ph-receipt" aria-hidden="true"></i>Ver ticket</button>
+        <button type="button" class="tp-secundaria" (click)="facturaAbierta=true"><i class="ph ph-file-text" aria-hidden="true"></i>Facturar</button>
+        <button type="button" class="tp-secundaria" (click)="enviarCorreo=true"><i class="ph ph-envelope" aria-hidden="true"></i>Correo</button>
         <button type="button" class="tp-primaria" (click)="cerrarCambio()">Listo</button>
       </div>
     </div>
@@ -604,7 +627,7 @@
 
   <!-- ============================================================= AVISO -->
   <div class="tp-aviso" *ngIf="aviso() as a" [class.ok]="a.tipo === 'ok'" role="status">
-    <i class="ph" [class.ph-check-circle]="a.tipo === 'ok'" [class.ph-warning-circle]="a.tipo === 'error'"></i>
+    <i class="ph" [class.ph-check-circle]="a.tipo === 'ok'" [class.ph-warning-circle]="a.tipo === 'error'" aria-hidden="true"></i>
     {{ a.texto }}
   </div>
 
@@ -619,3 +642,7 @@
 
 <!-- Salida de dinero: el mismo componente que Retail. -->
 <app-salida-efectivo *ngIf="salidaAbierta()" (cerrado)="salidaAbierta.set(false)"></app-salida-efectivo>
+
+<app-receipt-viewer *ngIf="verTicket&&ultimoFolio()" [id]="ultimoFolio()!" (close)="verTicket=false"></app-receipt-viewer>
+<app-receipt-email *ngIf="enviarCorreo&&ultimoFolio()" [saleId]="ultimoFolio()!" [email]="clienteFactura?.email||''" (close)="enviarCorreo=false"></app-receipt-email>
+<app-factura-nueva *ngIf="facturaAbierta" [saleId]="ultimoFolio()" [conceptos]="conceptosFactura" [receptorRfc]="clienteFactura?.tax_id||null" [receptorNombre]="clienteFactura?.razon_social||clienteFactura?.name||null" [receptorEmail]="clienteFactura?.email||null" [receptorRegimen]="clienteFactura?.regimen_fiscal||null" [receptorUsoCfdi]="clienteFactura?.uso_cfdi||null" (cerrar)="facturaAbierta=false" (timbrada)="facturaAbierta=false"></app-factura-nueva>

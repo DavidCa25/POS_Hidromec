@@ -62,7 +62,10 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_register_sale]
     -- avisar cuantas hubo y desde cuando.
     @venta_esencial BIT = 0,
     @commercial_quote UNIQUEIDENTIFIER = NULL,
-    @commercial_payment_reference NVARCHAR(100) = NULL
+    @commercial_payment_reference NVARCHAR(100) = NULL,
+    @payments_json NVARCHAR(MAX) = NULL,
+    @client_sale_key UNIQUEIDENTIFIER = NULL,
+    @client_sale_hash VARCHAR(64) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -85,6 +88,12 @@ BEGIN
 
     IF @register_id IS NULL
         SELECT TOP 1 @register_id = id FROM dbo.registers ORDER BY id;
+
+    IF @client_sale_key IS NOT NULL AND EXISTS(SELECT 1 FROM dbo.sales WHERE client_sale_key=@client_sale_key) BEGIN
+      IF @client_sale_hash IS NULL OR NOT EXISTS(SELECT 1 FROM dbo.sales WHERE client_sale_key=@client_sale_key AND client_sale_hash=@client_sale_hash AND useer_id=@user_id AND register_id=@register_id) THROW 51000,'La clave de venta ya pertenece a otro cobro.',1;
+      SELECT id sale_id,total,payment_method,register_id,service_mode,CAST(CASE WHEN payment_method='CREDITO' THEN 1 ELSE 0 END AS BIT) is_credit FROM dbo.sales WHERE client_sale_key=@client_sale_key;
+      RETURN;
+    END;
 
     SET @is_credit =
       CASE WHEN @customer_id IS NOT NULL AND UPPER(@payment_method) = 'CREDITO' THEN 1 ELSE 0 END;
@@ -537,6 +546,17 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRAN;
+        IF @client_sale_key IS NOT NULL BEGIN
+          DECLARE @prior_id INT, @prior_hash VARCHAR(64);
+          SELECT @prior_id=id,@prior_hash=client_sale_hash FROM dbo.sales WITH(UPDLOCK,HOLDLOCK) WHERE client_sale_key=@client_sale_key;
+          IF @prior_id IS NOT NULL BEGIN
+            IF @prior_hash IS NULL OR @client_sale_hash IS NULL OR @prior_hash<>@client_sale_hash THROW 51000,'La identidad del cobro ya pertenece a otra intencion.',1;
+            COMMIT TRAN; SELECT id AS sale_id,total,payment_method,register_id,service_mode,CAST(0 AS BIT) AS is_credit FROM dbo.sales WHERE id=@prior_id; RETURN;
+          END
+        END
+        DECLARE @sale_closure INT;
+        SELECT TOP 1 @sale_closure=id FROM dbo.cash_closures WITH(UPDLOCK,HOLDLOCK) WHERE register_id=@register_id AND closed_at IS NULL ORDER BY id DESC;
+        IF @sale_closure IS NULL THROW 51000,'Abre el turno de esta caja antes de vender.',1;
         IF @commercial_quote IS NOT NULL
         BEGIN
           IF NOT EXISTS(SELECT 1 FROM dbo.commercial_quotes WITH(UPDLOCK,HOLDLOCK) WHERE id=@commercial_quote
@@ -577,6 +597,17 @@ BEGIN
 
         /* 5) Total */
         SELECT @total = SUM(quantity * unit_price) FROM #lines;
+        DECLARE @cash_applied DECIMAL(12,2)=CASE WHEN @payment_method='EFECTIVO' THEN @total ELSE 0 END;
+        DECLARE @pay TABLE(method NVARCHAR(50),amount DECIMAL(12,2),received DECIMAL(12,2),reference NVARCHAR(100));
+        IF @payments_json IS NOT NULL BEGIN
+          IF ISJSON(@payments_json)<>1 OR LEFT(LTRIM(@payments_json),1)<>'[' OR @is_credit=1 OR @payment_method='TERMINAL_MP' THROW 51000,'Distribucion de pagos invalida.',1;
+          IF EXISTS(SELECT 1 FROM OPENJSON(@payments_json) j WHERE j.type<>5 OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.amount')) IS NULL OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.amount'))<>TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(j.value,'$.amount')) OR (JSON_VALUE(j.value,'$.received') IS NOT NULL AND (TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.received')) IS NULL OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.received'))<>TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(j.value,'$.received')))) OR LEN(JSON_VALUE(j.value,'$.reference'))>100) THROW 51000,'Importe o referencia de pago invalido.',1;
+          INSERT @pay SELECT method,amount,CASE WHEN method='EFECTIVO' THEN ISNULL(received,amount) ELSE NULL END,reference FROM OPENJSON(@payments_json) WITH(method NVARCHAR(50),amount DECIMAL(12,2),received DECIMAL(12,2),reference NVARCHAR(100));
+          IF (SELECT COUNT(*) FROM @pay) NOT BETWEEN 1 AND 4 OR EXISTS(SELECT 1 FROM @pay WHERE method IS NULL OR method NOT IN('EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA') OR amount IS NULL OR amount<=0 OR (method='EFECTIVO' AND received<amount)) OR EXISTS(SELECT method FROM @pay GROUP BY method HAVING COUNT(*)>1) OR (SELECT SUM(amount) FROM @pay)<>@total THROW 51000,'Los pagos deben cubrir exactamente la venta, sin metodos duplicados.',1;
+          SELECT @cash_applied=ISNULL(SUM(CASE WHEN method='EFECTIVO' THEN amount ELSE 0 END),0) FROM @pay;
+          SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @pay)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @pay) END;
+        END
+        ELSE IF @payment_method='MIXTO' THROW 51000,'Falta la distribucion del pago mixto.',1;
 
         /* 5b) CREDITO: el cliente puede llevarselo fiado.
            La pantalla ya filtra, pero la regla vive AQUI, donde no hay pantalla
@@ -647,6 +678,9 @@ BEGIN
         );
 
         SET @sale_id = SCOPE_IDENTITY();
+        UPDATE dbo.sales SET client_sale_key=@client_sale_key,client_sale_hash=@client_sale_hash,closure_id=@sale_closure WHERE id=@sale_id;
+        IF @payments_json IS NOT NULL INSERT dbo.sale_payments(sale_id,payment_method,amount,received,reference) SELECT @sale_id,method,amount,received,reference FROM @pay;
+        ELSE IF @is_credit=0 INSERT dbo.sale_payments(sale_id,payment_method,amount) VALUES(@sale_id,@payment_method,@total);
         IF @commercial_quote IS NOT NULL BEGIN
           UPDATE dbo.commercial_quotes SET sale_id=@sale_id WHERE id=@commercial_quote;
           UPDATE dbo.sales SET commercial_snapshot=@cq WHERE id=@sale_id;
@@ -681,6 +715,7 @@ BEGIN
             VALUES (@sale_id, s.product_id, s.quantity, s.unit_price, s.unit_cost, s.inventory_mode, s.note,
                     s.recipe_id, s.variant_option_id)
         OUTPUT inserted.id, s.line_no INTO #map (sale_detail_id, line_no);
+        UPDATE d SET tax_rate=p.tasa_iva,tax_object=p.objeto_impuesto FROM dbo.sale_detail d JOIN dbo.products p ON p.id=d.product_id WHERE d.sale_id=@sale_id;
 
         IF @cq IS NOT NULL UPDATE d SET commercial_snapshot=c.audit
           FROM dbo.sale_detail d JOIN #map m ON m.sale_detail_id=d.id
@@ -734,7 +769,7 @@ BEGIN
         END
 
         /* 10) Movimiento CAJA (solo EFECTIVO contado) - turno POR CAJA */
-        IF @is_credit = 0 AND UPPER(@payment_method) = 'EFECTIVO'
+        IF @is_credit = 0 AND @cash_applied > 0
         BEGIN
             DECLARE @closure_id_open INT;
 
@@ -752,7 +787,7 @@ BEGIN
             INSERT INTO cash_movements
             (datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id)
             VALUES
-            (GETDATE(), @user_id, 'SALE', @sale_id, CONCAT('Venta ', @sale_id), @total, NULL, @closure_id_open, @register_id);
+            (GETDATE(), @user_id, 'SALE', @sale_id, CONCAT('Venta ', @sale_id), @cash_applied, NULL, @closure_id_open, @register_id);
         END
 
         COMMIT TRAN;

@@ -58,6 +58,9 @@
   <p class="muted" *ngIf="loading" role="status">Cargando ofertas…</p>
   <ng-container *ngIf="policy as p">
     <ng-container *ngIf="view === 'offers'">
+      <div *ngIf="hasVolume || offers.length>6" class="filter-pills offer-types" aria-label="Tipos de oferta">
+        <button *ngFor="let f of [['all','Todas'],['promotion','Promociones'],['combo','Combos'],['volume','Mayoreo por cantidad']]" [class.on]="offerKind === f[0]" [attr.aria-pressed]="offerKind === f[0]" (click)="offerKind = f[0]">{{f[1]}}</button>
+      </div>
       <div
         class="offers-tools"
         *ngIf="offers.length > 6 || filter || statusFilter !== 'all'"
@@ -543,6 +546,11 @@
                 (ngModelChange)="makePreview(draft)"
             /></label>
           </div>
+          <div *ngIf="d.item.kind === 'VOLUME'" class="field-grid">
+            <label>Cantidad mínima<input class="field" aria-label="Cantidad mínima de mayoreo" type="number" min="2" max="500" step="1" [(ngModel)]="d.item.minimumQty" (ngModelChange)="makePreview(draft)"></label>
+            <label class="switch"><input type="checkbox" [(ngModel)]="d.item.mixProducts" (ngModelChange)="preview()"><span></span>Sumar productos y sabores elegibles</label>
+            <p class="muted">Desde el mínimo se aplica a las piezas elegibles. Al quitar piezas vuelve el precio normal. Los componentes de combos no cuentan.</p>
+          </div>
           <details class="advanced">
             <summary>Prioridad y condiciones de descuento</summary>
             <label
@@ -571,7 +579,7 @@
             <label
               >Límite de aplicaciones por cuenta<input
                 class="field"
-                aria-label="Límite de aplicaciones por cuenta"
+                [disabled]="d.item.kind === 'VOLUME'" aria-label="Límite de aplicaciones por cuenta"
                 type="number"
                 min="1"
                 step="1"
@@ -726,7 +734,7 @@
         <p class="muted">
           Sin canales seleccionados: todos los canales disponibles.
         </p>
-        <ng-container *ngIf="d.type === 'promotion'"
+        <ng-container
           ><div class="field-grid">
             <label
               >Desde<wx-date
@@ -784,10 +792,7 @@
             Sin horarios: todo el día. El extremo final queda excluido.
           </p></ng-container
         >
-        <p class="muted" *ngIf="d.type === 'combo'">
-          El combo estará disponible todos los días en sus canales. Para
-          retirarlo temporalmente, pausa la oferta.
-        </p>
+
       </section>
     </div>
     <footer class="dialog-footer">

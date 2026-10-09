@@ -106,7 +106,10 @@
     "test:licencia-v2": "node scripts/pruebas/licencia-v2.mjs",
     "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs",
     "test:comercial": "node --test scripts/pruebas/comercial.test.mjs",
-    "db:test-comercial": "node scripts/db/pruebas/comercial.mjs"
+    "db:test-comercial": "node scripts/db/pruebas/comercial.mjs",
+    "test:pagos": "node --test scripts/pruebas/pagos-comprobantes.test.mjs",
+    "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
+    "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"
   },
   "prettier": {
     "overrides": [
