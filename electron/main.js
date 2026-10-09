@@ -3648,8 +3648,9 @@ ipcMain.handle('export-sales-pdf', sesion.proteger('export-sales-pdf', async (_e
   }
 }));
 
-ipcMain.handle('sp-get-open-shift', async (event, payload) => {
+ipcMain.handle('sp-get-open-shift', async (event, payload = {}) => {
   try {
+    payload = payload ?? {};
     const pool = await poolPromise;
     const result = await pool.request()
       .input('user_id', sql.Int, payload.user_id)

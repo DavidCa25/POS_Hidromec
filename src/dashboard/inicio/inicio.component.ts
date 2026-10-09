@@ -92,9 +92,10 @@ export class Inicio implements OnInit {
 
   ngOnInit(): void {
     void this.cargar();
-    /* La guia ya la pidio el dock; esto solo la despierta si Inicio fue lo
-       primero en montarse. Dentro se ignora si ya se pidio. */
-    void this.guia.cargar();
+    /* Siempre fresca al llegar a Inicio. La guia se lee una vez por sesion,
+       asi que abrir el turno en Touch y volver aqui seguia diciendo «No hay
+       turno abierto». Son unas pocas consultas locales por visita. */
+    void this.guia.cargar(true);
   }
 
   // ----------------------------------------------------------------- copia
