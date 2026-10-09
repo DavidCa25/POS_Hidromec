@@ -839,6 +839,95 @@ seccion('XLSX: los archivos que llegan de verdad');
 }
 
 // ===================================================================
+seccion('Nuestra plantilla, LLENA, se vuelve a leer como se escribió');
+{
+  /* Nacio de un fallo real (2026-10-09): la nota de la fila 1 va combinada
+     A1:F1, ExcelJS repite su texto en cada columna y el lector la tomaba por
+     encabezado. Una cafeteria lleno 25 donas en el Menu y todas las columnas
+     se llamaban «Lo que vendes al cliente…». La prueba anterior releia la
+     plantilla VACIA y solo miraba que saltara los ejemplos. */
+  const ExcelJS = require('exceljs');
+  const carpeta = fs.mkdtempSync(join(os.tmpdir(), 'wybix-qs-llena-'));
+  const casos = [
+    { nombre: 'comercio', ctx: { businessProfile: 'RETAIL' } },
+    { nombre: 'alimentos', ctx: { businessProfile: 'HOSPITALITY', hospitality: true } },
+    { nombre: 'servicios', ctx: { servicios: true, preset: 'BELLEZA', material: { singular: 'Producto', plural: 'Productos' } } },
+  ];
+  for (const c of casos) {
+    const sub = join(carpeta, c.nombre);
+    const escrito = await plantillas.generar(sub, c.ctx, [{ code: 'pza' }]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(escrito.ruta);
+    const ws = wb.getWorksheet(escrito.hojas[0]);
+    const cab = ws.getRow(2).values.slice(1);
+    /* Dos renglones como los llenaria alguien: el ejemplo de la plantilla. */
+    plantillas.ejemplosDe(c.ctx).forEach((fila, i) => { ws.getRow(3 + i).values = fila; });
+    await wb.xlsx.writeFile(escrito.ruta);
+
+    const r = await lector.leerExcel(escrito.ruta);
+    const hoja = r.hojas.find(h => h.nombre === escrito.hojas[0]);
+    check(hoja?.filaEncabezado === 2, `${c.nombre}: los encabezados son la fila 2, no la nota combinada`,
+      `fila ${hoja?.filaEncabezado}: ${String(hoja?.encabezados?.[0]).slice(0, 40)}`);
+    check(hoja?.filas.length === 2, `${c.nombre}: entran los 2 renglones, ni uno mas`, `${hoja?.filas.length}`);
+    const cols = alias.proponer(hoja?.encabezados ?? []).columnas;
+    const desconocidas = cols.filter(x => !x.campo).length;
+    check(cols.length === cab.length && desconocidas === 0,
+      `${c.nombre}: cada columna de la plantilla se reconoce sola`, `${desconocidas} sin reconocer de ${cols.length}`);
+    check(r.hojas.every(h => h.filas.length > 0), `${c.nombre}: una hoja sin datos no se ofrece`,
+      r.hojas.map(h => `${h.nombre}:${h.filas.length}`).join(', '));
+  }
+
+  /* Un titulo combinado en un archivo de proveedor: mismo caso, otro origen. */
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Lista');
+  ws.mergeCells('A1:D1'); ws.getCell('A1').value = 'LISTA DE PRECIOS OCTUBRE';
+  ws.getRow(2).values = ['Código', 'Descripción', 'P. Compra', 'P. Venta'];
+  ws.getRow(3).values = ['A-1', 'Tornillo 1/4', 1.2, 2.5];
+  const ruta = join(carpeta, 'proveedor.xlsx');
+  await wb.xlsx.writeFile(ruta);
+  const r = await lector.leerExcel(ruta);
+  check(r.hojas[0]?.filaEncabezado === 2, 'un título combinado de proveedor tampoco pasa por encabezado');
+
+  try { fs.rmSync(carpeta, { recursive: true, force: true }); } catch { /* noop */ }
+}
+
+// ===================================================================
+seccion('La plantilla trae los ejemplos de TU giro, y lo necesario para vender');
+{
+  const farmacia = plantillas.disenar({ giro: 'farmacias' });
+  check(farmacia.nombre === 'plantilla_wybix_farmacias.xlsx', 'farmacia baja su propia plantilla', farmacia.nombre);
+  check(String(plantillas.ejemplosDe({ giro: 'farmacias' })[0][0]).includes('Paracetamol'),
+    'con ejemplos de farmacia, no Coca-Cola');
+  const donas = plantillas.ejemplosDe({ hospitality: true, giro: 'panaderia' });
+  check(String(donas[0][0]).includes('Dona'), 'una panadería de donas ve donas, no café americano');
+  check(plantillas.disenar({ hospitality: true, giro: 'farmacias' }).nombre === 'plantilla_wybix_alimentos.xlsx',
+    'un giro de otra familia no se aplica');
+  const cab = (ctx, i = 0) => plantillas.disenar(ctx).hojas[i].columnas;
+  for (const [nombre, ctx] of [['comercio', {}], ['alimentos', { hospitality: true }], ['servicios', { servicios: true }]]) {
+    check(cab(ctx).some(c => c.campo === 'sellable'), `${nombre}: trae la columna «Vendible»`);
+    check(cab(ctx).find(c => c.campo === 'category_name')?.obligatorio === true,
+      `${nombre}: «Categoría» es obligatoria`, 'sin categoría no aparece en la pantalla de venta');
+  }
+  check(!cab({ hospitality: true }, 1).find(c => c.campo === 'category_name')?.obligatorio,
+    'en Insumos la categoría es opcional: no van a la caja');
+
+  /* La columna «Vendible» decide renglón por renglón. */
+  const map = alias.proponer(['Producto', 'Precio', 'Vendible']).columnas;
+  check(map[2].campo === 'sellable', '«Vendible» se reconoce sola');
+  const hosp = { negocio: { hospitality: true } };
+  const no = plan.normalizar(['Leche entera', 22, 'No'], map, { ...hosp, tipoPorDefecto: 'MENU' });
+  check(no.tipo === 'INGREDIENTE' && no.sellable === 0 && no.price == null,
+    'alimentos: «No» en el Menú es un insumo, sin precio de venta', JSON.stringify(no));
+  const si = plan.normalizar(['Agua embotellada', 18, 'Sí'], map, { ...hosp, tipoPorDefecto: 'INGREDIENTE' });
+  check(si.tipo === 'PRODUCTO' && si.sellable === 1 && si.price === 18,
+    'alimentos: «Sí» en Insumos se vende tal cual', JSON.stringify(si));
+  const ret = plan.normalizar(['Bolsa de regalo', 5, 'No'], map, { tipoPorDefecto: 'PRODUCTO' });
+  check(ret.tipo === 'PRODUCTO' && ret.sellable === 0, 'comercio: «No» deja el producto fuera de la caja');
+  const vacio = plan.normalizar(['Dona glaseada', 25, ''], map, { ...hosp, tipoPorDefecto: 'MENU' });
+  check(vacio.tipo === 'MENU' && vacio.sellable === 1, 'vacío: decide la hoja, como antes');
+}
+
+// ===================================================================
 seccion('Rendimiento: lo que tarda planificar de verdad');
 
 {

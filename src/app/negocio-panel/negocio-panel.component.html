@@ -43,6 +43,13 @@
     </label>
   </div>
   <div class="hint">Aplica a todas las cajas de esta sucursal. "Alimentos y bebidas" habilita recetas, ingredientes, modificadores y presentaciones de compra en Inventario; lo demás sigue igual.</div>
+  <div class="row" style="margin-top:1rem;">
+    <div>
+      <label class="lbl" for="giro-negocio">Giro</label>
+      <wx-select id="giro-negocio" [opciones]="opcionesGiro" [(ngModel)]="giro" [disabled]="cargando"></wx-select>
+      <div class="hint">Con el giro, la plantilla de carga de productos trae ejemplos y categorías de tu negocio.</div>
+    </div>
+  </div>
     </div>
 </section>
 

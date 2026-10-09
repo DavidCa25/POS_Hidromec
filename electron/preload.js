@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     qsGuardarPerfil: (p) => ipcRenderer.invoke('quickstart:guardar-perfil', p),
     qsLeerHoja: (p) => ipcRenderer.invoke('quickstart:leer-hoja', p),
     qsPlantilla: (p) => ipcRenderer.invoke('quickstart:plantilla', p),
+    negocioGiro: () => ipcRenderer.invoke('negocio:giro'),
+    negocioGiroGuardar: (p) => ipcRenderer.invoke('negocio:giro-guardar', p),
     /* El avance real de una importacion larga. Se escucha, no se sondea. */
     qsAlAvanzar: (fn) => {
       const h = (_e, d) => fn(d);

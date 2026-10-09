@@ -56,7 +56,7 @@ const TIPOS = {
     revision: ['nombre', 'part_number', 'category_name', 'brand_name', 'cost', 'price', 'stock'],
     /* A que campos tiene sentido mapear una columna de este tipo. */
     destinos: ['nombre', 'part_number', 'bar_code', 'price', 'cost', 'stock',
-               'category_name', 'brand_name', 'base_uom', 'clave_prod_serv', 'clave_unidad'],
+               'category_name', 'brand_name', 'base_uom', 'clave_prod_serv', 'clave_unidad', 'sellable'],
   },
 
   /**
@@ -76,7 +76,7 @@ const TIPOS = {
     usaStock: true,
     usaPrecio: false,
     revision: ['nombre', 'part_number', 'category_name', 'base_uom', 'cost', 'stock'],
-    destinos: ['nombre', 'part_number', 'cost', 'stock', 'category_name', 'base_uom', 'brand_name'],
+    destinos: ['nombre', 'part_number', 'cost', 'stock', 'category_name', 'base_uom', 'brand_name', 'sellable'],
   },
 
   /**
@@ -104,7 +104,7 @@ const TIPOS = {
     usaPrecio: true,
     revision: ['nombre', 'part_number', 'category_name', 'price'],
     destinos: ['nombre', 'part_number', 'bar_code', 'price', 'cost',
-               'category_name', 'clave_prod_serv', 'clave_unidad'],
+               'category_name', 'clave_prod_serv', 'clave_unidad', 'sellable'],
   },
 
   /** Trabajo que se cobra. No tiene existencia. */
@@ -136,7 +136,7 @@ const TIPOS = {
     usaPrecio: true,
     revision: ['nombre', 'part_number', 'category_name', 'brand_name', 'cost', 'price', 'stock'],
     destinos: ['nombre', 'part_number', 'bar_code', 'price', 'cost', 'stock',
-               'category_name', 'brand_name', 'base_uom'],
+               'category_name', 'brand_name', 'base_uom', 'sellable'],
   },
 };
 

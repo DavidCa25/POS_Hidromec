@@ -225,6 +225,7 @@ const EXIGE = {
   'inventory:movements': INVENTARIO_OPERAR,
   'quickstart:leer-hoja': CONFIGURACION_ADMINISTRAR,
   'quickstart:plantilla': CONFIGURACION_ADMINISTRAR,
+  'negocio:giro-guardar': CONFIGURACION_ADMINISTRAR,
 
   'sp-import-products': CONFIGURACION_ADMINISTRAR,
   'sp-import-customers': CONFIGURACION_ADMINISTRAR,
@@ -353,6 +354,7 @@ const ABIERTOS = {
      un cajero sin poder ver que el catalogo esta vacio. Escribir si exige. */
   'quickstart:contexto': 'el giro y las unidades, para saber que ofrecer',
   'quickstart:cargas': 'lectura del riel de cargas',
+  'negocio:giro': 'lectura del giro del negocio para elegir plantilla y ejemplos',
   'quickstart:carga': 'lectura del resumen de una carga',
   'quickstart:filas': 'lectura de las filas de una carga',
 

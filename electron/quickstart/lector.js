@@ -88,7 +88,20 @@ function encontrarEncabezados(matriz) {
   for (let i = 0; i < limite; i++) {
     const fila = matriz[i] || [];
     const textos = fila.filter(c => String(c ?? '').trim() !== '' && isNaN(Number(c)));
-    if (textos.length >= 2 && matriz.length > i + 1) return i;
+    /* DOS TEXTOS DISTINTOS, no dos celdas con texto. Una celda combinada
+       (A1:F1) llega con su texto repetido en cada columna: la nota de
+       nuestra propia plantilla -«Lo que vendes al cliente…»- y el titulo de
+       cualquier lista de proveedor pasaban por encabezado, y todas las
+       columnas se llamaban igual. */
+    const distintos = new Set(textos.map(c => String(c).trim().toLowerCase()));
+    if (distintos.size >= 2 && matriz.length > i + 1) return i;
+  }
+  /* Sin filas debajo: puede ser una hoja con encabezados y nada mas (la de
+     Insumos de una plantilla que solo lleno el Menu). Su encabezado sigue
+     siendo el, no la nota de arriba; `desdeMatriz` la deja sin filas. */
+  for (let i = 0; i < limite; i++) {
+    const textos = (matriz[i] || []).filter(c => String(c ?? '').trim() !== '' && isNaN(Number(c)));
+    if (new Set(textos.map(c => String(c).trim().toLowerCase())).size >= 2) return i;
   }
   return 0;
 }
@@ -290,7 +303,10 @@ async function leerExcel(ruta) {
       });
       matriz.push(celdas);
     });
-    if (matriz.length) hojas.push({ nombre: ws.name, ...desdeMatriz(matriz) });
+    /* Una hoja sin un solo renglon de datos no se ofrece: elegirla seria
+       importar nada, o peor, sus encabezados como producto. */
+    const hoja = desdeMatriz(matriz);
+    if (hoja.filas.length) hojas.push({ nombre: ws.name, ...hoja });
   });
 
   return { hojas, metadata };

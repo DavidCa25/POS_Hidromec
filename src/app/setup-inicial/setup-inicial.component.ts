@@ -431,6 +431,9 @@ export class SetupInicial implements OnInit {
       const res = await this.api?.importProducts?.({ rows });
       if (!res?.success) throw new Error(res?.error || 'No se pudo cargar el catalogo.');
       const d = res.data || {};
+      /* El giro se recuerda: la plantilla de carga trae despues sus ejemplos y
+         categorias. Si no se guarda, no se interrumpe el alta. */
+      await this.api?.negocioGiroGuardar?.({ giro: g.id }).catch?.(() => null);
       await Swal.fire({
         icon: 'success',
         title: 'Catalogo cargado',
