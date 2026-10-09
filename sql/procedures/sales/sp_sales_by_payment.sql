@@ -11,13 +11,9 @@ CREATE OR ALTER PROCEDURE dbo.sp_sales_by_payment
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT
-        payment_method,
-        COUNT(*)     AS tickets,
-        SUM(total)   AS total
-    FROM sales
-    WHERE datee >= DATEADD(DAY, -@days, CAST(GETDATE() AS DATE))
-    GROUP BY payment_method
-    ORDER BY SUM(total) DESC;
+    ;WITH payments AS (
+      SELECT s.id,s.datee,p.payment_method,p.amount FROM dbo.sales s JOIN dbo.sale_payments p ON p.sale_id=s.id
+      UNION ALL SELECT s.id,s.datee,s.payment_method,s.total FROM dbo.sales s WHERE NOT EXISTS(SELECT 1 FROM dbo.sale_payments p WHERE p.sale_id=s.id)
+    ) SELECT payment_method,COUNT(DISTINCT id) tickets,SUM(amount) total FROM payments WHERE datee>=DATEADD(DAY,-@days,CAST(GETDATE() AS DATE)) GROUP BY payment_method ORDER BY SUM(amount) DESC;
 END
 GO

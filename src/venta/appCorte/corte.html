@@ -1,3 +1,6 @@
+<div *ngIf="closedOptions.length" class="corte-reprint"><wx-select placeholder="Selecciona un corte cerrado" [opciones]="closedOptions" [(ngModel)]="selectedClosed" [buscable]="true"></wx-select><button type="button" class="btn btn-outline-primary" [disabled]="!selectedClosed" (click)="receiptId=selectedClosed"><i class="ph ph-printer"></i>Ver / imprimir corte</button></div>
+<app-receipt-viewer *ngIf="receiptId" [id]="receiptId" document="closure" (close)="receiptId=null"></app-receipt-viewer>
+<button *ngIf="lastClosedId" type="button" class="btn btn-outline-primary mb-3" (click)="verCorte()"><i class="ph ph-printer"></i>Ver / reimprimir último corte</button>
 <div class="corte-container">
   <!-- WIZARD DE PASOS -->
   <div class="wizard-steps" *ngIf="showFilters">

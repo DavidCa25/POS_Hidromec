@@ -103,9 +103,27 @@ BEGIN
       RAISERROR('El total del reembolso debe ser mayor a cero.',16,1);
     END
 
+    DECLARE @rp TABLE(method NVARCHAR(50) PRIMARY KEY,amount DECIMAL(12,2));
+    IF EXISTS(SELECT 1 FROM dbo.sale_payments WHERE sale_id=@sale_id) BEGIN
+      SET @apply_net_update=0;
+      DECLARE @rest DECIMAL(12,2)=@refund_total,@pm NVARCHAR(50),@available DECIMAL(12,2),@part DECIMAL(12,2);
+      DECLARE refunds_cursor CURSOR LOCAL FAST_FORWARD FOR
+      SELECT p.payment_method,p.amount-ISNULL((SELECT SUM(rp.amount) FROM dbo.refund_payments rp JOIN dbo.sale_refunds r ON r.id=rp.refund_id WHERE r.sale_id=@sale_id AND rp.payment_method=p.payment_method),0)-ISNULL((SELECT SUM(r.refund_total) FROM dbo.sale_refunds r WHERE r.sale_id=@sale_id AND r.payment_method=p.payment_method AND NOT EXISTS(SELECT 1 FROM dbo.refund_payments rp WHERE rp.refund_id=r.id)),0)
+      FROM dbo.sale_payments p WHERE p.sale_id=@sale_id ORDER BY CASE WHEN p.payment_method='EFECTIVO' THEN 0 ELSE 1 END,p.id;
+      OPEN refunds_cursor;FETCH NEXT FROM refunds_cursor INTO @pm,@available;
+      WHILE @@FETCH_STATUS=0 AND @rest>0 BEGIN
+        SET @part=CASE WHEN @available>@rest THEN @rest ELSE @available END;
+        IF @part>0 BEGIN INSERT @rp VALUES(@pm,@part);SET @rest=@rest-@part;END;
+        FETCH NEXT FROM refunds_cursor INTO @pm,@available;
+      END;
+      CLOSE refunds_cursor;DEALLOCATE refunds_cursor;
+      IF @rest>0 THROW 51000,'El reembolso supera los pagos originales disponibles.',1;
+      SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END;
+    END ELSE INSERT @rp VALUES(@payment_method,@refund_total);
+    DECLARE @refund_cash DECIMAL(12,2)=ISNULL((SELECT amount FROM @rp WHERE method='EFECTIVO'),0);
     DECLARE @closure_id_open INT = NULL;
     DECLARE @caja INT = NULL;
-    IF UPPER(@payment_method) = 'EFECTIVO'
+    IF @refund_cash>0
     BEGIN
       EXEC dbo.sp_resolve_cash_register
           @register_id = @register_id, @machine_id = @machine_id,
@@ -129,6 +147,7 @@ BEGIN
     VALUES (@sale_id, @user_id, @payment_method, @refund_total, @note, @closure_id_open);
 
     SET @refund_id = SCOPE_IDENTITY();
+    INSERT dbo.refund_payments(refund_id,payment_method,amount) SELECT @refund_id,method,amount FROM @rp;
 
     INSERT INTO dbo.sale_refund_detail(refund_id,product_id,quantity,unitary_price,commercial_amount)
     SELECT @refund_id,q.product_id,q.qty,
@@ -185,14 +204,14 @@ BEGIN
     FROM #restore r
     JOIN dbo.products p ON p.id = r.product_id;
 
-    IF UPPER(@payment_method)='EFECTIVO'
+    IF @refund_cash>0
     BEGIN
       INSERT INTO dbo.cash_movements
         (datee, userId, typee, reference_id, reference, amount, note, closure_id, register_id)
       VALUES
         (GETDATE(), @user_id, 'REFUND', @sale_id,
          CONCAT('Reembolso Venta ', @sale_id, ' (', @refund_id, ')'),
-         -@refund_total,
+         -@refund_cash,
          @note,
          @closure_id_open,
          @caja);

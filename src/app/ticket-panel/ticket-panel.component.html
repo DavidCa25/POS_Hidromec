@@ -1,121 +1,154 @@
-<div class="panel-content">
-    
-    <section class="wx-set">
-    <header class="wx-set__head"><i class="ph ph-printer"></i><h3>Impresora y formato</h3></header>
-    <div class="wx-set__body">
-    
-    <div class="row two">
-        <div>
-            <label class="lbl">Impresora principal</label>
-            
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" (click)="printerOpen = !printerOpen; paperSizeOpen = false;">
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ nombreImpresoraSeleccionada }}
-                    </span>
-                    <i class="ph ph-caret-down"></i>
-                </div>
-                
-                <div class="custom-sel-menu" *ngIf="printerOpen">
-                    <div class="custom-sel-option" 
-                         (click)="seleccionarImpresora('')"
-                         [class.selected]="ticketPrinterName === ''">
-                        (Predeterminada del sistema)
-                    </div>
-                    <div class="custom-sel-option" 
-                         *ngFor="let pr of printers" 
-                         (click)="seleccionarImpresora(pr.name)"
-                         [class.selected]="ticketPrinterName === pr.name">
-                        {{ pr.displayName || pr.name }}
-                    </div>
-                </div>
-            </div>
-            <div class="hint">Se usará para despachar todos los recibos de venta.</div>
-        </div>
-        
-        <div>
-            <label class="lbl">Tamaño de papel</label>
-            
-            <div class="custom-sel-wrap">
-                <div class="ctl custom-sel-box" (click)="paperSizeOpen = !paperSizeOpen; printerOpen = false;">
-                    <span>{{ ticketPaperSize }}</span>
-                    <i class="ph ph-caret-down"></i>
-                </div>
-                
-                <div class="custom-sel-menu" *ngIf="paperSizeOpen">
-                    <div class="custom-sel-option" 
-                         *ngFor="let size of paperSizes" 
-                         (click)="seleccionarTamano(size)"
-                         [class.selected]="ticketPaperSize === size">
-                        {{ size }}
-                    </div>
-                </div>
-            </div>
-            <div class="hint">Estándar para impresoras térmicas.</div>
-        </div>
+<div class="ticket-editor">
+  <section class="ticket-controls panel-content">
+    <label
+      >Documento<wx-select
+        [opciones]="documentOptions"
+        [(ngModel)]="doc"
+        (ngModelChange)="selectDocument()"
+      ></wx-select
+    ></label>
+    <div class="ticket-pair">
+      <label
+        >Tipo de papel<wx-select
+          [opciones]="formats"
+          [(ngModel)]="profile.format"
+          (ngModelChange)="selectFormat()"
+        ></wx-select></label
+      ><label
+        >Tamaño<wx-select
+          [opciones]="sizes"
+          [(ngModel)]="preset"
+          (ngModelChange)="selectSize()"
+        ></wx-select
+      ></label>
     </div>
+    <div class="ticket-pair">
+      <label
+        >Ancho · mm<input
+          class="field"
+          type="number"
+          min="30"
+          max="300"
+          [(ngModel)]="profile.width"
+          (ngModelChange)="preset = 0; changed()" /></label
+      ><label *ngIf="profile.format !== 'roll'"
+        >Alto · mm<input
+          class="field"
+          type="number"
+          min="1"
+          max="600"
+          [(ngModel)]="profile.height"
+          (ngModelChange)="changed()" /></label
+      ><label
+        >Margen · mm<input
+          class="field"
+          type="number"
+          min="0"
+          max="15"
+          [(ngModel)]="profile.margin"
+          (ngModelChange)="changed()"
+      /></label>
     </div>
-</section>
-<section class="wx-set">
-    <header class="wx-set__head"><i class="ph ph-sliders-horizontal"></i><h3>Comportamiento</h3></header>
-    <div class="wx-set__body">
-
-    <div class="row two">
-        <div>
-            <label class="lbl">Impresión silenciosa</label>
-            <div class="toggle">
-                <label class="sw">
-                    <input type="checkbox" checked>
-                    <span class="sl"></span>
-                </label>
-                <span class="ttext">No mostrar diálogo</span>
-            </div>
-        </div>
-
-        <div>
-            <label class="lbl">Imprimir al cobrar</label>
-            <div class="toggle">
-                <label class="sw">
-                    <input type="checkbox" checked>
-                    <span class="sl"></span>
-                </label>
-                <span class="ttext">Automático</span>
-            </div>
-        </div>
-    </div>
-    </div>
-</section>
-<section class="wx-set">
-    <header class="wx-set__head"><i class="ph ph-palette"></i><h3>Diseño del comprobante</h3></header>
-    <div class="wx-set__body">
-    
-    <div class="row two">
-        <div>
-            <label class="lbl">Texto pie de página</label>
-            <input class="ctl" type="text" value="¡Gracias por su preferencia!">
-        </div>
-        <div>
-            <label class="lbl">Incluir Logo</label>
-            <div class="toggle">
-                <label class="sw">
-                    <input type="checkbox" checked>
-                    <span class="sl"></span>
-                </label>
-                <span class="ttext">Mostrar en cabecera</span>
-            </div>
-        </div>
-    </div>
-    </div>
-</section>
-
-
-    <div class="btn-row" style="justify-content: flex-end; margin-top: 32px;">
-        <button type="button" class="btn-outline">
-            <i class="ph ph-eye"></i> Vista previa
+    <p class="muted">
+      En un rollo 70 × 80, confirma cuál medida es el ancho y cuál el diámetro.
+      El diámetro no fija el alto del ticket.
+    </p>
+    <h4>Campos a imprimir</h4>
+    <p class="muted" *ngIf="doc === 'sale'">Folio y total siempre visibles.</p>
+    <label
+      class="ticket-toggle"
+      *ngFor="let f of available; trackBy: trackField"
+      ><span>{{ f.label }}</span
+      ><span class="sw"
+        ><input
+          type="checkbox"
+          [checked]="profile.fields.includes(f.key)"
+          (change)="toggle(f.key, $any($event.target).checked)" /><span
+          class="sl"
+        ></span></span
+    ></label>
+    <div *ngIf="doc === 'closure'" class="ticket-order">
+      <h4>Orden del corte</h4>
+      <div *ngFor="let key of profile.fields; let i = index">
+        <span>{{ label(key) }}</span
+        ><button
+          type="button"
+          class="icon-button"
+          [disabled]="i === 0"
+          (click)="move(key, -1)"
+          [attr.aria-label]="'Subir ' + label(key)"
+        >
+          <i class="ph ph-arrow-up"></i></button
+        ><button
+          type="button"
+          class="icon-button"
+          [disabled]="i === profile.fields.length - 1"
+          (click)="move(key, 1)"
+          [attr.aria-label]="'Bajar ' + label(key)"
+        >
+          <i class="ph ph-arrow-down"></i>
         </button>
-        <button type="button" class="btn-primary" (click)="save()">
-            <i class="ph ph-check-circle"></i> Guardar cambios
-        </button>
+      </div>
     </div>
-
+    <h4>Impresora</h4>
+    <label
+      >Conexión<wx-select
+        [opciones]="connections"
+        [(ngModel)]="connection"
+        (ngModelChange)="saved = false"
+      ></wx-select></label
+    ><label
+      >Dispositivo de Windows<wx-select
+        [opciones]="printers"
+        [(ngModel)]="ticketPrinterName"
+        [buscable]="true"
+        (ngModelChange)="saved = false"
+      ></wx-select
+    ></label>
+    <p class="muted">
+      Instala primero el controlador y selecciona su impresora. Wi-Fi y Ethernet
+      deben estar en la misma red; Bluetooth debe aparecer como impresora en
+      Windows. El ancho imprimible depende del modelo.
+    </p>
+    <p class="ticket-error" role="alert" *ngIf="error">{{ error }}</p>
+    <p role="status" *ngIf="saved">
+      Configuración guardada. Esta vista usa los campos guardados.
+    </p>
+    <div class="ticket-actions">
+      <button
+        type="button"
+        class="btn btn-outline-primary"
+        [disabled]="busy || !!error"
+        (click)="test()"
+      >
+        <i class="ph ph-printer"></i>Imprimir prueba</button
+      ><button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="busy"
+        (click)="save()"
+      >
+        Guardar configuración
+      </button>
+    </div>
+  </section>
+  <section class="ticket-preview">
+    <header>
+      <h3>Vista previa</h3>
+      <span
+        >{{ profile.width }} mm ·
+        {{ profile.height ? profile.height + " mm" : "alto automático" }}</span
+      >
+    </header>
+    <p class="muted">
+      Datos de ejemplo · cambia los campos para ver el resultado.
+    </p>
+    <iframe
+      title="Vista previa del comprobante"
+      sandbox=""
+      [srcdoc]="html"
+      [style.width.mm]="profile.width"
+      [style.height.mm]="profile.height || 230"
+    ></iframe>
+  </section>
 </div>

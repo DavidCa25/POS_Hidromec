@@ -767,3 +767,5 @@
   font-variant-numeric: tabular-nums; color: var(--wx-text);
 }
 .venta-pedido small { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+
+.mixed-payment{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--wx-edge)}.mixed-payment label{font-size:12px;color:var(--wx-text-muted)}

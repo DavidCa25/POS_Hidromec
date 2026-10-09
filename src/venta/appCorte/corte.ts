@@ -1,3 +1,5 @@
+import {WxSelectComponent,WxOpcion} from '../../app/wx-select/wx-select.component';
+import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -84,10 +86,14 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
+  imports: [WxSelectComponent,ReceiptViewer,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
+  closedOptions:WxOpcion[]=[];selectedClosed:number|null=null;
+  async cargarCortes(){const r=await (window as any).electronAPI.ticketClosures({registerId:this.selectedRegisterId});this.closedOptions=(r?.data??[]).map((c:any)=>({valor:c.id,etiqueta:'#'+c.id+' · '+c.register_name,nota:new Date(c.closed_at).toLocaleString('es-MX')}));}
+  receiptId:number|null=null;lastClosedId:number|null=null;
+  verCorte(){this.receiptId=this.lastClosedId;}
   hoy = new Date();
 
   // Wizard control
@@ -274,6 +280,7 @@ export class Corte {
   }
 
   async consultar() {
+    void this.cargarCortes();
     if (!this.selectedRegisterId) {
       await Swal.fire({
         icon: 'warning', title: 'Selecciona una caja', text: 'Elige una caja para consultar.', confirmButtonColor: '#10b981'
@@ -496,6 +503,8 @@ export class Corte {
       }
 
       const data = resp.data || {};
+      this.lastClosedId=closureId;
+      void this.cargarCortes();
       await Swal.fire({
         icon: 'success',
         title: '¡Corte registrado exitosamente!',
@@ -529,6 +538,7 @@ export class Corte {
       });
 
       this.showCloseModal = false;
+      this.receiptId=closureId;
       this.openShiftId = null;
       this.openShiftOpenedAt = null;
       this.openShiftOpeningCash = 0;

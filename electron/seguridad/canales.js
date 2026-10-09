@@ -53,6 +53,10 @@ const EXIGE = {
   'sp-update-customer': VENTAS_OPERAR,
   'sp-register-customer-payment': VENTAS_OPERAR,
   'print-sale-ticket': VENTAS_OPERAR,
+  'ticket:preview': VENTAS_OPERAR,
+  'ticket:email': VENTAS_OPERAR,
+  'ticket:closures': VENTAS_OPERAR,
+  'ticket:print-document': VENTAS_OPERAR,
   'generate-sale-pdf': VENTAS_OPERAR,
   'fiscal-save-invoice': VENTAS_OPERAR,
   // Fase 1: CFDI por la nube con la credencial del equipo.

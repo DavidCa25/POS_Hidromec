@@ -22,12 +22,17 @@ CREATE TABLE dbo.sales (
     uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_sales_uuid DEFAULT (newid()),
     rv TIMESTAMP NOT NULL,
     commercial_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
+    client_sale_key UNIQUEIDENTIFIER NULL,
+    client_sale_hash VARCHAR(64) COLLATE Modern_Spanish_CI_AS NULL,
+    closure_id INT NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
 
 IF OBJECT_ID(N'dbo.CK_sales_service_mode', 'C') IS NULL
 ALTER TABLE dbo.sales WITH CHECK ADD CONSTRAINT CK_sales_service_mode CHECK ([service_mode] IS NULL OR [service_mode]='TAKEAWAY' OR [service_mode]='DINE_IN');
+
+ALTER TABLE dbo.sales WITH CHECK ADD FOREIGN KEY (closure_id) REFERENCES dbo.cash_closures (id);
 
 ALTER TABLE dbo.sales WITH CHECK ADD FOREIGN KEY (useer_id) REFERENCES dbo.users (id);
 
@@ -42,6 +47,9 @@ CREATE NONCLUSTERED INDEX IX_sales_register_id ON dbo.sales (register_id);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sales_rv' AND object_id = OBJECT_ID(N'dbo.sales'))
 CREATE NONCLUSTERED INDEX IX_sales_rv ON dbo.sales (rv);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_sales_client_key' AND object_id = OBJECT_ID(N'dbo.sales'))
+CREATE UNIQUE NONCLUSTERED INDEX UX_sales_client_key ON dbo.sales (client_sale_key) WHERE ([client_sale_key] IS NOT NULL);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_sales_uuid' AND object_id = OBJECT_ID(N'dbo.sales'))
 CREATE UNIQUE NONCLUSTERED INDEX UX_sales_uuid ON dbo.sales (uuid);

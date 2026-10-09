@@ -971,3 +971,11 @@
 .tp-campo:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
 .tp-alta__error { margin: 0; color: var(--wx-danger); font-size: var(--wx-text-sm); }
 @media (prefers-reduced-motion: reduce) { .tp-cliente { transition: none; } }
+
+.tp-cats__extras{margin-top:auto;border-top:1px solid var(--wx-edge);padding-top:12px}.tp-cats__extras small{font-size:var(--wx-text-xs);color:var(--wx-accent-text)}.tp-main{position:relative}.tp-ofertas{position:absolute;inset:0;z-index:3;background:var(--wx-canvas);overflow-y:auto}.tp-ofertas>.tp-iconbtn{margin-left:auto}
+
+.tp-dividir{display:flex;margin-left:auto;gap:4px;padding:4px;background:var(--wx-sunken);border-radius:var(--wx-radius-md)}.tp-dividir button{min-height:40px;border:0;border-radius:var(--wx-radius-sm);background:transparent;color:var(--wx-text-muted);padding:8px 12px;font-size:var(--wx-text-sm)}.tp-dividir button.on,.tp-dinero__campo.on{background:var(--wx-surface);color:var(--wx-accent-text);box-shadow:var(--wx-shadow-card)}.tp-dinero--mixto{grid-template-columns:repeat(3,1fr)}.tp-pagos{margin-top:24px;border-top:1px solid var(--wx-edge);padding-top:20px}.tp-pagos button{display:flex;align-items:center;gap:8px;min-height:64px;width:100%;background:transparent;border:0;border-radius:var(--wx-radius-sm);padding:10px;text-align:left;color:var(--wx-text)}.tp-pagos button.on{background:var(--wx-accent-soft)}.tp-pagos button span{flex:1;font-size:var(--wx-text-sm)}.tp-pagos small{display:block;color:var(--wx-text-muted);font-size:var(--wx-text-xs);line-height:1.5}.tp-pagos b{font-family:var(--wx-font-mono);font-size:var(--wx-text-sm)}.tp-pagos>p{display:flex;justify-content:space-between}.tp-error{color:var(--wx-danger);font-size:var(--wx-text-sm)}
+
+.tp-exito__acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-exito__acciones .tp-secundaria{font-size:13px}.tp-exito__acciones .tp-primaria{grid-column:1/-1}.tp-pagos__row{min-height:44px}@media(max-width:600px){.tp-dinero--mixto{grid-template-columns:1fr 1fr}.tp-dinero--mixto>div:first-child{grid-column:1/-1}}
+
+button.tp-dinero__campo{border:0;text-align:left;color:var(--wx-text)}

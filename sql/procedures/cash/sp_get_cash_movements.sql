@@ -154,23 +154,23 @@ BEGIN
 
       /* Ventas por forma de pago: las de ESTA caja en este periodo. Son
          informativas; lo que suma al esperado son los movimientos del cajon. */
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'EFECTIVO'      AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+      (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='EFECTIVO' WHERE (s.payment_method = 'EFECTIVO' OR sp.id IS NOT NULL)      AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_efectivo,
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'TARJETA'       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+      (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='TARJETA' WHERE (s.payment_method = 'TARJETA' OR sp.id IS NOT NULL)       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_tarjeta,
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'TRANSFERENCIA' AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+      (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='TRANSFERENCIA' WHERE (s.payment_method = 'TRANSFERENCIA' OR sp.id IS NOT NULL) AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_transferencia,
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'TERMINAL_MP'   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+      (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='TERMINAL_MP' WHERE (s.payment_method = 'TERMINAL_MP' OR sp.id IS NOT NULL)   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_mp,
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'PLATAFORMA'   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+      (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='PLATAFORMA' WHERE (s.payment_method = 'PLATAFORMA' OR sp.id IS NOT NULL)   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_plataforma,
       (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'CREDITO'       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
-          AND ((@ventas_desde IS NOT NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
+          AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_credito
   FROM #m AS m;
 

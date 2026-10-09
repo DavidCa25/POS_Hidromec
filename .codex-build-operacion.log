@@ -1,0 +1,316 @@
+
+> wybix-pos@1.4.0 build
+> node scripts/comercial-compilar.cjs && npm run assets:rive && ng build --configuration production --base-href ./
+
+
+> wybix-pos@1.4.0 assets:rive
+> node scripts/assets/rive.mjs
+
+rive: wasm copiado a src/assets/rive/rive.wasm
+> Building...
+√ Building...
+Initial chunk files   | Names                      |  Raw size | Estimated transfer size
+styles-XEJE4EYF.css   | styles                     | 442.58 kB |                49.46 kB
+chunk-KLKDJXMG.js     | -                          | 203.22 kB |                58.20 kB
+chunk-6TUSOLF5.js     | -                          |  81.67 kB |                21.91 kB
+chunk-CEVJD3CI.js     | -                          |  78.74 kB |                18.60 kB
+chunk-XSLM2WYJ.js     | -                          |  72.06 kB |                17.97 kB
+chunk-EDIL7G6M.js     | -                          |  39.13 kB |                 8.07 kB
+polyfills-B6TNHZQ6.js | polyfills                  |  34.58 kB |                11.32 kB
+main-RY644P4J.js      | main                       |  28.57 kB |                 7.06 kB
+chunk-K4KB363N.js     | -                          |  12.90 kB |                 4.02 kB
+chunk-3HPWB3JN.js     | -                          |   5.44 kB |                 1.94 kB
+chunk-KODB2ZZJ.js     | -                          |   4.19 kB |                 1.34 kB
+chunk-DQJZTLUM.js     | -                          |   1.86 kB |               757 bytes
+chunk-7JTWAIM6.js     | -                          |   1.55 kB |               731 bytes
+chunk-FOQH46ZT.js     | -                          |   1.52 kB |               662 bytes
+chunk-JOXUTJSR.js     | -                          | 808 bytes |               808 bytes
+chunk-FGHVH6GN.js     | -                          | 371 bytes |               371 bytes
+
+                      | Initial total              |   1.01 MB |               203.22 kB
+
+Lazy chunk files      | Names                      |  Raw size | Estimated transfer size
+chunk-M5FHSPJ2.js     | xlsx-min                   |   1.24 MB |               207.41 kB
+chunk-XACQ74T7.js     | apexcharts-esm             | 572.54 kB |               128.03 kB
+chunk-Z27WGAYJ.js     | -                          | 352.56 kB |                97.23 kB
+chunk-4BWXAV2I.js     | migracion-component        | 311.33 kB |                86.43 kB
+chunk-QLHZC32W.js     | html2canvas                | 203.12 kB |                38.56 kB
+chunk-NMYTCOBM.js     | index-es                   | 159.41 kB |                47.16 kB
+chunk-FF35K7NN.js     | venta                      | 124.08 kB |                25.78 kB
+chunk-BZ3T4Y57.js     | touch-pos                  | 116.90 kB |                22.28 kB
+chunk-F5KRWI7K.js     | dashboard                  | 113.72 kB |                21.96 kB
+chunk-TP2PSEFL.js     | inventario                 | 100.46 kB |                19.09 kB
+chunk-SOJRJLCT.js     | loyalty-admin              |  87.53 kB |                16.89 kB
+chunk-62OBBXHZ.js     | commercial-panel-component |  69.23 kB |                14.52 kB
+chunk-POGTW6J6.js     | wx-quickstart-component    |  66.42 kB |                14.11 kB
+chunk-3P56N7NA.js     | corte                      |  65.02 kB |                12.56 kB
+chunk-CONIQ6TP.js     | touch-servicios            |  64.89 kB |                10.75 kB
+...and 96 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [22.140 seconds]
+
+▲ [WARNING] TS-998113: NgClass is not used within the template of WxPaletaComponent [plugin angular-compiler]
+
+    src/app/wx-paleta/wx-paleta.component.ts:74:25:
+      74 │   imports: [NgIf, NgFor, NgClass, WxAvatarComponent],
+         ╵                          ~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of Clientes [plugin angular-compiler]
+
+    src/clientes/clientes.ts:84:4:
+      84 │     RouterOutlet,
+         ╵     ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of RegistrarCompra [plugin angular-compiler]
+
+    src/compras/appRegistrarCompra/registrarCompra.ts:133:12:
+      133 │   imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe,...
+          ╵             ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: SlicePipe is not used within the template of RegistrarCompra [plugin angular-compiler]
+
+    src/compras/appRegistrarCompra/registrarCompra.ts:133:76:
+      133 │ ...r, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectCom...
+          ╵                               ~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterLink is not used within the template of TablaCompra [plugin angular-compiler]
+
+    src/compras/appTablaCompra/tablaCompra.ts:66:98:
+      66 │ ...ncyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent],
+         ╵                                       ~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of Compras [plugin angular-compiler]
+
+    src/compras/compras.ts:45:12:
+      45 │   imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, ...
+         ╵             ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: SlicePipe is not used within the template of Compras [plugin angular-compiler]
+
+    src/compras/compras.ts:45:76:
+      45 │ ...sModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgClass],
+         ╵                                                  ~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of ConfigurationApp [plugin angular-compiler]
+
+    src/configuration/configurationApp.ts:27:12:
+      27 │   imports: [RouterOutlet, FormsModule, NgIf, NgFor]
+         ╵             ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: DecimalPipe is not used within the template of Estadisticas [plugin angular-compiler]
+
+    src/estadisticas/estadisticas.ts:16:32:
+      16 │ ...rts: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadH...
+         ╵                              ~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of Inventario [plugin angular-compiler]
+
+    src/inventario/inventario.ts:105:76:
+      105 │ ..., WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, ...
+          ╵                             ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: JsonPipe is not used within the template of Inventario [plugin angular-compiler]
+
+    src/inventario/inventario.ts:105:103:
+      105 │ ...RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, Cur...
+          ╵                               ~~~~~~~~
+
+
+▲ [WARNING] TS-998113: NgStyle is not used within the template of Inventario [plugin angular-compiler]
+
+    src/inventario/inventario.ts:105:120:
+      105 │ ...rmsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, Clave...
+          ╵                                ~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of Corte [plugin angular-compiler]
+
+    src/venta/appCorte/corte.ts:89:44:
+      89 │ ...ctComponent,ReceiptViewer,RouterOutlet, FormsModule, NgIf, NgFo...
+         ╵                              ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of Venta [plugin angular-compiler]
+
+    src/venta/appVenta/venta.ts:78:49:
+      78 │ ...l,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFo...
+         ╵                              ~~~~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: SlicePipe is not used within the template of Venta [plugin angular-compiler]
+
+    src/venta/appVenta/venta.ts:78:113:
+      78 │ ...r, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, Wx...
+         ╵                               ~~~~~~~~~
+
+
+▲ [WARNING] TS-998113: NgClass is not used within the template of TablaVentaComponent [plugin angular-compiler]
+
+    src/venta/tablaVenta/tablaVenta.ts:31:65:
+      31 │ ...arraComponent, NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, Fo...
+         ╵                                ~~~~~~~
+
+
+▲ [WARNING] TS-998113: RouterOutlet is not used within the template of TablaVentaComponent [plugin angular-compiler]
+
+    src/venta/tablaVenta/tablaVenta.ts:31:111:
+      31 │ ...urrencyPipe, FormsModule, RouterOutlet, WxSelectComponent, WxDa...
+         ╵                              ~~~~~~~~~~~~
+
+
+▲ [WARNING] bundle initial exceeded maximum budget. Budget 1.00 MB was not met by 9.18 kB with a total of 1.01 MB.
+
+
+▲ [WARNING] src/touch/touch-pos.css exceeded maximum budget. Budget 30.00 kB was not met by 3.60 kB with a total of 33.60 kB.
+
+
+▲ [WARNING] Module 'sweetalert2' used by 'src/app/setup-inicial/setup-inicial.component.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'qrcode' used by 'src/eventos/eventos.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'html2canvas' used by 'node_modules/jspdf/dist/jspdf.es.min.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'dompurify' used by 'node_modules/jspdf/dist/jspdf.es.min.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.promise.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.match.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.replace.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.starts-with.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.array.iterator.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/web.dom-collections.iterator.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.array.reduce.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.ends-with.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.split.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'raf' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.trim.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'rgbcolor' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.array.index-of.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.string.includes.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.array.reverse.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'core-js/modules/es.regexp.to-string.js' used by 'node_modules/canvg/lib/index.es.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'xlsx-js-style' used by 'src/services/report.service.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'jspdf-autotable' used by 'src/services/report.service.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'dijkstrajs' used by 'node_modules/qrcode/lib/core/segments.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+
+
+Output location: C:\Users\Casillas\filtros_lubs_rios\dist\filtros_lubs_rios
+

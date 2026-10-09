@@ -1,3 +1,4 @@
+import type { PagoAplicado } from '../../shared/pagos';
 /*
  * Wybix Core — modelo compartido por Retail POS, Touch POS y Backoffice.
  *
@@ -10,7 +11,7 @@
 export type InventoryMode = 'DIRECT' | 'RECIPE' | 'NONE';
 
 /** Metodos de pago que entiende sp_register_sale hoy. */
-export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP' | 'PLATAFORMA';
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CREDITO' | 'TERMINAL_MP' | 'PLATAFORMA' | 'MIXTO';
 
 /** Atributo de la VENTA, no del producto. V1 no altera impuestos. */
 export type ServiceMode = 'DINE_IN' | 'TAKEAWAY';
@@ -93,6 +94,7 @@ export interface LineSource {
 
 /** Cabecera de una venta cargada por folio. */
 export interface SaleHeader {
+  payments_json?:string;
   sale_id: number;
   datee: string | Date;
   user_id: number;
@@ -124,6 +126,7 @@ export interface SaleDetailRow {
 
 /** Lo que la APP declara al cobrar. */
 export interface Payment {
+  payments?: PagoAplicado[];
   method: PaymentMethod;
   /** Dinero recibido (contado). null en credito/terminal. */
   received?: number | null;
@@ -146,6 +149,8 @@ export interface SaleIntentLine {
 }
 
 export interface SaleIntent {
+  payments?: PagoAplicado[];
+  clientSaleKey?: string;
   commercialQuote?:string;
   mpOrderId?:string;
   userId: number;

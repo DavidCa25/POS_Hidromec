@@ -250,7 +250,7 @@ try {
 
   // =============================================================== 11
   seccion('11. Dos cajas, dos equipos: cada uno con lo suyo');
-  q('DELETE FROM dbo.cash_movements; DELETE FROM dbo.sale_detail; DELETE FROM dbo.sales; DELETE FROM dbo.cash_closures;');
+  q('DELETE FROM dbo.cash_movements; DELETE FROM dbo.ticket_email_jobs; DELETE FROM dbo.sale_payments; DELETE FROM dbo.sale_detail; DELETE FROM dbo.sales; DELETE FROM dbo.cash_closures;');
   soltar(1, null, 'ADMIN');
   soltar(c2, null, 'ADMIN');
   check(claim(1, M1, 'CAJA-MOSTRADOR')?.ok === 1, 'equipo 1 toma C1');

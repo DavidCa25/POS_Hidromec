@@ -6,7 +6,8 @@ async function catalogo(pool) {
     const catalog = JSON.parse(c.recordset[0].catalog_json);
     const ids = (await pool.request().query('SELECT id,LOWER(CONVERT(VARCHAR(36),uuid)) uuid FROM dbo.products')).recordset;
     const optionIds = (await pool.request().query('SELECT id,group_id,LOWER(CONVERT(VARCHAR(36),uuid)) uuid FROM dbo.modifier_options')).recordset;
-    return { policy: JSON.parse(p.recordset[0].payload), catalog, ids, optionIds };
+    const clock = (await pool.request().query("SELECT CONVERT(VARCHAR(19),GETDATE(),126) wallTime")).recordset[0];
+    return { policy: JSON.parse(p.recordset[0].payload), catalog, ids, optionIds, wallTime: clock.wallTime };
 }
 async function cotizacion(pool, p, actor) {
     const { policy, catalog, ids } = await catalogo(pool);

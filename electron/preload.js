@@ -160,6 +160,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
        aqui no- y el proceso principal solo valida y escribe. */
     ticketGuardarLogo: (p) => ipcRenderer.invoke('ticket:guardar-logo', p),
     ticketBorrarLogo: () => ipcRenderer.invoke('ticket:borrar-logo'),
+    ticketClosures: p => ipcRenderer.invoke('ticket:closures',p),
+    ticketEmail: p => ipcRenderer.invoke('ticket:email',p),
+    ticketPreview: p => ipcRenderer.invoke('ticket:preview',p),
+    ticketPrintDocument: p => ipcRenderer.invoke('ticket:print-document',p),
     ticketLogo: () => ipcRenderer.invoke('ticket:logo'),
     paymentsGet: () => ipcRenderer.invoke('payments:get'),
     paymentsSet: (c) => ipcRenderer.invoke('payments:set', c),

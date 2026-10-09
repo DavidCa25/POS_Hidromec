@@ -2333,6 +2333,12 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
         // Se vende igual; el inventario no se valida ni se descuenta.
         .input('venta_esencial', sql.Bit,           licencia.evaluador().ventaEsencial ? 1 : 0);
 
+      if (p.payments) request.input('payments_json',sql.NVarChar(sql.MAX),JSON.stringify(p.payments));
+      if (p.clientSaleKey) {
+        request.input('client_sale_key',sql.UniqueIdentifier,p.clientSaleKey);
+        const hash=require('node:crypto').createHash('sha256').update(JSON.stringify({actor:p.userId,register:p.registerId,customer:p.customerId,method:p.paymentMethod,payments:p.payments,lines,service:p.serviceMode})).digest('hex');
+        request.input('client_sale_hash',sql.VarChar(64),hash);
+      }
       if (p.commercialQuote) request.input('commercial_quote',sql.UniqueIdentifier,p.commercialQuote);
       if(p.mpOrderId&&p.commercialQuote){
         const bound=(await pool.request().input('quote',sql.UniqueIdentifier,p.commercialQuote).input('actor',sql.Int,p.userId).input('reference',sql.NVarChar(100),String(p.mpOrderId)).query('SELECT payload FROM dbo.commercial_quotes WHERE id=@quote AND actor_id=@actor AND payment_reference=@reference AND sale_id IS NULL')).recordset[0];
@@ -3537,23 +3543,18 @@ async function generateSaleTicketPdf(header, lines, extras = {}) {
 
   // MISMO constructor que la impresion. Antes habia dos copias con el mismo
   // error de IVA y el mismo logo ajeno: arreglar una dejaba la otra rota.
-  const paperWidthMm = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 80;
+  const profile=receiptProfile('sale');
+  const paperWidthMm=profile.width;
   const fecha = (typeof formatDateTimeEsMX === "function")
     ? formatDateTimeEsMX(header?.datee) : String(header?.datee ?? "");
 
-  const filledHtml = construirTicketHtml(header, lines, {
-    ...ticketExtrasComunes(paperWidthMm),
-    fecha,
-    pagado: extras.pagado,
-    cambio: extras.cambio,
-    payment_method: extras.payment_method,
-  });
+  const filledHtml = buildTicketHtmlFromTemplate(header,lines,extras);
 
   const pdfPath = path.join(ensureTicketsDir(), `ticket_${header.id}.pdf`);
   await htmlToPdf(filledHtml, {
     outPath: pdfPath,
     // El alto lo decide el contenido; el ancho, el papel configurado.
-    pageSize: { widthMm: paperWidthMm, heightMm: 279.4 },
+    pageSize: { widthMm: paperWidthMm, heightMm: profile.height || 279.4 },
     printBackground: true,
   });
   return pdfPath;
@@ -3994,19 +3995,14 @@ function ticketExtrasComunes(paperWidthMm) {
   };
 }
 
-function buildTicketHtmlFromTemplate(header, details, extras = {}) {
-  const paperWidthMm = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 58;
-  const fecha = (typeof formatDateTimeEsMX === 'function')
-    ? formatDateTimeEsMX(header?.datee) : String(header?.datee ?? '');
-  return construirTicketHtml(header, details, {
-    ...ticketExtrasComunes(paperWidthMm),
-    fecha,
-    pagado: extras.pagado,
-    cambio: extras.cambio,
-    payment_method: extras.payment_method,
-    pedido: extras.pedido ?? null,
-  });
+function receiptProfile(doc='sale', override) {
+  return require('./lib/comprobante').perfil(override ?? loadDeviceConfig()?.printer?.documents?.[doc],doc);
 }
+function buildTicketHtmlFromTemplate(header, details, extras={}) {
+ const profile=receiptProfile('sale',extras.profile);
+ return require('./lib/comprobante').venta(header,details,{...ticketExtrasComunes(profile.width),...extras,fecha:formatDateTimeEsMX(header?.datee)},profile);
+}
+require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,ensureBusinessConfig,loadDeviceConfig,buildTicketHtmlFromTemplate,loadSaleFromDbWithSp,generateSaleTicketPdf,cloudSync,imprimirHtml});
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {
@@ -4017,19 +4013,10 @@ ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (
 
     await ensureBusinessConfig();
 
-    const { header, details } = await loadSaleByFolioFromDb(saleId);
+    const { header, lines:details } = await loadSaleFromDbWithSp(saleId);
 
-    // Ancho de papel (mm): payload > config de la impresora > 58 por defecto.
-    let paperWidthMm = Number(payload?.paperWidthMm) || 0;
-    if (!paperWidthMm) {
-      try {
-        const dc = loadDeviceConfig();
-        const ps = String(dc?.printer?.paperSize || '');
-        if (/80/.test(ps)) paperWidthMm = 80;
-        else if (/58/.test(ps)) paperWidthMm = 58;
-      } catch {}
-    }
-    if (!paperWidthMm) paperWidthMm = 58;
+    const profile=receiptProfile('sale');
+    const paperWidthMm=profile.width;
 
     const html = buildTicketHtmlFromTemplate(header, details, {
       pagado: payload?.pagado ?? payload?.paid ?? null,
@@ -4044,7 +4031,8 @@ ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (
     const ok = await imprimirHtml(html, {
       paperWidthMm,
       silent: payload?.silent !== false,
-      printerName: payload?.printerName || undefined,
+      paperHeightMm: profile.height, format: profile.format,
+      printerName: payload?.printerName || loadDeviceConfig()?.printer?.ticketPrinterName || undefined,
     });
 
     if (!ok) {
@@ -4103,6 +4091,7 @@ ipcMain.handle('devices:get-config', async () => {
 
 ipcMain.handle('devices:set-config', sesion.proteger('devices:set-config', async (_event, partialCfg = {}) => {
   try {
+    if(partialCfg.printer?.documents){for(const doc of ['sale','closure'])if(partialCfg.printer.documents[doc])require('./lib/comprobante').perfil(partialCfg.printer.documents[doc],doc);}
     const current = loadDeviceConfig();
     const merged = {
       ...current,

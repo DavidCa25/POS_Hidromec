@@ -107,6 +107,7 @@ function etiquetaPago(metodo) {
  * @param {object} extras  { plantilla, paperWidthMm, negocio, logoUrl, pagado, cambio, payment_method, fecha, pedido }
  */
 function construirTicketHtml(header, lineas, extras = {}) {
+  const visible = key => !extras.fields || extras.fields.includes(key);
   const plantilla = String(extras.plantilla || '');
   const ancho = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 58;
   const negocio = extras.negocio || {};
@@ -120,7 +121,7 @@ function construirTicketHtml(header, lineas, extras = {}) {
   const esEfectivo = String(metodo).toUpperCase() === 'EFECTIVO';
 
   // --- cabecera del negocio ---
-  const logo = extras.logoUrl
+  const logo = visible('logo') && extras.logoUrl
     ? `<img class="logo" src="${esc(extras.logoUrl)}" alt="">`
     : '';
 
@@ -143,23 +144,29 @@ function construirTicketHtml(header, lineas, extras = {}) {
 
   // --- totales ---
   const totales = [];
-  if(Number(header?.commercial_discount)>0.004)totales.push(`<div><span>Ahorro en esta compra</span><span class="num">$${dinero(header.commercial_discount)}</span></div>`);
+  if(visible('discount') && Number(header?.commercial_discount)>0.004)totales.push(`<div><span>Ahorro en esta compra</span><span class="num">$${dinero(header.commercial_discount)}</span></div>`);
   totales.push(`<div><span>Subtotal</span><span class="num">$${dinero(base)}</span></div>`);
   // Un negocio que no cobra impuesto no necesita una linea de impuesto en 0.
-  if (impuesto > 0.004) {
+  if (visible('tax') && impuesto > 0.004) {
     totales.push(`<div><span>IVA incluido</span><span class="num">$${dinero(impuesto)}</span></div>`);
   }
   totales.push(`<div class="grande"><span>TOTAL</span><span class="num">$${dinero(total)}</span></div>`);
-  totales.push(`<div><span>${esc(etiquetaPago(metodo))}</span><span class="num">$${dinero(esEfectivo ? pagado : total)}</span></div>`);
+  const pagos = header?.payments_json ? JSON.parse(header.payments_json) : [];
+  if (visible('payments') && pagos.length) {
+    for (const p of pagos) totales.push(`<div><span>${esc(etiquetaPago(p.payment_method))}</span><span class="num">$${dinero(p.amount)}</span></div>`);
+    const cash = pagos.find(p=>p.payment_method==='EFECTIVO');
+    if(cash?.received!=null) { totales.push(`<div><span>Efectivo recibido</span><span class="num">$${dinero(cash.received)}</span></div>`);if(Number(cash.received)>Number(cash.amount))totales.push(`<div><span>Cambio</span><span class="num">$${dinero(Number(cash.received)-Number(cash.amount))}</span></div>`); }
+  } else if (visible('payments')) { totales.push(`<div><span>${esc(etiquetaPago(metodo))}</span><span class="num">$${dinero(esEfectivo ? pagado : total)}</span></div>`);
+  }
   // Recibido y cambio solo tienen sentido en efectivo.
-  if (esEfectivo && cambio > 0.004) {
+  if (visible('payments') && esEfectivo && !pagos.some(p => p.received != null) && cambio > 0.004) {
     totales.push(`<div class="b"><span>Cambio</span><span class="num">$${dinero(cambio)}</span></div>`);
   }
   if (header?.balance != null && Number(header.balance) > 0.004) {
     totales.push(`<div class="b"><span>Saldo pendiente</span><span class="num">$${dinero(header.balance)}</span></div>`);
   }
 
-  const pie = String(negocio.ticket_footer || '').trim();
+  const pie = visible('footer') ? String(negocio.ticket_footer || '').trim() : '';
 
   // --- numero de pedido del dia (mostrador / para llevar) ---
   // Lo primero que el cliente busca en su ticket: con el lo llaman, y es el
@@ -173,13 +180,13 @@ function construirTicketHtml(header, lineas, extras = {}) {
   return plantilla
     .replaceAll('{{PAPER_W}}', String(ancho))
     .replaceAll('{{LOGO_BLOCK}}', logo)
-    .replaceAll('{{BUSINESS_NAME}}', esc(negocio.business_name || ''))
-    .replaceAll('{{BUSINESS_LINES}}', datosNegocio)
+    .replaceAll('{{BUSINESS_NAME}}', esc(visible('business') ? negocio.business_name || '' : ''))
+    .replaceAll('{{BUSINESS_LINES}}', visible('business') ? datosNegocio : '')
     .replaceAll('{{PEDIDO_BLOCK}}', pedidoHtml)
     .replaceAll('{{FOLIO}}', esc(String(header?.id ?? header?.sale_id ?? '')))
     .replaceAll('{{DATE}}', esc(String(extras.fecha ?? header?.datee ?? '')))
-    .replaceAll('{{META_EXTRA}}', metaHtml)
-    .replaceAll('{{ROWS}}', (lineas || []).map(filaProducto).join(''))
+    .replaceAll('{{META_EXTRA}}', visible('meta') ? metaHtml : '')
+    .replaceAll('{{ROWS}}', visible('items') ? (lineas || []).map(filaProducto).join('') : '')
     .replaceAll('{{TOTALES}}', totales.join('\n    '))
     .replaceAll('{{FOOTER}}', pie ? `<div class="gracias">${esc(pie)}</div>` : '');
 }

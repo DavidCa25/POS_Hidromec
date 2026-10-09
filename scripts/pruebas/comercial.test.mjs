@@ -7,6 +7,24 @@ const ctx={channel:'LOCAL',date:'2026-10-06',time:'09:30',weekday:2};
 const line=(product,quantity='1',extras='0')=>({key:product,product,quantity,extras});
 const rule=(kind,extra={})=>({id:'promo',name:'Oferta',active:true,priority:1,kind,selector:{products:['dona']},...extra});
 function config(r){return {...politicaVacia(),promotions:r?[r]:[]};}
+test('mayoreo requiere mínimo, mezcla sabores y vuelve al precio normal al quitar piezas',()=>{
+ const p=config(rule('VOLUME',{minimumQty:6,mixProducts:true,value:'20',selector:{categories:['donas']}}));
+ assert.equal(cotizar(p,products,[line('dona','3'),line('premium','2')],ctx).total,'135.00');
+ assert.equal(cotizar(p,products,[line('dona','3'),line('premium','3')],ctx).total,'120.00');
+ assert.equal(cotizar(p,products,[line('dona','1')],ctx).total,'25.00');
+ p.promotions[0].mixProducts=false;
+ assert.equal(cotizar(p,products,[line('dona','3'),line('premium','3')],ctx).total,'165.00');
+ assert.equal(cotizar(p,products,[line('dona','6'),line('premium','1')],ctx).total,'150.00');
+});
+test('mayoreo respeta prioridad, extras y no duplica descuentos',()=>{
+ const volume=rule('VOLUME',{minimumQty:2,value:'20'});
+ const p=config(volume);p.promotions.push(rule('PERCENT',{id:'estudiante',priority:2,value:'20'}));
+ assert.equal(cotizar(p,products,[line('dona','2','5')],ctx).total,'50.00');
+ p.promotions[1].priority=0;
+ const q=cotizar(p,products,[line('dona','2')],ctx);assert.equal(q.total,'40.00');assert.ok(q.lines.every(x=>x.rule==='estudiante'));
+ assert.throws(()=>cotizar(config({...volume,minimumQty:1}),products,[line('dona')],ctx),/Mayoreo inválido/);
+ assert.throws(()=>cotizar(config(volume),products,[line('dona','1.5')],ctx),/completas/);
+});
 test('sin configuración comercial conserva precios y cantidades decimales',()=>{
  assert.equal(cotizar(config(),products,[line('dona','1.25','3.00')],ctx).total,'35.00');
 });

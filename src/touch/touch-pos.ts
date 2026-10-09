@@ -1,3 +1,7 @@
+import {FacturaNueva,ConceptoFactura} from '../app/factura-nueva/factura-nueva.component';
+import {ReceiptViewer} from '../app/receipt-viewer/receipt-viewer.component';
+import {ReceiptEmail} from '../app/receipt-email/receipt-email.component';
+import { validarPagos, type PagoAplicado } from '../../shared/pagos';
 import {CommercialService} from '../core/commercial.service';
 import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.component';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
@@ -48,12 +52,13 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
+  imports: [ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
 export class TouchPos implements OnInit, OnDestroy {
   readonly commercial=inject(CommercialService);
+  readonly ofertasAbiertas = signal(false);
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
 
   /** Si este negocio tiene Servicios encendido. Decide si la agenda existe. */
@@ -335,12 +340,21 @@ export class TouchPos implements OnInit, OnDestroy {
   cobrando = signal(false);
 
   readonly recibidoNum = computed(() => Number(this.recibido() || 0));
-  readonly cambio = computed(() => Math.max(0, this.recibidoNum() - this.totales().total));
-  readonly alcanza = computed(() => this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total);
+  readonly pagoMixto = signal(false);
+  readonly pagos = signal<PagoAplicado[]>([]);
+  readonly entradaPago = signal<'amount'|'received'>('received');
+  readonly pagoSeleccionado = computed(() => this.pagos().find(p => p.method === this.metodo()));
+  readonly saldoPagos = computed(() => Math.round((this.totales().total-this.pagos().reduce((a,p)=>a+p.amount,0))*100)/100);
+  readonly cambio = computed(() => { const cash=this.pagos().find(p=>p.method==='EFECTIVO'); return this.pagoMixto() ? Math.max(0,(cash?.received??cash?.amount??0)-(cash?.amount??0)) : Math.max(0,this.recibidoNum()-this.totales().total); });
+  alternarMixto(enabled:boolean) { if(this.cobrando())return; this.pagoMixto.set(enabled); this.pagos.set(enabled ? [{method:'EFECTIVO',amount:0,received:0}] : []); this.elegirMetodo('EFECTIVO'); }
+  enfocarPago(field:'amount'|'received') { if(this.cobrando())return;this.entradaPago.set(field);const p=this.pagoSeleccionado();this.recibido.set(String((field==='amount'?p?.amount:p?.received)??0)); }
+  aplicarEntrada(value:string) { this.recibido.set(value); if(this.pagoMixto()) { const n=Number(value||0);this.pagos.update(ps=>ps.map(p=>p.method===this.metodo()?{...p,[this.entradaPago()]:Number.isFinite(n)?n:0}:p)); } }
+  readonly errorPagos = computed(() => { if(!this.pagoMixto()) return '';try{validarPagos(this.totales().total,this.pagos().filter(p=>p.amount>0));return '';}catch(e){return (e as Error).message;} });
+  readonly alcanza = computed(() => this.pagoMixto() ? !this.errorPagos() : this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total);
 
   /** Sugerencias de billete: el importe exacto y los redondeos utiles. */
   readonly sugerencias = computed(() => {
-    const t = this.totales().total;
+    const t = this.pagoMixto() ? (this.entradaPago()==='received' ? this.pagoSeleccionado()?.amount??0 : Math.max(0,this.saldoPagos())+(this.pagoSeleccionado()?.amount??0)) : this.totales().total;
     if (t <= 0) return [];
     const base = [Math.ceil(t), 50, 100, 200, 500, 1000];
     return [...new Set(base.filter(v => v >= t))].sort((a, b) => a - b).slice(0, 4);
@@ -798,6 +812,7 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   private abrirCobro() {
+    this.pagoMixto.set(false);this.pagos.set([]);
     this.recibido.set('');
     this.metodo.set('EFECTIVO');
     this.vista.set('cobro');
@@ -818,27 +833,20 @@ export class TouchPos implements OnInit, OnDestroy {
 
   /** Teclado numerico propio: no depende del teclado del sistema. */
   tecla(t: string) {
-    if (t === 'C') { this.recibido.set(''); return; }
-    if (t === '<') { this.recibido.update(v => v.slice(0, -1)); return; }
-    if (t === '.') {
-      this.recibido.update(v => (v.includes('.') ? v : (v || '0') + '.'));
-      return;
-    }
-    this.recibido.update(v => {
-      const n = v + t;
-      // Dos decimales como maximo: es dinero.
-      if (/\.\d{3,}$/.test(n)) return v;
-      return n.length > 9 ? v : n;
-    });
+    if(this.cobrando())return;
+    const v=this.recibido(); let n=t==='C'?'':t==='<'?v.slice(0,-1):t==='.'?(v.includes('.')?v:(v||'0')+'.'):(v==='0'?t:v+t);
+    if(n.length>9 || /\.\d{3,}$/.test(n))return;
+    this.aplicarEntrada(n);
   }
-
-  usarSugerencia(v: number) {
-    this.recibido.set(String(v));
-  }
-
-  elegirMetodo(m: PaymentMethod) {
+  usarSugerencia(v:number) { if(!this.cobrando())this.aplicarEntrada(String(v)); }
+  elegirMetodo(m:PaymentMethod) {
+    if(this.cobrando())return;
     this.metodo.set(m);
-    if (m !== 'EFECTIVO') this.recibido.set('');
+    if(this.pagoMixto()) {
+      if(!['EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA'].includes(m))return;
+      if(!this.pagos().some(p=>p.method===m))this.pagos.update(ps=>[...ps,{method:m as PagoAplicado['method'],amount:Math.max(0,this.saldoPagos()),...(m==='EFECTIVO'?{received:0}:{})}]);
+      this.enfocarPago('amount');
+    } else if(m!=='EFECTIVO')this.recibido.set('');
   }
 
   async confirmar() {
@@ -850,13 +858,14 @@ export class TouchPos implements OnInit, OnDestroy {
     const mesa = this.cuentaMesa();
     try {
       const res = await this.sale.checkout({
-        method: this.metodo(),
+        method: this.pagoMixto() ? 'MIXTO' : this.metodo(),
+        payments: this.pagoMixto() ? this.pagos().filter(p=>p.amount>0) : undefined,
         /* Con tarjeta o transferencia se cobra el total exacto. Mandar `null`
            hacia que `SaleService.validate` lo rechazara como «dinero recibido
            insuficiente», y Touch no podia cobrar mas que en efectivo. */
         received: this.metodo() === 'EFECTIVO' ? this.recibidoNum() : this.totales().total,
       }, {
-        openDrawer: this.metodo() === 'EFECTIVO',
+        openDrawer: this.pagoMixto() ? this.pagos().some(p=>p.method==='EFECTIVO'&&p.amount>0) : this.metodo()==='EFECTIVO',
         autoPrint: true,
       });
 
@@ -869,6 +878,8 @@ export class TouchPos implements OnInit, OnDestroy {
         if (!e.ok) this.mostrar(e.error, 'error');
       }
 
+      this.clienteFactura=res.customer??null;
+      this.conceptosFactura=(res.lines??[]).map(l=>({description:l.productName,quantity:l.qty,unitPrice:l.unitPrice,claveProdServ:l.claveProdServ,claveUnidad:l.claveUnidad,taxObject:l.objetoImpuesto,taxRate:l.tasaIva}));
       const cambio = res.change ?? 0;
       this.ultimoCambio.set(cambio);
       this.ultimoFolio.set(res.saleId ?? null);
@@ -880,7 +891,7 @@ export class TouchPos implements OnInit, OnDestroy {
       this.menu.load(true);
       this.mostrarCambio.set(true);
       /* Con numero de pedido se queda mas: el cajero tiene que decirlo. */
-      setTimeout(() => this.mostrarCambio.set(false), mesa?.numero ? 9000 : cambio > 0 ? 6000 : 2500);
+      // Las acciones posventa permanecen hasta que el cajero las cierre.
       // Los premios se pintan encima del aviso de cambio: en Touch el
       // cliente esta delante de la caja y es AHORA cuando hay que decirselo.
       this.premiosUltimaVenta.set(res.premios ?? []);
@@ -891,6 +902,7 @@ export class TouchPos implements OnInit, OnDestroy {
     }
   }
 
+  verTicket=false;enviarCorreo=false;facturaAbierta=false;conceptosFactura:ConceptoFactura[]=[];clienteFactura:CartCustomer|null=null;
   ultimoCambio = signal(0);
   ultimoFolio = signal<number | null>(null);
   /** El numero de pedido del dia de la ultima venta, si era de mostrador. */
@@ -905,7 +917,8 @@ export class TouchPos implements OnInit, OnDestroy {
   async imprimirUltimo() {
     const folio = this.ultimoFolio();
     if (!folio) return;
-    await this.sale.printTicket(folio, { silent: true, paymentMethod: this.metodo() });
+    const r=await this.sale.printTicket(folio, { silent: true });
+    if(!r.success){this.mostrar(r.error||'No se pudo imprimir');return;}
     this.mostrar('Ticket enviado', 'ok');
   }
 

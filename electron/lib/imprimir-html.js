@@ -13,14 +13,14 @@ const { BrowserWindow } = require('electron');
 
 const MICRAS_POR_PX = 25400 / 96; // 1 px a 96 dpi = 264.58 micras
 
-async function imprimirHtml(html, { printerName, paperWidthMm = 58, silent = true } = {}) {
+async function imprimirHtml(html, { printerName, paperWidthMm = 58, paperHeightMm = 0, format = 'roll', silent = true } = {}) {
   let ventana = null;
   try {
     ventana = new BrowserWindow({
       show: false,
-      width: 420,
+      width: Math.ceil(paperWidthMm * 96 / 25.4),
       height: 800,
-      webPreferences: { contextIsolation: true, sandbox: false },
+      webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
     });
 
     await ventana.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
@@ -32,7 +32,8 @@ async function imprimirHtml(html, { printerName, paperWidthMm = 58, silent = tru
     if (!altoPx || altoPx < 40) altoPx = 500;
 
     const ancho = Math.round(Number(paperWidthMm || 58) * 1000);
-    const alto = Math.round((altoPx + 12) * MICRAS_POR_PX);
+    if (format === 'label' && paperHeightMm && (altoPx * 25.4 / 96) > paperHeightMm + 1) throw Error('El contenido no cabe en la etiqueta. Aumenta el alto o reduce los campos.');
+    const alto = paperHeightMm ? Math.round(paperHeightMm*1000) : Math.round((altoPx + 12) * MICRAS_POR_PX);
 
     return await new Promise((resolve) => {
       ventana.webContents.print(
