@@ -119,6 +119,11 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
 require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion});
+/* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
+const ipcMulti = require('./ipc/multisucursal');
+ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
+  esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+  equipo: () => os.hostname() });
 
 ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEsteEquipo() });
 
@@ -2063,6 +2068,11 @@ ipcMain.handle('sp-add-product', sesion.proteger('sp-add-product', async (event,
                                         control = null) => {
     try {
         const pool = await poolPromise;
+        /* MultiSucursal: si la empresa no permite productos propios en las
+           sucursales, el catalogo lo da de alta la matriz. */
+        if (!(await ipcMulti.puedeCrearProductos(pool))) {
+            return { success: false, error: 'En esta empresa los productos se dan de alta en la matriz y llegan solos a las sucursales.' };
+        }
         const result = await pool.request()
             .input('brand', sql.Int, brand)
             .input('category', sql.Int, category)
@@ -2172,6 +2182,14 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Stock invalido.' };
  
     const pool = await poolPromise;
+    /* MultiSucursal: un producto de la matriz no se cambia en la sucursal
+       (existencia y costo si; el precio, si la empresa lo permite). */
+    const candado = await ipcMulti.motivoCandado(pool, sql, productId, {
+      nombre, part_number: numeroParte, price: precio, bar_code: barCode,
+      clave_prod_serv: claveProdServ, tasa_iva: tasaIva, inventory_mode: payload?.inventory_mode,
+      sellable: payload?.sellable, base_uom: payload?.base_uom,
+    });
+    if (candado) return { success: false, error: candado };
     const req = pool.request()
       .input('product_id', sql.Int, productId)
       .input('nombre', sql.NVarChar(100), nombre)
@@ -4359,6 +4377,9 @@ ipcMain.handle('sp-import-products', sesion.proteger('sp-import-products', async
     if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
 
     const pool = await poolPromise;
+    if (!(await ipcMulti.puedeCrearProductos(pool))) {
+      return { success: false, error: 'En esta empresa los productos se cargan en la matriz y llegan solos a las sucursales.' };
+    }
 
     // El nombre del tipo es OBLIGATORIO para msnodesqlv8
     const tvp = new sql.Table('dbo.ProductImportType');

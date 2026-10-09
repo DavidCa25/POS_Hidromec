@@ -226,6 +226,21 @@ const EXIGE = {
   'quickstart:leer-hoja': CONFIGURACION_ADMINISTRAR,
   'quickstart:plantilla': CONFIGURACION_ADMINISTRAR,
   'negocio:giro-guardar': CONFIGURACION_ADMINISTRAR,
+  // MultiSucursal: leer y traspasar es operar inventario; lo que cambia el
+  // catalogo o las reglas de toda la empresa es administrar.
+  'multi:estado': INVENTARIO_OPERAR,
+  'multi:recibir': INVENTARIO_OPERAR,
+  'multi:traspasos': INVENTARIO_OPERAR,
+  'multi:traspaso-enviar': INVENTARIO_OPERAR,
+  'multi:traspaso-recibir': INVENTARIO_OPERAR,
+  'multi:traspaso-cancelar': INVENTARIO_OPERAR,
+  'multi:productos-traspaso': INVENTARIO_OPERAR,
+  'multi:publicar': CONFIGURACION_ADMINISTRAR,
+  'multi:excepciones': CONFIGURACION_ADMINISTRAR,
+  'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
+  'multi:reglas-guardar': CONFIGURACION_ADMINISTRAR,
+  'multi:usuarios': CONFIGURACION_ADMINISTRAR,
+  'multi:usuario-alcance': CONFIGURACION_ADMINISTRAR,
 
   'sp-import-products': CONFIGURACION_ADMINISTRAR,
   'sp-import-customers': CONFIGURACION_ADMINISTRAR,

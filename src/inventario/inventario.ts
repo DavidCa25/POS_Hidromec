@@ -485,7 +485,9 @@ export class Inventario {
   supplierToAdd: number | null = null;
   supplierIsDefault = false;
   supplierLastCost: number | null = null;
-  editingProductId: number | null = null; 
+  editingProductId: number | null = null;
+  /** MultiSucursal: el producto en edición lo administra la matriz. */
+  editingCorporativo = false; 
 
   newSupplierName = '';
   creatingSupplier = false;
@@ -808,6 +810,7 @@ export class Inventario {
 
   abrirEditarProducto(item: ProductRow) {
     this.editingProductId = Number(item?.id ?? 0) || null;
+    this.editingCorporativo = !!(item as any)?.corporate;
     this.form = {
       brand: item?.brand_id ?? null,
       category: item?.category_id ?? null,

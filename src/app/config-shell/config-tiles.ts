@@ -101,6 +101,9 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         tiles: [
             { id: 'sync-nube', title: 'Sincronización en la nube', desc: 'Activa el envío de datos a la app del dueño', icon: 'cloud-arrow-up', color: 'blue', size: '2x1',
               load: () => import('../sync-nube-panel/sync-nube.component').then(m => m.SyncNubePanelComponent) },
+            /* MultiSucursal: matriz, catalogo central, precios por sucursal y usuarios de empresa. */
+            { id: 'multisucursal', title: 'MultiSucursal', desc: 'Catálogo de la matriz, precios por sucursal y usuarios de empresa', icon: 'buildings', color: 'blue', size: '2x1',
+              load: () => import('../multisucursal-panel/multisucursal-panel.component').then(m => m.MultisucursalPanelComponent) },
             { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
               load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
         ]

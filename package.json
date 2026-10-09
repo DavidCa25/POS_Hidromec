@@ -109,6 +109,8 @@
     "db:test-comercial": "node scripts/db/pruebas/comercial.mjs",
     "dist:addon": "node scripts/dist-addon.mjs",
     "test:addons": "node scripts/pruebas/addons.mjs",
+    "test:multisucursal": "node scripts/pruebas/multisucursal-unidad.mjs",
+    "db:test-multisucursal": "node scripts/db/pruebas/multisucursal.mjs",
     "test:pagos": "node --test scripts/pruebas/pagos-comprobantes.test.mjs",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"

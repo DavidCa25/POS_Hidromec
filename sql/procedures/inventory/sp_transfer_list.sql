@@ -11,7 +11,11 @@ GO
    ============================================================== */
 CREATE OR ALTER PROCEDURE dbo.sp_transfer_list
     @event_location_uuid UNIQUEIDENTIFIER = NULL,
-    @max_rows INT = 100
+    @max_rows INT = 100,
+    /* 0055: EVENT (lo de siempre: envios y retornos de ferias) o BRANCH
+       (traspasos entre sucursales). Sin decirlo, eventos: la pantalla de
+       eventos no debe ver los traspasos entre tiendas. */
+    @scope VARCHAR(10) = 'EVENT'
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -21,7 +25,9 @@ BEGIN
            (SELECT SUM(l.qty_received) FROM dbo.stock_transfer_lines l WHERE l.transfer_id = t.id) AS total_received
       INTO #t
       FROM dbo.stock_transfers t LEFT JOIN dbo.users u ON u.id = t.created_by
-     WHERE @event_location_uuid IS NULL OR t.event_location_uuid = @event_location_uuid
+     WHERE (@event_location_uuid IS NULL OR t.event_location_uuid = @event_location_uuid)
+       AND ((ISNULL(@scope, 'EVENT') = 'EVENT' AND t.kind IN ('OUT', 'RETURN_IN'))
+         OR (@scope = 'BRANCH' AND t.kind IN ('BRANCH_OUT', 'BRANCH_IN')))
      ORDER BY t.created_at DESC, t.id DESC;
 
     SELECT transfer_uuid, kind, status, event_location_uuid, event_name, note, created_at, received_at,

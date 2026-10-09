@@ -1023,3 +1023,12 @@
   letter-spacing: 0.02em;
   vertical-align: middle;
 }
+
+/* MultiSucursal: aviso de producto administrado por la matriz. */
+.producto-corporativo {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin: 0 0 12px; padding: 10px 12px;
+  border-radius: var(--wx-radius-sm); background: var(--wx-accent-soft); color: var(--wx-text);
+  font-size: .875rem; line-height: 1.45;
+}
+.producto-corporativo i { color: var(--wx-accent-text); font-size: 1.05rem; margin-top: 1px; }

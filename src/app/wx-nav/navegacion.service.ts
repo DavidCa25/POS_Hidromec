@@ -161,6 +161,8 @@ export class NavegacionService {
           { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarNegocio },
           { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
           /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
+          /* MultiSucursal: mercancía de una sucursal a otra de la empresa. */
+          { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: true },
           { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: true },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },

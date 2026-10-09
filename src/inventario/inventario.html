@@ -250,6 +250,11 @@
     <h1 class="producto-modal-title">
       <b>{{ editingProductId ? 'Editar producto' : 'Agregar producto' }}</b>
     </h1>
+    <!-- MultiSucursal: lo que manda la matriz no se cambia aqui (el servidor lo hace valer). -->
+    <p class="producto-corporativo" *ngIf="editingProductId && editingCorporativo" role="note">
+      <i class="ph ph-buildings" aria-hidden="true"></i>
+      Este producto lo administra la matriz. Aquí puedes ajustar existencia y costo; nombre, código e impuestos se cambian en la matriz y llegan solos.
+    </p>
     <form autocomplete="off" (ngSubmit)="guardarProducto()" #formRef="ngForm">
       <div class="producto-form-grid">
         <!-- Marca y categoria solo en ALTA (el SP de update no las modifica) -->

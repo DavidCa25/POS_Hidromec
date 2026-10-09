@@ -50,6 +50,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     qsLeerHoja: (p) => ipcRenderer.invoke('quickstart:leer-hoja', p),
     qsPlantilla: (p) => ipcRenderer.invoke('quickstart:plantilla', p),
     negocioGiro: () => ipcRenderer.invoke('negocio:giro'),
+    // MultiSucursal
+    multiEstado: () => ipcRenderer.invoke('multi:estado'),
+    multiPublicar: () => ipcRenderer.invoke('multi:publicar'),
+    multiRecibir: () => ipcRenderer.invoke('multi:recibir'),
+    multiExcepciones: (p) => ipcRenderer.invoke('multi:excepciones', p),
+    multiExcepcionesGuardar: (p) => ipcRenderer.invoke('multi:excepciones-guardar', p),
+    multiReglasGuardar: (p) => ipcRenderer.invoke('multi:reglas-guardar', p),
+    multiUsuarios: () => ipcRenderer.invoke('multi:usuarios'),
+    multiUsuarioAlcance: (p) => ipcRenderer.invoke('multi:usuario-alcance', p),
+    multiTraspasos: () => ipcRenderer.invoke('multi:traspasos'),
+    multiTraspasoEnviar: (p) => ipcRenderer.invoke('multi:traspaso-enviar', p),
+    multiTraspasoRecibir: (p) => ipcRenderer.invoke('multi:traspaso-recibir', p),
+    multiTraspasoCancelar: (p) => ipcRenderer.invoke('multi:traspaso-cancelar', p),
+    multiProductosTraspaso: () => ipcRenderer.invoke('multi:productos-traspaso'),
     negocioGiroGuardar: (p) => ipcRenderer.invoke('negocio:giro-guardar', p),
     /* El avance real de una importacion larga. Se escucha, no se sondea. */
     qsAlAvanzar: (fn) => {

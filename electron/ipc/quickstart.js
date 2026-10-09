@@ -603,6 +603,11 @@ function registrar({ ipcMain, sql, poolPromise, app, contexto }) {
       if (!batchId) return { success: false, error: 'Falta la carga.' };
 
       const pool0 = await pool();
+      /* MultiSucursal: si la empresa no deja dar de alta productos en las
+         sucursales, el catalogo se carga en la matriz y llega solo. */
+      if (!(await require('./multisucursal').puedeCrearProductos(pool0))) {
+        return { success: false, error: 'En esta empresa los productos se cargan en la matriz y llegan solos a las sucursales.' };
+      }
       const total = { procesadas: 0, creadas: 0, actualizadas: 0, movimientos: 0 };
       let vueltas = 0;
 

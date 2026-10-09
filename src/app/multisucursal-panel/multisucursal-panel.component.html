@@ -1,0 +1,146 @@
+<div class="panel-content ms">
+
+  <div class="ms-msg ms-msg--error" *ngIf="error()" role="alert">{{ error() }}</div>
+  <div class="ms-msg ms-msg--ok" *ngIf="aviso()" role="status">{{ aviso() }}</div>
+  <p class="hint" *ngIf="cargando()">Consultando a la empresa…</p>
+
+  <ng-container *ngIf="estado() as e">
+    <!-- ----------------------------------------------------- sin licencia -->
+    <section class="wx-set" *ngIf="!e.multisucursal">
+      <header class="wx-set__head"><i class="ph ph-buildings"></i><h3>MultiSucursal</h3></header>
+      <div class="wx-set__body">
+        <p class="ms-texto">La licencia de esta empresa no incluye MultiSucursal. Con ese complemento:</p>
+        <ul class="ms-lista">
+          <li>La matriz administra el catálogo, las recetas, las promociones y los usuarios de todas las sucursales.</li>
+          <li>Cada sucursal puede tener su propio precio o dejar de vender un producto.</li>
+          <li>Se traspasa mercancía de una sucursal a otra.</li>
+        </ul>
+        <p class="hint">Cada sucursal conserva su inventario, sus ventas y sus cortes. Sin Internet sigue vendiendo y se pone al día al conectarse.</p>
+      </div>
+    </section>
+
+    <ng-container *ngIf="e.multisucursal">
+      <!-- ------------------------------------------------------------ red -->
+      <section class="wx-set">
+        <header class="wx-set__head"><i class="ph ph-buildings"></i><h3>{{ e.esMatriz ? 'Esta sucursal es la matriz' : 'Sucursal de ' + (e.matriz?.nombre ?? 'la empresa') }}</h3></header>
+        <div class="wx-set__body">
+          <ul class="ms-red">
+            <li *ngFor="let s of e.sucursales" [class.ms-red--aqui]="s.id === e.locationId">
+              <i class="ph" [class.ph-crown-simple]="s.es_matriz" [class.ph-storefront]="!s.es_matriz"></i>
+              <span>{{ s.nombre }}</span>
+              <small *ngIf="s.es_matriz">Matriz</small>
+              <small *ngIf="s.id === e.locationId">Esta caja</small>
+            </li>
+          </ul>
+          <p class="hint">La matriz la elige el dueño en su app. Si nadie la elige, es la primera sucursal que se dio de alta.</p>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------- catálogo -->
+      <section class="wx-set">
+        <header class="wx-set__head"><i class="ph ph-books"></i><h3>Catálogo corporativo</h3></header>
+        <div class="wx-set__body">
+          <ng-container *ngIf="e.esMatriz; else deSucursal">
+            <p class="ms-texto">Productos, categorías, recetas, modificadores, precios por canal, promociones y usuarios de empresa de esta caja viajan a todas las sucursales.</p>
+            <dl class="ms-datos">
+              <div><dt>Versión publicada</dt><dd>{{ e.versionNube ?? 'Ninguna todavía' }}</dd></div>
+              <div><dt>Última publicación</dt><dd>{{ e.publicadoEn ? (e.publicadoEn | date:'dd/MM/yy HH:mm') : '—' }}</dd></div>
+            </dl>
+            <p class="hint">Se publica sola en cada sincronización si algo cambió.</p>
+            <div class="btn-row"><button class="btn-primary" type="button" (click)="publicar()" [disabled]="ocupado()"><i class="ph ph-upload-simple"></i> Publicar ahora</button></div>
+          </ng-container>
+          <ng-template #deSucursal>
+            <p class="ms-texto">El catálogo lo administra {{ e.matriz?.nombre ?? 'la matriz' }}. Aquí son tuyos la existencia, el costo, las ventas y los cortes.</p>
+            <dl class="ms-datos">
+              <div><dt>Versión en esta sucursal</dt><dd>{{ e.versionLocal ?? 'Ninguna todavía' }}</dd></div>
+              <div><dt>Versión de la matriz</dt><dd>{{ e.versionNube ?? '—' }}</dd></div>
+              <div><dt>Aplicada</dt><dd>{{ e.aplicadoEn ? (e.aplicadoEn | date:'dd/MM/yy HH:mm') : '—' }}</dd></div>
+            </dl>
+            <p class="hint">Llega sola en cada sincronización.</p>
+            <div class="btn-row"><button class="btn-primary" type="button" (click)="recibir()" [disabled]="ocupado()"><i class="ph ph-download-simple"></i> Recibir ahora</button></div>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------------- reglas -->
+      <section class="wx-set">
+        <header class="wx-set__head"><i class="ph ph-scales"></i><h3>Lo que puede cambiar cada sucursal</h3></header>
+        <div class="wx-set__body">
+          <div class="ms-regla">
+            <div class="toggle">
+              <label class="sw"><input id="ms-precios" type="checkbox" [ngModel]="e.reglas.precios_sucursal" [disabled]="!e.esMatriz || ocupado()"
+                (ngModelChange)="guardarReglas({ precios_sucursal: $event })"><span class="sl"></span></label>
+              <label class="ttext" for="ms-precios">Cambiar precios</label>
+            </div>
+            <p class="hint">Apagado: el precio lo pone la matriz (o el precio especial de esa sucursal, abajo).</p>
+          </div>
+          <div class="ms-regla">
+            <div class="toggle">
+              <label class="sw"><input id="ms-locales" type="checkbox" [ngModel]="e.reglas.productos_locales" [disabled]="!e.esMatriz || ocupado()"
+                (ngModelChange)="guardarReglas({ productos_locales: $event })"><span class="sl"></span></label>
+              <label class="ttext" for="ms-locales">Dar de alta productos propios</label>
+            </div>
+            <p class="hint">Un producto propio solo existe en esa sucursal y no viaja a las demás.</p>
+          </div>
+          <p class="hint" *ngIf="!e.esMatriz">Estas reglas las decide la matriz.</p>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------ precios por sucursal -->
+      <section class="wx-set" *ngIf="e.esMatriz">
+        <header class="wx-set__head"><i class="ph ph-storefront"></i><h3>Precio y disponibilidad por sucursal</h3></header>
+        <div class="wx-set__body">
+          <p class="hint" *ngIf="!otrasSucursales().length">Cuando la empresa tenga otra sucursal, aquí le pones precios especiales.</p>
+          <ng-container *ngIf="otrasSucursales().length">
+            <div class="row two">
+              <div>
+                <label class="lbl" for="ms-sucursal">Sucursal</label>
+                <wx-select id="ms-sucursal" [opciones]="otrasSucursales()" [(ngModel)]="sucursalElegida" (ngModelChange)="cargarExcepciones()"></wx-select>
+              </div>
+              <div>
+                <label class="lbl" for="ms-buscar">Buscar</label>
+                <input id="ms-buscar" class="ctl" type="text" [(ngModel)]="buscar" placeholder="Nombre o código" autocomplete="off" />
+              </div>
+            </div>
+            <div class="toggle">
+              <label class="sw"><input id="ms-solo" type="checkbox" [(ngModel)]="soloConExcepcion"><span class="sl"></span></label>
+              <label class="ttext" for="ms-solo">Solo los que tienen excepción</label>
+            </div>
+            <p class="hint" *ngIf="cargandoFilas()">Cargando…</p>
+            <div class="ms-tabla-wrap" *ngIf="!cargandoFilas()">
+              <table class="ms-tabla">
+                <thead><tr><th>Producto</th><th class="num">Precio matriz</th><th class="num">Precio en la sucursal</th><th>Se vende ahí</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let f of filasVisibles" [class.ms-fila--ex]="tieneExcepcion(f)">
+                    <td>{{ f.nombre }}<small>{{ f.part_number }}<span *ngIf="f.categoria"> · {{ f.categoria }}</span></small></td>
+                    <td class="num">{{ f.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                    <td class="num"><input class="ctl ms-precio" type="number" min="0" step="0.5" [(ngModel)]="f.especial"
+                        [placeholder]="f.price" [attr.aria-label]="'Precio de ' + f.nombre + ' en la sucursal'" /></td>
+                    <td><label class="sw"><input type="checkbox" [(ngModel)]="f.disponible" [attr.aria-label]="f.nombre + ' se vende ahí'"><span class="sl"></span></label></td>
+                  </tr>
+                  <tr *ngIf="!filasVisibles.length"><td colspan="4" class="hint">Sin productos que coincidan.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint">Vacío = el precio de la matriz. Apagar «Se vende ahí» lo quita de la caja de esa sucursal sin tocar su inventario.</p>
+            <div class="btn-row"><button class="btn-primary" type="button" (click)="guardarExcepciones()" [disabled]="ocupado() || cargandoFilas()"><i class="ph ph-check-circle"></i> Guardar precios de la sucursal</button></div>
+          </ng-container>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------- usuarios de empresa -->
+      <section class="wx-set" *ngIf="e.esMatriz">
+        <header class="wx-set__head"><i class="ph ph-users-three"></i><h3>Usuarios de empresa</h3></header>
+        <div class="wx-set__body">
+          <p class="ms-texto">Un usuario de empresa entra con la misma contraseña y el mismo PIN en las sucursales que elijas. Los demás solo existen en esta caja.</p>
+          <div class="ms-usuario" *ngFor="let u of usuarios()">
+            <div class="ms-usuario__quien"><b>{{ u.usuario }}</b><small>{{ u.rol }}</small></div>
+            <wx-multi-select [opciones]="opcionesAlcance()" [values]="alcanceDe(u)" etiqueta="Sucursales" placeholder="Solo esta sucursal"
+                             [disabled]="ocupado()" (valuesChange)="cambiarAlcance(u, $event)"></wx-multi-select>
+          </div>
+          <p class="hint" *ngIf="!usuarios().length">No hay usuarios activos en esta caja.</p>
+        </div>
+      </section>
+    </ng-container>
+  </ng-container>
+</div>

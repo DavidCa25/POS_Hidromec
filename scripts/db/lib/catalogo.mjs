@@ -96,6 +96,8 @@ asignar('inventory', [
   // 0052: transferencias con eventos (ferias). La sucursal manda y recibe
   // el sobrante; el evento lleva su propio inventario en la tablet.
   'sp_transfer_send', 'sp_transfer_receive_return', 'sp_transfer_confirm_out', 'sp_transfer_list',
+  // 0055: traspasos entre sucursales de la misma empresa (MultiSucursal).
+  'sp_branch_transfer_send', 'sp_branch_transfer_receive', 'sp_branch_transfer_settle',
 ]);
 
 asignar('cash', [
@@ -119,6 +121,9 @@ asignar('sync', [
   'sp_sync_capture', 'sp_sync_outbox_next', 'sp_sync_outbox_ack',
   // 0052: lo que la sucursal publica para las tablets de sus eventos.
   'sp_catalog_publication', 'sp_staff_publication',
+  // 0055: MultiSucursal. La matriz exporta su catalogo corporativo y cada
+  // sucursal lo aplica en su base.
+  'sp_corporate_catalog_export', 'sp_corporate_catalog_apply',
 ]);
 
 asignar('customers', [
