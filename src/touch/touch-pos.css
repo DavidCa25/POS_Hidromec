@@ -980,3 +980,24 @@
 .tp-exito__acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tp-exito__acciones .tp-secundaria{font-size:13px}.tp-exito__acciones .tp-primaria{grid-column:1/-1}.tp-pagos__row{min-height:44px}
 
 button.tp-dinero__campo{border:0;text-align:left;color:var(--wx-text)}
+
+/* ============================================================ MARCA (addon)
+   Fondo del cliente detras del catalogo. La transparencia viene en la propia
+   imagen: aqui solo se coloca. `scroll` lo deja quieto mientras el catalogo
+   se desplaza por encima. */
+.tp-main--marca {
+  background-image: var(--tp-fondo-claro);
+  background-size: var(--tp-fondo-tam, 640px 420px);
+  background-repeat: repeat;
+  background-attachment: scroll;
+}
+:host-context(html.dark) .tp-main--marca { background-image: var(--tp-fondo-oscuro); }
+/* La mascota ocupa el hueco libre del rail, encima de «Ofertas de hoy». */
+.tp-mascota {
+  margin-top: auto;
+  display: flex; justify-content: center;
+  padding: 8px 0 4px;
+  pointer-events: none;
+}
+.tp-mascota + .tp-cats__extras { margin-top: 0; }
+@media (max-height: 640px) { .tp-mascota { display: none; } }

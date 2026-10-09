@@ -84,6 +84,13 @@ se le añade a `wx-select`.
 - **El estado cambia la expresión, no la identidad**: `idle`, `atencion`,
   `exito`, `error` son caras del mismo personaje.
 
+## Addons de cliente
+
+Lo exclusivo de un cliente vive en `custom-addons/wybix_<cliente>/` y llena
+huecos de `src/app/marca/marca.ts`. El núcleo **nunca** nombra a un cliente ni
+hace `if (cliente === 'X')`; un addon **nunca** edita archivos del núcleo.
+Reglas completas: `custom-addons/README.md`. `npm run test:addons` lo vigila.
+
 ---
 
 # Wybix Guide

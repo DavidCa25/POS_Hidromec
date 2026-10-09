@@ -4,10 +4,10 @@
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
-    "build": "node scripts/comercial-compilar.cjs && npm run assets:rive && ng build --configuration production --base-href ./",
+    "build": "node scripts/addons.mjs && node scripts/comercial-compilar.cjs && npm run assets:rive && ng build --configuration production --base-href ./",
     "electron": "electron ./electron/main.js",
     "start": "npm run build && npm run electron",
-    "start:ng": "npm run assets:rive && ng serve",
+    "start:ng": "node scripts/addons.mjs && npm run assets:rive && ng serve",
     "start:electron": "cross-env NODE_ENV=development electronmon ./electron/main.js",
     "dev": "concurrently -k \"npm run start:ng\" \"wait-on http://localhost:4200 && npm run start:electron\"",
     "pack": "node scripts/verificar-llaves-licencia.mjs && npm run db:check-template && electron-builder --dir",
@@ -107,6 +107,8 @@
     "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs",
     "test:comercial": "node --test scripts/pruebas/comercial.test.mjs",
     "db:test-comercial": "node scripts/db/pruebas/comercial.mjs",
+    "dist:addon": "node scripts/dist-addon.mjs",
+    "test:addons": "node scripts/pruebas/addons.mjs",
     "test:pagos": "node --test scripts/pruebas/pagos-comprobantes.test.mjs",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"

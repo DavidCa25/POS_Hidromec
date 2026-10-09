@@ -39,6 +39,15 @@
  * Para poner o corregir las notas de una version YA publicada, sin compilar:
  *
  *     npm run publish:notas              (la version de package.json)
+ *
+ * VERSION DE UN CLIENTE (custom-addons)
+ * -------------------------------------
+ *     npm run publish -- --addon wybix_<cliente>
+ *
+ * Compila con su addon y sube SOLO a su repositorio de releases
+ * (manifest.publicacion, en la organizacion Wybix-POS). El Wybix general y los
+ * demas clientes no se enteran. Notas: custom-addons/<id>/notas/<version>.md
+ * si existe; si no, las generales. El token necesita acceso a ese repositorio.
  *     npm run publish:notas -- 1.3.0     (otra)
  */
 import { spawnSync } from 'node:child_process';
@@ -50,11 +59,14 @@ import readline from 'node:readline';
 const CARPETA = join(homedir(), '.wybix');
 const ARCHIVO = join(CARPETA, 'publicar.env');
 
-function leerArchivo() {
+/* Un token fine-grained de GitHub es de UN dueño: tu cuenta o la organización
+   Wybix-POS, no las dos. Para un cliente se busca primero
+   GH_TOKEN_<DUEÑO> (GH_TOKEN_WYBIX_POS) y, si no está, GH_TOKEN. */
+function leerArchivo(nombre = 'GH_TOKEN') {
   if (!existsSync(ARCHIVO)) return null;
   /* Tolerante con como se escriba a mano: gh_token o GH_TOKEN, con o sin
      comillas, con `export` delante o con el BOM que deja el Bloc de notas. */
-  const clave = /^(?:export\s+)?GH_TOKEN\s*=\s*/i;
+  const clave = new RegExp(String.raw`^(?:export\s+)?${nombre}\s*=\s*`, 'i');
   const linea = readFileSync(ARCHIVO, 'utf8')
     .replace(/^﻿/, '')
     .split(/\r?\n/)
@@ -76,7 +88,11 @@ function preguntarOculto(pregunta) {
   });
 }
 
-async function obtenerToken() {
+async function obtenerToken(dueno = null) {
+  const propio = dueno ? `GH_TOKEN_${dueno.toUpperCase().replace(/[^A-Z0-9]/g, '_')}` : null;
+  if (propio && process.env[propio]?.trim()) return { token: process.env[propio].trim(), origen: `la variable de entorno ${propio}` };
+  const delDueno = propio ? leerArchivo(propio) : null;
+  if (delDueno) return { token: delDueno, origen: `${ARCHIVO} (${propio})` };
   if (process.env.GH_TOKEN?.trim()) return { token: process.env.GH_TOKEN.trim(), origen: 'la variable de entorno GH_TOKEN' };
 
   const guardado = leerArchivo();
@@ -101,10 +117,16 @@ async function obtenerToken() {
 
 // ------------------------------------------------------------ notas
 const PKG = JSON.parse(readFileSync('package.json', 'utf8'));
-const { owner: DUENO, repo: REPO } = PKG.build?.publish ?? {};
+const iAddon = process.argv.indexOf('--addon');
+const ADDON = iAddon > 0 ? process.argv[iAddon + 1] : null;
+if (iAddon > 0 && !ADDON) { console.error('Uso: npm run publish -- --addon wybix_<cliente>'); process.exit(1); }
+const MANIFIESTO = ADDON ? JSON.parse(readFileSync(join('custom-addons', ADDON, 'manifest.json'), 'utf8')) : null;
+const { owner: DUENO, repo: REPO } = (MANIFIESTO ? MANIFIESTO.publicacion : PKG.build?.publish) ?? {};
 const SOLO_NOTAS = process.argv.includes('--solo-notas');
 const VERSION = process.argv.slice(2).find(a => /^\d+\.\d+\.\d+/.test(a)) ?? PKG.version;
-const NOTAS = resolve('notas-de-version', `${VERSION}.md`);
+const NOTAS_ADDON = ADDON ? resolve('custom-addons', ADDON, 'notas', `${VERSION}.md`) : null;
+const NOTAS = NOTAS_ADDON && existsSync(NOTAS_ADDON) ? NOTAS_ADDON : resolve('notas-de-version', `${VERSION}.md`);
+if (ADDON) console.log(`Version de cliente: ${ADDON} -> ${DUENO}/${REPO} (canal ${MANIFIESTO.canal})`);
 
 function leerNotas() {
   if (!existsSync(NOTAS)) return null;
@@ -152,7 +174,7 @@ if (!notas) {
     + ' `npm run publish:notas`.\n');
 }
 
-const { token, origen } = await obtenerToken();
+const { token, origen } = await obtenerToken(ADDON ? DUENO : null);
 console.log(`Token de GitHub: tomado de ${origen}.\n`);
 
 if (SOLO_NOTAS) {
@@ -164,11 +186,16 @@ if (SOLO_NOTAS) {
    que va despues de `--` lo recibe electron-builder, el ultimo paso; la ruta
    va entre comillas porque el shell la partiria si tuviera espacios. */
 const extra = notas ? ['--', `"-c.releaseInfo.releaseNotesFile=${NOTAS}"`] : [];
-const r = spawnSync('npm', ['run', 'publish:pasos', ...extra], {
-  stdio: 'inherit',
-  shell: true,
-  env: { ...process.env, GH_TOKEN: token },
-});
+const r = ADDON
+  ? spawnSync(process.execPath, ['scripts/dist-addon.mjs', ADDON, '--publicar'], {
+      stdio: 'inherit',
+      env: { ...process.env, GH_TOKEN: token, ...(notas ? { WYBIX_NOTAS: NOTAS } : {}) },
+    })
+  : spawnSync('npm', ['run', 'publish:pasos', ...extra], {
+      stdio: 'inherit',
+      shell: true,
+      env: { ...process.env, GH_TOKEN: token },
+    });
 if (r.status !== 0) process.exit(r.status ?? 1);
 
 if (notas) {

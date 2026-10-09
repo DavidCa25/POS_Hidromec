@@ -4,6 +4,8 @@ import {ReceiptEmail} from '../app/receipt-email/receipt-email.component';
 import { validarPagos, type PagoAplicado } from '../../shared/pagos';
 import {CommercialService} from '../core/commercial.service';
 import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.component';
+import { WxMascotaComponent, type EstadoMascota } from '../app/wx-mascota/wx-mascota.component';
+import { ADDON } from '../app/marca/addon';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -52,12 +54,25 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
+  imports: [WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
 export class TouchPos implements OnInit, OnDestroy {
   readonly commercial=inject(CommercialService);
+  /** Huecos de marca de un addon de cliente (fondo y mascota); null en Wybix. */
+  readonly marca = ADDON;
+  readonly fondoClaro = ADDON?.fondoTouch ? `url(${ADDON.fondoTouch.claro})` : null;
+  readonly fondoOscuro = ADDON?.fondoTouch ? `url(${ADDON.fondoTouch.oscuro})` : null;
+  /** La mascota de marca acompaña el cobro: celebra o se preocupa, y vuelve sola. */
+  readonly estadoMascota = signal<EstadoMascota>('idle');
+  private relojMascota: ReturnType<typeof setTimeout> | null = null;
+  private reaccionar(e: EstadoMascota, ms: number) {
+    if (!this.marca?.mascotaEnTouch) return;
+    this.estadoMascota.set(e);
+    if (this.relojMascota) clearTimeout(this.relojMascota);
+    this.relojMascota = setTimeout(() => this.estadoMascota.set('idle'), ms);
+  }
   readonly ofertasAbiertas = signal(false);
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
 
@@ -452,6 +467,7 @@ export class TouchPos implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.relojMascota) clearTimeout(this.relojMascota);
     clearInterval(this.relojCuenta);
     try { this.offBarcode?.(); } catch { /* noop */ }
     this.offBarcode = null;
@@ -935,7 +951,7 @@ export class TouchPos implements OnInit, OnDestroy {
         autoPrint: true,
       });
 
-      if (!res.ok) { this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
+      if (!res.ok) { this.reaccionar('error', 3500); this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
 
       /* La venta ya esta. Enlazarla libera la mesa; si fallara, se dice y la
          mesa se libera despues desde el salon: nada se deshace. */
@@ -956,6 +972,7 @@ export class TouchPos implements OnInit, OnDestroy {
       // existencias y disponibilidad derivada.
       this.menu.load(true);
       this.mostrarCambio.set(true);
+      this.reaccionar('exito', 3200);
       /* Con numero de pedido se queda mas: el cajero tiene que decirlo. */
       // Las acciones posventa permanecen hasta que el cajero las cierre.
       // Los premios se pintan encima del aviso de cambio: en Touch el

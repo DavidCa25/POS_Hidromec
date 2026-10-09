@@ -1483,6 +1483,17 @@ function setupAutoUpdater(win) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  /* Build de cliente (custom-addons): solo se actualiza desde SU canal, para
+     que nunca baje el Wybix general encima y pierda su personalizacion, ni otro
+     cliente reciba la suya. Lo escribe scripts/addons.mjs; sin addon no existe. */
+  const addon = (() => { try { return require('./addon.generated.json'); } catch { return null; } })();
+  if (addon?.canal) {
+    autoUpdater.channel = addon.canal;
+    // Cambiar de canal activa la degradacion en electron-updater; aqui no.
+    autoUpdater.allowDowngrade = false;
+    console.log(`Actualizaciones del canal "${addon.canal}" (${addon.id})`);
+  }
+
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 3000);

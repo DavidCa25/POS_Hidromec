@@ -1,7 +1,9 @@
 import {
-  AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Input, OnChanges, ViewChild,
+  AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Input, NgZone, OnChanges, OnDestroy, ViewChild, inject,
 } from '@angular/core';
 import { VarianteMascota, VARIANTE_BASE } from './variantes';
+import { ADDON } from '../marca/addon';
+import type { MascotaViva } from '../marca/marca';
 
 /**
  * WX-MASCOTA — Wybix, el personaje. DIBUJADO Y ANIMADO CON BLOBATAR.
@@ -72,6 +74,16 @@ import { VarianteMascota, VARIANTE_BASE } from './variantes';
  * termina, una sincronizacion, una conexion de MultiCaja- que una pose no
  * puede contar. No hay asset todavia; el contrato esta escrito en
  * `docs/rive-wybix.md` y el runtime NO se descarga mientras no exista.
+ *
+ * ================================================================
+ * MASCOTA DE MARCA (addon de cliente)
+ * ================================================================
+ * Si el build trae un addon con mascota (`src/app/marca`), ESTE componente la
+ * monta en lugar de Wybix: un solo punto, y todos los lugares que ya muestran
+ * la mascota -guia, dock, sidebar, inicio, QuickStart, venta- cambian juntos.
+ * Recibe los mismos cuatro estados; el addon decide como se ven.
+ *
+ * Los avatares de PERSONAS (`wx-avatar`) no pasan por aqui y no cambian.
  */
 
 export type EstadoMascota = 'idle' | 'atencion' | 'exito' | 'error';
@@ -158,18 +170,26 @@ function cargarMotor() {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-  <svg #figura viewBox="0 0 100 100"
-       [attr.width]="size" [attr.height]="size"
-       [attr.role]="alt ? 'img' : null"
-       [attr.aria-label]="alt || null"
-       [attr.aria-hidden]="alt ? null : 'true'"></svg>
+  @if (deMarca) {
+    <div #marca class="marca" [style.width.px]="size" [style.height.px]="size"
+         [attr.role]="alt ? 'img' : null"
+         [attr.aria-label]="alt || null"
+         [attr.aria-hidden]="alt ? null : 'true'"></div>
+  } @else {
+    <svg #figura viewBox="0 0 100 100"
+         [attr.width]="size" [attr.height]="size"
+         [attr.role]="alt ? 'img' : null"
+         [attr.aria-label]="alt || null"
+         [attr.aria-hidden]="alt ? null : 'true'"></svg>
+  }
   `,
   styles: [`
     :host { display: inline-flex; flex: none; }
     svg { display: block; overflow: visible; }
+    .marca { position: relative; pointer-events: none; }
   `],
 })
-export class WxMascotaComponent implements OnChanges, AfterViewInit {
+export class WxMascotaComponent implements OnChanges, AfterViewInit, OnDestroy {
   /** Que esta pasando. Lo decide quien la coloca, no ella. */
   @Input() estado: EstadoMascota = 'idle';
 
@@ -195,20 +215,40 @@ export class WxMascotaComponent implements OnChanges, AfterViewInit {
   @Input() variante: VarianteMascota = VARIANTE_BASE;
 
   @ViewChild('figura') figura?: ElementRef<SVGSVGElement>;
+  @ViewChild('marca') marca?: ElementRef<HTMLDivElement>;
+
+  /** El build trae la mascota de un cliente: se usa en vez de Wybix. */
+  readonly deMarca = !!ADDON?.mascota;
+  private viva: MascotaViva | null = null;
+  private vivo = true;
+  private zona = inject(NgZone);
 
   /** Con que se escribio el interior, para no reescribirlo sin motivo.
       Lleva la variante: otra apariencia es otra figura, no el mismo nodo. */
   private dibujado = '';
 
-  ngAfterViewInit(): void { void this.pintar(); }
+  ngAfterViewInit(): void { if (this.deMarca) void this.montarMarca(); else void this.pintar(); }
 
-  /** El SVG ya dibujado, para quien necesita dirigirle la mirada (Wybix Guide). */
+  ngOnDestroy(): void { this.vivo = false; this.viva?.destruir(); this.viva = null; }
+
+  /** El SVG ya dibujado, para quien necesita dirigirle la mirada (Wybix Guide).
+      Con mascota de marca no hay: la guia simplemente no dirige la mirada. */
   svg(): SVGSVGElement | null { return this.figura?.nativeElement ?? null; }
 
   ngOnChanges(): void {
+    if (this.deMarca) { this.viva?.estado(this.estado); return; }
     /* La primera pasada llega antes de que exista el SVG; de esa se encarga
        `ngAfterViewInit`. */
     if (this.figura) void this.pintar();
+  }
+
+  private async montarMarca(): Promise<void> {
+    const host = this.marca?.nativeElement;
+    const personaje = await ADDON?.mascota?.().catch(() => null);
+    if (!host || !personaje || !this.vivo) return;
+    /* Fuera de la zona: el bucle de animacion no dispara deteccion de cambios. */
+    this.viva = this.zona.runOutsideAngular(() => personaje.montar(host, { tam: this.size }));
+    this.viva.estado(this.estado);
   }
 
   private async pintar(): Promise<void> {

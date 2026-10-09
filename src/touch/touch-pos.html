@@ -73,11 +73,17 @@
         <i class="ph ph-tag" aria-hidden="true"></i>
         <span class="tp-cat__txt">{{ c.category_name }}</span>
       </button>
+      <!-- Mascota de marca (addon de cliente): acompaña el cobro sin tapar nada. -->
+      <div class="tp-mascota" *ngIf="marca?.mascotaEnTouch" aria-hidden="true">
+        <wx-mascota [estado]="estadoMascota()" [size]="120"></wx-mascota>
+      </div>
       <div class="tp-cats__extras"><button class="tp-cat" type="button" [class.on]="ofertasAbiertas()" (click)="ofertasAbiertas.set(!ofertasAbiertas())" aria-label="Ofertas de hoy y mayoreo"><i class="ph ph-tag" aria-hidden="true"></i><span>Ofertas de hoy</span><small *ngIf="commercial.policy?.promotions?.length">Mayoreo y promociones</small></button></div>
     </nav>
 
     <!-- --------------------------------------------------------- PRODUCTOS -->
-    <main class="tp-main">
+    <main class="tp-main" [class.tp-main--marca]="!!fondoClaro"
+          [style.--tp-fondo-claro]="fondoClaro" [style.--tp-fondo-oscuro]="fondoOscuro"
+          [style.--tp-fondo-tam]="marca?.fondoTouch?.tamano ?? null">
       <section class="tp-ofertas" *ngIf="ofertasAbiertas()"><button class="tp-iconbtn tp-iconbtn--claro" (click)="ofertasAbiertas.set(false)" aria-label="Cerrar ofertas"><i class="ph ph-x" aria-hidden="true"></i></button><app-commercial-sale [touch]="true" [offersOnly]="true"></app-commercial-sale></section>
       <div class="tp-estado" *ngIf="cargando()">
         <i class="ph ph-circle-notch spin" aria-hidden="true"></i>
