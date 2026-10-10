@@ -206,9 +206,12 @@ const EXIGE = {
   'services:set-config': CONFIGURACION_ADMINISTRAR,
   'services:operate': CONFIGURACION_ADMINISTRAR,
   'services:clear': CONFIGURACION_ADMINISTRAR,
-  // Actualizar reinicia la aplicación: no en mitad de un turno ajeno.
-  'download-update': CONFIGURACION_ADMINISTRAR,
-  'install-update': CONFIGURACION_ADMINISTRAR,
+  /* Actualizar. Antes solo el Administrador, y en una caja donde siempre hay
+     un cajero la version nueva no llegaba nunca. Quien vende en ESTA caja la
+     descarga y la instala: instalar reinicia Wybix, y quien lo decide es quien
+     esta frente a ella. Pendiente: hacerlo un permiso otorgable. */
+  'download-update': VENTAS_OPERAR,
+  'install-update': VENTAS_OPERAR,
   // Cargas masivas. Escriben miles de filas de una vez y se hacen una vez.
   /* ------------------------------------------------------------ QUICKSTART
      Importar es reemplazar precios, costos y existencias de golpe: es la

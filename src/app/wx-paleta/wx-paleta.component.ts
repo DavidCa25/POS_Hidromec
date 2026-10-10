@@ -115,6 +115,7 @@ export class WxPaletaComponent implements OnInit {
   private get operarVentas() { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   private get supervisarVentas() { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
   private get verNumeros() { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  private get hacerCortes() { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   private get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
   private get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
   private get haceServicios() {
@@ -134,7 +135,7 @@ export class WxPaletaComponent implements OnInit {
       a('Nuevo cliente', '/dashboard/clientes', 'ph-user-plus', this.operarVentas),
       a('Registrar compra', '/dashboard/registrarCompra', 'ph-bag', this.operarInventario),
       a('Nuevo producto', '/dashboard/inventario', 'ph-package', this.operarInventario),
-      a('Hacer corte del día', '/dashboard/corte-dia', 'ph-calendar-check', this.verNumeros),
+      a('Hacer corte del día', '/dashboard/corte-dia', 'ph-calendar-check', this.verNumeros || this.hacerCortes),
       a('Registrar egreso', '/dashboard/egresos', 'ph-receipt', this.supervisarVentas && this.verNumeros),
       a('Registrar pago al personal', '/dashboard/pagos-personal', 'ph-hand-coins', this.supervisarVentas && this.verNumeros),
       a('Conteo físico', '/dashboard/conteo', 'ph-clipboard-text', this.operarInventario),

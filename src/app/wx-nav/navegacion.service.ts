@@ -94,6 +94,8 @@ export class NavegacionService {
 
   // ------------------------------------------------------------- permisos
   get verNumeros() { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  /** 0056: hacer cortes (tambien de otros) sin ver todos los numeros. */
+  get hacerCortes() { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   get supervisarVentas() { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
   get operarVentas() { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   /* Permiso de la persona Y derecho de la licencia (en Venta Esencial el
@@ -139,7 +141,7 @@ export class NavegacionService {
         destinos: [
           { texto: 'Nueva venta', ruta: '/dashboard/venta', icono: 'ph-cash-register', visible: true, principal: true, pie: pie('venta', 'turno') },
           { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
-          { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
+          { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros || this.hacerCortes },
           /* Lo que sale del negocio y no es una compra. Verlo es ver numeros;
              registrar lo decide la pantalla (VENTAS_SUPERVISAR). */
           { texto: 'Egresos', ruta: '/dashboard/egresos', icono: 'ph-receipt', visible: this.verNumeros },

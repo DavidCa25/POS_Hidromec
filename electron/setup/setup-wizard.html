@@ -163,7 +163,7 @@
       <div class="step" id="step0b">
         <div class="field">
           <label>Clave de Activación</label>
-          <input type="text" id="licenseKey" placeholder="WYBX-M1-XXXX-XXXX" maxlength="17">
+          <input type="text" id="licenseKey" placeholder="WYBIX-XXXX-XXXX-XXXX" maxlength="40" autocomplete="off" spellcheck="false">
           <div class="hint">Ingresa la licencia de Wybix POS. Se requiere conexión a internet temporalmente para validar este equipo.</div>
         </div>
         <div class="actions between">
@@ -263,13 +263,10 @@
     document.getElementById('serverIp').addEventListener('blur', revisarServidor);
 
     document.getElementById('licenseKey').addEventListener('input', function(e) {
-      const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 14);
-      const partes = [];
-      if (val.length > 0)  partes.push(val.slice(0, 4));
-      if (val.length > 4)  partes.push(val.slice(4, 6));
-      if (val.length > 6)  partes.push(val.slice(6, 10));
-      if (val.length > 10) partes.push(val.slice(10, 14));
-      e.target.value = partes.join('-');
+      /* Sin mascara: conviven claves viejas (WYBX-M1-XXXX-XXXX) y nuevas
+         (WYBIX-XXXX-XXXX-XXXX). Una mascara de un solo formato cortaba las
+         nuevas. Solo se pasa a mayusculas y se quita lo que no es clave. */
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
     });
 
     function show(id) {
@@ -286,7 +283,7 @@
     // Lógica de Activación
     async function activateLicense() {
       const key = document.getElementById('licenseKey').value.trim();
-      if (key.length < 17) {
+      if (!/^[A-Z0-9-]{8,40}$/.test(key)) {
         showErr('err0b', 'La clave de licencia esta incompleta.');
         return;
       }
