@@ -267,15 +267,10 @@ export class SetupInicial implements OnInit {
     return { icono: 'ph ph-warning', prueba: true, texto };
   }
 
-  // Formatea la clave mientras escribe
+  /* Sin mascara: conviven claves viejas (WYBX-M1-XXXX-XXXX) y nuevas
+     (WYBIX-XXXX-XXXX-XXXX). Solo mayusculas y fuera lo que no es clave. */
   onClaveInput(v: string) {
-    const limpio = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const partes: string[] = [];
-    if (limpio.length > 0) partes.push(limpio.slice(0, 4));
-    if (limpio.length > 4) partes.push(limpio.slice(4, 6));
-    if (limpio.length > 6) partes.push(limpio.slice(6, 10));
-    if (limpio.length > 10) partes.push(limpio.slice(10, 14));
-    this.clave = partes.join('-');
+    this.clave = v.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
   }
 
   // ---------- Paso 2 ----------
