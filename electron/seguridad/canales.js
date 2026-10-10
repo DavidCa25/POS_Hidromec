@@ -27,6 +27,7 @@ const { BUNDLES } = require('./permisos');
 const {
   VENTAS_OPERAR, VENTAS_SUPERVISAR, INVENTARIO_OPERAR,
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
+  CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR,
   SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR,
 } = BUNDLES;
 
@@ -45,7 +46,8 @@ const EXIGE = {
   'sp-register-sale': VENTAS_OPERAR,
   'commercial:catalog': VENTAS_OPERAR,
   'commercial:quote': VENTAS_OPERAR,
-  'commercial:save': CONFIGURACION_ADMINISTRAR,
+  // 0056: combos, promociones y precios por canal tienen paquete propio.
+  'commercial:save': COMERCIAL_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
   'sp-register-cash-out': VENTAS_OPERAR,
@@ -155,6 +157,9 @@ const EXIGE = {
   'users:set-pin': CONFIGURACION_ADMINISTRAR,
   'users:pin-status': CONFIGURACION_ADMINISTRAR,
   'users:set-active': CONFIGURACION_ADMINISTRAR,
+  // 0056: permisos adicionales por persona. Solo quien administra.
+  'users:permissions': CONFIGURACION_ADMINISTRAR,
+  'users:set-permissions': CONFIGURACION_ADMINISTRAR,
   'modules:set': CONFIGURACION_ADMINISTRAR,
   'update-business-config': CONFIGURACION_ADMINISTRAR,
   /* Escribe un archivo en la carpeta de datos y cambia la marca que sale en
@@ -170,7 +175,8 @@ const EXIGE = {
   'register-release-admin': CONFIGURACION_ADMINISTRAR,
   'fiscal-save-config': CONFIGURACION_ADMINISTRAR,
   'fiscal-set-issuer-ref': CONFIGURACION_ADMINISTRAR,
-  'devices:set-config': CONFIGURACION_ADMINISTRAR,
+  // 0056: impresora, cajon, lector... lo que para la operacion si falla.
+  'devices:set-config': CONFIGURACION_EQUIPO,
   'payments:set': CONFIGURACION_ADMINISTRAR,
   'cloud-set-config': CONFIGURACION_ADMINISTRAR,
   'cloud-set-anon-key': CONFIGURACION_ADMINISTRAR,
@@ -225,6 +231,22 @@ const EXIGE = {
   'inventory:movements': INVENTARIO_OPERAR,
   'quickstart:leer-hoja': CONFIGURACION_ADMINISTRAR,
   'quickstart:plantilla': CONFIGURACION_ADMINISTRAR,
+  'negocio:giro-guardar': CONFIGURACION_ADMINISTRAR,
+  // MultiSucursal: leer y traspasar es operar inventario; lo que cambia el
+  // catalogo o las reglas de toda la empresa es administrar.
+  'multi:estado': INVENTARIO_OPERAR,
+  'multi:recibir': INVENTARIO_OPERAR,
+  'multi:traspasos': INVENTARIO_OPERAR,
+  'multi:traspaso-enviar': INVENTARIO_OPERAR,
+  'multi:traspaso-recibir': INVENTARIO_OPERAR,
+  'multi:traspaso-cancelar': INVENTARIO_OPERAR,
+  'multi:productos-traspaso': INVENTARIO_OPERAR,
+  'multi:publicar': CONFIGURACION_ADMINISTRAR,
+  'multi:excepciones': CONFIGURACION_ADMINISTRAR,
+  'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
+  'multi:reglas-guardar': CONFIGURACION_ADMINISTRAR,
+  'multi:usuarios': CONFIGURACION_ADMINISTRAR,
+  'multi:usuario-alcance': CONFIGURACION_ADMINISTRAR,
 
   'sp-import-products': CONFIGURACION_ADMINISTRAR,
   'sp-import-customers': CONFIGURACION_ADMINISTRAR,
@@ -353,6 +375,7 @@ const ABIERTOS = {
      un cajero sin poder ver que el catalogo esta vacio. Escribir si exige. */
   'quickstart:contexto': 'el giro y las unidades, para saber que ofrecer',
   'quickstart:cargas': 'lectura del riel de cargas',
+  'negocio:giro': 'lectura del giro del negocio para elegir plantilla y ejemplos',
   'quickstart:carga': 'lectura del resumen de una carga',
   'quickstart:filas': 'lectura de las filas de una carga',
 
@@ -576,7 +599,8 @@ const ACTOR = {
  * a otro Operador.
  */
 const AUTORIZA = {
-  'sp-close-shift': VENTAS_SUPERVISAR,
+  // 0056: cerrar el turno de otra persona es CAJA_CORTES, otorgable a un Operador.
+  'sp-close-shift': CAJA_CORTES,
 };
 
 /** Paquete que debe tener quien AUTORIZA una operación de este canal. */

@@ -80,3 +80,14 @@ Thumbs.db
 # Artefactos locales de QA comercial; la evidencia JSON depurada sí se versiona.
 /docs/evidencia/comercial-20261007/*.log
 /docs/evidencia/comercial-20261007/*.png
+
+# Addons de cliente: lo genera scripts/addons.mjs en cada build. Versionarlo
+# dejaria a todos los clientes con la marca de uno.
+/src/app/marca/addons.generated.ts
+/src/assets/addon/
+/electron/addon.generated.json
+# Originales del cliente (Illustrator, fuentes editables de la mascota): el
+# repositorio es publico. Viven fuera del repo; el addon solo usa lo compilado.
+/custom-addons/*/marca/*.pdf
+/custom-addons/*/marca/*.ai
+/custom-addons/*/mascota/fuente/

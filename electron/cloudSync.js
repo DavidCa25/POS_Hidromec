@@ -6,6 +6,7 @@ const { poolPromise, sql } = require('./db');
 const { crearSecretos } = require('./seguridad/secretos');
 const { crearIdentidad, metadataSql } = require('./nube/identidad');
 const { crearEnvioHechos } = require('./nube/hechos');
+const { crearMultisucursal } = require('./nube/multisucursal');
 const crypto = require('crypto');
 
 // ============================================================
@@ -264,6 +265,14 @@ const hechos = crearEnvioHechos({
   llamar: (action, cuerpo) => gateway(action, cuerpo),
   huella: () => metaSql.huellaServidor().catch(() => null),
   puedeEnviar: async () => instalacion.esPrincipal() && !!loadConfig().enabled && permitido(),
+  log,
+});
+
+/* MultiSucursal: catálogo corporativo, excepciones y traspasos (ver nube/multisucursal.js). */
+const multi = crearMultisucursal({
+  pool: () => poolPromise, sql,
+  llamar: (action, cuerpo) => gateway(action, cuerpo),
+  cfg: { leer: loadConfig, escribir: (parcial) => writeConfig({ ...loadConfig(), ...parcial }) },
   log,
 });
 
@@ -583,6 +592,8 @@ async function pushOnce() {
   try { await publicarSucursal(); } catch (e) { log('publicar: ' + e.message); }
   try { await asegurarLlaveFirma(); } catch (e) { log('llave de firma: ' + e.message); }
   try { await bandejaTransferencias(); } catch (e) { log('transferencias: ' + e.message); }
+  // MultiSucursal: la matriz publica, las sucursales reciben, y los traspasos se ponen al día.
+  try { await multi.sincronizar(); } catch (e) { log('multisucursal: ' + e.message); }
 
   const { daily, top, shifts } = await fetchSummaries();
   const sucursalId = cfg.sucursalId;
@@ -778,6 +789,7 @@ function stopScheduler() {
 // ---- Exports (todo en un solo lugar) ----
 
 module.exports = {
+  multi,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,
   publicarSucursal,

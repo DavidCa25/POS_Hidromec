@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ConfigDrawerService } from '../config-drawer.service';
 import Swal from 'sweetalert2';
 import { BusinessProfile, CapabilityService } from '../../core';
+import { WxSelectComponent, type WxOpcion } from '../wx-select/wx-select.component';
 
 @Component({
     selector: 'app-negocio-panel',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, WxSelectComponent],
     templateUrl: './negocio-panel.component.html',
     styleUrls: ['../panel-controls.css']
 })
@@ -25,6 +26,15 @@ export class NegocioPanelComponent implements OnInit {
     };
     cargando = false;
     guardando = false;
+
+    /* El giro de comercio o de alimentos. Decide los ejemplos y las categorias
+       sugeridas de la plantilla de carga. Servicios tiene el suyo aparte. */
+    giro = '';
+    private girosPorPerfil: Record<string, { id: string; nombre: string }[]> = {};
+    get opcionesGiro(): WxOpcion[] {
+        return [{ valor: '', etiqueta: 'Sin especificar' },
+            ...(this.girosPorPerfil[this.form.business_profile] ?? []).map(g => ({ valor: g.id, etiqueta: g.nombre }))];
+    }
 
     readonly perfiles: { valor: BusinessProfile; titulo: string; desc: string; icono: string }[] = [
         { valor: 'RETAIL', titulo: 'Comercio', desc: 'Tienda, refaccionaria, ferretería, papelería. Vende productos tal cual entran al inventario.', icono: 'storefront' },
@@ -46,6 +56,9 @@ export class NegocioPanelComponent implements OnInit {
                 ticket_footer: c.ticket_footer ?? '',
                 business_profile: CapabilityService.parseBusiness(c.business_profile),
             };
+            const g = await this.api?.negocioGiro?.();
+            this.girosPorPerfil = g?.data?.opciones ?? {};
+            this.giro = g?.data?.giro ?? '';
         } catch {
             /* sin datos: formulario vacío */
         } finally {
@@ -69,6 +82,11 @@ export class NegocioPanelComponent implements OnInit {
                 business_profile: this.form.business_profile,
             });
             if (!res?.success) throw new Error(res?.error || 'No se pudo guardar.');
+            /* Un giro de la otra familia no aplica: cambiar a Alimentos con
+               «Ferretería» elegido lo deja sin especificar. */
+            const valido = this.opcionesGiro.some(o => o.valor === this.giro) ? this.giro : '';
+            const rg = await this.api?.negocioGiroGuardar?.({ giro: valido || null });
+            if (rg && !rg.success) throw new Error(rg.error || 'No se pudo guardar el giro.');
             // El menu y las pantallas leen las capacidades de aqui: refrescar.
             await this.caps.load(true);
             await Swal.fire({ icon: 'success', title: 'Datos guardados', timer: 1200, showConfirmButton: false });

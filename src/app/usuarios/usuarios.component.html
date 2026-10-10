@@ -105,6 +105,24 @@
         </div>
       </div>
 
+      <!-- Permisos adicionales: se SUMAN al puesto de esta persona, uno por uno. -->
+      <div class="exp-extras" *ngIf="persona() && extrasPersona() as extras" data-guide="usuarios-permisos-extra">
+        <h2>Permisos adicionales</h2>
+        <p class="exp-extras__ayuda">Además de lo que trae su puesto. Se aplica al momento, sin cerrar sesión.</p>
+        <ul class="exp-extras__lista">
+          <li *ngFor="let x of extras" data-guide="usuarios-permiso" [attr.data-guide-clave]="x.clave"
+              [attr.data-guide-estado]="x.activo ? 'activo' : 'inactivo'">
+            <label class="sw">
+              <input type="checkbox" [id]="'us-perm-' + x.clave" [checked]="x.activo"
+                     [disabled]="guardandoPermiso() !== null"
+                     (change)="alternarPermiso(persona()!, x.clave, $any($event.target).checked)">
+              <span class="sl"></span>
+            </label>
+            <label [for]="'us-perm-' + x.clave"><b>{{ x.nombre }}</b><small>{{ x.descripcion }}</small></label>
+          </li>
+        </ul>
+      </div>
+
       <!-- Qué incluye el puesto: de la misma tabla con la que se autoriza. -->
       <div class="exp-accesos" *ngIf="accesos() as a">
         <h2 *ngIf="a.puede.length">Puede</h2>

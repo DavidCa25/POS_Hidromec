@@ -72,6 +72,8 @@ function normalizar(celdas, mapping, ctx = {}) {
         f[m.campo] = aNumero(v); break;
       case 'schedulable':
         f[m.campo] = aBooleano(v); break;
+      case 'sellable':
+        f._vendible = aBooleano(v); break;
       case 'tipo': {
         /* Lo decide `semantica.js`, que es el unico sitio que traduce
            palabras a entidades. Aqui solo se aplica. */
@@ -84,10 +86,22 @@ function normalizar(celdas, mapping, ctx = {}) {
     }
   }
 
+  /* LA COLUMNA «VENDIBLE» MANDA SOBRE LA HOJA, renglón por renglón.
+     En alimentos cambia el tipo, porque ahí vender o no es lo que separa un
+     producto de un insumo: «No» en el Menú es un insumo; «Sí» en Insumos es
+     algo que se compra y se vende tal cual (un refresco), o sea PRODUCTO.
+     En las demás familias el tipo se queda y solo cambia `sellable`. */
+  const vendible = f._vendible;
+  delete f._vendible;
+  if (vendible != null && contexto.hospitality) {
+    if (!vendible && semantica.def(f.tipo).sellable) f.tipo = 'INGREDIENTE';
+    else if (vendible && f.tipo === 'INGREDIENTE') f.tipo = 'PRODUCTO';
+  }
+
   /* Lo que el tipo decide, y que el resto de Wybix ya sabe leer. */
   const d = semantica.def(f.tipo);
   f.inventory_mode = d.inventory_mode;
-  f.sellable = d.sellable;
+  f.sellable = vendible == null || contexto.hospitality ? d.sellable : (vendible ? 1 : 0);
 
   /* Lo que NO lleva existencia, no la lleva aunque la columna trajera un
      numero: guardarla daria un inventario de horas de trabajo o de cafes
@@ -96,7 +110,7 @@ function normalizar(celdas, mapping, ctx = {}) {
 
   /* Y lo que no se vende no tiene precio de venta. Un saco de cafe en grano
      con precio acaba a la venta en la caja, que es justo lo que paso. */
-  if (!d.usaPrecio) f.price = null;
+  if (!d.usaPrecio || !f.sellable) f.price = null;
 
   /* El IVA llega como 16 tan a menudo como 0.16. `tasa_iva` es
      DECIMAL(5,4): un 16 ahi es «1600%» y ademas revienta. */

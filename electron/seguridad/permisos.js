@@ -12,13 +12,20 @@
  * Lo que SI vive fuera es el rol de cada persona, en `users.rol`. Eso es del
  * negocio y cambia sin actualizar nada.
  *
- * TRES ROLES, SIETE PAQUETES, CERO EXCEPCIONES
- * --------------------------------------------
- * No hay permisos por usuario. Se evaluo anadirlos y se descarto: el unico
- * caso real que resolvian -"este cajero de confianza si puede devolver"- se
- * cubre subiendolo a Encargado, y a cambio traian una tabla, una pantalla, una
- * regla de precedencia y estados que nadie sabe nombrar, como un Encargado con
- * VENTAS_SUPERVISAR retirado.
+ * TRES ROLES Y PAQUETES EXTRA POR PERSONA (0056)
+ * ----------------------------------------------
+ * Antes no habia permisos por usuario. Se reabrio con casos reales: un Operador
+ * de confianza que hace los cortes de los demas, o que configura la impresora
+ * cuando se traba la operacion, sin volverse Encargado (que trae devoluciones,
+ * reportes e inventario de golpe).
+ *
+ * La regla que evita los estados raros que motivaron descartarlo:
+ *   · los extras SOLO SUMAN. Nadie tiene «Encargado sin VENTAS_SUPERVISAR»;
+ *   · solo se otorgan paquetes de OTORGABLES. CONFIGURACION_ADMINISTRAR no:
+ *     quien necesita usuarios, respaldos y fiscal es Administrador;
+ *   · un rol desconocido no recibe nada, ni sus extras.
+ * Los extras viven en `user_permissions` (son del negocio); que paquetes
+ * existen y cuales se pueden otorgar sigue viviendo aqui.
  *
  * SIN COMODINES
  * -------------
@@ -61,6 +68,23 @@ const BUNDLES = {
    * de paso los respaldos, los usuarios y la configuracion fiscal.
    */
   SERVICIOS_ADMINISTRAR: 'SERVICIOS_ADMINISTRAR',
+
+  /**
+   * 0056 · Cortes de caja: cerrar el turno de OTRA persona (y autorizarlo).
+   * Separado de VENTAS_SUPERVISAR para poder darselo a un Operador sin darle
+   * devoluciones ni cancelaciones.
+   */
+  CAJA_CORTES: 'CAJA_CORTES',
+
+  /**
+   * 0056 · El equipo de ESTA caja: impresora, cajon, lector, bascula, pantalla
+   * de cliente, teclado en pantalla. Lo que, si falla, para la operacion, sin
+   * dar usuarios, respaldos ni datos fiscales.
+   */
+  CONFIGURACION_EQUIPO: 'CONFIGURACION_EQUIPO',
+
+  /** 0056 · Promociones, combos y precios por canal. */
+  COMERCIAL_ADMINISTRAR: 'COMERCIAL_ADMINISTRAR',
 };
 
 const PERMISOS = Object.values(BUNDLES);
@@ -85,6 +109,9 @@ const ROLES = {
     BUNDLES.REPORTES_VER,
     BUNDLES.SERVICIOS_OPERAR,
     BUNDLES.SERVICIOS_ADMINISTRAR,
+    // 0056: ya cerraba turnos ajenos y configuraba su equipo; ahora con nombre propio.
+    BUNDLES.CAJA_CORTES,
+    BUNDLES.CONFIGURACION_EQUIPO,
   ],
 
   /** cajero -> OPERADOR. Atiende: el trabajo del dia y nada mas. */
@@ -150,6 +177,9 @@ function permisosDeRol(rol) {
  */
 const ALTO_RIESGO = new Set([
   BUNDLES.VENTAS_SUPERVISAR,
+  BUNDLES.CAJA_CORTES,
+  BUNDLES.CONFIGURACION_EQUIPO,
+  BUNDLES.COMERCIAL_ADMINISTRAR,
   BUNDLES.INVENTARIO_OPERAR,
   BUNDLES.CONFIGURACION_ADMINISTRAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
@@ -172,7 +202,38 @@ function esAltoRiesgo(permiso) {
  */
 const SOLO_ADMIN = new Set([
   BUNDLES.CONFIGURACION_ADMINISTRAR,
+  // Hasta 0056 los combos y promociones exigian CONFIGURACION_ADMINISTRAR: por
+  // rol siguen siendo del Administrador; a otra persona se le OTORGAN.
+  BUNDLES.COMERCIAL_ADMINISTRAR,
 ]);
+
+/**
+ * 0056 · Lo que un Administrador puede darle a una persona encima de su rol.
+ * CONFIGURACION_ADMINISTRAR no: usuarios, respaldos y fiscal son del rol
+ * Administrador, no de un extra.
+ */
+const OTORGABLES = [
+  BUNDLES.CAJA_CORTES,
+  BUNDLES.CONFIGURACION_EQUIPO,
+  BUNDLES.INVENTARIO_OPERAR,
+  BUNDLES.COMERCIAL_ADMINISTRAR,
+  BUNDLES.VENTAS_SUPERVISAR,
+  BUNDLES.REPORTES_VER,
+  BUNDLES.SERVICIOS_OPERAR,
+  BUNDLES.SERVICIOS_ADMINISTRAR,
+];
+
+/** Como se llama cada paquete otorgable en pantalla, y que da. */
+const DESCRIPCIONES = {
+  CAJA_CORTES: ['Cortes de caja', 'Cerrar el turno de otra persona y autorizarlo.'],
+  CONFIGURACION_EQUIPO: ['Equipo de la caja', 'Impresora, cajón, lector, báscula, pantalla de cliente y teclado.'],
+  INVENTARIO_OPERAR: ['Inventario', 'Dar de alta y editar productos, existencias, compras y proveedores.'],
+  COMERCIAL_ADMINISTRAR: ['Promociones y combos', 'Combos, promociones y precios por canal.'],
+  VENTAS_SUPERVISAR: ['Supervisar ventas', 'Devoluciones, anulaciones y abrir el cajón sin venta.'],
+  REPORTES_VER: ['Reportes', 'Estadísticas, cortes históricos y reportes.'],
+  SERVICIOS_OPERAR: ['Órdenes y agenda', 'El trabajo diario de Servicios.'],
+  SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],
+};
 
 /**
  * Para la prueba que impide anadir un paquete sin decidir quien lo tiene.
@@ -189,8 +250,20 @@ function catalogoCompleto() {
   };
 }
 
+/**
+ * Los paquetes de UNA PERSONA: los de su rol mas sus extras otorgables. Un
+ * extra que no es otorgable (o que ya no existe en esta version) se ignora;
+ * un rol desconocido no recibe nada, tampoco sus extras.
+ */
+function permisosDeUsuario(rol, extras = []) {
+  const base = permisosDeRol(rol);
+  if (normalizarRol(rol) === SIN_ROL) return base;
+  for (const p of extras || []) if (OTORGABLES.includes(p)) base.add(p);
+  return base;
+}
+
 module.exports = {
-  BUNDLES, PERMISOS, ROLES, ETIQUETAS, SIN_ROL, ALTO_RIESGO, SOLO_ADMIN,
+  BUNDLES, PERMISOS, ROLES, ETIQUETAS, SIN_ROL, ALTO_RIESGO, SOLO_ADMIN, OTORGABLES, DESCRIPCIONES,
   normalizarRol, etiquetaDeRol, esRolConocido,
-  permisosDeRol, esAltoRiesgo, catalogoCompleto,
+  permisosDeRol, permisosDeUsuario, esAltoRiesgo, catalogoCompleto,
 };

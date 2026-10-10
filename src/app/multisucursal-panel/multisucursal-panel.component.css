@@ -1,0 +1,32 @@
+/* MultiSucursal: usa las primitivas de panel-controls.css; aquí solo lo propio. */
+.ms-msg { padding: .7rem 1rem; border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-text); margin-bottom: 1rem; }
+.ms-msg--error { border-left: 3px solid var(--wx-danger); }
+.ms-msg--ok { border-left: 3px solid var(--wx-success); }
+.ms-texto { margin: 0 0 .5rem; color: var(--wx-text); max-width: 70ch; }
+.ms-lista { margin: 0 0 .75rem 1.1rem; color: var(--wx-text); display: grid; gap: .35rem; }
+
+.ms-red { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ms-red li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--wx-radius-sm); background: var(--wx-sunken); color: var(--wx-text); }
+.ms-red li span { flex: 1; }
+.ms-red small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ms-red--aqui { outline: 1px solid var(--wx-accent); }
+
+.ms-datos { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: .25rem 0 .5rem; }
+.ms-datos dt { font-size: var(--wx-text-xs); color: var(--wx-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ms-datos dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--wx-text); }
+
+.ms-regla + .ms-regla { margin-top: .75rem; }
+
+.ms-tabla-wrap { max-height: 420px; overflow: auto; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm); margin-top: .5rem; }
+.ms-tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.ms-tabla th { position: sticky; top: 0; background: var(--wx-sunken); text-align: left; font-weight: 600; color: var(--wx-text-muted); padding: .45rem .6rem; border-bottom: 1px solid var(--wx-edge); }
+.ms-tabla td { padding: .4rem .6rem; border-bottom: 1px solid var(--wx-edge); color: var(--wx-text); vertical-align: middle; }
+.ms-tabla td small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.ms-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-precio { width: 110px; text-align: right; margin-left: auto; }
+.ms-fila--ex { background: var(--wx-accent-soft); }
+
+.ms-usuario { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--wx-edge); }
+.ms-usuario__quien { display: flex; flex-direction: column; }
+.ms-usuario__quien small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+@media (max-width: 640px) { .ms-usuario { grid-template-columns: 1fr; } }

@@ -100,6 +100,10 @@ export class NavegacionService {
      inventario y las compras esperan a la renovación). */
   get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR) && this.license.tiene('inventory'); }
   get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
+  /** 0056: combos, promociones y precios por canal; otorgable a un Operador. */
+  get administrarComercial() { return this.auth.puede(PAQUETES.COMERCIAL_ADMINISTRAR); }
+  /** 0056: entra a Configuracion solo por el equipo de la caja. */
+  get configurarEquipo() { return this.auth.puede(PAQUETES.CONFIGURACION_EQUIPO); }
   get operarServicios() {
     return (this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) && this.license.tiene('services');
   }
@@ -157,10 +161,12 @@ export class NavegacionService {
         aviso: dato('inventario').aviso,
         destinos: [
           { texto: 'Ver inventario', ruta: '/dashboard/inventario', icono: 'ph-package', visible: true, principal: true, pie: pie('inventario', 'stock') },
-          { texto: 'Promociones y combos', ruta: '/dashboard/inventario/ofertas', icono: 'ph-tag', visible: this.administrarNegocio },
-          { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarNegocio },
+          { texto: 'Promociones y combos', ruta: '/dashboard/inventario/ofertas', icono: 'ph-tag', visible: this.administrarComercial },
+          { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarComercial },
           { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
           /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
+          /* MultiSucursal: mercancía de una sucursal a otra de la empresa. */
+          { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: true },
           { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: true },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },
@@ -239,7 +245,7 @@ export class NavegacionService {
          configurar la caja. Vista propia, en forma de organigrama. */
       { texto: 'Usuarios y permisos', ruta: '/dashboard/usuarios', icono: 'ph-identification-badge', grupo: 'sistema', visible: this.administrarNegocio },
       { texto: 'Aplicaciones', ruta: '/dashboard/aplicaciones', icono: 'ph-squares-four', grupo: 'sistema', visible: this.administrarNegocio },
-      { texto: 'Configuracion', ruta: '/dashboard/configuracion', icono: 'ph-gear', grupo: 'sistema', visible: this.administrarNegocio },
+      { texto: 'Configuracion', ruta: '/dashboard/configuracion', icono: 'ph-gear', grupo: 'sistema', visible: this.administrarNegocio || this.configurarEquipo },
       { texto: 'Migracion', ruta: '/dashboard/migracion', icono: 'ph-database', grupo: 'sistema', visible: this.administrarNegocio },
     ];
     return lista.filter(x => x.visible);

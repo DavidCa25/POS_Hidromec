@@ -86,7 +86,7 @@ export const routes: Routes = [
 
       // ---- Backoffice ----
       { path: 'inventario/precios', redirectTo: () => inject(Router).parseUrl('/dashboard/inventario/ofertas?view=prices') },
-      { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('CONFIGURACION_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
+      { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('COMERCIAL_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
       { path: 'quickstart', loadComponent: () => import('./wx-quickstart/wx-quickstart.component').then(m => m.WxQuickstartComponent) },
       /* `/importador` era el camino viejo. Se conserva como REDIRECCION y no
@@ -103,6 +103,8 @@ export const routes: Routes = [
       { path: 'conteo', loadComponent: () => import('../conteo/conteo').then(m => m.Conteo) },
       /* Fase 2: envíos a eventos (ferias) y retornos. La sucursal es la autoridad de su inventario. */
       { path: 'eventos', loadComponent: () => import('../eventos/eventos').then(m => m.Eventos) },
+      /* MultiSucursal: traspasos de mercancía entre sucursales de la empresa. */
+      { path: 'traspasos', loadComponent: () => import('../traspasos/traspasos').then(m => m.Traspasos) },
       { path: 'clientes', loadComponent: () => import('../clientes/clientes').then(m => m.Clientes) },
       { path: 'servicios', loadComponent: () => import('../servicios/servicios').then(m => m.Servicios) },
       { path: 'facturacion', loadComponent: () => import('../facturacion/facturacion').then(m => m.Facturacion) },

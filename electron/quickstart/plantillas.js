@@ -21,6 +21,8 @@ const ExcelJS = require('exceljs');
 const path = require('node:path');
 const fs = require('node:fs');
 
+const giros = require('./giros');
+
 const CYAN = 'FF45B3C3';
 const TINTA = 'FF16212E';
 
@@ -33,11 +35,16 @@ function columnasProducto(material = 'Producto') {
     { campo: 'part_number',   cab: 'Código',            ancho: 18 },
     { campo: 'bar_code',      cab: 'Código de barras',  ancho: 20 },
     { campo: 'cost',          cab: 'Costo',             ancho: 12, num: '#,##0.00' },
-    { campo: 'category_name', cab: 'Categoría',         ancho: 20 },
+    { campo: 'category_name', cab: 'Categoría',         ancho: 20, obligatorio: true },
     { campo: 'brand_name',    cab: 'Marca',             ancho: 18 },
     { campo: 'base_uom',      cab: 'Unidad',            ancho: 10, lista: true },
+    VENDIBLE,
   ];
 }
+
+/* Si se cobra en caja. Vacío = lo que diga la hoja (Menú se vende, Insumos
+   no); con «Sí»/«No» decide cada renglón. */
+const VENDIBLE = { campo: 'sellable', cab: 'Vendible', ancho: 10, lista: true, opciones: ['Sí', 'No'] };
 
 /**
  * Que hojas y que columnas, segun el negocio.
@@ -45,6 +52,8 @@ function columnasProducto(material = 'Producto') {
  * @param {Object} ctx { businessProfile, servicios, hospitality, preset, material }
  */
 function disenar(ctx = {}) {
+  const giro = giroDe(ctx);
+  const sugeridas = giro ? ` Categorías sugeridas: ${giro.categorias.join(', ')}.` : '';
   const material = ctx.material?.singular || 'Producto';
   const materialPlural = ctx.material?.plural || 'Productos';
 
@@ -54,7 +63,7 @@ function disenar(ctx = {}) {
        pantalla de recetas, que ya existe y sabe hacerlo. Primero que abra
        el negocio; las recetas se montan despues, donde se ven. */
     return {
-      nombre: 'plantilla_wybix_alimentos.xlsx',
+      nombre: `plantilla_wybix_${giro?.id || 'alimentos'}.xlsx`,
       hojas: [
         /* MENU y no PRODUCTO: lo que sale en la carta se vende pero no
            tiene existencia propia. Si la plantilla dijera PRODUCTO, el
@@ -62,12 +71,15 @@ function disenar(ctx = {}) {
            agotada, que es justo lo que paso en QA. */
         { nombre: 'Menú', tipo: 'MENU',
           columnas: columnasProducto().filter(c => !['stock', 'brand_name', 'base_uom'].includes(c.campo)),
-          nota: 'Lo que vendes al cliente: platillos, bebidas, postres. No llevan existencia propia.' },
+          nota: `Lo que vendes al cliente: platillos, bebidas, postres. No llevan existencia propia.${sugeridas}` },
         /* Un ingrediente no tiene precio de venta: no se vende. Pedirselo
            en la plantilla es lo que llevo a ponerle $12 a doce insumos. */
         { nombre: 'Insumos', tipo: 'INGREDIENTE',
-          columnas: columnasProducto().filter(c => !['bar_code', 'price'].includes(c.campo)),
-          nota: 'Lo que consumes para prepararlos. No se venden en caja. Las recetas se arman después, en Wybix.' },
+          /* Un insumo no aparece en la caja: la categoria le ayuda a ordenar,
+             pero no es obligatoria como en el Menu. */
+          columnas: columnasProducto().filter(c => !['bar_code', 'price'].includes(c.campo))
+            .map(c => c.campo === 'category_name' ? { ...c, obligatorio: false } : c),
+          nota: 'Lo que consumes para prepararlos. No se venden en caja (pon «Sí» en Vendible si también lo vendes tal cual). Las recetas se arman después, en Wybix.' },
       ],
     };
   }
@@ -88,40 +100,44 @@ function disenar(ctx = {}) {
   }
 
   return {
-    nombre: 'plantilla_wybix_productos.xlsx',
+    nombre: `plantilla_wybix_${giro?.id || 'productos'}.xlsx`,
     hojas: [{ nombre: 'Productos', tipo: 'PRODUCTO', columnas: columnasProducto(),
-      nota: 'Un renglón por producto. Con nombre y precio basta para empezar.' }],
+      nota: `Un renglón por producto. Con nombre, precio y categoría ya se vende.${sugeridas}` }],
   };
 }
 
-/** Ejemplos con la cara del giro, nunca de refaccionaria por defecto. */
+/** El giro guardado del negocio, si es de su familia. */
+function giroDe(ctx = {}) {
+  if (!ctx.giro || ctx.servicios) return null;
+  return giros.buscar(ctx.hospitality ? 'HOSPITALITY' : 'RETAIL', ctx.giro);
+}
+
+/** Ejemplos con la cara del giro, nunca de refaccionaria por defecto.
+    Van por CAMPO y se acomodan a las columnas de la primera hoja: un ejemplo
+    con una columna de más desplazaba todo lo que iba detrás. */
 function ejemplosDe(ctx) {
-  /* Los ejemplos siguen a las columnas de la PRIMERA hoja. En alimentos esa
-     es «Menu», que no lleva existencia: un ejemplo con una columna de mas
-     desplaza todo lo que va detras. */
-  if (ctx.hospitality) return [
-    ['Café americano 12 oz', 45, 'CAF-12', '', 14, 'Bebidas'],
-    ['Croissant de mantequilla', 38, 'PAN-CRO', '', 16, 'Panadería'],
-  ];
-  if (ctx.servicios) {
+  const columnas = disenar(ctx).hojas[0].columnas;
+  const giro = giroDe(ctx);
+  let filas;
+  if (giro) filas = giro.ejemplos;
+  else if (ctx.hospitality) filas = giros.buscar('HOSPITALITY', 'cafeteria').ejemplos;
+  else if (ctx.servicios) {
     const mat = ctx.material?.singular || 'Producto';
-    if (ctx.preset === 'BELLEZA') return [
-      ['Servicio', 'Corte de caballero', 150, '', 'SRV-CORTE', '', '', 'Servicios', '', 'pza', 30, 40],
-      [mat, 'Shampoo anticaspa 400 ml', 185, 12, 'SH-400', '7501234567890', 98, 'Productos', 'Head&Shoulders', 'pza', '', ''],
+    const s = (o) => ({ ...o, sellable: 'Sí' });
+    if (ctx.preset === 'BELLEZA') filas = [
+      s({ tipo: 'Servicio', nombre: 'Corte de caballero', price: 150, part_number: 'SRV-CORTE', category_name: 'Servicios', base_uom: 'pza', duration_minutes: 30, default_commission_pct: 40 }),
+      s({ tipo: mat, nombre: 'Shampoo anticaspa 400 ml', price: 185, stock: 12, part_number: 'SH-400', bar_code: '7501234567890', cost: 98, category_name: 'Productos', brand_name: 'Head&Shoulders', base_uom: 'pza' }),
     ];
-    if (ctx.preset === 'REPARACION_ELECTRONICA') return [
-      ['Servicio', 'Cambio de pantalla', 1200, '', 'SRV-PANT', '', '', 'Servicios', '', 'pza', 60, 15],
-      [mat, 'Pantalla iPhone 13', 1850, 4, 'PANT-IP13', '', 1320, 'Componentes', 'OEM', 'pza', '', ''],
+    else if (ctx.preset === 'REPARACION_ELECTRONICA') filas = [
+      s({ tipo: 'Servicio', nombre: 'Cambio de pantalla', price: 1200, part_number: 'SRV-PANT', category_name: 'Servicios', base_uom: 'pza', duration_minutes: 60, default_commission_pct: 15 }),
+      s({ tipo: mat, nombre: 'Pantalla iPhone 13', price: 1850, stock: 4, part_number: 'PANT-IP13', cost: 1320, category_name: 'Componentes', brand_name: 'OEM', base_uom: 'pza' }),
     ];
-    return [
-      ['Servicio', 'Cambio de aceite', 450, '', 'SRV-ACE', '', '', 'Servicios', '', 'pza', 40, 10],
-      [mat, 'Filtro de aceite Fram PH6017A', 129, 18, 'PH6017A', '7501234567890', 62.5, 'Filtros', 'Fram', 'pza', '', ''],
+    else filas = [
+      s({ tipo: 'Servicio', nombre: 'Cambio de aceite', price: 450, part_number: 'SRV-ACE', category_name: 'Servicios', base_uom: 'pza', duration_minutes: 40, default_commission_pct: 10 }),
+      s({ tipo: mat, nombre: 'Filtro de aceite Fram PH6017A', price: 129, stock: 18, part_number: 'PH6017A', bar_code: '7501234567890', cost: 62.5, category_name: 'Filtros', brand_name: 'Fram', base_uom: 'pza' }),
     ];
-  }
-  return [
-    ['Coca-Cola 600 ml', 18, 24, 'ABA-001', '7501055300013', 13.5, 'Bebidas', 'Coca-Cola', 'pza'],
-    ['Sabritas Original 45 g', 19, 30, 'ABA-013', '', 14, 'Botanas', 'Sabritas', 'pza'],
-  ];
+  } else filas = giros.buscar('RETAIL', 'abarrotes').ejemplos;
+  return filas.map((e) => columnas.map((c) => e[c.campo] ?? ''));
 }
 
 /**
@@ -207,6 +223,7 @@ async function generar(destino, ctx = {}, uoms = [], info = {}) {
     businessProfile: ctx.businessProfile || 'RETAIL',
     servicios: ctx.servicios ? 1 : 0,
     hospitality: ctx.hospitality ? 1 : 0,
+    giro: giroDe(ctx)?.id || '',
     generatedAt: new Date().toISOString(),
     hojasDatos: dis.hojas.map(h => h.nombre).join(','),
   };

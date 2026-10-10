@@ -104,6 +104,12 @@ export class Corte {
 
   showCloseModal = false;
   cashDelivered: number | null = null;
+  /** 0056: efectivo que se queda en la caja al cerrar (fondo del siguiente turno). */
+  cashLeft: number | null = null;
+  get cashLeftInvalido(): boolean {
+    return this.cashLeft !== null && this.cashLeft !== undefined && (this.cashLeft as any) !== ''
+      && (Number(this.cashLeft) < 0 || (this.cashDelivered !== null && Number(this.cashLeft) > Number(this.cashDelivered)));
+  }
   closeNotes = '';
 
   closing = false;
@@ -384,7 +390,8 @@ export class Corte {
    * trabajo. El cierre guarda si fue a ciegas.
    */
   get corteCiego(): boolean {
-    return !this.auth.puede(PAQUETES.VENTAS_SUPERVISAR);
+    // 0056: quien tiene «Cortes de caja» tambien revisa: ve lo esperado.
+    return !this.auth.puede(PAQUETES.VENTAS_SUPERVISAR) && !this.auth.puede(PAQUETES.CAJA_CORTES);
   }
 
   get cashExpected(): number {
@@ -413,6 +420,7 @@ export class Corte {
       return;
     }
     this.cashDelivered = null;
+    this.cashLeft = null;
     this.closeNotes = '';
     this.showCloseModal = true;
   }
@@ -474,6 +482,7 @@ export class Corte {
         // hablar todos de la MISMA caja.
         register_id: this.selectedRegisterId,
         cash_delivered: Number(this.cashDelivered),
+        cash_left: this.cashLeft === null || this.cashLeft === undefined || (this.cashLeft as any) === '' ? null : Number(this.cashLeft),
         note: (this.closeNotes || '').trim() || null,
         blind: this.corteCiego,
         autorizacion,
@@ -484,7 +493,8 @@ export class Corte {
          con su PIN (o que el encargado que está cerrando confirme con el suyo).
          El comprobante se gasta en ese cierre y no sirve para nada más. */
       if (!resp?.success && resp?.requiereAutorizacion) {
-        const propio = this.auth.puede(PAQUETES.VENTAS_SUPERVISAR);
+        // 0056: quien tiene «Cortes de caja» confirma con su propio PIN.
+        const propio = this.auth.puede(PAQUETES.CAJA_CORTES);
         const token = await this.supervisor.autorizarConPin(
           'Este turno es de otra persona. Cerrarlo requiere la autorización de un encargado.',
           'sp-close-shift', propio);

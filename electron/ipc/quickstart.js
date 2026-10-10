@@ -20,6 +20,7 @@ const lector = require('../quickstart/lector');
 const alias = require('../quickstart/alias');
 const planificador = require('../quickstart/plan');
 const plantillas = require('../quickstart/plantillas');
+const girosNegocio = require('../quickstart/giros');
 const semantica = require('../quickstart/semantica');
 
 /** Cuantas filas se mandan a SQL por viaje al guardar el staging. */
@@ -143,8 +144,10 @@ function registrar({ ipcMain, sql, poolPromise, app, contexto }) {
        */
       const perfil = String(contexto?.businessProfile?.() || 'RETAIL').toUpperCase();
 
+      const g = await p.request().query("SELECT valor FROM dbo.database_metadata WHERE clave = 'giro'");
       return {
         preset,
+        giro: g.recordset?.[0]?.valor || null,
         servicios: activos.has('servicios'),
         hospitality: activos.has('hospitality') || perfil === 'HOSPITALITY',
         businessProfile: perfil,
@@ -600,6 +603,11 @@ function registrar({ ipcMain, sql, poolPromise, app, contexto }) {
       if (!batchId) return { success: false, error: 'Falta la carga.' };
 
       const pool0 = await pool();
+      /* MultiSucursal: si la empresa no deja dar de alta productos en las
+         sucursales, el catalogo se carga en la matriz y llega solo. */
+      if (!(await require('./multisucursal').puedeCrearProductos(pool0))) {
+        return { success: false, error: 'En esta empresa los productos se cargan en la matriz y llegan solos a las sucursales.' };
+      }
       const total = { procesadas: 0, creadas: 0, actualizadas: 0, movimientos: 0 };
       let vueltas = 0;
 
@@ -708,6 +716,41 @@ function registrar({ ipcMain, sql, poolPromise, app, contexto }) {
         return { success: false, error: alHumano(e, 'quickstart') };
       }
     }));
+
+  // =====================================================================
+  //  GIRO DE COMERCIO / ALIMENTOS
+  //  Servicios guarda el suyo (preset). Comercio y alimentos no guardaban
+  //  ninguno, y la plantilla salia igual para una farmacia que para una
+  //  refaccionaria. Vive en `database_metadata`: es de la base -la sucursal-,
+  //  no de una caja, y no necesita una columna nueva.
+  // =====================================================================
+  ipcMain.handle('negocio:giro', async () => {
+    try {
+      const ctx = await negocio();
+      return { success: true, data: {
+        giro: ctx.giro,
+        opciones: { RETAIL: girosNegocio.lista('RETAIL'), HOSPITALITY: girosNegocio.lista('HOSPITALITY') },
+      } };
+    } catch (e) {
+      return { success: false, error: alHumano(e, 'quickstart') };
+    }
+  });
+
+  ipcMain.handle('negocio:giro-guardar', sesion.proteger('negocio:giro-guardar', async (_e, p = {}) => {
+    try {
+      const giro = p.giro ? String(p.giro) : null;
+      if (giro && !girosNegocio.IDS.has(giro)) return { success: false, error: 'Ese giro no existe.' };
+      /* Sin giro se guarda vacio y no se borra la fila: `valor` es NOT NULL y
+         el rol de la aplicacion escribe metadata, no la elimina. */
+      await (await pool()).request().input('valor', sql.NVarChar(255), giro || '').query(
+        `IF EXISTS (SELECT 1 FROM dbo.database_metadata WHERE clave = 'giro')
+           UPDATE dbo.database_metadata SET valor = @valor, actualizado_en = SYSDATETIME() WHERE clave = 'giro'
+         ELSE INSERT INTO dbo.database_metadata (clave, valor) VALUES ('giro', @valor);`);
+      return { success: true, data: { giro } };
+    } catch (e) {
+      return { success: false, error: alHumano(e, 'quickstart') };
+    }
+  }));
 
   ipcMain.handle('quickstart:plantilla', sesion.proteger('quickstart:plantilla',
     async (_e, p = {}) => {

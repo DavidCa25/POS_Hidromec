@@ -1,3 +1,4 @@
+import { ShiftService } from '../../core/shift.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { CapabilityService, GiroServiciosService } from '../../core';
@@ -63,6 +64,7 @@ export type DatoGuia = { etiqueta: string; valor: string };
 @Injectable({ providedIn: 'root' })
 export class GuiaService {
   private readonly auth = inject(AuthService);
+  private readonly shift = inject(ShiftService);
   private readonly caps = inject(CapabilityService);
   private readonly license = inject(LicenseService);
   private readonly giro = inject(GiroServiciosService);
@@ -198,7 +200,10 @@ export class GuiaService {
 
     const [cuentas, turno, hoy, ords, cargas] = await Promise.all([
       pedir(api.alertsCounts?.({ min: 3 })),
-      operarVentas ? pedir(api.getOpenShift?.()) : Promise.resolve(null),
+      /* El turno lo pregunta ShiftService, con usuario y caja. Antes se llamaba
+         `getOpenShift()` sin datos: el proceso principal fallaba y la guia lo
+         leia como «No hay turno abierto» con el turno abierto. */
+      operarVentas ? this.shift.refresh().catch(() => null) : Promise.resolve(null),
       verNumeros ? pedir(api.getSalesDayly?.()) : Promise.resolve(null),
       servicios ? pedir(api.serviciosOrdenes?.({})) : Promise.resolve(null),
       /* Las cargas a medias. Leerlas no exige permiso: saber que el catalogo
@@ -211,7 +216,7 @@ export class GuiaService {
 
     // ---------------------------------------------------------- el resumen
     const resumen: DatoGuia[] = [];
-    const t = turno?.data ?? turno?.turno ?? null;
+    const t = turno === true && this.shift.shift().open ? this.shift.shift() : null;
     if (operarVentas) {
       resumen.push({ etiqueta: 'Caja', valor: t ? 'Abierta' : 'Sin turno abierto' });
     }
@@ -246,7 +251,9 @@ export class GuiaService {
     }
 
     /* Una carga a medias no se olvida. Es trabajo de alguien esperando. */
-    const vivas = (cargas?.data ?? []).filter((x: any) => x.estado !== 'IMPORTADA');
+    /* Solo las que tienen renglones: entrar a capturar con el lector abre una
+       carga vacia (CAPTURANDO) y eso no es trabajo pendiente de nadie. */
+    const vivas = (cargas?.data ?? []).filter((x: any) => x.estado !== 'IMPORTADA' && Number(x.total_filas ?? 0) > 0);
     if (vivas.length && operarInv) {
       lista.push({
         area: 'Catálogo',

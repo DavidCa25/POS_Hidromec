@@ -1,0 +1,3 @@
+/* Traspasos: hereda el lenguaje de Envíos a eventos (eventos.css). */
+.tr-ok { border-left: 3px solid var(--wx-success); }
+.tr-meta { font-weight: 400; color: var(--wx-text-muted); font-size: .85rem; }

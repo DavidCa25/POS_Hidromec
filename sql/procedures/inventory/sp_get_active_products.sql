@@ -84,6 +84,8 @@ BEGIN
         p.base_uom,
         p.allow_decimal_qty,
         p.image_version,
+        /* 0055: lo administra la matriz (MultiSucursal). */
+        CAST(p.corporate AS BIT) AS corporate,
         CASE WHEN EXISTS (
             SELECT 1 FROM dbo.product_modifier_groups pmg
             JOIN dbo.modifier_groups g ON g.id = pmg.group_id AND g.active = 1

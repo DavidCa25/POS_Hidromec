@@ -49,6 +49,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     qsGuardarPerfil: (p) => ipcRenderer.invoke('quickstart:guardar-perfil', p),
     qsLeerHoja: (p) => ipcRenderer.invoke('quickstart:leer-hoja', p),
     qsPlantilla: (p) => ipcRenderer.invoke('quickstart:plantilla', p),
+    negocioGiro: () => ipcRenderer.invoke('negocio:giro'),
+    // MultiSucursal
+    multiEstado: () => ipcRenderer.invoke('multi:estado'),
+    multiPublicar: () => ipcRenderer.invoke('multi:publicar'),
+    multiRecibir: () => ipcRenderer.invoke('multi:recibir'),
+    multiExcepciones: (p) => ipcRenderer.invoke('multi:excepciones', p),
+    multiExcepcionesGuardar: (p) => ipcRenderer.invoke('multi:excepciones-guardar', p),
+    multiReglasGuardar: (p) => ipcRenderer.invoke('multi:reglas-guardar', p),
+    multiUsuarios: () => ipcRenderer.invoke('multi:usuarios'),
+    multiUsuarioAlcance: (p) => ipcRenderer.invoke('multi:usuario-alcance', p),
+    multiTraspasos: () => ipcRenderer.invoke('multi:traspasos'),
+    multiTraspasoEnviar: (p) => ipcRenderer.invoke('multi:traspaso-enviar', p),
+    multiTraspasoRecibir: (p) => ipcRenderer.invoke('multi:traspaso-recibir', p),
+    multiTraspasoCancelar: (p) => ipcRenderer.invoke('multi:traspaso-cancelar', p),
+    multiProductosTraspaso: () => ipcRenderer.invoke('multi:productos-traspaso'),
+    negocioGiroGuardar: (p) => ipcRenderer.invoke('negocio:giro-guardar', p),
     /* El avance real de una importacion larga. Se escucha, no se sondea. */
     qsAlAvanzar: (fn) => {
       const h = (_e, d) => fn(d);
@@ -133,6 +149,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     usersSetPin: (p) => ipcRenderer.invoke('users:set-pin', p),
     usersPinStatus: () => ipcRenderer.invoke('users:pin-status'),
     usersSetActive: (p) => ipcRenderer.invoke('users:set-active', p),
+    // 0056: permisos adicionales por persona.
+    usersPermissions: () => ipcRenderer.invoke('users:permissions'),
+    usersSetPermissions: (p) => ipcRenderer.invoke('users:set-permissions', p),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>

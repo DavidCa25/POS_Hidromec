@@ -1,0 +1,101 @@
+<div class="corte-container ev">
+  <header class="ev-cab">
+    <h2>Traspasos entre sucursales</h2>
+    <p class="ev-intro">Lo que envías sale de este inventario en el momento. La otra sucursal cuenta lo que le llegó y solo eso entra al suyo.</p>
+  </header>
+
+  <div class="ev-error" *ngIf="error()" role="alert">{{ error() }}</div>
+  <div class="ev-aviso tr-ok" *ngIf="aviso()" role="status">{{ aviso() }}</div>
+
+  <section class="ev-bloque" *ngIf="!cargando() && conocido() && !activo()">
+    <h3>Esta empresa no tiene MultiSucursal</h3>
+    <p class="ev-vacio">Los traspasos entre sucursales vienen con el complemento MultiSucursal de la licencia. Con él, la matriz también comparte su catálogo con las demás sucursales.</p>
+  </section>
+
+  <ng-container *ngIf="activo()">
+    <section class="ev-bloque" data-guide="traspasos-recibir">
+      <h3>Por recibir</h3>
+      <p class="ev-vacio" *ngIf="!porRecibir().length">No hay mercancía en camino hacia esta sucursal.</p>
+      <div class="ev-retorno" *ngFor="let t of porRecibir()">
+        <h4>De {{ t.from_nombre }} <small class="tr-meta">· {{ t.sent_at | date:'dd/MM/yy HH:mm' }}<span *ngIf="t.sent_by_name"> · envió {{ t.sent_by_name }}</span></small></h4>
+        <p class="ev-vacio" *ngIf="t.note">{{ t.note }}</p>
+        <table class="ev-tabla">
+          <thead><tr><th>Producto</th><th class="num">Enviaron</th><th class="num">Llegó</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of t.lines">
+              <td>{{ l.nombre }}</td>
+              <td class="num">{{ l.qty }}</td>
+              <td class="num"><input class="ev-input-cant" type="number" min="0" [(ngModel)]="recibido[t.id][l.product_uuid]"
+                  [attr.aria-label]="'Llegó de ' + l.nombre" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <button class="btn btn-primary" type="button" (click)="recibir(t)">Recibir en esta sucursal</button>
+      </div>
+    </section>
+
+    <section class="ev-bloque" data-guide="traspasos-enviar">
+      <h3>Nuevo traspaso</h3>
+      <p class="ev-vacio" *ngIf="!opcionesDestino().length">La empresa no tiene otra sucursal todavía.</p>
+      <ng-container *ngIf="opcionesDestino().length">
+        <div class="ev-fila">
+          <label class="ev-campo">
+            <span>Enviar a</span>
+            <wx-select [opciones]="opcionesDestino()" [(ngModel)]="destino" placeholder="Elige la sucursal"></wx-select>
+          </label>
+        </div>
+        <div class="ev-fila">
+          <label class="ev-campo ev-crece">
+            <span>Producto</span>
+            <wx-select [opciones]="opcionesProductos()" [(ngModel)]="productoElegido" [buscable]="true"
+                       placeholder="Busca un producto" textoBusqueda="Nombre del producto" vacio="No hay productos con existencia"></wx-select>
+          </label>
+          <label class="ev-campo ev-cant">
+            <span>Cantidad</span>
+            <input id="tr-cantidad" type="number" min="0" step="1" [(ngModel)]="cantidad" (keyup.enter)="agregar()" />
+          </label>
+          <button class="btn btn-primary" type="button" (click)="agregar()" [disabled]="!productoElegido || !cantidad">Agregar</button>
+        </div>
+        <table class="ev-tabla" *ngIf="lineas().length">
+          <thead><tr><th>Producto</th><th class="num">Cantidad</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of lineas()">
+              <td>{{ l.nombre }}</td><td class="num">{{ l.qty }}</td>
+              <td class="num"><button class="ev-link" type="button" (click)="quitar(l.product_uuid)">Quitar</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <label class="ev-campo">
+          <span>Nota (opcional)</span>
+          <input id="tr-nota" type="text" maxlength="255" [(ngModel)]="nota" placeholder="Ej. va en la camioneta de las 8:00" />
+        </label>
+        <button class="btn btn-primary ev-principal" type="button" data-guide="traspasos-confirmar" (click)="enviar()"
+                [disabled]="!destino || !lineas().length || enviando()">
+          {{ enviando() ? 'Enviando…' : 'Enviar a la sucursal' }}
+        </button>
+      </ng-container>
+    </section>
+
+    <section class="ev-bloque">
+      <h3>Historial</h3>
+      <p class="ev-vacio" *ngIf="!historial().length">Aún no hay traspasos.</p>
+      <table class="ev-tabla" *ngIf="historial().length">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Sucursal</th><th class="num">Enviado</th><th class="num">Recibido</th><th class="num">Diferencia</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let h of historial()">
+            <td>{{ h.created_at | date:'dd/MM/yy HH:mm' }}</td>
+            <td>{{ h.kind === 'BRANCH_OUT' ? 'Enviado' : 'Recibido' }}</td>
+            <td>{{ h.event_name }}</td>
+            <td class="num">{{ h.total_sent }}</td>
+            <td class="num">{{ h.total_received ?? '—' }}</td>
+            <td class="num" [class.ev-dif]="h.difference && h.difference != 0">{{ h.total_received == null ? '—' : h.difference }}</td>
+            <td>{{ estado(h) }}</td>
+            <td class="num">
+              <button class="ev-link" type="button" *ngIf="h.kind === 'BRANCH_OUT' && h.status === 'SENT'" (click)="cancelar(h)">Cancelar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </ng-container>
+</div>

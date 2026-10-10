@@ -19,7 +19,11 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_close_shift]
        procedimiento vuelve a comprobar su rol: no confia en que quien llama lo
        haya hecho. */
     @authorized_by  INT = NULL,
-    @blind_count    BIT = NULL
+    @blind_count    BIT = NULL,
+    /* 0056. Lo que se queda fisicamente en la caja (fondo del siguiente
+       turno) y las notas del cierre. NULL = no se dijo. */
+    @cash_left      DECIMAL(12,2) = NULL,
+    @closing_note   NVARCHAR(500) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -164,10 +168,14 @@ BEGIN
                para pedir el PIN. Sin acentos: ver la nota de MULTICAJA. */
             IF @user_id <> @shift_user_id
             BEGIN
+                /* 0056: o el permiso CAJA_CORTES otorgado a esa persona (un
+                   Operador de confianza que hace los cortes de los demas). */
                 IF @authorized_by IS NULL OR NOT EXISTS (
-                    SELECT 1 FROM dbo.users
-                     WHERE id = @authorized_by AND active = 1
-                       AND LOWER(LTRIM(RTRIM(rol))) IN (N'admin', N'supervisor'))
+                    SELECT 1 FROM dbo.users u
+                     WHERE u.id = @authorized_by AND u.active = 1
+                       AND (LOWER(LTRIM(RTRIM(u.rol))) IN (N'admin', N'supervisor')
+                            OR EXISTS (SELECT 1 FROM dbo.user_permissions p
+                                        WHERE p.user_id = u.id AND p.permiso = 'CAJA_CORTES')))
                 BEGIN
                     RAISERROR('REQUIERE_AUTORIZACION: este turno es de otra persona. Para cerrarlo hace falta la autorizacion de un encargado.', 16, 1);
                     ROLLBACK TRAN;
@@ -196,6 +204,13 @@ BEGIN
         );
 
         DECLARE @cash_expected DECIMAL(12,2) = ISNULL(@opening_cash,0) + ISNULL(@mov_sum,0);
+
+        IF @cash_left IS NOT NULL AND (@cash_left < 0 OR @cash_left > @cash_delivered)
+        BEGIN
+            RAISERROR('Lo que se queda en caja no puede ser negativo ni mayor que el efectivo contado.', 16, 1);
+            ROLLBACK TRAN;
+            RETURN;
+        END
         DECLARE @difference    DECIMAL(12,2) = @cash_delivered - @cash_expected;
 
         /* 3) Cerrar */
@@ -209,7 +224,9 @@ BEGIN
                close_authorized_by = @authorized_by,
                closed_machine_id   = NULLIF(LTRIM(RTRIM(ISNULL(@machine_id, N''))), N''),
                closed_machine_name = @machine_name,
-               blind_count         = @blind_count
+               blind_count         = @blind_count,
+               cash_left           = @cash_left,
+               closing_note        = NULLIF(LTRIM(RTRIM(ISNULL(@closing_note, N''))), N'')
          WHERE id = @cid;
 
         /* Bitacora: SIEMPRE queda el cierre, y aparte si fue de un turno ajeno. */
@@ -249,7 +266,8 @@ BEGIN
             @register_id    AS register_id,
             @shift_user_id  AS opened_by_user_id,
             @user_id        AS closed_by_user_id,
-            @authorized_by  AS close_authorized_by;
+            @authorized_by  AS close_authorized_by,
+            @cash_left      AS cash_left;
 
     END TRY
     BEGIN CATCH

@@ -119,6 +119,11 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
 require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion});
+/* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
+const ipcMulti = require('./ipc/multisucursal');
+ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
+  esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+  equipo: () => os.hostname() });
 
 ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEsteEquipo() });
 
@@ -1342,7 +1347,7 @@ ipcMain.handle('security:authorize', async (evento, p = {}) => {
     if (esElMismo && !p.reautenticar) {
       return { ok: false, error: 'La autorización tiene que darla otra persona.' };
     }
-    if (!permisos.permisosDeRol(row.rol).has(exigido)) {
+    if (!permisos.permisosDeUsuario(row.rol, await extrasDe(pool, row.id)).has(exigido)) {
       return { ok: false, error: esElMismo
         ? 'Tu usuario no puede autorizar esta operación.'
         : 'Ese usuario no puede autorizar esta operación.' };
@@ -1379,12 +1384,24 @@ ipcMain.handle('security:autorizadores', async (evento, p = {}) => {
         JOIN dbo.trabajadores_acceso a ON a.user_id = u.id
        WHERE u.active = 1 AND a.pin_hash IS NOT NULL AND a.revocado_en IS NULL
        ORDER BY u.usuario;`);
-    const data = (r.recordset || [])
-      .filter(u => permisos.permisosDeRol(u.rol).has(exigido))
+    const filas = r.recordset || [];
+    for (const u of filas) u.extras = await extrasDe(pool, u.id);
+    const data = filas
+      .filter(u => permisos.permisosDeUsuario(u.rol, u.extras).has(exigido))
       .map(u => ({ id: u.id, usuario: u.usuario, rolEtiqueta: permisos.etiquetaDeRol(u.rol) }));
     return { ok: true, data };
   } catch (e) { return { ok: false, error: e.message }; }
 });
+
+/** 0056: los paquetes extra de una persona (user_permissions). Sin la tabla
+    (una base que aun no migra) no hay extras: nunca un error de inicio de sesion. */
+async function extrasDe(pool, userId) {
+  try {
+    const r = await pool.request().input('id', sql.Int, userId)
+      .query("IF OBJECT_ID('dbo.user_permissions','U') IS NOT NULL SELECT permiso FROM dbo.user_permissions WHERE user_id = @id");
+    return (r.recordset || []).map((x) => x.permiso);
+  } catch { return []; }
+}
 
 /** Guarda el hash scrypt de una contraseña que acaba de verificarse con el formato legado. */
 async function guardarHashNuevo(pool, userId, contrasena) {
@@ -1483,6 +1500,17 @@ function setupAutoUpdater(win) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  /* Build de cliente (custom-addons): solo se actualiza desde SU canal, para
+     que nunca baje el Wybix general encima y pierda su personalizacion, ni otro
+     cliente reciba la suya. Lo escribe scripts/addons.mjs; sin addon no existe. */
+  const addon = (() => { try { return require('./addon.generated.json'); } catch { return null; } })();
+  if (addon?.canal) {
+    autoUpdater.channel = addon.canal;
+    // Cambiar de canal activa la degradacion en electron-updater; aqui no.
+    autoUpdater.allowDowngrade = false;
+    console.log(`Actualizaciones del canal "${addon.canal}" (${addon.id})`);
+  }
+
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 3000);
@@ -1518,9 +1546,19 @@ function setupAutoUpdater(win) {
 
   autoUpdater.on('error', (err) => {
     console.error('Error en auto-updater:', err);
+    /* Que el repositorio todavia no tenga versiones (un cliente con addon recien
+       instalado, antes de su primera publicacion) o que el ultimo release no
+       traiga el archivo de SU canal no es una falla de esta caja: no hay nada
+       nuevo para ella. Se dice eso, no «Error al buscar actualizaciones». */
+    const sinVersiones = ['ERR_UPDATER_NO_PUBLISHED_VERSIONS', 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND', 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND'].includes(err?.code)
+      || /No published versions|Cannot find .*\.yml|404/i.test(String(err?.message || ''));
+    if (sinVersiones) {
+      win.webContents.send('update-status', { type: 'not-available', message: 'El sistema está actualizado' });
+      return;
+    }
     win.webContents.send('update-status', {
       type: 'error',
-      message: 'Error al buscar actualizaciones',
+      message: 'No se pudo buscar actualizaciones. Revisa la conexión a Internet.',
       error: err.message
     });
   });
@@ -1828,7 +1866,9 @@ sesion.configurar({
     const pool = await poolPromise;
     const r = await pool.request().input('id', sql.Int, userId)
       .query('SELECT id, usuario, rol, active FROM dbo.users WHERE id = @id');
-    return r.recordset?.[0] ?? null;
+    const u = r.recordset?.[0] ?? null;
+    if (u) u.extras = await extrasDe(pool, u.id);
+    return u;
   },
   /* Las capacidades del NEGOCIO, con su propia cache. No viven en la sesion
      a proposito: apagar un modulo desde otra caja tiene que surtir efecto sin
@@ -1984,7 +2024,8 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
       };
     }
     if (v.rehash) await guardarHashNuevo(pool, fila.id, contrasena);
-    const row = { id: fila.id, usuario: fila.usuario, rol: fila.rol, active: fila.active, creation_date: fila.creation_date };
+    const row = { id: fila.id, usuario: fila.usuario, rol: fila.rol, active: fila.active, creation_date: fila.creation_date,
+                  extras: await extrasDe(pool, fila.id) };
 
     /* AQUI, Y SOLO AQUI, NACE UNA SESION.
        Lo que se le pasa es la fila que devolvio SQL, no lo que mando el
@@ -2052,6 +2093,11 @@ ipcMain.handle('sp-add-product', sesion.proteger('sp-add-product', async (event,
                                         control = null) => {
     try {
         const pool = await poolPromise;
+        /* MultiSucursal: si la empresa no permite productos propios en las
+           sucursales, el catalogo lo da de alta la matriz. */
+        if (!(await ipcMulti.puedeCrearProductos(pool))) {
+            return { success: false, error: 'En esta empresa los productos se dan de alta en la matriz y llegan solos a las sucursales.' };
+        }
         const result = await pool.request()
             .input('brand', sql.Int, brand)
             .input('category', sql.Int, category)
@@ -2161,6 +2207,14 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Stock invalido.' };
  
     const pool = await poolPromise;
+    /* MultiSucursal: un producto de la matriz no se cambia en la sucursal
+       (existencia y costo si; el precio, si la empresa lo permite). */
+    const candado = await ipcMulti.motivoCandado(pool, sql, productId, {
+      nombre, part_number: numeroParte, price: precio, bar_code: barCode,
+      clave_prod_serv: claveProdServ, tasa_iva: tasaIva, inventory_mode: payload?.inventory_mode,
+      sellable: payload?.sellable, base_uom: payload?.base_uom,
+    });
+    if (candado) return { success: false, error: candado };
     const req = pool.request()
       .input('product_id', sql.Int, productId)
       .input('nombre', sql.NVarChar(100), nombre)
@@ -3022,6 +3076,14 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
     }
     req.input('authorized_by', sql.Int, autorizador ? Number(autorizador.autorizadorId) : null);
     req.input('blind_count', sql.Bit, payload?.blind ? 1 : 0);
+    /* 0056: lo que se queda en la caja y las notas del cierre. Las notas ya
+       venian de la pantalla y aqui se descartaban. */
+    const dejaEnCaja = payload?.cash_left == null || payload?.cash_left === '' ? null : Number(payload.cash_left);
+    if (dejaEnCaja != null && (!Number.isFinite(dejaEnCaja) || dejaEnCaja < 0)) {
+      return { success: false, error: 'Lo que se queda en caja no es válido.' };
+    }
+    req.input('cash_left', sql.Decimal(12, 2), dejaEnCaja);
+    req.input('closing_note', sql.NVarChar(500), payload?.note ? String(payload.note).slice(0, 500) : null);
 
     const result = await req.execute('sp_close_shift');
 
@@ -3391,6 +3453,66 @@ ipcMain.handle('users:reset-password', sesion.proteger('users:reset-password', a
   } catch (e) { return { success: false, error: e.message }; }
 }));
 
+/* Permisos adicionales por persona (0056). Solo SUMAN a los de su rol y solo
+   los de OTORGABLES: el catalogo lo decide el binario, no la base. Devuelve,
+   por usuario, sus extras y lo que su rol ya trae (la pantalla no ofrece lo
+   que ya tiene). */
+ipcMain.handle('users:permissions', sesion.proteger('users:permissions', async () => {
+  try {
+    const pool = await poolPromise;
+    const u = await pool.request().query('SELECT id, rol FROM users');
+    const extras = {};
+    try {
+      const r = await pool.request().query(`IF OBJECT_ID(N'dbo.user_permissions','U') IS NOT NULL
+        SELECT user_id, permiso FROM dbo.user_permissions;`);
+      for (const x of r.recordset || []) (extras[x.user_id] ||= []).push(x.permiso);
+    } catch { /* base sin 0056: nadie tiene extras */ }
+    const catalogo = permisos.OTORGABLES.map(clave => ({
+      clave, nombre: permisos.DESCRIPCIONES[clave]?.[0] || clave, descripcion: permisos.DESCRIPCIONES[clave]?.[1] || '',
+    }));
+    const usuarios = (u.recordset || []).map(x => {
+      const deRol = permisos.permisosDeRol(x.rol);
+      return {
+        id: x.id,
+        extras: (extras[x.id] || []).filter(p => permisos.OTORGABLES.includes(p) && !deRol.has(p)),
+        deRol: permisos.OTORGABLES.filter(p => deRol.has(p)),
+        todos: permisos.normalizarRol(x.rol) === 'admin',
+      };
+    });
+    return { success: true, data: { catalogo, usuarios } };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
+ipcMain.handle('users:set-permissions', sesion.proteger('users:set-permissions', async (_e, p = {}, ses) => {
+  try {
+    const id = Number(p.id);
+    if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
+    const pedidos = [...new Set((Array.isArray(p.permisos) ? p.permisos : []).map(String))];
+    const raros = pedidos.filter(x => !permisos.OTORGABLES.includes(x));
+    if (raros.length) return { success: false, error: `Permiso no otorgable: ${raros.join(', ')}` };
+    const pool = await poolPromise;
+    const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
+    if (!t.recordset[0]) return { success: false, error: 'Ese usuario no existe.' };
+    const deRol = permisos.permisosDeRol(t.recordset[0].rol);
+    const guardar = pedidos.filter(x => !deRol.has(x));
+    const actor = sesion.actorDe(ses);
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+    try {
+      await new sql.Request(tx).input('id', sql.Int, id).query('DELETE FROM dbo.user_permissions WHERE user_id = @id');
+      for (const permiso of guardar) {
+        await new sql.Request(tx).input('id', sql.Int, id).input('p', sql.VarChar(40), permiso).input('por', sql.Int, actor)
+          .query('INSERT INTO dbo.user_permissions (user_id, permiso, granted_by) VALUES (@id, @p, @por)');
+      }
+      await tx.commit();
+    } catch (e) { await tx.rollback().catch(() => {}); throw e; }
+    // Igual que un cambio de rol: las sesiones abiertas recalculan en segundos.
+    await pool.request().execute('sp_bump_security_revision');
+    sesion.invalidarRevision();
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
+
 /* PIN personal de un usuario (el mismo que usa Local Host). Lo fija un
    administrador; el PIN nunca vuelve al renderer ni se escribe en logs. */
 ipcMain.handle('users:set-pin', sesion.proteger('users:set-pin', async (_e, p = {}, ses) => {
@@ -3637,8 +3759,9 @@ ipcMain.handle('export-sales-pdf', sesion.proteger('export-sales-pdf', async (_e
   }
 }));
 
-ipcMain.handle('sp-get-open-shift', async (event, payload) => {
+ipcMain.handle('sp-get-open-shift', async (event, payload = {}) => {
   try {
+    payload = payload ?? {};
     const pool = await poolPromise;
     const result = await pool.request()
       .input('user_id', sql.Int, payload.user_id)
@@ -4347,6 +4470,9 @@ ipcMain.handle('sp-import-products', sesion.proteger('sp-import-products', async
     if (!rows.length) return { success: false, error: 'No hay filas para importar.' };
 
     const pool = await poolPromise;
+    if (!(await ipcMulti.puedeCrearProductos(pool))) {
+      return { success: false, error: 'En esta empresa los productos se cargan en la matriz y llegan solos a las sucursales.' };
+    }
 
     // El nombre del tipo es OBLIGATORIO para msnodesqlv8
     const tvp = new sql.Table('dbo.ProductImportType');

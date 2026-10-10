@@ -51,7 +51,7 @@
  */
 const TTL_REVISION_MS = 5000;
 
-const { normalizarRol, permisosDeRol, etiquetaDeRol, esAltoRiesgo } = require('./permisos');
+const { normalizarRol, permisosDeUsuario, etiquetaDeRol, esAltoRiesgo } = require('./permisos');
 const { exigePara, actorPara } = require('./canales');
 
 /** webContents.id -> sesion */
@@ -131,7 +131,8 @@ async function abrir(webContentsId, fila) {
     /* Cuando se abrio ESTA sesion. Lo usa la interfaz para tener algo que
        cambia al entrar: la cara de Wybix rota por sesion, no por render. */
     abiertaEn: Date.now(),
-    permisos: permisosDeRol(rol),
+    /* 0056: el rol y, encima, los paquetes extra de esta persona. */
+    permisos: permisosDeUsuario(rol, fila.extras),
     revision: valor,
     autenticadaEn: Date.now(),
   };
@@ -169,7 +170,7 @@ async function vigente(webContentsId) {
   const rol = normalizarRol(u.rol);
   s.rol = rol;
   s.rolCrudo = String(u.rol || '');
-  s.permisos = permisosDeRol(rol);
+  s.permisos = permisosDeUsuario(rol, u.extras);
   s.revision = valor;
   return { sesion: s, fiable: true };
 }

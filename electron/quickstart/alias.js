@@ -110,6 +110,14 @@ const CAMPOS = {
     exacto: ['comision', 'comision pct', 'porcentaje comision', 'comision %'],
     probable: [],
   },
+  /* Si se cobra en caja. Sin esta columna lo decide la hoja (Menú se vende,
+     Insumos no); con ella, cada renglón: el agua embotellada de una
+     cafetería es un insumo que TAMBIÉN se vende. */
+  sellable: {
+    etiqueta: 'Vendible',
+    exacto: ['vendible', 'se vende', 'a la venta', 'para venta', 'sellable', 'es vendible', 'vender'],
+    probable: [],
+  },
   tipo: {
     etiqueta: 'Tipo',
     exacto: ['tipo', 'tipo de producto', 'clase'],

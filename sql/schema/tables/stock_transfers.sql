@@ -26,7 +26,7 @@ CREATE TABLE dbo.stock_transfers (
 END;
 
 IF OBJECT_ID(N'dbo.CK_stock_transfers_kind', 'C') IS NULL
-ALTER TABLE dbo.stock_transfers WITH CHECK ADD CONSTRAINT CK_stock_transfers_kind CHECK ([kind]='RETURN_IN' OR [kind]='OUT');
+ALTER TABLE dbo.stock_transfers WITH CHECK ADD CONSTRAINT CK_stock_transfers_kind CHECK ([kind]='RETURN_IN' OR [kind]='OUT' OR [kind]='BRANCH_OUT' OR [kind]='BRANCH_IN');
 
 IF OBJECT_ID(N'dbo.CK_stock_transfers_status', 'C') IS NULL
 ALTER TABLE dbo.stock_transfers WITH CHECK ADD CONSTRAINT CK_stock_transfers_status CHECK ([status]='CANCELLED' OR [status]='RECEIVED' OR [status]='SENT');

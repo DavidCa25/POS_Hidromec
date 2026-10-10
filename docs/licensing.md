@@ -38,7 +38,7 @@ licencia = edición (MonoCaja | MultiCaja)
 | `SCREENS_BASE` / `_EXTENDED` / `_UNLIMITED` | Pantallas Operativas | 3 (incluidas), 10 o ilimitadas **por giro**. |
 | `SUBSCRIPTION_MONTHLY` / `_ANNUAL` | Suscripción | Mismas funciones; la anual cuesta menos. |
 | `SUPPORT_BASIC` / `_PRIORITY` | Soporte | BASIC incluido el primer año; PRIORITY $690. |
-| `ADDON_MULTIBRANCH` | MultiSucursal | Complemento futuro. Solo existe en el catálogo. |
+| `ADDON_MULTIBRANCH` | MultiSucursal | Matriz con catálogo central, precios por sucursal, traspasos y usuarios de empresa. Ver `docs/multisucursal.md`. |
 
 **Fuente única: `license_catalog` en Supabase.** Código de producto, edición,
 giro, periodo de cobro, precio de lista, activo/inactivo y entitlements viven
@@ -472,7 +472,7 @@ REQUIRED**.
 - **Flujo de compra de renovación** (mensual o anual) y **cobro automático**.
   Hoy la renovación es por WhatsApp y `license_renew` la registra.
 - **Portal del cliente**: ver licencia, equipos y desvincular.
-- **MultiSucursal**: está en el catálogo y en el modelo (`addons`), sin
-  funcionalidad.
+- **MultiSucursal**: implementado (ver `docs/multisucursal.md`); falta su precio de
+  lista en `license_catalog`.
 - **Manual PDF 11 «Multicaja y sucursales»**: todavía dice que MultiCaja
   incluye sucursales.
