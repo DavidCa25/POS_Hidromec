@@ -28,9 +28,14 @@ CREATE TABLE dbo.cash_closures (
     uuid UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_cash_closures_uuid DEFAULT (newid()),
     rv TIMESTAMP NOT NULL,
     receipt_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
+    cash_left DECIMAL(12, 2) NULL,
+    closing_note NVARCHAR(500) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
+
+IF OBJECT_ID(N'dbo.CK_cash_closures_cash_left', 'C') IS NULL
+ALTER TABLE dbo.cash_closures WITH CHECK ADD CONSTRAINT CK_cash_closures_cash_left CHECK ([cash_left] IS NULL OR [cash_left]>=(0) AND [cash_left]<=[cash_delivered]);
 
 IF OBJECT_ID(N'dbo.FK_cash_closures_register', 'F') IS NULL
 ALTER TABLE dbo.cash_closures WITH CHECK ADD CONSTRAINT FK_cash_closures_register FOREIGN KEY (register_id) REFERENCES dbo.registers (id);

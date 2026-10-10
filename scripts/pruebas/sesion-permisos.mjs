@@ -12,7 +12,7 @@
  *
  * Tres bloques:
  *
- *   1. El CATALOGO -tres roles, siete paquetes- y que nadie pueda anadir un
+ *   1. El CATALOGO -tres roles, diez paquetes- y que nadie pueda anadir un
  *      paquete sin decidir quien lo tiene.
  *   2. La COBERTURA: que cada `ipcMain.handle` del proyecto este clasificado
  *      como protegido o como abierto-con-motivo, y que cada protegido este
@@ -50,10 +50,10 @@ const sesion = require(join(raiz, 'electron/seguridad/sesion.js'));
 const B = permisos.BUNDLES;
 
 // ===========================================================================
-seccion('1. El catalogo: tres roles, siete paquetes');
+seccion('1. El catalogo: tres roles, diez paquetes');
 // ===========================================================================
 
-check(permisos.PERMISOS.length === 7, 'hay siete paquetes', permisos.PERMISOS.join(' '));
+check(permisos.PERMISOS.length === 10, 'hay diez paquetes', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -71,9 +71,13 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 7, 'Administrador tiene los siete');
-check(deEncargado.size === 6 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR),
-  'Encargado tiene seis y NO configuracion', [...deEncargado].join(' '));
+check(deAdmin.size === 10, 'Administrador tiene los diez');
+// 0056: el Encargado hace cortes y arregla el equipo de la caja; no administra
+// el negocio ni la politica comercial.
+check(deEncargado.size === 8 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+   && !deEncargado.has(B.COMERCIAL_ADMINISTRAR)
+   && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO),
+  'Encargado tiene ocho y NO configuracion ni politica comercial', [...deEncargado].join(' '));
 check(deOperador.size === 2
    && deOperador.has(B.VENTAS_OPERAR) && deOperador.has(B.SERVICIOS_OPERAR),
   'Operador tiene solo lo del dia', [...deOperador].join(' '));
@@ -114,6 +118,34 @@ const conOverrides = fuentesSeguridad.filter(f =>
     readFileSync(join(raiz, f), 'utf8')));
 check(conOverrides.length === 0,
   'ni tabla, ni canal, ni funcion de excepciones por usuario', conOverrides.join(' ') || 'limpio');
+
+/* 0056: lo que SI existe son permisos ADICIONALES por persona. Solo suman, solo
+   de una lista cerrada y nunca la administracion del negocio. */
+{
+  const O = permisos.OTORGABLES;
+  check(!O.includes(B.CONFIGURACION_ADMINISTRAR) && !O.includes(B.VENTAS_OPERAR),
+    'administrar el negocio no se otorga suelto (ni vender, que ya trae todo puesto)', O.join(' '));
+  check(O.every(p => permisos.PERMISOS.includes(p) && permisos.DESCRIPCIONES[p]?.[0]),
+    'cada otorgable existe y tiene nombre para la pantalla');
+  const miguel = permisos.permisosDeUsuario('cajero', [B.CAJA_CORTES, B.CONFIGURACION_EQUIPO]);
+  check(miguel.has(B.CAJA_CORTES) && miguel.has(B.CONFIGURACION_EQUIPO) && miguel.has(B.VENTAS_OPERAR)
+     && !miguel.has(B.CONFIGURACION_ADMINISTRAR),
+    'un Operador con extras suma esos paquetes y nada mas', [...miguel].join(' '));
+  check(!permisos.permisosDeUsuario('cajero', [B.CONFIGURACION_ADMINISTRAR, 'INVENTADO']).has(B.CONFIGURACION_ADMINISTRAR),
+    'un extra no otorgable (o desconocido) se ignora');
+  check(permisos.permisosDeUsuario('consulta', [B.CAJA_CORTES]).size === 0,
+    'un rol desconocido no recibe extras');
+  const base = permisos.permisosDeRol('cajero');
+  const extra = permisos.permisosDeUsuario('cajero', [B.CAJA_CORTES]);
+  check([...base].every(p => extra.has(p)), 'un extra nunca quita nada del puesto');
+  const C = require(join(raiz, 'electron/seguridad/canales.js'));
+  check(C.EXIGE['devices:set-config'] === B.CONFIGURACION_EQUIPO
+     && C.EXIGE['commercial:save'] === B.COMERCIAL_ADMINISTRAR
+     && C.AUTORIZA['sp-close-shift'] === B.CAJA_CORTES,
+    'impresora, combos y cortes ajenos tienen su propio paquete');
+  check(C.EXIGE['users:set-permissions'] === B.CONFIGURACION_ADMINISTRAR,
+    'solo quien administra el negocio otorga permisos');
+}
 
 // ===========================================================================
 seccion('2. Cobertura: ningun canal sin clasificar');
@@ -389,7 +421,7 @@ seccion('4. Autorizacion presencial: dos identidades, no una');
     'quien opera sale de la sesion de la ventana, no del renderer');
   check(/Number\(row\.id\) === Number\(actor\.userId\)/.test(handler),
     'rechaza que la misma persona se autorice a si misma');
-  check(/permisos\.permisosDeRol\(/.test(handler) && !/rol === 'supervisor'/.test(handler),
+  check(/permisos\.permisosDe(Rol|Usuario)\(/.test(handler) && !/rol === 'supervisor'/.test(handler),
     'decide por paquete, no por rol');
 
   const sp = readFileSync(join(raiz, 'sql/procedures/security/sp_authorize_supervisor.sql'), 'utf8')

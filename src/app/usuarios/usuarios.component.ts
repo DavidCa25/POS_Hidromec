@@ -15,11 +15,15 @@ interface Usuario { id: number; usuario: string; rol: string; active: boolean | 
 
 type ClaveRol = 'admin' | 'supervisor' | 'cajero';
 
+/** Un permiso que se puede dar a una persona encima de su puesto (0056). */
+interface Otorgable { clave: string; nombre: string; descripcion: string; }
+interface PermisosPersona { id: number; extras: string[]; deRol: string[]; todos: boolean; }
+
 /** Que significa cada paquete dicho como lo diria quien lleva el negocio. */
 interface Acceso { paquete: string; titulo: string; detalle: string; icono: string; servicios?: boolean; }
 
 /**
- * Los siete paquetes, en palabras. QUE paquetes tiene cada rol NO se escribe
+ * Los paquetes, en palabras. QUE paquetes tiene cada rol NO se escribe
  * aqui: llega de `security:catalogo`, la misma tabla con la que el proceso
  * principal autoriza. Asi esta pantalla no puede prometer algo que la caja
  * despues niega.
@@ -31,6 +35,12 @@ const ACCESOS: Acceso[] = [
     detalle: 'Devoluciones, cancelaciones, abrir el cajón sin venta y cancelar facturas.' },
   { paquete: PAQUETES.INVENTARIO_OPERAR, titulo: 'Inventario y compras', icono: 'ph-package',
     detalle: 'Productos, precios, existencias, conteos, compras y proveedores.' },
+  { paquete: PAQUETES.CAJA_CORTES, titulo: 'Cortes de caja', icono: 'ph-vault',
+    detalle: 'Cerrar el turno de otra persona y autorizar su corte.' },
+  { paquete: PAQUETES.COMERCIAL_ADMINISTRAR, titulo: 'Promociones y combos', icono: 'ph-tag',
+    detalle: 'Combos, promociones y precios por canal.' },
+  { paquete: PAQUETES.CONFIGURACION_EQUIPO, titulo: 'Equipo de la caja', icono: 'ph-printer',
+    detalle: 'Impresora, cajón, lector, báscula, pantalla de cliente y teclado.' },
   { paquete: PAQUETES.REPORTES_VER, titulo: 'Ver los números', icono: 'ph-chart-line',
     detalle: 'Estadísticas, cortes anteriores, reportes y comisiones.' },
   { paquete: PAQUETES.SERVICIOS_OPERAR, titulo: 'Órdenes y agenda', icono: 'ph-wrench', servicios: true,
@@ -38,7 +48,7 @@ const ACCESOS: Acceso[] = [
   { paquete: PAQUETES.SERVICIOS_ADMINISTRAR, titulo: 'Organizar servicios', icono: 'ph-sliders', servicios: true,
     detalle: 'Catálogo de servicios, profesionales, horarios y comisiones.' },
   { paquete: PAQUETES.CONFIGURACION_ADMINISTRAR, titulo: 'Administrar el negocio', icono: 'ph-gear',
-    detalle: 'Usuarios, aplicaciones, MultiCaja, respaldos, datos fiscales y dispositivos.' },
+    detalle: 'Usuarios, aplicaciones, MultiCaja, respaldos y datos fiscales.' },
 ];
 
 /** Los puestos, de arriba abajo en el organigrama. */
@@ -102,6 +112,10 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly cargando = signal(true);
   /** Paquetes de cada rol, tal como los autoriza el proceso principal. */
   private readonly paquetesPorRol = signal<Record<string, string[]>>({});
+  /** Permisos adicionales: el catalogo otorgable y lo de cada persona. */
+  readonly otorgables = signal<Otorgable[]>([]);
+  private readonly permisosPersona = signal<Record<number, PermisosPersona>>({});
+  readonly guardandoPermiso = signal<string | null>(null);
 
   /** Lo elegido: un puesto o una persona. Nada = Wybix presenta el equipo. */
   readonly rolElegido = signal<ClaveRol | null>(null);
@@ -143,11 +157,30 @@ export class Usuarios implements OnInit, OnDestroy {
     const clave = p ? p.rol : this.rolElegido();
     if (!clave && !p) return null;
     const tiene = new Set(this.paquetesPorRol()[clave ?? ''] ?? []);
+    // Los extras de la persona tambien son "puede": de la misma tabla.
+    if (p) for (const x of this.permisosPersona()[p.id]?.extras ?? []) tiene.add(x);
     const visibles = ACCESOS.filter(a => !a.servicios || this.caps.servicios);
     return {
       puede: visibles.filter(a => tiene.has(a.paquete)),
       noPuede: visibles.filter(a => !tiene.has(a.paquete)),
     };
+  });
+
+  /**
+   * Los permisos que se le pueden SUMAR a la persona elegida: los otorgables
+   * que su puesto no trae ya. Un Administrador ya lo tiene todo.
+   */
+  readonly extrasPersona = computed(() => {
+    const p = this.persona();
+    if (!p || !PUESTOS.some(x => x.clave === p.rol)) return null;
+    const info = this.permisosPersona()[p.id];
+    if (!info || info.todos) return null;
+    const deRol = new Set(info.deRol);
+    const visibles = this.otorgables().filter(o => !deRol.has(o.clave)
+      && (this.caps.servicios || !o.clave.startsWith('SERVICIOS_')));
+    if (!visibles.length) return null;
+    const tiene = new Set(info.extras);
+    return visibles.map(o => ({ ...o, activo: tiene.has(o.clave) }));
   });
 
   /** Lo que dice Wybix. Entero: sin letra a letra, tambien sin movimiento reducido. */
@@ -161,7 +194,9 @@ export class Usuarios implements OnInit, OnDestroy {
     if (p && puesto) {
       const quien = p.id === this.yo ? 'Tú eres' : `${p.usuario} es`;
       const inactivo = p.active ? '' : ' Ahora está desactivado: no puede entrar hasta que lo actives.';
-      return `${quien} ${puesto.nombre}. ${puesto.explica}${inactivo}`;
+      const n = this.permisosPersona()[p.id]?.extras.length ?? 0;
+      const extra = n ? ` Además tiene ${n} ${n === 1 ? 'permiso adicional' : 'permisos adicionales'} que le diste tú.` : '';
+      return `${quien} ${puesto.nombre}. ${puesto.explica}${extra}${inactivo}`;
     }
     if (puesto) return puesto.explica;
     const n = this.usuarios().filter(u => u.active).length;
@@ -196,11 +231,21 @@ export class Usuarios implements OnInit, OnDestroy {
       this.usuarios.set(r?.success ? (r.data || []) : []);
       const pins = await this.api?.usersPinStatus?.();
       this.conPin.set(new Set<number>(pins?.success ? (pins.data || []) : []));
+      await this.cargarPermisos();
     } catch {
       this.usuarios.set([]);
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  private async cargarPermisos() {
+    try {
+      const r = await this.api?.usersPermissions?.();
+      if (!r?.success) return;
+      this.otorgables.set(r.data?.catalogo ?? []);
+      this.permisosPersona.set(Object.fromEntries((r.data?.usuarios ?? []).map((x: PermisosPersona) => [x.id, x])));
+    } catch { /* sin 0056: la pantalla no ofrece extras */ }
   }
 
   /** Wybix gesticula un momento y vuelve a reposo: el estado es gesto, no personaje. */
@@ -285,6 +330,30 @@ export class Usuarios implements OnInit, OnDestroy {
       await this.cargar();
       await Swal.fire({ icon: 'success', title: 'PIN guardado', timer: 1200, showConfirmButton: false });
     } else await Swal.fire({ icon: 'error', title: 'No se pudo', text: r?.error || 'Error.' });
+  }
+
+  /**
+   * Da o quita UN permiso adicional. Se guarda al momento: el proceso
+   * principal sube la revision de seguridad y la sesion abierta de esa persona
+   * lo nota en segundos, sin cerrar sesion.
+   */
+  async alternarPermiso(u: Usuario, clave: string, activo: boolean) {
+    const info = this.permisosPersona()[u.id];
+    if (!info || this.guardandoPermiso()) return;
+    const extras = new Set(info.extras);
+    if (activo) extras.add(clave); else extras.delete(clave);
+    this.guardandoPermiso.set(clave);
+    try {
+      const r = await this.api?.usersSetPermissions?.({ id: u.id, permisos: [...extras] });
+      if (!r?.success) throw new Error(r?.error || 'No se pudo guardar el permiso.');
+      await this.cargarPermisos();
+      this.gesto('success');
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo', text: e?.message || 'Error.' });
+      await this.cargarPermisos();
+    } finally {
+      this.guardandoPermiso.set(null);
+    }
   }
 
   async toggleActivo(u: Usuario) {

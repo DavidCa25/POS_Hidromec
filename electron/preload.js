@@ -149,6 +149,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     usersSetPin: (p) => ipcRenderer.invoke('users:set-pin', p),
     usersPinStatus: () => ipcRenderer.invoke('users:pin-status'),
     usersSetActive: (p) => ipcRenderer.invoke('users:set-active', p),
+    // 0056: permisos adicionales por persona.
+    usersPermissions: () => ipcRenderer.invoke('users:permissions'),
+    usersSetPermissions: (p) => ipcRenderer.invoke('users:set-permissions', p),
     registerSupplierPayment: (payload) =>
         ipcRenderer.invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>

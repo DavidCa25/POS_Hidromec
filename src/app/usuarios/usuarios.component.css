@@ -238,6 +238,20 @@
 .exp-resumen button:hover { background: var(--wx-hover); }
 .exp-resumen .ph-caret-right { color: var(--wx-text-dim); }
 
+/* ------------------------------------------------------------ permisos adicionales */
+.exp-extras { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--wx-edge-soft); }
+.exp-extras h2 {
+  margin: 4px 0 0; color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.exp-extras__ayuda { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.exp-extras__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.exp-extras__lista li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+.exp-extras__lista label:not(.sw) { cursor: pointer; }
+.exp-extras__lista b { display: block; font-size: var(--wx-text-sm); font-weight: 600; }
+.exp-extras__lista small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.4; }
+
 /* ------------------------------------------------------------ nuevo usuario */
 .us-modal {
   position: fixed; inset: 0; z-index: var(--wx-z-dialog);

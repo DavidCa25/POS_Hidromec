@@ -106,12 +106,20 @@ function corte(data, p, business = {}) {
         "Efectivo entregado",
         data.closed_at ? money(data.cash_delivered) : "Pendiente",
       ) +
-      row("Diferencia", data.closed_at ? money(data.difference) : "Pendiente"),
+      row("Diferencia", data.closed_at ? money(data.difference) : "Pendiente") +
+      /* 0056: lo que se queda fisicamente en la caja y lo que se retira. */
+      (data.cash_left != null
+        ? row("Se queda en caja", money(data.cash_left)) +
+          row("Se retira", money(Number(data.cash_delivered) - Number(data.cash_left)))
+        : "") +
+      (data.closing_note
+        ? `<p class="nota"><b>Notas:</b> ${esc(data.closing_note)}</p>`
+        : ""),
     signature:
       '<p class="signature">________________________<br>Firma del cajero</p>',
   };
   return aplicarPerfil(
-    `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Corte</title><style>body{font:12px Arial;color:#000;background:#fff;margin:0}h1{font-size:16px;text-align:center;margin:0 0 5px}p{font-size:11px;text-align:center;margin:4px 0;overflow-wrap:anywhere}.block{padding:8px 0;border-bottom:1px dashed #888}.row{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.row b{font:600 12px Consolas,monospace;white-space:nowrap}.total .row{font-weight:bold;font-size:15px}.total b{font-size:15px}.signature{margin-top:20px}</style></head><body>${p.fields.map((k) => `<section class="block">${blocks[k]}</section>`).join("")}</body></html>`,
+    `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Corte</title><style>body{font:12px Arial;color:#000;background:#fff;margin:0}h1{font-size:16px;text-align:center;margin:0 0 5px}p{font-size:11px;text-align:center;margin:4px 0;overflow-wrap:anywhere}.block{padding:8px 0;border-bottom:1px dashed #888}.row{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.row b{font:600 12px Consolas,monospace;white-space:nowrap}.total .row{font-weight:bold;font-size:15px}.total b{font-size:15px}.signature{margin-top:20px}.nota{text-align:left;margin-top:8px}</style></head><body>${p.fields.map((k) => `<section class="block">${blocks[k]}</section>`).join("")}</body></html>`,
     p,
   );
 }

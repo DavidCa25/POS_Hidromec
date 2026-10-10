@@ -24,6 +24,13 @@ export interface ConfigTile {
     statusKey?: StatusKey;
     /** Un panel que necesita espacio (un mapa, una tabla ancha) abre el cajon amplio. */
     amplio?: boolean;
+    /**
+     * Paquete que hace falta para VER el mosaico. Sin el, CONFIGURACION_ADMINISTRAR.
+     * El equipo de la caja (impresora, cajon, lector...) es CONFIGURACION_EQUIPO:
+     * un Operador de confianza lo arregla sin ser administrador. Esconder el
+     * mosaico no es el permiso: el canal lo vuelve a exigir en el proceso principal.
+     */
+    paquete?: string;
 }
 
 export interface ConfigSection {
@@ -31,6 +38,9 @@ export interface ConfigSection {
     title: string;
     tiles: ConfigTile[];
 }
+
+/** Lo que para la operacion si falla: lo toca quien tenga el paquete, sin ser administrador. */
+const EQUIPO = 'CONFIGURACION_EQUIPO';
 
 const devices: TileLoader = () => import('../devices-panel/devices-panel.component').then(m => m.DevicesPanelComponent);
 const ticket: TileLoader = () => import('../ticket-panel/ticket-panel.component').then(m => m.TicketPanelComponent);
@@ -76,11 +86,11 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'dispositivos',
         title: 'Dispositivos',
         tiles: [
-            { id: 'impresora', amplio: true, title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', load: ticket },
-            { id: 'scanner', title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'barcode', color: 'orange', size: '1x1', statusKey: 'scanner', load: devices },
-            { id: 'cajon', title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', load: devices },
-            { id: 'bascula', title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', load: devices },
-            { id: 'customer-display', title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'monitor', color: 'purple', size: '2x1',
+            { id: 'impresora', paquete: EQUIPO, amplio: true, title: 'Impresora de tickets', desc: 'Impresora y formato del ticket', icon: 'printer', color: 'purple', size: '1x1', statusKey: 'printer', load: ticket },
+            { id: 'scanner', paquete: EQUIPO, title: 'Lector de códigos', desc: 'Scanner por USB o serial', icon: 'barcode', color: 'orange', size: '1x1', statusKey: 'scanner', load: devices },
+            { id: 'cajon', paquete: EQUIPO, title: 'Cajón de dinero', desc: 'Apertura automática al cobrar', icon: 'vault', color: 'blue', size: '1x1', statusKey: 'drawer', load: devices },
+            { id: 'bascula', paquete: EQUIPO, title: 'Báscula', desc: 'Captura de peso (opcional)', icon: 'gauge', color: 'gray', size: '1x1', load: devices },
+            { id: 'customer-display', paquete: EQUIPO, title: 'Pantalla de cliente', desc: 'Muestra la venta en un segundo monitor', icon: 'monitor', color: 'purple', size: '2x1',
               load: () => import('../customer-display-panel/customer-display.component').then(m => m.CustomerDisplayPanelComponent) },
             { id: 'dispositivos-locales', title: 'Dispositivos locales', desc: 'Tablets y pantallas de trabajo por la red del local', icon: 'device-tablet', color: 'green', size: '2x1', amplio: true,
               load: () => import('../dispositivos-locales-panel/dispositivos-locales.component').then(m => m.DispositivosLocalesPanelComponent) }
@@ -114,7 +124,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
         id: 'equipo',
         title: 'Este equipo',
         tiles: [
-            { id: 'teclado', title: 'Teclado en pantalla', desc: 'Automático, siempre o nunca, en esta máquina', icon: 'keyboard', color: 'blue', size: '1x1',
+            { id: 'teclado', paquete: EQUIPO, title: 'Teclado en pantalla', desc: 'Automático, siempre o nunca, en esta máquina', icon: 'keyboard', color: 'blue', size: '1x1',
               load: () => import('../teclado-panel/teclado-panel.component').then(m => m.TecladoPanelComponent) },
             { id: 'modo-terminal', title: 'Modo terminal', desc: 'Usar este equipo solo para operar', icon: 'lock-key', color: 'gray', size: '1x1',
               load: () => import('../modo-terminal-panel/modo-terminal.component').then(m => m.ModoTerminalPanelComponent) }

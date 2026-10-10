@@ -8,7 +8,7 @@ BEGIN
  DECLARE @snapshot NVARCHAR(MAX);
  SELECT @snapshot=receipt_snapshot FROM dbo.cash_closures WHERE id=@closure_id;
  IF @snapshot IS NULL BEGIN
- SELECT @snapshot=(SELECT c.id,c.userId,c.opened_at,c.closed_at,c.opening_cash,c.cash_expected,c.cash_delivered,c.difference,r.name register_name,u.usuario cashier,
+ SELECT @snapshot=(SELECT c.id,c.userId,c.opened_at,c.closed_at,c.opening_cash,c.cash_expected,c.cash_delivered,c.difference,c.cash_left,c.closing_note,r.name register_name,u.usuario cashier,
  ISNULL(v.total,0) total,ISNULL(v.tickets,0) tickets,ISNULL(v.discount,0) discount,
  (SELECT ISNULL(SUM(refund_total),0) FROM dbo.sale_refunds f WHERE f.closure_id=c.id) refunds,
  (SELECT ISNULL(SUM(CASE WHEN amount>0 AND typee NOT IN('OPENING','SALE') THEN amount ELSE 0 END),0) FROM dbo.cash_movements m WHERE m.closure_id=c.id) cash_in,

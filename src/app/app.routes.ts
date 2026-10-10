@@ -86,7 +86,7 @@ export const routes: Routes = [
 
       // ---- Backoffice ----
       { path: 'inventario/precios', redirectTo: () => inject(Router).parseUrl('/dashboard/inventario/ofertas?view=prices') },
-      { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('CONFIGURACION_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
+      { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('COMERCIAL_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
       { path: 'quickstart', loadComponent: () => import('./wx-quickstart/wx-quickstart.component').then(m => m.WxQuickstartComponent) },
       /* `/importador` era el camino viejo. Se conserva como REDIRECCION y no

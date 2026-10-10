@@ -24,7 +24,7 @@
  * tablet del salon nunca amanece siendo «Carlos».
  */
 const { nuevoSecreto, hash, pareceSecreto, pinValido, hashPin, pinCoincide } = require('./credenciales');
-const { permisosDeRol, normalizarRol } = require('../seguridad/permisos');
+const { permisosDeUsuario, normalizarRol } = require('../seguridad/permisos');
 
 const FALLOS_MAX = 5;
 const BLOQUEO_MIN = 5;
@@ -45,12 +45,29 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
   const req = async () => (await pool()).request();
 
   /* ------------------------------------------------------------ personas */
+  /* 0056: paquetes extra de la persona, encima de su rol. Una base que aun no
+     tiene la tabla (antes de migrar) no puede ni compilar la consulta, asi que
+     la columna se pide solo si existe; una vez vista, se recuerda. */
+  let conExtras = false;
+  async function sqlPersona() {
+    if (!conExtras) {
+      try {
+        const r = await (await req()).query(`SELECT CASE WHEN OBJECT_ID(N'dbo.user_permissions','U') IS NULL THEN 0 ELSE 1 END AS hay;`);
+        conExtras = !!r.recordset?.[0]?.hay;
+      } catch { /* sin tabla: sin extras */ }
+    }
+    return SQL_PERSONA.replace('/*EXTRAS*/', conExtras
+      ? "(SELECT STRING_AGG(up.permiso, ',') FROM dbo.user_permissions up WHERE up.user_id = a.user_id)"
+      : 'CAST(NULL AS NVARCHAR(400))');
+  }
+
   const SQL_PERSONA = `
     SELECT a.id AS acceso_id, a.user_id, a.professional_id, a.revocado_en, a.bloqueado_hasta,
            a.pin_hash, a.pin_sal, a.pin_fallos,
            CASE WHEN a.qr_hash IS NULL THEN 0 ELSE 1 END AS tiene_qr,
            CASE WHEN a.pin_hash IS NULL THEN 0 ELSE 1 END AS tiene_pin,
            u.usuario, u.rol, ISNULL(u.active, 1) AS u_activo,
+           /*EXTRAS*/ AS extras,
            COALESCE(pu.id, pp.id) AS prof_id,
            COALESCE(pu.full_name, pp.full_name) AS prof_nombre,
            COALESCE(pu.active, pp.active) AS prof_activo
@@ -69,7 +86,7 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
       professionalId: f.prof_id ?? null,
       nombre: f.prof_nombre || f.usuario || 'Sin nombre',
       rol: esUsuario ? normalizarRol(f.rol) : null,
-      paquetes: esUsuario ? permisosDeRol(f.rol) : new Set(),
+      paquetes: esUsuario ? permisosDeUsuario(f.rol, f.extras ? String(f.extras).split(',') : []) : new Set(),
       activo: activo && !f.revocado_en,
       revocado: !!f.revocado_en,
     };
@@ -191,7 +208,7 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
   async function personaPorQr(texto) {
     const token = tokenDeQr(texto);
     if (!pareceSecreto(token)) return null;
-    const r = await (await req()).input('h', sql.Char(64), hash(token)).query(`${SQL_PERSONA} WHERE a.qr_hash = @h;`);
+    const r = await (await req()).input('h', sql.Char(64), hash(token)).query(`${await sqlPersona()} WHERE a.qr_hash = @h;`);
     return persona(r.recordset?.[0]);
   }
 
@@ -234,14 +251,14 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
 
   /** Quienes pueden entrar con PIN en esta funcion: nombre, nada mas. */
   async function personasConPin(def) {
-    const r = await (await req()).query(`${SQL_PERSONA} WHERE a.pin_hash IS NOT NULL AND a.revocado_en IS NULL;`);
+    const r = await (await req()).query(`${await sqlPersona()} WHERE a.pin_hash IS NOT NULL AND a.revocado_en IS NULL;`);
     return (r.recordset || []).map(persona).filter(p => !puedeUsar(p, def))
       .map(p => ({ id: p.accesoId, nombre: p.nombre }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }
 
   async function entrarPin(accesoId, pin, disp, def) {
-    const r = await (await req()).input('id', sql.Int, Number(accesoId) || 0).query(`${SQL_PERSONA} WHERE a.id = @id;`);
+    const r = await (await req()).input('id', sql.Int, Number(accesoId) || 0).query(`${await sqlPersona()} WHERE a.id = @id;`);
     const f = r.recordset?.[0];
     const p = persona(f);
     if (!p || !f.pin_hash) return { ok: false, error: 'PIN incorrecto.' };
@@ -272,7 +289,7 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
    * paquete. Cuenta como intento fallido igual que al entrar.
    */
   async function autorizarConPin(accesoId, pin, paquete) {
-    const r = await (await req()).input('id', sql.Int, Number(accesoId) || 0).query(`${SQL_PERSONA} WHERE a.id = @id;`);
+    const r = await (await req()).input('id', sql.Int, Number(accesoId) || 0).query(`${await sqlPersona()} WHERE a.id = @id;`);
     const f = r.recordset?.[0];
     const p = persona(f);
     if (!p || !f.pin_hash || !p.activo) return { ok: false, error: 'PIN incorrecto.' };
@@ -291,7 +308,7 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
 
   /** Quienes pueden autorizar un cambio de funcion (nombres de administradores con PIN). */
   async function administradoresConPin(paquete) {
-    const r = await (await req()).query(`${SQL_PERSONA} WHERE a.pin_hash IS NOT NULL AND a.revocado_en IS NULL AND a.user_id IS NOT NULL;`);
+    const r = await (await req()).query(`${await sqlPersona()} WHERE a.pin_hash IS NOT NULL AND a.revocado_en IS NULL AND a.user_id IS NOT NULL;`);
     return (r.recordset || []).map(persona).filter(p => p.activo && p.paquetes.has(paquete))
       .map(p => ({ id: p.accesoId, nombre: p.nombre }));
   }
@@ -313,7 +330,7 @@ function crearTrabajadores({ pool, sql, log = () => {} }) {
              CASE WHEN s.expira_en <= SYSUTCDATETIME() THEN 1 ELSE 0 END AS caducada,
              x.*
         FROM dbo.trabajador_sesiones s
-        CROSS APPLY (${SQL_PERSONA} WHERE a.id = s.acceso_id) x
+        CROSS APPLY (${await sqlPersona()} WHERE a.id = s.acceso_id) x
        WHERE s.token_hash = @h;`);
     const f = r.recordset?.[0];
     let s = null;

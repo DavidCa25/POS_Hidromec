@@ -26,7 +26,7 @@ import { Injectable, computed, signal } from '@angular/core';
 export type RolUsuario = 'admin' | 'supervisor' | 'cajero';
 
 /**
- * Los siete paquetes. Es una copia del catálogo del proceso principal, y la
+ * Los paquetes. Es una copia del catálogo del proceso principal, y la
  * prueba `scripts/pruebas/sesion-permisos.mjs` comprueba que no se separen.
  */
 export const PAQUETES = {
@@ -37,6 +37,10 @@ export const PAQUETES = {
   CONFIGURACION_ADMINISTRAR: 'CONFIGURACION_ADMINISTRAR',
   SERVICIOS_OPERAR: 'SERVICIOS_OPERAR',
   SERVICIOS_ADMINISTRAR: 'SERVICIOS_ADMINISTRAR',
+  // 0056: otorgables uno a uno a una persona, encima de su puesto.
+  CAJA_CORTES: 'CAJA_CORTES',
+  CONFIGURACION_EQUIPO: 'CONFIGURACION_EQUIPO',
+  COMERCIAL_ADMINISTRAR: 'COMERCIAL_ADMINISTRAR',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];

@@ -30,6 +30,7 @@
     "db:test-latte": "node scripts/db/pruebas/latte.mjs",
     "db:test-baja": "node scripts/db/pruebas/baja-producto.mjs",
     "db:test-turno": "node scripts/db/pruebas/turno.mjs",
+    "db:test-permisos": "node scripts/db/pruebas/permisos-corte.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
     "db:test-egresos": "node scripts/db/pruebas/egresos.mjs",
     "db:test-bebidas": "node scripts/db/pruebas/bebidas.mjs",

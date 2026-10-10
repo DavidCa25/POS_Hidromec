@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { CONFIG_SECTIONS, ConfigSection, ConfigTile } from './config-tiles';
 import { ConfigDrawerService } from '../config-drawer.service';
 import { LicenseService } from '../../services/license.service';
+import { AuthService, PAQUETES } from '../../services/auth.service';
 
 type Status = 'ok' | 'pending' | 'off' | 'none';
 
@@ -31,7 +32,7 @@ export class ConfigShell implements OnInit, OnDestroy {
     // una instalacion de una sola caja no ve ni el grupo.
     private readonly tilesMulticaja = new Set<string>(['cajas', 'red-multicaja']);
 
-    constructor(private drawer: ConfigDrawerService, private license: LicenseService) {}
+    constructor(private drawer: ConfigDrawerService, private license: LicenseService, private auth: AuthService) {}
 
     async ngOnInit() {
         this.sub = this.drawer.close$.subscribe(() => this.cerrar());
@@ -41,10 +42,14 @@ export class ConfigShell implements OnInit, OnDestroy {
     }
 
     // Si NO es multicaja, oculta los mosaicos de multicaja (y secciones vacías).
+    // Y cada mosaico, segun los paquetes de quien entra: un Operador con
+    // "Equipo de la caja" solo ve impresora, cajon, lector, bascula...
     private aplicarPlan() {
-        if (this.license.permiteMulticaja) { this.sections = CONFIG_SECTIONS; return; }
+        const multicaja = this.license.permiteMulticaja;
         this.sections = CONFIG_SECTIONS
-            .map(sec => ({ ...sec, tiles: sec.tiles.filter(t => !this.tilesMulticaja.has(t.id)) }))
+            .map(sec => ({ ...sec, tiles: sec.tiles.filter(t =>
+                (multicaja || !this.tilesMulticaja.has(t.id))
+                && this.auth.puede(t.paquete ?? PAQUETES.CONFIGURACION_ADMINISTRAR)) }))
             .filter(sec => sec.tiles.length > 0);
     }
 
