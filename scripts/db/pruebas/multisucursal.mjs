@@ -31,13 +31,22 @@ const lit = (t) => `N'${String(t).replace(/'/g, "''")}'`;
 const LOC_N = '6f1d1a2b-0000-4000-8000-00000000000a';
 const LOC_M = '6f1d1a2b-0000-4000-8000-00000000000b';
 const migracion = readFileSync('electron/migrations/0055_multisucursal.sql', 'utf8').split(/^\s*GO\s*$/im).filter((b) => b.trim());
+// 0058: la version de la politica comercial, una sola (la sucursal no podia cobrar).
+const m0058 = readFileSync('electron/migrations/0058_version-politica-sucursal.sql', 'utf8').split(/^\s*GO\s*$/im).filter((b) => b.trim());
 
 try {
   seccion('1. La migración, dos veces, en las dos bases');
   for (const db of [M, N]) {
     restaurar(db, 'installer/template.bak');
     for (let i = 0; i < 2; i++) for (const b of migracion) q(db, b);
+    for (let i = 0; i < 2; i++) for (const b of m0058) q(db, b);
   }
+  // Una base que ya quedó desalineada (sucursal antes de la 0058): la 0058 la repara.
+  q(N, `IF NOT EXISTS (SELECT 1 FROM dbo.commercial_policy WHERE id=1) INSERT dbo.commercial_policy(id,version,payload) VALUES(1,7,N'{"version":3,"channels":[],"prices":[],"promotions":[],"combos":[]}');
+        ELSE UPDATE dbo.commercial_policy SET version=7, payload=JSON_MODIFY(payload,'$.version',3) WHERE id=1;`);
+  for (const b of m0058) q(N, b);
+  check(uno(N, "SELECT CASE WHEN TRY_CONVERT(INT,JSON_VALUE(payload,'$.version'))=version THEN 1 ELSE 0 END AS ok FROM dbo.commercial_policy WHERE id=1").ok === 1,
+    '0058 alinea la version del JSON con la de la columna');
   check(uno(M, "SELECT COL_LENGTH('dbo.products','corporate_override') AS c").c != null, 'columnas nuevas en products');
   check(!falla(M, "INSERT dbo.users(usuario,password_hash,rol,corporate_scope) VALUES(N'qa-x',N'x',N'admin',N'no es json')") === false, 'corporate_scope exige JSON');
 
@@ -93,9 +102,13 @@ try {
   check(lupita.c === 1 && lupita.password_hash === 'scrypt$hash-lupita' && lupita.pin_hash === 'pinhash-lupita', 'lupita entra con su contraseña y su PIN');
   check(!uno(N, "SELECT COUNT(*) AS n FROM dbo.users WHERE usuario IN (N'solo-matriz',N'solo-sur')").n, 'los que no son de esta sucursal no llegan');
   check(uno(N, "SELECT valor FROM dbo.database_metadata WHERE clave='multi_version'").valor === '1', 'la sucursal recuerda su versión');
+  check(uno(N, "SELECT CASE WHEN TRY_CONVERT(INT,JSON_VALUE(payload,'$.version'))=version THEN 1 ELSE 0 END AS ok FROM dbo.commercial_policy WHERE id=1").ok === 1,
+    'la politica comercial que llega de la matriz queda con la version de la sucursal (se puede cobrar)');
 
   seccion('4. Reaplicar, bajas y reglas de precio');
+  const vAntes = uno(N, 'SELECT version FROM dbo.commercial_policy WHERE id=1').version;
   const r2 = aplicar(catalogo, over);
+  check(uno(N, 'SELECT version FROM dbo.commercial_policy WHERE id=1').version === vAntes, 'reaplicar la misma politica no sube la version');
   check(r2.nuevos === 0 && uno(N, "SELECT COUNT(*) AS n FROM dbo.products WHERE corporate=1").n === 4, 'reaplicar no duplica');
   // La sucursal sube el precio de la glaseada a mano; con la regla apagada, la matriz manda.
   q(N, "UPDATE dbo.products SET price = 30 WHERE part_number=N'DON-GLA'");

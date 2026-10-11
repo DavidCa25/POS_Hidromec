@@ -7,7 +7,12 @@ async function catalogo(pool) {
     const ids = (await pool.request().query('SELECT id,LOWER(CONVERT(VARCHAR(36),uuid)) uuid FROM dbo.products')).recordset;
     const optionIds = (await pool.request().query('SELECT id,group_id,LOWER(CONVERT(VARCHAR(36),uuid)) uuid FROM dbo.modifier_options')).recordset;
     const clock = (await pool.request().query("SELECT CONVERT(VARCHAR(19),GETDATE(),126) wallTime")).recordset[0];
-    return { policy: JSON.parse(p.recordset[0].payload), catalog, ids, optionIds, wallTime: clock.wallTime };
+    /* La version que AUTORIZA es la de la columna: es la que comparan
+       sp_register_sale y sp_commercial_policy_save. La del JSON puede ser otra:
+       en una sucursal, el catalogo de la matriz llegaba con la version de la
+       matriz dentro y ninguna cotizacion de esa sucursal se podia cobrar
+       ("La cotizacion cambio o ya se utilizo"). */
+    return { policy: { ...JSON.parse(p.recordset[0].payload), version: p.recordset[0].version }, catalog, ids, optionIds, wallTime: clock.wallTime };
 }
 async function cotizacion(pool, p, actor) {
     const { policy, catalog, ids } = await catalogo(pool);
