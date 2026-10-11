@@ -75,6 +75,10 @@ export class TouchPos implements OnInit, OnDestroy {
   }
   readonly ofertasAbiertas = signal(false);
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
+  /** Roles v2: lo que ahorra el cliente con las promociones de esta cuenta (0 mientras se calcula). */
+  ahorro(): number { const c = this.cart.activeCart().commercial; return c?.pending ? 0 : Number(c?.quote?.discount ?? 0); }
+  /** Por que una promocion no se aplico, visible en el carrito. */
+  avisoPromo(): string { return this.cart.activeCart().commercial?.error || ''; }
 
   /** Si este negocio tiene Servicios encendido. Decide si la agenda existe. */
   readonly caps = inject(CapabilityService);

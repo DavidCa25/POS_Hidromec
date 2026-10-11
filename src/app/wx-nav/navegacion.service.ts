@@ -101,6 +101,8 @@ export class NavegacionService {
   /* Permiso de la persona Y derecho de la licencia (en Venta Esencial el
      inventario y las compras esperan a la renovación). */
   get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR) && this.license.tiene('inventory'); }
+  /** Roles v2: el catalogo (alta y edicion de productos) es tambien del Operador. */
+  get editarCatalogo() { return this.auth.puede(PAQUETES.CATALOGO_EDITAR) && this.license.tiene('inventory'); }
   get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
   /** 0056: combos, promociones y precios por canal; otorgable a un Operador. */
   get administrarComercial() { return this.auth.puede(PAQUETES.COMERCIAL_ADMINISTRAR); }
@@ -132,6 +134,8 @@ export class NavegacionService {
         aviso: dato('inicio').aviso,
         destinos: [
           { texto: 'Resumen del dia', ruta: '/dashboard/inicio', icono: 'ph-house', visible: true, principal: true },
+          // Roles v2: todo el dia del negocio en una pantalla.
+          { texto: 'Cierre del dia', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
         ],
       },
       {
@@ -159,17 +163,19 @@ export class NavegacionService {
       },
       {
         id: 'inventario', nombre: 'Inventario', icono: 'ph-package', tecla: 'Ctrl 3',
-        ruta: '/dashboard/inventario', raiz: '/dashboard/inventario', visible: this.operarInventario,
+        ruta: '/dashboard/inventario', raiz: '/dashboard/inventario', visible: this.operarInventario || this.editarCatalogo,
         aviso: dato('inventario').aviso,
         destinos: [
           { texto: 'Ver inventario', ruta: '/dashboard/inventario', icono: 'ph-package', visible: true, principal: true, pie: pie('inventario', 'stock') },
           { texto: 'Promociones y combos', ruta: '/dashboard/inventario/ofertas', icono: 'ph-tag', visible: this.administrarComercial },
           { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarComercial },
+          /* Roles v2: el Operador cuenta; aplicar el ajuste lo autoriza un Encargado. */
           { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
           /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
           /* MultiSucursal: mercancía de una sucursal a otra de la empresa. */
-          { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: true },
-          { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: true },
+          /* Roles v2: mover mercancia fuera de la sucursal es del Encargado. */
+          { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: this.operarInventario },
+          { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: this.operarInventario },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },
         ],
@@ -177,12 +183,13 @@ export class NavegacionService {
       {
         id: 'compras', nombre: 'Compras', icono: 'ph-shopping-bag-open', tecla: 'Ctrl 4',
         ruta: '/dashboard/registrarCompra', raiz: '/dashboard/registrarCompra',
-        visible: this.operarInventario,
+        // Roles v2: el Operador registra la compra; la autoriza un Encargado.
+        visible: this.operarInventario || this.editarCatalogo,
         aviso: dato('compras').aviso,
         destinos: [
           { texto: 'Registrar compra', ruta: '/dashboard/registrarCompra', icono: 'ph-bag', visible: true, principal: true },
           { texto: 'Compras registradas', ruta: '/dashboard/tablaCompra', icono: 'ph-table', visible: true },
-          { texto: 'Proveedores', ruta: '/dashboard/proveedores', icono: 'ph-truck', visible: true, pie: pie('compras', 'proveedores') },
+          { texto: 'Proveedores', ruta: '/dashboard/proveedores', icono: 'ph-truck', visible: this.operarInventario, pie: pie('compras', 'proveedores') },
         ],
       },
       {

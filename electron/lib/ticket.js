@@ -77,7 +77,7 @@ function filaProducto(l) {
 
   const extras = [];
   if (l.modifiers) extras.push(esc(String(l.modifiers)));
-  if (l.commercial_offer) extras.push(esc(String(l.commercial_offer)));
+  if (l.commercial_offer) extras.push(`Promoción: ${esc(String(l.commercial_offer))}`);
   if (l.note) extras.push(esc(String(l.note)));
 
   return `

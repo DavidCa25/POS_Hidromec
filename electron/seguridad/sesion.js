@@ -52,7 +52,8 @@
 const TTL_REVISION_MS = 5000;
 
 const { normalizarRol, permisosDeUsuario, etiquetaDeRol, esAltoRiesgo } = require('./permisos');
-const { exigePara, actorPara } = require('./canales');
+const { exigePara, actorPara, aprobable } = require('./canales');
+const reautenticacion = require('./reautenticacion');
 
 /** webContents.id -> sesion */
 const sesiones = new Map();
@@ -202,8 +203,11 @@ async function comprobar(webContentsId, permiso, opciones = {}) {
     if (!fiable && esAltoRiesgo(permiso)) {
       return { ok: false, motivo: 'SIN_VERIFICAR', permiso };
     }
-    if (!s.permisos.has(permiso)) {
-      return { ok: false, motivo: 'SIN_PERMISO', permiso, userId: s.userId };
+    /* `aprobado`: la operacion trae un comprobante de otra persona que SI
+       puede (Roles v2, ver `proteger`). Se salta solo esta comprobacion; la
+       sesion, el modulo y la licencia se siguen exigiendo igual. */
+    if (!s.permisos.has(permiso) && !opciones.aprobado) {
+      return { ok: false, motivo: 'SIN_PERMISO', permiso, userId: s.userId, sesion: s };
     }
   }
 
@@ -253,9 +257,36 @@ const MENSAJES = {
  */
 function proteger(canal, handler, opciones = {}) {
   const permiso = exigePara(canal);
+  const ap = aprobable(canal);
   return async function (evento, ...args) {
     const id = evento?.sender?.id;
     const r = await comprobar(id, permiso, { ...opciones, canal });
+    /* ROLES V2 · SIN EL PAQUETE, PERO CON LA AUTORIZACION DE QUIEN SI.
+       El comprobante viaja en `payload.autorizacion`, se gasta aqui (una vez,
+       esta ventana, este actor, este canal) y la operacion corre con el
+       autorizador a la vista del handler (`ses.autorizacion`). Sin
+       comprobante, la respuesta le dice a la caja que lo pida. */
+    if (!r.ok && r.motivo === 'SIN_PERMISO' && ap && !ap.enCanal) {
+      const s = r.sesion;
+      const token = args[0] && typeof args[0] === 'object' ? args[0].autorizacion : null;
+      const c = token ? reautenticacion.consumir(String(token), { webContentsId: id, actorId: s.userId, canal }) : null;
+      if (!c) {
+        deps.registrar({ tipo: 'REQUIERE_AUTORIZACION', canal, motivo: 'sin comprobante', permiso, webContentsId: id });
+        return { success: false, ok: false, motivo: 'REQUIERE_AUTORIZACION', requiereAutorizacion: true, aprobable: true,
+                 canal, accion: ap.accion, error: 'Esta operación necesita la autorización de un encargado.' };
+      }
+      const r2 = await comprobar(id, permiso, { ...opciones, canal, aprobado: true });
+      if (!r2.ok) return { success: false, ok: false, error: MENSAJES[r2.motivo] || 'No autorizado.', motivo: r2.motivo };
+      const ses = { ...r2.sesion, autorizacion: c };
+      deps.registrar({ tipo: 'AUTORIZADO', canal, evento: ap.evento, userId: s.userId, autorizador: c, payload: args[0], webContentsId: id });
+      return handler(evento, ...conActorDeSesion(canal, args, ses, id), ses);
+    }
+    if (r.ok && ap && !ap.enCanal) {
+      // Quien SI tiene el paquete tambien deja rastro: lo autorizo el mismo.
+      deps.registrar({ tipo: 'AUTORIZADO', canal, evento: ap.evento, userId: r.sesion.userId,
+                       autorizador: { autorizadorId: r.sesion.userId, autorizadorUsuario: r.sesion.usuario, via: 'PROPIO' },
+                       payload: args[0], webContentsId: id });
+    }
     if (!r.ok) {
       deps.registrar({ tipo: 'ACCESO_DENEGADO', canal, motivo: r.motivo, permiso, webContentsId: id });
       return { success: false, ok: false, error: MENSAJES[r.motivo] || 'No autorizado.', motivo: r.motivo };

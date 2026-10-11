@@ -1,5 +1,5 @@
 /**
- * Permisos por persona y lo que se queda en caja (0056).
+ * Permisos por persona y lo que se queda en caja (0056); cierre del dia (0057).
  *
  *     node scripts/db/pruebas/permisos-corte.mjs [--conservar]
  *
@@ -132,6 +132,23 @@ try {
   check(r.ok, 'no acepta permisos de un usuario que no existe');
   r = falla(`INSERT INTO dbo.user_permissions (user_id, permiso) VALUES (${migue}, 'CAJA_CORTES');`);
   check(r.ok, 'ni el mismo permiso dos veces');
+
+  // =============================================================== 4
+  seccion('4. Cierre del día (0057)');
+  q(`INSERT INTO dbo.security_events (datee, user_id, authorized_by, event_type, amount, detail)
+     VALUES (SYSDATETIME(), ${ana}, ${migue}, N'CASH_OUT_AUTHORIZED', 300, N'prueba');`);
+  const rc = consultarTemporal(DB, 'EXEC dbo.sp_day_close_report;');
+  check(rc.ok && rc.sets.length === 7, 'devuelve los siete resultados', rc.ok ? String(rc.sets.length) : limpiar(rc.error));
+  if (rc.ok) {
+    const [res, , cortes, , , eventos] = rc.sets;
+    check(res?.[0] && Number(res[0].tickets) === 0, 'resumen del día sin ventas', JSON.stringify(res?.[0]));
+    check(cortes.length >= 3 && cortes.some(c => Number(c.cash_left) === 200 && c.closing_note === 'Billete de 500 roto'),
+      'trae los cortes del día con lo que se quedó y la nota', String(cortes.length));
+    check(cortes.some(c => c.cerro === 'qa_migue' && c.autorizo === 'qa_migue'), 'dice quién cerró y quién autorizó');
+    check(eventos.some(e => e.event_type === 'CASH_OUT_AUTHORIZED' && e.autorizo === 'qa_migue'), 'y las autorizaciones del día con las dos identidades');
+  }
+  const ayer = consultarTemporal(DB, "EXEC dbo.sp_day_close_report @fecha = '2000-01-01';");
+  check(ayer.ok && ayer.sets[2].length === 0, 'un día sin actividad sale vacío');
 
 } catch (e) {
   fallos++;

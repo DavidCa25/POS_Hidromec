@@ -41,7 +41,10 @@ export class CustomerDisplayService {
         qty: l.qty,
         unitPrice: CartService.displayOf(c,l).unit,
         importe: CartService.displayOf(c,l).amount,
-        options: [l.optionsLabel,CartService.displayOf(c,l).label].filter(Boolean).join(' · ') || undefined,
+        options: l.optionsLabel || undefined,
+        /* Roles v2: la promocion a la vista del cliente, aparte de las opciones.
+           Si le cobran completo con una promocion registrada, la ve y reclama. */
+        promo: CartService.displayOf(c,l).label || undefined,
       })),
       subtotal: t.subtotal,
       tax: t.tax,

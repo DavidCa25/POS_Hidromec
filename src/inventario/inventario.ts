@@ -12,6 +12,7 @@ import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component'
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { CapabilityService, HospitalityService, InventoryMode, Uom } from '../core';
+import { AuthService, PAQUETES } from '../services/auth.service';
 
 
 interface ProductRow {
@@ -555,8 +556,12 @@ export class Inventario {
     { value: 0,    label: '0% / Exento' }
   ];
 
+  /** Roles v2: dar de baja mueve inventario; el Operador edita el catálogo pero no da de baja. */
+  get puedeDarDeBaja(): boolean { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
+
   constructor(
     private reports: ReportService,
+    private auth: AuthService,
     public caps: CapabilityService,
     private hosp: HospitalityService,
     private cdr: ChangeDetectorRef,

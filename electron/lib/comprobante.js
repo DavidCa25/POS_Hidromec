@@ -103,7 +103,7 @@ function corte(data, p, business = {}) {
     declaration:
       row("Efectivo esperado", money(data.cash_expected)) +
       row(
-        "Efectivo entregado",
+        "Efectivo contado",
         data.closed_at ? money(data.cash_delivered) : "Pendiente",
       ) +
       row("Diferencia", data.closed_at ? money(data.difference) : "Pendiente") +

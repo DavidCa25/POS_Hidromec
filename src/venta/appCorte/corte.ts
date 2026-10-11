@@ -453,11 +453,31 @@ export class Corte {
     if (this.cashDelivered == null) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Falta efectivo entregado',
-        text: 'Captura el efectivo físico contado en caja.',
+        title: 'Falta el efectivo contado',
+        text: 'Cuenta todo el efectivo del cajón, incluido el fondo, y escríbelo.',
         confirmButtonColor: '#10b981'
       });
       return;
+    }
+
+    /* ¿OLVIDÓ EL FONDO? Pasó en caja: esperado $2,544 (fondo $2,000 + $544 de
+       ventas), se capturaron solo los $544 vendidos y el corte cerró con
+       -$2,000. Si lo que falta es casi exactamente el fondo, se pregunta antes
+       de cerrar (el corte cerrado ya no se corrige). Vale también a ciegas: no
+       se le dice cuánto se esperaba, solo que revise si contó el fondo. */
+    const fondo = Number(this.openShiftOpeningCash ?? 0);
+    if (this.mode === 'TURNO' && fondo > 0 && Math.abs((Number(this.cashDelivered) + fondo) - this.cashExpected) < 1) {
+      const r = await Swal.fire({
+        icon: 'question',
+        title: '¿Contaste también el fondo?',
+        html: `El fondo de este turno es de <b>${fondo.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</b>. `
+          + 'El efectivo contado tiene que incluir todo lo que hay en el cajón, también el fondo.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, ya lo incluí',
+        cancelButtonText: 'Corregir',
+        confirmButtonColor: '#10b981'
+      });
+      if (!r.isConfirmed) return;
     }
     this.closing = true;
 
@@ -533,7 +553,7 @@ export class Corte {
               <span style="font-weight: 600;">$${(data.cash_expected ?? this.cashExpected).toFixed(2)}</span>
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
-              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo entregado:</span>
+              <span style="font-weight: 600; color: var(--wx-text-muted);">Efectivo contado:</span>
               <span style="font-weight: 600;">$${(data.cash_delivered ?? this.cashDelivered).toFixed(2)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding-top: 0.75rem; border-top: 2px solid var(--wx-edge);">

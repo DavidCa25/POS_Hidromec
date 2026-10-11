@@ -41,6 +41,8 @@ export const PAQUETES = {
   CAJA_CORTES: 'CAJA_CORTES',
   CONFIGURACION_EQUIPO: 'CONFIGURACION_EQUIPO',
   COMERCIAL_ADMINISTRAR: 'COMERCIAL_ADMINISTRAR',
+  // Roles v2: el catalogo (alta y edicion de productos), separado de mover inventario.
+  CATALOGO_EDITAR: 'CATALOGO_EDITAR',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];

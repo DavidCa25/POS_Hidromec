@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CapabilityService } from '../core';
+import { AutorizacionService } from '../core/autorizacion.service';
 import { LicenseService } from '../services/license.service';
 import { SetupInicial } from './setup-inicial/setup-inicial.component';
 import { IniciarPruebaComponent } from './licencia/iniciar-prueba.component';
@@ -23,7 +24,10 @@ export class App implements OnInit {
   listo = false;
   necesitaSetup = false;
 
-  constructor(public license: LicenseService, private caps: CapabilityService) {}
+  constructor(public license: LicenseService, private caps: CapabilityService, autorizacion: AutorizacionService) {
+    // Roles v2: el diálogo de PIN / aprobación del dueño para toda la caja.
+    autorizacion.iniciar();
+  }
 
   async ngOnInit() {
     await this.license.iniciar();

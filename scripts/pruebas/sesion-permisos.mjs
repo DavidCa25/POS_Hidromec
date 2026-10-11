@@ -12,7 +12,7 @@
  *
  * Tres bloques:
  *
- *   1. El CATALOGO -tres roles, diez paquetes- y que nadie pueda anadir un
+ *   1. El CATALOGO -tres roles, once paquetes- y que nadie pueda anadir un
  *      paquete sin decidir quien lo tiene.
  *   2. La COBERTURA: que cada `ipcMain.handle` del proyecto este clasificado
  *      como protegido o como abierto-con-motivo, y que cada protegido este
@@ -50,10 +50,10 @@ const sesion = require(join(raiz, 'electron/seguridad/sesion.js'));
 const B = permisos.BUNDLES;
 
 // ===========================================================================
-seccion('1. El catalogo: tres roles, diez paquetes');
+seccion('1. El catalogo: tres roles, once paquetes');
 // ===========================================================================
 
-check(permisos.PERMISOS.length === 10, 'hay diez paquetes', permisos.PERMISOS.join(' '));
+check(permisos.PERMISOS.length === 11, 'hay once paquetes', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -71,16 +71,18 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 10, 'Administrador tiene los diez');
-// 0056: el Encargado hace cortes y arregla el equipo de la caja; no administra
-// el negocio ni la politica comercial.
-check(deEncargado.size === 8 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
-   && !deEncargado.has(B.COMERCIAL_ADMINISTRAR)
-   && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO),
-  'Encargado tiene ocho y NO configuracion ni politica comercial', [...deEncargado].join(' '));
-check(deOperador.size === 2
-   && deOperador.has(B.VENTAS_OPERAR) && deOperador.has(B.SERVICIOS_OPERAR),
-  'Operador tiene solo lo del dia', [...deOperador].join(' '));
+check(deAdmin.size === 11, 'Administrador tiene los once');
+// Roles v2: el Encargado tiene todo menos administrar el negocio.
+check(deEncargado.size === 10 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+   && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
+   && deEncargado.has(B.INVENTARIO_OPERAR) && deEncargado.has(B.CATALOGO_EDITAR),
+  'Encargado tiene diez: todo menos administrar el negocio', [...deEncargado].join(' '));
+// Roles v2: el Operador vende, mantiene el catalogo, promociones y combos, y
+// hace cortes. Lo que mueve dinero o inventario NO es suyo: lo pide aprobado.
+const delOperador = [B.VENTAS_OPERAR, B.SERVICIOS_OPERAR, B.CATALOGO_EDITAR, B.COMERCIAL_ADMINISTRAR, B.CAJA_CORTES];
+check(deOperador.size === delOperador.length && delOperador.every(p => deOperador.has(p))
+   && !deOperador.has(B.VENTAS_SUPERVISAR) && !deOperador.has(B.INVENTARIO_OPERAR) && !deOperador.has(B.REPORTES_VER),
+  'Operador: vender, catalogo, promociones y cortes; nada que mueva dinero o inventario', [...deOperador].join(' '));
 
 // El septimo paquete existe por esto: administrar Servicios sin recibir de
 // paso los respaldos, los usuarios y la configuracion fiscal.
@@ -204,9 +206,43 @@ check(sinEnvolver.length === 0,
   'cada canal protegido pasa por sesion.proteger',
   sinEnvolver.join(' ') || `${Object.keys(canales.EXIGE).length} canales`);
 
-// Las tres operaciones contra las que nacio el blindaje anti robo hormiga.
-for (const c of ['sp-refund-sale', 'sp-update-sale', 'open-cash-drawer']) {
+// Las operaciones contra las que nacio el blindaje anti robo hormiga.
+for (const c of ['sp-refund-sale', 'sp-update-sale', 'sp-register-cash-out', 'egresos:registrar']) {
   check(canales.exigePara(c) === B.VENTAS_SUPERVISAR, `${c} exige supervisar la venta`);
+}
+/* Roles v2: el cajon se abre tras un cobro (operar), y SIN venta lo decide el
+   propio canal pidiendo autorizacion. */
+check(canales.exigePara('open-cash-drawer') === B.VENTAS_OPERAR && canales.aprobable('open-cash-drawer')?.enCanal,
+  'abrir el cajon: tras un cobro es de quien vende; sin venta se aprueba en el canal');
+
+seccion('2b. Roles v2: lo que el Operador no puede, lo PIDE y otro lo aprueba');
+{
+  for (const c of ['sp-register-cash-out', 'egresos:registrar', 'sp-refund-sale', 'sp-update-sale',
+                   'inventory:apply-count', 'sp-register-purchase', 'sp-register-supplier-payment']) {
+    check(!!canales.aprobable(c) && !canales.aprobable(c).enCanal, `${c} se puede aprobar (PIN o app)`);
+  }
+  check(canales.aprobable('commercial:save')?.enCanal && canales.aprobable('sp-update-product')?.enCanal,
+    'promocion fuera de limite y cambio de existencias se aprueban dentro del canal');
+  check(!canales.aprobable('multi:traspaso-enviar') && !canales.aprobable('sp-delete-product') && !canales.aprobable('users:create'),
+    'traspasos, bajas y usuarios NO se aprueban: no son del Operador');
+  const ses = readFileSync(join(raiz, 'electron/seguridad/sesion.js'), 'utf8');
+  check(/reautenticacion\.consumir\(String\(token\)/.test(ses) && /aprobado: true/.test(ses),
+    'proteger gasta el comprobante que viaja con la operacion y solo salta el permiso');
+  const pre = readFileSync(join(raiz, 'electron/preload.js'), 'utf8');
+  check(/requiereAutorizacion/.test(pre) && /\{ \.\.\.\(primero \|\| \{\}\), autorizacion \}/.test(pre),
+    'la caja pide la autorizacion y repite la MISMA operacion con el comprobante');
+  const main = readFileSync(join(raiz, 'electron/main.js'), 'utf8');
+  check(/pideAutorizacion\('open-cash-drawer'/.test(main) && /ultimoCobro/.test(main),
+    'el cajon sin venta pide autorizacion; tras un cobro reciente, no');
+  check(/pideAutorizacion\('sp-update-product'/.test(main) && /'PRICE_DROP'/.test(main),
+    'cambiar existencias desde la ficha se autoriza y bajar un precio de mas queda vigilado');
+  const limites = require(join(raiz, 'electron/comercial/limites.cjs'));
+  const prods = [{ uuid: 'a', nombre: 'Dona', price: '20', cost: '8' }];
+  const pol = (promotions) => ({ version: 1, channels: [], prices: [], promotions, combos: [] });
+  check(limites.revisar(pol([{ id: 'x', name: '2x1', active: true, kind: 'BUY_PAY', buy: 2, pay: 1, selector: {} }]), pol([]), prods).excesos.length === 1,
+    'un 2x1 de un Operador se pasa del limite (50% y bajo costo)');
+  check(limites.revisar(pol([{ id: 'y', name: '10%', active: true, kind: 'PERCENT', value: '10', selector: {} }]), pol([]), prods).excesos.length === 0,
+    'un 10% pasa solo');
 }
 check(canales.exigePara('sp-register-sale') === B.VENTAS_OPERAR, 'vender exige solo operar');
 check(canales.exigePara('users:create') === B.CONFIGURACION_ADMINISTRAR, 'crear usuarios exige administrar');
@@ -504,14 +540,14 @@ seccion('5. La interfaz pregunta lo mismo que autoriza el proceso principal');
   /* La pantalla «Abrir cajon» se retiro: ahora es atajo de Retail (F1) y de
      Touch, y las dos cajas pasan por CajonService. */
   const cajon = readFileSync(join(raiz, 'src/core/cajon.service.ts'), 'utf8');
-  check(/'open-cash-drawer', PAQUETES\.VENTAS_SUPERVISAR/.test(cajon),
-    'abrir el cajon sin venta pide el paquete de supervision');
+  check(/openCashDrawer\(\{ reason: 'manual' \}\)/.test(cajon) && !/autorizarYregistrar/.test(cajon),
+    'abrir el cajon sin venta lo autoriza el canal (sin pedir el PIN dos veces)');
   const touch = readFileSync(join(raiz, 'src/touch/touch-pos.ts'), 'utf8');
   check(/this\.cajon\.abrirSinVenta\(\)/.test(touch) && /this\.cajon\.abrirSinVenta\(\)/.test(readFileSync(join(raiz, 'src/venta/appVenta/venta.ts'), 'utf8')),
     'y Retail y Touch abren el cajon por ese mismo camino');
   const venta = readFileSync(join(raiz, 'src/venta/appVenta/venta.ts'), 'utf8');
-  check(/'sp-refund-sale', PAQUETES\.VENTAS_SUPERVISAR/.test(venta),
-    'y devolver, tambien');
+  check(!/'sp-refund-sale', PAQUETES\.VENTAS_SUPERVISAR/.test(venta) && /amount: totalPreview/.test(venta),
+    'y devolver, tambien: la autorizacion viaja con la devolucion');
 }
 
 // ===========================================================================

@@ -212,7 +212,9 @@ for (const metodo of expuestos.keys()) {
   const i = preload.search(new RegExp(`\\b${metodo}\\s*:`));
   if (i < 0) continue;
   const m = preload.slice(i, i + 400)
-    .match(/ipcRenderer\.(?:invoke|send|on)\(\s*['"]([^'"]+)['"]/);
+    /* Roles v2: los `invoke` pasan por el envoltorio `invoke(...)` del preload
+       (pide autorizacion y repite la operacion): tambien cuenta como canal. */
+    .match(/(?:ipcRenderer\.(?:invoke|send|on)|\binvoke)\(\s*['"]([^'"]+)['"]/);
   if (m) expuestos.set(metodo, m[1]);
 }
 

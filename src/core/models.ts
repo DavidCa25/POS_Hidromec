@@ -291,7 +291,7 @@ export type CustomerDisplayState =
   | { mode: 'idle' }
   | {
       mode: 'sale';
-      items: { name: string; qty: number; unitPrice: number; importe: number; options?: string }[];
+      items: { name: string; qty: number; unitPrice: number; importe: number; options?: string; promo?: string }[];
       subtotal: number;
       tax: number;
       discount: number;

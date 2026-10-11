@@ -1661,13 +1661,10 @@ export class Venta implements OnInit, OnDestroy {
 
     if (!confirm.isConfirmed) return;
 
-    // Candado anti robo hormiga: devoluciones/cambios requieren supervisor.
-    const autorizado = await this.supervisor.autorizarYregistrar(
-      'Las devoluciones y los cambios tiene que autorizarlos otra persona.',
-      'REFUND', 'sp-refund-sale', PAQUETES.VENTAS_SUPERVISAR,
-      { amount: totalPreview, saleId: this.editingSaleId,
-        detail: (this.refundKind === 'EFECTIVO' ? 'Reembolso efectivo' : 'Cambio') + ' folio #' + this.editingSaleId });
-    if (!autorizado) return;
+    /* Candado anti robo hormiga (Roles v2): la devolución la autoriza un
+       encargado con su PIN o el dueño desde su app. No se pide aquí: si quien
+       opera no puede, el canal lo contesta y el diálogo de autorización sale
+       solo; la autorización viaja con la operación y queda en bitácora. */
 
     this.refundLoading = true;
     try {
@@ -1687,6 +1684,9 @@ export class Venta implements OnInit, OnDestroy {
         })),
 
         note: (this.refundNote || '').trim() || null,
+        // Para quien autoriza (el dueño lo ve en su app) y para la bitácora.
+        amount: totalPreview,
+        reason: (this.refundKind === 'EFECTIVO' ? 'Reembolso en efectivo' : 'Cambio') + ' · folio #' + this.editingSaleId,
 
         apply_net_update: 0
       };
@@ -1694,6 +1694,7 @@ export class Venta implements OnInit, OnDestroy {
       const resp = await this.sale.refundSale(payload);
 
       if (!resp?.success) {
+        if (resp?.cancelado) return;
         await Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: resp?.error || 'Error en reembolso/cambio.' });
         return;
       }

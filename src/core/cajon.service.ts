@@ -1,8 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import Swal from 'sweetalert2';
 import { ElectronBridge } from './electron-bridge.service';
-import { SupervisorAuthService } from '../services/supervisor.service';
-import { PAQUETES } from '../services/auth.service';
 
 /**
  * ABRIR EL CAJON SIN UNA VENTA DETRAS.
@@ -20,7 +18,6 @@ import { PAQUETES } from '../services/auth.service';
 @Injectable({ providedIn: 'root' })
 export class CajonService {
   private readonly bridge = inject(ElectronBridge);
-  private readonly supervisor = inject(SupervisorAuthService);
   private abriendo = false;
 
   async abrirSinVenta(): Promise<boolean> {
@@ -32,13 +29,11 @@ export class CajonService {
     }
     this.abriendo = true;
     try {
-      const ok = await this.supervisor.autorizarYregistrar(
-        'Abrir el cajón sin una venta detrás tiene que autorizarlo otra persona.',
-        'DRAWER_NO_SALE', 'open-cash-drawer', PAQUETES.VENTAS_SUPERVISAR,
-        { detail: 'Apertura manual del cajón' });
-      if (!ok) return false;
-
+      /* Roles v2: la autorización (PIN o el dueño desde su app) la pide el
+         canal si quien opera no puede, viaja con la operación y la bitácora
+         la escribe el proceso principal con las dos identidades. */
       const resp = await api.openCashDrawer({ reason: 'manual' });
+      if (resp?.cancelado) return false;
       if (resp?.success === false) {
         await Swal.fire({ icon: 'error', title: 'No se abrió el cajón', text: resp?.error || 'Revisa la configuración del cajón.' });
         return false;

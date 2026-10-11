@@ -69,6 +69,8 @@ export const routes: Routes = [
        */
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       { path: 'inicio', loadComponent: () => import('../dashboard/inicio/inicio.component').then(m => m.Inicio) },
+      /* Roles v2: el cierre del dia, para Encargado y Administrador. El canal exige REPORTES_VER. */
+      { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
 
       // ---- Retail POS ----
       // El guard decide, en cada navegacion, si esta caja vende aqui o en

@@ -27,7 +27,7 @@ const { BUNDLES } = require('./permisos');
 const {
   VENTAS_OPERAR, VENTAS_SUPERVISAR, INVENTARIO_OPERAR,
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
-  CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR,
+  CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
   SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR,
 } = BUNDLES;
 
@@ -50,7 +50,15 @@ const EXIGE = {
   'commercial:save': COMERCIAL_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
-  'sp-register-cash-out': VENTAS_OPERAR,
+  /* Roles v2: un retiro saca dinero del cajon. El Operador lo pide y lo
+     aprueba un Encargado (PIN) o el dueno desde su app: ver APROBABLES. */
+  'sp-register-cash-out': VENTAS_SUPERVISAR,
+  /* Roles v2: pedir y seguir la aprobacion del dueno desde la caja. Cualquiera
+     que venda puede PEDIR; lo que se aprueba lo decide la nube (rol en Owner). */
+  'aprobaciones:disponible': VENTAS_OPERAR,
+  'aprobaciones:solicitar': VENTAS_OPERAR,
+  'aprobaciones:estado': VENTAS_OPERAR,
+  'aprobaciones:cancelar': VENTAS_OPERAR,
   'sp-create-customer': VENTAS_OPERAR,
   'sp-update-customer': VENTAS_OPERAR,
   'sp-register-customer-payment': VENTAS_OPERAR,
@@ -86,7 +94,9 @@ const EXIGE = {
   // autorizarlas con sus credenciales, y las dos identidades quedan registradas.
   'sp-refund-sale': VENTAS_SUPERVISAR,
   'sp-update-sale': VENTAS_SUPERVISAR,
-  'open-cash-drawer': VENTAS_SUPERVISAR,
+  /* Roles v2: abrir tras un cobro es de quien vende; abrir SIN venta lo
+     decide el propio canal (pide autorizacion). Ver APROBABLES. */
+  'open-cash-drawer': VENTAS_OPERAR,
   'fiscal-cancel-invoice': VENTAS_SUPERVISAR,
   'fiscal:cancelar': VENTAS_SUPERVISAR,
   // Un sorteo reparte premio: quien lo cierra o lo celebra responde de él.
@@ -94,11 +104,11 @@ const EXIGE = {
   'raffles:close': VENTAS_SUPERVISAR,
 
   // --------------------------------------------------------------- inventario
-  'sp-add-product': INVENTARIO_OPERAR,
-  'sp-update-product': INVENTARIO_OPERAR,
+  'sp-add-product': CATALOGO_EDITAR,
+  'sp-update-product': CATALOGO_EDITAR,
   'sp-delete-product': INVENTARIO_OPERAR,
-  'sp-add-brand': INVENTARIO_OPERAR,
-  'sp-add-category': INVENTARIO_OPERAR,
+  'sp-add-brand': CATALOGO_EDITAR,
+  'sp-add-category': CATALOGO_EDITAR,
   'inventory:apply-count': INVENTARIO_OPERAR,
   'sp-register-purchase': INVENTARIO_OPERAR,
   'sp-register-supplier-payment': INVENTARIO_OPERAR,
@@ -107,25 +117,26 @@ const EXIGE = {
   'sp-upsert-product-supplier': INVENTARIO_OPERAR,
   'sp-remove-product-supplier': INVENTARIO_OPERAR,
   'sp-set-product-default-supplier': INVENTARIO_OPERAR,
-  'presentations:save': INVENTARIO_OPERAR,
-  'presentations:delete': INVENTARIO_OPERAR,
-  'images:set': INVENTARIO_OPERAR,
-  'images:sync': INVENTARIO_OPERAR,
+  'presentations:save': CATALOGO_EDITAR,
+  'presentations:delete': CATALOGO_EDITAR,
+  'images:set': CATALOGO_EDITAR,
+  'images:sync': CATALOGO_EDITAR,
   // Una receta decide cuánto se descuenta de existencias al vender, y un grupo
   // de modificadores cambia lo que se cobra: los dos mueven inventario o precio
   // de forma indirecta, así que van con inventario y no con configuración.
-  'recipes:save': INVENTARIO_OPERAR,
-  'recipes:delete': INVENTARIO_OPERAR,
-  'modifiers:save': INVENTARIO_OPERAR,
-  'modifiers:delete': INVENTARIO_OPERAR,
-  'modifiers:set-product-groups': INVENTARIO_OPERAR,
+  'recipes:save': CATALOGO_EDITAR,
+  'recipes:delete': CATALOGO_EDITAR,
+  'modifiers:save': CATALOGO_EDITAR,
+  'modifiers:delete': CATALOGO_EDITAR,
+  'modifiers:set-product-groups': CATALOGO_EDITAR,
 
   // -------------------------------------------------------------- egresos
   // Un egreso saca dinero del negocio (renta, luz, un Uber, el pago de la
   // semana a alguien): lo registra quien responde del turno, no el Operador.
-  // El retiro de caja simple (`sp-register-cash-out`) sigue como estaba.
-  'egresos:conceptos': VENTAS_SUPERVISAR,
-  'egresos:personal': VENTAS_SUPERVISAR,
+  // Roles v2: el retiro simple (`sp-register-cash-out`) tambien, ver arriba.
+  // Roles v2: leer conceptos y personal para PEDIR un gasto (registrar se aprueba).
+  'egresos:conceptos': VENTAS_OPERAR,
+  'egresos:personal': VENTAS_OPERAR,
   'egresos:registrar': VENTAS_SUPERVISAR,
   'egresos:cancelar': VENTAS_SUPERVISAR,
   // Que conceptos existen es una decision del negocio, como las formas de pago.
@@ -146,6 +157,8 @@ const EXIGE = {
   'sp-dead-products': REPORTES_VER,
   'security:by-cashier': REPORTES_VER,
   'security:risk': REPORTES_VER,
+  // Roles v2: el cierre del dia (Inicio), para Encargado y Administrador.
+  'reportes:cierre-dia': REPORTES_VER,
   'alerts:refunds-by-cashier': REPORTES_VER,
 
   // ------------------------------------------------------------ configuración
@@ -221,14 +234,14 @@ const EXIGE = {
   'quickstart:analizar-pegado': CONFIGURACION_ADMINISTRAR,
   'quickstart:otra-hoja': CONFIGURACION_ADMINISTRAR,
   'quickstart:remapear': CONFIGURACION_ADMINISTRAR,
-  'quickstart:carga-manual': INVENTARIO_OPERAR,
-  'quickstart:capturar': INVENTARIO_OPERAR,
+  'quickstart:carga-manual': CATALOGO_EDITAR,
+  'quickstart:capturar': CATALOGO_EDITAR,
   'quickstart:resolver-grupo': CONFIGURACION_ADMINISTRAR,
   'quickstart:resolver-fila': CONFIGURACION_ADMINISTRAR,
   'quickstart:ejecutar': CONFIGURACION_ADMINISTRAR,
   'quickstart:undo-check': CONFIGURACION_ADMINISTRAR,
   'quickstart:undo': CONFIGURACION_ADMINISTRAR,
-  'quickstart:soltar-si-vacia': INVENTARIO_OPERAR,
+  'quickstart:soltar-si-vacia': CATALOGO_EDITAR,
   'quickstart:descartar': CONFIGURACION_ADMINISTRAR,
   'quickstart:guardar-perfil': CONFIGURACION_ADMINISTRAR,
   'inventory:movements': INVENTARIO_OPERAR,
@@ -604,7 +617,44 @@ const ACTOR = {
 const AUTORIZA = {
   // 0056: cerrar el turno de otra persona es CAJA_CORTES, otorgable a un Operador.
   'sp-close-shift': CAJA_CORTES,
+  /* Roles v2: el Operador edita el catalogo y da de alta promociones, pero
+     cambiar EXISTENCIAS desde la ficha es un ajuste, y una promocion de mas de
+     30% o bajo costo es regalar mercancia: las autoriza un Encargado. */
+  'sp-update-product': INVENTARIO_OPERAR,
+  'commercial:save': VENTAS_SUPERVISAR,
 };
+
+/**
+ * ROLES V2 · OPERACIONES QUE SE PUEDEN APROBAR.
+ *
+ * Quien no tiene el paquete del canal NO queda bloqueado: la operacion pide
+ * autorizacion y la da otra persona que si puede -su PIN en la caja- o el
+ * dueno desde su app. El comprobante (de un solo uso, atado a esta ventana, a
+ * quien opera y al canal) viaja CON la operacion, en `payload.autorizacion`, y
+ * lo gasta `sesion.proteger`. Asi la autorizacion no puede usarse para otra
+ * cosa ni quedarse en la bitacora mientras la operacion se rechaza.
+ *
+ * El valor es la accion de la aprobacion a distancia (approval_policies) y el
+ * tipo de evento de la bitacora.
+ */
+const APROBABLES = {
+  'sp-register-cash-out':          { accion: 'RETIRO', evento: 'CASH_OUT_AUTHORIZED' },
+  'egresos:registrar':             { accion: 'EGRESO', evento: 'EXPENSE_AUTHORIZED' },
+  'sp-refund-sale':                { accion: 'DEVOLUCION', evento: 'REFUND' },
+  'sp-update-sale':                { accion: 'MODIFICAR_VENTA', evento: 'SALE_UPDATE' },
+  'open-cash-drawer':              { accion: 'ABRIR_CAJON', evento: 'DRAWER_NO_SALE', enCanal: true },
+  'inventory:apply-count':         { accion: 'AJUSTE', evento: 'STOCK_ADJUST_AUTHORIZED' },
+  'sp-register-purchase':          { accion: 'COMPRA', evento: 'PURCHASE_AUTHORIZED' },
+  'sp-register-supplier-payment':  { accion: 'PAGO_PROVEEDOR', evento: 'SUPPLIER_PAYMENT_AUTHORIZED' },
+  /* Estos los decide el propio canal (el Operador SI tiene el paquete):
+     solo piden autorizacion cuando se pasan de la raya. */
+  'sp-update-product':             { accion: 'AJUSTE', evento: 'STOCK_ADJUST_AUTHORIZED', enCanal: true },
+  'commercial:save':               { accion: 'PROMOCION', evento: 'PROMO_AUTHORIZED', enCanal: true },
+};
+
+function aprobable(canal) {
+  return Object.prototype.hasOwnProperty.call(APROBABLES, canal) ? APROBABLES[canal] : null;
+}
 
 /** Paquete que debe tener quien AUTORIZA una operación de este canal. */
 function autorizaPara(canal) {
@@ -627,4 +677,4 @@ function estaClasificado(canal) {
       || Object.prototype.hasOwnProperty.call(ABIERTOS, canal);
 }
 
-module.exports = { EXIGE, ABIERTOS, ACTOR, AUTORIZA, exigePara, actorPara, autorizaPara, canalesProtegidos, estaClasificado };
+module.exports = { EXIGE, ABIERTOS, ACTOR, AUTORIZA, APROBABLES, aprobable, exigePara, actorPara, autorizaPara, canalesProtegidos, estaClasificado };
