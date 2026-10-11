@@ -222,13 +222,18 @@ BEGIN
 
             /* ------------------------------------------ politica comercial */
             DECLARE @commercial NVARCHAR(MAX) = JSON_QUERY(@catalog, '$.commercial');
+            /* La version DENTRO del JSON es la de la matriz; aqui manda la de esta
+               base. Se reescribe para que coincidan: si no, toda cotizacion de la
+               sucursal se rechazaba al cobrar. Y se compara sin ella, para no
+               subir de version cuando solo cambio el numero de la matriz. */
             IF @commercial IS NOT NULL
             BEGIN
                 IF EXISTS (SELECT 1 FROM dbo.commercial_policy WHERE id = 1)
-                    UPDATE dbo.commercial_policy SET payload = @commercial, version = version + 1, updated_at = SYSUTCDATETIME()
-                     WHERE id = 1 AND payload <> @commercial;
+                    UPDATE dbo.commercial_policy
+                       SET payload = JSON_MODIFY(@commercial, '$.version', version + 1), version = version + 1, updated_at = SYSUTCDATETIME()
+                     WHERE id = 1 AND JSON_MODIFY(payload, '$.version', 0) <> JSON_MODIFY(@commercial, '$.version', 0);
                 ELSE
-                    INSERT INTO dbo.commercial_policy (id, version, payload) VALUES (1, 1, @commercial);
+                    INSERT INTO dbo.commercial_policy (id, version, payload) VALUES (1, 1, JSON_MODIFY(@commercial, '$.version', 1));
             END
 
             /* --------------------------------------- usuarios de empresa */
