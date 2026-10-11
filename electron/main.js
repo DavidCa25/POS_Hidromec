@@ -118,7 +118,7 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // IPC del dominio Fidelizacion (campanas, recompensas, cupones, dinamicas y
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
-require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion});
+require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad});
 /* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
 const ipcMulti = require('./ipc/multisucursal');
 ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
@@ -1416,6 +1416,13 @@ async function guardarHashNuevo(pool, userId, contrasena) {
 
 // Eventos que disparan una alerta EN VIVO (además de quedar en la bitácora)
 const CRITICOS_ALERTA = {
+  // Roles v2: lo que el Operador hace con autorizacion, y lo vigilado del catalogo.
+  CASH_OUT_AUTHORIZED: 'Retiro de efectivo',
+  EXPENSE_AUTHORIZED: 'Egreso registrado',
+  STOCK_ADJUST_AUTHORIZED: 'Ajuste de existencias',
+  PRICE_DROP: 'Precio rebajado',
+  PROMO_CHANGED: 'Promoción modificada',
+  PROMO_AUTHORIZED: 'Promoción fuera de límite autorizada',
   REFUND: 'Devolución en caja',
   DEVOLUCION: 'Devolución en caja',
   VOID: 'Venta anulada',
@@ -1424,6 +1431,67 @@ const CRITICOS_ALERTA = {
   DELETE: 'Producto eliminado del ticket',
   ELIMINADO: 'Producto eliminado del ticket'
 };
+
+/** Roles v2: ultimo cobro por ventana, para abrir el cajon "al cobrar" sin pedir PIN. */
+const ultimoCobro = new Map();
+
+/**
+ * Roles v2 · AUTORIZACION DENTRO DEL CANAL. Para operaciones que la persona SI
+ * puede hacer en general, pero que esta vez se pasan de la raya (abrir el
+ * cajon sin venta, cambiar existencias desde la ficha, una promocion de mas
+ * del 30%). Gasta el comprobante de `payload.autorizacion` o devuelve null.
+ */
+function autorizacionEnCanal(evento, ses, payload, canal) {
+  const token = payload && typeof payload === 'object' ? payload.autorizacion : null;
+  if (!token || !ses) return null;
+  return reautenticacion.consumir(String(token), { webContentsId: evento.sender.id, actorId: ses.userId, canal });
+}
+
+/** La respuesta que hace que la caja pida PIN o la aprobacion del dueno. */
+function pideAutorizacion(canal, error, detalle = null) {
+  const ap = canales.aprobable(canal);
+  return { success: false, ok: false, motivo: 'REQUIERE_AUTORIZACION', requiereAutorizacion: true, aprobable: true,
+           canal, accion: ap?.accion, error, detalle };
+}
+
+/**
+ * ROLES V2 · Bitacora de una operacion aprobable que ya corrio (la llama
+ * `sesion.proteger` por `deps.registrar`). Nunca lanza: la bitacora no frena
+ * la operacion que ya se hizo.
+ */
+async function registrarAutorizacion(e) {
+  const c = e.autorizador || {};
+  const p = e.payload && typeof e.payload === 'object' ? e.payload : {};
+  const monto = [p.amount, p.monto, p.total, p.refundAmount].map(Number).find(n => Number.isFinite(n) && n > 0) ?? null;
+  const quien = c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario || 'el dueño'}`
+    : c.via === 'PROPIO' ? 'sin autorización (tiene el permiso)'
+    : `autorizó ${c.autorizadorUsuario || 'un encargado'}${c.via ? ' · ' + c.via : ''}`;
+  const nota = p.note || p.nota || p.concepto || p.reason || '';
+  const detalle = `${e.canal} · ${quien}${nota ? ' · ' + String(nota).slice(0, 120) : ''}`.slice(0, 400);
+  await registrarEventoSeguridad({ userId: e.userId, autorizadoPor: c.via === 'APP' ? null : Number(c.autorizadorId) || null,
+    tipo: e.evento, monto, detalle, alertar: c.via !== 'PROPIO' || e.evento === 'DRAWER_NO_SALE' || e.evento === 'REFUND' });
+}
+
+/** Una fila de security_events y, si el tipo es critico, el aviso al dueno. */
+async function registrarEventoSeguridad({ userId = null, autorizadoPor = null, tipo, monto = null, detalle = null, venta = null, alertar = true }) {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('user_id', sql.Int, userId)
+      .input('authorized_by', sql.Int, autorizadoPor)
+      .input('register_id', sql.Int, loadDeviceConfig()?.register?.id ?? null)
+      .input('event_type', sql.NVarChar(40), String(tipo || 'OTHER'))
+      .input('amount', sql.Decimal(18, 2), monto)
+      .input('detail', sql.NVarChar(400), detalle)
+      .input('sale_id', sql.Int, venta)
+      .execute('sp_log_security_event');
+  } catch (err) { console.warn('[SEGURIDAD] no se registro', tipo, err?.message); }
+  const titulo = CRITICOS_ALERTA[String(tipo || '').toUpperCase()];
+  if (alertar && titulo) {
+    const m = monto != null ? ` ($${Number(monto).toFixed(2)})` : '';
+    cloudSync.crearAlertaInmediata(String(tipo), titulo, `${titulo}${m}${detalle ? ' — ' + detalle : ''}`).catch(() => {});
+  }
+}
 
 /*
  * BITÁCORA DE SEGURIDAD.
@@ -1470,6 +1538,18 @@ ipcMain.handle('security:log', async (evento, p = {}) => {
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 });
+
+/* Roles v2 · CIERRE DEL DÍA: ventas, cortes de todas las cajas, salidas,
+   promociones por cajero y autorizaciones, de un día (hoy por omisión). */
+ipcMain.handle('reportes:cierre-dia', sesion.proteger('reportes:cierre-dia', async (_e, p = {}) => {
+  try {
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(p.fecha || '')) ? String(p.fecha) : null;
+    const pool = await poolPromise;
+    const r = await pool.request().input('fecha', sql.Date, fecha).execute('sp_day_close_report');
+    const [resumen, pagos, cortes, salidas, promociones, eventos, ventas] = r.recordsets;
+    return { success: true, data: { resumen: resumen?.[0] ?? null, pagos, cortes, salidas, promociones, eventos, ventas } };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
 
 ipcMain.handle('security:by-cashier', sesion.proteger('security:by-cashier', async (_e, p = {}) => {
   try {
@@ -1882,6 +1962,10 @@ sesion.configurar({
     console.warn(`[ACCESO] ${e.tipo ?? ''} ${e.motivo} · canal=${e.canal ?? '-'} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`);
     /* Un renderer que intenta operar como otro usuario queda en la bitácora:
        el intento ya no tiene efecto, pero alguien tiene que poder verlo. */
+    /* Roles v2: una operacion aprobable que corrio. Queda con las DOS
+       identidades -quien opero y quien autorizo (PIN, el mismo, o el dueno
+       desde la app)- y, si es de las que vigila el dueno, le llega aviso. */
+    if (e.tipo === 'AUTORIZADO') { registrarAutorizacion(e).catch(() => {}); return; }
     if (e.tipo === 'ACTOR_IGNORADO') {
       poolPromise.then(pool => pool.request()
         .input('u', sql.Int, e.userId ?? null)
@@ -2187,12 +2271,12 @@ ipcMain.handle('sp-delete-product', sesion.proteger('sp-delete-product', async (
   }
 }));
 
-ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (event, payload = {}) => {
+ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (event, payload = {}, ses) => {
   try {
     const productId = Number(payload?.product_id ?? payload?.productId ?? 0);
     const nombre = String(payload?.nombre ?? payload?.name ?? '').trim();
     const precio = Number(payload?.precio ?? payload?.price ?? 0);
-    const stock = Number(payload?.stock ?? 0);
+    let stock = Number(payload?.stock ?? 0);
     const numeroParte = String(payload?.numero_parte ?? payload?.partNumber ?? '').trim();
     const barCode = payload?.bar_code ?? payload?.barCode ?? null;
  
@@ -2207,6 +2291,26 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     if (!Number.isFinite(stock) || stock < 0) return { success: false, error: 'Stock invalido.' };
  
     const pool = await poolPromise;
+    /* ROLES V2. La ficha la edita quien mantiene el catalogo (el Operador
+       incluido), pero:
+         - cambiar la EXISTENCIA desde aqui es un ajuste sin movimiento: sin el
+           paquete de inventario, lo autoriza un Encargado (PIN o app);
+         - todo cambio de PRECIO queda en bitacora, y una BAJA de mas de $7
+           hecha por alguien que no es Encargado ni Administrador avisa al
+           dueno. No se bloquea: se vigila. */
+    const antes = (await pool.request().input('id', sql.Int, productId)
+      .query('SELECT nombre, price, stock, inventory_mode FROM dbo.products WHERE id = @id;')).recordset?.[0];
+    if (antes && payload?.stock == null) stock = Number(antes.stock) || 0;   // sin dato: se respeta la existencia
+    let ajusteAutorizado = null;
+    const cambiaExistencia = antes && String(antes.inventory_mode || '').toUpperCase() !== 'RECIPE'
+      && Math.abs(Number(antes.stock || 0) - stock) > 0.0001;
+    if (cambiaExistencia && !ses.permisos.has(permisos.BUNDLES.INVENTARIO_OPERAR)) {
+      ajusteAutorizado = autorizacionEnCanal(event, ses, payload, 'sp-update-product');
+      if (!ajusteAutorizado) {
+        return pideAutorizacion('sp-update-product', 'Cambiar la existencia es un ajuste de inventario: lo autoriza un encargado.',
+          { Producto: antes.nombre, Existencia: `${Number(antes.stock)} → ${stock}` });
+      }
+    }
     /* MultiSucursal: un producto de la matriz no se cambia en la sucursal
        (existencia y costo si; el precio, si la empresa lo permite). */
     const candado = await ipcMulti.motivoCandado(pool, sql, productId, {
@@ -2239,6 +2343,22 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     req.input('cost', sql.Decimal(14, 4), payload?.cost ?? null);
 
     await req.execute('sp_update_product');
+
+    if (antes) {
+      if (ajusteAutorizado) {
+        const c = ajusteAutorizado;
+        registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c.via === 'APP' ? null : Number(c.autorizadorId) || null,
+          tipo: 'STOCK_ADJUST_AUTHORIZED',
+          detalle: `${antes.nombre}: existencia ${Number(antes.stock)} → ${stock} · ${c.via === 'APP' ? 'aprobado desde la app por ' : 'autorizó '}${c.autorizadorUsuario}` }).catch(() => {});
+      }
+      const precioAntes = Number(antes.price || 0);
+      if (Math.abs(precioAntes - precio) > 0.004) {
+        const vigilado = !ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR) && (precioAntes - precio) > 7;
+        registrarEventoSeguridad({ userId: ses.userId, tipo: vigilado ? 'PRICE_DROP' : 'PRICE_CHANGE',
+          monto: Math.round((precioAntes - precio) * 100) / 100,
+          detalle: `${antes.nombre}: $${precioAntes.toFixed(2)} → $${precio.toFixed(2)} · ${ses.usuario}`, alertar: vigilado }).catch(() => {});
+      }
+    }
     return { success: true };
   } catch (err) {
     console.error('sp-update-product:', err);
@@ -2405,6 +2525,8 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
       const result = await request.execute('sp_register_sale');
 
       const fila = result.recordset?.[0] ?? null;
+      // Roles v2: el cajon se abre "al cobrar" solo si de verdad hubo un cobro aqui.
+      ultimoCobro.set(event.sender.id, Date.now());
       return {
         success: true,
         saleId: fila?.sale_id ?? fila?.id ?? null,
@@ -2887,7 +3009,7 @@ if([WybixRaw]::Send('${pName}', $src)){ 'OK' } else { throw 'WritePrinter fallo'
   });
 }
 
-ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_event, payload = {}) => {
+ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_event, payload = {}, ses) => {
   try {
     const dcfg = loadDeviceConfig();
     const d = (dcfg && dcfg.drawer) || {};
@@ -2896,6 +3018,21 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
     // Disparo automatico al cobrar: respetar "Habilitar" y "Abrir al cobrar".
     if (payload?.reason === 'payment' && (!d.enabled || !d.openOnPayment)) {
       return { success: true, skipped: true };
+    }
+
+    /* ROLES V2. Abrir al COBRAR es de quien vende -antes un Operador no podia,
+       y el cajon no se abria tras su cobro-, pero solo si en esta caja acaba de
+       haber un cobro. Abrir SIN venta (o "al cobrar" sin cobro) es el gesto del
+       robo hormiga: lo autoriza un Encargado o el dueno, y queda en bitacora. */
+    const trasCobro = payload?.reason === 'payment' && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
+    if (trasCobro) ultimoCobro.delete(_event.sender.id);
+    else {
+      const propio = ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR);
+      const c = propio ? null : autorizacionEnCanal(_event, ses, payload, 'open-cash-drawer');
+      if (!propio && !c) return pideAutorizacion('open-cash-drawer', 'Abrir el cajón sin una venta tiene que autorizarlo un encargado.');
+      registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c ? (c.via === 'APP' ? null : Number(c.autorizadorId) || null) : ses.userId,
+        tipo: 'DRAWER_NO_SALE', detalle: c ? (c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario}` : `autorizó ${c.autorizadorUsuario}`) : 'apertura manual',
+      }).catch(() => {});
     }
 
     const pulseMs  = Number(payload?.pulseMs || d.pulseMs || 120);
@@ -4125,6 +4262,8 @@ function buildTicketHtmlFromTemplate(header, details, extras={}) {
  const profile=receiptProfile('sale',extras.profile);
  return require('./lib/comprobante').venta(header,details,{...ticketExtrasComunes(profile.width),...extras,fecha:formatDateTimeEsMX(header?.datee)},profile);
 }
+// Roles v2: pedirle autorizacion al dueno desde la caja (Owner).
+require('./ipc/aprobaciones').registrar({ ipcMain, sesion, canales, reautenticacion, cloudSync, loadDeviceConfig, permisos });
 require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,ensureBusinessConfig,loadDeviceConfig,buildTicketHtmlFromTemplate,loadSaleFromDbWithSp,generateSaleTicketPdf,cloudSync,imprimirHtml});
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {

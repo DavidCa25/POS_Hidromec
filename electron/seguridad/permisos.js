@@ -36,7 +36,7 @@
  */
 
 /**
- * LOS SIETE PAQUETES.
+ * LOS PAQUETES.
  *
  * Uno por decision de negocio, no por boton. Si al anadir una capacidad hacen
  * falta tres paquetes nuevos, el recorte esta mal hecho.
@@ -48,8 +48,18 @@ const BUNDLES = {
   /** Lo que toca dinero ya cobrado: devolver, anular, cajon sin venta, cancelar CFDI. */
   VENTAS_SUPERVISAR: 'VENTAS_SUPERVISAR',
 
-  /** Productos, precios, existencias, conteos, compras, proveedores, presentaciones. */
+  /**
+   * Lo que MUEVE el inventario y el dinero de compras: conteos y ajustes,
+   * compras, proveedores y sus pagos, traspasos, dar de baja productos.
+   * (Hasta Roles v2 incluia tambien el catalogo; ahora eso es CATALOGO_EDITAR.)
+   */
   INVENTARIO_OPERAR: 'INVENTARIO_OPERAR',
+  /**
+   * Roles v2 · El CATALOGO: dar de alta y editar productos, categorias, marcas,
+   * fotos, presentaciones, recetas y modificadores. Es del Operador: no mueve
+   * existencias ni dinero. Bajar un precio de mas queda vigilado (alerta).
+   */
+  CATALOGO_EDITAR: 'CATALOGO_EDITAR',
 
   /** Estadisticas, cortes historicos, reportes y comisiones. */
   REPORTES_VER: 'REPORTES_VER',
@@ -106,18 +116,31 @@ const ROLES = {
     BUNDLES.VENTAS_OPERAR,
     BUNDLES.VENTAS_SUPERVISAR,
     BUNDLES.INVENTARIO_OPERAR,
+    BUNDLES.CATALOGO_EDITAR,
     BUNDLES.REPORTES_VER,
     BUNDLES.SERVICIOS_OPERAR,
     BUNDLES.SERVICIOS_ADMINISTRAR,
     // 0056: ya cerraba turnos ajenos y configuraba su equipo; ahora con nombre propio.
     BUNDLES.CAJA_CORTES,
     BUNDLES.CONFIGURACION_EQUIPO,
+    // Roles v2: el Encargado tambien da de alta promociones y combos.
+    BUNDLES.COMERCIAL_ADMINISTRAR,
   ],
 
-  /** cajero -> OPERADOR. Atiende: el trabajo del dia y nada mas. */
+  /**
+   * cajero -> OPERADOR. Atiende y, si hace falta, mantiene el catalogo: da de
+   * alta productos, promociones y combos, y hace cortes (el suyo y el de otros).
+   * Lo que mueve dinero o inventario del negocio -retiros, egresos,
+   * devoluciones, ajustes, compras- lo hace con la autorizacion de un Encargado
+   * (PIN en la caja o aprobacion desde la app del dueno). Traspasos, bajas y
+   * reportes no.
+   */
   cajero: [
     BUNDLES.VENTAS_OPERAR,
     BUNDLES.SERVICIOS_OPERAR,
+    BUNDLES.CATALOGO_EDITAR,
+    BUNDLES.COMERCIAL_ADMINISTRAR,
+    BUNDLES.CAJA_CORTES,
   ],
 };
 
@@ -181,6 +204,7 @@ const ALTO_RIESGO = new Set([
   BUNDLES.CONFIGURACION_EQUIPO,
   BUNDLES.COMERCIAL_ADMINISTRAR,
   BUNDLES.INVENTARIO_OPERAR,
+  BUNDLES.CATALOGO_EDITAR,
   BUNDLES.CONFIGURACION_ADMINISTRAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
   BUNDLES.REPORTES_VER,
@@ -202,9 +226,6 @@ function esAltoRiesgo(permiso) {
  */
 const SOLO_ADMIN = new Set([
   BUNDLES.CONFIGURACION_ADMINISTRAR,
-  // Hasta 0056 los combos y promociones exigian CONFIGURACION_ADMINISTRAR: por
-  // rol siguen siendo del Administrador; a otra persona se le OTORGAN.
-  BUNDLES.COMERCIAL_ADMINISTRAR,
 ]);
 
 /**
@@ -216,6 +237,7 @@ const OTORGABLES = [
   BUNDLES.CAJA_CORTES,
   BUNDLES.CONFIGURACION_EQUIPO,
   BUNDLES.INVENTARIO_OPERAR,
+  BUNDLES.CATALOGO_EDITAR,
   BUNDLES.COMERCIAL_ADMINISTRAR,
   BUNDLES.VENTAS_SUPERVISAR,
   BUNDLES.REPORTES_VER,
@@ -227,9 +249,10 @@ const OTORGABLES = [
 const DESCRIPCIONES = {
   CAJA_CORTES: ['Cortes de caja', 'Cerrar el turno de otra persona y autorizarlo.'],
   CONFIGURACION_EQUIPO: ['Equipo de la caja', 'Impresora, cajón, lector, báscula, pantalla de cliente y teclado.'],
-  INVENTARIO_OPERAR: ['Inventario', 'Dar de alta y editar productos, existencias, compras y proveedores.'],
+  INVENTARIO_OPERAR: ['Movimientos de inventario', 'Conteos y ajustes, compras, proveedores, traspasos y bajas de productos, sin pedir autorización.'],
+  CATALOGO_EDITAR: ['Catálogo', 'Dar de alta y editar productos, categorías, recetas y modificadores.'],
   COMERCIAL_ADMINISTRAR: ['Promociones y combos', 'Combos, promociones y precios por canal.'],
-  VENTAS_SUPERVISAR: ['Supervisar ventas', 'Devoluciones, anulaciones y abrir el cajón sin venta.'],
+  VENTAS_SUPERVISAR: ['Supervisar ventas', 'Devoluciones, retiros, egresos y abrir el cajón sin pedir autorización; autorizar a otros.'],
   REPORTES_VER: ['Reportes', 'Estadísticas, cortes históricos y reportes.'],
   SERVICIOS_OPERAR: ['Órdenes y agenda', 'El trabajo diario de Servicios.'],
   SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],

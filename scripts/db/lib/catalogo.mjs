@@ -191,7 +191,7 @@ asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);
 
 asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit',
   // 0041: actividad del negocio por hora.
-  'sp_report_actividad_horaria']);
+  'sp_report_actividad_horaria', 'sp_day_close_report']);
 
 asignar('setup', [
   'sp_setup_inicial', 'sp_setup_status', 'sp_add_register', 'sp_set_register_active',

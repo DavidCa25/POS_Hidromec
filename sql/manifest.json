@@ -1784,6 +1784,15 @@
       "checksum": "54f3784636ecbe80"
     },
     {
+      "nombre": "sp_day_close_report",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/reports/sp_day_close_report.sql",
+      "origen": "Wybix_TmpCierre",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b5fdb2e389868f41"
+    },
+    {
       "nombre": "sp_resolve_cash_register",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/cash/sp_resolve_cash_register.sql",

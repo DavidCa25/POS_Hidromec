@@ -179,6 +179,8 @@
   .linea__n{flex:1;min-width:0;font-weight:600;letter-spacing:-.01em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .linea__n .unit{color:var(--humo);font-weight:500;}
+  /* Roles v2: la promocion aplicada, que el cliente la vea. */
+  .linea__n .promo{display:inline-block;margin-left:8px;padding:0 .5em;border-radius:999px;background:var(--ok);color:#fff;font-size:.7em;font-weight:600;vertical-align:middle;}
   .linea__imp{font-weight:700;flex:none;}
   .linea--mas{color:var(--humo);font-weight:500;border-bottom:0;}
 
@@ -521,7 +523,7 @@
       <div class="cierre">
         <div class="cierre__fila" id="rowSubtotal"><span>Subtotal</span><b class="amt mono"></b></div>
         <div class="cierre__fila" id="rowTax"><span>IVA</span><b class="amt mono"></b></div>
-        <div class="cierre__fila" id="rowDiscount" style="display:none;"><span>Descuento</span><b class="amt mono"></b></div>
+        <div class="cierre__fila" id="rowDiscount" style="display:none;"><span>Ahorro con promociones</span><b class="amt mono"></b></div>
         <div class="cierre__total">
           <span class="k">Total</span>
           <span class="amt mono">$0.00</span>
@@ -773,6 +775,7 @@
       row.innerHTML =
         '<div class="linea__n">' + escapeHtml(cant + it.name) +
           (it.options ? '<span class="unit"> ' + escapeHtml(it.options) + '</span>' : '') +
+          (it.promo ? '<span class="promo">' + escapeHtml(it.promo) + '</span>' : '') +
           (unit ? '<span class="unit">' + escapeHtml(unit) + '</span>' : '') +
         '</div>' +
         '<div class="linea__imp mono">' + money(it.importe) + '</div>';

@@ -276,6 +276,20 @@ const multi = crearMultisucursal({
   log,
 });
 
+/**
+ * Roles v2 · AUTORIZACIÓN A DISTANCIA desde la caja: un Operador pide, el
+ * dueño (o un admin) aprueba en Owner y la caja consume la aprobación UNA vez.
+ * Es la misma maquinaria de las tablets (approval_requests): el equipo sale de
+ * la credencial, nunca del cuerpo. Sin nube activa, no se ofrece.
+ */
+const aprobaciones = {
+  disponible: () => !!loadConfig().enabled && !!loadConfig().sucursalId && permitido(),
+  solicitar: (cuerpo) => gateway('approval_request', cuerpo),
+  estado: (id) => gateway('approval_status', { id }),
+  consumir: (id, payload) => gateway('approval_consume', { id, payload }),
+  cancelar: (id) => gateway('approval_cancel', { id }),
+};
+
 async function supabaseUpsert(table, rows) {
   return gateway('upsert', { table, rows });
 }
@@ -790,6 +804,7 @@ function stopScheduler() {
 
 module.exports = {
   multi,
+  aprobaciones,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,
   publicarSucursal,

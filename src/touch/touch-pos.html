@@ -185,6 +185,10 @@
               <span class="tp-linea__opt" *ngFor="let o of resumenOpciones(l)">{{ o.texto }}</span>
             </span>
             <span class="tp-linea__nota" *ngIf="l.note">{{ l.note }}</span>
+            <!-- La promocion, a la vista de quien cobra y del cliente. -->
+            <span class="tp-linea__promo" *ngIf="priced(l).label as promo">
+              <i class="ph ph-tag" aria-hidden="true"></i> {{ promo }}
+            </span>
           </div>
 
           <!-- Lo enviado ya esta en cocina: la cantidad se ve, no se toca. -->
@@ -201,7 +205,10 @@
             </button>
           </div>
 
-          <span class="tp-linea__imp">{{ priced(l).amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span class="tp-linea__imp">
+            <s class="tp-linea__antes" *ngIf="priced(l).amount < l.subtotal - 0.004">{{ l.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</s>
+            {{ priced(l).amount | currency:'MXN':'symbol-narrow':'1.2-2' }}
+          </span>
         </div>
 
         <div class="tp-cart__vacia" *ngIf="!lineas().length">
@@ -213,6 +220,15 @@
       <div class="tp-cart__foot">
         <!-- El cupon, justo antes del total: es cuando el cliente lo saca. -->
         <app-cupon-venta *ngIf="lineas().length"></app-cupon-venta>
+        <!-- Roles v2: el ahorro y, si una promocion no se pudo aplicar, el
+             porque, aqui y no escondidos en «Combos y opciones». -->
+        <p class="tp-cart__aviso" *ngIf="avisoPromo() as a" role="status">
+          <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ a }}
+        </p>
+        <div class="tp-cart__ahorro" *ngIf="ahorro() > 0">
+          <span><i class="ph ph-tag" aria-hidden="true"></i> Ahorro</span>
+          <b>−{{ ahorro() | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+        </div>
         <div class="tp-cart__total">
           <span>Total</span>
           <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>

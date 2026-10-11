@@ -1,0 +1,132 @@
+<div class="cd">
+  <header class="cd-head">
+    <div class="cd-head__txt">
+      <h1>Cierre del día</h1>
+      <p>Ventas, cortes de todas las cajas, salidas de efectivo y lo que se autorizó.</p>
+    </div>
+    <div class="cd-head__acc">
+      <wx-date id="cd-fecha" [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" [max]="hoy" [limpiable]="false"></wx-date>
+      <button type="button" class="btn-outline" (click)="cargar()" [disabled]="cargando()">
+        <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Actualizar
+      </button>
+    </div>
+  </header>
+
+  <p class="cd-estado" *ngIf="cargando() && !datos()">Cargando el día…</p>
+  <p class="cd-error" *ngIf="error()" role="alert"><i class="ph ph-warning" aria-hidden="true"></i> {{ error() }}</p>
+
+  <ng-container *ngIf="datos() as d">
+    <!-- ---------------------------------------------------------- cifras -->
+    <section class="cd-cifras" aria-label="Resumen del día">
+      <div class="cd-cifra"><span>Vendido</span><b>{{ dinero(d.resumen?.vendido) }}</b><small>{{ d.resumen?.tickets ?? 0 }} tickets</small></div>
+      <div class="cd-cifra"><span>Ahorro con promociones</span><b>{{ dinero(d.resumen?.ahorro_promociones) }}</b><small>{{ d.resumen?.tickets_con_promocion ?? 0 }} tickets con promoción</small></div>
+      <div class="cd-cifra"><span>Devoluciones</span><b>{{ dinero(d.resumen?.devoluciones) }}</b><small>{{ d.resumen?.devoluciones_n ?? 0 }} en el día</small></div>
+      <div class="cd-cifra"><span>Salió del cajón</span><b>{{ dinero(totalSalidas()) }}</b><small>{{ d.salidas.length }} movimientos</small></div>
+    </section>
+
+    <!-- ---------------------------------------------------------- cortes -->
+    <section class="cd-sec">
+      <h2>Cortes de caja
+        <span class="cd-tag falta" *ngIf="cortesConDiferencia()">{{ cortesConDiferencia() }} con diferencia</span>
+        <span class="cd-tag abierto" *ngIf="abiertos()">{{ abiertos() }} abiertos</span>
+      </h2>
+      <p class="cd-vacio" *ngIf="!d.cortes.length">No hubo turnos este día.</p>
+      <div class="cd-tabla" *ngIf="d.cortes.length">
+        <table>
+          <thead><tr>
+            <th>Caja</th><th>Cajero</th><th>Turno</th>
+            <th class="num">Fondo</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th><th class="num">Se quedó</th>
+            <th>Cerró</th><th>Notas</th>
+          </tr></thead>
+          <tbody>
+            <tr *ngFor="let c of d.cortes">
+              <td>{{ c.caja || '—' }}</td>
+              <td>{{ c.cajero || '—' }}</td>
+              <td class="nowrap">{{ hora(c.opened_at) }} – {{ c.closed_at ? hora(c.closed_at) : 'abierto' }}</td>
+              <td class="num">{{ dinero(c.opening_cash) }}</td>
+              <td class="num">{{ c.closed_at ? dinero(c.cash_expected) : '—' }}</td>
+              <td class="num">{{ c.closed_at ? dinero(c.cash_delivered) : '—' }}</td>
+              <td class="num"><span class="cd-dif" [ngClass]="tonoDiferencia(c)">{{ c.closed_at ? dinero(c.difference) : 'Abierto' }}</span></td>
+              <td class="num">{{ dinero(c.cash_left) }}</td>
+              <td>{{ c.cerro || '—' }}<small *ngIf="c.autorizo && c.autorizo !== c.cerro"> · autorizó {{ c.autorizo }}</small><small *ngIf="c.a_ciegas"> · a ciegas</small></td>
+              <td class="cd-nota">{{ c.closing_note || '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="cd-dos">
+      <!-- ------------------------------------------------------- pagos -->
+      <section class="cd-sec">
+        <h2>Por forma de pago</h2>
+        <p class="cd-vacio" *ngIf="!d.pagos.length">Sin ventas.</p>
+        <ul class="cd-lista" *ngIf="d.pagos.length">
+          <li *ngFor="let p of d.pagos"><span>{{ pago(p.metodo) }}</span><b>{{ dinero(p.monto) }}</b></li>
+        </ul>
+      </section>
+
+      <!-- ------------------------------------------------- promociones -->
+      <section class="cd-sec">
+        <h2>Promociones por cajero</h2>
+        <p class="cd-vacio" *ngIf="!d.promociones.length">No se aplicaron promociones.</p>
+        <ul class="cd-lista" *ngIf="d.promociones.length">
+          <li *ngFor="let p of d.promociones"><span>{{ p.cajero }} <small>· {{ p.tickets }} tickets</small></span><b>{{ dinero(p.ahorro) }}</b></li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- ------------------------------------------------------- salidas -->
+    <section class="cd-sec">
+      <h2>Salidas de efectivo</h2>
+      <p class="cd-vacio" *ngIf="!d.salidas.length">No salió efectivo del cajón.</p>
+      <div class="cd-tabla" *ngIf="d.salidas.length">
+        <table>
+          <thead><tr><th>Hora</th><th>Tipo</th><th>Quién</th><th>Caja</th><th class="num">Monto</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let s of d.salidas">
+              <td class="nowrap">{{ hora(s.datee) }}</td><td>{{ s.tipo }}</td><td>{{ s.quien || '—' }}</td>
+              <td>{{ s.caja || '—' }}</td><td class="num">{{ dinero(s.monto) }}</td><td class="cd-nota">{{ s.note || '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------- autorizaciones -->
+    <section class="cd-sec">
+      <h2>Autorizaciones y alertas</h2>
+      <p class="cd-vacio" *ngIf="!d.eventos.length">Nada que revisar este día.</p>
+      <ul class="cd-eventos" *ngIf="d.eventos.length">
+        <li *ngFor="let e of d.eventos" [class.vigilado]="vigilado(e.event_type)">
+          <span class="cd-eventos__hora">{{ hora(e.datee) }}</span>
+          <span class="cd-eventos__txt">
+            <b>{{ evento(e.event_type) }}<ng-container *ngIf="e.amount != null"> · {{ dinero(e.amount) }}</ng-container></b>
+            <small>{{ e.quien || '—' }}<ng-container *ngIf="e.autorizo && e.autorizo !== e.quien"> · autorizó {{ e.autorizo }}</ng-container><ng-container *ngIf="e.detail"> · {{ e.detail }}</ng-container></small>
+          </span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- --------------------------------------------------------- ventas -->
+    <section class="cd-sec">
+      <h2>
+        Ventas del día
+        <button type="button" class="cd-plegar" (click)="verVentas.set(!verVentas())" [attr.aria-expanded]="verVentas()">
+          {{ verVentas() ? 'Ocultar' : 'Ver ' + d.ventas.length + ' tickets' }}
+        </button>
+      </h2>
+      <div class="cd-tabla" *ngIf="verVentas() && d.ventas.length">
+        <table>
+          <thead><tr><th>Folio</th><th>Hora</th><th>Cajero</th><th>Caja</th><th>Pago</th><th class="num">Ahorro</th><th class="num">Total</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let v of d.ventas">
+              <td>#{{ v.folio }}</td><td class="nowrap">{{ hora(v.datee) }}</td><td>{{ v.cajero || '—' }}</td><td>{{ v.caja || '—' }}</td>
+              <td>{{ pago(v.payment_method) }}</td><td class="num">{{ v.ahorro ? dinero(v.ahorro) : '' }}</td><td class="num">{{ dinero(v.total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+</div>

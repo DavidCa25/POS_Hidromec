@@ -475,13 +475,13 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">
+            <label class="form-label" for="corte-contado">
               <i class="ph ph-money"></i>
-              Efectivo entregado
+              Efectivo contado en el cajón
             </label>
             <div class="input-with-currency">
               <span class="currency-symbol">$</span>
-              <input type="number"
+              <input id="corte-contado" type="number"
                      min="0" 
                      step="0.01"
                      class="form-control form-control-lg"
@@ -489,6 +489,10 @@
                      placeholder="0.00"
                      autofocus>
             </div>
+            <!-- Lo que más se olvida: el fondo también se cuenta. -->
+            <small class="form-text" *ngIf="mode === 'TURNO' && openShiftOpeningCash > 0">
+              Todo lo del cajón, <b>incluido el fondo de {{ openShiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>.
+            </small>
           </div>
 
           <div class="amount-display difference" *ngIf="!corteCiego" [class.positive]="cashDiff >= 0" [class.negative]="cashDiff < 0">

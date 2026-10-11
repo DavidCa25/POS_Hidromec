@@ -32,13 +32,15 @@ const ACCESOS: Acceso[] = [
   { paquete: PAQUETES.VENTAS_OPERAR, titulo: 'Vender y cobrar', icono: 'ph-cash-register',
     detalle: 'Abrir su turno, vender, cobrar, registrar clientes y sacar el ticket o la factura de la venta.' },
   { paquete: PAQUETES.VENTAS_SUPERVISAR, titulo: 'Autorizar lo delicado', icono: 'ph-shield-check',
-    detalle: 'Devoluciones, cancelaciones, abrir el cajón sin venta y cancelar facturas.' },
-  { paquete: PAQUETES.INVENTARIO_OPERAR, titulo: 'Inventario y compras', icono: 'ph-package',
-    detalle: 'Productos, precios, existencias, conteos, compras y proveedores.' },
+    detalle: 'Retiros, egresos, devoluciones, cancelaciones y abrir el cajón sin venta; y autorizarlos con su PIN.' },
+  { paquete: PAQUETES.CATALOGO_EDITAR, titulo: 'Catálogo', icono: 'ph-package',
+    detalle: 'Dar de alta y editar productos, categorías, recetas y modificadores. Bajar un precio más de $7 avisa al dueño.' },
+  { paquete: PAQUETES.INVENTARIO_OPERAR, titulo: 'Mover inventario', icono: 'ph-arrows-left-right',
+    detalle: 'Ajustes y conteos, compras, proveedores, traspasos y dar de baja productos, sin pedir autorización.' },
   { paquete: PAQUETES.CAJA_CORTES, titulo: 'Cortes de caja', icono: 'ph-vault',
     detalle: 'Cerrar el turno de otra persona y autorizar su corte.' },
   { paquete: PAQUETES.COMERCIAL_ADMINISTRAR, titulo: 'Promociones y combos', icono: 'ph-tag',
-    detalle: 'Combos, promociones y precios por canal.' },
+    detalle: 'Combos, promociones y precios por canal. Más de 30% o bajo costo lo autoriza un encargado.' },
   { paquete: PAQUETES.CONFIGURACION_EQUIPO, titulo: 'Equipo de la caja', icono: 'ph-printer',
     detalle: 'Impresora, cajón, lector, báscula, pantalla de cliente y teclado.' },
   { paquete: PAQUETES.REPORTES_VER, titulo: 'Ver los números', icono: 'ph-chart-line',
@@ -62,15 +64,16 @@ const PUESTOS: { clave: ClaveRol; nombre: string; icono: string; lema: string; e
   {
     clave: 'supervisor', nombre: 'Encargado', icono: 'ph-user-gear',
     lema: 'Responde por el turno.',
-    explica: 'El Encargado vende y cobra como un Operador, pero además autoriza lo delicado —devoluciones, '
-      + 'cancelaciones, abrir el cajón sin venta—, lleva el inventario y ve los números. '
-      + 'No toca usuarios ni la configuración del negocio.',
+    explica: 'El Encargado hace todo lo de un Operador y, además, lo que mueve dinero o mercancía del negocio: '
+      + 'retiros, egresos, devoluciones, ajustes, compras y traspasos. Autoriza con su PIN lo que un Operador '
+      + 'no puede hacer solo y ve los números. No toca usuarios ni la configuración del negocio.',
   },
   {
     clave: 'cajero', nombre: 'Operador', icono: 'ph-user',
     lema: 'Atiende al cliente.',
-    explica: 'El Operador hace el trabajo del día: abre su turno, vende, cobra y registra clientes. '
-      + 'Cuando algo necesita autorización, como una devolución o abrir el cajón, se lo pide a un Encargado o al Administrador.',
+    explica: 'El Operador hace el trabajo del día: vende, cobra, registra clientes y hace cortes. Si hace falta, '
+      + 'da de alta productos, promociones y combos. Lo que mueve dinero o mercancía —un retiro, una devolución, '
+      + 'un ajuste— lo pide y lo autoriza un Encargado con su PIN o el dueño desde su app.',
   },
 ];
 

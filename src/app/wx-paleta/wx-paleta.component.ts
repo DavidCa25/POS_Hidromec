@@ -117,6 +117,8 @@ export class WxPaletaComponent implements OnInit {
   private get verNumeros() { return this.auth.puede(PAQUETES.REPORTES_VER); }
   private get hacerCortes() { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   private get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
+  /** Roles v2: el catalogo tambien es del Operador (compras y conteos se autorizan al guardar). */
+  private get editarCatalogo() { return this.auth.puede(PAQUETES.CATALOGO_EDITAR) || this.operarInventario; }
   private get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
   private get haceServicios() {
     return this.caps.servicios
@@ -133,12 +135,13 @@ export class WxPaletaComponent implements OnInit {
       a('Nueva orden de servicio', '/dashboard/ordenes-de-servicio/ordenes', 'ph-wrench', this.haceServicios),
       a('Nueva cita', '/dashboard/ordenes-de-servicio/agenda', 'ph-calendar-plus', this.haceServicios && this.giro.usaAgenda),
       a('Nuevo cliente', '/dashboard/clientes', 'ph-user-plus', this.operarVentas),
-      a('Registrar compra', '/dashboard/registrarCompra', 'ph-bag', this.operarInventario),
-      a('Nuevo producto', '/dashboard/inventario', 'ph-package', this.operarInventario),
+      a('Registrar compra', '/dashboard/registrarCompra', 'ph-bag', this.editarCatalogo),
+      a('Nuevo producto', '/dashboard/inventario', 'ph-package', this.editarCatalogo),
       a('Hacer corte del día', '/dashboard/corte-dia', 'ph-calendar-check', this.verNumeros || this.hacerCortes),
+      a('Ver cierre del día', '/dashboard/cierre-dia', 'ph-calendar-check', this.verNumeros),
       a('Registrar egreso', '/dashboard/egresos', 'ph-receipt', this.supervisarVentas && this.verNumeros),
       a('Registrar pago al personal', '/dashboard/pagos-personal', 'ph-hand-coins', this.supervisarVentas && this.verNumeros),
-      a('Conteo físico', '/dashboard/conteo', 'ph-clipboard-text', this.operarInventario),
+      a('Conteo físico', '/dashboard/conteo', 'ph-clipboard-text', this.editarCatalogo),
     ].filter((x): x is Resultado => !!x);
   }
 
@@ -280,7 +283,7 @@ export class WxPaletaComponent implements OnInit {
       (p ?? Promise.resolve(null as any)).catch(() => null);
 
     const [prod, cli, ords, acts] = await Promise.all([
-      this.operarInventario ? pedir(api.getActiveProducts?.()) : Promise.resolve(null),
+      this.editarCatalogo ? pedir(api.getActiveProducts?.()) : Promise.resolve(null),
       this.operarVentas ? pedir(api.getCustomers?.()) : Promise.resolve(null),
       this.haceServicios ? pedir(api.serviciosOrdenes?.({})) : Promise.resolve(null),
       this.haceServicios && this.giro.usaActivos ? pedir(api.serviciosActivos?.({})) : Promise.resolve(null),

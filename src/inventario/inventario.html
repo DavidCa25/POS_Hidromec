@@ -190,7 +190,7 @@
 
               <!-- Baja LOGICA: el producto deja de venderse y conserva su
                    historial. Nunca se borra la fila. -->
-              <button class="action-btn btn-delete"
+              <button class="action-btn btn-delete" *ngIf="puedeDarDeBaja"
                       type="button"
                       aria-label="Dar de baja"
                       data-tooltip="Dar de baja"

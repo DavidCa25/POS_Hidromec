@@ -58,8 +58,11 @@ export class SalidaEfectivo implements OnInit {
   /* Gasto y pago a proveedor sacan dinero del negocio: los hace quien
      responde del turno (y las compras, quien opera inventario). El retiro
      simple sigue abierto al Operador, como siempre. */
-  get puedeGasto(): boolean { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
-  get puedePagarProveedor(): boolean { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
+  /* Roles v2: quien vende puede PEDIR un gasto o un pago a proveedor; si no
+     tiene el permiso, la operacion pide autorizacion (PIN o el dueno en su
+     app) al guardar. Que lo vea no es que lo pueda hacer solo. */
+  get puedeGasto(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
+  get puedePagarProveedor(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   get gastoConceptoOpciones(): WxOpcion[] {
     return this.gastoConceptos.map(c => ({ valor: c.id, etiqueta: c.name }));
   }
