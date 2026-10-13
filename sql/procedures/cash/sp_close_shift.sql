@@ -169,11 +169,14 @@ BEGIN
             IF @user_id <> @shift_user_id
             BEGIN
                 /* 0056: o el permiso CAJA_CORTES otorgado a esa persona (un
-                   Operador de confianza que hace los cortes de los demas). */
+                   Operador de confianza que hace los cortes de los demas).
+                   0059: desde Roles v2 el Operador (cajero) ya trae CAJA_CORTES
+                   por su rol (electron/seguridad/permisos.js); aqui faltaba y
+                   su PIN se rechazaba aunque la pantalla se lo pedia. */
                 IF @authorized_by IS NULL OR NOT EXISTS (
                     SELECT 1 FROM dbo.users u
                      WHERE u.id = @authorized_by AND u.active = 1
-                       AND (LOWER(LTRIM(RTRIM(u.rol))) IN (N'admin', N'supervisor')
+                       AND (LOWER(LTRIM(RTRIM(u.rol))) IN (N'admin', N'supervisor', N'cajero')
                             OR EXISTS (SELECT 1 FROM dbo.user_permissions p
                                         WHERE p.user_id = u.id AND p.permiso = 'CAJA_CORTES')))
                 BEGIN

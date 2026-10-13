@@ -3217,6 +3217,12 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
         webContentsId: event.sender.id, actorId: userId, canal: 'sp-close-shift',
       });
       if (!autorizador) return { success: false, error: 'La autorización ya no es válida. Pídela de nuevo.', requiereAutorizacion: true };
+    } else if (!aprobacionesActivas() && ses.permisos.has(permisos.BUNDLES.CAJA_CORTES)) {
+      /* Aprobaciones apagadas por el cliente (ajustes del addon): quien tiene
+         «Cortes de caja» cierra un turno ajeno sin PIN. Se autoriza a si mismo
+         y el procedimiento lo deja en bitacora (SHIFT_CLOSED_BY_OTHER). Su
+         propio turno no necesita autorizador: el procedimiento lo descarta. */
+      autorizador = { autorizadorId: userId };
     }
     req.input('authorized_by', sql.Int, autorizador ? Number(autorizador.autorizadorId) : null);
     req.input('blind_count', sql.Bit, payload?.blind ? 1 : 0);
