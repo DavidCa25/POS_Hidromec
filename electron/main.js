@@ -118,7 +118,7 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // IPC del dominio Fidelizacion (campanas, recompensas, cupones, dinamicas y
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
-require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad});
+require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad,aprobacionesActivas});
 /* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
 const ipcMulti = require('./ipc/multisucursal');
 ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
@@ -1432,6 +1432,11 @@ const CRITICOS_ALERTA = {
   ELIMINADO: 'Producto eliminado del ticket'
 };
 
+/* Roles v2: ¿se piden aprobaciones? Lo decide el addon del cliente
+   (custom-addons/<id>/manifest.json -> ajustes.aprobaciones). Sin addon, si. */
+const AJUSTES_ADDON = (() => { try { return require('./addon.generated.json').ajustes || {}; } catch { return {}; } })();
+function aprobacionesActivas() { return AJUSTES_ADDON.aprobaciones !== false; }
+
 /** Roles v2: ultimo cobro por ventana, para abrir el cajon "al cobrar" sin pedir PIN. */
 const ultimoCobro = new Map();
 
@@ -1463,7 +1468,8 @@ async function registrarAutorizacion(e) {
   const c = e.autorizador || {};
   const p = e.payload && typeof e.payload === 'object' ? e.payload : {};
   const monto = [p.amount, p.monto, p.total, p.refundAmount].map(Number).find(n => Number.isFinite(n) && n > 0) ?? null;
-  const quien = c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario || 'el dueño'}`
+  const quien = c.via === 'SIN_APROBACION' ? 'sin autorización (aprobaciones apagadas)'
+    : c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario || 'el dueño'}`
     : c.via === 'PROPIO' ? 'sin autorización (tiene el permiso)'
     : `autorizó ${c.autorizadorUsuario || 'un encargado'}${c.via ? ' · ' + c.via : ''}`;
   const nota = p.note || p.nota || p.concepto || p.reason || '';
@@ -1958,6 +1964,7 @@ sesion.configurar({
      a usar. Local y sin red; `licencia` se crea mas abajo, antes de que
      llegue cualquier canal. */
   licencia: () => licencia.evaluador(),
+  aprobacionesActivas: () => aprobacionesActivas(),
   registrar: (e) => {
     console.warn(`[ACCESO] ${e.tipo ?? ''} ${e.motivo} · canal=${e.canal ?? '-'} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`);
     /* Un renderer que intenta operar como otro usuario queda en la bitácora:
@@ -2304,7 +2311,7 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     let ajusteAutorizado = null;
     const cambiaExistencia = antes && String(antes.inventory_mode || '').toUpperCase() !== 'RECIPE'
       && Math.abs(Number(antes.stock || 0) - stock) > 0.0001;
-    if (cambiaExistencia && !ses.permisos.has(permisos.BUNDLES.INVENTARIO_OPERAR)) {
+    if (cambiaExistencia && !ses.permisos.has(permisos.BUNDLES.INVENTARIO_OPERAR) && aprobacionesActivas()) {
       ajusteAutorizado = autorizacionEnCanal(event, ses, payload, 'sp-update-product');
       if (!ajusteAutorizado) {
         return pideAutorizacion('sp-update-product', 'Cambiar la existencia es un ajuste de inventario: lo autoriza un encargado.',
@@ -3027,7 +3034,7 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
     const trasCobro = payload?.reason === 'payment' && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
     if (trasCobro) ultimoCobro.delete(_event.sender.id);
     else {
-      const propio = ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR);
+      const propio = ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR) || !aprobacionesActivas();
       const c = propio ? null : autorizacionEnCanal(_event, ses, payload, 'open-cash-drawer');
       if (!propio && !c) return pideAutorizacion('open-cash-drawer', 'Abrir el cajón sin una venta tiene que autorizarlo un encargado.');
       registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c ? (c.via === 'APP' ? null : Number(c.autorizadorId) || null) : ses.userId,

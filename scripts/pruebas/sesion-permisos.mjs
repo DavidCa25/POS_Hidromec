@@ -296,6 +296,27 @@ seccion('3a. El renderer no declara quien es');
   check(!s.permisos.has(B.VENTAS_SUPERVISAR), 'y con ella los paquetes de su rol');
 }
 
+seccion('3a2. Roles v2: aprobaciones, encendidas y apagadas por el addon');
+{
+  baseFalsa({ usuarios: { 3: OPERADOR } });
+  await sesion.abrir(12, OPERADOR);
+  const evento = { sender: { id: 12 } };
+  let corrio = null;
+  const retiro = sesion.proteger('sp-register-cash-out', async (_e, p, ses) => { corrio = ses; return { success: true }; });
+  const r1 = await retiro(evento, { amount: 100 });
+  check(r1.requiereAutorizacion === true && corrio === null, 'encendidas: el retiro de un Operador pide autorizacion');
+  sesion.configurar({ aprobacionesActivas: () => false });
+  const r2 = await retiro(evento, { amount: 100 });
+  check(r2.success === true && corrio?.autorizacion?.via === 'SIN_APROBACION', 'apagadas: el Operador lo hace y queda dicho que fue sin autorizacion');
+  const usuarios = sesion.proteger('users:create', async () => ({ success: true }));
+  const r3 = await usuarios(evento, {});
+  check(r3.success === false, 'apagar aprobaciones NO abre lo que no es aprobable (usuarios)');
+  sesion.configurar({ aprobacionesActivas: () => true });
+  const leer = (f) => readFileSync(join(raiz, f), 'utf8');
+  check(/AJUSTES_ADDON\.aprobaciones !== false/.test(leer('electron/main.js')) && /'aprobaciones'/.test(leer('scripts/addons.mjs')),
+    'lo decide el manifiesto del addon (ajustes.aprobaciones), no el nucleo');
+}
+
 seccion('3b. La sesion va por ventana, no es global');
 {
   baseFalsa({ usuarios: { 1: ADMIN, 3: OPERADOR } });

@@ -3,7 +3,7 @@ const { BUNDLES } = require('../seguridad/permisos');
 const motor = require('../comercial/motor.cjs');
 const servicio = require('../comercial/servicio.cjs');
 const limites = require('../comercial/limites.cjs');
-function registrar({ ipcMain, sql, poolPromise, cajaDeLaOperacion, autorizacionEnCanal, pideAutorizacion, registrarEventoSeguridad }) {
+function registrar({ ipcMain, sql, poolPromise, cajaDeLaOperacion, autorizacionEnCanal, pideAutorizacion, registrarEventoSeguridad, aprobacionesActivas = () => true }) {
     const safe = fn => async (...args) => { try {
         return { success: true, data: await fn(...args) };
     }
@@ -24,7 +24,7 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeLaOperacion, autorizacionE
             const revision = limites.revisar(p.policy, anterior, catalog.products || []);
             const supervisa = s.permisos.has(BUNDLES.VENTAS_SUPERVISAR);
             let c = null;
-            if (revision.excesos.length && !supervisa) {
+            if (revision.excesos.length && !supervisa && aprobacionesActivas()) {
                 c = autorizacionEnCanal(event, s, p, 'commercial:save');
                 if (!c)
                     return pideAutorizacion('commercial:save', `Pasa el límite de un operador (${limites.LIMITE_PORCENTAJE}% o bajo costo): lo autoriza un encargado.`,
