@@ -1,7 +1,7 @@
 {
   "id": "wybix_idonut",
   "nombre": "I Do Nut",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "wybixMin": "1.4.0",
   "canal": "idonut",
   "publicacion": {
@@ -13,5 +13,8 @@
     "mascotaEnTouch",
     "fondoTouch"
   ],
-  "descripcion": "Mascota I DO NUT ME en lugar de Wybix y logo de la marca como fondo de Touch."
+  "descripcion": "Mascota I DO NUT ME en lugar de Wybix y logo de la marca como fondo de Touch.",
+  "ajustes": {
+    "aprobaciones": false
+  }
 }

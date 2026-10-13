@@ -7,7 +7,7 @@ ejecución: un build sin addon no lleva ni un byte del cliente.
 ```
 custom-addons/
 └── wybix_<cliente>/
-    ├── manifest.json     id, nombre, versión, wybixMin, canal, huecos
+    ├── manifest.json     id, nombre, versión, wybixMin, canal, huecos, ajustes
     ├── index.ts          exporta (default) un AddonWybix
     ├── assets/           imágenes; se publican en assets/addon/
     └── …                 lo que el addon necesite (mascota, marca, fuentes)
@@ -67,3 +67,13 @@ su personaje.
 | Addon | Cliente | Huecos |
 |---|---|---|
 | `wybix_idonut` | I Do Nut | mascota I DO NUT ME, mascota en Touch, logo como fondo de Touch |
+
+## Ajustes de comportamiento
+
+Además de los huecos visuales, el manifiesto puede traer `ajustes`: decisiones de
+operación que el cliente toma, leídas por el núcleo sin nombrar al cliente.
+Solo claves conocidas y booleanas (`scripts/addons.mjs` descarta el resto).
+
+| Ajuste | Qué hace |
+|---|---|
+| `aprobaciones: false` | No se piden aprobaciones (PIN o app) para retiros, egresos, devoluciones, ajustes, compras ni cajón sin venta: quien vende las hace. Siguen en bitácora, en el Cierre del día y con aviso al dueño. |

@@ -73,6 +73,10 @@ let deps = {
      configurar no restringe nada, que es como se ejercita este módulo solo. */
   licencia: () => null,
   registrar: () => {},
+  /* Roles v2: el addon de un cliente puede apagar las aprobaciones (nadie
+     disponible para autorizar). Apagadas, quien VENDE hace las operaciones
+     aprobables sin comprobante; siguen en bitacora y con aviso al dueno. */
+  aprobacionesActivas: () => true,
 };
 
 function configurar(nuevas) {
@@ -266,6 +270,16 @@ function proteger(canal, handler, opciones = {}) {
        esta ventana, este actor, este canal) y la operacion corre con el
        autorizador a la vista del handler (`ses.autorizacion`). Sin
        comprobante, la respuesta le dice a la caja que lo pida. */
+    if (!r.ok && r.motivo === 'SIN_PERMISO' && ap && !ap.enCanal && !deps.aprobacionesActivas()
+        && r.sesion?.permisos?.has('VENTAS_OPERAR')) {
+      const s = r.sesion;
+      const r2 = await comprobar(id, permiso, { ...opciones, canal, aprobado: true });
+      if (!r2.ok) return { success: false, ok: false, error: MENSAJES[r2.motivo] || 'No autorizado.', motivo: r2.motivo };
+      const c = { via: 'SIN_APROBACION', autorizadorId: null, autorizadorUsuario: s.usuario };
+      const ses = { ...r2.sesion, autorizacion: c };
+      deps.registrar({ tipo: 'AUTORIZADO', canal, evento: ap.evento, userId: s.userId, autorizador: c, payload: args[0], webContentsId: id });
+      return handler(evento, ...conActorDeSesion(canal, args, ses, id), ses);
+    }
     if (!r.ok && r.motivo === 'SIN_PERMISO' && ap && !ap.enCanal) {
       const s = r.sesion;
       const token = args[0] && typeof args[0] === 'object' ? args[0].autorizacion : null;
