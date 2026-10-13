@@ -106,15 +106,16 @@ try {
   const t2 = abrir(ana, 300);
   r = falla(cerrar(t2, migue, ', @cash_delivered=300'), 'REQUIERE_AUTORIZACION');
   check(r.ok, 'un Operador sin autorizador no puede', r.error?.slice(0, 60));
+  // 0059: un rol que no trae CAJA_CORTES (aqui, uno desconocido) no autoriza.
+  q(`UPDATE dbo.users SET rol = N'invitado' WHERE id = ${luis};`);
   r = falla(cerrar(t2, migue, `, @cash_delivered=300, @authorized_by=${luis}`), 'REQUIERE_AUTORIZACION');
-  check(r.ok, 'ni autorizado por otro Operador sin el permiso', r.error?.slice(0, 60));
-  r = falla(cerrar(t2, migue, `, @cash_delivered=300, @authorized_by=${migue}`), 'REQUIERE_AUTORIZACION');
-  check(r.ok, 'ni autorizandose el mismo sin el permiso', r.error?.slice(0, 60));
+  check(r.ok, 'ni autorizado por alguien sin CAJA_CORTES', r.error?.slice(0, 60));
+  q(`UPDATE dbo.users SET rol = N'cajero' WHERE id = ${luis};`);
 
-  q(`INSERT INTO dbo.user_permissions (user_id, permiso, granted_by) VALUES (${migue}, 'CAJA_CORTES', NULL);`);
+  // Roles v2: el Operador (cajero) ya trae CAJA_CORTES por su rol.
   const fin = uno(cerrar(t2, migue, `, @cash_delivered=300, @cash_left=150, @authorized_by=${migue}`));
   check(fin && escalar(`SELECT CASE WHEN closed_at IS NULL THEN 0 ELSE 1 END FROM dbo.cash_closures WHERE id = ${t2};`) === 1,
-    'con CAJA_CORTES, Migue cierra el turno de Ana');
+    'un Operador (CAJA_CORTES por su rol) cierra el turno de Ana');
   const quien = uno(`SELECT closed_by_user_id, close_authorized_by FROM dbo.cash_closures WHERE id = ${t2};`);
   check(Number(quien.closed_by_user_id) === migue && Number(quien.close_authorized_by) === migue,
     'y queda dicho quien cerro y quien autorizo', JSON.stringify(quien));
@@ -130,6 +131,7 @@ try {
   seccion('3. La tabla');
   r = falla(`INSERT INTO dbo.user_permissions (user_id, permiso) VALUES (999999, 'CAJA_CORTES');`);
   check(r.ok, 'no acepta permisos de un usuario que no existe');
+  q(`INSERT INTO dbo.user_permissions (user_id, permiso, granted_by) VALUES (${migue}, 'CAJA_CORTES', NULL);`);
   r = falla(`INSERT INTO dbo.user_permissions (user_id, permiso) VALUES (${migue}, 'CAJA_CORTES');`);
   check(r.ok, 'ni el mismo permiso dos veces');
 
