@@ -1,6 +1,6 @@
 {
   "name": "wybix-pos",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
@@ -31,6 +31,9 @@
     "db:test-baja": "node scripts/db/pruebas/baja-producto.mjs",
     "db:test-turno": "node scripts/db/pruebas/turno.mjs",
     "db:test-permisos": "node scripts/db/pruebas/permisos-corte.mjs",
+    "db:test-corte-correo": "node scripts/db/pruebas/corte-correo.mjs",
+    "db:test-resultados": "node scripts/db/pruebas/estado-resultados.mjs",
+    "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
     "db:test-egresos": "node scripts/db/pruebas/egresos.mjs",
     "db:test-bebidas": "node scripts/db/pruebas/bebidas.mjs",
