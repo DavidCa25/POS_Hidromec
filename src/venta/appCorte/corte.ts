@@ -1,6 +1,9 @@
 import {WxSelectComponent,WxOpcion} from '../../app/wx-select/wx-select.component';
 import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
-import { Component } from '@angular/core';
+import { CorteCorreosComponent } from '../../app/corte-correos/corte-correos.component';
+import { Component, inject } from '@angular/core';
+import { ReportService, ReportConfig, ReportColumn, ReportSeccion, fechaSql } from '../../services/report.service';
+import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
@@ -86,13 +89,16 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [WxSelectComponent,ReceiptViewer,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
+  imports: [WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
   closedOptions:WxOpcion[]=[];selectedClosed:number|null=null;
   async cargarCortes(){const r=await (window as any).electronAPI.ticketClosures({registerId:this.selectedRegisterId});this.closedOptions=(r?.data??[]).map((c:any)=>({valor:c.id,etiqueta:'#'+c.id+' · '+c.register_name,nota:new Date(c.closed_at).toLocaleString('es-MX')}));}
   receiptId:number|null=null;lastClosedId:number|null=null;
+  /** 0061: los correos de los cortes a los dueños (enviar los que no salieron). */
+  verCorreos = false;
+  get puedeCorreos(): boolean { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   verCorte(){this.receiptId=this.lastClosedId;}
   hoy = new Date();
 
@@ -613,6 +619,75 @@ export class Corte {
   get selectedRegisterName(): string {
     const c = this.cajas.find(x => x.id === this.selectedRegisterId);
     return c ? c.name : '';
+  }
+
+  /* ------------------------------------------------------- exportar
+     Lo que se ve: ventas por forma de pago, el efectivo que debe haber y
+     cada movimiento. Nunca en corte ciego: el archivo mostraría el
+     esperado que quien cuenta todavía no debe ver. */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    if (this.corteCiego) return;
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const b = this.breakdown;
+    const pagos = [
+      { forma: 'Efectivo', monto: b.ventasEfectivo }, { forma: 'Tarjeta', monto: b.ventasTarjeta },
+      { forma: 'Transferencia', monto: b.ventasTransferencia }, { forma: 'Terminal Mercado Pago', monto: b.ventasMercadoPago },
+      { forma: 'Plataformas', monto: b.ventasPlataforma }, { forma: 'Crédito', monto: b.ventasCredito },
+    ].filter(p => Number(p.monto) !== 0);
+    const caja = [
+      { concepto: 'Fondo inicial', grupo: '', movimientos: '', total: this.fondoInicial },
+      ...this.lineasCaja.flatMap(l => l.conceptos.map(c => ({ concepto: c.concepto, grupo: l.etiqueta, movimientos: c.movimientos, total: c.total }))),
+      { concepto: 'Efectivo que debe haber', grupo: '', movimientos: '', total: this.cashExpected, __total: true },
+    ];
+    const periodo = this.mode === 'TURNO'
+      ? `Turno #${this.openShiftId ?? ''}${this.openShiftOpenedAt ? ' · abierto ' + fechaSql(this.openShiftOpenedAt) : ''}`
+      : `${this.desdeStr} a ${this.hastaStr}`;
+    const cfg: ReportConfig = {
+      titulo: this.mode === 'TURNO' ? 'Corte de caja' : 'Reporte de caja',
+      subtitulo: `${this.selectedRegisterName} · ${periodo}`,
+      columns: [], rows: [],
+      meta: [`Vendido ${this.totalVentasGenerales.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} · efectivo que debe haber ${this.cashExpected.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`],
+      filename: this.mode === 'TURNO' ? `corte-${this.openShiftId ?? ''}` : `reporte-caja_${this.desdeStr}_${this.hastaStr}`,
+      secciones: ([
+        {
+          titulo: 'Ventas por forma de pago',
+          nota: 'Todo lo cobrado, sin importar cómo se pagó.',
+          columns: [{ header: 'Forma de pago', key: 'forma', width: 26 }, $('Importe', 'monto')],
+          rows: pagos,
+          totals: { monto: this.totalVentasGenerales },
+        },
+        {
+          titulo: 'Dinero en caja',
+          nota: 'Solo el efectivo del cajón: fondo, más lo que entró, menos lo que salió.',
+          columns: [{ header: 'Concepto', key: 'concepto', width: 30 }, { header: 'Grupo', key: 'grupo', width: 22 }, { header: 'Movimientos', key: 'movimientos', num: true, width: 12 }, $('Importe', 'total')],
+          rows: caja,
+        },
+        {
+          titulo: 'Movimientos de efectivo',
+          columns: [
+            { header: 'Fecha y hora', key: 'fecha', width: 18 }, { header: 'Tipo', key: 'tipo', width: 20 }, { header: 'Concepto', key: 'concepto', width: 22 },
+            { header: 'Quién', key: 'user_name', width: 14 }, { header: 'Referencia', key: 'reference', width: 14 }, { header: 'Nota', key: 'note', width: 24 }, $('Importe', 'amount'),
+          ],
+          rows: this.movimientos.map(m => ({
+            ...m, fecha: fechaSql(m.datee),
+            tipo: m.tipo_label || m.typee, concepto: m.concepto || '',
+          })),
+          totals: { amount: this.movimientos.reduce((a, m) => a + Number(m.amount || 0), 0) },
+        },
+      ] as ReportSeccion[]).filter(s => s.rows.length),
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
   }
 
   get totalVentasGenerales(): number {

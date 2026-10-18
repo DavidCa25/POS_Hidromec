@@ -65,7 +65,7 @@ test('Horarios: las ventas de ahora caen en la celda de hoy a esta hora', async 
   expect(Number(despues.sets[0][0].tickets), 'el procedimiento cuenta las dos').toBe(ticketsAntes + 2);
 
   // -------------------------------------------------------- la pantalla
-  await irPorMas(ventana, 'Estadisticas');
+  await irPorMas(ventana, 'Estadísticas');
   await ventana.waitForSelector('app-estadisticas', { timeout: 30000 });
   await ventana.click('.est-seg button:has-text("Horarios")');
   await ventana.waitForSelector('app-actividad-horaria', { timeout: 15000 });

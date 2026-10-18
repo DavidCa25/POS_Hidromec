@@ -80,3 +80,28 @@
   background: var(--wx-surface); color: var(--wx-text); font: inherit; font-size: var(--wx-text-xs); cursor: pointer;
 }
 .cd-plegar:hover { background: var(--wx-hover); }
+
+/* ------------------------------------------------- 0060 producción y merma */
+.cd-sub { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.cd-btn-chico { min-height: 32px; padding: 0 12px; font-size: var(--wx-text-xs); white-space: nowrap; }
+.cd-mermas { margin: 0; padding-left: 18px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); display: flex; flex-direction: column; gap: 2px; }
+.cd-velo { position: fixed; inset: 0; z-index: var(--wx-z-dialog); display: flex; align-items: center; justify-content: center; background: var(--wx-scrim); padding: 16px; }
+.cd-hoja {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px; width: min(760px, 100%);
+  padding: 22px; background: var(--wx-surface); border-radius: var(--wx-radius-lg); box-shadow: var(--wx-shadow-dialog);
+}
+@media (max-width: 640px) { .cd-hoja { grid-template-columns: 1fr; } }
+.cd-hoja__cuerpo { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cd-hoja h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.cd-hoja__ayuda { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.cd-hoja__num { font-family: var(--wx-font-mono); font-size: 52px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cd-hoja__error { margin: 0; color: var(--wx-danger); font-size: var(--wx-text-sm); font-weight: 600; }
+.cd-hoja__acc { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: auto; }
+.cd-motivos { display: flex; flex-wrap: wrap; gap: 8px; }
+.cd-chip { min-height: 40px; padding: 0 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); }
+.cd-chip.es-elegido { background: var(--wx-accent-soft); border-color: var(--wx-accent); color: var(--wx-accent-text); }
+.cd-teclado { display: grid; grid-template-columns: repeat(3, 68px); grid-auto-rows: 56px; gap: 8px; align-self: center; }
+.cd-teclado button { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); background: var(--wx-raised); color: var(--wx-text);
+  font: inherit; font-family: var(--wx-font-mono); font-size: 22px; font-weight: 600; cursor: pointer; transition: transform var(--wx-dur-press) var(--wx-ease-out); }
+.cd-teclado button:active { transform: scale(0.95); }

@@ -37,6 +37,8 @@ const ACCESOS: Acceso[] = [
     detalle: 'Dar de alta y editar productos, categorías, recetas y modificadores. Bajar un precio más de $7 avisa al dueño.' },
   { paquete: PAQUETES.INVENTARIO_OPERAR, titulo: 'Mover inventario', icono: 'ph-arrows-left-right',
     detalle: 'Ajustes y conteos, compras, proveedores, traspasos y dar de baja productos, sin pedir autorización.' },
+  { paquete: PAQUETES.PRODUCCION_OPERAR, titulo: 'Producción', icono: 'ph-cooking-pot',
+    detalle: 'Planear las tandas del día, empezarlas y registrar lo que salió y su merma.' },
   { paquete: PAQUETES.CAJA_CORTES, titulo: 'Cortes de caja', icono: 'ph-vault',
     detalle: 'Cerrar el turno de otra persona y autorizar su corte.' },
   { paquete: PAQUETES.COMERCIAL_ADMINISTRAR, titulo: 'Promociones y combos', icono: 'ph-tag',

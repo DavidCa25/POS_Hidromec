@@ -1,4 +1,6 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { ReportService, ReportConfig, ReportColumn } from '../services/report.service';
+import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
 import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { RouterOutlet } from '@angular/router';
@@ -86,7 +88,8 @@ type ClienteVenta = {
     CommonModule,
     DatePipe,
     DecimalPipe,
-    WxSelectComponent
+    WxSelectComponent,
+    WxMenuComponent
   ],
   styleUrls: ['./clientes.css']
 })
@@ -232,6 +235,48 @@ export class Clientes implements OnInit {
   get kpiVencidos()   { return this.clientes.filter(c => c.overdueCount > 0).length; }
   get kpiSaldoTotal() { return this.clientes.reduce((s,c)=> s + (c.balance>0?c.balance:0), 0); }
   get activosCount()  { return this.clientes.filter(c => c.active).length; }
+
+  /* ------------------------------------------------------- exportar
+     Cuentas por cobrar: lo que se ve con los filtros de la pantalla, del
+     más vencido al menos. Sale de sp_get_customers (ventas a crédito). */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    const filas = this.clientesView;
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const suma = (k: keyof Cliente) => filas.reduce((s, c) => s + Number((c as any)[k] || 0), 0);
+    const cfg: ReportConfig = {
+      titulo: 'Cuentas por cobrar',
+      subtitulo: this.preset === 'vencidos' ? 'Clientes con vencidos' : this.preset === 'con_saldo' ? 'Clientes con saldo' : 'Todos los clientes',
+      columns: [
+        { header: 'Código', key: 'code', width: 10 }, { header: 'Cliente', key: 'name', width: 28 }, { header: 'Teléfono', key: 'phone', width: 14 },
+        $('Límite', 'creditLimit'), $('Saldo', 'balance'), $('Disponible', 'availableCredit'),
+        { header: 'Ventas vencidas', key: 'overdueCount', num: true, width: 10 }, $('Saldo vencido', 'overdueBalance'),
+        { header: 'Días de atraso', key: 'maxDaysLate', num: true, width: 10 }, $('Recargo estimado', 'lateFeeEstimate'),
+        { header: 'Próximo vencimiento', key: 'vence', width: 14 }, { header: 'Plazo (días)', key: 'termsDays', num: true, width: 10 },
+        { header: 'Estado', key: 'estado', width: 12 },
+      ],
+      rows: filas.map(c => ({
+        ...c,
+        // Llega como Date (DATE de SQL a medianoche UTC) o como texto ISO.
+        vence: c.nextDueDate ? ((c.nextDueDate as any) instanceof Date ? (c.nextDueDate as any).toISOString() : String(c.nextDueDate)).slice(0, 10).split('-').reverse().join('/') : '',
+        estado: !c.active ? 'Inactivo' : c.creditBlock ? 'Crédito detenido' : 'Activo',
+      })),
+      totals: { creditLimit: suma('creditLimit'), balance: suma('balance'), overdueBalance: suma('overdueBalance'), lateFeeEstimate: suma('lateFeeEstimate') },
+      meta: [`${filas.length} clientes · ${filas.filter(c => c.balance > 0).length} con saldo · ${filas.filter(c => c.overdueCount > 0).length} con vencidos`],
+      filename: 'cuentas-por-cobrar',
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
+  }
 
   // ----- Vista filtrada -----
   /**

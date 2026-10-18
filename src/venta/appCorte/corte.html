@@ -1,6 +1,8 @@
 <div *ngIf="closedOptions.length" class="corte-reprint"><wx-select placeholder="Selecciona un corte cerrado" [opciones]="closedOptions" [(ngModel)]="selectedClosed" [buscable]="true"></wx-select><button type="button" class="btn btn-outline-primary" [disabled]="!selectedClosed" (click)="receiptId=selectedClosed"><i class="ph ph-printer"></i>Ver / imprimir corte</button></div>
 <app-receipt-viewer *ngIf="receiptId" [id]="receiptId" document="closure" (close)="receiptId=null"></app-receipt-viewer>
 <button *ngIf="lastClosedId" type="button" class="btn btn-outline-primary mb-3" (click)="verCorte()"><i class="ph ph-printer"></i>Ver / reimprimir último corte</button>
+<button *ngIf="puedeCorreos" type="button" class="btn btn-outline-primary mb-3" data-guide="corte-correos" (click)="verCorreos=true"><i class="ph ph-envelope-simple"></i>Correos de cortes</button>
+<app-corte-correos *ngIf="verCorreos" (close)="verCorreos=false"></app-corte-correos>
 <div class="corte-container">
   <!-- WIZARD DE PASOS -->
   <div class="wizard-steps" *ngIf="showFilters">
@@ -198,6 +200,9 @@
           </div>
         </div>
 
+        <wx-menu *ngIf="!corteCiego" etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+                 [opciones]="opcionesExportar" [deshabilitado]="loading"
+                 (elegir)="exportar($any($event))"></wx-menu>
         <button class="btn btn-success btn-lg"
                 [disabled]="loading || !canClose"
                 (click)="abrirModalCierre()">

@@ -55,6 +55,13 @@
           <span class="ini__accpie">Ventas, cortes de todas las cajas y lo que se autorizó</span>
         </button>
 
+        <!-- 0060 · La producción del día, para quien hornea. -->
+        <button type="button" class="ini__acc" *ngIf="producir" (click)="ir('/dashboard/produccion')" data-guide="inicio-produccion">
+          <i class="ph ph-bread" aria-hidden="true"></i>
+          <span class="ini__accnom">Producción de hoy</span>
+          <span class="ini__accpie" [class.ini__accpie--falta]="(produccion()?.faltan ?? 0) > 0">{{ pieProduccion }}</span>
+        </button>
+
         <button type="button" class="ini__acc" *ngFor="let s of otrasAcciones()"
                 (click)="ir(s.ruta)">
           <i class="ph {{ s.icono }}" aria-hidden="true"></i>

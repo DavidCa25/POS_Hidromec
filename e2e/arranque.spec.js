@@ -41,7 +41,7 @@ test.describe('Arranque · la pantalla inicial es Inicio', () => {
 
     /* La última pantalla no manda: quien sale desde Estadísticas vuelve a
        entrar por Inicio. */
-    await irPorMas(ventana, 'Estadisticas');
+    await irPorMas(ventana, 'Estadísticas');
     await ventana.waitForSelector('app-estadisticas', { timeout: 30000 });
 
     await salir(ventana);

@@ -21,8 +21,12 @@ BEGIN
     ;WITH daily AS (
         SELECT
             CAST(s.datee AS DATE)                           AS sale_date,
-            SUM(d.quantity * d.unitary_price)              AS total_sales,
-            SUM(d.quantity * ISNULL(p.cost, 0))            AS total_cost
+            /* 0062: venta sin IVA y costo CONGELADO del renglón (antes: venta con
+               IVA contra el costo de hoy del producto). */
+            SUM(CASE WHEN ISNULL(d.tax_object, '02') = '02'
+                     THEN d.subtotal / (1 + ISNULL(d.tax_rate, ISNULL(p.tasa_iva, 0)))
+                     ELSE d.subtotal END)                  AS total_sales,
+            SUM(d.quantity * COALESCE(d.unit_cost, p.cost, 0)) AS total_cost
         FROM sales        AS s
         JOIN sale_detail  AS d ON d.sale_id   = s.id
         JOIN products     AS p ON p.id        = d.product_id

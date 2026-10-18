@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WxSelectComponent, type WxOpcion } from '../app/wx-select/wx-select.component';
+import { TraspasosMapaComponent, type MapaEnvio, type MapaEtiqueta } from './mapa/traspasos-mapa.component';
 
 /**
  * TRASPASOS ENTRE SUCURSALES (MultiSucursal).
@@ -21,7 +22,7 @@ interface Entrante { id: string; from_location_id: string; from_nombre: string; 
 @Component({
   selector: 'app-traspasos',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, TraspasosMapaComponent],
   templateUrl: './traspasos.html',
   styleUrls: ['../eventos/eventos.css', './traspasos.css'],
 })
@@ -56,6 +57,86 @@ export class Traspasos implements OnInit {
     valor: p.product_uuid, etiqueta: p.nombre, nota: `Hay ${p.stock}`,
   })));
 
+  /* -------------------------------------------- el mapa (la pantalla misma) */
+  readonly aquiNombre = computed(() => this.sucursales().find((s) => s.id === this.locationId())?.nombre ?? '');
+  /** Lo que todavía no se recibe: lo que viene aquí y lo que salió de aquí. */
+  readonly enCamino = computed<MapaEnvio[]>(() => [
+    ...this.porRecibir().map((t) => ({ clave: 'in:' + t.id, desdeId: t.from_location_id, haciaId: this.locationId(),
+      desdeNombre: t.from_nombre, haciaNombre: this.aquiNombre(), piezas: t.lines.reduce((a, l) => a + Number(l.qty || 0), 0),
+      hora: t.sent_at, quien: t.sent_by_name, entrante: true, lineas: t.lines.map((l) => ({ nombre: l.nombre, qty: Number(l.qty) })) })),
+    ...this.historial().filter((h) => h.kind === 'BRANCH_OUT' && h.status === 'SENT').map((h) => ({
+      clave: 'out:' + (h.transfer_uuid || h.created_at), desdeId: this.locationId(),
+      haciaId: this.sucursales().find((s) => s.nombre === h.event_name)?.id ?? null,
+      desdeNombre: this.aquiNombre(), haciaNombre: h.event_name, piezas: Number(h.total_sent || 0),
+      hora: h.created_at, quien: null, entrante: false,
+      lineas: (h.lineas ?? []).map((l: any) => ({ nombre: l.nombre ?? l.product_name ?? 'Producto', qty: Number(l.qty_sent ?? l.qty ?? 0) })) })),
+  ]);
+
+  /** La sucursal del panel de la derecha (tu sucursal, si no tocaron otra). */
+  readonly sucursalElegida = signal<string | null>(null);
+  readonly panel = computed(() => {
+    const id = this.sucursalElegida() ?? this.locationId();
+    const s = this.sucursales().find((x) => x.id === id) ?? null;
+    if (!s) return null;
+    const aqui = s.id === this.locationId();
+    return { ...s, aqui,
+      entrantes: aqui ? this.porRecibir() : [],
+      hacia: this.enCamino().filter((e) => !e.entrante && e.haciaId === s.id) };
+  });
+  /** El envío del seguimiento de abajo (el que tocaron, o el primero). */
+  readonly envioElegido = signal<string | null>(null);
+  readonly seguimiento = computed(() => this.enCamino().find((e) => e.clave === this.envioElegido()) ?? this.enCamino()[0] ?? null);
+
+  /** Existencia de aquí, para el panel: lo que más hay, con su estado. */
+  readonly existenciaAqui = computed(() => [...this.productos()].sort((a, b) => b.stock - a.stock).slice(0, 6)
+    .map((p) => ({ nombre: p.nombre, stock: p.stock, tono: p.stock <= 0 ? 'falta' : p.stock <= 5 ? 'pocas' : 'bien' })));
+  readonly kpis = computed(() => {
+    const salen = this.enCamino().filter((e) => !e.entrante), vienen = this.enCamino().filter((e) => e.entrante);
+    const hoy = new Date().toDateString();
+    const enviadoHoy = this.historial().filter((h) => h.kind === 'BRANCH_OUT' && new Date(h.created_at).toDateString() === hoy);
+    return {
+      enCamino: salen.reduce((a, e) => a + e.piezas, 0), envios: salen.length,
+      porRecibir: vienen.reduce((a, e) => a + e.piezas, 0), entrantes: vienen.length,
+      enviadoHoy: enviadoHoy.reduce((a, h) => a + Number(h.total_sent || 0), 0), enviosHoy: enviadoHoy.length,
+    };
+  });
+  /** Lo que dice la etiqueta de cada local en el mapa. */
+  readonly etiquetas = computed<Record<string, MapaEtiqueta>>(() => {
+    const out: Record<string, MapaEtiqueta> = {};
+    for (const s of this.sucursales()) {
+      if (s.id === this.locationId()) {
+        const vienen = this.kpis().porRecibir;
+        out[s.id] = vienen ? { sub: `Por recibir: ${vienen} piezas`, tono: 'acc' }
+          : this.enHorno() ? { sub: `${this.enHorno()} tanda(s) en el horno`, tono: 'warn' } : { sub: 'Estás aquí', tono: null };
+      } else {
+        const van = this.enCamino().filter((e) => !e.entrante && e.haciaId === s.id).reduce((a, e) => a + e.piezas, 0);
+        out[s.id] = van ? { sub: `Le llegan ${van} piezas`, tono: 'acc' } : { sub: 'Toca para mandarle', tono: null };
+      }
+    }
+    return out;
+  });
+  /** Tandas en preparación aquí (si esta caja ve Producción): el horno del mapa. */
+  readonly enHorno = signal(0);
+
+  /* Ventanas: enviar, recibir e historial. Nada de formularios debajo del mapa. */
+  readonly ventana = signal<'enviar' | 'recibir' | 'historial' | null>(null);
+  readonly recibiendo = signal<Entrante | null>(null);
+
+  elegirSucursal(id: string) { this.sucursalElegida.set(id); }
+  tocarEnvio(e: MapaEnvio) {
+    this.envioElegido.set(e.clave);
+    if (e.entrante) this.abrirRecibir(this.porRecibir().find((t) => 'in:' + t.id === e.clave) ?? null);
+  }
+  abrirEnviar(id: string) { this.destino = id; this.lineas.set([]); this.nota = ''; this.error.set(null); this.ventana.set('enviar'); }
+  abrirRecibir(t: Entrante | null) { if (!t) return; this.recibiendo.set(t); this.error.set(null); this.ventana.set('recibir'); }
+  cerrarVentana() { if (!this.enviando()) { this.ventana.set(null); this.recibiendo.set(null); } }
+  nombreDestino() { return this.sucursales().find((s) => s.id === this.destino)?.nombre ?? ''; }
+  hora(iso: string | null) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  }
+
   async ngOnInit() { await this.cargar(); }
 
   async cargar() {
@@ -78,6 +159,11 @@ export class Traspasos implements OnInit {
       const lineas: any[] = t.data.lineas ?? [];
       this.historial.set((t.data.historial ?? []).map((h: any) => ({ ...h, lineas: lineas.filter((l) => l.transfer_uuid === h.transfer_uuid) })));
       this.productos.set((p?.data ?? []).map((x: any) => ({ ...x, stock: Number(x.stock) })));
+      // El horno del mapa: solo si esta caja ve Producción (si no, el canal lo niega y no pasa nada).
+      try {
+        const b = await (window as any).wybix?.produccion?.tablero?.({});
+        this.enHorno.set(b?.success ? (b.data.tandas ?? []).filter((x: any) => x.status === 'IN_PROGRESS').length : 0);
+      } catch { this.enHorno.set(0); }
       if (!this.destino && this.opcionesDestino().length === 1) this.destino = this.opcionesDestino()[0].valor;
     } catch (err: any) {
       this.error.set(err?.message ?? 'Error inesperado.');
@@ -115,6 +201,7 @@ export class Traspasos implements OnInit {
         : `${piezas} piezas salieron hacia ${s.nombre}. Sin conexión: ${s.nombre} lo verá en cuanto esta caja se conecte.`);
       this.lineas.set([]);
       this.nota = '';
+      this.ventana.set(null);
       await this.cargar();
     } catch (err: any) {
       this.error.set(err?.message ?? 'No se pudo enviar.');
@@ -129,6 +216,8 @@ export class Traspasos implements OnInit {
     const r = await this.api?.multiTraspasoRecibir?.({ traspaso: t, recibido: this.recibido[t.id] });
     if (!r?.success) { this.error.set(r?.error || 'No se pudo recibir el traspaso.'); return; }
     this.aviso.set(`Recibido de ${t.from_nombre}. La mercancía ya está en el inventario de esta sucursal.`);
+    this.ventana.set(null);
+    this.recibiendo.set(null);
     await this.cargar();
   }
 

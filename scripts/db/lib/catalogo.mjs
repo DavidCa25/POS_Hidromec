@@ -98,6 +98,10 @@ asignar('inventory', [
   'sp_transfer_send', 'sp_transfer_receive_return', 'sp_transfer_confirm_out', 'sp_transfer_list',
   // 0055: traspasos entre sucursales de la misma empresa (MultiSucursal).
   'sp_branch_transfer_send', 'sp_branch_transfer_receive', 'sp_branch_transfer_settle',
+  // 0060: produccion por tandas (formula de producto DIRECT, tablero, tandas).
+  'sp_production_formula_get', 'sp_production_formula_save', 'sp_production_formula_delete',
+  'sp_production_board', 'sp_production_plan', 'sp_production_start', 'sp_production_finish', 'sp_production_cancel',
+  'sp_production_waste',
 ]);
 
 asignar('cash', [
@@ -106,6 +110,8 @@ asignar('cash', [
   'sp_cash_summary', 'sp_get_cash_closures', 'sp_get_cash_movements',
   // 0049: la unica respuesta a "de que caja es este dinero".
   'sp_resolve_cash_register',
+  // 0061: el corte por correo (estado del envío y lo que lleva el correo).
+  'sp_cash_closure_email_job', 'sp_cash_closure_email_list', 'sp_cash_closure_email_data',
 ]);
 
 // 0049: egresos (renta, luz, un Uber...) y pagos al personal. No es
@@ -191,7 +197,9 @@ asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);
 
 asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit',
   // 0041: actividad del negocio por hora.
-  'sp_report_actividad_horaria', 'sp_day_close_report']);
+  'sp_report_actividad_horaria', 'sp_day_close_report',
+  // 0062: estado de resultados (ventas - costo congelado - mermas - egresos).
+  'sp_income_statement']);
 
 asignar('setup', [
   'sp_setup_inicial', 'sp_setup_status', 'sp_add_register', 'sp_set_register_active',

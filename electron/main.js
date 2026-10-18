@@ -119,6 +119,8 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
 require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad,aprobacionesActivas});
+/* 0060 · Produccion por tandas: formula de producto, tablero y tandas. */
+require('./ipc/produccion').registrar({ ipcMain, sql, poolPromise });
 /* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
 const ipcMulti = require('./ipc/multisucursal');
 ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
@@ -1429,13 +1431,83 @@ const CRITICOS_ALERTA = {
   ANULADA: 'Venta anulada',
   DRAWER_NO_SALE: 'Cajón abierto sin venta',
   DELETE: 'Producto eliminado del ticket',
-  ELIMINADO: 'Producto eliminado del ticket'
+  ELIMINADO: 'Producto eliminado del ticket',
+  /* Quien apaga las aprobaciones cambia quien puede sacar dinero: el dueño se entera al momento. */
+  APPROVALS_DISABLED: 'Se apagaron las aprobaciones',
+  APPROVALS_ENABLED: 'Se encendieron las aprobaciones'
 };
 
-/* Roles v2: ¿se piden aprobaciones? Lo decide el addon del cliente
-   (custom-addons/<id>/manifest.json -> ajustes.aprobaciones). Sin addon, si. */
+/* Roles v2: ¿se piden aprobaciones (PIN o app del dueño) para retiros,
+   egresos, devoluciones, ajustes, compras y cajón sin venta?
+
+   Lo decide el NEGOCIO desde el dock (Más > Aprobaciones): un Encargado o el
+   Administrador lo enciende o lo apaga, y queda en dbo.business_modules con
+   la clave APROBACIONES -la base, para que todas las cajas obedezcan lo
+   mismo-. Mientras nadie lo haya tocado manda el addon del cliente
+   (custom-addons/<id>/manifest.json -> ajustes.aprobaciones); sin addon, si.
+
+   Las comprobaciones son sincronas, asi que se lee de una copia que se
+   refresca sola cada pocos segundos: un cambio hecho en otra caja llega
+   aqui en ese plazo. */
 const AJUSTES_ADDON = (() => { try { return require('./addon.generated.json').ajustes || {}; } catch { return {}; } })();
-function aprobacionesActivas() { return AJUSTES_ADDON.aprobaciones !== false; }
+const CLAVE_APROBACIONES = 'APROBACIONES';
+const TTL_APROBACIONES_MS = 5000;
+let politicaAprobaciones = { valor: null, leidoEn: 0, leyendo: null };
+
+function aprobacionesPorOmision() { return AJUSTES_ADDON.aprobaciones !== false; }
+
+async function leerPoliticaAprobaciones() {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_business_modules');
+    const fila = (r.recordset || []).find(f => String(f.module_key) === CLAVE_APROBACIONES);
+    politicaAprobaciones = { valor: fila ? (fila.enabled === true || fila.enabled === 1) : null, leidoEn: Date.now(), leyendo: null };
+  } catch {
+    politicaAprobaciones = { ...politicaAprobaciones, leidoEn: Date.now(), leyendo: null };
+  }
+  return politicaAprobaciones.valor;
+}
+
+function aprobacionesActivas() {
+  const p = politicaAprobaciones;
+  if (Date.now() - p.leidoEn > TTL_APROBACIONES_MS && !p.leyendo) {
+    politicaAprobaciones.leyendo = leerPoliticaAprobaciones();
+  }
+  return p.valor ?? aprobacionesPorOmision();
+}
+
+/** Lo que el dock enseña: si se piden, y si lo decidio el negocio o el addon. */
+async function estadoAprobaciones() {
+  const valor = await leerPoliticaAprobaciones();
+  return { activas: valor ?? aprobacionesPorOmision(), origen: valor == null ? 'PREDETERMINADO' : 'NEGOCIO', predeterminado: aprobacionesPorOmision() };
+}
+
+ipcMain.handle('aprobaciones:politica', sesion.proteger('aprobaciones:politica', async () => {
+  try { return { success: true, data: await estadoAprobaciones() }; }
+  catch (e) { return { success: false, error: e.message }; }
+}));
+
+/* Encender o apagar las aprobaciones. Lo hace un Encargado o el
+   Administrador (el canal exige VENTAS_SUPERVISAR) y queda en bitácora con
+   quién fue: apagarlas cambia quién puede sacar dinero del cajón. */
+ipcMain.handle('aprobaciones:politica-cambiar', sesion.proteger('aprobaciones:politica-cambiar', async (_e, p = {}, ses) => {
+  try {
+    if (typeof p.activas !== 'boolean') return { success: false, error: 'Indica si se piden aprobaciones.' };
+    const actor = sesion.actorDe(ses);
+    const pool = await poolPromise;
+    await pool.request()
+      .input('module_key', sql.NVarChar(40), CLAVE_APROBACIONES)
+      .input('enabled', sql.Bit, p.activas ? 1 : 0)
+      .input('user_id', sql.Int, actor)
+      .execute('sp_set_business_module');
+    await registrarEventoSeguridad({
+      userId: actor, autorizadoPor: actor,
+      tipo: p.activas ? 'APPROVALS_ENABLED' : 'APPROVALS_DISABLED',
+      detalle: p.activas ? 'Se encendieron las aprobaciones' : 'Se apagaron las aprobaciones',
+    });
+    return { success: true, data: await estadoAprobaciones() };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
 
 /** Roles v2: ultimo cobro por ventana, para abrir el cajon "al cobrar" sin pedir PIN. */
 const ultimoCobro = new Map();
@@ -1552,8 +1624,8 @@ ipcMain.handle('reportes:cierre-dia', sesion.proteger('reportes:cierre-dia', asy
     const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(p.fecha || '')) ? String(p.fecha) : null;
     const pool = await poolPromise;
     const r = await pool.request().input('fecha', sql.Date, fecha).execute('sp_day_close_report');
-    const [resumen, pagos, cortes, salidas, promociones, eventos, ventas] = r.recordsets;
-    return { success: true, data: { resumen: resumen?.[0] ?? null, pagos, cortes, salidas, promociones, eventos, ventas } };
+    const [resumen, pagos, cortes, salidas, promociones, eventos, ventas, produccion = [], mermas = []] = r.recordsets;
+    return { success: true, data: { resumen: resumen?.[0] ?? null, pagos, cortes, salidas, promociones, eventos, ventas, produccion, mermas } };
   } catch (e) { return { success: false, error: e.message }; }
 }));
 
@@ -3163,6 +3235,9 @@ ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview
 
 //CIERRE DE CAJA
 
+/** 0061: lo registra electron/ipc/corte-correo.js (más abajo, con los comprobantes). */
+let corteCorreo = null;
+
 /*
  * CERRAR UN TURNO (Fase 1).
  *
@@ -3240,6 +3315,16 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
     /* El corte ya está cerrado: la nube se entera en el siguiente ciclo, y
        aquí solo se adelanta la captura. Si la nube falla, el corte no. */
     cloudSync.hechosAhora?.();
+
+    /* 0061: el correo del corte a los dueños. Sin esperarlo: el corte ya
+       está cerrado y un correo que falla queda pendiente para reenviarse
+       desde "Correos de cortes"; nunca deshace ni retrasa el cierre. */
+    const cerrado = result.recordset?.[0]?.closure_id;
+    if (cerrado && corteCorreo) {
+      corteCorreo.enviarCorte(Number(cerrado), userId)
+        .then((r) => { if (!r.ok && r.estado !== 'SIN_NUBE') console.warn('[corte-correo]', cerrado, r.error); })
+        .catch(() => {});
+    }
 
     return {
       success: true,
@@ -4278,6 +4363,10 @@ function buildTicketHtmlFromTemplate(header, details, extras={}) {
 // Roles v2: pedirle autorizacion al dueno desde la caja (Owner).
 require('./ipc/aprobaciones').registrar({ ipcMain, sesion, canales, reautenticacion, cloudSync, loadDeviceConfig, permisos });
 require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,ensureBusinessConfig,loadDeviceConfig,buildTicketHtmlFromTemplate,loadSaleFromDbWithSp,generateSaleTicketPdf,cloudSync,imprimirHtml});
+/* 0061: el corte de caja por correo a los dueños (se dispara al cerrar el turno). */
+corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0062: estado de resultados. */
+require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

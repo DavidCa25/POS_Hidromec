@@ -97,11 +97,14 @@ export class NavegacionService {
   /** 0056: hacer cortes (tambien de otros) sin ver todos los numeros. */
   get hacerCortes() { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   get supervisarVentas() { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
+  /** Si se piden aprobaciones (dock > Más): Encargado y Administrador. */
+  get cambiarAprobaciones() { return this.supervisarVentas; }
   get operarVentas() { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   /* Permiso de la persona Y derecho de la licencia (en Venta Esencial el
      inventario y las compras esperan a la renovación). */
   get operarInventario() { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR) && this.license.tiene('inventory'); }
   /** Roles v2: el catalogo (alta y edicion de productos) es tambien del Operador. */
+  get producir() { return this.auth.puede(PAQUETES.PRODUCCION_OPERAR) && this.license.tiene('inventory'); }
   get editarCatalogo() { return this.auth.puede(PAQUETES.CATALOGO_EDITAR) && this.license.tiene('inventory'); }
   get administrarNegocio() { return this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR); }
   /** 0056: combos, promociones y precios por canal; otorgable a un Operador. */
@@ -133,9 +136,11 @@ export class NavegacionService {
         ruta: '/dashboard/inicio', raiz: '/dashboard/inicio', visible: true,
         aviso: dato('inicio').aviso,
         destinos: [
-          { texto: 'Resumen del dia', ruta: '/dashboard/inicio', icono: 'ph-house', visible: true, principal: true },
+          { texto: 'Resumen del día', ruta: '/dashboard/inicio', icono: 'ph-house', visible: true, principal: true },
           // Roles v2: todo el dia del negocio en una pantalla.
-          { texto: 'Cierre del dia', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
+          { texto: 'Cierre del día', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
+          // 0062: utilidad real (ventas - costo congelado - mermas - egresos).
+          { texto: 'Estado de resultados', ruta: '/dashboard/estado-resultados', icono: 'ph-scales', visible: this.verNumeros },
         ],
       },
       {
@@ -145,7 +150,7 @@ export class NavegacionService {
         destinos: [
           { texto: 'Nueva venta', ruta: '/dashboard/venta', icono: 'ph-cash-register', visible: true, principal: true, pie: pie('venta', 'turno') },
           { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
-          { texto: 'Corte del dia', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros || this.hacerCortes },
+          { texto: 'Corte del día', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros || this.hacerCortes },
           /* Lo que sale del negocio y no es una compra. Verlo es ver numeros;
              registrar lo decide la pantalla (VENTAS_SUPERVISAR). */
           { texto: 'Egresos', ruta: '/dashboard/egresos', icono: 'ph-receipt', visible: this.verNumeros },
@@ -157,7 +162,7 @@ export class NavegacionService {
              gana ningun icono. */
           { texto: 'Mesas', ruta: '/dashboard/mesas', icono: 'ph-armchair', visible: this.caps.mesas },
           { texto: 'Cocina', ruta: '/cocina', icono: 'ph-cooking-pot', visible: this.caps.comandas },
-          { texto: 'Salon y estaciones', ruta: '/dashboard/salon', icono: 'ph-squares-four',
+          { texto: 'Salón y estaciones', ruta: '/dashboard/salon', icono: 'ph-squares-four',
             visible: (this.caps.mesas || this.caps.comandas) && this.administrarNegocio },
         ],
       },
@@ -170,13 +175,15 @@ export class NavegacionService {
           { texto: 'Promociones y combos', ruta: '/dashboard/inventario/ofertas', icono: 'ph-tag', visible: this.administrarComercial },
           { texto: 'Precios por canal', ruta: '/dashboard/inventario/precios', icono: 'ph-storefront', visible: this.administrarComercial },
           /* Roles v2: el Operador cuenta; aplicar el ajuste lo autoriza un Encargado. */
-          { texto: 'Conteo fisico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
+          { texto: 'Conteo físico', ruta: '/dashboard/conteo', icono: 'ph-clipboard-text', visible: true },
           /* Fase 2: mercancía hacia ferias (EVENT) y su regreso. */
           /* MultiSucursal: mercancía de una sucursal a otra de la empresa. */
           /* Roles v2: mover mercancia fuera de la sucursal es del Encargado. */
           { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: this.operarInventario },
-          { texto: 'Envios a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: this.operarInventario },
+          { texto: 'Envíos a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: this.operarInventario },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
+          // 0060: lo que se fabrica por tandas (donas, pan); lo preparado al momento sigue en Recetas.
+          { texto: 'Producción', ruta: '/dashboard/produccion', icono: 'ph-bread', visible: this.caps.hospitality && this.producir },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },
         ],
       },
@@ -206,10 +213,10 @@ export class NavegacionService {
           ...(this.giro.inicio === 'agenda'
             ? [{ texto: 'Agenda', ruta: '/dashboard/ordenes-de-servicio/agenda', icono: 'ph-calendar-dots', visible: this.giro.usaAgenda, principal: true }]
             : []),
-          { texto: 'Ordenes', ruta: '/dashboard/ordenes-de-servicio/ordenes', icono: 'ph-clipboard-text', visible: true, principal: this.giro.inicio !== 'agenda', pie: pie('servicios', 'ordenes') },
+          { texto: 'Órdenes', ruta: '/dashboard/ordenes-de-servicio/ordenes', icono: 'ph-clipboard-text', visible: true, principal: this.giro.inicio !== 'agenda', pie: pie('servicios', 'ordenes') },
           { texto: 'Agenda', ruta: '/dashboard/ordenes-de-servicio/agenda', icono: 'ph-calendar-dots', visible: this.giro.usaAgenda && this.giro.inicio !== 'agenda' },
           { texto: this.giro.activoPlural, ruta: '/dashboard/ordenes-de-servicio/activos', icono: 'ph-car', visible: this.giro.usaActivos },
-          { texto: 'Catalogo', ruta: '/dashboard/ordenes-de-servicio/catalogo', icono: 'ph-list-checks', visible: this.administrarServicios },
+          { texto: 'Catálogo', ruta: '/dashboard/ordenes-de-servicio/catalogo', icono: 'ph-list-checks', visible: this.administrarServicios },
           { texto: 'Profesionales', ruta: '/dashboard/ordenes-de-servicio/profesionales', icono: 'ph-users-three', visible: this.administrarServicios },
           { texto: 'Comisiones', ruta: '/dashboard/ordenes-de-servicio/comisiones', icono: 'ph-percent', visible: this.verNumeros },
         ],
@@ -244,9 +251,9 @@ export class NavegacionService {
   readonly mas = computed<DestinoMas[]>(() => {
     const lista: DestinoMas[] = [
       { texto: 'Alertas', ruta: '/dashboard/alertas', icono: 'ph-bell', grupo: 'negocio', visible: this.verNumeros },
-      { texto: 'Estadisticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
-      { texto: 'Fidelizacion', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
-      { texto: 'Facturacion', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
+      { texto: 'Estadísticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
+      { texto: 'Fidelización', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
+      { texto: 'Facturación', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
       /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
          sin contrato con el proveedor no se ofrece, aunque alguna vez se haya
          configurado. */
@@ -254,8 +261,8 @@ export class NavegacionService {
          configurar la caja. Vista propia, en forma de organigrama. */
       { texto: 'Usuarios y permisos', ruta: '/dashboard/usuarios', icono: 'ph-identification-badge', grupo: 'sistema', visible: this.administrarNegocio },
       { texto: 'Aplicaciones', ruta: '/dashboard/aplicaciones', icono: 'ph-squares-four', grupo: 'sistema', visible: this.administrarNegocio },
-      { texto: 'Configuracion', ruta: '/dashboard/configuracion', icono: 'ph-gear', grupo: 'sistema', visible: this.administrarNegocio || this.configurarEquipo },
-      { texto: 'Migracion', ruta: '/dashboard/migracion', icono: 'ph-database', grupo: 'sistema', visible: this.administrarNegocio },
+      { texto: 'Configuración', ruta: '/dashboard/configuracion', icono: 'ph-gear', grupo: 'sistema', visible: this.administrarNegocio || this.configurarEquipo },
+      { texto: 'Migración', ruta: '/dashboard/migracion', icono: 'ph-database', grupo: 'sistema', visible: this.administrarNegocio },
     ];
     return lista.filter(x => x.visible);
   });
@@ -334,7 +341,7 @@ export class NavegacionService {
         const inv = poner('inventario');
         inv.aviso = bajos > 0
           ? { texto: `${bajos} ${bajos === 1 ? 'producto bajo minimo' : 'productos bajo minimo'}`, tono: 'peligro' }
-          : { texto: 'Sin productos bajo minimo', tono: 'ok' };
+          : { texto: 'Sin productos bajo mínimo', tono: 'ok' };
         if (bajos > 0) inv.pies['stock'] = `${bajos} por reponer`;
 
         const total = Number(c.total ?? 0);

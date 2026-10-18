@@ -1,0 +1,110 @@
+/* ==========================================================================
+   ESTADO DE RESULTADOS — mismos tokens que Cierre del día.
+   Los botones (.btn-*) vienen de la hoja global.
+   ========================================================================== */
+.er { display: flex; flex-direction: column; gap: 22px; color: var(--wx-text); }
+
+.er-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--wx-edge);
+}
+.er-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.er-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); max-width: 640px; }
+.er-head__acc { display: flex; gap: 10px; }
+.er-head__acc .btn-outline { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ------------------------------------------------------------ filtros */
+.er-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.er-filtros label { display: flex; flex-direction: column; gap: 4px; font-size: var(--wx-text-xs); color: var(--wx-text-muted); min-width: 170px; }
+.er-seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--wx-sunken); border-radius: var(--wx-radius-sm); }
+.er-seg button {
+  border: 0; background: transparent; color: var(--wx-text-muted); font: inherit; font-size: var(--wx-text-sm);
+  padding: 6px 12px; border-radius: calc(var(--wx-radius-sm) - 2px); cursor: pointer;
+  transition: background var(--wx-dur-state) var(--wx-ease-out), color var(--wx-dur-state) var(--wx-ease-out);
+}
+.er-seg button:hover { color: var(--wx-text); }
+.er-seg button.activo { background: var(--wx-surface); color: var(--wx-text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+
+.er-error { display: flex; gap: 8px; align-items: center; color: var(--wx-danger); font-size: var(--wx-text-sm); margin: 0; }
+.er-vacio { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); display: flex; gap: 6px; align-items: center; }
+.er-aviso {
+  margin: 0; display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-warning-soft); color: var(--wx-warning-ink); font-size: var(--wx-text-sm); line-height: 1.45;
+}
+.er-aviso i { margin-top: 2px; }
+
+/* ------------------------------------------------------------- cifras */
+.er-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.er-cifra { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; background: var(--wx-sunken); border-radius: var(--wx-radius-md); }
+.er-cifra span { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.er-cifra b { font-family: var(--wx-font-mono); font-size: var(--wx-text-xl); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.er-cifra small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.er-cifra.perdida b { color: var(--wx-danger); }
+
+/* ----------------------------------------------------------- secciones */
+.er-sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.er-sec h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; font-size: var(--wx-text-base); font-weight: 650; }
+.er-sec h2 small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 500; }
+.er-eje + h2 { margin-top: 14px; }
+.er-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; align-items: start; }
+.er-tag { padding: 1px 9px; border-radius: 999px; font-size: var(--wx-text-xs); font-weight: 600; background: var(--wx-danger-soft); color: var(--wx-danger); }
+.er-nota { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: 1.5; }
+
+/* -------------------------------------------------------------- tablas */
+.er-tabla { overflow-x: auto; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); }
+.er-tabla table { width: 100%; border-collapse: collapse; font-size: var(--wx-text-sm); }
+.er-tabla th {
+  padding: 9px 12px; text-align: left; white-space: nowrap; background: var(--wx-sunken); color: var(--wx-text-muted);
+  font-size: var(--wx-text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.er-tabla td { padding: 9px 12px; border-top: 1px solid var(--wx-edge-soft); vertical-align: top; }
+.er-tabla td small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.er-tabla .num { text-align: right; font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.er-tabla .tenue { color: var(--wx-text-muted); }
+.er-tabla tr.total td { font-weight: 650; background: color-mix(in srgb, var(--wx-sunken) 55%, transparent); }
+.er-tabla tr.final td { font-size: var(--wx-text-base); border-top: 2px solid var(--wx-edge-strong); }
+.neg { color: var(--wx-danger) !important; }
+
+.er-var { font-size: var(--wx-text-xs); font-weight: 600; }
+.er-var[data-tono='mejor'] { color: var(--wx-success-ink); }
+.er-var[data-tono='peor'] { color: var(--wx-danger); }
+.er-var[data-tono='igual'] { color: var(--wx-text-muted); }
+
+.er-margen { display: flex; align-items: center; gap: 8px; }
+.er-margen__barra { flex: 1; min-width: 60px; height: 6px; background: var(--wx-sunken); border-radius: 3px; overflow: hidden; }
+.er-margen__barra i { display: block; height: 100%; background: var(--wx-accent); border-radius: 3px; }
+
+/* --------------------------------------------------------------- listas */
+.er-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.er-lista li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--wx-edge-soft); font-size: var(--wx-text-sm); }
+.er-lista li small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.er-lista b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* --------------------------------------------------------- barras diarias
+   Una serie: la utilidad del día. Arriba de la línea base gana, abajo
+   pierde; la posición dice el signo y el tooltip trae las cifras. */
+.er-barras { display: flex; align-items: stretch; gap: 2px; height: 180px; padding-top: 8px; border-bottom: 1px solid var(--wx-edge); }
+.er-barras.con-negativos { border-bottom: 0; }
+.er-barra { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 3px; outline: none; cursor: default; }
+.er-barra__pos { flex: 1; display: flex; align-items: flex-end; }
+.er-barras.con-negativos .er-barra__pos { border-bottom: 1px solid var(--wx-edge); }
+.er-barra__neg { flex: 1; display: flex; align-items: flex-start; }
+.er-barra i { display: block; width: 100%; background: var(--wx-accent); transition: opacity var(--wx-dur-micro) var(--wx-ease-out); }
+.er-barra__pos i { border-radius: 4px 4px 0 0; }
+.er-barra__neg i { border-radius: 0 0 4px 4px; background: var(--wx-danger); }
+.er-barras:hover .er-barra i { opacity: 0.45; }
+.er-barras .er-barra:hover i, .er-barra:focus-visible i { opacity: 1; }
+.er-tip {
+  position: absolute; z-index: 5; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; min-width: 170px; pointer-events: none;
+  background: var(--wx-raised); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-sm);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12); font-size: var(--wx-text-xs); color: var(--wx-text-muted); white-space: nowrap;
+}
+.er-tip b, .er-tip .fuerte { color: var(--wx-text); font-weight: 600; }
+.er-barra:first-child .er-tip { left: 0; transform: none; }
+.er-barra:last-child .er-tip { left: auto; right: 0; transform: none; }
+.er-eje { display: flex; justify-content: space-between; color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-family: var(--wx-font-mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  .er-seg button, .er-barra i { transition: none; }
+}

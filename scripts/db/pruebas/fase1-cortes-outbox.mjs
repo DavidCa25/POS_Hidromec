@@ -81,11 +81,12 @@ try {
       (N'ana',   CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Ana#2026'), 2), N'cajero', 1, GETDATE()),
       (N'beto',  CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Beto#2026'), 2), N'cajero', 1, GETDATE()),
       (N'marta', CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Marta#2026'), 2), N'supervisor', 1, GETDATE()),
-      (N'baja',  CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Baja#2026'), 2), N'supervisor', 0, GETDATE());
+      (N'baja',  CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Baja#2026'), 2), N'supervisor', 0, GETDATE()),
+      (N'luz',   CONVERT(NVARCHAR(255), HASHBYTES('SHA2_256', N'Luz#2026'), 2), N'invitado', 1, GETDATE());
     INSERT INTO dbo.CAT_brands (namee) VALUES (N'QA');
     INSERT INTO dbo.CAT_categories (namee) VALUES (N'General');`);
   const id = (u) => Number(escalar(`SELECT id FROM dbo.users WHERE usuario = N'${u}';`));
-  const [ana, beto, marta, baja] = ['ana', 'beto', 'marta', 'baja'].map(id);
+  const [ana, beto, marta, baja, luz] = ['ana', 'beto', 'marta', 'baja', 'luz'].map(id);
   const prod = Number(escalar(`
     EXEC dbo.sp_add_product @brand=${escalar('SELECT TOP 1 id FROM dbo.CAT_brands ORDER BY id DESC')}, @part_number=N'QA-F1', @name=N'Dona',
       @price=50, @stock=100, @category=${escalar(`SELECT id FROM dbo.CAT_categories WHERE namee = N'General'`)}, @cost=20;`));
@@ -107,8 +108,10 @@ try {
   const e1 = error(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${beto}, @cash_delivered=550, @register_id=1;`);
   check((e1 || '').includes('REQUIERE_AUTORIZACION') && escalar(`SELECT closed_at FROM dbo.cash_closures WHERE id = ${t1}`) == null,
     'el cajero B NO puede cerrar el turno de A sin autorización');
-  const e2 = error(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${beto}, @authorized_by=${beto}, @cash_delivered=550, @register_id=1;`);
-  check((e2 || '').includes('REQUIERE_AUTORIZACION'), 'ni "autorizándose" a sí mismo siendo cajero');
+  // 0059: desde Roles v2 el Operador (cajero) trae «Cortes de caja» y SÍ autoriza;
+  // quien no lo trae (aquí, un rol sin paquetes) no.
+  const e2 = error(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${beto}, @authorized_by=${luz}, @cash_delivered=550, @register_id=1;`);
+  check((e2 || '').includes('REQUIERE_AUTORIZACION'), 'ni autorizado por alguien sin «Cortes de caja»');
   const e3 = error(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${beto}, @authorized_by=${baja}, @cash_delivered=550, @register_id=1;`);
   check((e3 || '').includes('REQUIERE_AUTORIZACION'), 'ni con un encargado dado de baja');
   const e4 = error(`EXEC dbo.sp_close_shift @closure_id=${t1}, @user_id=${beto}, @authorized_by=${marta}, @cash_delivered=540, @register_id=1,

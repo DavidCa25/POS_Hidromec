@@ -118,7 +118,7 @@ test.describe('QuickStart · la revisión de una hoja de insumos', () => {
     // ------------------------------------------------- por donde se entra
     /* Dock → Más → Migracion → «Los productos se cargan en QuickStart».
        Es el camino que hay; si algun dia se rompe, esta prueba lo dice. */
-    await irPorMas(ventana, 'Migracion');
+    await irPorMas(ventana, 'Migración');
     await ventana.waitForSelector('.mig-vacio', { timeout: 30000 });
     await ventana.click('.mig-vacio .mig-btn');
     await ventana.waitForSelector('.qs__pozo', { timeout: 30000 });

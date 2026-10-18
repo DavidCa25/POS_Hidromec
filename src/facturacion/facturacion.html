@@ -6,6 +6,9 @@
       <p>Emite y consulta tus facturas CFDI 4.0.</p>
     </div>
     <div class="fac-head-actions">
+      <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+               [opciones]="opcionesExportar" [deshabilitado]="cargando || !invoices.length"
+               (elegir)="exportar($any($event))"></wx-menu>
       <button class="fac-btn ghost" (click)="irAConfiguracion()">
         <i class="ph ph-gear"></i> Configuracion
       </button>

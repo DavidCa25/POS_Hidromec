@@ -10,14 +10,22 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    /* 0062: la misma utilidad que Estadísticas y el Estado de resultados.
+       Antes restaba `products.last_cost`, columna que no existe, a un precio
+       con IVA. Ahora: venta SIN IVA menos el costo congelado del renglón. */
     SELECT
-        -- Ganancia estimada: margen por linea (precio de venta menos ultimo costo)
-        ISNULL(SUM(sd.quantity * (sd.unitary_price - ISNULL(p.last_cost, 0))), 0) AS utilidad,
-        -- Venta bruta (sin impuestos ni redondeos) para calcular el margen %
-        ISNULL(SUM(sd.quantity * sd.unitary_price), 0)                            AS venta_bruta
-    FROM sales s
-    JOIN sale_detail sd ON sd.sale_id = s.id
-    LEFT JOIN products p ON p.id = sd.product_id
-    WHERE CAST(s.datee AS DATE) = CAST(GETDATE() AS DATE);
+        ISNULL(SUM(x.base - x.costo), 0) AS utilidad,
+        -- Venta sin IVA: base del margen %
+        ISNULL(SUM(x.base), 0)           AS venta_bruta
+    FROM dbo.sales s
+    JOIN dbo.sale_detail sd ON sd.sale_id = s.id
+    JOIN dbo.products p ON p.id = sd.product_id
+    CROSS APPLY (SELECT
+        CASE WHEN ISNULL(sd.tax_object, '02') = '02'
+             THEN sd.subtotal / (1 + ISNULL(sd.tax_rate, ISNULL(p.tasa_iva, 0)))
+             ELSE sd.subtotal END AS base,
+        sd.quantity * COALESCE(sd.unit_cost, p.cost, 0) AS costo) x
+    WHERE s.datee >= CAST(GETDATE() AS DATE)
+      AND s.datee <  DATEADD(DAY, 1, CAST(GETDATE() AS DATE));
 END
 GO

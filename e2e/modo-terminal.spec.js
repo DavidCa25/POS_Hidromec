@@ -43,7 +43,7 @@ test('Modo terminal: auditar, activar y restaurar (arenero)', async ({ app }) =>
 
   try {
     await entrar(app, CUENTAS.admin);
-    await irPorMas(ventana, 'Configuracion');
+    await irPorMas(ventana, 'Configuración');
     await ventana.waitForSelector('.cs-tile', { timeout: 30000 });
     await ventana.locator('.cs-tile').filter({ hasText: 'Modo terminal' }).click();
     await ventana.waitForSelector('app-modo-terminal-panel', { timeout: 15000 });

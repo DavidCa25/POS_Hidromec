@@ -12,7 +12,7 @@
  *
  * Tres bloques:
  *
- *   1. El CATALOGO -tres roles, once paquetes- y que nadie pueda anadir un
+ *   1. El CATALOGO -tres roles, doce paquetes- y que nadie pueda anadir un
  *      paquete sin decidir quien lo tiene.
  *   2. La COBERTURA: que cada `ipcMain.handle` del proyecto este clasificado
  *      como protegido o como abierto-con-motivo, y que cada protegido este
@@ -50,10 +50,10 @@ const sesion = require(join(raiz, 'electron/seguridad/sesion.js'));
 const B = permisos.BUNDLES;
 
 // ===========================================================================
-seccion('1. El catalogo: tres roles, once paquetes');
+seccion('1. El catalogo: tres roles, doce paquetes');
 // ===========================================================================
 
-check(permisos.PERMISOS.length === 11, 'hay once paquetes', permisos.PERMISOS.join(' '));
+check(permisos.PERMISOS.length === 12, 'hay doce paquetes', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -71,18 +71,21 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 11, 'Administrador tiene los once');
+check(deAdmin.size === 12, 'Administrador tiene los doce');
 // Roles v2: el Encargado tiene todo menos administrar el negocio.
-check(deEncargado.size === 10 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+check(deEncargado.size === 11 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
    && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
    && deEncargado.has(B.INVENTARIO_OPERAR) && deEncargado.has(B.CATALOGO_EDITAR),
-  'Encargado tiene diez: todo menos administrar el negocio', [...deEncargado].join(' '));
+  'Encargado tiene once: todo menos administrar el negocio', [...deEncargado].join(' '));
 // Roles v2: el Operador vende, mantiene el catalogo, promociones y combos, y
 // hace cortes. Lo que mueve dinero o inventario NO es suyo: lo pide aprobado.
-const delOperador = [B.VENTAS_OPERAR, B.SERVICIOS_OPERAR, B.CATALOGO_EDITAR, B.COMERCIAL_ADMINISTRAR, B.CAJA_CORTES];
+// 0060: la PRODUCCION si es suya -quien hornea suele ser Operador-, porque
+// sus movimientos salen de una formula y quedan en la tanda con su nombre,
+// no de un ajuste libre.
+const delOperador = [B.VENTAS_OPERAR, B.SERVICIOS_OPERAR, B.CATALOGO_EDITAR, B.COMERCIAL_ADMINISTRAR, B.CAJA_CORTES, B.PRODUCCION_OPERAR];
 check(deOperador.size === delOperador.length && delOperador.every(p => deOperador.has(p))
    && !deOperador.has(B.VENTAS_SUPERVISAR) && !deOperador.has(B.INVENTARIO_OPERAR) && !deOperador.has(B.REPORTES_VER),
-  'Operador: vender, catalogo, promociones y cortes; nada que mueva dinero o inventario', [...deOperador].join(' '));
+  'Operador: vender, catalogo, promociones, cortes y produccion; ningun ajuste libre de dinero o inventario', [...deOperador].join(' '));
 
 // El septimo paquete existe por esto: administrar Servicios sin recibir de
 // paso los respaldos, los usuarios y la configuracion fiscal.

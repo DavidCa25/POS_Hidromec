@@ -21,7 +21,7 @@ async function entrar(app, cuenta) {
 }
 
 async function abrirPanel(ventana) {
-  await irPorMas(ventana, 'Configuracion');
+  await irPorMas(ventana, 'Configuración');
   await ventana.waitForSelector('.cs-tile', { timeout: 30000 });
   await ventana.locator('.cs-tile').filter({ hasText: 'Teclado en pantalla' }).click();
   await ventana.waitForSelector('app-teclado-panel', { timeout: 15000 });

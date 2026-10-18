@@ -1,0 +1,156 @@
+<div class="pr" data-guide="produccion">
+
+  <header class="pr-head">
+    <div class="pr-head__ic"><i class="ph ph-cooking-pot"></i></div>
+    <div class="pr-head__txt">
+      <h1>Producción de hoy</h1>
+      <p *ngIf="tandas().length; else sinTandas">{{ totalListas() }} de {{ redondo(totalPlaneado()) }} listas para vender</p>
+      <ng-template #sinTandas><p>Planea lo que vas a hornear y regístralo al sacarlo.</p></ng-template>
+    </div>
+    <a *ngIf="puedeFormulas()" class="btn-outline" routerLink="/dashboard/produccion/formulas" data-guide="produccion-formulas">
+      <i class="ph ph-list-checks"></i> Fórmulas
+    </a>
+  </header>
+
+  <p class="pr-estado" *ngIf="cargando()">Cargando la producción…</p>
+  <p class="pr-error" *ngIf="error()" role="alert"><i class="ph ph-warning-circle"></i> {{ error() }}</p>
+
+  <!-- Sin fórmulas no hay qué producir: se dice qué hacer. -->
+  <section class="pr-vacio" *ngIf="!cargando() && !error() && !fabricables().length && !tandas().length">
+    <i class="ph ph-cooking-pot"></i>
+    <h2>Primero, qué lleva cada producto</h2>
+    <p>Para producir por tandas, cada producto necesita su fórmula: cuántas piezas rinde y qué ingredientes lleva.
+       Los ingredientes salen del inventario al empezar la tanda, no al vender.</p>
+    <a *ngIf="puedeFormulas()" class="btn-primary" routerLink="/dashboard/produccion/formulas">Definir fórmulas</a>
+    <p *ngIf="!puedeFormulas()" class="pr-nota">Pídele a quien administra el catálogo que defina las fórmulas.</p>
+  </section>
+
+  <ng-container *ngIf="!cargando() && (fabricables().length || tandas().length)">
+    <!-- Aviso de ingredientes: solo cuando algo no alcanza para lo planeado. -->
+    <div class="pr-aviso falta" *ngIf="faltan().length" role="status" data-guide="produccion-aviso">
+      <i class="ph ph-warning"></i>
+      <span>No alcanza para lo planeado:
+        <b *ngFor="let i of faltan(); let ult = last">{{ i.ingredient_name }} (faltan {{ cantidad(i.missing, i.base_uom) }}){{ ult ? '.' : ', ' }}</b>
+        Registra la compra antes de empezar esas tandas.</span>
+    </div>
+    <div class="pr-aviso ok" *ngIf="!faltan().length && planeadas().length" role="status">
+      <i class="ph ph-check-circle"></i><span>Alcanzan los ingredientes de lo planeado.</span>
+    </div>
+
+    <div class="pr-tablero">
+      <!-- ------------------------------------------------------ planeado -->
+      <section class="pr-col" aria-label="Planeado">
+        <h2><span>Planeado</span><small>{{ planeadas().length }}</small></h2>
+        <button type="button" class="pr-card planeada" *ngFor="let t of planeadas()" (click)="tocar(t)"
+                data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="planeada">
+          <span class="pr-card__nombre">{{ t.product_name }}</span>
+          <b class="pr-card__num">{{ redondo(t.planned_qty) }}</b>
+          <span class="pr-card__pie" [class.falta]="t.faltantes > 0">
+            {{ t.faltantes === 1 ? 'Falta 1 ingrediente' : t.faltantes > 1 ? 'Faltan ' + t.faltantes + ' ingredientes' : 'Tocar para empezar' }}
+          </span>
+        </button>
+        <button type="button" class="pr-agregar" (click)="abrirNueva()" data-guide="produccion-agregar"
+                [disabled]="!fabricables().length">
+          <i class="ph ph-plus"></i> Agregar tanda
+        </button>
+      </section>
+
+      <!-- ------------------------------------------------ en preparación -->
+      <section class="pr-col" aria-label="En preparación">
+        <h2><span>En preparación</span><small>{{ enHorno().length }}</small></h2>
+        <button type="button" class="pr-card horno" *ngFor="let t of enHorno()" (click)="tocar(t)"
+                data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="horno">
+          <span class="pr-card__nombre">{{ t.product_name }}</span>
+          <b class="pr-card__num">{{ redondo(t.planned_qty) }}</b>
+          <span class="pr-card__pie">Desde {{ hora(t.started_at) }} · {{ t.started_by_name }} · tocar al sacar</span>
+        </button>
+        <p class="pr-col__vacio" *ngIf="!enHorno().length">Lo que empieces aparece aquí.</p>
+      </section>
+
+      <!-- ---------------------------------------------- listo para vender -->
+      <section class="pr-col" aria-label="Listo para vender">
+        <h2><span>Listo para vender</span><small>{{ totalListas() }}</small></h2>
+        <div class="pr-card lista" *ngFor="let t of listas()" data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="lista">
+          <span class="pr-card__nombre">{{ t.product_name }} <i class="ph ph-check-circle"></i></span>
+          <b class="pr-card__num">{{ redondo(t.good_qty) }}</b>
+          <span class="pr-card__pie">
+            <span *ngIf="t.waste_qty" class="merma">Merma {{ redondo(t.waste_qty) }} · {{ t.waste_reason }} · </span>
+            <span *ngIf="t.unit_cost != null">{{ dinero(t.unit_cost) }} c/u · </span>{{ hora(t.finished_at) }} {{ t.finished_by_name }}
+          </span>
+        </div>
+        <p class="pr-col__vacio" *ngIf="!listas().length">Al registrar una tanda, sus piezas quedan a la venta.</p>
+      </section>
+    </div>
+  </ng-container>
+</div>
+
+<!-- =================================================================== hoja -->
+<div class="pr-velo" *ngIf="hoja() as h" (click)="cerrar()">
+  <div class="pr-hoja" role="dialog" aria-modal="true" aria-labelledby="pr-hoja-tit" (click)="$event.stopPropagation()" data-guide="produccion-hoja">
+    <div class="pr-hoja__cuerpo">
+
+      <!-- Nueva tanda: qué y cuántas. -->
+      <ng-container *ngIf="h.tipo === 'nueva'">
+        <h2 id="pr-hoja-tit">Nueva tanda</h2>
+        <div class="pr-elegir">
+          <button type="button" *ngFor="let f of fabricables()" class="pr-elegir__op" [class.es-elegido]="h.productId === f.product_id"
+                  (click)="elegirProducto(f)" data-guide="produccion-producto" [attr.data-guide-clave]="f.product_id">
+            <b>{{ f.product_name }}</b><small>Rinde {{ redondo(f.yield_qty) }} · hay {{ redondo(f.stock) }}</small>
+          </button>
+        </div>
+        <p class="pr-hoja__ayuda" *ngIf="productoNuevo() as p">¿Cuántas vas a hacer? Costo estimado {{ dinero(p.unit_cost) }} por pieza.</p>
+      </ng-container>
+
+      <ng-container *ngIf="h.tipo === 'planeada'">
+        <h2 id="pr-hoja-tit">{{ h.tanda.product_name }}</h2>
+        <p class="pr-hoja__ayuda">Planeadas. Al empezar salen sus ingredientes del inventario.</p>
+      </ng-container>
+
+      <ng-container *ngIf="h.tipo === 'horno'">
+        <h2 id="pr-hoja-tit">{{ h.tanda.product_name }} · ¿cuántas salieron buenas?</h2>
+        <p class="pr-hoja__ayuda">Planeadas {{ redondo(h.tanda.planned_qty) }}. La diferencia se registra como merma de producción.</p>
+      </ng-container>
+
+      <div class="pr-lectura" *ngIf="h.tipo !== 'nueva' || h.productId">
+        <b>{{ numero() || 0 }}</b>
+        <span *ngIf="h.tipo === 'horno'" [class.merma]="merma() > 0" [class.ok]="merma() === 0">
+          {{ merma() > 0 ? 'merma ' + redondo(merma()) : 'salieron todas' }}
+        </span>
+        <span *ngIf="h.tipo !== 'horno'" class="pr-docenas">
+          <button type="button" class="btn-outline" (click)="sumar(-12)">−12</button>
+          <button type="button" class="btn-outline" (click)="sumar(12)">+12</button>
+        </span>
+      </div>
+
+      <div class="pr-motivos" *ngIf="h.tipo === 'horno' && merma() > 0" role="radiogroup" aria-label="Motivo de la merma">
+        <button type="button" *ngFor="let m of motivos" class="pr-chip" [class.es-elegido]="motivo() === m"
+                role="radio" [attr.aria-checked]="motivo() === m" (click)="motivo.set(m); errorHoja.set(null)">{{ m }}</button>
+      </div>
+
+      <p class="pr-hoja__error" *ngIf="errorHoja()" role="alert">{{ errorHoja() }}</p>
+
+      <div class="pr-hoja__acc">
+        <button type="button" class="btn-outline" (click)="cerrar()" [disabled]="guardando()">Cerrar</button>
+        <button *ngIf="h.tipo === 'planeada'" type="button" class="btn-outline" (click)="quitar()" [disabled]="guardando()">Quitar tanda</button>
+        <button *ngIf="h.tipo === 'planeada' && valor() !== redondo(h.tanda.planned_qty)" type="button" class="btn-outline"
+                (click)="cambiarPlan()" [disabled]="guardando()">Solo cambiar a {{ valor() }}</button>
+        <button *ngIf="h.tipo === 'nueva'" type="button" class="btn-primary" (click)="planear()" [disabled]="guardando()" data-guide="produccion-confirmar">
+          {{ guardando() ? 'Guardando…' : 'Planear ' + valor() }}
+        </button>
+        <button *ngIf="h.tipo === 'planeada'" type="button" class="btn-primary" (click)="empezar()" [disabled]="guardando()" data-guide="produccion-confirmar">
+          {{ guardando() ? 'Empezando…' : 'Empezar ' + valor() }}
+        </button>
+        <button *ngIf="h.tipo === 'horno'" type="button" class="btn-primary" (click)="terminar()" [disabled]="guardando()" data-guide="produccion-confirmar">
+          {{ guardando() ? 'Registrando…' : 'Pasar ' + valor() + ' a listo' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="pr-teclado" *ngIf="h.tipo !== 'nueva' || h.productId" data-guide="produccion-teclado">
+      <button type="button" *ngFor="let k of ['1','2','3','4','5','6','7','8','9']" (click)="tecla(k)">{{ k }}</button>
+      <button type="button" (click)="tecla('limpiar')" aria-label="Borrar todo">C</button>
+      <button type="button" (click)="tecla('0')">0</button>
+      <button type="button" (click)="tecla('borrar')" aria-label="Borrar un número"><i class="ph ph-backspace"></i></button>
+    </div>
+  </div>
+</div>

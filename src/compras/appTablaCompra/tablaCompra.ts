@@ -1,4 +1,7 @@
-import { Component, OnInit, LOCALE_ID } from '@angular/core';
+import { Component, OnInit, LOCALE_ID, inject } from '@angular/core';
+import Swal from 'sweetalert2';
+import { ReportService, ReportConfig, ReportColumn, fechaSql } from '../../services/report.service';
+import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
 import { NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -63,7 +66,7 @@ type PageToken = number | '...';
   standalone: true,
   templateUrl: './tablaCompra.html',
   styleUrls: ['./tablaCompra.css'],
-  imports: [WxTablaBarraComponent, NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent],
+  imports: [WxTablaBarraComponent, NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent, WxMenuComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class TablaCompra implements OnInit {
@@ -197,6 +200,56 @@ export class TablaCompra implements OnInit {
 
   /** Lo buscado, ya pasado por los filtros de la barra. */
   get comprasVisibles(): PurchaseRow[] { return this.tabla.filtrar(this.comprasFiltradas); }
+
+  /* ------------------------------------------------------- exportar
+     Las compras que se ven (búsqueda y filtros de la barra) y su detalle.
+     IVA acreditable = el IVA de cada compra: sirve para el contador. */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    const filas = this.comprasVisibles;
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const suma = (k: 'total' | 'tax_amount' | 'balance') => filas.reduce((s, c) => s + Number(c[k] || 0), 0);
+    const fecha = (d: string) => fechaSql(d, false);
+    const cfg: ReportConfig = {
+      titulo: 'Compras',
+      subtitulo: this.filterText ? `Búsqueda: ${this.filterText}` : undefined,
+      columns: [], rows: [],
+      meta: [`${filas.length} compras · total ${suma('total').toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} · IVA ${suma('tax_amount').toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} · por pagar ${suma('balance').toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`],
+      filename: 'compras',
+      secciones: [
+        {
+          titulo: 'Compras',
+          columns: [
+            { header: 'Folio', key: 'id', num: true, width: 8 }, { header: 'Fecha', key: 'fecha', width: 12 },
+            { header: 'Proveedor', key: 'supplierLabel', width: 26 }, { header: 'Registró', key: 'user_name', width: 14 },
+            { header: 'Pago', key: 'paymentStatus', width: 12 }, $('IVA', 'tax_amount'), $('Total', 'total'), $('Por pagar', 'balance'),
+          ],
+          rows: filas.map(c => ({ ...c, fecha: fecha(c.date) })),
+          totals: { tax_amount: suma('tax_amount'), total: suma('total'), balance: suma('balance') },
+        },
+        {
+          titulo: 'Detalle por producto',
+          columns: [
+            { header: 'Folio', key: 'id', num: true, width: 8 }, { header: 'Fecha', key: 'fecha', width: 12 }, { header: 'Proveedor', key: 'proveedor', width: 22 },
+            { header: 'Producto', key: 'product_name', width: 30 }, { header: 'Cantidad', key: 'quantity', num: true, width: 10 },
+            { header: 'Conversión', key: 'conversion', width: 20 }, $('Precio unitario', 'unit_price'), $('Importe', 'line_total'),
+          ],
+          rows: filas.flatMap(c => c.details.map(d => ({ ...d, id: c.id, fecha: fecha(c.date), proveedor: c.supplierLabel }))),
+        },
+      ],
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
+  }
 
   /** Filas y cabeceras de grupo en una sola lista: se pagina esto. */
   get itemsTabla(): WxItem[] { return this.tabla.aplanar(this.comprasVisibles); }

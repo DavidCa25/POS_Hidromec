@@ -1,0 +1,43 @@
+/* ==========================================================================
+   MAPA DE TRASPASOS — la escena isométrica, a todo lo que mida su contenedor.
+   ========================================================================== */
+:host { display: block; width: 100%; height: 100%; }
+.tm { display: block; width: 100%; height: 100%; background: #E4ECF0; }
+
+.tm-local { cursor: pointer; outline: none; }
+.tm-local:focus-visible polygon { stroke: var(--wx-accent); stroke-width: 3; }
+
+.tm-ruta { fill: none; stroke: #45B3C3; stroke-width: 4; stroke-dasharray: 12 10; stroke-linecap: round; opacity: .55; }
+.tm-ruta.es-elegido { opacity: 1; stroke-width: 5; }
+
+/* El viaje: transform en CSS, lo compone la GPU. Recorre la calle, se queda un
+   momento frente al local que recibe y vuelve a empezar mientras siga en
+   camino. */
+.tm-camion { cursor: pointer; outline: none; will-change: transform, opacity; animation: tm-viaje 7s cubic-bezier(.45, .05, .35, 1) infinite; }
+.tm-camion:focus-visible polygon { stroke: var(--wx-accent); stroke-width: 3; }
+.tm-rotulo { font: 700 19px var(--wx-font); fill: #1F6C7A; pointer-events: none; }
+@keyframes tm-viaje {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  6%   { opacity: 1; }
+  78%  { transform: translate(var(--tx), var(--ty)); }
+  92%  { transform: translate(var(--tx), var(--ty)); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tm-camion { animation: none; transform: translate(calc(var(--tx) * .5), calc(var(--ty) * .5)); }
+}
+
+.tm-tag {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 0 auto; max-width: 236px;
+  padding: 9px 13px; border: 0; border-radius: 14px; background: var(--wx-surface); color: var(--wx-text);
+  font: inherit; font-size: 15px; text-align: left; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 10px 24px -12px rgba(22, 33, 46, .35);
+}
+.tm-tag b { font-weight: 700; }
+.tm-tag__m { font-weight: 500; color: var(--wx-text-muted); }
+.tm-tag.aqui { box-shadow: 0 0 0 2px var(--wx-accent), 0 10px 24px -12px rgba(22, 33, 46, .35); }
+.tm-pill { font-size: 12px; font-weight: 600; color: var(--wx-text-muted); }
+.tm-pill.ok, .tm-pill.warn, .tm-pill.acc { padding: 2px 9px; border-radius: 999px; }
+.tm-pill.ok { background: var(--wx-success-soft); color: var(--wx-success-ink); }
+.tm-pill.warn { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
+.tm-pill.acc { background: var(--wx-accent-soft); color: var(--wx-accent-text); }

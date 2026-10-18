@@ -1,0 +1,121 @@
+/* ==========================================================================
+   PRODUCCIÓN DE HOY — tablero de tres etapas con tarjetas táctiles.
+   Mismos tokens que Cierre del día y Usuarios. Los botones (.btn-*) vienen
+   de la hoja global.
+   ========================================================================== */
+.pr { display: flex; flex-direction: column; gap: 18px; color: var(--wx-text); }
+
+.pr-head { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--wx-edge); }
+.pr-head__ic {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center; font-size: 22px;
+  border-radius: var(--wx-radius-md); background: var(--wx-accent-soft); color: var(--wx-accent-text);
+}
+.pr-head__txt { flex: 1; min-width: 0; }
+.pr-head a.btn-outline { text-decoration: none; }
+.pr-head__txt h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
+.pr-head__txt p { margin: 2px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.pr-estado { color: var(--wx-text-muted); font-size: var(--wx-text-sm); text-align: center; padding: 30px 0; }
+.pr-error { display: flex; gap: 8px; align-items: center; color: var(--wx-danger); font-size: var(--wx-text-sm); margin: 0; }
+
+.pr-vacio {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  padding: 40px 20px; background: var(--wx-sunken); border-radius: var(--wx-radius-lg);
+}
+.pr-vacio > i { font-size: 40px; color: var(--wx-accent-text); }
+.pr-vacio h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.pr-vacio p { margin: 0; max-width: 56ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); line-height: var(--wx-leading); }
+.pr-nota { font-style: italic; }
+
+/* ----------------------------------------------------------------- aviso */
+.pr-aviso { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--wx-radius-md); font-size: var(--wx-text-sm); }
+.pr-aviso > i { font-size: 18px; flex: none; margin-top: 1px; }
+.pr-aviso.falta { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+.pr-aviso.ok { background: var(--wx-success-soft); color: var(--wx-success-ink); }
+.pr-aviso b { font-weight: 650; }
+
+/* --------------------------------------------------------------- tablero */
+.pr-tablero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .pr-tablero { grid-template-columns: 1fr; } }
+
+.pr-col { display: flex; flex-direction: column; gap: 10px; padding: 12px; min-height: 260px; background: var(--wx-sunken); border-radius: var(--wx-radius-lg); }
+.pr-col h2 {
+  display: flex; justify-content: space-between; align-items: center; margin: 0 2px 2px;
+  font-size: var(--wx-text-xs); font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wx-text-muted);
+}
+.pr-col h2 small { font-family: var(--wx-font-mono); font-size: var(--wx-text-sm); color: var(--wx-text); font-variant-numeric: tabular-nums; }
+.pr-col__vacio { margin: 6px 4px; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+
+.pr-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left;
+  padding: 14px 16px; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-lg);
+  background: var(--wx-surface); color: var(--wx-text); font: inherit;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out), border-color var(--wx-dur-micro) ease;
+}
+button.pr-card { cursor: pointer; min-height: 120px; }
+button.pr-card:active { transform: scale(0.98); }
+@media (hover: hover) and (pointer: fine) { button.pr-card:hover { border-color: var(--wx-edge-strong); } }
+button.pr-card:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.pr-card.horno { border-color: var(--wx-accent-line); }
+.pr-card__nombre { display: flex; gap: 6px; align-items: center; color: var(--wx-text-muted); font-size: var(--wx-text-sm); font-weight: 600; }
+.pr-card__nombre i { color: var(--wx-success); }
+.pr-card__num { font-family: var(--wx-font-mono); font-size: 40px; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.pr-card__pie { color: var(--wx-text-muted); font-size: var(--wx-text-xs); line-height: var(--wx-leading-tight); }
+.pr-card__pie.falta, .pr-card__pie .merma { color: var(--wx-warning-ink); font-weight: 600; }
+
+.pr-agregar {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; width: 100%;
+  border: 1.5px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-lg); background: transparent;
+  color: var(--wx-text-muted); font: inherit; font-weight: 600; cursor: pointer;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out), color var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
+}
+.pr-agregar:active { transform: scale(0.98); }
+@media (hover: hover) and (pointer: fine) { .pr-agregar:hover { color: var(--wx-accent-text); border-color: var(--wx-accent-line); } }
+.pr-agregar:disabled { opacity: 0.5; cursor: default; }
+
+/* ------------------------------------------------------------------ hoja */
+.pr-velo { position: fixed; inset: 0; z-index: var(--wx-z-dialog); display: flex; align-items: center; justify-content: center; background: var(--wx-scrim); padding: 16px; }
+.pr-hoja {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px; width: min(860px, 100%);
+  padding: 22px; background: var(--wx-surface); border-radius: var(--wx-radius-lg); box-shadow: var(--wx-shadow-dialog);
+  animation: pr-sube var(--wx-dur-dialog) var(--wx-ease-out);
+}
+@keyframes pr-sube { from { transform: translateY(24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pr-hoja { animation: none; } }
+@media (max-width: 640px) { .pr-hoja { grid-template-columns: 1fr; } }
+
+.pr-hoja__cuerpo { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pr-hoja h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.pr-hoja__ayuda { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.pr-hoja__error { margin: 0; color: var(--wx-danger); font-size: var(--wx-text-sm); font-weight: 600; }
+.pr-hoja__acc { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: auto; }
+
+.pr-elegir { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.pr-elegir__op {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px; text-align: left; cursor: pointer; font: inherit; color: var(--wx-text);
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); background: var(--wx-surface);
+}
+.pr-elegir__op small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.pr-elegir__op.es-elegido { border: 2px solid var(--wx-accent); background: var(--wx-accent-soft); }
+
+.pr-lectura { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
+.pr-lectura > b { font-family: var(--wx-font-mono); font-size: 56px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.pr-lectura .merma { color: var(--wx-warning-ink); font-weight: 650; }
+.pr-lectura .ok { color: var(--wx-success-ink); font-weight: 650; }
+.pr-docenas { display: flex; gap: 6px; }
+
+.pr-motivos { display: flex; flex-wrap: wrap; gap: 8px; }
+.pr-chip {
+  min-height: 40px; padding: 0 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text);
+}
+.pr-chip.es-elegido { background: var(--wx-accent-soft); border-color: var(--wx-accent); color: var(--wx-accent-text); }
+
+.pr-teclado { display: grid; grid-template-columns: repeat(3, 72px); grid-auto-rows: 60px; gap: 8px; align-self: center; }
+.pr-teclado button {
+  border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); background: var(--wx-raised); color: var(--wx-text);
+  font: inherit; font-family: var(--wx-font-mono); font-size: 24px; font-weight: 600; cursor: pointer;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.pr-teclado button:active { transform: scale(0.95); }
+@media (max-width: 640px) { .pr-teclado { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-self: stretch; } }

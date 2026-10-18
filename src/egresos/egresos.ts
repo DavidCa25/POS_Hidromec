@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../services/auth.service';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../app/wx-date/wx-date.component';
+import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
+import { ReportService, ReportConfig, ReportColumn, ReportSeccion } from '../services/report.service';
 import {
   EgresosService, ConceptoEgreso, FilaEgreso, FormaEgreso, PeriodoPago, ReporteEgresos,
   FORMAS_EGRESO, PERIODOS_PAGO, etiquetaForma, rangoEgresos, fechaLocal,
@@ -37,7 +39,7 @@ type Preset = 'HOY' | 'SEMANA' | 'MES' | 'MES_ANTERIOR' | 'RANGO';
 @Component({
   selector: 'app-egresos',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxMenuComponent],
   templateUrl: './egresos.html',
   styleUrls: ['../app/proveedores/proveedores.component.css', './egresos.css'],
 })
@@ -134,6 +136,72 @@ export class Egresos implements OnInit {
 
   money(v: any): string {
     return Number(v ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  /* ------------------------------------------------------- exportar
+     El periodo consultado, con sus mismos filtros: detalle y totales por
+     concepto, persona y forma de pago (una hoja de Excel por cada uno). */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    const r = this.reporte;
+    if (!r) return;
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const fecha = (x: string | null) => (x ? String(x).slice(0, 10).split('-').reverse().join('/') : '');
+    const vigentes = r.filas.filter(f => !f.voided_at);
+    const secciones: ReportSeccion[] = [
+      {
+        titulo: this.titulo,
+        nota: this.fCancelados ? 'Incluye cancelados (marcados); no suman al total.' : undefined,
+        columns: [
+          { header: 'Fecha', key: 'fecha', width: 11 }, { header: 'Concepto', key: 'category_name', width: 22 },
+          { header: this.personal ? 'Persona' : 'Beneficiario', key: 'quien', width: 20 }, { header: 'Periodo', key: 'periodo', width: 20 },
+          { header: 'Forma de pago', key: 'forma', width: 14 }, { header: 'Caja', key: 'register_name', width: 12 },
+          { header: 'Registró', key: 'user_name', width: 14 }, { header: 'Nota', key: 'nota', width: 28 }, $('Monto', 'amount'),
+        ],
+        rows: r.filas.map(f => ({
+          ...f, fecha: fecha(f.expense_date), quien: f.staff_name || f.beneficiary || '', periodo: this.periodo(f),
+          forma: this.etiquetaForma(f.payment_method),
+          nota: [f.note, f.voided_at ? `CANCELADO: ${f.void_reason || ''}` : ''].filter(Boolean).join(' · '),
+        })),
+        totals: { amount: vigentes.reduce((a, f) => a + Number(f.amount || 0), 0) },
+      },
+      {
+        titulo: 'Por concepto',
+        columns: [{ header: 'Concepto', key: 'category_name', width: 26 }, { header: 'Tipo', key: 'tipo', width: 12 }, { header: 'Registros', key: 'egresos', num: true, width: 10 }, $('Total', 'total')],
+        rows: r.porConcepto.map(c => ({ ...c, tipo: c.category_kind === 'PERSONAL' ? 'Personal' : 'Egreso' })),
+        totals: { total: r.porConcepto.reduce((a, c) => a + Number(c.total || 0), 0) },
+      },
+      {
+        titulo: 'Por persona',
+        columns: [{ header: 'Persona', key: 'staff_name', width: 26 }, { header: 'Pagos', key: 'pagos', num: true, width: 10 }, $('Total', 'total')],
+        rows: r.porPersona,
+        totals: { total: r.porPersona.reduce((a, c) => a + Number(c.total || 0), 0) },
+      },
+      {
+        titulo: 'Por forma de pago',
+        columns: [{ header: 'Forma de pago', key: 'forma', width: 20 }, { header: 'Registros', key: 'egresos', num: true, width: 10 }, $('Total', 'total')],
+        rows: r.porForma.map(p => ({ ...p, forma: this.etiquetaForma(p.payment_method) })),
+        totals: { total: r.porForma.reduce((a, c) => a + Number(c.total || 0), 0) },
+      },
+    ].filter(s => s.rows.length);
+    const cfg: ReportConfig = {
+      titulo: this.titulo,
+      subtitulo: `${fecha(this.desde) || 'inicio'} a ${fecha(this.hasta) || 'hoy'}`,
+      columns: [], rows: [], secciones,
+      meta: [`Total ${this.money(r.total?.total)} · salió del cajón ${this.money(r.total?.del_cajon)} · ${r.total?.egresos ?? 0} registros`],
+      filename: `${this.personal ? 'pagos-personal' : 'egresos'}_${this.desde || ''}_${this.hasta || ''}`,
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
   }
   periodo(f: FilaEgreso): string {
     if (!f.period_kind) return '';

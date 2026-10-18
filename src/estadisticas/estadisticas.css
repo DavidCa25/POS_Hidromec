@@ -244,3 +244,4 @@
 /* 0049: enlace al detalle de egresos dentro de su KPI. */
 .est-link { display: inline-block; margin-top: .35rem; font-size: .8rem; color: var(--wx-accent-text); text-decoration: none; }
 .est-link:hover { text-decoration: underline; }
+.est-head wx-menu { order: 3; }

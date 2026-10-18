@@ -13,17 +13,56 @@ export interface ReportColumn {
   key: string;
   width?: number;                        
   align?: 'left' | 'right' | 'center';
-  money?: boolean;                    
+  money?: boolean;
+  /** Porcentaje 0-100 (margen, participación): "12.3%" y numérico en Excel. */
+  pct?: boolean;
+  /** Cantidad: numérica en Excel, alineada a la derecha. */
+  num?: boolean;
+}
+
+/** Una tabla de un reporte de varias partes (estado de resultados, corte...). */
+export interface ReportSeccion {
+  titulo: string;
+  nota?: string;
+  columns: ReportColumn[];
+  /** Una fila con `__total: true` sale en negritas (subtotales). */
+  rows: any[];
+  totals?: Partial<Record<string, number>>;
 }
 
 export interface ReportConfig {
   titulo: string;
   subtitulo?: string;
+  /* Reporte de UNA tabla: columns + rows (+ totals). */
   columns: ReportColumn[];
   rows: any[];
-  totals?: Record<string, number>;        
-  meta?: string[];                       
+  totals?: Record<string, number>;
+  meta?: string[];
   filename?: string;
+  /**
+   * Reporte de VARIAS tablas. Si viene, sustituye a columns/rows: en Excel
+   * cada sección es una hoja; en PDF van una tras otra con su título.
+   */
+  secciones?: ReportSeccion[];
+}
+
+/**
+ * Fecha (y hora) de SQL Server para un reporte.
+ *
+ * `mssql` lee un DATETIME —hora de pared, sin zona— como si fuera UTC: las
+ * 09:35 de la caja llegan como 09:35Z. Formatearlo en la zona del equipo lo
+ * corre seis horas (sale 03:35). Aquí se lee en UTC, que es devolverle su
+ * hora de pared. Un texto sin zona ("2026-10-18T09:35:00") se trata igual.
+ */
+export function fechaSql(v: any, conHora = true): string {
+  if (v == null || v === '') return '';
+  const t = String(v);
+  const d = v instanceof Date ? v
+    : new Date(/^d{4}-d{2}-d{2}$/.test(t) ? t + 'T00:00:00Z' : /(Z|[+-]d{2}:?d{2})$/.test(t) ? t : t + 'Z');
+  if (Number.isNaN(d.getTime())) return '';
+  return conHora
+    ? d.toLocaleString('es-MX', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' })
+    : d.toLocaleDateString('es-MX', { timeZone: 'UTC' });
 }
 
 @Injectable({ providedIn: 'root' })
@@ -68,7 +107,17 @@ export class ReportService {
       .replace(/^_|_$/g, '');
   }
   private fmtMoney(n: any): string {
-    return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const v = Number(n || 0);
+    // El signo va antes del simbolo: -$113.60, no $-113.60.
+    return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  /**
+   * La fuente estandar de jsPDF solo trae WinAnsi: el signo menos tipografico
+   * (U+2212) o una flecha salen como basura y desordenan el renglon. En el PDF
+   * se cambian por su equivalente ASCII; Excel los conserva.
+   */
+  private pdfTxt(t: any): string {
+    return String(t ?? '').replace(/−/g, '-').replace(/→/g, '->').replace(/…/g, '...');
   }
   private hoyStr(): string {
     return new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
@@ -152,6 +201,29 @@ export class ReportService {
     if (r && r.success === false) throw new Error(r.error || 'No se pudo guardar el archivo.');
   }
 
+  /** Las tablas del reporte: las secciones, o la tabla única de siempre. */
+  private secciones(cfg: ReportConfig): ReportSeccion[] {
+    const s = (cfg.secciones || []).filter(x => x.columns?.length);
+    return s.length ? s : [{ titulo: '', columns: cfg.columns, rows: cfg.rows, totals: cfg.totals }];
+  }
+  private numerica(c: ReportColumn) { return !!(c.money || c.pct || c.num); }
+  /** Lo que se escribe en el PDF para un valor de esa columna. */
+  private texto(c: ReportColumn, v: any): string {
+    const vacio = v === '' || v == null;
+    if (c.money) return vacio ? '' : this.fmtMoney(v);
+    if (c.pct) return vacio || !Number.isFinite(Number(v)) ? '—' : `${Number(v).toFixed(1)}%`;
+    if (c.num) return vacio ? '' : Number(v).toLocaleString('es-MX', { maximumFractionDigits: 2 });
+    return this.pdfTxt(v);
+  }
+  /** Nombre de hoja válido para Excel: 31 caracteres, sin []:*?/\ y sin repetirse. */
+  private nombreHoja(t: string, usados: Set<string>): string {
+    const base = (t || 'Reporte').replace(/[[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Reporte';
+    let n = base, i = 2;
+    while (usados.has(n.toLowerCase())) n = `${base.slice(0, 28)} ${i++}`;
+    usados.add(n.toLowerCase());
+    return n;
+  }
+
   // ================= EXCEL =================
   async exportExcel(cfg: ReportConfig) {
     const mod: any = await import('xlsx-js-style');
@@ -159,76 +231,93 @@ export class ReportService {
     // empaquetador, `utils` puede colgar del modulo o de su `default`.
     const XLSX: any = mod?.utils ? mod : (mod?.default?.utils ? mod.default : mod);
     const negocio = await this.negocio();
-    const cols = cfg.columns;
-    const ncol = cols.length;
-
-    const aoa: any[][] = [];
-    aoa.push([negocio]);
-    aoa.push([cfg.titulo + (cfg.subtitulo ? '  —  ' + cfg.subtitulo : '')]);
-    aoa.push(['Generado: ' + this.hoyStr()]);
-    (cfg.meta || []).forEach(m => aoa.push([m]));
-    aoa.push([]);
-    const headerRow = aoa.length;
-    aoa.push(cols.map(c => c.header));
-    const dataStart = aoa.length;
-    cfg.rows.forEach(row => aoa.push(cols.map(c => c.money ? Number(row[c.key] ?? 0) : (row[c.key] ?? ''))));
-    let totalsRow = -1;
-    if (cfg.totals) {
-      totalsRow = aoa.length;
-      aoa.push(cols.map((c, i) => i === 0 ? 'TOTAL'
-        : (cfg.totals && (c.key in cfg.totals!) ? Number(cfg.totals![c.key]) : '')));
-    }
-
-    const ws: any = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = cols.map(c => ({ wch: c.width ?? Math.max(12, c.header.length + 3) }));
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: ncol - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: ncol - 1 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: ncol - 1 } }
-    ];
-
-    const set = (rr: number, cc: number, s: any) => {
-      const ref = XLSX.utils.encode_cell({ r: rr, c: cc });
-      if (ws[ref]) ws[ref].s = s;
-    };
-
-    set(0, 0, { font: { bold: true, sz: 16, color: { rgb: '0F172A' } } });
-    set(1, 0, { font: { bold: true, sz: 12, color: { rgb: this.BRAND } } });
-    set(2, 0, { font: { sz: 9, color: { rgb: '64748B' } } });
-
-    cols.forEach((c, i) => set(headerRow, i, {
-      font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-      fill: { fgColor: { rgb: this.BRAND } },
-      alignment: { horizontal: c.align ?? 'left', vertical: 'center' },
-      border: this.BORDER
-    }));
-
-    cfg.rows.forEach((_, ri) => {
-      const rr = dataStart + ri;
-      const zebra = ri % 2 === 1;
-      cols.forEach((c, ci) => {
-        const s: any = {
-          alignment: { horizontal: c.align ?? (c.money ? 'right' : 'left') },
-          border: this.BORDER
-        };
-        if (c.money) s.numFmt = '$#,##0.00';
-        if (zebra) s.fill = { fgColor: { rgb: 'F8FAFC' } };
-        set(rr, ci, s);
-      });
-    });
-
-    if (totalsRow >= 0) cols.forEach((c, ci) => {
-      const s: any = {
-        font: { bold: true },
-        alignment: { horizontal: c.align ?? (c.money ? 'right' : 'left') },
-        border: { ...this.BORDER, top: { style: 'medium', color: { rgb: this.BRAND } } }
-      };
-      if (c.money) s.numFmt = '$#,##0.00';
-      set(totalsRow, ci, s);
-    });
-
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+    const usados = new Set<string>();
+
+    // Una hoja por seccion. Todas repiten el encabezado: una hoja suelta
+    // (copiada a otro libro, impresa) sigue diciendo de quien y de cuando es.
+    this.secciones(cfg).forEach((sec, si) => {
+      const cols = sec.columns;
+      const ncol = Math.max(cols.length, 1);
+      const aoa: any[][] = [];
+      aoa.push([negocio]);
+      aoa.push([cfg.titulo + (cfg.subtitulo ? '  —  ' + cfg.subtitulo : '')]);
+      aoa.push(['Generado: ' + this.hoyStr()]);
+      const metaDesde = aoa.length;
+      if (si === 0) (cfg.meta || []).forEach(m => aoa.push([m]));
+      const metaHasta = aoa.length;
+      let tituloRow = -1, notaRow = -1;
+      if (sec.titulo) { aoa.push([]); tituloRow = aoa.length; aoa.push([sec.titulo]); }
+      if (sec.nota) { notaRow = aoa.length; aoa.push([sec.nota]); }
+      aoa.push([]);
+      const headerRow = aoa.length;
+      aoa.push(cols.map(c => c.header));
+      const dataStart = aoa.length;
+      sec.rows.forEach(row => aoa.push(cols.map(c => {
+        const v = row[c.key];
+        if (this.numerica(c)) return v === '' || v == null || !Number.isFinite(Number(v)) ? '' : Number(v);
+        return v ?? '';
+      })));
+      let totalsRow = -1;
+      if (sec.totals) {
+        totalsRow = aoa.length;
+        aoa.push(cols.map((c, i) => i === 0 ? 'TOTAL'
+          : (sec.totals && (c.key in sec.totals!) ? Number(sec.totals![c.key] ?? 0) : '')));
+      }
+
+      const ws: any = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = cols.map(c => ({ wch: c.width ?? Math.max(12, c.header.length + 3) }));
+      const unir = (r: number) => ({ s: { r, c: 0 }, e: { r, c: ncol - 1 } });
+      ws['!merges'] = [unir(0), unir(1), unir(2)];
+      for (let r = metaDesde; r < metaHasta; r++) ws['!merges'].push(unir(r));
+      if (tituloRow >= 0) ws['!merges'].push(unir(tituloRow));
+      if (notaRow >= 0) ws['!merges'].push(unir(notaRow));
+
+      const set = (rr: number, cc: number, st: any) => {
+        const ref = XLSX.utils.encode_cell({ r: rr, c: cc });
+        if (ws[ref]) ws[ref].s = st;
+      };
+      // Cantidades en formato General: '#,##0.##' deja un punto colgando en los enteros ("1.").
+      const formato = (c: ReportColumn) => c.money ? '$#,##0.00' : c.pct ? '0.0"%"' : undefined;
+      const alinear = (c: ReportColumn) => c.align ?? (this.numerica(c) ? 'right' : 'left');
+
+      set(0, 0, { font: { bold: true, sz: 16, color: { rgb: '0F172A' } } });
+      set(1, 0, { font: { bold: true, sz: 12, color: { rgb: this.BRAND } } });
+      set(2, 0, { font: { sz: 9, color: { rgb: '64748B' } } });
+      for (let r = metaDesde; r < metaHasta; r++) set(r, 0, { font: { sz: 9, color: { rgb: '64748B' } } });
+      if (tituloRow >= 0) set(tituloRow, 0, { font: { bold: true, sz: 12, color: { rgb: '0F172A' } } });
+      if (notaRow >= 0) set(notaRow, 0, { font: { italic: true, sz: 9, color: { rgb: '64748B' } } });
+
+      cols.forEach((c, i) => set(headerRow, i, {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { fgColor: { rgb: this.BRAND } },
+        alignment: { horizontal: alinear(c), vertical: 'center' },
+        border: this.BORDER
+      }));
+
+      sec.rows.forEach((row, ri) => {
+        const rr = dataStart + ri;
+        cols.forEach((c, ci) => {
+          const st: any = { alignment: { horizontal: alinear(c) }, border: this.BORDER };
+          const f = formato(c); if (f) st.numFmt = f;
+          if (row?.__total) { st.font = { bold: true }; st.fill = { fgColor: { rgb: 'EEF2F7' } }; }
+          else if (ri % 2 === 1) st.fill = { fgColor: { rgb: 'F8FAFC' } };
+          set(rr, ci, st);
+        });
+      });
+
+      if (totalsRow >= 0) cols.forEach((c, ci) => {
+        const st: any = {
+          font: { bold: true },
+          alignment: { horizontal: alinear(c) },
+          border: { ...this.BORDER, top: { style: 'medium', color: { rgb: this.BRAND } } }
+        };
+        const f = formato(c); if (f) st.numFmt = f;
+        set(totalsRow, ci, st);
+      });
+
+      XLSX.utils.book_append_sheet(wb, ws, this.nombreHoja(sec.titulo || cfg.titulo, usados));
+    });
 
     const nombre = this.baseName(cfg, negocio);
     const bytes: Uint8Array = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -245,8 +334,8 @@ export class ReportService {
     const jsPDF = ReportService.named(modPdf, 'jsPDF');
     const autoTable = ReportService.callable(modTabla, 'jspdf-autotable');
     const negocio = await this.negocio();
-    const cols = cfg.columns;
-    const landscape = cols.length > 5;
+    const secciones = this.secciones(cfg);
+    const landscape = secciones.some(sec => sec.columns.length > 5);
     const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
@@ -257,34 +346,58 @@ export class ReportService {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(15, 23, 42);
     doc.text(negocio, M, 42);
     doc.setFontSize(12); doc.setTextColor(this.BRAND_RGB[0], this.BRAND_RGB[1], this.BRAND_RGB[2]);
-    doc.text(cfg.titulo + (cfg.subtitulo ? '   ·   ' + cfg.subtitulo : ''), M, 62);
+    doc.text(this.pdfTxt(cfg.titulo + (cfg.subtitulo ? '   ·   ' + cfg.subtitulo : '')), M, 62);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
     let y = 78;
     doc.text('Generado: ' + this.hoyStr(), M, y);
-    (cfg.meta || []).forEach(m => { y += 12; doc.text(m, M, y); });
-
-    const head = [cols.map(c => c.header)];
-    const body = cfg.rows.map(row => cols.map(c => c.money ? this.fmtMoney(row[c.key]) : String(row[c.key] ?? '')));
-    let foot: any;
-    if (cfg.totals) {
-      foot = [cols.map((c, i) => i === 0 ? 'TOTAL'
-        : (cfg.totals && (c.key in cfg.totals!) ? this.fmtMoney(cfg.totals![c.key]) : ''))];
-    }
-
-    const columnStyles: any = {};
-    cols.forEach((c, i) => columnStyles[i] = { halign: c.align ?? (c.money ? 'right' : 'left') });
-
-    autoTable(doc, {
-      head, body, foot,
-      startY: y + 14,
-      margin: { left: M, right: M },
-      theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6, lineColor: [230, 232, 236], lineWidth: 0.5 },
-      headStyles: { fillColor: this.BRAND_RGB, textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-      columnStyles
+    (cfg.meta || []).forEach(m => {
+      for (const linea of doc.splitTextToSize(this.pdfTxt(m), W - 2 * M)) { y += 12; doc.text(linea, M, y); }
     });
+    y += 14;
+
+    for (const sec of secciones) {
+      const cols = sec.columns;
+      if (sec.titulo || sec.nota) {
+        // Un titulo no se queda solo al pie de la pagina.
+        if (y > H - 110) { doc.addPage(); y = 50; }
+        if (sec.titulo) {
+          y += 10;
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(15, 23, 42);
+          doc.text(this.pdfTxt(sec.titulo), M, y);
+        }
+        if (sec.nota) {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+          for (const linea of doc.splitTextToSize(this.pdfTxt(sec.nota), W - 2 * M)) { y += 11; doc.text(linea, M, y); }
+        }
+        y += 8;
+      }
+      const head = [cols.map(c => this.pdfTxt(c.header))];
+      const body = sec.rows.map(row => cols.map(c => this.texto(c, row[c.key])));
+      const foot = sec.totals ? [cols.map((c, i) => i === 0 ? 'TOTAL'
+        : (sec.totals && (c.key in sec.totals!) ? this.texto(c, sec.totals![c.key]) : ''))] : undefined;
+      const columnStyles: any = {};
+      cols.forEach((c, i) => columnStyles[i] = { halign: c.align ?? (this.numerica(c) ? 'right' : 'left') });
+      const negritas = new Set(sec.rows.map((r, i) => (r?.__total ? i : -1)).filter(i => i >= 0));
+
+      autoTable(doc, {
+        head, body, foot,
+        startY: y,
+        margin: { left: M, right: M },
+        theme: 'striped',
+        styles: { fontSize: 9, cellPadding: 6, lineColor: [230, 232, 236], lineWidth: 0.5 },
+        headStyles: { fillColor: this.BRAND_RGB, textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+        columnStyles,
+        didParseCell: (d: any) => {
+          if (d.section === 'body' && negritas.has(d.row.index)) {
+            d.cell.styles.fontStyle = 'bold';
+            d.cell.styles.fillColor = [238, 242, 247];
+          }
+        },
+      });
+      y = ((doc as any).lastAutoTable?.finalY ?? y) + 18;
+    }
 
     const pages = doc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {

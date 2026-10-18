@@ -1,5 +1,8 @@
 import { DecimalPipe, CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import Swal from 'sweetalert2';
+import { ReportService, ReportConfig, ReportColumn, ReportSeccion } from '../services/report.service';
+import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
 import { RouterLink } from '@angular/router';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { ActividadHorariaComponent } from './actividad-horaria/actividad-horaria.component';
@@ -13,7 +16,7 @@ type ViewMode = 'week' | 'month';
   templateUrl: './estadisticas.html',
   styleUrls: ['./estadisticas.css'],
   standalone: true,
-  imports: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadHorariaComponent, RouterLink]
+  imports: [NgApexchartsModule, DecimalPipe, CommonModule, ActividadHorariaComponent, RouterLink, WxMenuComponent]
 })
 export class Estadisticas {
   seg: Seg = 'ventas';
@@ -66,7 +69,7 @@ export class Estadisticas {
     plotOptions: { bar: { borderRadius: 8, columnWidth: '45%' } },
     dataLabels: { enabled: false },
     xaxis: { categories: [] as string[] },
-    yaxis: { min: 0 },
+    // 0062: con el costo congelado un día puede perder; sin `min: 0` se ve.
     grid: { borderColor: '#eef2f7' },
     colors: ['#10b981']
   };
@@ -81,6 +84,92 @@ export class Estadisticas {
   }
 
   segChange(s: Seg) { this.seg = s; }
+
+  /* ------------------------------------------------------- exportar
+     El tablero completo con lo que ya está cargado: indicadores, series de
+     las gráficas como tablas y los rankings. Una hoja de Excel por cada uno. */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 16, money: true });
+    const serie = (cats: string[], datos: number[]) => cats.map((c, i) => ({ dia: c, valor: datos[i] ?? 0 }));
+    const totalPagos = this.salesByPayment.reduce((s, p) => s + p.total, 0);
+    const cfg: ReportConfig = {
+      titulo: 'Estadísticas',
+      subtitulo: new Date().toLocaleDateString('es-MX', { dateStyle: 'long' }),
+      columns: [], rows: [],
+      filename: 'estadisticas',
+      secciones: ([
+        {
+          titulo: 'Indicadores',
+          columns: [{ header: 'Indicador', key: 'k', width: 34 }, { header: 'Valor', key: 'v', width: 18, align: 'right' }],
+          rows: [
+            { k: 'Ventas del mes', v: this.money(this.totalSalesMonth) },
+            { k: 'Ventas de hoy', v: this.money(this.totalSalesToday) },
+            { k: 'Tickets del mes', v: String(this.totalOrders) },
+            { k: 'Ticket promedio', v: this.money(this.ticketPromedio) },
+            { k: 'Clientes activos', v: String(this.cliActivos) },
+            { k: 'Clientes nuevos (30 días)', v: String(this.cliNuevos) },
+            { k: 'Clientes con compras', v: String(this.cliConCompras) },
+            { k: 'Producto más vendido', v: `${this.topProductName} (${this.topProductQty})` },
+            { k: 'Utilidad de la semana', v: this.money(this.profitTotalWeek) },
+          ],
+        },
+        {
+          titulo: this.viewMode === 'week' ? 'Ventas de los últimos 7 días' : 'Ventas del mes por día',
+          columns: [{ header: 'Día', key: 'dia', width: 14 }, $('Ventas', 'valor')],
+          rows: serie(this.areaChartOptions.xaxis?.categories ?? [], this.areaChartSeries[0]?.data ?? []),
+        },
+        {
+          titulo: 'Por forma de pago (30 días)',
+          columns: [{ header: 'Forma de pago', key: 'payment_method', width: 22 }, { header: 'Tickets', key: 'tickets', num: true, width: 10 }, $('Total', 'total'), { header: '%', key: 'pct', pct: true, width: 8 }],
+          rows: this.salesByPayment.map(p => ({ ...p, pct: totalPagos ? (100 * p.total) / totalPagos : 0 })),
+          totals: { total: totalPagos },
+        },
+        {
+          titulo: 'Utilidad de la semana',
+          nota: 'Venta sin IVA menos el costo congelado de cada producto vendido.',
+          columns: [{ header: 'Día', key: 'dia', width: 14 }, $('Utilidad', 'valor')],
+          rows: serie(this.profitChartOptions.xaxis?.categories ?? [], this.profitChartSeries[0]?.data ?? []),
+          totals: { valor: this.profitTotalWeek },
+        },
+        {
+          titulo: 'Caja (30 días)',
+          columns: [{ header: 'Concepto', key: 'k', width: 26 }, $('Importe', 'v')],
+          rows: [
+            { k: 'Entradas de efectivo', v: this.cashEntradas }, { k: 'Salidas de efectivo', v: this.cashSalidas },
+            { k: 'Pagos a proveedores', v: this.cashPagosProv }, { k: 'Retiros', v: this.cashRetiros }, { k: 'Egresos', v: this.cashEgresos },
+          ],
+        },
+        {
+          titulo: 'Clientes que más compran',
+          columns: [{ header: 'Cliente', key: 'nombre', width: 30 }, { header: 'Compras', key: 'compras', num: true, width: 10 }, $('Total', 'total')],
+          rows: this.topCustomers,
+        },
+        {
+          titulo: 'Más vendidos',
+          columns: [{ header: 'Producto', key: 'nombre', width: 34 }, { header: 'Vendidos', key: 'total_sold', num: true, width: 12 }],
+          rows: this.topProducts,
+        },
+        {
+          titulo: 'Sin rotación',
+          nota: 'Productos que nunca se han vendido.',
+          columns: [{ header: 'Producto', key: 'nombre', width: 34 }, { header: 'Existencia', key: 'stock', num: true, width: 12 }, $('Precio', 'price')],
+          rows: this.deadProducts,
+        },
+      ] as ReportSeccion[]).filter(s => s.rows.length),
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
+  }
 
   private asNumber(x: any): number { const n = Number(x); return Number.isFinite(n) ? n : 0; }
   money(n: number): string { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }

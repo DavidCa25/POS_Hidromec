@@ -92,7 +92,7 @@ test.describe('Dispositivos locales', () => {
         flujos.push(http.get({ host: '127.0.0.1', port: PUERTO, path: '/api/s/eventos', headers: { Cookie: c } }));
       }
 
-      await irPorMas(ventana, 'Configuracion');
+      await irPorMas(ventana, 'Configuración');
       await ventana.waitForSelector('.cs-tile', { timeout: 30000 });
       await ventana.locator('.cs-tile', { hasText: 'Dispositivos locales' }).click();
       await ventana.waitForSelector('.dl-mapa', { timeout: 20000 });

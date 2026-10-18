@@ -236,6 +236,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ticketBorrarLogo: () => invoke('ticket:borrar-logo'),
     ticketClosures: p => invoke('ticket:closures',p),
     ticketEmail: p => invoke('ticket:email',p),
+    aprobacionesPolitica: () => invoke('aprobaciones:politica'),
+    aprobacionesCambiar: (activas) => invoke('aprobaciones:politica-cambiar', { activas }),
+    corteCorreoLista: p => invoke('corte:correo-lista',p),
+    corteCorreoEnviar: p => invoke('corte:correo-enviar',p),
+    estadoResultados: p => invoke('reportes:estado-resultados',p),
     ticketPreview: p => invoke('ticket:preview',p),
     ticketPrintDocument: p => invoke('ticket:print-document',p),
     ticketLogo: () => invoke('ticket:logo'),
@@ -521,6 +526,20 @@ contextBridge.exposeInMainWorld('wybix', {
         // UX, no autorizacion: la venta vuelve a validar dentro de su
         // transaccion, con los productos bloqueados.
         disponibilidad: (p) => invoke('hospitality:availability', p),
+    },
+    // 0060 · Produccion por tandas. Los ingredientes salen al EMPEZAR una
+    // tanda; al terminarla entran las piezas buenas y se registra la merma.
+    produccion: {
+        tablero: (p) => invoke('produccion:tablero', p),
+        planear: (p) => invoke('produccion:planear', p),
+        empezar: (p) => invoke('produccion:empezar', p),
+        terminar: (p) => invoke('produccion:terminar', p),
+        cancelar: (p) => invoke('produccion:cancelar', p),
+        // Merma de producto terminado: lo que estaba a la venta y se tiro.
+        merma: (p) => invoke('produccion:merma', p),
+        formula: (p) => invoke('produccion:formula', p),
+        guardarFormula: (p) => invoke('produccion:formula-guardar', p),
+        quitarFormula: (p) => invoke('produccion:formula-quitar', p),
     },
     recipes: {
         get: (p) => invoke('recipes:get', p),

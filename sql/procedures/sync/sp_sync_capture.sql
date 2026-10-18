@@ -41,6 +41,10 @@ GO
                      y su confirmación) · RETURN_RECEIVED (el sobrante que volvió).
                      Lleva sus líneas con UUID de producto: la nube arma el ledger
                      del evento y la tablet recibe la mercancía.
+       PRODUCTION    0060: PRODUCTION_PLANNED / _STARTED / _FINISHED / _CANCELLED.
+                     Una tanda con lo planeado, lo bueno, su merma y lo que
+                     consumió: el dueño ve cuánto se produjo y a qué costo.
+       WASTE         0060: WASTE_RECORDED. Merma de producto terminado.
    ============================================================== */
 CREATE OR ALTER PROCEDURE dbo.sp_sync_capture
     @max_rows INT = 500
@@ -69,6 +73,11 @@ BEGIN
     /* Las transferencias se capturan TODAS (son pocas y la feria las necesita). */
     IF NOT EXISTS (SELECT 1 FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'TRANSFER')
         INSERT INTO dbo.sync_capture_state (aggregate_type, last_rv) VALUES ('TRANSFER', 0x0000000000000000);
+    /* 0060: la produccion y su merma, todas (son pocas por dia). */
+    IF NOT EXISTS (SELECT 1 FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'PRODUCTION')
+        INSERT INTO dbo.sync_capture_state (aggregate_type, last_rv) VALUES ('PRODUCTION', 0x0000000000000000);
+    IF NOT EXISTS (SELECT 1 FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'WASTE')
+        INSERT INTO dbo.sync_capture_state (aggregate_type, last_rv) VALUES ('WASTE', 0x0000000000000000);
 
     DECLARE @wm BINARY(8);
 
@@ -249,6 +258,95 @@ BEGIN
     IF EXISTS (SELECT 1 FROM #transf)
         UPDATE dbo.sync_capture_state SET last_rv = (SELECT MAX(rv) FROM #transf), updated_at = SYSUTCDATETIME()
          WHERE aggregate_type = 'TRANSFER';
+
+    /* ------------------------------------------------------ PRODUCCION (0060) */
+    SELECT @wm = last_rv FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'PRODUCTION';
+
+    SELECT TOP (@max_rows) b.id, b.row_version AS rv, CAST(b.row_version AS BIGINT) AS version
+      INTO #tandas
+      FROM dbo.production_batches b
+     WHERE b.row_version > @wm AND b.row_version < @tope
+     ORDER BY b.row_version;
+
+    INSERT INTO dbo.sync_outbox (event_uuid, event_type, aggregate_type, aggregate_uuid, aggregate_version, occurred_at, payload)
+    SELECT k.event_uuid,
+           CASE b.status WHEN 'DONE' THEN 'PRODUCTION_FINISHED' WHEN 'IN_PROGRESS' THEN 'PRODUCTION_STARTED'
+                         WHEN 'CANCELLED' THEN 'PRODUCTION_CANCELLED' ELSE 'PRODUCTION_PLANNED' END,
+           'PRODUCTION', b.uuid, x.version,
+           TODATETIMEOFFSET(COALESCE(b.finished_at, b.cancelled_at, b.started_at, b.created_at), @offset),
+           (SELECT
+                b.uuid                 AS batch_uuid,
+                p.uuid                 AS product_uuid,
+                p.nombre               AS product_name,
+                b.status               AS status,
+                CONVERT(VARCHAR(10), b.production_date, 23) AS production_date,
+                CONVERT(VARCHAR(20), b.planned_qty)  AS planned_qty,
+                CONVERT(VARCHAR(20), b.good_qty)     AS good_qty,
+                CONVERT(VARCHAR(20), b.waste_qty)    AS waste_qty,
+                b.waste_reason         AS waste_reason,
+                CONVERT(VARCHAR(30), b.total_cost)   AS total_cost,
+                CONVERT(VARCHAR(30), b.unit_cost)    AS unit_cost,
+                CONVERT(VARCHAR(19), b.started_at, 126)  AS started_local,
+                CONVERT(VARCHAR(19), b.finished_at, 126) AS finished_local,
+                b.machine_name         AS device,
+                uc.usuario AS created_by, us.usuario AS started_by, uf.usuario AS finished_by,
+                (SELECT i.uuid AS product_uuid, i.nombre AS product_name,
+                        CONVERT(VARCHAR(20), c.qty) AS qty, CONVERT(VARCHAR(30), c.unit_cost) AS unit_cost
+                   FROM dbo.production_batch_consumption c JOIN dbo.products i ON i.id = c.ingredient_product_id
+                  WHERE c.batch_id = b.id
+                  ORDER BY i.nombre
+                    FOR JSON PATH) AS consumption
+              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)
+      FROM #tandas x
+      JOIN dbo.production_batches b ON b.id = x.id
+      JOIN dbo.products p ON p.id = b.product_id
+      LEFT JOIN dbo.users uc ON uc.id = b.created_by
+      LEFT JOIN dbo.users us ON us.id = b.started_by
+      LEFT JOIN dbo.users uf ON uf.id = b.finished_by
+     CROSS APPLY (SELECT CAST(CAST(HASHBYTES('SHA2_256',
+                    CONCAT('PRODUCTION|', CONVERT(VARCHAR(36), b.uuid), '|', x.version)) AS BINARY(16)) AS UNIQUEIDENTIFIER) AS event_uuid) k
+     WHERE NOT EXISTS (SELECT 1 FROM dbo.sync_outbox o WHERE o.event_uuid = k.event_uuid);
+    SET @capturados += @@ROWCOUNT;
+
+    IF EXISTS (SELECT 1 FROM #tandas)
+        UPDATE dbo.sync_capture_state SET last_rv = (SELECT MAX(rv) FROM #tandas), updated_at = SYSUTCDATETIME()
+         WHERE aggregate_type = 'PRODUCTION';
+
+    /* ------------------------------------------- MERMA DE TERMINADO (0060) */
+    SELECT @wm = last_rv FROM dbo.sync_capture_state WITH (UPDLOCK, HOLDLOCK) WHERE aggregate_type = 'WASTE';
+
+    SELECT TOP (@max_rows) w.id, w.row_version AS rv, CAST(w.row_version AS BIGINT) AS version
+      INTO #mermas
+      FROM dbo.production_waste w
+     WHERE w.row_version > @wm AND w.row_version < @tope
+     ORDER BY w.row_version;
+
+    INSERT INTO dbo.sync_outbox (event_uuid, event_type, aggregate_type, aggregate_uuid, aggregate_version, occurred_at, payload)
+    SELECT k.event_uuid, 'WASTE_RECORDED', 'WASTE', w.uuid, x.version,
+           TODATETIMEOFFSET(w.created_at, @offset),
+           (SELECT
+                w.uuid                 AS waste_uuid,
+                p.uuid                 AS product_uuid,
+                p.nombre               AS product_name,
+                CONVERT(VARCHAR(20), w.qty)        AS qty,
+                w.reason               AS reason,
+                CONVERT(VARCHAR(30), w.unit_cost)  AS unit_cost,
+                CONVERT(VARCHAR(10), w.waste_date, 23) AS waste_date,
+                w.machine_name         AS device,
+                u.usuario              AS created_by
+              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)
+      FROM #mermas x
+      JOIN dbo.production_waste w ON w.id = x.id
+      JOIN dbo.products p ON p.id = w.product_id
+      LEFT JOIN dbo.users u ON u.id = w.created_by
+     CROSS APPLY (SELECT CAST(CAST(HASHBYTES('SHA2_256',
+                    CONCAT('WASTE|', CONVERT(VARCHAR(36), w.uuid), '|', x.version)) AS BINARY(16)) AS UNIQUEIDENTIFIER) AS event_uuid) k
+     WHERE NOT EXISTS (SELECT 1 FROM dbo.sync_outbox o WHERE o.event_uuid = k.event_uuid);
+    SET @capturados += @@ROWCOUNT;
+
+    IF EXISTS (SELECT 1 FROM #mermas)
+        UPDATE dbo.sync_capture_state SET last_rv = (SELECT MAX(rv) FROM #mermas), updated_at = SYSUTCDATETIME()
+         WHERE aggregate_type = 'WASTE';
 
     COMMIT TRAN;
 

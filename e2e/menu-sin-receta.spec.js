@@ -132,7 +132,7 @@ test.describe('Hospitality · un producto de menú sin receta', () => {
     expect(receta?.success, JSON.stringify(receta)).toBeTruthy();
 
     // ======================================== LA CARTA, POR LA PANTALLA
-    await irPorMas(ventana, 'Migracion');
+    await irPorMas(ventana, 'Migración');
     await ventana.waitForSelector('.mig-vacio', { timeout: 30000 });
     await ventana.click('.mig-vacio .mig-btn');
     await ventana.waitForSelector('.qs__pozo', { timeout: 30000 });

@@ -1,6 +1,8 @@
 <div class="est-wrap">
   <div class="est-head">
     <h2>Estadisticas</h2>
+    <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+             [opciones]="opcionesExportar" (elegir)="exportar($any($event))"></wx-menu>
     <div class="est-seg">
       <button [class.on]="seg==='ventas'" (click)="segChange('ventas')"><i class="ph ph-trend-up"></i> Ventas</button>
       <button [class.on]="seg==='clientes'" (click)="segChange('clientes')"><i class="ph ph-users"></i> Clientes</button>
@@ -141,7 +143,7 @@
     </div>
 
     <div class="est-card">
-      <div class="est-card-head"><h3>Utilidad de la semana</h3></div>
+      <div class="est-card-head"><h3>Utilidad de la semana</h3><a class="est-link" routerLink="/dashboard/estado-resultados">Estado de resultados →</a></div>
       <apx-chart
         [series]="profitChartSeries"
         [chart]="profitChartOptions['chart']"

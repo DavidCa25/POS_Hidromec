@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ServiciosService } from '../servicios.service';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
+import { ReportService, ReportConfig, ReportColumn, fechaSql } from '../../services/report.service';
 import { hoyLocal, fechaLocal } from '../../core';
 
 /**
@@ -28,7 +30,7 @@ import { hoyLocal, fechaLocal } from '../../core';
 @Component({
   selector: 'app-servicios-comisiones',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxDateComponent],
+  imports: [CommonModule, FormsModule, WxDateComponent, WxMenuComponent],
   styleUrls: ['../servicios.css'],
   template: `
   <div class="srv-pagina">
@@ -37,6 +39,9 @@ import { hoyLocal, fechaLocal } from '../../core';
         <h1>Comisiones</h1>
         <p class="srv-sub">Lo que generó cada persona en trabajos ya cobrados.</p>
       </div>
+      <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+               [opciones]="opcionesExportar" [deshabilitado]="cargando() || !porPersona().length"
+               (elegir)="exportar($any($event))"></wx-menu>
     </header>
 
     <div class="srv-barra">
@@ -158,5 +163,57 @@ export class ServiciosComisiones {
   verDetalle(p: any) {
     this.detalleDe.set(p.professional_name);
     this.detalle.set(this.detalleTodo().filter(d => d.professional_id === p.professional_id));
+  }
+
+  /* ------------------------------------------------------- exportar
+     El periodo consultado: por persona y el detalle de cada comisión, para
+     quien liquida. No es nómina: solo el dato. */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const personas = this.porPersona(), detalle = this.detalleTodo();
+    const nombre = new Map(personas.map(p => [p.professional_id, p.professional_name]));
+    const cfg: ReportConfig = {
+      titulo: 'Comisiones',
+      subtitulo: `${this.desde.split('-').reverse().join('/')} a ${this.hasta.split('-').reverse().join('/')}`,
+      columns: [], rows: [],
+      meta: ['Solo trabajos ya cobrados. No es nómina: no incluye pagos ni descuentos.'],
+      filename: `comisiones_${this.desde}_${this.hasta}`,
+      secciones: [
+        {
+          titulo: 'Por persona',
+          columns: [
+            { header: 'Profesional', key: 'professional_name', width: 26 }, { header: 'Puesto', key: 'title', width: 16 },
+            { header: 'Órdenes', key: 'ordenes', num: true, width: 10 }, { header: 'Líneas', key: 'lineas', num: true, width: 10 },
+            $('Base', 'base'), $('Comisión', 'comision'),
+          ],
+          rows: personas,
+          totals: { base: personas.reduce((s, p) => s + Number(p.base || 0), 0), comision: this.total() },
+        },
+        {
+          titulo: 'Detalle',
+          columns: [
+            { header: 'Profesional', key: 'profesional', width: 22 }, { header: 'Fecha', key: 'fecha', width: 16 }, { header: 'Orden', key: 'order_folio', width: 10 },
+            { header: 'Concepto', key: 'concepto', width: 26 }, { header: 'Cliente', key: 'customer_name', width: 20 },
+            $('Base', 'base_amount'), { header: '%', key: 'pct', pct: true, width: 8 }, $('Comisión', 'amount'),
+          ],
+          rows: detalle.map(d => ({
+            ...d, profesional: nombre.get(d.professional_id) ?? '',
+            fecha: fechaSql(d.earned_at),
+          })),
+        },
+      ],
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
   }
 }

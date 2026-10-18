@@ -4,6 +4,9 @@
       <h2>{{ titulo }}</h2>
       <div class="header-right">
         <span class="hoy">{{ hoy | date:'EEEE d MMM, h:mm a' }}</span>
+        <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+                 [opciones]="opcionesExportar" [deshabilitado]="cargando || !reporte"
+                 (elegir)="exportar($any($event))"></wx-menu>
         <button class="btn btn-primary" *ngIf="puedeRegistrar" (click)="abrirFormulario()" data-guide="egresos-registrar">
           + {{ personal ? 'Registrar pago' : 'Registrar egreso' }}
         </button>

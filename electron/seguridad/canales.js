@@ -28,7 +28,7 @@ const {
   VENTAS_OPERAR, VENTAS_SUPERVISAR, INVENTARIO_OPERAR,
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
-  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR,
+  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR,
 } = BUNDLES;
 
 /**
@@ -55,6 +55,10 @@ const EXIGE = {
   'sp-register-cash-out': VENTAS_SUPERVISAR,
   /* Roles v2: pedir y seguir la aprobacion del dueno desde la caja. Cualquiera
      que venda puede PEDIR; lo que se aprueba lo decide la nube (rol en Owner). */
+  /* Si el negocio pide aprobaciones o no (dock > Más). Lo ve y lo cambia
+     un Encargado o el Administrador; el cambio queda en bitácora. */
+  'aprobaciones:politica': VENTAS_SUPERVISAR,
+  'aprobaciones:politica-cambiar': VENTAS_SUPERVISAR,
   'aprobaciones:disponible': VENTAS_OPERAR,
   'aprobaciones:solicitar': VENTAS_OPERAR,
   'aprobaciones:estado': VENTAS_OPERAR,
@@ -66,6 +70,12 @@ const EXIGE = {
   'ticket:preview': VENTAS_OPERAR,
   'ticket:email': VENTAS_OPERAR,
   'ticket:closures': VENTAS_OPERAR,
+  /* 0061: el correo del corte va a los dueños (la nube decide a quién).
+     Ver todos los cortes y mandarlos es de quien administra cortes. */
+  'corte:correo-lista': CAJA_CORTES,
+  'corte:correo-enviar': CAJA_CORTES,
+  // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
+  'reportes:estado-resultados': REPORTES_VER,
   'ticket:print-document': VENTAS_OPERAR,
   'generate-sale-pdf': VENTAS_OPERAR,
   'fiscal-save-invoice': VENTAS_OPERAR,
@@ -257,6 +267,19 @@ const EXIGE = {
   'multi:traspaso-recibir': INVENTARIO_OPERAR,
   'multi:traspaso-cancelar': INVENTARIO_OPERAR,
   'multi:productos-traspaso': INVENTARIO_OPERAR,
+
+  // ------------------------------------------- 0060 produccion por tandas
+  // Empezar una tanda descuenta ingredientes y terminarla mete producto: es
+  // el trabajo de quien hornea. La formula es catalogo, como una receta.
+  'produccion:tablero': PRODUCCION_OPERAR,
+  'produccion:planear': PRODUCCION_OPERAR,
+  'produccion:empezar': PRODUCCION_OPERAR,
+  'produccion:terminar': PRODUCCION_OPERAR,
+  'produccion:cancelar': PRODUCCION_OPERAR,
+  'produccion:merma': PRODUCCION_OPERAR,
+  'produccion:formula': CATALOGO_EDITAR,
+  'produccion:formula-guardar': CATALOGO_EDITAR,
+  'produccion:formula-quitar': CATALOGO_EDITAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,

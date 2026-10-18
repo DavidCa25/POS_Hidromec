@@ -1,0 +1,114 @@
+<div class="fo" data-guide="produccion-formulas-pantalla">
+  <header class="fo-head">
+    <a class="btn-outline fo-back" routerLink="/dashboard/produccion" aria-label="Volver a producción"><i class="ph ph-arrow-left"></i></a>
+    <div class="fo-head__txt">
+      <h1>Fórmulas de producción</h1>
+      <p>Escríbela como la tienes en el cuaderno: para cuántas piezas y qué lleva.</p>
+    </div>
+    <nav class="fo-chips" aria-label="Productos con fórmula">
+      <button type="button" *ngFor="let f of conFormula()" class="fo-chip" [class.es-elegido]="producto()?.product_id === f.product_id && !eligiendoProducto()"
+              (click)="editar(f.product_id)" data-guide="produccion-formula" [attr.data-guide-clave]="f.product_id">{{ f.product_name }}</button>
+      <button type="button" class="fo-chip fo-chip--nueva" [class.es-elegido]="eligiendoProducto()" (click)="nuevaFormula()" data-guide="produccion-formula-nueva">
+        <i class="ph ph-plus"></i> Nueva fórmula
+      </button>
+    </nav>
+  </header>
+
+  <p class="fo-estado" *ngIf="cargando()">Cargando productos…</p>
+  <p class="fo-error" *ngIf="error()" role="alert"><i class="ph ph-warning-circle"></i> {{ error() }}</p>
+
+  <!-- ------------------------------------------------- elegir producto -->
+  <section class="fo-elegir" *ngIf="!cargando() && !error() && eligiendoProducto()">
+    <h2>¿Qué producto se fabrica?</h2>
+    <p>Solo aparecen productos con <b>inventario directo</b>: lo que se fabrica tiene existencia propia y se cuenta por pieza.</p>
+    <wx-select id="fo-producto" [opciones]="opcionesProducto()" [buscable]="true" [ngModel]="null" (ngModelChange)="editar($event)"
+               placeholder="Elige un producto" textoBusqueda="Nombre o código" vacio="Todos tus productos con inventario directo ya tienen fórmula"></wx-select>
+  </section>
+
+  <div class="fo-cuerpo" *ngIf="!cargando() && !error() && !eligiendoProducto() && producto() as p">
+    <!-- ------------------------------------------------------- receta -->
+    <section class="fo-receta" data-guide="produccion-formula-editor">
+      <h2 class="fo-frase">
+        Para
+        <span class="fo-stp">
+          <button type="button" (click)="sumarRinde(-1)" aria-label="Una pieza menos">−</button>
+          <input id="fo-rinde" class="fo-rinde" type="number" min="1" step="1" [value]="rinde()" (change)="rinde.set(entero($any($event.target).value))" data-teclado="QUANTITY" aria-label="Piezas que rinde la fórmula">
+          <button type="button" (click)="sumarRinde(1)" aria-label="Una pieza más">+</button>
+        </span>
+        piezas de <span class="fo-producto">{{ p.product_name }}</span> se usa:
+      </h2>
+
+      <div class="fo-lineas">
+        <div class="fo-linea" *ngFor="let l of lineas(); let i = index; trackBy: porPosicion" data-guide="produccion-formula-linea" [attr.data-guide-clave]="i">
+          <div class="fo-linea__nom">
+            <b>{{ nombre(l.ingredientProductId) }}</b>
+            <span class="fo-linea__sub">hay {{ hay(l.ingredientProductId) }}
+              · merma
+              <button type="button" class="fo-mini" (click)="merma(i, -1)" aria-label="Menos merma">−</button>
+              <span class="mono" [class.fo-merma]="l.wastePct > 0">{{ l.wastePct }}%</span>
+              <button type="button" class="fo-mini" (click)="merma(i, 1)" aria-label="Más merma">+</button>
+            </span>
+          </div>
+          <span class="fo-stp">
+            <button type="button" (click)="mover(i, -1)" [attr.aria-label]="'Menos ' + nombre(l.ingredientProductId)">−</button>
+            <input class="fo-cant" type="number" min="0" step="any" [value]="l.inputQty" (change)="fijar(i, 'inputQty', $any($event.target).value)"
+                   data-teclado="QUANTITY" [attr.aria-label]="'Cantidad de ' + nombre(l.ingredientProductId)">
+            <button type="button" (click)="mover(i, 1)" [attr.aria-label]="'Más ' + nombre(l.ingredientProductId)">+</button>
+          </span>
+          <wx-select class="fo-uom" [opciones]="opcionesUnidad(l)" [ngModel]="l.inputUom" (ngModelChange)="fijar(i, 'inputUom', $event)"></wx-select>
+          <button type="button" class="fo-x" (click)="quitar(i)" [attr.aria-label]="'Quitar ' + nombre(l.ingredientProductId)"><i class="ph ph-x"></i></button>
+        </div>
+
+        <div class="fo-agregar" data-guide="produccion-formula-agregar">
+          <i class="ph ph-plus"></i>
+          <wx-select [opciones]="opcionesIngrediente()" [buscable]="true" [(ngModel)]="nuevoIngrediente" (ngModelChange)="agregarIngrediente($event)"
+                     placeholder="Agregar ingrediente" textoBusqueda="Buscar ingrediente" vacio="No hay más productos con inventario directo"></wx-select>
+        </div>
+      </div>
+
+      <div class="fo-pie">
+        <input id="fo-notas" class="ctl fo-notas" maxlength="300" [(ngModel)]="notas" placeholder="Notas: freír 2 minutos por lado" aria-label="Notas de la fórmula">
+        <button *ngIf="p.tiene_formula" type="button" class="btn-outline" (click)="quitarFormula()" [disabled]="guardando()">Quitar</button>
+        <button type="button" class="btn-primary fo-guardar" (click)="guardar()" [disabled]="guardando()" data-guide="produccion-formula-guardar">
+          {{ guardando() ? 'Guardando…' : 'Guardar fórmula' }}
+        </button>
+      </div>
+      <p class="fo-error" *ngIf="errorEditor()" role="alert">{{ errorEditor() }}</p>
+    </section>
+
+    <!-- --------------------------------------------------- simulador -->
+    <aside class="fo-lado">
+      <section class="fo-sim" data-guide="produccion-formula-simulador" aria-label="Simulador de una tanda">
+        <div class="fo-sim__cab">
+          <span class="fo-lbl">Simulador · si hoy haces</span>
+          <span class="fo-stp">
+            <button type="button" (click)="sumarSimular(-12)" aria-label="Doce menos">−</button>
+            <input class="fo-rinde" type="number" min="1" step="1" [value]="simular()" (change)="simular.set(entero($any($event.target).value))" aria-label="Piezas a simular">
+            <button type="button" (click)="sumarSimular(12)" aria-label="Doce más">+</button>
+          </span>
+        </div>
+        <p class="fo-sim__ayuda">Para revisar la fórmula y planear. No mueve inventario.</p>
+        <p class="fo-vacio" *ngIf="!lineas().length">Agrega ingredientes para ver qué pediría la tanda.</p>
+        <div class="fo-sim__filas" *ngIf="lineas().length">
+          <ng-container *ngFor="let f of simulacion().filas">
+            <span>{{ f.nombre }}</span>
+            <b class="mono">{{ cantidad(f.pide, f.uom) }}</b>
+            <span class="fo-pill" [class.ok]="f.falta === 0" [class.falta]="f.falta > 0">
+              {{ f.falta > 0 ? 'faltan ' + cantidad(f.falta, f.uom) : '✓ alcanza' }}
+            </span>
+          </ng-container>
+        </div>
+        <p class="fo-sim__aviso" *ngIf="simulacion().limita.length && simulacion().alcanzaPara < simular()" role="status">
+          Con lo que hay, alcanza para {{ simulacion().alcanzaPara }}.
+          Compra {{ cantidad(simulacion().limita[0].falta, simulacion().limita[0].uom) }} de {{ simulacion().limita[0].nombre | lowercase }} para hacer {{ simular() }}.
+        </p>
+      </section>
+
+      <section class="fo-cifras" *ngIf="lineas().length">
+        <div><span>Costo de esas {{ simular() }}</span><b class="mono">{{ dinero(simulacion().costo) }}</b></div>
+        <div><span>Por pieza</span><b class="mono">{{ dinero(simulacion().porPieza) }}</b></div>
+        <div><span>Margen a {{ dinero(p.product_price || 0) }}</span><b class="mono" [class.ok]="(margen() ?? 0) > 0.3">{{ porciento(margen()) }}</b></div>
+      </section>
+    </aside>
+  </div>
+</div>
