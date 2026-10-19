@@ -17,7 +17,7 @@ export type CampaignOutcome = 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
 export type RewardKind = 'FREE_PRODUCT' | 'AMOUNT' | 'PERCENT';
 export type DynamicType = 'TIMING' | 'WHEEL';
 export type RaffleStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'DRAWN';
-export type PremioTipo = 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
+export type PremioTipo = 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY' | 'POINTS' | 'STAMPS';
 
 export interface Campaign {
   id: number;

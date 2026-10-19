@@ -8,6 +8,7 @@
       <small>
         <code>{{ c.code }}</code>
         <span *ngIf="c.productName"> · {{ c.productName }} gratis</span>
+        <span *ngIf="!c.productName && c.amountApplied"> · −{{ c.amountApplied | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
       </small>
     </div>
     <!-- Se puede quitar hasta el momento de cobrar: todavia no se ha gastado. -->

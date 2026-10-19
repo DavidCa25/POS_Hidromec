@@ -215,7 +215,7 @@ export interface AppliedCoupon {
 
 /** Un premio concreto de una venta, tal y como lo devolvio SQL. */
 export interface LoyaltyAward {
-  tipo: 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY';
+  tipo: 'REWARD' | 'COUPON' | 'DYNAMIC' | 'RAFFLE_ENTRY' | 'POINTS' | 'STAMPS';
   codigo: string | null;
   nombre: string | null;
   numero: number | null;

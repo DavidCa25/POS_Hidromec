@@ -10,12 +10,13 @@ import {
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../app/wx-date/wx-date.component';
 import { WxTimeComponent } from '../app/wx-time/wx-time.component';
-import { DinamicaJuego } from './dinamica-juego';
+import { DinamicaJuego } from './dinamica-juego';import { ClubAdmin } from './club-admin';
+import { PuntosAdmin } from './puntos-admin';
 
 /*
  * Administracion de Fidelizacion.
  *
- * UNA entrada en el menu, seis secciones dentro: Resumen, Campanas,
+ * UNA entrada en el menu, ocho secciones dentro: Resumen, Club, Puntos, Campanas,
  * Recompensas, Cupones, Dinamicas y Rifas. El menu lateral ya tiene mas
  * entradas de las que nadie recuerda; anadirle seis mas por una funcion que
  * muchos negocios no encenderan habria sido repartir el problema, no
@@ -28,7 +29,7 @@ import { DinamicaJuego } from './dinamica-juego';
  * viaje en algo evidente.
  */
 
-type Seccion = 'resumen' | 'campanas' | 'recompensas' | 'cupones' | 'dinamicas' | 'rifas';
+type Seccion = 'resumen' | 'club' | 'puntos' | 'campanas' | 'recompensas' | 'cupones' | 'dinamicas' | 'rifas';
 
 /** Borrador de campana. `id` null = alta. */
 interface DraftCampana {
@@ -97,7 +98,7 @@ interface DraftRifa {
 @Component({
   selector: 'app-loyalty-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent, DinamicaJuego],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent, DinamicaJuego, ClubAdmin, PuntosAdmin],
   templateUrl: './loyalty-admin.html',
   styleUrls: ['./loyalty-admin.css'],
 })
@@ -145,7 +146,8 @@ export class LoyaltyAdmin implements OnInit {
 
   /** Nombres visibles de las secciones, para la navegacion interna. */
   readonly secciones: { id: Seccion; label: string; icono: string }[] = [
-    { id: 'resumen',     label: 'Resumen',     icono: 'ph-chart-line-up' },
+    { id: 'resumen',     label: 'Resumen',     icono: 'ph-chart-line-up' },    { id: 'club',        label: 'Club',        icono: 'ph-coffee' },
+    { id: 'puntos',      label: 'Puntos',      icono: 'ph-star' },
     { id: 'campanas',    label: 'Campañas',    icono: 'ph-megaphone' },
     { id: 'recompensas', label: 'Recompensas', icono: 'ph-gift' },
     { id: 'cupones',     label: 'Cupones',     icono: 'ph-ticket' },
@@ -193,28 +195,17 @@ export class LoyaltyAdmin implements OnInit {
     this.catalog.vendibles().map(p => ({ valor: p.id, etiqueta: p.product_name, nota: p.part_number ?? '' })));
 
   /**
-   * Los tipos de beneficio que se pueden elegir AHORA.
+   * Los tipos de beneficio que se pueden elegir.
    *
-   * Un cupon hay que canjearlo, y hoy solo el producto gratis se puede
-   * aplicar: la venta no tiene concepto de descuento. Los otros dos aparecen
-   * desactivados y con su motivo, en vez de desaparecer: esconderlos haria
-   * pensar que no existen, y dejarlos elegibles haria repartir papeles que la
-   * caja no puede aceptar.
+   * 0064: los tres se canjean en caja. El monto en pesos lo reparte la
+   * cotización entre los renglones de la cuenta; el porcentaje se aplica a
+   * todos. Antes un cupón de $ o % se emitía pero la caja no podía aceptarlo.
    */
-  readonly tiposDePremio = computed<WxOpcion[]>(() => {
-    const cupon = this.premioDe() === 'COUPON';
-    return [
-      { valor: 'FREE_PRODUCT', etiqueta: 'Producto gratis' },
-      {
-        valor: 'AMOUNT', etiqueta: 'Descuento en pesos',
-        nota: cupon ? 'Próximamente' : undefined, desactivada: cupon,
-      },
-      {
-        valor: 'PERCENT', etiqueta: 'Descuento en porcentaje',
-        nota: cupon ? 'Próximamente' : undefined, desactivada: cupon,
-      },
-    ];
-  });
+  readonly tiposDePremio = computed<WxOpcion[]>(() => [
+    { valor: 'FREE_PRODUCT', etiqueta: 'Producto gratis' },
+    { valor: 'AMOUNT', etiqueta: 'Descuento en pesos' },
+    { valor: 'PERCENT', etiqueta: 'Descuento en porcentaje' },
+  ]);
 
   readonly opcRecompensas = computed<WxOpcion[]>(() =>
     this.loyalty.recompensas().filter(r => r.active).map(r => ({ valor: r.id, etiqueta: r.name })));
@@ -929,14 +920,6 @@ export class LoyaltyAdmin implements OnInit {
   puedeCerrar(r: { status: string }): boolean { return r.status === 'OPEN'; }
   puedeSortear(r: { status: string }): boolean { return r.status === 'CLOSED'; }
 
-  /**
-   * Un cupon de importe o porcentaje se emite y se valida, pero la caja
-   * todavia no puede aplicarlo: la venta no tiene concepto de descuento. Se
-   * avisa AL CREARLO para que nadie reparta papeles que no se pueden canjear.
-   */
-  beneficioSinCanje(kind: string): boolean {
-    return kind === 'AMOUNT' || kind === 'PERCENT';
-  }
 
 
   /** Los estados que escribe SQL: WINNER, ALTERNATE, DELIVERED, FORFEITED. */

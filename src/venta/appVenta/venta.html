@@ -135,6 +135,8 @@
                 Quitar
               </button>
             </div>
+            <!-- 0063 · Club: membresía, beneficio de hoy, renovar. -->
+            <app-club-cliente *ngIf="!isEditing"></app-club-cliente>
           </div>
         </div>
 
@@ -391,6 +393,9 @@
               <span class="label">Total a pagar</span>
               <div class="total-amount">{{ totalVenta | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
             </div>
+            <div class="club-cobro" *ngIf="club.aplicado() as a" data-guide="club-cobro"><span><i class="ph ph-coffee" aria-hidden="true"></i> Beneficio del Club aplicado</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+            <div class="club-cobro" *ngIf="club.aplicadoPuntos() as a" data-guide="puntos-cobro"><span><i class="ph ph-gift" aria-hidden="true"></i> Canje con puntos · {{ a.nombre }}</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+            <div class="club-cobro" *ngIf="club.aplicadoSellos() as a" data-guide="sellos-cobro"><span><i class="ph ph-seal-check" aria-hidden="true"></i> Tarjeta de sellos · {{ a.nombre }}</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
             <ng-container *ngIf="paymentMethod !== 'CREDITO' && paymentMethod!=='PLATAFORMA' && paymentMethod!=='MIXTO'">
               <div class="mt-3">
                 <label class="form-label mb-1">Dinero recibido</label>

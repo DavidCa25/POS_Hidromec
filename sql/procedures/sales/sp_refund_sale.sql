@@ -118,8 +118,10 @@ BEGIN
       END;
       CLOSE refunds_cursor;DEALLOCATE refunds_cursor;
       IF @rest>0 THROW 51000,'El reembolso supera los pagos originales disponibles.',1;
-      SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END;
-    END ELSE INSERT @rp VALUES(@payment_method,@refund_total);
+      /* 0063: devolver algo de $0 (un beneficio del Club) no reparte dinero: conserva la forma de pago indicada. */
+      SET @payment_method=ISNULL(CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END, @payment_method);
+    /* 0064: una venta en $0 (todo canjeado) no tiene pagos ni reparte dinero al devolverse. */
+    END ELSE IF @refund_total>0 INSERT @rp VALUES(@payment_method,@refund_total);
     DECLARE @refund_cash DECIMAL(12,2)=ISNULL((SELECT amount FROM @rp WHERE method='EFECTIVO'),0);
     DECLARE @closure_id_open INT = NULL;
     DECLARE @caja INT = NULL;
@@ -154,6 +156,11 @@ BEGIN
       CASE WHEN @commercial=1 THEN CAST(a.amount/q.qty AS DECIMAL(10,2)) ELSE s.price END,
       CASE WHEN @commercial=1 THEN a.amount ELSE NULL END
     FROM #req q JOIN #sold s ON s.product_id=q.product_id JOIN #refund_amount a ON a.product_id=q.product_id;
+
+    /* 0063: lo que la venta hizo en el Club (membresía cobrada, café dado). */
+    EXEC dbo.sp_membership_on_refund @refund_id = @refund_id;
+    /* 0064: puntos, sellos, canjes y premios de campaña de esa venta. */
+    EXEC dbo.sp_loyalty_points_on_refund @refund_id = @refund_id;
 
     /* ---- Que repone cada producto devuelto: consumo REAL de esta venta ---- */
     SELECT q.product_id AS sold_product_id, m.product_id, SUM(m.quantity) AS consumed, SUM(m.units) AS units

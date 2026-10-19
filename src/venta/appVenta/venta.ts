@@ -19,11 +19,13 @@ import {
   MesaService, ShiftService, SoldLine, ClientesVentaService,
   CajonService,
 } from '../../core';
+import { ClubService } from '../../core/club.service';
 import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
+import { ClubClienteComponent } from '../../app/club-cliente/club-cliente.component';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
@@ -75,10 +77,12 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
+  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
+  /** 0063 · Club: la tarjeta y el descuento en el cobro. */
+  readonly club = inject(ClubService);
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
 
   private readonly cart = inject(CartService);

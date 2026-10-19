@@ -261,6 +261,14 @@ asignar('loyalty', [
   'sp_coupon_issue', 'sp_coupon_validate', 'sp_coupon_redeem',
   // Lo repartido de verdad, para poder auditarlo sin abrir SSMS.
   'sp_loyalty_instances',
+  // 0063: Club (membresías). El canje y el pago corren DENTRO de sp_register_sale.
+  'sp_membership_status', 'sp_membership_apply_sale', 'sp_membership_on_refund', 'sp_membership_plan_save',
+  'sp_membership_admin', 'sp_membership_manage', 'sp_membership_apply_remote',
+  // 0064: puntos y sellos. El canje corre DENTRO de sp_register_sale; ganar,
+  // en sp_loyalty_evaluate_sale; revertir, en sp_refund_sale.
+  'sp_loyalty_customer_status', 'sp_loyalty_points_earn', 'sp_loyalty_points_apply_sale',
+  'sp_loyalty_points_on_refund', 'sp_loyalty_points_config_save', 'sp_loyalty_stamp_card_save',
+  'sp_loyalty_points_manage', 'sp_loyalty_points_admin', 'sp_loyalty_points_ledger', 'sp_loyalty_points_apply_remote',
   // Ruleta: sectores y su sorteo, decidido en el servidor.
   'sp_dynamic_segments', 'sp_dynamic_save_segment',
 ]);

@@ -1015,3 +1015,10 @@ button.tp-dinero__campo{border:0;text-align:left;color:var(--wx-text)}
 }
 .tp-mascota + .tp-cats__extras { margin-top: 0; }
 @media (max-height: 640px) { .tp-mascota { display: none; } }
+
+/* 0063 · Club: el beneficio aplicado, a la vista en el cobro. */
+.club-cobro { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 12px;
+  border-radius: var(--wx-radius-sm); background: var(--wx-success-soft); color: var(--wx-success-ink); font-size: var(--wx-text-sm); font-weight: 600; }
+.club-cobro b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.club-cobro--touch { margin: 0 0 10px; font-size: var(--wx-text-base); }
+.club-cobro span { display: inline-flex; align-items: center; gap: 6px; }

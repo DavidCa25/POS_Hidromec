@@ -72,6 +72,23 @@ export class CuponVenta {
     if (!r?.ok || !r.aplicable) return;
 
     const lineas = this.cart.activeCart().lines;
+    /* 0064: un cupón de $ o % no pide producto; la cotización lo reparte. */
+    if (r.kind === 'AMOUNT' || r.kind === 'PERCENT') {
+      if (!lineas.length) {
+        this.revision.set({ ...r, ok: false, aplicable: false, mensaje: 'Agrega productos a la venta para aplicar este cupón.' });
+        this.cd.detectChanges();
+        return;
+      }
+      this.cart.setCoupon({
+        code: r.code, instanceId: r.instance_id ?? 0, nombre: r.nombre ?? 'Cupón',
+        kind: r.kind as AppliedCoupon['kind'], productId: null, productName: null,
+        amountApplied: 0, precioOriginal: null,
+      });
+      this.revision.set(null);
+      this.codigo = '';
+      this.cd.detectChanges();
+      return;
+    }
     const linea = lineas.find(l => l.productId === r.product_id && l.effectiveUnitPrice > 0);
     if (!linea) {
       this.revision.set({

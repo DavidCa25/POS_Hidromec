@@ -296,6 +296,10 @@ BEGIN
         RETURN;
     END CATCH
 
+    /* 0064: puntos y sellos. Después del reparto de campañas y con su propia
+       transacción; idempotente por venta como el resto. */
+    EXEC dbo.sp_loyalty_points_earn @sale_id = @sale_id;
+
     /* Lo otorgado, para que la pantalla lo cuente y el ticket lo imprima.
        Se devuelve TAMBIEN cuando la venta ya estaba evaluada: un reintento
        tiene que poder volver a ensenar el premio, no quedarse sin nada que
@@ -322,6 +326,17 @@ BEGIN
     FROM dbo.raffle_entries e
     JOIN dbo.raffle_definitions rf ON rf.id = e.raffle_id
     WHERE e.sale_id = @sale_id
+    UNION ALL
+    SELECT 'POINTS', NULL, CONCAT(N'+', SUM(l.delta), N' puntos'), SUM(l.delta), NULL, NULL
+    FROM dbo.loyalty_ledger l
+    WHERE l.sale_id = @sale_id AND l.program = N'POINTS' AND l.kind = N'EARN'
+    HAVING SUM(l.delta) > 0
+    UNION ALL
+    SELECT 'STAMPS', NULL, CONCAT(k.name, N': +', SUM(l.delta), CASE WHEN SUM(l.delta) = 1 THEN N' sello' ELSE N' sellos' END), SUM(l.delta), NULL, k.name
+    FROM dbo.loyalty_ledger l
+    JOIN dbo.loyalty_stamp_cards k ON k.id = l.card_id
+    WHERE l.sale_id = @sale_id AND l.program = N'STAMPS' AND l.kind = N'EARN'
+    GROUP BY k.name
     ORDER BY tipo, numero;
 END
 GO

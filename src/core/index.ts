@@ -29,3 +29,4 @@ export * from './mesas.service';
 export * from './clientes-venta.service';
 export * from './egresos.service';
 export * from './cajon.service';
+export * from './club.service';

@@ -62,8 +62,9 @@ BEGIN
             ELSE 'OK'
         END;
 
-    /* Solo el producto gratis se puede aplicar hoy: ver sp_coupon_redeem. */
-    DECLARE @aplicable BIT = CASE WHEN @motivo = 'OK' AND @kind = 'FREE_PRODUCT' THEN 1 ELSE 0 END;
+    /* 0064: producto gratis, monto y porcentaje se aplican en la cotización
+       (el monto se reparte entre los renglones) y se consumen en sp_register_sale. */
+    DECLARE @aplicable BIT = CASE WHEN @motivo = 'OK' AND @kind IN ('FREE_PRODUCT', 'AMOUNT', 'PERCENT') THEN 1 ELSE 0 END;
 
     SELECT
         CAST(CASE WHEN @motivo = 'OK' THEN 1 ELSE 0 END AS BIT) AS ok,

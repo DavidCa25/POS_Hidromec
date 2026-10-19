@@ -74,6 +74,20 @@ const EXIGE = {
      Ver todos los cortes y mandarlos es de quien administra cortes. */
   'corte:correo-lista': CAJA_CORTES,
   'corte:correo-enviar': CAJA_CORTES,
+  /* 0063 · Club. La caja consulta al cliente; administrar planes es
+     configuración comercial; cancelar o revisar un doble, de un encargado. */
+  'club:estado': VENTAS_OPERAR,
+  'club:sincronizar': VENTAS_OPERAR,
+  'club:admin': REPORTES_VER,
+  'club:plan-guardar': COMERCIAL_ADMINISTRAR,
+  'club:gestionar': VENTAS_SUPERVISAR,
+  'puntos:estado': VENTAS_OPERAR,
+  'puntos:admin': REPORTES_VER,
+  'puntos:historial': REPORTES_VER,
+  'puntos:config-guardar': COMERCIAL_ADMINISTRAR,
+  'puntos:tarjeta-guardar': COMERCIAL_ADMINISTRAR,
+  'puntos:costo': COMERCIAL_ADMINISTRAR,
+  'puntos:ajustar': VENTAS_SUPERVISAR,
   // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
   'reportes:estado-resultados': REPORTES_VER,
   'ticket:print-document': VENTAS_OPERAR,

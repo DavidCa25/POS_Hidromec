@@ -680,7 +680,8 @@ BEGIN
         SET @sale_id = SCOPE_IDENTITY();
         UPDATE dbo.sales SET client_sale_key=@client_sale_key,client_sale_hash=@client_sale_hash,closure_id=@sale_closure WHERE id=@sale_id;
         IF @payments_json IS NOT NULL INSERT dbo.sale_payments(sale_id,payment_method,amount,received,reference) SELECT @sale_id,method,amount,received,reference FROM @pay;
-        ELSE IF @is_credit=0 INSERT dbo.sale_payments(sale_id,payment_method,amount) VALUES(@sale_id,@payment_method,@total);
+        /* 0063: una venta de $0 (solo el beneficio del Club o un producto gratis) no tiene pago que registrar. */
+        ELSE IF @is_credit=0 AND @total>0 INSERT dbo.sale_payments(sale_id,payment_method,amount) VALUES(@sale_id,@payment_method,@total);
         IF @commercial_quote IS NOT NULL BEGIN
           UPDATE dbo.commercial_quotes SET sale_id=@sale_id WHERE id=@commercial_quote;
           UPDATE dbo.sales SET commercial_snapshot=@cq WHERE id=@sale_id;
@@ -690,9 +691,11 @@ BEGIN
         DECLARE @coupon_code NVARCHAR(24)=JSON_VALUE(@cq,'$.coupon.code'),@coupon_id INT;
         IF @coupon_code IS NOT NULL
         BEGIN
+          /* 0064: también $ y %, que la cotización reparte entre los renglones. */
+          IF ISNULL(TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(@cq,'$.coupon.amountApplied')),0)<=0 THROW 51000,'El cupón no aplicó a ningún producto.',1;
           UPDATE ci SET uses_count=ci.uses_count+1,status=CASE WHEN ci.uses_count+1>=ci.uses_allowed THEN 'REDEEMED' ELSE ci.status END,sale_id=ISNULL(ci.sale_id,@sale_id)
           FROM dbo.coupon_instances ci JOIN dbo.coupon_definitions cd ON cd.id=ci.definition_id
-          WHERE ci.code=@coupon_code AND ci.id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.instanceId')) AND cd.kind='FREE_PRODUCT' AND cd.product_id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.productId')) AND ci.status='ISSUED' AND cd.active=1 AND ci.uses_count<ci.uses_allowed AND (ci.expires_at IS NULL OR ci.expires_at>=SYSDATETIME());
+          WHERE ci.code=@coupon_code AND ci.id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.instanceId')) AND (cd.kind IN ('AMOUNT','PERCENT') OR (cd.kind='FREE_PRODUCT' AND cd.product_id=TRY_CONVERT(INT,JSON_VALUE(@cq,'$.coupon.productId')))) AND ci.status='ISSUED' AND cd.active=1 AND ci.uses_count<ci.uses_allowed AND (ci.expires_at IS NULL OR ci.expires_at>=SYSDATETIME());
           IF @@ROWCOUNT<>1 THROW 51000,'El cupón venció o ya se utilizó. La venta no se registró.',1;
           SELECT @coupon_id=id FROM dbo.coupon_instances WHERE code=@coupon_code;
           INSERT dbo.loyalty_redemptions(kind,reward_instance_id,coupon_instance_id,sale_id,register_id,machine_id,amount_applied,created_at)
@@ -789,6 +792,16 @@ BEGIN
             VALUES
             (GETDATE(), @user_id, 'SALE', @sale_id, CONCAT('Venta ', @sale_id), @cash_applied, NULL, @closure_id_open, @register_id);
         END
+
+        /* 11) Club (0063): membresías que se cobran en esta venta y el
+           beneficio del día. Dentro de la transacción: si no procede, la
+           venta no se registra. */
+        EXEC dbo.sp_membership_apply_sale @sale_id = @sale_id, @customer_id = @customer_id,
+             @user_id = @user_id, @register_id = @register_id, @quote = @cq;
+        /* 12) Puntos y sellos (0064): el canje se descuenta aquí, con el
+           saldo comprobado bajo candado. */
+        EXEC dbo.sp_loyalty_points_apply_sale @sale_id = @sale_id, @customer_id = @customer_id,
+             @user_id = @user_id, @quote = @cq;
 
         COMMIT TRAN;
 

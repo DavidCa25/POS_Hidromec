@@ -7,6 +7,7 @@ const { crearSecretos } = require('./seguridad/secretos');
 const { crearIdentidad, metadataSql } = require('./nube/identidad');
 const { crearEnvioHechos } = require('./nube/hechos');
 const { crearMultisucursal } = require('./nube/multisucursal');
+const { crearClub } = require('./nube/club');
 const crypto = require('crypto');
 
 // ============================================================
@@ -273,6 +274,16 @@ const multi = crearMultisucursal({
   pool: () => poolPromise, sql,
   llamar: (action, cuerpo) => gateway(action, cuerpo),
   cfg: { leer: loadConfig, escribir: (parcial) => writeConfig({ ...loadConfig(), ...parcial }) },
+  log,
+});
+
+/* 0063 · Club: baja de la nube lo que cambió en las demás sucursales (ver nube/club.js). */
+const club = crearClub({
+  pool: () => poolPromise, sql,
+  llamar: (action, cuerpo) => gateway(action, cuerpo),
+  cfg: { leer: loadConfig, escribir: (parcial) => writeConfig({ ...loadConfig(), ...parcial }) },
+  disponible: async () => !!loadConfig().enabled && !!(loadConfig().deviceTokenEnc || loadConfig().syncTokenEnc) && permitido(),
+  subirAntes: () => hechos.pronto(),
   log,
 });
 
@@ -793,17 +804,20 @@ function startScheduler() {
   const interval = Number(cfg.intervalMs) || 300000;
   setTimeout(() => { pushSafe(); }, 15000);
   timer = setInterval(() => { pushSafe(); }, interval);
+  club.iniciar();
   log(`Sincronizacion cada ${Math.round(interval / 1000)}s.`);
 }
 
 function stopScheduler() {
   if (timer) { clearInterval(timer); timer = null; }
+  club.detener();
 }
 
 // ---- Exports (todo en un solo lugar) ----
 
 module.exports = {
   multi,
+  club,
   aprobaciones,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,

@@ -4365,6 +4365,10 @@ require('./ipc/aprobaciones').registrar({ ipcMain, sesion, canales, reautenticac
 require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,ensureBusinessConfig,loadDeviceConfig,buildTicketHtmlFromTemplate,loadSaleFromDbWithSp,generateSaleTicketPdf,cloudSync,imprimirHtml});
 /* 0061: el corte de caja por correo a los dueños (se dispara al cerrar el turno). */
 corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0063: el Club (membresías). */
+require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0064: puntos y sellos. */
+require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */
 require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
 

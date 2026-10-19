@@ -173,6 +173,9 @@
         <i class="ph ph-caret-right" aria-hidden="true"></i>
       </button>
 
+      <!-- 0063 · Club: membresía y beneficio de hoy, bajo el cliente. -->
+      <app-club-cliente [touch]="true"></app-club-cliente>
+
       <app-commercial-sale [touch]="true"></app-commercial-sale>
 
       <div class="tp-lineas">
@@ -479,6 +482,9 @@
         <span>Total a pagar</span>
         <b>{{ totales().total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
       </div>
+      <div class="club-cobro club-cobro--touch" *ngIf="club.aplicado() as a" data-guide="club-cobro"><span><i class="ph ph-coffee" aria-hidden="true"></i> Beneficio del Club aplicado</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+      <div class="club-cobro club-cobro--touch" *ngIf="club.aplicadoPuntos() as a" data-guide="puntos-cobro"><span><i class="ph ph-gift" aria-hidden="true"></i> Canje con puntos · {{ a.nombre }}</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+      <div class="club-cobro club-cobro--touch" *ngIf="club.aplicadoSellos() as a" data-guide="sellos-cobro"><span><i class="ph ph-seal-check" aria-hidden="true"></i> Tarjeta de sellos · {{ a.nombre }}</span><b>−{{ a.monto | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
 
       <div class="tp-metodos" role="group" aria-label="Método de pago">
         <button type="button" class="tp-metodo" [disabled]="cobrando()" [class.on]="metodoIncluido('PLATAFORMA')" [class.foco]="pagoMixto() && metodo()==='PLATAFORMA'" (click)="elegirMetodo('PLATAFORMA')"><i class="ph ph-moped" aria-hidden="true"></i><span>Plataforma</span></button>

@@ -85,6 +85,10 @@ export interface Cart {
   /** El cupon aplicado a ESTA cuenta, si lo hay. */
   commercial?: {channel:string;audiences:string[];orderReference?:string;quote?:Cotizacion;signature?:string;requestedSignature?:string;pending?:boolean;error?:string};
   coupon?: AppliedCoupon | null;
+  /** 0063 · Club: la caja pidió el beneficio del día de esta membresía. Lo decide la cotización. */
+  membership?: { membershipId: number; customerId: number } | null;
+  /** 0064 · Canje de puntos (una recompensa del catálogo) y/o de una tarjeta de sellos llena. */
+  canje?: { customerId: number; rewardId: number | null; cardId: number | null } | null;
   meta?: Record<string, unknown>;
 }
 
@@ -232,6 +236,9 @@ export class CartService {
       active.serviceMode = null;
       active.commercial=undefined;
       active.coupon=null;
+      /* 0063: el beneficio del Club se pidio para ESTA venta; no se hereda. */
+      active.membership=null;
+      active.canje=null;
       /* La venta se cerro: lo que la ataba a algo -la cuenta de una mesa, una
          orden de servicio- se cerro con ella. Antes `meta` sobrevivia y la
          caja seguia mostrando «Mesa 1» sobre una cuenta ya COBRADA: el
@@ -363,7 +370,23 @@ export class CartService {
   // ------------------------------------------------------------------ cliente
 
   setCustomer(c: CartCustomer | null): void {
-    this.activeCart().customer = c;
+    const cart = this.activeCart();
+    cart.customer = c;
+    /* El beneficio del Club es de UN cliente: cambiar de cliente lo quita. */
+    if (cart.membership && cart.membership.customerId !== c?.id) cart.membership = null;
+    if (cart.canje && cart.canje.customerId !== c?.id) cart.canje = null;
+    this.touch();
+  }
+
+  /** 0063 · Pide (o quita) el beneficio del Club. Validarlo es cosa de la cotización y de SQL. */
+  setMembership(m: { membershipId: number; customerId: number } | null): void {
+    this.activeCart().membership = m;
+    this.touch();
+  }
+
+  /** 0064 · Pide (o quita) un canje de puntos o sellos. Lo decide la cotización y, al cobrar, SQL. */
+  setCanje(c: { customerId: number; rewardId: number | null; cardId: number | null } | null): void {
+    this.activeCart().canje = c && (c.rewardId || c.cardId) ? c : null;
     this.touch();
   }
 
