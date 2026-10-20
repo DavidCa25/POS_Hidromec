@@ -113,7 +113,7 @@ try {
   const puntos = (cli) => Number(estado(cli)[0][0].puntos);
   const sellos = (cli, card) => Number(estado(cli)[1].find(c => Number(c.id) === card)?.sellos ?? 0);
   const devolver = (sale, p, qty, precio) => q(`DECLARE @r dbo.SaleDetailType; INSERT @r VALUES (${p}, ${qty}, ${precio});
-     EXEC dbo.sp_refund_sale @sale_id=${sale}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${sale}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
 
   // =============================================================== 1
   seccion('1. Configuración y tarjetas');

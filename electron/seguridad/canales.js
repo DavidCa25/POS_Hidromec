@@ -117,6 +117,8 @@ const EXIGE = {
   // presencial: si quien opera no las tiene, otra persona con el paquete puede
   // autorizarlas con sus credenciales, y las dos identidades quedan registradas.
   'sp-refund-sale': VENTAS_SUPERVISAR,
+  'devoluciones:ventas': VENTAS_OPERAR,
+  'devoluciones:cambio': VENTAS_SUPERVISAR,
   'sp-update-sale': VENTAS_SUPERVISAR,
   /* Roles v2: abrir tras un cobro es de quien vende; abrir SIN venta lo
      decide el propio canal (pide autorizacion). Ver APROBABLES. */
@@ -632,6 +634,7 @@ const ACTOR = {
   'sp-close-shift':               { campos: ['user_id', 'userId'] },
   'sp-update-sale':               { campos: ['user_id', 'userId'] },
   'sp-refund-sale':               { campos: ['user_id', 'userId'] },
+  'devoluciones:cambio':          { campos: ['user_id', 'userId'] },
   'sp-import-sales':              { campos: ['user_id', 'userId'] },
   'sp-register-cash-out':         { campos: ['user_id', 'userId'] },
   'sp-register-supplier-payment': { campos: ['user_id', 'userId'] },
@@ -678,6 +681,8 @@ const APROBABLES = {
   'sp-register-cash-out':          { accion: 'RETIRO', evento: 'CASH_OUT_AUTHORIZED' },
   'egresos:registrar':             { accion: 'EGRESO', evento: 'EXPENSE_AUTHORIZED' },
   'sp-refund-sale':                { accion: 'DEVOLUCION', evento: 'REFUND' },
+  /* 0065: un cambio ES una devolución: la misma autorización. */
+  'devoluciones:cambio':           { accion: 'DEVOLUCION', evento: 'REFUND' },
   'sp-update-sale':                { accion: 'MODIFICAR_VENTA', evento: 'SALE_UPDATE' },
   'open-cash-drawer':              { accion: 'ABRIR_CAJON', evento: 'DRAWER_NO_SALE', enCanal: true },
   'inventory:apply-count':         { accion: 'AJUSTE', evento: 'STOCK_ADJUST_AUTHORIZED' },

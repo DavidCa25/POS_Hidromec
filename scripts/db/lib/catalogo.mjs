@@ -68,7 +68,7 @@ const asignar = (carpeta, nombres) => nombres.forEach(n => DOMINIO.set(n, carpet
 asignar('commercial',['sp_commercial_policy_save']);
 
 asignar('sales', [
-  'sp_register_sale', 'sp_refund_sale', 'sp_update_sale', 'sp_get_sale_by_folio',
+  'sp_register_sale', 'sp_refund_sale', 'sp_refund_candidates', 'sp_exchange_sale', 'sp_refund_ticket', 'sp_update_sale', 'sp_get_sale_by_folio',
   'sp_get_sale_ticket', 'sp_get_sales_filtered', 'sp_get_actual_folio',
   'sp_get_total_sales_today', 'sp_get_total_sales_month', 'sp_get_total_orders',
   'sp_get_top_selling_product', 'sp_get_daily_sales_current_month',

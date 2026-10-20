@@ -1,0 +1,153 @@
+/*
+ * Fidelización · concepto A (2026-10-19): tablero con editor lateral.
+ * Club y Puntos comparten estas piezas: indicadores arriba, tarjetas para lo
+ * que se configura, tablas limpias para lo que se consulta y un panel a la
+ * derecha para editar, con la vista de cómo lo verá la caja.
+ */
+.fa { display: flex; flex-direction: column; gap: 18px; }
+.fa-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.fa-k { font-size: var(--wx-text-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--wx-text-muted); }
+.fa-sub { margin: 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.fa-num { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.fa-der { text-align: right; }
+.fa-pad { padding: 0 18px 18px; }
+
+/* Indicadores */
+.fa-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.fa-kpi { background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+  padding: 15px 18px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fa-kpi .fa-k { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fa-v { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; }
+.fa-n { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
+.fa-kpi--ojo { border-color: rgb(202 138 4 / .45); }
+.fa-kpi--ojo .fa-v { color: var(--wx-warning-ink); }
+@media (max-width: 900px) { .fa-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Columnas: contenido + editor */
+.fa-cols { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.fa-main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.fa-editor { flex: 1 1 360px; min-width: 0; position: sticky; top: 12px; box-shadow: var(--wx-shadow-raised); }
+.fa-editor form { display: flex; flex-direction: column; gap: 16px; }
+.fa-editor fieldset { border: 0; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--wx-edge-soft); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fa-editor fieldset:first-of-type { border-top: 0; padding-top: 0; }
+.fa-editor legend { padding: 0; margin-bottom: 8px; }
+
+.fa-card { background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card); padding: 18px; min-width: 0; }
+.fa-card--tabla { padding: 0; overflow: hidden; }
+.fa-card--ojo { border-color: rgb(202 138 4 / .45); background: linear-gradient(var(--wx-warning-soft), var(--wx-warning-soft)), var(--wx-surface); }
+.fa-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.fa-head--pad { padding: 16px 18px 0; }
+.fa-head h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 620; display: flex; align-items: center; gap: 8px; }
+.fa-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.fa-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: var(--wx-text-xs); font-weight: 600; white-space: nowrap; }
+.fa-chip.ok { background: var(--wx-success-soft); color: var(--wx-success-ink); }
+.fa-chip.ojo { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
+.fa-chip.mal { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+.fa-chip.neu { background: var(--wx-sunken); color: var(--wx-text-muted); }
+.fa-chip.cy { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+
+/* Planes como tarjetas */
+.fa-planes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.fa-plan { text-align: left; font: inherit; color: inherit; cursor: pointer; background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); padding: 15px 16px; display: flex; flex-direction: column; gap: 6px;
+  transition: border-color var(--wx-dur-micro) var(--wx-ease-out), box-shadow var(--wx-dur-micro) var(--wx-ease-out); }
+.fa-plan:hover { border-color: var(--wx-edge-strong); box-shadow: var(--wx-shadow-raised); }
+.fa-plan:active { transform: scale(.99); }
+.fa-plan:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+.fa-plan.on { border: 2px solid var(--wx-accent); padding: 14px 15px; background: linear-gradient(var(--wx-accent-soft), var(--wx-accent-soft)), var(--wx-surface); }
+.fa-plan.off { opacity: .65; }
+.fa-plan__top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 15px; }
+.fa-plan__precio { font-family: var(--wx-font-mono); font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.fa-plan__precio small { font-family: var(--wx-font); font-size: var(--wx-text-sm); font-weight: 500; color: var(--wx-text-dim); letter-spacing: 0; }
+.fa-plan__det { font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.fa-plan__pie { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Filtro segmentado */
+.fa-seg { display: flex; gap: 2px; padding: 3px; background: var(--wx-sunken); border-radius: 10px; flex-wrap: wrap; }
+.fa-seg button { border: 0; background: transparent; padding: 6px 11px; border-radius: 8px; font: 600 12.5px var(--wx-font); color: var(--wx-text-muted); cursor: pointer; }
+.fa-seg button span { font-family: var(--wx-font-mono); font-weight: 500; }
+.fa-seg button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-card); }
+.fa-buscar .ctl { width: 220px; }
+
+/* Tablas */
+.fa-tabla { overflow-x: auto; }
+.fa-tabla table { width: 100%; border-collapse: collapse; }
+.fa-tabla th { font-size: var(--wx-text-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--wx-text-muted);
+  text-align: left; padding: 10px 18px; border-bottom: 1px solid var(--wx-edge); white-space: nowrap; }
+.fa-tabla th.fa-der { text-align: right; }
+.fa-tabla td { padding: 11px 18px; border-bottom: 1px solid var(--wx-edge-soft); font-size: var(--wx-text-base); vertical-align: middle; }
+.fa-tabla tr:last-child td { border-bottom: 0; }
+.fa-tabla td strong { font-weight: 600; }
+.fa-tabla td small { display: block; color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+.fa-tabla tr.apagada td { opacity: .55; }
+.fa-tabla tr.abierta td { background: var(--wx-raised); }
+
+/* Controles del editor */
+.fa-opc { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.fa-opc button, .fa-otro { height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  font: 600 13px var(--wx-font); color: var(--wx-text-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.fa-opc button.on, .fa-otro.on { border-color: var(--wx-accent-line); background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.fa-otro input { width: 52px; border: 0; background: transparent; font: 600 13px var(--wx-font-mono); color: inherit; text-align: right; }
+.fa-frase { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--wx-text-base); }
+.fa-step { display: inline-flex; align-items: center; border: 1px solid var(--wx-edge-strong); border-radius: 9px; background: var(--wx-surface); }
+.fa-step button { width: 32px; height: 34px; border: 0; background: none; font-size: 16px; color: var(--wx-text); cursor: pointer; }
+.fa-step button:active { transform: scale(.94); }
+.fa-step input { width: 46px; border: 0; background: transparent; text-align: center; font: 600 14px var(--wx-font-mono); color: var(--wx-text); -moz-appearance: textfield; }
+.fa-step input::-webkit-inner-spin-button, .fa-otro input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.fa-step--precio::before { content: '$'; padding-left: 10px; color: var(--wx-text-dim); font-family: var(--wx-font-mono); }
+
+.fa-preview { background: var(--wx-raised); border: 1px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.fa-preview > small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.fa-preview__caja { background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 11px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.fa-preview__cab { display: flex; gap: 8px; align-items: center; }
+.fa-preview__cab small { color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+.fa-preview__btn { height: 34px; border-radius: 9px; background: var(--wx-accent); color: var(--wx-accent-ink); font-weight: 600; font-size: var(--wx-text-sm);
+  display: flex; align-items: center; justify-content: center; gap: 6px; }
+.fa-pie { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Puntos */
+.fa-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .fa-dos { grid-template-columns: minmax(0, 1fr); } }
+.fa-reglas { display: flex; flex-direction: column; gap: 12px; }
+.fa-ejemplo { background: var(--wx-raised); border-radius: 11px; padding: 11px 14px; font-size: var(--wx-text-sm); color: var(--wx-text-muted);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fa-ejemplo strong { color: var(--wx-text); font-family: var(--wx-font-mono); }
+.fa-interruptor { display: inline-flex; align-items: center; gap: 8px; font-size: var(--wx-text-sm); font-weight: 600; cursor: pointer; }
+.fa-interruptor input { width: 16px; height: 16px; accent-color: var(--wx-accent); }
+
+.fa-canjes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fa-canje { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid var(--wx-edge); border-radius: 11px; }
+.fa-canje.sin { border-style: dashed; }
+.fa-canje__tx { flex: 1; min-width: 0; }
+.fa-canje__tx strong { font-weight: 600; display: block; }
+.fa-canje__tx small { color: var(--wx-text-dim); font-size: var(--wx-text-xs); }
+.fa-costo { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--wx-accent-line); background: var(--wx-accent-soft); border-radius: 999px; padding: 0 4px 0 10px; height: 30px; }
+.fa-costo input { width: 56px; border: 0; background: transparent; font: 600 13px var(--wx-font-mono); color: var(--wx-accent-text); text-align: right; }
+.fa-costo span { font-size: var(--wx-text-xs); font-weight: 600; color: var(--wx-accent-text); padding-right: 6px; }
+.fa-costo.sin { border-color: var(--wx-edge-strong); background: var(--wx-surface); }
+.fa-costo.sin input, .fa-costo.sin span { color: var(--wx-text-muted); }
+
+.fa-sellos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.fa-sello { border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); padding: 15px; display: flex; flex-direction: column; gap: 9px; }
+.fa-sello.off { opacity: .6; }
+.fa-sello__cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fa-sello__puntos { display: flex; flex-wrap: wrap; gap: 6px; }
+.fa-sello__puntos i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--wx-edge-strong); }
+.fa-sello__puntos i.on { background: var(--wx-accent); border-color: var(--wx-accent); }
+.fa-sello__puntos i.premio { border-style: dashed; border-color: var(--wx-accent); }
+.fa-sello small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.fa-sello--nuevo { border: 1.5px dashed var(--wx-edge-strong); background: transparent; color: var(--wx-text-muted); font: 600 13px var(--wx-font);
+  border-radius: var(--wx-radius-md); min-height: 120px; cursor: pointer; }
+.fa-sello--nuevo:hover { color: var(--wx-text); border-color: var(--wx-accent-line); }
+
+.fa-hist { list-style: none; margin: 4px 0 0; padding: 0 0 0 14px; border-left: 2px solid var(--wx-edge); display: flex; flex-direction: column; gap: 7px; }
+.fa-hist li { display: flex; justify-content: space-between; gap: 12px; font-size: var(--wx-text-sm); }
+.fa-hist li small { color: var(--wx-text-dim); margin-left: 6px; }
+.fa-hist .mas { color: var(--wx-success-ink); }
+.fa-hist .menos { color: var(--wx-danger-ink); }
+.fa-ajuste { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.fa-ajuste wx-select { min-width: 170px; }
+.fa-ajuste input[type=number] { width: 110px; }
+.fa-ajuste input[type=text] { flex: 1; min-width: 200px; }

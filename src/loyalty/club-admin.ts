@@ -44,179 +44,184 @@ interface DraftPlan {
   selector: 'app-club-admin',
   standalone: true,
   imports: [CommonModule, FormsModule, WxSelectComponent, WxMultiSelectComponent],
-  styleUrls: ['./loyalty-admin.css'],
+  styleUrls: ['./loyalty-admin.css', './fidelizacion-a.css'],
   template: `
-  <div class="loy-sec" data-guide="club-admin">
-    <div class="loy-sec__head">
-      <div>
-        <h2>Club</h2>
-        <p class="loy-sub">Membresía de pago con un beneficio al día. Se afilia y se renueva cobrando en caja.</p>
-      </div>
-      <div class="loy-acciones-head">
-        <button class="btn-ghost" type="button" *ngIf="nube()" (click)="sincronizar()" [disabled]="sincronizando()" data-guide="club-sincronizar">
-          <i class="ph ph-arrows-clockwise"></i> {{ sincronizando() ? 'Sincronizando…' : 'Traer de otras sucursales' }}
-        </button>
-        <button class="btn-primary" type="button" (click)="nuevoPlan()" data-guide="club-nuevo-plan">
-          <i class="ph ph-plus"></i> Nuevo plan
-        </button>
-      </div>
-    </div>
-
+  <div class="fa" data-guide="club-admin">
     <p class="loy-error" *ngIf="error() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
 
-    <div class="loy-cards" *ngIf="resumen() as k">
-      <article class="loy-card">
-        <span class="loy-card__k">Socios activos</span>
-        <strong class="loy-card__v">{{ k.activos }}</strong>
-        <span class="loy-card__n">{{ k.por_vencer }} vencen en 7 días · {{ k.vencidas }} vencidas</span>
+    <!-- Indicadores -->
+    <section class="fa-kpis" *ngIf="resumen() as k" aria-label="Indicadores del Club">
+      <article class="fa-kpi">
+        <span class="fa-k">Socios activos</span>
+        <strong class="fa-v">{{ k.activos }}</strong>
+        <span class="fa-n">{{ k.por_vencer }} vencen esta semana · {{ k.vencidas }} vencidas</span>
       </article>
-      <article class="loy-card">
-        <span class="loy-card__k">Cobrado este mes</span>
-        <strong class="loy-card__v">{{ k.ingreso_mes | currency:'MXN':'symbol-narrow':'1.0-0' }}</strong>
-        <span class="loy-card__n">{{ k.pagos_mes }} {{ k.pagos_mes === 1 ? 'pago' : 'pagos' }} de membresía</span>
+      <article class="fa-kpi">
+        <span class="fa-k">Cobrado este mes</span>
+        <strong class="fa-v">{{ k.ingreso_mes | currency:'MXN':'symbol-narrow':'1.0-0' }}</strong>
+        <span class="fa-n">{{ k.pagos_mes }} {{ k.pagos_mes === 1 ? 'pago' : 'pagos' }} de membresía</span>
       </article>
-      <article class="loy-card">
-        <span class="loy-card__k">Beneficios dados</span>
-        <strong class="loy-card__v">{{ k.beneficios_mes }}</strong>
-        <span class="loy-card__n">costo {{ k.costo_beneficios_mes | currency:'MXN':'symbol-narrow':'1.0-0' }} este mes</span>
+      <article class="fa-kpi">
+        <span class="fa-k">Beneficios dados</span>
+        <strong class="fa-v">{{ k.beneficios_mes }}</strong>
+        <span class="fa-n">te costaron {{ k.costo_beneficios_mes | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
       </article>
-      <article class="loy-card" [class.loy-card--ojo]="k.dobles_pendientes > 0">
-        <span class="loy-card__k">Canjes dobles</span>
-        <strong class="loy-card__v">{{ k.dobles_pendientes }}</strong>
-        <span class="loy-card__n">por revisar</span>
+      <article class="fa-kpi" [class.fa-kpi--ojo]="k.dobles_pendientes > 0">
+        <span class="fa-k">Canjes dobles</span>
+        <strong class="fa-v">{{ k.dobles_pendientes }}</strong>
+        <span class="fa-n">por revisar</span>
       </article>
+    </section>
+
+    <div class="fa-cols">
+      <div class="fa-main">
+        <!-- Planes -->
+        <section class="fa-card">
+          <div class="fa-head">
+            <h2>Planes</h2>
+            <div class="fa-acts">
+              <button class="btn-ghost btn-sm" type="button" *ngIf="nube()" (click)="sincronizar()" [disabled]="sincronizando()" data-guide="club-sincronizar">
+                <i class="ph ph-arrows-clockwise"></i> {{ sincronizando() ? 'Sincronizando…' : 'Traer de otras sucursales' }}
+              </button>
+              <button class="btn-outline btn-sm" type="button" (click)="nuevoPlan()" data-guide="club-nuevo-plan"><i class="ph ph-plus"></i> Nuevo plan</button>
+            </div>
+          </div>
+          <div class="fa-planes" *ngIf="planes().length; else sinPlanes">
+            <button type="button" class="fa-plan" *ngFor="let p of planes()" (click)="editarPlan(p)"
+                    [class.on]="plan()?.id === p.id" [class.off]="!p.active" [attr.data-guide-clave]="p.uuid" data-guide="club-plan">
+              <span class="fa-plan__top"><strong>{{ p.name }}</strong>
+                <span class="fa-chip" [class.ok]="p.active" [class.neu]="!p.active">{{ p.active ? 'Afiliando' : 'Pausado' }}</span></span>
+              <span class="fa-plan__precio">{{ (p.price ?? 0) | currency:'MXN':'symbol-narrow':'1.0-2' }} <small>/ {{ p.period_days }} días</small></span>
+              <span class="fa-plan__det">{{ p.daily_limit }} al día · {{ nombresProductos(p) }} · {{ p.grace_days ? p.grace_days + ' días de gracia' : 'sin gracia' }}</span>
+              <span class="fa-plan__pie"><span class="fa-chip neu">{{ p.socios_activos }} {{ p.socios_activos === 1 ? 'socio' : 'socios' }}</span>
+                <span class="fa-chip cy" *ngIf="plan()?.id === p.id">Editando</span>
+                <span class="fa-chip neu" *ngIf="p.origin === 'REMOTE'">De otra sucursal</span></span>
+            </button>
+          </div>
+          <ng-template #sinPlanes>
+            <div class="loy-vacio" *ngIf="!cargando()">
+              <i class="ph ph-coffee"></i>
+              <h3>Todavía no hay planes</h3>
+              <p>Crea un producto de servicio («Membresía mensual») y después un plan que diga qué se regala cada día.</p>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- Canjes dobles -->
+        <section class="fa-card fa-card--ojo" *ngIf="dobles().length">
+          <div class="fa-head"><h2>Canjes dobles <span class="fa-chip ojo">{{ resumen()?.dobles_pendientes ?? 0 }} por revisar</span></h2></div>
+          <p class="fa-sub">Se dio el beneficio dos veces el mismo día en sucursales sin conexión. Las dos ventas quedan; revisa y anota qué pasó.</p>
+          <div class="fa-tabla">
+            <table>
+              <thead><tr><th>Cliente</th><th>Cuándo</th><th>Dónde</th><th>Producto</th><th>Revisión</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let r of dobles()" [class.apagada]="!!r.reviewed_at" data-guide="club-doble" [attr.data-guide-clave]="r.id">
+                  <td><strong>{{ r.cliente }}</strong><small>{{ r.plan_name }}</small></td>
+                  <td>{{ r.created_at | date:'d MMM HH:mm':'UTC':'es-MX' }}</td>
+                  <td>{{ r.sucursal }}</td>
+                  <td>{{ r.units }} × {{ r.product_name }}<small *ngIf="r.sale_id">Venta #{{ r.sale_id }}</small></td>
+                  <td><ng-container *ngIf="r.reviewed_at; else pendiente">{{ r.revisado_por || 'Revisado' }}<small>{{ r.review_note }}</small></ng-container>
+                      <ng-template #pendiente><span class="fa-chip ojo">Pendiente</span></ng-template></td>
+                  <td class="fa-der"><button *ngIf="!r.reviewed_at" class="btn-ghost btn-sm" type="button" (click)="revisar(r)">Revisar</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Socios -->
+        <section class="fa-card fa-card--tabla">
+          <div class="fa-head fa-head--pad">
+            <h2>Socios</h2>
+            <div class="fa-acts">
+              <div class="fa-seg" role="group" aria-label="Filtrar socios">
+                <button type="button" *ngFor="let o of segmentos()" [class.on]="estado === o.valor" (click)="filtrar(o.valor)">
+                  {{ o.etiqueta }}<span *ngIf="o.n != null"> {{ o.n }}</span>
+                </button>
+              </div>
+              <label class="fa-buscar"><span class="fa-sr">Buscar socio</span>
+                <input class="ctl" type="search" placeholder="Nombre o teléfono" [(ngModel)]="buscar" (keyup.enter)="cargar()" (search)="cargar()" data-guide="club-buscar"></label>
+            </div>
+          </div>
+          <div class="fa-tabla" *ngIf="socios().length; else sinSocios">
+            <table>
+              <thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Pagado hasta</th><th class="fa-der">Este mes</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let s of socios()" [class.apagada]="s.estado === 'CANCELADA'" data-guide="club-socio" [attr.data-guide-clave]="s.id" [attr.data-guide-estado]="s.estado">
+                  <td><strong>{{ s.cliente }}</strong><small>{{ s.telefono || 'Sin teléfono' }}</small></td>
+                  <td>{{ s.plan_name }}</td>
+                  <td><span class="fa-chip" [class.ok]="s.estado === 'ACTIVA'" [class.ojo]="s.estado === 'POR_VENCER'" [class.mal]="s.estado === 'VENCIDA'" [class.neu]="s.estado === 'CANCELADA'">{{ etiquetaEstado[s.estado] }}</span></td>
+                  <td class="fa-num">{{ s.paid_until ? (s.paid_until | date:'d MMM':'UTC':'es-MX') : '—' }}</td>
+                  <td class="fa-num fa-der">{{ s.beneficios_mes }}</td>
+                  <td class="fa-der"><button *ngIf="s.estado !== 'CANCELADA'" class="btn-ghost btn-sm" type="button" (click)="cancelar(s)">Cancelar</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #sinSocios>
+            <p class="loy-hint fa-pad" *ngIf="!cargando()">{{ buscar || estado ? 'Nadie coincide con la búsqueda.' : 'Aún no hay socios. Se afilian en caja, al elegir al cliente.' }}</p>
+          </ng-template>
+        </section>
+      </div>
+
+      <!-- Editor del plan -->
+      <aside class="fa-card fa-editor" *ngIf="plan() as d" aria-label="Editar plan">
+        <form (ngSubmit)="guardarPlan()" data-guide="club-plan-form">
+          <div class="fa-head"><h2>{{ d.id ? d.nombre || 'Plan' : 'Nuevo plan' }}</h2><span class="fa-chip cy">{{ d.id ? 'Editando' : 'Nuevo' }}</span></div>
+
+          <fieldset>
+            <legend class="fa-k">1 · Qué cobras</legend>
+            <label class="loy-f"><span>Nombre del plan</span>
+              <input class="ctl" type="text" [(ngModel)]="d.nombre" name="cNom" maxlength="80" placeholder="Club del café"></label>
+            <label class="loy-f"><span>Producto con el que se cobra</span>
+              <wx-select [opciones]="productosCobro()" [(ngModel)]="d.productoCobro" name="cProd" [buscable]="true" placeholder="Elegir producto"></wx-select></label>
+            <div class="loy-f"><span class="loy-f__lbl">Cada pago cubre</span>
+              <div class="fa-opc">
+                <button type="button" *ngFor="let n of [15, 30]" [class.on]="d.dias === n" (click)="d.dias = n">{{ n }} días</button>
+                <label class="fa-otro" [class.on]="d.dias !== 15 && d.dias !== 30"><span class="fa-sr">Otro número de días</span>
+                  <input type="number" min="1" max="366" [(ngModel)]="d.dias" name="cDias"> días</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend class="fa-k">2 · Qué recibe</legend>
+            <div class="fa-frase">Al día:
+              <span class="fa-step"><button type="button" aria-label="Menos" (click)="d.limiteDiario = max(1, d.limiteDiario - 1)">−</button>
+                <input type="number" min="1" max="20" [(ngModel)]="d.limiteDiario" name="cLim" aria-label="Beneficios por día">
+                <button type="button" aria-label="Más" (click)="d.limiteDiario = min(20, d.limiteDiario + 1)">+</button></span>
+              de cualquiera de estos:</div>
+            <wx-multi-select etiqueta="Productos del beneficio" placeholder="Agregar producto" [opciones]="productosBeneficio()" [(values)]="d.productos"></wx-multi-select>
+          </fieldset>
+
+          <fieldset>
+            <legend class="fa-k">3 · Si se atrasa</legend>
+            <div class="fa-frase">Le sigues dando el beneficio
+              <span class="fa-step"><button type="button" aria-label="Menos" (click)="d.gracia = max(0, d.gracia - 1)">−</button>
+                <input type="number" min="0" max="30" [(ngModel)]="d.gracia" name="cGra" aria-label="Días de gracia">
+                <button type="button" aria-label="Más" (click)="d.gracia = min(30, d.gracia + 1)">+</button></span>
+              días</div>
+            <label class="loy-check"><input type="checkbox" [(ngModel)]="d.activo" name="cAct"><span>Se puede afiliar en caja</span></label>
+          </fieldset>
+
+          <div class="fa-preview" aria-label="Vista de la caja">
+            <span class="fa-k">Así lo ve la caja</span>
+            <div class="fa-preview__caja">
+              <span class="fa-preview__cab"><span class="fa-chip ok">{{ d.nombre || 'Tu plan' }}</span><small>hasta {{ hasta(d) | date:'d MMM':'':'es-MX' }}</small></span>
+              <span class="fa-preview__btn"><i class="ph ph-coffee" aria-hidden="true"></i> Dar {{ beneficio(d) }} de hoy</span>
+            </div>
+            <small>{{ resumenPlan(d) }}</small>
+          </div>
+
+          <p class="loy-nota loy-nota--mal" *ngIf="problema() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
+          <div class="fa-pie">
+            <button class="btn-ghost" type="button" (click)="plan.set(null)">Cancelar</button>
+            <button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar plan</button>
+          </div>
+        </form>
+      </aside>
     </div>
-
-    <!-- ------------------------------------------------ formulario plan -->
-    <form class="loy-form" *ngIf="plan() as d" (ngSubmit)="guardarPlan()" data-guide="club-plan-form">
-      <div class="loy-form__grid">
-        <label class="loy-f loy-f--wide">
-          <span>Nombre</span>
-          <input class="ctl" type="text" [(ngModel)]="d.nombre" name="cNom" maxlength="80" placeholder="Club del café">
-        </label>
-        <label class="loy-f loy-f--wide">
-          <span>Producto con el que se cobra</span>
-          <wx-select [opciones]="productosCobro()" [(ngModel)]="d.productoCobro" name="cProd"
-                     [buscable]="true" placeholder="Elegir producto"></wx-select>
-        </label>
-        <label class="loy-f">
-          <span>Días que cubre un pago</span>
-          <input class="ctl" type="number" min="1" max="366" [(ngModel)]="d.dias" name="cDias">
-        </label>
-        <label class="loy-f">
-          <span>Beneficios por día</span>
-          <input class="ctl" type="number" min="1" max="20" [(ngModel)]="d.limiteDiario" name="cLim">
-        </label>
-        <label class="loy-f">
-          <span>Días de gracia</span>
-          <input class="ctl" type="number" min="0" max="30" [(ngModel)]="d.gracia" name="cGra">
-        </label>
-        <div class="loy-f loy-f--wide">
-          <span class="loy-f__lbl">Qué se puede dar gratis</span>
-          <wx-multi-select etiqueta="Productos del beneficio" [opciones]="productosBeneficio()" [(values)]="d.productos"></wx-multi-select>
-        </div>
-      </div>
-
-      <p class="loy-nota">
-        <i class="ph ph-info"></i>
-        El producto de cobro debe ser un servicio (sin inventario) y único para este plan. Venderlo a un cliente lo afilia o le suma {{ d.dias }} días.
-      </p>
-      <p class="loy-nota loy-nota--mal" *ngIf="problema() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
-
-      <div class="loy-checks">
-        <label class="loy-check"><input type="checkbox" [(ngModel)]="d.activo" name="cAct"><span>Se puede afiliar</span></label>
-      </div>
-      <div class="btn-row">
-        <button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar</button>
-        <button class="btn-ghost" type="button" (click)="plan.set(null)">Cancelar</button>
-      </div>
-    </form>
-
-    <!-- ------------------------------------------------------ planes -->
-    <h3 class="loy-h3">Planes</h3>
-    <div class="loy-tabla" *ngIf="planes().length; else sinPlanes">
-      <table class="wx-tabla">
-        <thead><tr><th>Plan</th><th>Cobro</th><th class="num">Precio</th><th>Beneficio</th><th class="num">Socios</th><th></th></tr></thead>
-        <tbody>
-          <tr *ngFor="let p of planes()" [class.apagada]="!p.active" [attr.data-guide-clave]="p.uuid">
-            <td>{{ p.name }}<small>{{ p.period_days }} días · {{ p.grace_days }} de gracia{{ p.origin === 'REMOTE' ? ' · de otra sucursal' : '' }}</small></td>
-            <td>{{ p.sale_product_name || '—' }}</td>
-            <td class="num">{{ (p.price ?? 0) | currency:'MXN':'symbol-narrow':'1.0-2' }}</td>
-            <td>{{ p.daily_limit }} al día<small>{{ nombresProductos(p) }}</small></td>
-            <td class="num">{{ p.socios_activos }}</td>
-            <td class="acciones">
-              <button class="btn-ghost btn-sm" type="button" (click)="editarPlan(p)"><i class="ph ph-pencil-simple"></i> Editar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #sinPlanes>
-      <div class="loy-vacio" *ngIf="!cargando()">
-        <i class="ph ph-coffee"></i>
-        <h3>Todavía no hay planes</h3>
-        <p>Crea un producto de servicio («Membresía mensual») y después un plan que diga qué se regala cada día.</p>
-      </div>
-    </ng-template>
-
-    <!-- ------------------------------------------------------ dobles -->
-    <ng-container *ngIf="dobles().length">
-      <h3 class="loy-h3">Canjes dobles <span class="loy-count">{{ resumen()?.dobles_pendientes ?? 0 }} por revisar</span></h3>
-      <p class="loy-sub">Se dio el beneficio dos veces el mismo día en sucursales sin conexión. Las dos ventas quedan; revisa y anota qué pasó.</p>
-      <div class="loy-tabla">
-        <table class="wx-tabla">
-          <thead><tr><th>Cliente</th><th>Cuándo</th><th>Dónde</th><th>Producto</th><th>Revisión</th><th></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let r of dobles()" [class.apagada]="!!r.reviewed_at" data-guide="club-doble" [attr.data-guide-clave]="r.id">
-              <td>{{ r.cliente }}<small>{{ r.plan_name }}</small></td>
-              <td>{{ r.created_at | date:'d MMM HH:mm':'UTC':'es-MX' }}</td>
-              <td>{{ r.sucursal }}</td>
-              <td>{{ r.units }} × {{ r.product_name }}<small *ngIf="r.sale_id">Venta #{{ r.sale_id }}</small></td>
-              <td><ng-container *ngIf="r.reviewed_at; else pendiente">{{ r.revisado_por || 'Revisado' }}<small>{{ r.review_note }}</small></ng-container>
-                  <ng-template #pendiente><span class="loy-pill">Pendiente</span></ng-template></td>
-              <td class="acciones">
-                <button *ngIf="!r.reviewed_at" class="btn-ghost btn-sm" type="button" (click)="revisar(r)"><i class="ph ph-check"></i> Revisar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </ng-container>
-
-    <!-- ------------------------------------------------------ socios -->
-    <h3 class="loy-h3">Socios</h3>
-    <div class="loy-filtros">
-      <input class="ctl" type="search" placeholder="Nombre o teléfono" [(ngModel)]="buscar" (keyup.enter)="cargar()" (search)="cargar()" data-guide="club-buscar">
-      <wx-select [opciones]="opcEstado" [(ngModel)]="estado" (ngModelChange)="cargar()" placeholder="Todos"></wx-select>
-    </div>
-    <div class="loy-tabla" *ngIf="socios().length; else sinSocios">
-      <table class="wx-tabla">
-        <thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Pagado hasta</th><th class="num">Beneficios del mes</th><th></th></tr></thead>
-        <tbody>
-          <tr *ngFor="let s of socios()" [class.apagada]="s.estado === 'CANCELADA'" data-guide="club-socio" [attr.data-guide-clave]="s.id" [attr.data-guide-estado]="s.estado">
-            <td>{{ s.cliente }}<small>{{ s.telefono || 'Sin teléfono' }}</small></td>
-            <td>{{ s.plan_name }}</td>
-            <td><span class="loy-estado" [class.si]="s.estado === 'ACTIVA'" [class.ojo]="s.estado === 'POR_VENCER'" [class.mal]="s.estado === 'VENCIDA'">{{ etiquetaEstado[s.estado] }}</span></td>
-            <td>{{ s.paid_until ? (s.paid_until | date:'d MMM y':'UTC':'es-MX') : '—' }}</td>
-            <td class="num">{{ s.beneficios_mes }}</td>
-            <td class="acciones">
-              <button *ngIf="s.estado !== 'CANCELADA'" class="btn-ghost btn-sm" type="button" (click)="cancelar(s)">Cancelar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #sinSocios>
-      <p class="loy-hint" *ngIf="!cargando()">{{ buscar || estado ? 'Nadie coincide con la búsqueda.' : 'Aún no hay socios. Se afilian en caja, al elegir al cliente.' }}</p>
-    </ng-template>
   </div>`,
-  styles: [`
-    .loy-card--ojo { border-color: var(--wx-warning); }
-    .loy-estado.ojo { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
-    .loy-estado.mal { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
-    .loy-filtros wx-select { min-width: 180px; }
-    .loy-tabla th.num, .loy-tabla td.num { padding-right: 18px; }
-  `],
 })
 export class ClubAdmin implements OnInit {
   private readonly catalog = inject(CatalogService);
@@ -237,13 +242,19 @@ export class ClubAdmin implements OnInit {
 
   buscar = '';
   estado: string | null = null;
-  readonly opcEstado: WxOpcion[] = [
-    { valor: null, etiqueta: 'Todos' },
-    { valor: 'ACTIVA', etiqueta: 'Activas' },
-    { valor: 'POR_VENCER', etiqueta: 'Por vencer' },
-    { valor: 'VENCIDA', etiqueta: 'Vencidas' },
-    { valor: 'CANCELADA', etiqueta: 'Canceladas' },
-  ];
+  readonly max = Math.max;
+  readonly min = Math.min;
+  /** Los filtros de socios, con su cuenta cuando el resumen la tiene. */
+  readonly segmentos = computed(() => {
+    const k = this.resumen();
+    return [
+      { valor: null as string | null, etiqueta: 'Todos', n: null as number | null },
+      { valor: 'ACTIVA', etiqueta: 'Activas', n: k ? k.activos : null },
+      { valor: 'POR_VENCER', etiqueta: 'Por vencer', n: k ? k.por_vencer : null },
+      { valor: 'VENCIDA', etiqueta: 'Vencidas', n: k ? k.vencidas : null },
+      { valor: 'CANCELADA', etiqueta: 'Canceladas', n: null },
+    ];
+  });
   readonly etiquetaEstado: Record<Socio['estado'], string> = { ACTIVA: 'Activa', POR_VENCER: 'Por vencer', VENCIDA: 'Vencida', CANCELADA: 'Cancelada' };
 
   /* El cobro es un servicio: un pago no descuenta inventario. */
@@ -274,6 +285,28 @@ export class ClubAdmin implements OnInit {
       this.cargando.set(false);
       this.cd.detectChanges();
     }
+  }
+
+  filtrar(e: string | null): void {
+    this.estado = e;
+    void this.cargar();
+  }
+
+  /** Lo que el cajero leerá en el botón: el producto si es uno solo, «café» si son varios. */
+  beneficio(d: DraftPlan): string {
+    if (d.productos.length !== 1) return 'café';
+    return this.catalog.vendibles().find(p => String(p.id) === d.productos[0])?.product_name ?? 'beneficio';
+  }
+  /** Hasta cuándo quedaría pagado si se afilia hoy. */
+  hasta(d: DraftPlan): Date {
+    const h = new Date();
+    h.setDate(h.getDate() + Math.max(1, Number(d.dias) || 30) - 1);
+    return h;
+  }
+  resumenPlan(d: DraftPlan): string {
+    const prod = this.catalog.vendibles().find(p => p.id === d.productoCobro);
+    const precio = prod ? '$' + Number(prod.price).toFixed(0) : 'el precio del producto';
+    return `Paga ${precio} cada ${d.dias} días y recibe ${d.limiteDiario} al día${d.gracia ? ', con ' + d.gracia + ' días de gracia' : ''}.`;
   }
 
   nombresProductos(p: PlanAdmin): string {

@@ -19,7 +19,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   template: `<dialog #dialog class="wx-dialogo receipt" (cancel)="close.emit()">
     <header>
       <h3>
-        {{ document === 'closure' ? 'Corte de caja' : 'Ticket de venta' }} · #{{
+        {{ document === 'closure' ? 'Corte de caja' : document === 'refund' ? 'Comprobante de devolución' : 'Ticket de venta' }} · #{{
           id
         }}
       </h3>
@@ -87,7 +87,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 })
 export class ReceiptViewer implements OnInit, AfterViewInit, OnDestroy {
   @Input() id!: number;
-  @Input() document: 'sale' | 'closure' = 'sale';
+  @Input() document: 'sale' | 'closure' | 'refund' = 'sale';
   @Output() close = new EventEmitter<void>();
   @ViewChild('dialog') dialog!: ElementRef<HTMLDialogElement>;
   html: SafeHtml = '';

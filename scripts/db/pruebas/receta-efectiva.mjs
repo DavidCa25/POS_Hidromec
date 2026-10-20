@@ -375,7 +375,7 @@ try {
       DECLARE @r dbo.SaleDetailType;
       INSERT INTO @r (product_id, quantity, unit_price)
       SELECT product_id, quantity, unitary_price FROM dbo.sale_detail WHERE sale_id = ${venta};
-      EXEC dbo.sp_refund_sale @sale_id=${venta}, @user_id=${userId},
+      EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${venta}, @user_id=${userId},
         @payment_method=N'EFECTIVO', @RefundDetails=@r;`);
     check(stock(almendra) === sAntes + antes.almendra,
       'el reembolso repone EXACTAMENTE la almendra que se consumio',

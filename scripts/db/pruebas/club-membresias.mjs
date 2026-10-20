@@ -168,12 +168,12 @@ try {
   // =============================================================== 5
   seccion('5. Devoluciones');
   q(`DECLARE @r dbo.SaleDetailType; INSERT @r VALUES (${cafe}, 1, 0);
-     EXEC dbo.sp_refund_sale @sale_id=${v3}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${v3}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
   check(uno(`SELECT voided_at FROM dbo.membership_redemptions WHERE sale_id = ${v3}`).voided_at != null, 'devolver el café anula su canje');
   check(Number(estado(mariana)[0][0].disponibles_hoy) === 1, 'y Mariana recupera su café de hoy');
   const antes = fecha(uno(`SELECT paid_until FROM dbo.customer_memberships WHERE id = ${mid}`).paid_until);
   q(`DECLARE @r dbo.SaleDetailType; INSERT @r VALUES (${memb}, 1, 399);
-     EXEC dbo.sp_refund_sale @sale_id=${v1}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${v1}, @user_id=${u}, @payment_method=N'TARJETA', @RefundDetails=@r, @apply_net_update=0, @register_id=1;`);
   const despues = fecha(uno(`SELECT paid_until FROM dbo.customer_memberships WHERE id = ${mid}`).paid_until);
   check(despues === masDias(59) && antes === masDias(89), 'devolver un mes de membresía le quita 30 días', `${antes} -> ${despues}`);
 

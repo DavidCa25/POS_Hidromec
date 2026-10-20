@@ -219,7 +219,7 @@ const s6 = { cafe: stock(f.cafe), leche: stock(f.leche), vaso: stock(f.vaso), az
 r = row(`
   DECLARE @d dbo.SaleDetailType;
   INSERT INTO @d (product_id, quantity, unit_price) VALUES (${f.latte}, 1, 55);
-  EXEC dbo.sp_refund_sale @sale_id=${ventaDevolver}, @user_id=${f.userId}, @payment_method=N'EFECTIVO', @RefundDetails=@d, @note=N'Prueba';`);
+  EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${ventaDevolver}, @user_id=${f.userId}, @payment_method=N'EFECTIVO', @RefundDetails=@d, @note=N'Prueba';`);
 check(r.refund_id > 0 && cerca(r.refund_total, 55), `devolucion registrada (#${r.refund_id}, total ${r.refund_total})`);
 check(cerca(stock(f.cafe), s6.cafe + 18) && cerca(stock(f.leche), s6.leche + 200) && cerca(stock(f.azucar), s6.azucar + 8) && stock(f.vaso) === s6.vaso + 1,
   `repone la receta ORIGINAL (18 g cafe, no 999): cafe ${s6.cafe} -> ${stock(f.cafe)}`);
@@ -235,7 +235,7 @@ const s7 = stock(f.coca);
 r = row(`
   DECLARE @d dbo.SaleDetailType;
   INSERT INTO @d (product_id, quantity, unit_price) VALUES (${f.coca}, 1, 20);
-  EXEC dbo.sp_refund_sale @sale_id=${ventaV1}, @user_id=${f.userId}, @payment_method=N'EFECTIVO', @RefundDetails=@d;`);
+  EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${ventaV1}, @user_id=${f.userId}, @payment_method=N'EFECTIVO', @RefundDetails=@d;`);
 check(stock(f.coca) === s7 + 1, `devolucion DIRECT repone el producto (${s7} -> ${stock(f.coca)})`);
 check(cerca(scalar(`SELECT amount FROM dbo.cash_movements WHERE reference_id = ${ventaV1} AND typee = 'REFUND'`), -20), 'la devolucion en efectivo sale de caja');
 

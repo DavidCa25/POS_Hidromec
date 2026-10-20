@@ -176,6 +176,14 @@
       <!-- 0063 · Club: membresía y beneficio de hoy, bajo el cliente. -->
       <app-club-cliente [touch]="true"></app-club-cliente>
 
+      <!-- 0065 · Devolución: encontrar la venta sin teclear el folio, motivo y cómo se regresa el dinero. -->
+      <button type="button" class="tp-cliente" data-guide="touch-devolucion" (click)="devolviendo.set(true)" aria-label="Hacer una devolución">
+        <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+        <span class="tp-cliente__lbl">Devolución</span>
+        <span class="tp-cliente__vacio">Buscar venta</span>
+        <i class="ph ph-caret-right" aria-hidden="true"></i>
+      </button>
+
       <app-commercial-sale [touch]="true"></app-commercial-sale>
 
       <div class="tp-lineas">
@@ -266,6 +274,10 @@
                        (cerrar)="eligiendoMesa.set(false)"
                        (verSalon)="verSalon()"></hx-selector-mesas>
   </div>
+
+  <!-- ===================================================== DEVOLUCIÓN -->
+  <app-devolucion-touch *ngIf="devolviendo()" [clienteId]="cliente()?.id ?? null" [clienteNombre]="cliente()?.name ?? null"
+                        (cerrar)="devolviendo.set(false)"></app-devolucion-touch>
 
   <!-- ============================================ CLIENTE DE LA VENTA -->
   <div class="tp-overlay" *ngIf="eligiendoCliente()" (click)="cerrarClientes()">

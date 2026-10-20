@@ -2811,8 +2811,10 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     /* 0049: el desglose lo arma SQL con el catalogo de tipos; la pantalla ya
        no clasifica tipos por su cuenta. */
     const desglose = Array.isArray(result.recordsets?.[2]) ? result.recordsets[2] : [];
+    /* 0065: las devoluciones del periodo, para su apartado en el corte. */
+    const devoluciones = Array.isArray(result.recordsets?.[3]) ? result.recordsets[3] : [];
 
-    return { success: true, data: { rows, summary, desglose } };
+    return { success: true, data: { rows, summary, desglose, devoluciones } };
   } catch (err) {
     console.error('❌ sp-get-cash-movements:', err);
     return { success: false, error: err.message };
@@ -4134,6 +4136,9 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
     const paymentMethod = String(payload?.payment_method ?? payload?.paymentMethod ?? 'EFECTIVO');
     const items = payload?.items ?? [];
     const note = payload?.note ?? null;
+    /* 0065: el motivo es obligatorio; SQL lo vuelve a exigir. */
+    const motivo = String(payload?.motivo ?? '').trim().slice(0, 40);
+    if (!motivo) throw new Error('Elige el motivo de la devolución.');
     const applyNetUpdate = payload?.apply_net_update ? 1 : 0;
     const opDev = cajaDeLaOperacion(payload);
 
@@ -4173,7 +4178,8 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
       /* El efectivo sale de ESTA caja (0049), no del turno de quien lo abrio. */
       .input('register_id',    sql.Int, opDev.registerId)
       .input('machine_id',     sql.NVarChar(64), opDev.machineId)
-      .input('machine_name',   sql.NVarChar(120), opDev.machineName);
+      .input('machine_name',   sql.NVarChar(120), opDev.machineName)
+      .input('reason',         sql.NVarChar(40), motivo);
 
     const result = await req.execute('sp_refund_sale');
 
@@ -4183,6 +4189,69 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
     };
   } catch (err) {
     console.error('❌ Error en sp_refund_sale:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+}));
+
+/* 0065: las ventas que se pueden devolver, para elegirlas sin teclear el
+   folio. Las de hoy de esta caja, las de un cliente o una por folio. */
+ipcMain.handle('devoluciones:ventas', sesion.proteger('devoluciones:ventas', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const op = cajaDeLaOperacion(p);
+    const r = await pool.request()
+      .input('register_id', sql.Int, Number(op.registerId) || null)
+      .input('customer_id', sql.Int, Number(p.customerId) || null)
+      .input('folio', sql.Int, Number(p.folio) || null)
+      .execute('sp_refund_candidates');
+    return { success: true, data: r.recordset ?? [] };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}));
+
+/* 0065: un CAMBIO (devuelve unas piezas y se lleva otras) en una sola
+   transacción: sp_exchange_sale. Precio de lo que se lleva: el de lista. */
+ipcMain.handle('devoluciones:cambio', sesion.proteger('devoluciones:cambio', async (_e, p = {}) => {
+  try {
+    const saleId = Number(p.sale_id), userId = Number(p.user_id);
+    const motivo = String(p.motivo ?? '').trim().slice(0, 40);
+    if (!Number.isSafeInteger(saleId) || saleId <= 0) throw new Error('Venta inválida.');
+    if (!motivo) throw new Error('Elige el motivo de la devolución.');
+    const items = Array.isArray(p.items) ? p.items : [];
+    const lleva = (Array.isArray(p.lleva) ? p.lleva : [])
+      .map((x) => ({ productId: Number(x.productId), qty: Number(x.qty) }))
+      .filter((x) => Number.isSafeInteger(x.productId) && x.productId > 0 && x.qty > 0).slice(0, 100);
+    if (!items.length) throw new Error('Elige qué devuelve.');
+    if (!lleva.length) throw new Error('Elige qué se lleva a cambio.');
+    const tvp = new sql.Table('dbo.SaleDetailType');
+    tvp.columns.add('product_id', sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
+    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+    for (const it of items) {
+      const pid = Number(it.productId), qty = Number(it.qty), up = Number(it.unitPrice ?? 0);
+      if (!(pid > 0) || !(qty > 0) || !(up >= 0)) throw new Error('Partida inválida en el cambio.');
+      tvp.rows.add(pid, qty, up);
+    }
+    const metodo = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(p.diff_method) ? p.diff_method : null;
+    const op = cajaDeLaOperacion(p);
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('sale_id', sql.Int, saleId)
+      .input('user_id', sql.Int, userId)
+      .input('RefundDetails', tvp)
+      .input('new_lines_json', sql.NVarChar(sql.MAX), JSON.stringify(lleva))
+      .input('reason', sql.NVarChar(40), motivo)
+      .input('note', sql.NVarChar(400), p.note ? String(p.note).slice(0, 400) : null)
+      .input('diff_method', sql.NVarChar(20), metodo)
+      .input('received', sql.Decimal(12, 2), Number(p.received) > 0 ? Number(p.received) : null)
+      .input('register_id', sql.Int, op.registerId)
+      .input('machine_id', sql.NVarChar(64), op.machineId)
+      .input('machine_name', sql.NVarChar(120), op.machineName)
+      .execute('sp_exchange_sale');
+    const fin = r.recordsets?.[r.recordsets.length - 1]?.[0] ?? null;
+    return { success: true, data: fin };
+  } catch (err) {
     return { success: false, error: err?.message || String(err) };
   }
 }));

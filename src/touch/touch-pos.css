@@ -962,7 +962,7 @@
   transition: background-color var(--wx-dur-micro) ease, transform var(--wx-dur-press) var(--wx-ease-out);
 }
 .tp-cliente:active { background: var(--wx-pressed); transform: scale(0.98); }
-.tp-cliente > .ph-user { color: var(--wx-text-dim); font-size: 18px; }
+.tp-cliente > .ph-user, .tp-cliente > .ph-arrow-counter-clockwise { color: var(--wx-text-dim); font-size: 18px; }
 .tp-cliente > .ph-caret-right { margin-left: auto; color: var(--wx-text-dim); }
 .tp-cliente__lbl { color: var(--wx-text-muted); }
 .tp-cliente__nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }

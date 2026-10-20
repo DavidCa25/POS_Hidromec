@@ -27,6 +27,7 @@ import { nombreDeMesa } from '../hospitality/hx';
 import { PremiosVenta } from '../loyalty/premios-venta';
 import { CuponVenta } from '../loyalty/cupon-venta';
 import { ClubClienteComponent } from '../app/club-cliente/club-cliente.component';
+import { DevolucionTouch } from './devolucion-touch/devolucion-touch.component';
 import {
   Elegida, admiteCantidad, cabeOtra, faltanPorElegir, gruposPendientes,
   maximoCantidad, opcionesElegibles, resumenDeOpciones, topeDeGrupo,
@@ -56,7 +57,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent],
+  imports: [WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -64,6 +65,8 @@ export class TouchPos implements OnInit, OnDestroy {
   readonly commercial=inject(CommercialService);
   /** 0063 · Club: el descuento en el cobro. */
   readonly club = inject(ClubService);
+  /** 0065 · La hoja de devolución. */
+  readonly devolviendo = signal(false);
   /** Huecos de marca de un addon de cliente (fondo y mascota); null en Wybix. */
   readonly marca = ADDON;
   readonly fondoClaro = ADDON?.fondoTouch ? `url(${ADDON.fondoTouch.claro})` : null;

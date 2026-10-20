@@ -281,6 +281,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSaleByFolio: (payload) => invoke('sp-get-sale-by-folio', payload),
     updateSale: (payload) => invoke('sp-update-sale', payload),
     refundSale: (payload) => invoke('sp-refund-sale', payload),
+    refundCandidates: (payload) => invoke('devoluciones:ventas', payload),
+    refundExchange: (payload) => invoke('devoluciones:cambio', payload),
 
     onBarcodeScan: (cb) => {
         const handler = (_event, payload) => cb(payload);

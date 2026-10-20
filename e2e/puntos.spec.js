@@ -89,7 +89,7 @@ test('Puntos y sellos: configurar, ganar, canjear puntos y tarjeta, historial', 
   await cfg.locator('input[name=pPor]').fill('1');
   await cfg.locator('input[name=pCada]').fill('10');
   await cfg.locator('input[name=pVis]').fill('5');
-  await expect(cfg).toContainText('una compra de $200 da 20 puntos');
+  await expect(cfg).toContainText('Una compra de $200 da 20 puntos');
   await cfg.getByRole('button', { name: /Guardar/ }).click();
   await expect.poll(async () => (await sql(`SELECT enabled FROM dbo.loyalty_points_config`))[0].enabled).toBeTruthy();
 

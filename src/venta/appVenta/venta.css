@@ -776,3 +776,12 @@
 .club-cobro b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
 .club-cobro--touch { margin: 0 0 10px; font-size: var(--wx-text-base); }
 .club-cobro span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* 0065: cambio por otro producto dentro del diálogo de devolución. */
+.refund-cambio { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+.refund-cambio__linea { display: flex; align-items: center; gap: 12px; }
+.refund-cambio__linea > span:first-child { flex: 1; min-width: 0; font-weight: 600; }
+.refund-cambio__cuenta { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-raised); font-size: var(--wx-text-sm); }
+.refund-cambio__pago { display: flex; gap: 8px; flex-wrap: wrap; }
+.refund-cambio__pago wx-select { min-width: 220px; }

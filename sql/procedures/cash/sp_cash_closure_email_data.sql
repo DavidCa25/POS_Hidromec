@@ -58,10 +58,14 @@ BEGIN
       FROM #ventas v JOIN dbo.sale_detail d ON d.sale_id = v.id;
 
     /* 4 devoluciones */
-    SELECT f.datee, f.sale_id, f.refund_total, f.payment_method, f.note, u.usuario AS quien
+    /* 0065: el motivo va primero en la nota; y cuentan las de la caja en su
+       horario aunque no hayan sacado efectivo. */
+    SELECT f.datee, f.sale_id, f.refund_total, f.payment_method,
+           CONCAT(f.reason, CASE WHEN f.reason IS NOT NULL AND f.note IS NOT NULL THEN N' · ' END, f.note) AS note, u.usuario AS quien
       FROM dbo.sale_refunds f
       LEFT JOIN dbo.users u ON u.id = f.user_id
      WHERE f.closure_id = @closure_id
+        OR (f.closure_id IS NULL AND f.register_id = @caja AND f.datee >= @desde AND f.datee <= @hasta)
      ORDER BY f.datee;
 
     /* 5 bitácora del turno */

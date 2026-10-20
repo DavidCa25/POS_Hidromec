@@ -41,200 +41,192 @@ interface DraftTarjeta { id: number | null; nombre: string; sellos: number; prod
   selector: 'app-puntos-admin',
   standalone: true,
   imports: [CommonModule, FormsModule, WxSelectComponent, WxMultiSelectComponent],
-  styleUrls: ['./loyalty-admin.css'],
+  styleUrls: ['./loyalty-admin.css', './fidelizacion-a.css'],
   template: `
-  <div class="loy-sec" data-guide="puntos-admin">
-    <div class="loy-sec__head">
-      <div>
-        <h2>Puntos y sellos</h2>
-        <p class="loy-sub">El cliente junta al comprar y canjea en caja. Lo vigente es lo que el negocio le debe.</p>
-      </div>
-    </div>
-
+  <div class="fa" data-guide="puntos-admin">
     <p class="loy-error" *ngIf="error() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
 
-    <div class="loy-cards" *ngIf="resumen() as k">
-      <article class="loy-card">
-        <span class="loy-card__k">Puntos vigentes</span>
-        <strong class="loy-card__v">{{ k.vigentes | number }}</strong>
-        <span class="loy-card__n">{{ k.clientes_con_saldo }} {{ k.clientes_con_saldo === 1 ? 'cliente' : 'clientes' }} con saldo</span>
+    <section class="fa-kpis" *ngIf="resumen() as k" aria-label="Indicadores de puntos y sellos">
+      <article class="fa-kpi">
+        <span class="fa-k">Puntos vigentes</span>
+        <strong class="fa-v">{{ k.vigentes | number }}</strong>
+        <span class="fa-n">lo que le debes a {{ k.clientes_con_saldo }} {{ k.clientes_con_saldo === 1 ? 'cliente' : 'clientes' }}</span>
       </article>
-      <article class="loy-card">
-        <span class="loy-card__k">Dados este mes</span>
-        <strong class="loy-card__v">{{ k.dados_mes | number }}</strong>
-        <span class="loy-card__n">{{ k.canjeados_mes | number }} canjeados</span>
+      <article class="fa-kpi">
+        <span class="fa-k">Dados este mes</span>
+        <strong class="fa-v">{{ k.dados_mes | number }}</strong>
+        <span class="fa-n">{{ k.canjeados_mes | number }} canjeados</span>
       </article>
-      <article class="loy-card">
-        <span class="loy-card__k">Sellos este mes</span>
-        <strong class="loy-card__v">{{ k.sellos_mes | number }}</strong>
-        <span class="loy-card__n">{{ k.tarjetas_mes }} {{ k.tarjetas_mes === 1 ? 'tarjeta canjeada' : 'tarjetas canjeadas' }}</span>
+      <article class="fa-kpi">
+        <span class="fa-k">Sellos este mes</span>
+        <strong class="fa-v">{{ k.sellos_mes | number }}</strong>
+        <span class="fa-n">{{ k.tarjetas_mes }} {{ k.tarjetas_mes === 1 ? 'tarjeta llena canjeada' : 'tarjetas llenas canjeadas' }}</span>
       </article>
-      <article class="loy-card">
-        <span class="loy-card__k">Descuento por canjes</span>
-        <strong class="loy-card__v">{{ k.descuento_mes | currency:'MXN':'symbol-narrow':'1.0-0' }}</strong>
-        <span class="loy-card__n">este mes, a precio de lista</span>
+      <article class="fa-kpi">
+        <span class="fa-k">Regalado por canjes</span>
+        <strong class="fa-v">{{ k.descuento_mes | currency:'MXN':'symbol-narrow':'1.0-0' }}</strong>
+        <span class="fa-n">este mes, a precio de lista</span>
       </article>
-    </div>
+    </section>
 
-    <!-- ------------------------------------------------- cómo se ganan -->
-    <h3 class="loy-h3">Cómo se ganan los puntos</h3>
-    <form class="loy-form" *ngIf="cfg as c" (ngSubmit)="guardarConfig()" data-guide="puntos-config">
-      <div class="loy-checks" style="margin-top:0">
-        <label class="loy-check"><input type="checkbox" [(ngModel)]="c.enabled" name="pAct"><span>Dar puntos a los clientes</span></label>
-      </div>
-      <div class="loy-form__grid" *ngIf="c.enabled">
-        <label class="loy-f">
-          <span>Puntos</span>
-          <input class="ctl" type="number" min="1" [(ngModel)]="c.points_per" name="pPor">
-        </label>
-        <label class="loy-f">
-          <span>Por cada (pesos)</span>
-          <input class="ctl" type="number" min="0" step="1" [(ngModel)]="c.per_amount" name="pCada" placeholder="Sin puntos por compra">
-        </label>
-        <label class="loy-f">
-          <span>Por visita (una al día)</span>
-          <input class="ctl" type="number" min="0" [(ngModel)]="c.visit_points" name="pVis">
-        </label>
-        <label class="loy-f">
-          <span>Caducan tras (meses sin comprar)</span>
-          <input class="ctl" type="number" min="1" max="120" [(ngModel)]="c.expiry_months" name="pCad" placeholder="No caducan">
-        </label>
-      </div>
-      <p class="loy-nota" *ngIf="c.enabled">
-        <i class="ph ph-info"></i> {{ ejemplo() }}
-      </p>
-      <p class="loy-nota loy-nota--mal" *ngIf="problemaConfig() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
-      <div class="btn-row">
-        <button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar</button>
-      </div>
-    </form>
+    <div class="fa-cols">
+      <div class="fa-main">
+        <div class="fa-dos">
+          <!-- Cómo se ganan -->
+          <form class="fa-card" *ngIf="cfg as c" (ngSubmit)="guardarConfig()" data-guide="puntos-config">
+            <div class="fa-head">
+              <h2>Cómo se ganan</h2>
+              <label class="fa-interruptor"><input type="checkbox" [(ngModel)]="c.enabled" name="pAct"><span>{{ c.enabled ? 'Encendido' : 'Apagado' }}</span></label>
+            </div>
+            <div class="fa-reglas" [class.apagada]="!c.enabled">
+              <div class="fa-frase">
+                <span class="fa-step"><button type="button" aria-label="Menos puntos" (click)="c.points_per = max(1, c.points_per - 1)">−</button>
+                  <input type="number" min="1" [(ngModel)]="c.points_per" name="pPor" aria-label="Puntos">
+                  <button type="button" aria-label="Más puntos" (click)="c.points_per = c.points_per + 1">+</button></span>
+                {{ c.points_per === 1 ? 'punto' : 'puntos' }} por cada
+                <span class="fa-step fa-step--precio"><input type="number" min="0" step="1" [(ngModel)]="c.per_amount" name="pCada" aria-label="Pesos de compra" placeholder="—"></span>
+                de compra
+              </div>
+              <div class="fa-frase">+
+                <span class="fa-step"><button type="button" aria-label="Menos" (click)="c.visit_points = max(0, c.visit_points - 1)">−</button>
+                  <input type="number" min="0" [(ngModel)]="c.visit_points" name="pVis" aria-label="Puntos por visita">
+                  <button type="button" aria-label="Más" (click)="c.visit_points = c.visit_points + 1">+</button></span>
+                por visita, una vez al día
+              </div>
+              <div class="fa-frase">Caducan si no compra en
+                <span class="fa-step"><input type="number" min="1" max="120" [(ngModel)]="c.expiry_months" name="pCad" aria-label="Meses para caducar" placeholder="—"></span>
+                {{ c.expiry_months ? 'meses' : 'meses (vacío: no caducan)' }}
+              </div>
+            </div>
+            <p class="fa-ejemplo" *ngIf="c.enabled"><span class="fa-chip cy">Ejemplo</span> {{ ejemplo() }}</p>
+            <p class="loy-nota loy-nota--mal" *ngIf="problemaConfig() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
+            <div class="fa-pie"><button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar</button></div>
+          </form>
 
-    <!-- --------------------------------------------- catálogo de canje -->
-    <h3 class="loy-h3">Qué se canjea con puntos</h3>
-    <p class="loy-sub">Ponle costo a una recompensa para que la caja la ofrezca. Las recompensas se crean en <b>Recompensas</b>.</p>
-    <div class="loy-tabla" *ngIf="recompensas().length; else sinRecompensas">
-      <table class="wx-tabla">
-        <thead><tr><th>Recompensa</th><th>Qué da</th><th class="num">Costo (puntos)</th><th class="num">Canjes</th><th></th></tr></thead>
-        <tbody>
-          <tr *ngFor="let r of recompensas()" [class.apagada]="!r.points_cost" data-guide="puntos-recompensa" [attr.data-guide-clave]="r.id">
-            <td>{{ r.name }}</td>
-            <td>{{ queDa(r) }}</td>
-            <td class="num"><input class="ctl loy-peso" type="number" min="1" [(ngModel)]="costos[r.id]" [name]="'cst' + r.id" placeholder="—"></td>
-            <td class="num">{{ r.canjes }}</td>
-            <td class="acciones">
-              <button class="btn-ghost btn-sm" type="button" (click)="guardarCosto(r)" [disabled]="(costos[r.id] ?? null) === (r.points_cost ?? null)">Guardar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #sinRecompensas><p class="loy-hint">Aún no hay recompensas de producto, monto o porcentaje.</p></ng-template>
-
-    <!-- --------------------------------------------- tarjetas de sellos -->
-    <div class="loy-sec__head">
-      <h3 class="loy-h3">Tarjetas de sellos</h3>
-      <button class="btn-outline btn-sm" type="button" (click)="nuevaTarjeta()" data-guide="sellos-nueva"><i class="ph ph-plus"></i> Nueva tarjeta</button>
-    </div>
-    <form class="loy-form" *ngIf="tarjeta() as d" (ngSubmit)="guardarTarjeta()" data-guide="sellos-form">
-      <div class="loy-form__grid">
-        <label class="loy-f loy-f--wide">
-          <span>Nombre</span>
-          <input class="ctl" type="text" [(ngModel)]="d.nombre" name="tNom" maxlength="80" placeholder="Café 9 + 1">
-        </label>
-        <label class="loy-f">
-          <span>Sellos para llenarla</span>
-          <input class="ctl" type="number" min="2" max="100" [(ngModel)]="d.sellos" name="tSel">
-        </label>
-        <label class="loy-f">
-          <span>Al llenarla se regala</span>
-          <wx-select [opciones]="opcPremio()" [(ngModel)]="d.productoPremio" name="tPre" [buscable]="true"></wx-select>
-        </label>
-        <div class="loy-f loy-f--wide">
-          <span class="loy-f__lbl">Productos que sellan</span>
-          <wx-multi-select etiqueta="Productos que sellan" [opciones]="opcProductos()" [(values)]="d.productos"></wx-multi-select>
+          <!-- Qué se canjea -->
+          <section class="fa-card">
+            <div class="fa-head"><h2>Qué se canjea</h2></div>
+            <ul class="fa-canjes" *ngIf="recompensas().length; else sinRecompensas">
+              <li class="fa-canje" *ngFor="let r of recompensas()" [class.sin]="!r.points_cost" data-guide="puntos-recompensa" [attr.data-guide-clave]="r.id">
+                <label class="fa-costo" [class.sin]="!costos[r.id]"><span class="fa-sr">Costo en puntos de {{ r.name }}</span>
+                  <input type="number" min="1" [(ngModel)]="costos[r.id]" [name]="'cst' + r.id" placeholder="—"><span>pts</span></label>
+                <span class="fa-canje__tx"><strong>{{ r.name }}</strong><small>{{ queDa(r) }}{{ r.points_cost ? '' : ' · no está a la venta con puntos' }}</small></span>
+                <button *ngIf="(costos[r.id] ?? null) !== (r.points_cost ?? null)" class="btn-outline btn-sm" type="button" (click)="guardarCosto(r)">Guardar</button>
+                <small *ngIf="(costos[r.id] ?? null) === (r.points_cost ?? null)" class="fa-n">{{ r.canjes }} {{ r.canjes === 1 ? 'canje' : 'canjes' }}</small>
+              </li>
+            </ul>
+            <ng-template #sinRecompensas><p class="fa-sub">Aún no hay recompensas de producto, monto o porcentaje.</p></ng-template>
+            <p class="fa-sub" style="margin-top: 10px;">Ponle costo para que la caja la ofrezca. Las recompensas se crean en <b>Recompensas</b>.</p>
+          </section>
         </div>
-      </div>
-      <p class="loy-nota"><i class="ph ph-info"></i> Un sello por unidad cobrada. Lo regalado en $0 no sella.</p>
-      <p class="loy-nota loy-nota--mal" *ngIf="problemaTarjeta() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
-      <div class="loy-checks"><label class="loy-check"><input type="checkbox" [(ngModel)]="d.activo" name="tAct"><span>Activa</span></label></div>
-      <div class="btn-row">
-        <button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar</button>
-        <button class="btn-ghost" type="button" (click)="tarjeta.set(null)">Cancelar</button>
-      </div>
-    </form>
-    <div class="loy-tabla" *ngIf="tarjetas().length; else sinTarjetas">
-      <table class="wx-tabla">
-        <thead><tr><th>Tarjeta</th><th>Sellan</th><th>Regalo</th><th class="num">Clientes</th><th></th></tr></thead>
-        <tbody>
-          <tr *ngFor="let t of tarjetas()" [class.apagada]="!t.active" [attr.data-guide-clave]="t.uuid">
-            <td>{{ t.name }}<small>{{ t.stamps_required }} sellos{{ t.origin === 'REMOTE' ? ' · de otra sucursal' : '' }}</small></td>
-            <td>{{ nombres(t.productos) }}</td>
-            <td>{{ t.reward_product_name || 'Cualquiera de la tarjeta' }}</td>
-            <td class="num">{{ t.clientes }}</td>
-            <td class="acciones"><button class="btn-ghost btn-sm" type="button" (click)="editarTarjeta(t)"><i class="ph ph-pencil-simple"></i> Editar</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #sinTarjetas><p class="loy-hint" *ngIf="!tarjeta()">Sin tarjetas. Ejemplo: «Café 9 + 1», 9 sellos, sellan los cafés.</p></ng-template>
 
-    <!-- ------------------------------------------------------ clientes -->
-    <h3 class="loy-h3">Clientes</h3>
-    <div class="loy-filtros">
-      <input class="ctl" type="search" placeholder="Nombre o teléfono" [(ngModel)]="buscar" (keyup.enter)="cargar()" (search)="cargar()" data-guide="puntos-buscar">
+        <!-- Tarjetas de sellos -->
+        <section class="fa-card">
+          <div class="fa-head"><h2>Tarjetas de sellos</h2>
+            <button class="btn-outline btn-sm" type="button" (click)="nuevaTarjeta()" data-guide="sellos-nueva"><i class="ph ph-plus"></i> Nueva tarjeta</button></div>
+          <div class="fa-sellos">
+            <article class="fa-sello" *ngFor="let t of tarjetas()" [class.off]="!t.active" [attr.data-guide-clave]="t.uuid">
+              <div class="fa-sello__cab"><strong>{{ t.name }}</strong>
+                <span class="fa-chip" [class.ok]="t.active" [class.neu]="!t.active">{{ t.active ? 'Activa' : 'Pausada' }}</span></div>
+              <div class="fa-sello__puntos" [attr.aria-label]="t.stamps_required + ' sellos y el regalo'">
+                <i *ngFor="let n of rango(t.stamps_required)"></i><i class="premio"></i>
+              </div>
+              <small>Sellan {{ nombres(t.productos) }} · regalo: {{ t.reward_product_name || 'cualquiera de la tarjeta' }}</small>
+              <div class="fa-sello__cab"><small>{{ t.clientes }} {{ t.clientes === 1 ? 'cliente' : 'clientes' }} con sellos{{ t.origin === 'REMOTE' ? ' · de otra sucursal' : '' }}</small>
+                <button class="btn-ghost btn-sm" type="button" (click)="editarTarjeta(t)"><i class="ph ph-pencil-simple"></i> Editar</button></div>
+            </article>
+            <button type="button" class="fa-sello--nuevo" (click)="nuevaTarjeta()"><i class="ph ph-plus"></i> Crear tarjeta de sellos</button>
+          </div>
+        </section>
+
+        <!-- Clientes -->
+        <section class="fa-card fa-card--tabla">
+          <div class="fa-head fa-head--pad"><h2>Clientes</h2>
+            <label class="fa-buscar"><span class="fa-sr">Buscar cliente</span>
+              <input class="ctl" type="search" placeholder="Nombre o teléfono" [(ngModel)]="buscar" (keyup.enter)="cargar()" (search)="cargar()" data-guide="puntos-buscar"></label></div>
+          <div class="fa-tabla" *ngIf="clientes().length; else sinClientes">
+            <table>
+              <thead><tr><th>Cliente</th><th class="fa-der">Puntos</th><th>Sellos</th><th>Último movimiento</th><th></th></tr></thead>
+              <tbody>
+                <ng-container *ngFor="let c of clientes()">
+                  <tr data-guide="puntos-cliente" [attr.data-guide-clave]="c.id" [class.abierta]="abierto()?.id === c.id">
+                    <td><strong>{{ c.cliente }}</strong><small>{{ c.telefono || 'Sin teléfono' }}</small></td>
+                    <td class="fa-num fa-der" [class.neg]="c.puntos < 0"><strong>{{ c.puntos | number }}</strong></td>
+                    <td><span *ngFor="let s of c.sellos; let last = last">{{ s.tarjeta }} <span class="fa-num">{{ s.sellos }}/{{ s.requeridos }}</span>
+                      <span class="fa-chip ok" *ngIf="s.sellos >= s.requeridos">llena</span>{{ last ? '' : ' · ' }}</span></td>
+                    <td>{{ c.ultimo | date:'d MMM y, HH:mm':'UTC':'es-MX' }}</td>
+                    <td class="fa-der"><button class="btn-ghost btn-sm" type="button" (click)="abrir(c)">{{ abierto()?.id === c.id ? 'Cerrar' : 'Historial' }}</button></td>
+                  </tr>
+                  <tr *ngIf="abierto()?.id === c.id" class="abierta">
+                    <td colspan="5">
+                      <form class="fa-ajuste" (ngSubmit)="ajustar(c)" data-guide="puntos-ajuste">
+                        <wx-select [opciones]="opcPrograma()" [(ngModel)]="ajuste.programa" name="aPro"></wx-select>
+                        <input class="ctl" type="number" [(ngModel)]="ajuste.cantidad" name="aCan" placeholder="+10 o −10" aria-label="Cantidad">
+                        <input class="ctl" type="text" [(ngModel)]="ajuste.nota" name="aNot" maxlength="200" placeholder="Motivo (obligatorio)" aria-label="Motivo">
+                        <button class="btn-outline btn-sm" type="submit" [disabled]="guardando()">Ajustar</button>
+                      </form>
+                      <p class="loy-nota loy-nota--mal" *ngIf="problemaAjuste() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
+                      <ol class="fa-hist pts-hist">
+                        <li *ngFor="let m of historial()">
+                          <span><strong>{{ describir(m) }}</strong><small>{{ m.created_at | date:'d MMM, HH:mm':'UTC':'es-MX' }} · {{ m.program === 'POINTS' ? 'Puntos' : m.tarjeta }}{{ m.note ? ' · ' + m.note : '' }}</small></span>
+                          <span class="fa-num" [class.mas]="m.delta > 0" [class.menos]="m.delta < 0">{{ m.delta > 0 ? '+' : '−' }}{{ abs(m.delta) }}</span>
+                        </li>
+                      </ol>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #sinClientes>
+            <p class="loy-hint fa-pad" *ngIf="!cargando()">{{ buscar ? 'Nadie coincide.' : 'Aún nadie tiene puntos ni sellos.' }}</p>
+          </ng-template>
+        </section>
+      </div>
+
+      <!-- Editor de tarjeta -->
+      <aside class="fa-card fa-editor" *ngIf="tarjeta() as d" aria-label="Editar tarjeta de sellos">
+        <form (ngSubmit)="guardarTarjeta()" data-guide="sellos-form">
+          <div class="fa-head"><h2>{{ d.id ? d.nombre || 'Tarjeta' : 'Nueva tarjeta' }}</h2><span class="fa-chip cy">{{ d.id ? 'Editando' : 'Nueva' }}</span></div>
+          <fieldset>
+            <legend class="fa-k">1 · La tarjeta</legend>
+            <label class="loy-f"><span>Nombre</span><input class="ctl" type="text" [(ngModel)]="d.nombre" name="tNom" maxlength="80" placeholder="Café 9 + 1"></label>
+            <div class="fa-frase">Se llena con
+              <span class="fa-step"><button type="button" aria-label="Menos" (click)="d.sellos = max(2, d.sellos - 1)">−</button>
+                <input type="number" min="2" max="100" [(ngModel)]="d.sellos" name="tSel" aria-label="Sellos para llenarla">
+                <button type="button" aria-label="Más" (click)="d.sellos = min(100, d.sellos + 1)">+</button></span>
+              sellos</div>
+          </fieldset>
+          <fieldset>
+            <legend class="fa-k">2 · Qué sella</legend>
+            <wx-multi-select etiqueta="Productos que sellan" placeholder="Agregar producto" [opciones]="opcProductos()" [(values)]="d.productos"></wx-multi-select>
+            <small class="fa-n">Un sello por unidad cobrada. Lo regalado en $0 no sella.</small>
+          </fieldset>
+          <fieldset>
+            <legend class="fa-k">3 · Qué regala</legend>
+            <wx-select [opciones]="opcPremio()" [(ngModel)]="d.productoPremio" name="tPre" [buscable]="true"></wx-select>
+            <label class="loy-check"><input type="checkbox" [(ngModel)]="d.activo" name="tAct"><span>Activa</span></label>
+          </fieldset>
+          <div class="fa-preview" aria-label="Vista de la tarjeta">
+            <span class="fa-k">Así la ve la caja</span>
+            <div class="fa-preview__caja">
+              <span class="fa-preview__cab"><strong>{{ d.nombre || 'Tu tarjeta' }}</strong><small>{{ d.sellos }}/{{ d.sellos }}</small></span>
+              <div class="fa-sello__puntos"><i class="on" *ngFor="let n of rango(d.sellos)"></i></div>
+              <span class="fa-preview__btn"><i class="ph ph-seal-check" aria-hidden="true"></i> Canjear {{ nombrePremio(d) }}</span>
+            </div>
+          </div>
+          <p class="loy-nota loy-nota--mal" *ngIf="problemaTarjeta() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
+          <div class="fa-pie">
+            <button class="btn-ghost" type="button" (click)="tarjeta.set(null)">Cancelar</button>
+            <button class="btn-primary" type="submit" [disabled]="guardando()"><i class="ph ph-check"></i> Guardar tarjeta</button>
+          </div>
+        </form>
+      </aside>
     </div>
-    <div class="loy-tabla" *ngIf="clientes().length; else sinClientes">
-      <table class="wx-tabla">
-        <thead><tr><th>Cliente</th><th class="num">Puntos</th><th>Sellos</th><th>Último movimiento</th><th></th></tr></thead>
-        <tbody>
-          <ng-container *ngFor="let c of clientes()">
-            <tr data-guide="puntos-cliente" [attr.data-guide-clave]="c.id">
-              <td>{{ c.cliente }}<small>{{ c.telefono || 'Sin teléfono' }}</small></td>
-              <td class="num" [class.neg]="c.puntos < 0">{{ c.puntos | number }}</td>
-              <td><span *ngFor="let s of c.sellos; let last = last">{{ s.tarjeta }} {{ s.sellos }}/{{ s.requeridos }}{{ last ? '' : ' · ' }}</span></td>
-              <td>{{ c.ultimo | date:'d MMM y HH:mm':'UTC':'es-MX' }}</td>
-              <td class="acciones">
-                <button class="btn-ghost btn-sm" type="button" (click)="abrir(c)">{{ abierto()?.id === c.id ? 'Cerrar' : 'Historial' }}</button>
-              </td>
-            </tr>
-            <tr *ngIf="abierto()?.id === c.id" class="pts-detalle">
-              <td colspan="5">
-                <form class="pts-ajuste" (ngSubmit)="ajustar(c)" data-guide="puntos-ajuste">
-                  <wx-select [opciones]="opcPrograma()" [(ngModel)]="ajuste.programa" name="aPro"></wx-select>
-                  <input class="ctl" type="number" [(ngModel)]="ajuste.cantidad" name="aCan" placeholder="+10 o -10">
-                  <input class="ctl" type="text" [(ngModel)]="ajuste.nota" name="aNot" maxlength="200" placeholder="Motivo (obligatorio)">
-                  <button class="btn-outline btn-sm" type="submit" [disabled]="guardando()">Ajustar</button>
-                </form>
-                <p class="loy-nota loy-nota--mal" *ngIf="problemaAjuste() as e"><i class="ph ph-warning-circle"></i> {{ e }}</p>
-                <table class="wx-tabla pts-hist">
-                  <tbody>
-                    <tr *ngFor="let m of historial()">
-                      <td>{{ m.created_at | date:'d MMM y HH:mm':'UTC':'es-MX' }}</td>
-                      <td>{{ describir(m) }}<small *ngIf="m.note">{{ m.note }}</small></td>
-                      <td>{{ m.program === 'POINTS' ? 'Puntos' : m.tarjeta }}</td>
-                      <td class="num" [class.neg]="m.delta < 0">{{ m.delta > 0 ? '+' : '' }}{{ m.delta }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </ng-container>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #sinClientes>
-      <p class="loy-hint" *ngIf="!cargando()">{{ buscar ? 'Nadie coincide.' : 'Aún nadie tiene puntos ni sellos.' }}</p>
-    </ng-template>
   </div>`,
   styles: [`
-    .loy-tabla th.num, .loy-tabla td.num { padding-right: 18px; }
     td.neg { color: var(--wx-danger); }
-    .pts-detalle > td { background: var(--wx-sunken); }
-    .pts-ajuste { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .pts-ajuste wx-select { min-width: 170px; }
-    .pts-ajuste input[type=number] { width: 110px; }
-    .pts-ajuste input[type=text] { flex: 1; min-width: 200px; }
-    .pts-hist td { padding-top: 4px; padding-bottom: 4px; }
+    .fa-reglas.apagada { opacity: .5; }
   `],
 })
 export class PuntosAdmin implements OnInit {
@@ -258,6 +250,14 @@ export class PuntosAdmin implements OnInit {
   readonly problemaAjuste = signal<string | null>(null);
   costos: Record<number, number | null> = {};
   buscar = '';
+  readonly max = Math.max;
+  readonly min = Math.min;
+  readonly abs = Math.abs;
+  rango(n: number): number[] { return Array.from({ length: Math.max(0, Math.min(Number(n) || 0, 30)) }, (_, i) => i); }
+  nombrePremio(d: DraftTarjeta): string {
+    if (d.productoPremio) return this.catalog.vendibles().find(p => p.id === d.productoPremio)?.product_name ?? 'el regalo';
+    return 'el regalo';
+  }
   ajuste: { programa: string; cantidad: number | null; nota: string } = { programa: 'POINTS', cantidad: null, nota: '' };
 
   readonly opcProductos = computed<WxOpcion[]>(() =>
@@ -306,7 +306,7 @@ export class PuntosAdmin implements OnInit {
       partes.push(`una compra de $200 da ${en200} ${en200 === 1 ? 'punto' : 'puntos'}`);
     }
     if (c.visit_points) partes.push(`la primera compra del día suma ${c.visit_points} más`);
-    const txt = partes.length ? 'Ejemplo: ' + partes.join(' y ') + '.' : 'Di cuánto se gana por compra, por visita o ambos.';
+    const txt = partes.length ? partes.join(' y ').replace(/^u/, 'U') + '.' : 'Di cuánto se gana por compra, por visita o ambos.';
     return txt + (c.expiry_months ? ` Caducan si el cliente no compra en ${c.expiry_months} ${c.expiry_months === 1 ? 'mes' : 'meses'}.` : '');
   }
 
@@ -376,11 +376,18 @@ export class PuntosAdmin implements OnInit {
     this.cd.detectChanges();
   }
 
+  /** De dónde viene un movimiento: su venta, otra sucursal o nada. */
+  private donde(m: Movimiento & { location_name?: string | null }): string {
+    if (m.sale_id) return ` · venta #${m.sale_id}`;
+    if (m.origin === 'REMOTE') return ` · ${m.location_name || 'otra sucursal'}`;
+    return '';
+  }
+
   describir(m: Movimiento): string {
     switch (m.kind) {
-      case 'EARN': return m.reason === 'VISIT' ? `Visita · venta #${m.sale_id}` : `Compra · venta #${m.sale_id}`;
-      case 'REDEEM': return `Canje${m.recompensa ? ' · ' + m.recompensa : ''} · venta #${m.sale_id}`;
-      case 'REVERSE': return `Devolución · venta #${m.sale_id}`;
+      case 'EARN': return (m.reason === 'VISIT' ? 'Visita' : 'Compra') + this.donde(m);
+      case 'REDEEM': return `Canje${m.recompensa ? ' · ' + m.recompensa : ''}` + this.donde(m);
+      case 'REVERSE': return 'Devolución' + this.donde(m);
       case 'EXPIRE': return 'Caducaron';
       case 'ADJUST': return `Ajuste${m.usuario ? ' de ' + m.usuario : ''}`;
       default: return m.kind;

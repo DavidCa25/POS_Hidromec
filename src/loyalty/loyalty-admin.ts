@@ -147,7 +147,7 @@ export class LoyaltyAdmin implements OnInit {
   /** Nombres visibles de las secciones, para la navegacion interna. */
   readonly secciones: { id: Seccion; label: string; icono: string }[] = [
     { id: 'resumen',     label: 'Resumen',     icono: 'ph-chart-line-up' },    { id: 'club',        label: 'Club',        icono: 'ph-coffee' },
-    { id: 'puntos',      label: 'Puntos',      icono: 'ph-star' },
+    { id: 'puntos',      label: 'Puntos y sellos', icono: 'ph-star' },
     { id: 'campanas',    label: 'Campañas',    icono: 'ph-megaphone' },
     { id: 'recompensas', label: 'Recompensas', icono: 'ph-gift' },
     { id: 'cupones',     label: 'Cupones',     icono: 'ph-ticket' },

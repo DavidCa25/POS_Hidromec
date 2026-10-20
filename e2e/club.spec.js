@@ -96,7 +96,7 @@ test('Club: plan, afiliar, café del día, ya usó, renovar vencida y administra
   await p.keyboard.press('Escape');
   await form.getByRole('button', { name: /Guardar/ }).click();
   await expect(form).toHaveCount(0);
-  await expect(p.locator('[data-guide=club-admin] tr', { hasText: `Club QA ${n}` })).toContainText(memb);
+  await expect(p.locator('[data-guide=club-plan]', { hasText: `Club QA ${n}` })).toContainText('299');
 
   // ------------------------------------------------ 2. afiliar en Venta
   await irPorDock(p, 'Venta');
