@@ -68,7 +68,7 @@ const asignar = (carpeta, nombres) => nombres.forEach(n => DOMINIO.set(n, carpet
 asignar('commercial',['sp_commercial_policy_save']);
 
 asignar('sales', [
-  'sp_register_sale', 'sp_refund_sale', 'sp_update_sale', 'sp_get_sale_by_folio',
+  'sp_register_sale', 'sp_refund_sale', 'sp_refund_candidates', 'sp_exchange_sale', 'sp_refund_ticket', 'sp_update_sale', 'sp_get_sale_by_folio',
   'sp_get_sale_ticket', 'sp_get_sales_filtered', 'sp_get_actual_folio',
   'sp_get_total_sales_today', 'sp_get_total_sales_month', 'sp_get_total_orders',
   'sp_get_top_selling_product', 'sp_get_daily_sales_current_month',
@@ -98,6 +98,10 @@ asignar('inventory', [
   'sp_transfer_send', 'sp_transfer_receive_return', 'sp_transfer_confirm_out', 'sp_transfer_list',
   // 0055: traspasos entre sucursales de la misma empresa (MultiSucursal).
   'sp_branch_transfer_send', 'sp_branch_transfer_receive', 'sp_branch_transfer_settle',
+  // 0060: produccion por tandas (formula de producto DIRECT, tablero, tandas).
+  'sp_production_formula_get', 'sp_production_formula_save', 'sp_production_formula_delete',
+  'sp_production_board', 'sp_production_plan', 'sp_production_start', 'sp_production_finish', 'sp_production_cancel',
+  'sp_production_waste',
 ]);
 
 asignar('cash', [
@@ -106,6 +110,8 @@ asignar('cash', [
   'sp_cash_summary', 'sp_get_cash_closures', 'sp_get_cash_movements',
   // 0049: la unica respuesta a "de que caja es este dinero".
   'sp_resolve_cash_register',
+  // 0061: el corte por correo (estado del envío y lo que lleva el correo).
+  'sp_cash_closure_email_job', 'sp_cash_closure_email_list', 'sp_cash_closure_email_data',
 ]);
 
 // 0049: egresos (renta, luz, un Uber...) y pagos al personal. No es
@@ -191,7 +197,9 @@ asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);
 
 asignar('reports', ['sp_get_profit_overview', 'sp_get_weekly_profit',
   // 0041: actividad del negocio por hora.
-  'sp_report_actividad_horaria', 'sp_day_close_report']);
+  'sp_report_actividad_horaria', 'sp_day_close_report',
+  // 0062: estado de resultados (ventas - costo congelado - mermas - egresos).
+  'sp_income_statement']);
 
 asignar('setup', [
   'sp_setup_inicial', 'sp_setup_status', 'sp_add_register', 'sp_set_register_active',
@@ -253,6 +261,14 @@ asignar('loyalty', [
   'sp_coupon_issue', 'sp_coupon_validate', 'sp_coupon_redeem',
   // Lo repartido de verdad, para poder auditarlo sin abrir SSMS.
   'sp_loyalty_instances',
+  // 0063: Club (membresías). El canje y el pago corren DENTRO de sp_register_sale.
+  'sp_membership_status', 'sp_membership_apply_sale', 'sp_membership_on_refund', 'sp_membership_plan_save',
+  'sp_membership_admin', 'sp_membership_manage', 'sp_membership_apply_remote',
+  // 0064: puntos y sellos. El canje corre DENTRO de sp_register_sale; ganar,
+  // en sp_loyalty_evaluate_sale; revertir, en sp_refund_sale.
+  'sp_loyalty_customer_status', 'sp_loyalty_points_earn', 'sp_loyalty_points_apply_sale',
+  'sp_loyalty_points_on_refund', 'sp_loyalty_points_config_save', 'sp_loyalty_stamp_card_save',
+  'sp_loyalty_points_manage', 'sp_loyalty_points_admin', 'sp_loyalty_points_ledger', 'sp_loyalty_points_apply_remote',
   // Ruleta: sectores y su sorteo, decidido en el servidor.
   'sp_dynamic_segments', 'sp_dynamic_save_segment',
 ]);

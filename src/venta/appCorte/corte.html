@@ -1,6 +1,8 @@
 <div *ngIf="closedOptions.length" class="corte-reprint"><wx-select placeholder="Selecciona un corte cerrado" [opciones]="closedOptions" [(ngModel)]="selectedClosed" [buscable]="true"></wx-select><button type="button" class="btn btn-outline-primary" [disabled]="!selectedClosed" (click)="receiptId=selectedClosed"><i class="ph ph-printer"></i>Ver / imprimir corte</button></div>
 <app-receipt-viewer *ngIf="receiptId" [id]="receiptId" document="closure" (close)="receiptId=null"></app-receipt-viewer>
 <button *ngIf="lastClosedId" type="button" class="btn btn-outline-primary mb-3" (click)="verCorte()"><i class="ph ph-printer"></i>Ver / reimprimir último corte</button>
+<button *ngIf="puedeCorreos" type="button" class="btn btn-outline-primary mb-3" data-guide="corte-correos" (click)="verCorreos=true"><i class="ph ph-envelope-simple"></i>Correos de cortes</button>
+<app-corte-correos *ngIf="verCorreos" (close)="verCorreos=false"></app-corte-correos>
 <div class="corte-container">
   <!-- WIZARD DE PASOS -->
   <div class="wizard-steps" *ngIf="showFilters">
@@ -198,6 +200,9 @@
           </div>
         </div>
 
+        <wx-menu *ngIf="!corteCiego" etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+                 [opciones]="opcionesExportar" [deshabilitado]="loading"
+                 (elegir)="exportar($any($event))"></wx-menu>
         <button class="btn btn-success btn-lg"
                 [disabled]="loading || !canClose"
                 (click)="abrirModalCierre()">
@@ -263,6 +268,26 @@
           </div>
         </div>
 
+        <!-- 0065: devoluciones del periodo, todas (no solo las de efectivo), con su motivo. -->
+        <div class="desglose-card" *ngIf="devoluciones.length" data-guide="corte-devoluciones">
+          <div class="desglose-header">
+            <h4><i class="ph ph-arrow-counter-clockwise"></i> Devoluciones ({{ devoluciones.length }})</h4>
+          </div>
+          <div class="desglose-body">
+            <div class="desglose-row" *ngFor="let d of devoluciones">
+              <span>
+                Folio #{{ d.sale_id }} · {{ d.reason || 'Sin motivo' }}
+                <small class="text-muted d-block">{{ fechaHora(d.datee) }} · {{ formaDevolucion(d.payment_method) }}{{ d.quien ? ' · ' + d.quien : '' }}{{ d.cliente ? ' · ' + d.cliente : '' }}{{ d.note ? ' · ' + d.note : '' }}</small>
+              </span>
+              <span class="text-danger fw-bold">− {{ d.refund_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row total-row">
+              <span>Total devuelto<small class="text-muted d-block">{{ devueltoEfectivo | currency:'MXN':'symbol-narrow':'1.2-2' }} salieron del cajón</small></span>
+              <span class="text-danger">− {{ totalDevuelto | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Tarjeta Derecha: Ventas Totales -->
         <div class="desglose-card">
           <div class="desglose-header">
@@ -288,6 +313,10 @@
             <div class="desglose-row pb-3" style="border-bottom: 2px dashed var(--border);">
               <span>Pagado en plataformas (sin efectivo)</span><span>{{breakdown.ventasPlataforma|currency:'MXN':'symbol-narrow':'1.2-2'}}</span></div><div class="desglose-row"><span>A Crédito (Pendiente de cobro)</span>
               <span>{{ breakdown.ventasCredito | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="desglose-row" *ngIf="breakdown.ventasCambio" data-guide="corte-ventas-cambio">
+              <span>Pagado con un cambio<small class="text-muted d-block">El valor de lo que el cliente devolvió; no es dinero nuevo</small></span>
+              <span>{{ breakdown.ventasCambio | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
             </div>
             <div class="desglose-row total-row">
               <span>Total Vendido</span>

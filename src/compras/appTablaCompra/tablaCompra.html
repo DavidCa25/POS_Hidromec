@@ -36,6 +36,10 @@
           </button>
         </div>
 
+        <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+                 [opciones]="opcionesExportar" [deshabilitado]="loading || !compras.length"
+                 (elegir)="exportar($any($event))"></wx-menu>
+
         <div class="ventas-meta">
           <span class="range">{{ pageFrom }}–{{ pageTo }} de {{ totalItems }}</span>
 

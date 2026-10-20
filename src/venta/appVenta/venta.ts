@@ -1,6 +1,8 @@
 import {ReceiptEmail} from '../../app/receipt-email/receipt-email.component';
 import {validarPagos,type PagoAplicado} from '../../../shared/pagos';
 import {CommercialService} from '../../core/commercial.service';
+import { DevolucionesService, MOTIVOS_DEVOLUCION, type LineaCambio, type MetodoDiferencia, type Regreso, type VentaParaDevolver } from '../../core/devoluciones.service';
+import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
 import {CommercialSaleComponent} from '../../app/commercial-sale/commercial-sale.component';
 import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
@@ -19,11 +21,13 @@ import {
   MesaService, ShiftService, SoldLine, ClientesVentaService,
   CajonService,
 } from '../../core';
+import { ClubService } from '../../core/club.service';
 import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
+import { ClubClienteComponent } from '../../app/club-cliente/club-cliente.component';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
@@ -75,10 +79,12 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo],
+  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
+  /** 0063 · Club: la tarjeta y el descuento en el cobro. */
+  readonly club = inject(ClubService);
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
 
   private readonly cart = inject(CartService);
@@ -237,8 +243,38 @@ export class Venta implements OnInit, OnDestroy {
   // =========================
   showRefundModal = false;
   refundLines: RefundLine[] = [];
-  refundKind: 'EFECTIVO' | 'CAMBIO' = 'EFECTIVO';
+  /* 0065: el motivo es obligatorio y ya no hay «Cambio»: no hacía nada
+     distinto y el cajero creía que no movía dinero. */
+  refundMotivo: string | null = null;
   refundNote = '';
+  refundVenta: VentaParaDevolver | null = null;
+  readonly motivosDevolucion = MOTIVOS_DEVOLUCION;
+  private readonly devoluciones = inject(DevolucionesService);
+  /** 0065: regresar el dinero o cambiar por otro producto. */
+  refundModo: 'dinero' | 'cambio' = 'dinero';
+  refundLleva: LineaCambio[] = [];
+  refundProductoElegido: number | null = null;
+  refundMetodoDif: MetodoDiferencia | null = null;
+  refundRecibido: number | null = null;
+  /** El comprobante de la última devolución, para imprimirlo. */
+  refundComprobante: number | null = null;
+  readonly metodosDiferencia: WxOpcion[] = [
+    { valor: 'EFECTIVO', etiqueta: 'Efectivo' }, { valor: 'TARJETA', etiqueta: 'Tarjeta' }, { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia' },
+  ];
+  get opcionesCambio(): WxOpcion[] {
+    return this.catalog.vendibles().map(p => ({ valor: p.id, etiqueta: p.product_name, nota: '$' + Number(p.price).toFixed(2), busca: p.part_number ?? '' }));
+  }
+  get refundTotalLleva(): number { return this.devoluciones.totalLleva(this.refundLleva); }
+  get refundDiferencia(): number { return Math.round((this.refundTotalLleva - this.refundTotalPreview) * 100) / 100; }
+  agregarCambio(id: number | null): void {
+    const p = this.catalog.vendibles().find(x => x.id === Number(id));
+    if (!p) return;
+    const ya = this.refundLleva.find(l => l.productId === p.id);
+    if (ya) ya.cantidad += 1;
+    else this.refundLleva = [...this.refundLleva, { productId: p.id, nombre: p.product_name, precio: Number(p.price), cantidad: 1 }];
+    setTimeout(() => { this.refundProductoElegido = null; });
+  }
+  quitarCambio(l: LineaCambio): void { this.refundLleva = this.refundLleva.filter(x => x !== l); }
   refundLoading = false;
 
   showModalClientes = false;
@@ -1590,8 +1626,14 @@ export class Venta implements OnInit, OnDestroy {
           };
         });
 
-      this.refundKind = 'EFECTIVO';
+      this.refundMotivo = null;
       this.refundNote = '';
+      this.refundModo = 'dinero';
+      this.refundLleva = [];
+      this.refundMetodoDif = null;
+      this.refundRecibido = null;
+      this.refundVenta = await this.devoluciones.cargar(this.editingSaleId);
+      void this.catalog.load(true);
       this.showRefundModal = true;
 
     } catch (e: any) {
@@ -1607,11 +1649,59 @@ export class Venta implements OnInit, OnDestroy {
     this.refundLoading = false;
   }
 
+  /** Por dónde regresa el dinero, con la regla de SQL, antes de confirmar. */
+  get refundRegreso(): Regreso[] {
+    if (this.refundModo === 'cambio') {
+      return this.refundLleva.length && this.refundDiferencia < 0 ? this.devoluciones.comoRegresa(this.refundVenta, -this.refundDiferencia) : [];
+    }
+    return this.devoluciones.comoRegresa(this.refundVenta, this.refundTotalPreview);
+  }
+
   get refundTotalPreview(): number {
     const total = (this.refundLines || [])
       .filter(l => Number(l.qty) > 0)
       .reduce((acc, l) => acc + (Number(l.qty) * Number(l.unitPrice)), 0);
     return Number(total.toFixed(2));
+  }
+
+  /** 0065: el CAMBIO: devolver y llevarse otra cosa en una sola operación. */
+  private async confirmarCambio(): Promise<void> {
+    if (!this.refundVenta || !this.refundMotivo) return;
+    if (!this.refundLleva.length) {
+      await Swal.fire({ icon: 'warning', title: 'Falta qué se lleva', text: 'Elige el producto que se lleva a cambio.' });
+      return;
+    }
+    const dif = this.refundDiferencia;
+    if (dif > 0 && !this.refundMetodoDif) {
+      await Swal.fire({ icon: 'warning', title: 'Falta cómo paga', text: 'Elige cómo paga la diferencia.' });
+      return;
+    }
+    if (dif > 0 && this.refundMetodoDif === 'EFECTIVO' && Number(this.refundRecibido || 0) < dif) {
+      await Swal.fire({ icon: 'warning', title: 'No alcanza', text: 'El dinero recibido no cubre la diferencia.' });
+      return;
+    }
+    for (const l of this.refundVenta.renglones) l.cantidad = Number(this.refundLines.find(x => x.productId === l.productId)?.qty || 0);
+    this.refundLoading = true;
+    try {
+      const r = await this.devoluciones.cambiar(this.refundVenta, this.refundMotivo, this.refundNote || '', this.currentUserId, this.refundLleva,
+        { metodo: dif > 0 ? this.refundMetodoDif : null, recibido: dif > 0 && this.refundMetodoDif === 'EFECTIVO' ? Number(this.refundRecibido) : null });
+      if (!r.ok || !r.hecho) {
+        if (!r.cancelado) await Swal.fire({ icon: 'error', title: 'No se pudo hacer el cambio', text: r.error });
+        return;
+      }
+      this.showRefundModal = false;
+      const h = r.hecho;
+      const cambioEfectivo = dif > 0 && this.refundMetodoDif === 'EFECTIVO' ? Number(this.refundRecibido) - dif : 0;
+      const detalle = h.paga > 0 ? `Cobra la diferencia: <b>$${h.paga.toFixed(2)}</b>${cambioEfectivo > 0 ? ` · cambio $${cambioEfectivo.toFixed(2)}` : ''}`
+        : h.regresa > 0 ? `Se le regresan <b>$${h.regresa.toFixed(2)}</b> como en una devolución.` : 'Sin diferencia.';
+      const ok = await Swal.fire({ icon: 'success', title: 'Cambio registrado', html: `Venta del cambio #${h.saleId}.<br>${detalle}`,
+        showCancelButton: true, confirmButtonText: 'Listo', cancelButtonText: 'Imprimir comprobante' });
+      if (ok.dismiss === Swal.DismissReason.cancel) this.refundComprobante = h.refundId;
+      this.folioInput = this.editingSaleId;
+      await this.buscarFolioPorInput();
+    } finally {
+      this.refundLoading = false;
+    }
   }
 
   incQty(l: RefundLine) {
@@ -1646,14 +1736,25 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.refundMotivo) {
+      await Swal.fire({ icon: 'warning', title: 'Falta el motivo', text: 'Elige por qué se devuelve.' });
+      return;
+    }
+    if (this.refundMotivo === 'Otro' && !(this.refundNote || '').trim()) {
+      await Swal.fire({ icon: 'warning', title: 'Escribe el motivo', text: 'Con «Otro», di en la nota qué pasó.' });
+      return;
+    }
+
     const totalPreview = this.refundTotalPreview;
+
+    if (this.refundModo === 'cambio') { await this.confirmarCambio(); return; }
 
     this.showRefundModal = false;
 
     const confirm = await Swal.fire({
       icon: 'question',
-      title: this.refundKind === 'EFECTIVO' ? 'Confirmar reembolso' : 'Confirmar cambio',
-      html: `<div style="text-align:left">Total: <b>$${totalPreview.toFixed(2)}</b></div>`,
+      title: 'Confirmar devolución',
+      html: `<div style="text-align:left">Total: <b>$${totalPreview.toFixed(2)}</b><br>Motivo: <b>${this.refundMotivo}</b></div>`,
       showCancelButton: true,
       confirmButtonText: 'Sí, confirmar',
       cancelButtonText: 'Cancelar'
@@ -1674,8 +1775,7 @@ export class Venta implements OnInit, OnDestroy {
 
         payment_method: 'EFECTIVO',
 
-        refund_kind: this.refundKind,
-        register_cash_movement: this.refundKind === 'EFECTIVO' ? 1 : 0,
+        motivo: this.refundMotivo,
 
         items: selected.map(x => ({
           productId: x.productId,
@@ -1686,7 +1786,7 @@ export class Venta implements OnInit, OnDestroy {
         note: (this.refundNote || '').trim() || null,
         // Para quien autoriza (el dueño lo ve en su app) y para la bitácora.
         amount: totalPreview,
-        reason: (this.refundKind === 'EFECTIVO' ? 'Reembolso en efectivo' : 'Cambio') + ' · folio #' + this.editingSaleId,
+        reason: 'Devolución · ' + this.refundMotivo + ' · folio #' + this.editingSaleId,
 
         apply_net_update: 0
       };
@@ -1699,7 +1799,10 @@ export class Venta implements OnInit, OnDestroy {
         return;
       }
 
-      await Swal.fire({ icon: 'success', title: 'Listo', text: 'Se registró correctamente.' });
+      const fila = Array.isArray(resp.data) ? resp.data[0] : resp.data;
+      const ok = await Swal.fire({ icon: 'success', title: 'Devolución registrada', text: 'Se repuso el inventario.',
+        showCancelButton: !!fila?.refund_id, confirmButtonText: 'Listo', cancelButtonText: 'Imprimir comprobante' });
+      if (ok.dismiss === Swal.DismissReason.cancel && fila?.refund_id) this.refundComprobante = Number(fila.refund_id);
 
       this.showRefundModal = false;
 

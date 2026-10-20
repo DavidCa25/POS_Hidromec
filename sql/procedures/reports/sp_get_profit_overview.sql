@@ -6,10 +6,12 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 -- Utilidad por día (pestaña "Caja y utilidad" de Estadísticas).
--- Utilidad = (precio de venta SIN IVA) - (costo del producto).
--- El costo (last_cost) vive en product_suppliers (por proveedor); se toma el del proveedor default.
--- Si un producto no tiene costo registrado, se asume 0 (la utilidad sale como venta completa).
-
+-- Utilidad = (precio cobrado SIN IVA) - (costo del renglón).
+-- 0062: el costo es el CONGELADO al vender (sale_detail.unit_cost), no el
+-- costo de hoy: cambiar un costo ya no reescribe la utilidad de días pasados.
+-- La tasa de IVA también es la congelada del renglón. Los renglones viejos
+-- sin costo o sin tasa usan los del producto (misma regla que
+-- sp_income_statement).
 CREATE OR ALTER PROCEDURE dbo.sp_get_profit_overview
     @from_date DATE = NULL,
     @to_date   DATE = NULL
@@ -23,18 +25,14 @@ BEGIN
     SELECT
         CAST(s.datee AS DATE) AS datee,
         SUM(
-            sd.quantity *
-            ( sd.unitary_price / (1 + ISNULL(p.tasa_iva, 0.16)) - ISNULL(ps.last_cost, 0) )
+            CASE WHEN ISNULL(sd.tax_object, '02') = '02'
+                 THEN sd.subtotal / (1 + ISNULL(sd.tax_rate, ISNULL(p.tasa_iva, 0)))
+                 ELSE sd.subtotal END
+          - sd.quantity * COALESCE(sd.unit_cost, p.cost, 0)
         ) AS profit
     FROM dbo.sales s
     INNER JOIN dbo.sale_detail sd ON sd.sale_id = s.id
     INNER JOIN dbo.products p     ON p.id = sd.product_id
-    OUTER APPLY (
-        SELECT TOP 1 x.last_cost
-        FROM dbo.product_suppliers x
-        WHERE x.product_id = p.id AND x.active = 1
-        ORDER BY x.is_default DESC
-    ) ps
     WHERE s.datee >= @from_date
       AND s.datee <  DATEADD(DAY, 1, @to_date)
     GROUP BY CAST(s.datee AS DATE)

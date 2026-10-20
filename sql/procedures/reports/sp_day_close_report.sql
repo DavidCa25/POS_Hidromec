@@ -18,7 +18,12 @@ GO
      4 salidas        retiros, egresos, pagos a proveedor, devoluciones en efectivo
      5 promociones    descuento aplicado por cajero
      6 eventos        bitácora de seguridad del día
-     7 ventas         los tickets del día (hasta 500, los más recientes primero) */
+     7 ventas         los tickets del día (hasta 500, los más recientes primero)
+   0060 (al final, para no mover los anteriores):
+     8 produccion     por producto fabricado: lo producido ese día, la merma
+                      de producción, lo vendido, lo traspasado, la merma de
+                      terminado y cuánto queda ahora
+     9 mermas         la merma de producto terminado del día, una por una */
 CREATE OR ALTER PROCEDURE dbo.sp_day_close_report
     @fecha DATE = NULL
 AS
@@ -102,5 +107,47 @@ BEGIN
       LEFT JOIN dbo.registers r ON r.id = s.register_id
      WHERE s.datee >= @desde AND s.datee < @hasta
      ORDER BY s.datee DESC;
+
+    /* 8 produccion: los productos con formula, o con tandas o merma ese dia. */
+    IF OBJECT_ID(N'dbo.production_batches', 'U') IS NOT NULL
+    BEGIN
+        SELECT p.id AS product_id, p.nombre AS producto, p.stock AS existencia,
+               ISNULL(b.planeadas, 0) AS planeadas, ISNULL(b.producidas, 0) AS producidas,
+               ISNULL(b.merma_produccion, 0) AS merma_produccion, b.costo_unitario,
+               ISNULL(v.vendidas, 0) AS vendidas, ISNULL(t.traspasadas, 0) AS traspasadas,
+               ISNULL(w.merma_terminado, 0) AS merma_terminado, ISNULL(w.costo_merma, 0) AS costo_merma
+          FROM dbo.products p
+          LEFT JOIN (SELECT product_id, SUM(planned_qty) AS planeadas, SUM(ISNULL(good_qty, 0)) AS producidas,
+                            SUM(ISNULL(waste_qty, 0)) AS merma_produccion,
+                            SUM(ISNULL(total_cost, 0)) / NULLIF(SUM(ISNULL(good_qty, 0)), 0) AS costo_unitario
+                       FROM dbo.production_batches
+                      WHERE production_date = @fecha AND status = 'DONE'
+                      GROUP BY product_id) b ON b.product_id = p.id
+          LEFT JOIN (SELECT d.product_id, SUM(d.quantity) AS vendidas
+                       FROM dbo.sale_detail d JOIN dbo.sales s ON s.id = d.sale_id
+                      WHERE s.datee >= @desde AND s.datee < @hasta
+                      GROUP BY d.product_id) v ON v.product_id = p.id
+          LEFT JOIN (SELECT product_id, SUM(quantity) AS traspasadas
+                       FROM dbo.inventory_movements
+                      WHERE source IN ('BRANCH_OUT', 'TRANSFER_OUT') AND typee = 'salida' AND datee >= @desde AND datee < @hasta
+                      GROUP BY product_id) t ON t.product_id = p.id
+          LEFT JOIN (SELECT product_id, SUM(qty) AS merma_terminado, SUM(qty * ISNULL(unit_cost, 0)) AS costo_merma
+                       FROM dbo.production_waste
+                      WHERE waste_date = @fecha
+                      GROUP BY product_id) w ON w.product_id = p.id
+         WHERE p.active = 1 AND p.inventory_mode = 'DIRECT'
+           AND (EXISTS (SELECT 1 FROM dbo.production_formulas f WHERE f.product_id = p.id)
+                OR b.product_id IS NOT NULL OR w.product_id IS NOT NULL)
+         ORDER BY p.nombre;
+
+        /* 9 mermas de producto terminado del dia. */
+        SELECT w.created_at, p.nombre AS producto, w.qty, w.reason, w.unit_cost,
+               w.qty * ISNULL(w.unit_cost, 0) AS costo, u.usuario AS quien
+          FROM dbo.production_waste w
+          JOIN dbo.products p ON p.id = w.product_id
+          LEFT JOIN dbo.users u ON u.id = w.created_by
+         WHERE w.waste_date = @fecha
+         ORDER BY w.created_at DESC;
+    END
 END
 GO

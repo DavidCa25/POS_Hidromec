@@ -1,3 +1,98 @@
-/* Traspasos: hereda el lenguaje de Envíos a eventos (eventos.css). */
-.tr-ok { border-left: 3px solid var(--wx-success); }
-.tr-meta { font-weight: 400; color: var(--wx-text-muted); font-size: .85rem; }
+/* ==========================================================================
+   TRASPASOS — el mapa a todo lo alto, con indicadores, panel de la sucursal y
+   seguimiento flotando encima. Enviar, recibir e historial, en ventanas.
+   Hereda del lenguaje de Envíos a eventos (eventos.css) los campos y tablas.
+   ========================================================================== */
+.tr { position: relative; color: var(--wx-text); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tr-estado { color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.mono { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.tr-mut { color: var(--wx-text-muted); font-size: var(--wx-text-sm); margin: 0; }
+.tr-lbl { font-size: var(--wx-text-xs); font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--wx-text-muted); }
+
+.tr-escenario {
+  position: relative; height: calc(100vh - 210px); min-height: 560px; border-radius: var(--wx-radius-lg);
+  overflow: hidden; background: #E4ECF0; border: 1px solid var(--wx-edge);
+}
+
+/* Lo que flota encima del mapa: tarjetas blancas con sombra tintada. */
+.tr-kpi, .tr-panel, .tr-seg, .tr-toast {
+  background: var(--wx-surface); border-radius: 16px;
+  box-shadow: 0 1px 0 rgba(4, 23, 43, .06), 0 14px 30px -14px rgba(22, 33, 46, .32);
+}
+.tr-kpis { position: absolute; top: 16px; left: 16px; display: flex; flex-wrap: wrap; gap: 12px; max-width: calc(100% - 420px); }
+.tr-kpi { display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; min-width: 210px; }
+.tr-kpi__ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; }
+.tr-kpi__ic.acc { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.tr-kpi__ic.ind { background: #E8E9F7; color: #2E3A8C; }
+.tr-kpi__ic.warn { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
+.tr-kpi small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); font-weight: 500; }
+.tr-kpi b { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.tr-kpi em { font-style: normal; font-size: var(--wx-text-xs); font-weight: 600; color: var(--wx-text-muted); margin-left: 6px; }
+
+.tr-toast { position: absolute; top: 96px; left: 16px; display: flex; gap: 8px; align-items: center; padding: 10px 16px; font-size: var(--wx-text-sm); font-weight: 600; color: var(--wx-success-ink); max-width: calc(100% - 420px); }
+.tr-toast--error { color: var(--wx-danger); top: 140px; }
+
+/* Panel de la sucursal (derecha) */
+.tr-panel { position: absolute; top: 16px; right: 16px; width: 370px; max-height: calc(100% - 32px); overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.tr-panel__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.tr-panel h2 { margin: 2px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.tr-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: var(--wx-text-xs); font-weight: 650; background: var(--wx-sunken); color: var(--wx-text-muted); }
+.tr-pill.ok { background: var(--wx-success-soft); color: var(--wx-success-ink); }
+.tr-pill.warn { background: var(--wx-warning-soft); color: var(--wx-warning-ink); }
+.tr-pill.bad { background: var(--wx-danger-soft); color: var(--wx-danger-ink); }
+.tr-pill.acc { background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.tr-cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tr-cifras div { background: var(--wx-sunken); border-radius: 12px; padding: 10px 12px; }
+.tr-cifras small { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.tr-cifras b { font-size: 24px; font-weight: 700; }
+.tr-exist { list-style: none; margin: 0; padding: 0; }
+.tr-exist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--wx-edge-soft); font-size: var(--wx-text-sm); }
+.tr-nota { font-size: var(--wx-text-xs); }
+.tr-btn-recibir {
+  min-height: 50px; border: 0; border-radius: 12px; background: #0F2A3F; color: #fff; font: inherit; font-weight: 650; cursor: pointer;
+  transition: transform var(--wx-dur-press) var(--wx-ease-out);
+}
+.tr-btn-recibir:active { transform: scale(.98); }
+.tr-link { align-self: center; border: 0; background: none; color: var(--wx-accent-text); font: inherit; font-size: var(--wx-text-sm); font-weight: 600; cursor: pointer; }
+
+/* Seguimiento (abajo) */
+.tr-seg { position: absolute; left: 16px; right: 402px; bottom: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 22px; align-items: center; padding: 16px 20px; }
+.tr-seg__tit b { display: block; font-size: var(--wx-text-md); font-weight: 700; }
+.tr-seg__tit span { color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.tr-pasos { display: flex; justify-content: center; margin: 0; padding: 0; list-style: none; }
+.tr-pasos li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 25%; max-width: 120px; color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.tr-pasos li small { font-size: 11px; }
+.tr-pasos li > span { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--wx-edge-strong); background: var(--wx-surface); font-size: 16px; position: relative; z-index: 1; }
+.tr-pasos li + li::before { content: ""; position: absolute; top: 17px; right: 50%; width: 100%; height: 3px; background: var(--wx-edge); }
+.tr-pasos li.hecho > span { background: var(--wx-accent-text); border-color: var(--wx-accent-text); color: #fff; }
+.tr-pasos li.actual > span { border-color: var(--wx-accent); color: var(--wx-accent-text); box-shadow: 0 0 0 5px var(--wx-accent-soft); }
+.tr-pasos li.actual { color: var(--wx-accent-text); font-weight: 650; }
+.tr-seg__prod { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--wx-sunken); border-radius: 12px; }
+.tr-seg__n { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--wx-accent-soft); color: var(--wx-accent-text); font-weight: 700; }
+.tr-seg__prod b { display: block; font-weight: 650; }
+.tr-seg__prod small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+
+@media (max-width: 1100px) {
+  .tr-escenario { height: auto; min-height: 0; display: flex; flex-direction: column; }
+  .tr-escenario app-traspasos-mapa { height: 420px; }
+  .tr-kpis, .tr-panel, .tr-seg, .tr-toast { position: static; width: auto; max-width: none; margin: 10px; }
+  .tr-seg { grid-template-columns: 1fr; }
+}
+
+/* Ventanas */
+.tr-velo { position: fixed; inset: 0; z-index: var(--wx-z-dialog); display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--wx-scrim); }
+.tr-modal {
+  width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; gap: 14px;
+  padding: 24px; background: var(--wx-surface); border-radius: var(--wx-radius-lg); box-shadow: var(--wx-shadow-dialog);
+  animation: tr-sube var(--wx-dur-dialog) var(--wx-ease-out);
+}
+.tr-modal--ancho { width: min(980px, 100%); }
+.tr-modal h2 { margin: 0; font-size: var(--wx-text-lg); font-weight: 700; }
+.tr-fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.tr-lineas { list-style: none; margin: 0; padding: 0; }
+.tr-lineas li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 8px 0; border-top: 1px solid var(--wx-edge-soft); }
+.tr-modal__acc { display: flex; justify-content: flex-end; gap: 10px; }
+.tr-tabla { overflow-x: auto; }
+@keyframes tr-sube { from { transform: translateY(16px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tr-modal { animation: none; } }

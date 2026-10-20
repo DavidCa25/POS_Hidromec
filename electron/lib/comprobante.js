@@ -22,6 +22,8 @@ const fields = {
     "declaration",
     "signature",
   ],
+  /* 0065: devolución (y cambio). */
+  refund: ["identity", "items", "exchange", "money", "reason", "signature"],
 };
 const esc = (v) =>
   String(v ?? "")
@@ -37,7 +39,7 @@ function perfil(input = {}, doc = "sale") {
     width: 80,
     height: 0,
     margin: 3,
-    fields: doc === "closure" ? ["identity", "sales"] : fields.sale,
+    fields: doc === "closure" ? ["identity", "sales"] : doc === "refund" ? fields.refund : fields.sale,
     ...input,
   };
   if (
@@ -123,4 +125,29 @@ function corte(data, p, business = {}) {
     p,
   );
 }
-module.exports = { perfil, fields, venta, corte };
+/* 0065: comprobante de devolución. Lo que se devolvió, por qué, cómo regresó
+   el dinero y, si fue un cambio, lo que se llevó. */
+const FORMA = { EFECTIVO: "Efectivo (del cajón)", TARJETA: "A su tarjeta", TRANSFERENCIA: "Por transferencia",
+  CREDITO: "Descontado de su crédito", CAMBIO: "A cuenta del cambio", TERMINAL_MP: "Mercado Pago", PLATAFORMA: "Plataforma" };
+function devolucion(d, p, business = {}) {
+  p = perfil(p, "refund");
+  const row = (label, value) => `<div class="row"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
+  const items = (ls) => (ls ?? []).map((l) =>
+    row(`${Number(l.quantity)} × ${l.nombre}`, money(Number(l.quantity) * Number(l.unitary_price)))).join("");
+  const cambio = Number(d.exchange_amount || 0) > 0;
+  const blocks = {
+    identity: `<h1>${esc(business.business_name || "Wybix")}</h1><p>${cambio ? "CAMBIO" : "DEVOLUCIÓN"} · #${esc(d.id)}</p><p>Venta #${esc(d.sale_id)}${d.cliente ? " · " + esc(d.cliente) : ""}</p><p>${esc(d.register_name || "")} · ${esc(d.cashier || "")}</p><p>${esc(d.datee)}</p>`,
+    items: `<p class="sub">SE DEVOLVIÓ</p>` + items(d.lines) + `<div class="total">${row("TOTAL DEVUELTO", money(d.total))}</div>`,
+    exchange: cambio
+      ? `<p class="sub">SE LLEVA A CAMBIO · VENTA #${esc(d.exchange_sale_id ?? "")}</p>` + items(d.exchange_lines) + row("Total", money(d.exchange_total))
+      : "",
+    money: `<p class="sub">CÓMO SE REGRESÓ</p>` + (d.payments ?? []).map((x) => row(FORMA[x.payment_method] || x.payment_method, money(x.amount))).join(""),
+    reason: `<p class="nota"><b>Motivo:</b> ${esc(d.reason || "Sin motivo")}${d.note ? "<br>" + esc(d.note) : ""}</p>`,
+    signature: '<p class="signature">________________________<br>Firma del cliente</p>',
+  };
+  return aplicarPerfil(
+    `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Devolución</title><style>body{font:12px Arial;color:#000;background:#fff;margin:0}h1{font-size:16px;text-align:center;margin:0 0 5px}p{font-size:11px;text-align:center;margin:4px 0;overflow-wrap:anywhere}.sub{text-align:left;font-weight:bold;letter-spacing:.04em;margin-top:2px}.block{padding:8px 0;border-bottom:1px dashed #888}.block:empty{display:none}.row{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.row b{font:600 12px Consolas,monospace;white-space:nowrap}.total .row{font-weight:bold;font-size:14px}.signature{margin-top:20px}.nota{text-align:left}</style></head><body>${p.fields.map((k) => blocks[k] ? `<section class="block">${blocks[k]}</section>` : "").join("")}</body></html>`,
+    p,
+  );
+}
+module.exports = { perfil, fields, venta, corte, devolucion };

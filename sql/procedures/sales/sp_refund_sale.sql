@@ -12,6 +12,18 @@ GO
    vaso y tapa segun la receta y modificadores DE ESE DIA, no la receta de
    hoy. Un producto DIRECT repone el propio producto (como siempre). Ventas
    anteriores a Wybix Core (sin movimientos ligados) reponen el producto.
+
+   0065:
+   · El MOTIVO es obligatorio (@reason): sin él no hay devolución.
+   · Venta a CRÉDITO: lo devuelto baja lo que el cliente debe; solo lo que
+     ya había abonado sale en efectivo. Antes salía TODO en efectivo del
+     cajón por una venta que nunca se cobró, y el saldo quedaba igual.
+   · Toda devolución queda en el turno abierto de la caja que la hace
+     (closure_id y register_id), aunque no saque efectivo: así el corte la
+     enseña en su apartado de devoluciones.
+   · CAMBIO (@exchange_amount): esa parte de lo devuelto no regresa como
+     dinero; queda en la devolución para pagar la venta nueva del cambio
+     (sp_exchange_sale). El resto sigue las reglas de siempre.
    -------------------------------------------------------- */
 CREATE OR ALTER PROCEDURE [dbo].[sp_refund_sale]
   @sale_id INT,
@@ -25,11 +37,16 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_refund_sale]
   -- en MultiCaja el dinero podia salir del corte de otra caja.
   @register_id INT = NULL,
   @machine_id NVARCHAR(64) = NULL,
-  @machine_name NVARCHAR(120) = NULL
+  @machine_name NVARCHAR(120) = NULL,
+  @reason NVARCHAR(40) = NULL,
+  @exchange_amount DECIMAL(12,2) = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
   SET XACT_ABORT ON;
+
+  SET @reason = NULLIF(LTRIM(RTRIM(@reason)), N'');
+  IF @reason IS NULL THROW 51000, 'Elige el motivo de la devolución.', 1;
 
   IF @sale_id IS NULL OR @sale_id <= 0
   BEGIN
@@ -104,9 +121,14 @@ BEGIN
     END
 
     DECLARE @rp TABLE(method NVARCHAR(50) PRIMARY KEY,amount DECIMAL(12,2));
+    DECLARE @credito_aplicado DECIMAL(12,2) = 0;
+    /* 0065: lo que se va al cambio no se reparte como dinero. */
+    DECLARE @keep DECIMAL(12,2) = CASE WHEN ISNULL(@exchange_amount, 0) <= 0 THEN 0
+                                       WHEN @exchange_amount > @refund_total THEN @refund_total ELSE @exchange_amount END;
+    DECLARE @por_repartir DECIMAL(12,2) = @refund_total - @keep;
     IF EXISTS(SELECT 1 FROM dbo.sale_payments WHERE sale_id=@sale_id) BEGIN
       SET @apply_net_update=0;
-      DECLARE @rest DECIMAL(12,2)=@refund_total,@pm NVARCHAR(50),@available DECIMAL(12,2),@part DECIMAL(12,2);
+      DECLARE @rest DECIMAL(12,2)=@por_repartir,@pm NVARCHAR(50),@available DECIMAL(12,2),@part DECIMAL(12,2);
       DECLARE refunds_cursor CURSOR LOCAL FAST_FORWARD FOR
       SELECT p.payment_method,p.amount-ISNULL((SELECT SUM(rp.amount) FROM dbo.refund_payments rp JOIN dbo.sale_refunds r ON r.id=rp.refund_id WHERE r.sale_id=@sale_id AND rp.payment_method=p.payment_method),0)-ISNULL((SELECT SUM(r.refund_total) FROM dbo.sale_refunds r WHERE r.sale_id=@sale_id AND r.payment_method=p.payment_method AND NOT EXISTS(SELECT 1 FROM dbo.refund_payments rp WHERE rp.refund_id=r.id)),0)
       FROM dbo.sale_payments p WHERE p.sale_id=@sale_id ORDER BY CASE WHEN p.payment_method='EFECTIVO' THEN 0 ELSE 1 END,p.id;
@@ -118,8 +140,26 @@ BEGIN
       END;
       CLOSE refunds_cursor;DEALLOCATE refunds_cursor;
       IF @rest>0 THROW 51000,'El reembolso supera los pagos originales disponibles.',1;
-      SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END;
-    END ELSE INSERT @rp VALUES(@payment_method,@refund_total);
+      /* 0063: devolver algo de $0 (un beneficio del Club) no reparte dinero: conserva la forma de pago indicada. */
+      SET @payment_method=ISNULL(CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END, @payment_method);
+    /* 0064: una venta en $0 (todo canjeado) no tiene pagos ni reparte dinero al devolverse. */
+    END ELSE IF @por_repartir>0
+    BEGIN
+      /* 0065: venta a CRÉDITO. Primero se descuenta de lo que debe; si ya
+         había abonado más de lo que queda, esa parte sí se le regresa en efectivo. */
+      DECLARE @saldo DECIMAL(12,2) = CASE WHEN @sale_method = N'CREDITO' THEN ISNULL((SELECT balance FROM dbo.sales WHERE id = @sale_id), 0) ELSE 0 END;
+      SET @credito_aplicado = CASE WHEN @saldo >= @por_repartir THEN @por_repartir WHEN @saldo > 0 THEN @saldo ELSE 0 END;
+      IF @credito_aplicado > 0 INSERT @rp VALUES (N'CREDITO', @credito_aplicado);
+      IF @por_repartir - @credito_aplicado > 0
+        INSERT @rp VALUES (CASE WHEN @sale_method = N'CREDITO' THEN N'EFECTIVO' ELSE @payment_method END, @por_repartir - @credito_aplicado);
+      IF @sale_method = N'CREDITO'
+        SET @payment_method = CASE WHEN @credito_aplicado >= @por_repartir THEN N'CREDITO' WHEN @credito_aplicado > 0 THEN N'MIXTO' ELSE N'EFECTIVO' END;
+    END
+    IF @keep > 0
+    BEGIN
+      INSERT @rp VALUES (N'CAMBIO', @keep);
+      SET @payment_method = CASE WHEN (SELECT COUNT(*) FROM @rp) > 1 THEN N'MIXTO' ELSE N'CAMBIO' END;
+    END
     DECLARE @refund_cash DECIMAL(12,2)=ISNULL((SELECT amount FROM @rp WHERE method='EFECTIVO'),0);
     DECLARE @closure_id_open INT = NULL;
     DECLARE @caja INT = NULL;
@@ -141,10 +181,27 @@ BEGIN
         RAISERROR('No hay turno abierto para registrar el reembolso en efectivo.',16,1);
       END
     END
+    ELSE
+    BEGIN
+      /* 0065: sin efectivo también queda en el turno de la caja, si lo hay. */
+      EXEC dbo.sp_resolve_cash_register
+          @register_id = @register_id, @machine_id = @machine_id,
+          @machine_name = @machine_name, @user_id = @user_id, @resolved = @caja OUTPUT;
+      IF @caja IS NOT NULL
+        SELECT TOP(1) @closure_id_open = id
+          FROM dbo.cash_closures
+         WHERE register_id = @caja AND closed_at IS NULL
+         ORDER BY opened_at DESC, id DESC;
+    END
 
     DECLARE @refund_id INT;
-    INSERT INTO dbo.sale_refunds (sale_id, user_id, payment_method, refund_total, note, closure_id)
-    VALUES (@sale_id, @user_id, @payment_method, @refund_total, @note, @closure_id_open);
+    INSERT INTO dbo.sale_refunds (sale_id, user_id, payment_method, refund_total, note, closure_id, reason, register_id, exchange_amount)
+    VALUES (@sale_id, @user_id, @payment_method, @refund_total, @note, @closure_id_open, @reason, @caja, NULLIF(@keep, 0));
+
+    /* 0065: lo que se descontó del crédito ya no lo debe. (Con @apply_net_update
+       lo hace el bloque de abajo, que reescribe la venta entera.) */
+    IF @credito_aplicado > 0 AND @apply_net_update = 0
+      UPDATE dbo.sales SET balance = balance - @credito_aplicado WHERE id = @sale_id;
 
     SET @refund_id = SCOPE_IDENTITY();
     INSERT dbo.refund_payments(refund_id,payment_method,amount) SELECT @refund_id,method,amount FROM @rp;
@@ -154,6 +211,11 @@ BEGIN
       CASE WHEN @commercial=1 THEN CAST(a.amount/q.qty AS DECIMAL(10,2)) ELSE s.price END,
       CASE WHEN @commercial=1 THEN a.amount ELSE NULL END
     FROM #req q JOIN #sold s ON s.product_id=q.product_id JOIN #refund_amount a ON a.product_id=q.product_id;
+
+    /* 0063: lo que la venta hizo en el Club (membresía cobrada, café dado). */
+    EXEC dbo.sp_membership_on_refund @refund_id = @refund_id;
+    /* 0064: puntos, sellos, canjes y premios de campaña de esa venta. */
+    EXEC dbo.sp_loyalty_points_on_refund @refund_id = @refund_id;
 
     /* ---- Que repone cada producto devuelto: consumo REAL de esta venta ---- */
     SELECT q.product_id AS sold_product_id, m.product_id, SUM(m.quantity) AS consumed, SUM(m.units) AS units

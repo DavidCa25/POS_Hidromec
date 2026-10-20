@@ -16,6 +16,18 @@ function registrar({
   imprimirHtml,
 }) {
   async function receiptDocument(p, ses) {
+    /* 0065: el comprobante de una devolución usa el papel del ticket de venta. */
+    if (p.document === "refund") {
+      const id = Number(p.id);
+      if (!Number.isSafeInteger(id) || id < 1) throw Error("Indica la devolución.");
+      const lib = require("../lib/comprobante");
+      const base = receiptProfile("sale", p.profile);
+      const profile = lib.perfil({ format: base.format, width: base.width, height: base.height, margin: base.margin, fields: lib.fields.refund }, "refund");
+      const result = await (await poolPromise).request().input("refund_id", sql.Int, id).execute("sp_refund_ticket");
+      const json = result.recordset?.[0]?.document_json;
+      if (!json) throw Error("No existe esa devolución.");
+      return { html: lib.devolucion(JSON.parse(json), profile, await ensureBusinessConfig()), profile };
+    }
     const doc = p.document === "closure" ? "closure" : "sale",
       profile = receiptProfile(doc, p.profile);
     const businessConfig = await ensureBusinessConfig();

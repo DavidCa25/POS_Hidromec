@@ -76,4 +76,4 @@ Solo claves conocidas y booleanas (`scripts/addons.mjs` descarta el resto).
 
 | Ajuste | Qué hace |
 |---|---|
-| `aprobaciones: false` | No se piden aprobaciones (PIN o app) para retiros, egresos, devoluciones, ajustes, compras ni cajón sin venta: quien vende las hace. Siguen en bitácora, en el Cierre del día y con aviso al dueño. |
+| `aprobaciones: false` | **Valor de arranque**: no se piden aprobaciones (PIN o app) para retiros, egresos, devoluciones, ajustes, compras ni cajón sin venta: quien vende las hace. Siguen en bitácora, en el Cierre del día y con aviso al dueño. El cliente puede cambiarlo cuando quiera desde el dock (**Más > Aprobaciones**, solo Encargado y Administrador); lo que decida queda en la base (`business_modules`, clave `APROBACIONES`) y manda sobre este valor. |

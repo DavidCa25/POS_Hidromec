@@ -1,0 +1,156 @@
+<div class="er">
+  <header class="er-head">
+    <div class="er-head__txt">
+      <h1>Estado de resultados</h1>
+      <p>Cuánto ganó de verdad el negocio: ventas sin IVA, menos lo que costó lo vendido, las mermas y los gastos.</p>
+    </div>
+    <div class="er-head__acc">
+      <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+               [opciones]="opcionesExportar" [deshabilitado]="!datos() || cargando()"
+               (elegir)="exportar($any($event))"></wx-menu>
+    </div>
+  </header>
+
+  <!-- ------------------------------------------------------------ filtros -->
+  <div class="er-filtros" role="group" aria-label="Periodo">
+    <div class="er-seg">
+      <button type="button" *ngFor="let p of presets" [class.activo]="preset() === p.id" [attr.aria-pressed]="preset() === p.id" (click)="elegir(p.id)">{{ p.texto }}</button>
+    </div>
+    <label>Desde<wx-date [ngModel]="desde()" (ngModelChange)="cambiarDesde($event)" [max]="hasta()" [limpiable]="false"></wx-date></label>
+    <label>Hasta<wx-date [ngModel]="hasta()" (ngModelChange)="cambiarHasta($event)" [min]="desde()" [max]="hoy" [limpiable]="false"></wx-date></label>
+    <wx-cargando *ngIf="cargando()" [size]="18" alt="Calculando"></wx-cargando>
+  </div>
+
+  <p class="er-error" *ngIf="error()" role="alert"><i class="ph ph-warning" aria-hidden="true"></i> {{ error() }}</p>
+
+  <ng-container *ngIf="datos() as d">
+    <ng-container *ngIf="a() as a">
+      <ng-container *ngIf="b() as b">
+        <!-- -------------------------------------------------------- cifras -->
+        <section class="er-cifras" aria-label="Resumen del periodo">
+          <div class="er-cifra">
+            <span>Ventas netas</span><b>{{ dinero(a.ventas_netas) }}</b>
+            <small>{{ a.tickets }} {{ a.tickets === 1 ? 'ticket' : 'tickets' }} · sin IVA ni devoluciones</small>
+          </div>
+          <div class="er-cifra">
+            <span>Utilidad bruta</span><b>{{ dinero(a.utilidad_bruta) }}</b>
+            <small>Margen {{ pct(margen(a.utilidad_bruta, a.ventas_netas)).replace('+', '') }}</small>
+          </div>
+          <div class="er-cifra" [class.perdida]="a.utilidad_operacion < 0">
+            <span>Utilidad de operación</span><b>{{ dinero(a.utilidad_operacion) }}</b>
+            <small>Margen {{ pct(margen(a.utilidad_operacion, a.ventas_netas)).replace('+', '') }} · antes {{ dinero(b.utilidad_operacion) }}</small>
+          </div>
+          <div class="er-cifra">
+            <span>Gastos del periodo</span><b>{{ dinero(a.egresos_generales + a.pagos_personal + a.mermas + a.ajustes_inventario) }}</b>
+            <small>Egresos, personal, mermas y faltantes</small>
+          </div>
+        </section>
+
+        <p class="er-aviso" *ngIf="a.ventas_sin_costo > 0" role="status">
+          <i class="ph ph-info" aria-hidden="true"></i>
+          <span><b>{{ dinero(a.ventas_sin_costo) }}</b> de ventas fueron de productos sin costo registrado
+            <ng-container *ngIf="a.renglones_costo_estimado"> o de ventas anteriores a que Wybix congelara el costo</ng-container>.
+            Su utilidad sale más alta de lo real: captura el costo en Inventario.</span>
+        </p>
+
+        <div class="er-dos">
+          <!-- --------------------------------------------------- el estado -->
+          <section class="er-sec">
+            <h2>El estado <small>{{ periodoTexto(a) }} contra {{ periodoTexto(b) }}</small></h2>
+            <div class="er-tabla">
+              <table>
+                <thead><tr><th>Concepto</th><th class="num">Periodo</th><th class="num">Anterior</th><th class="num">Variación</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let r of renglones" [class.total]="r.total" [class.final]="r.clave === 'utilidad_operacion'">
+                    <td>{{ r.total ? '' : (r.signo < 0 ? '− ' : '') }}{{ r.etiqueta }}<small *ngIf="r.nota">{{ r.nota }}</small></td>
+                    <td class="num" [class.neg]="valor(r, a) < 0 && r.total">{{ dinero(valor(r, a)) }}</td>
+                    <td class="num tenue">{{ dinero(valor(r, b)) }}</td>
+                    <td class="num"><span class="er-var" [attr.data-tono]="mejora(r)">{{ pct(variacion(r)) }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="er-nota">No son gasto aquí, a propósito: las <b>compras</b> (son inventario; se vuelven costo al venderse), los <b>pagos a proveedores</b> (pagan esas compras) y la <b>merma de producción</b> (ya va dentro del costo de cada pieza). Las ventas a crédito cuentan el día que se venden. Descuentos otorgados en el periodo: {{ dinero(a.descuentos) }}.</p>
+          </section>
+
+          <!-- ----------------------------------------------- serie diaria -->
+          <section class="er-sec">
+            <h2>Utilidad de operación por día</h2>
+            <div class="er-barras" [class.con-negativos]="hayNegativos()" role="img"
+                 [attr.aria-label]="'Utilidad de operación de ' + d.dias.length + ' días; la tabla de abajo trae las cifras'">
+              <div class="er-barra" *ngFor="let x of d.dias; let i = index" (mouseenter)="diaActivo.set(i)" (mouseleave)="diaActivo.set(null)"
+                   (focus)="diaActivo.set(i)" (blur)="diaActivo.set(null)" tabindex="0">
+                <div class="er-barra__pos"><i *ngIf="x.utilidad > 0" [style.height]="alto(x.utilidad)"></i></div>
+                <div class="er-barra__neg" *ngIf="hayNegativos()"><i *ngIf="x.utilidad < 0" [style.height]="alto(x.utilidad)"></i></div>
+                <div class="er-tip" *ngIf="diaActivo() === i" role="tooltip">
+                  <b>{{ fechaCorta(x.dia) }}</b>
+                  <span>Ventas netas {{ dinero(x.ventas_netas) }}</span>
+                  <span>Costo {{ dinero(x.costo_ventas) }}</span>
+                  <span>Gastos {{ dinero(x.gastos) }}</span>
+                  <span class="fuerte">Utilidad {{ dinero(x.utilidad) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="er-eje"><span>{{ fechaCorta(a.desde) }}</span><span>{{ fechaCorta(a.hasta) }}</span></div>
+
+            <h2>Egresos por concepto <small>{{ dinero(totalEgresos()) }}</small></h2>
+            <p class="er-vacio" *ngIf="!d.egresos.length">Sin egresos en el periodo.</p>
+            <ul class="er-lista" *ngIf="d.egresos.length">
+              <li *ngFor="let e of d.egresos">
+                <span>{{ e.concepto }}<small>{{ e.kind === 'PERSONAL' ? 'Personal' : 'Egreso' }} · {{ e.movimientos }} {{ e.movimientos === 1 ? 'pago' : 'pagos' }} · antes {{ dinero(e.total_anterior) }}</small></span>
+                <b>{{ dinero(e.total) }}</b>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <!-- ------------------------------------------------------ categorías -->
+        <section class="er-sec">
+          <h2>Por categoría</h2>
+          <p class="er-vacio" *ngIf="!d.categorias.length">Sin ventas en el periodo.</p>
+          <div class="er-tabla" *ngIf="d.categorias.length">
+            <table>
+              <thead><tr><th>Categoría</th><th class="num">Ventas netas</th><th class="num">Costo</th><th class="num">Utilidad</th><th>Margen</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let c of d.categorias">
+                  <td>{{ c.categoria }}</td>
+                  <td class="num">{{ dinero(c.ventas_netas) }}</td>
+                  <td class="num tenue">{{ dinero(c.costo) }}</td>
+                  <td class="num" [class.neg]="c.utilidad < 0">{{ dinero(c.utilidad) }}</td>
+                  <td class="er-margen">
+                    <span class="er-margen__barra"><i [style.width.%]="c.margen != null ? (c.margen < 0 ? 0 : (c.margen > 100 ? 100 : c.margen)) : 0"></i></span>
+                    <span class="num">{{ c.margen != null ? c.margen.toFixed(1) + '%' : '—' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------------- productos -->
+        <div class="er-dos">
+          <section class="er-sec">
+            <h2>Los que más dejan</h2>
+            <p class="er-vacio" *ngIf="!d.productos.length">Sin ventas en el periodo.</p>
+            <ul class="er-lista" *ngIf="d.productos.length">
+              <li *ngFor="let p of d.productos">
+                <span>{{ p.producto }}<small>{{ p.cantidad }} vendidos · margen {{ p.margen != null ? p.margen.toFixed(1) + '%' : '—' }}<ng-container *ngIf="p.costo_estimado"> · costo estimado</ng-container></small></span>
+                <b>{{ dinero(p.utilidad) }}</b>
+              </li>
+            </ul>
+          </section>
+          <section class="er-sec">
+            <h2>Vendidos por debajo del costo <span class="er-tag" *ngIf="d.perdidas.length">{{ d.perdidas.length }}</span></h2>
+            <p class="er-vacio" *ngIf="!d.perdidas.length"><i class="ph ph-check-circle" aria-hidden="true"></i> Ningún producto se vendió con pérdida.</p>
+            <ul class="er-lista" *ngIf="d.perdidas.length">
+              <li *ngFor="let p of d.perdidas">
+                <span>{{ p.producto }}<small>{{ p.cantidad }} vendidos · venta {{ dinero(p.ventas_netas) }} · costo {{ dinero(p.costo) }}</small></span>
+                <b class="neg">{{ dinero(p.utilidad) }}</b>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </ng-container>
+    </ng-container>
+  </ng-container>
+</div>

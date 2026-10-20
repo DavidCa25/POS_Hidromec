@@ -29,7 +29,7 @@ test('Apps: descarga de las dos apps, pasos separados, foco y paridad de navegac
  await p.getByRole('button',{name:'Android',exact:true}).click();await expect(p.locator('.apps__qr img')).toBeVisible();await expect(p.getByRole('link',{name:'Descargar APK',exact:true})).toHaveAttribute('href',/app-download\?app=mobile$/);
  await p.getByRole('button',{name:'iPhone / iPad · Web',exact:true}).click();await expect(p.getByRole('link',{name:'Abrir versión web',exact:true})).toHaveAttribute('href',/app=mobile&platform=web$/);await p.getByRole('button',{name:'2 · Vincular negocio'}).click();await expect(p.locator('.apps__lista')).toContainText('Agregar tablet');
  await p.keyboard.press('Escape');await expect(p.locator('.apps__panel')).toHaveCount(0);await expect(p.locator('.wxdock__btn--apps')).toBeFocused();
- await irPorMas(p,'Configuracion');await expect(p.locator('app-config-shell')).toBeVisible();
+ await irPorMas(p,'Configuración');await expect(p.locator('app-config-shell')).toBeVisible();
  await expect(p.locator('app-config-shell')).not.toContainText('Emparejamiento QR');await expect(p.locator('app-config-shell')).not.toContainText('Descarga la app movil');
  await expect(p.locator('app-config-shell')).toContainText('Sincronización en la nube');
  await p.click('.wxmodo.es-dock');await p.waitForSelector('.wxside');

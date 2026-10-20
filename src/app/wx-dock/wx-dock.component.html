@@ -140,7 +140,7 @@
       <i class="ph ph-device-mobile" aria-hidden="true"></i><span class="wxdock__txt">Apps</span>
     </button>
   </span>
-  <span class="wxdock__item" *ngIf="mas().length">
+  <span class="wxdock__item" *ngIf="mas().length || puedeAprobaciones()">
     <button type="button" class="wxdock__btn wxdock__btn--mas" (click)="alternarMas()"
             [class.is-abierto]="masAbierto()"
             [attr.aria-expanded]="masAbierto()" aria-haspopup="menu" aria-label="Más">
@@ -185,6 +185,32 @@
 
 <!-- ============================================================== mas -->
 <div class="wxdock-pop wxdock-pop--mas" *ngIf="masAbierto()" role="menu">
+  <!-- Aprobaciones: solo Encargado y Administrador. -->
+  <ng-container *ngIf="puedeAprobaciones()">
+    <div class="wxdock-aprob" data-guide="aprobaciones" [attr.data-guide-estado]="aprobaciones()?.activas ? 'activas' : 'apagadas'">
+      <div class="wxdock-aprob__fila">
+        <i class="ph" [ngClass]="aprobaciones()?.activas ? 'ph-shield-check' : 'ph-shield-slash'" aria-hidden="true"></i>
+        <span class="wxdock-aprob__txt">
+          <b>Aprobaciones</b>
+          <small *ngIf="aprobaciones() as a">{{ a.activas ? 'Retiros, egresos y devoluciones piden PIN o la app del dueño.' : 'Quien vende hace retiros, egresos y devoluciones sin PIN.' }}</small>
+          <small *ngIf="!aprobaciones() && !aprobError()">Cargando…</small>
+        </span>
+        <button type="button" class="wxdock-aprob__sw" role="switch"
+                [attr.aria-checked]="!!aprobaciones()?.activas" aria-label="Pedir aprobaciones"
+                [class.is-on]="aprobaciones()?.activas" [disabled]="!aprobaciones() || aprobGuardando()"
+                (click)="pulsarAprobaciones()"><span></span></button>
+      </div>
+      <div class="wxdock-aprob__confirma" *ngIf="aprobConfirmar()" role="alert">
+        <span>¿Apagarlas? Quedará en bitácora y se avisará al dueño.</span>
+        <div>
+          <button type="button" class="wxdock-aprob__btn" (click)="cancelarAprobaciones()">Cancelar</button>
+          <button type="button" class="wxdock-aprob__btn wxdock-aprob__btn--peligro" [disabled]="aprobGuardando()" (click)="pulsarAprobaciones()">Sí, apagar</button>
+        </div>
+      </div>
+      <p class="wxdock-aprob__error" *ngIf="aprobError()" role="alert">{{ aprobError() }}</p>
+    </div>
+    <span class="wxdock-pop__linea" *ngIf="mas().length" aria-hidden="true"></span>
+  </ng-container>
   <a class="wxdock-pop__fila" *ngFor="let d of mas(); trackBy: porRuta"
      role="menuitem" [routerLink]="d.ruta" routerLinkActive="is-on"
      (click)="cerrarTodo()">

@@ -228,3 +228,6 @@
   .ini__rejilla { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .ini__h1 { font-size: 30px; }
 }
+
+/* 0060 · Producción: el pie avisa si algo no alcanza. */
+.ini__accpie--falta { color: var(--wx-warning-ink); font-weight: 600; }

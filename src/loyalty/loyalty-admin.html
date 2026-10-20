@@ -93,6 +93,9 @@
       </div>
     </section>
 
+    <!-- ======================================================= CLUB ==== -->
+    <app-club-admin *ngIf="seccion() === 'club'"></app-club-admin>
+    <app-puntos-admin *ngIf="seccion() === 'puntos'"></app-puntos-admin>
     <!-- =================================================== CAMPAÑAS ==== -->
     <section class="loy-sec" *ngIf="seccion() === 'campanas'">
       <div class="loy-sec__head">
@@ -370,16 +373,6 @@
         -->
         <p class="loy-nota loy-nota--mal" *ngIf="problema() as e">
           <i class="ph ph-warning-circle"></i> {{ e }}
-        </p>
-
-        <!--
-          Se avisa AL CREARLO, no al intentar canjearlo. Repartir cien papeles
-          que la caja no puede aceptar es peor que no poder crearlos.
-        -->
-        <p class="loy-nota loy-nota--ojo" *ngIf="premioDe() === 'COUPON' && beneficioSinCanje(d.kind)">
-          <i class="ph ph-warning"></i>
-          Este tipo de cupón se emite y se valida, pero <b>la caja todavía no puede aplicarlo</b>:
-          la venta no tiene concepto de descuento. Para canjear en caja usa <b>Producto gratis</b>.
         </p>
 
         <div class="loy-checks">

@@ -140,7 +140,7 @@ try {
   q(`INSERT INTO dbo.security_events (datee, user_id, authorized_by, event_type, amount, detail)
      VALUES (SYSDATETIME(), ${ana}, ${migue}, N'CASH_OUT_AUTHORIZED', 300, N'prueba');`);
   const rc = consultarTemporal(DB, 'EXEC dbo.sp_day_close_report;');
-  check(rc.ok && rc.sets.length === 7, 'devuelve los siete resultados', rc.ok ? String(rc.sets.length) : limpiar(rc.error));
+  check(rc.ok && rc.sets.length === 9, 'devuelve los nueve resultados (0060: produccion y mermas al final)', rc.ok ? String(rc.sets.length) : limpiar(rc.error));
   if (rc.ok) {
     const [res, , cortes, , , eventos] = rc.sets;
     check(res?.[0] && Number(res[0].tickets) === 0, 'resumen del día sin ventas', JSON.stringify(res?.[0]));

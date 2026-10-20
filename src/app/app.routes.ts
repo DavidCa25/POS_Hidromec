@@ -71,6 +71,7 @@ export const routes: Routes = [
       { path: 'inicio', loadComponent: () => import('../dashboard/inicio/inicio.component').then(m => m.Inicio) },
       /* Roles v2: el cierre del dia, para Encargado y Administrador. El canal exige REPORTES_VER. */
       { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
+      { path: 'estado-resultados', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./estado-resultados/estado-resultados.component').then(m => m.EstadoResultadosComponent) },
 
       // ---- Retail POS ----
       // El guard decide, en cada navegacion, si esta caja vende aqui o en
@@ -90,6 +91,9 @@ export const routes: Routes = [
       { path: 'inventario/precios', redirectTo: () => inject(Router).parseUrl('/dashboard/inventario/ofertas?view=prices') },
       { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('COMERCIAL_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
+      /* 0060: produccion por tandas. El tablero es de quien hornea (PRODUCCION_OPERAR); las formulas, catalogo. */
+      { path: 'produccion', canActivate: [() => inject(AuthService).puede('PRODUCCION_OPERAR') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./produccion/produccion.component').then(m => m.ProduccionComponent) },
+      { path: 'produccion/formulas', canActivate: [() => inject(AuthService).puede('CATALOGO_EDITAR') || inject(Router).createUrlTree(['/dashboard/produccion'])], loadComponent: () => import('./produccion/formulas.component').then(m => m.FormulasComponent) },
       { path: 'quickstart', loadComponent: () => import('./wx-quickstart/wx-quickstart.component').then(m => m.WxQuickstartComponent) },
       /* `/importador` era el camino viejo. Se conserva como REDIRECCION y no
          como pantalla: mantener dos motores de importacion vivos garantiza

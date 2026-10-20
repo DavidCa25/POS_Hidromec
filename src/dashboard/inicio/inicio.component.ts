@@ -81,6 +81,8 @@ export class Inicio implements OnInit {
       })));
   readonly equipo = signal<{ id: number; usuario: string; rol: string }[]>([]);
   readonly estrella = signal<{ nombre: string; piezas: number } | null>(null);
+  /** 0060 · Producción de hoy: cuántas listas de cuántas, y si algo no alcanza. */
+  readonly produccion = signal<{ listas: number; planeadas: number; enHorno: number; faltan: number; fabricables: number } | null>(null);
 
   constructor(
     private router: Router,
@@ -92,6 +94,7 @@ export class Inicio implements OnInit {
 
   ngOnInit(): void {
     void this.cargar();
+    void this.cargarProduccion();
     /* Siempre fresca al llegar a Inicio. La guia se lee una vez por sesion,
        asi que abrir el turno en Touch y volver aqui seguia diciendo «No hay
        turno abierto». Son unas pocas consultas locales por visita. */
@@ -174,6 +177,34 @@ export class Inicio implements OnInit {
 
   get puedeVender(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   get verNumeros(): boolean { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  /** 0060 · Quien hornea ve su tablero desde Inicio (Hospitality). */
+  get producir(): boolean { return this.caps.hospitality && this.auth.puede(PAQUETES.PRODUCCION_OPERAR); }
+
+  /** Pie de la tarjeta: lo que importa ahora, en una línea. */
+  get pieProduccion(): string {
+    const p = this.produccion();
+    if (!p) return 'Planea lo que vas a hornear y regístralo al sacarlo';
+    if (!p.fabricables && !p.planeadas) return 'Define las fórmulas de lo que fabricas';
+    if (p.faltan) return `No alcanzan ${p.faltan === 1 ? '1 ingrediente' : p.faltan + ' ingredientes'} para lo planeado`;
+    if (!p.planeadas) return 'Nada planeado todavía';
+    return `${p.listas} de ${p.planeadas} listas${p.enHorno ? ` · ${p.enHorno} en preparación` : ''}`;
+  }
+
+  private async cargarProduccion(): Promise<void> {
+    if (!this.producir) return;
+    try {
+      const r = await (window as any).wybix?.produccion?.tablero?.({});
+      if (!r?.success) return;
+      const t: any[] = r.data.tandas ?? [];
+      this.produccion.set({
+        listas: Math.round(t.filter(x => x.status === 'DONE').reduce((a, x) => a + Number(x.good_qty || 0), 0)),
+        planeadas: Math.round(t.reduce((a, x) => a + Number(x.planned_qty || 0), 0)),
+        enHorno: t.filter(x => x.status === 'IN_PROGRESS').length,
+        faltan: (r.data.ingredientes ?? []).filter((i: any) => Number(i.missing) > 0).length,
+        fabricables: (r.data.productos ?? []).length,
+      });
+    } catch { /* Inicio no se cae por la producción */ }
+  }
 
   get hayPendientes(): boolean { return this.pendientes().length > 0; }
 

@@ -1,6 +1,9 @@
 import {WxSelectComponent,WxOpcion} from '../../app/wx-select/wx-select.component';
 import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
-import { Component } from '@angular/core';
+import { CorteCorreosComponent } from '../../app/corte-correos/corte-correos.component';
+import { Component, inject } from '@angular/core';
+import { ReportService, ReportConfig, ReportColumn, ReportSeccion, fechaSql } from '../../services/report.service';
+import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
@@ -75,6 +78,8 @@ interface Breakdown {
   ventasTransferencia: number;
   ventasMercadoPago: number;
   ventasCredito: number;
+  /** 0065: pagado con el valor de una devolución (cambio). */
+  ventasCambio?: number;
   entradasEfectivo: number;
   salidasEfectivo: number;
   devolucionesEfectivo: number;
@@ -86,13 +91,16 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [WxSelectComponent,ReceiptViewer,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
+  imports: [WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
   closedOptions:WxOpcion[]=[];selectedClosed:number|null=null;
   async cargarCortes(){const r=await (window as any).electronAPI.ticketClosures({registerId:this.selectedRegisterId});this.closedOptions=(r?.data??[]).map((c:any)=>({valor:c.id,etiqueta:'#'+c.id+' · '+c.register_name,nota:new Date(c.closed_at).toLocaleString('es-MX')}));}
   receiptId:number|null=null;lastClosedId:number|null=null;
+  /** 0061: los correos de los cortes a los dueños (enviar los que no salieron). */
+  verCorreos = false;
+  get puedeCorreos(): boolean { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   verCorte(){this.receiptId=this.lastClosedId;}
   hoy = new Date();
 
@@ -136,6 +144,17 @@ export class Corte {
   /* El desglose por grupo y concepto, tal como lo arma SQL. La suma de sus
      totales es exactamente el neto: nada que sume al esperado queda fuera. */
   desglose: LineaDesglose[] = [];
+  /** 0065: las devoluciones del periodo, con su motivo, para su apartado. */
+  devoluciones: { id: number; datee: string; sale_id: number; refund_total: number; payment_method: string; reason: string | null;
+                  note: string | null; quien: string | null; cliente: string | null; efectivo: number }[] = [];
+  /** Fecha y hora de pared (mssql la entrega como UTC). */
+  readonly fechaHora = fechaSql;
+  get totalDevuelto(): number { return this.devoluciones.reduce((a, d) => a + Number(d.refund_total || 0), 0); }
+  get devueltoEfectivo(): number { return this.devoluciones.reduce((a, d) => a + Number(d.efectivo || 0), 0); }
+  formaDevolucion(m: string): string {
+    return ({ EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia', CREDITO: 'Descontado del crédito',
+              MIXTO: 'Varias formas', TERMINAL_MP: 'Mercado Pago', CAMBIO: 'Cambio de mercancía' } as Record<string, string>)[m] ?? m;
+  }
 
   breakdown: Breakdown = {
     ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
@@ -319,6 +338,7 @@ export class Corte {
 
       const res = await (window as any).electronAPI.getCashMovements(payload);
       this.desglose = [];
+      this.devoluciones = [];
 
       this.breakdown = {
         ventasEfectivo: 0, ventasTarjeta: 0, ventasTransferencia: 0,
@@ -334,6 +354,7 @@ export class Corte {
 
         this.movimientos = rows;
         this.summary = res.data?.summary ?? { total_entradas: 0, total_salidas: 0, neto: 0 };
+        this.devoluciones = res.data?.devoluciones ?? [];
         this.desglose = (res.data?.desglose ?? []).map((d: any) => ({
           grupo: d.grupo, concepto: d.concepto, total: Number(d.total ?? 0), movimientos: Number(d.movimientos ?? 0),
         }));
@@ -345,6 +366,8 @@ export class Corte {
         this.breakdown.ventasMercadoPago = Number(this.summary.ventas_mp || 0);
         this.breakdown.ventasPlataforma=Number(this.summary.ventas_plataforma||0);
         this.breakdown.ventasCredito = Number(this.summary.ventas_credito || 0);
+        /* 0065: lo pagado con el valor de una devolución (cambio). No es dinero nuevo. */
+        this.breakdown.ventasCambio = Number((this.summary as any).ventas_cambio || 0);
       } else {
         this.movimientos = [];
         this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
@@ -615,11 +638,97 @@ export class Corte {
     return c ? c.name : '';
   }
 
+  /* ------------------------------------------------------- exportar
+     Lo que se ve: ventas por forma de pago, el efectivo que debe haber y
+     cada movimiento. Nunca en corte ciego: el archivo mostraría el
+     esperado que quien cuenta todavía no debe ver. */
+  private readonly reportes = inject(ReportService);
+  readonly opcionesExportar: WxMenuOpcion[] = [
+    { valor: 'pdf', etiqueta: 'PDF', icono: 'ph ph-file-pdf' },
+    { valor: 'excel', etiqueta: 'Excel', icono: 'ph ph-file-xls' },
+  ];
+
+  async exportar(tipo: 'pdf' | 'excel') {
+    if (this.corteCiego) return;
+    const $ = (header: string, key: string): ReportColumn => ({ header, key, width: 14, money: true });
+    const b = this.breakdown;
+    const pagos = [
+      { forma: 'Efectivo', monto: b.ventasEfectivo }, { forma: 'Tarjeta', monto: b.ventasTarjeta },
+      { forma: 'Transferencia', monto: b.ventasTransferencia }, { forma: 'Terminal Mercado Pago', monto: b.ventasMercadoPago },
+      { forma: 'Plataformas', monto: b.ventasPlataforma }, { forma: 'Crédito', monto: b.ventasCredito },
+      { forma: 'Cambio de mercancía', monto: b.ventasCambio ?? 0 },
+    ].filter(p => Number(p.monto) !== 0);
+    const caja = [
+      { concepto: 'Fondo inicial', grupo: '', movimientos: '', total: this.fondoInicial },
+      ...this.lineasCaja.flatMap(l => l.conceptos.map(c => ({ concepto: c.concepto, grupo: l.etiqueta, movimientos: c.movimientos, total: c.total }))),
+      { concepto: 'Efectivo que debe haber', grupo: '', movimientos: '', total: this.cashExpected, __total: true },
+    ];
+    const periodo = this.mode === 'TURNO'
+      ? `Turno #${this.openShiftId ?? ''}${this.openShiftOpenedAt ? ' · abierto ' + fechaSql(this.openShiftOpenedAt) : ''}`
+      : `${this.desdeStr} a ${this.hastaStr}`;
+    const cfg: ReportConfig = {
+      titulo: this.mode === 'TURNO' ? 'Corte de caja' : 'Reporte de caja',
+      subtitulo: `${this.selectedRegisterName} · ${periodo}`,
+      columns: [], rows: [],
+      meta: [`Vendido ${this.totalVentasGenerales.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} · efectivo que debe haber ${this.cashExpected.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`],
+      filename: this.mode === 'TURNO' ? `corte-${this.openShiftId ?? ''}` : `reporte-caja_${this.desdeStr}_${this.hastaStr}`,
+      secciones: ([
+        {
+          titulo: 'Ventas por forma de pago',
+          nota: 'Todo lo cobrado, sin importar cómo se pagó.',
+          columns: [{ header: 'Forma de pago', key: 'forma', width: 26 }, $('Importe', 'monto')],
+          rows: pagos,
+          totals: { monto: this.totalVentasGenerales },
+        },
+        {
+          titulo: 'Dinero en caja',
+          nota: 'Solo el efectivo del cajón: fondo, más lo que entró, menos lo que salió.',
+          columns: [{ header: 'Concepto', key: 'concepto', width: 30 }, { header: 'Grupo', key: 'grupo', width: 22 }, { header: 'Movimientos', key: 'movimientos', num: true, width: 12 }, $('Importe', 'total')],
+          rows: caja,
+        },
+        {
+          titulo: 'Movimientos de efectivo',
+          columns: [
+            { header: 'Fecha y hora', key: 'fecha', width: 18 }, { header: 'Tipo', key: 'tipo', width: 20 }, { header: 'Concepto', key: 'concepto', width: 22 },
+            { header: 'Quién', key: 'user_name', width: 14 }, { header: 'Referencia', key: 'reference', width: 14 }, { header: 'Nota', key: 'note', width: 24 }, $('Importe', 'amount'),
+          ],
+          rows: this.movimientos.map(m => ({
+            ...m, fecha: fechaSql(m.datee),
+            tipo: m.tipo_label || m.typee, concepto: m.concepto || '',
+          })),
+          totals: { amount: this.movimientos.reduce((a, m) => a + Number(m.amount || 0), 0) },
+        },
+        {
+          titulo: 'Devoluciones',
+          nota: 'Todas las del periodo, con su motivo. «Efectivo» es lo que salió del cajón.',
+          columns: [
+            { header: 'Fecha y hora', key: 'fecha', width: 18 }, { header: 'Folio', key: 'sale_id', num: true, width: 9 },
+            { header: 'Motivo', key: 'motivo', width: 24 }, { header: 'Cómo se regresó', key: 'forma', width: 20 },
+            { header: 'Quién', key: 'quien', width: 14 }, { header: 'Cliente', key: 'cliente', width: 18 },
+            $('Devuelto', 'refund_total'), $('Efectivo', 'efectivo'),
+          ],
+          rows: this.devoluciones.map(d => ({
+            ...d, fecha: fechaSql(d.datee), forma: this.formaDevolucion(d.payment_method),
+            motivo: [d.reason || 'Sin motivo (antes de 0065)', d.note].filter(Boolean).join(' · '),
+          })),
+          totals: { refund_total: this.totalDevuelto, efectivo: this.devueltoEfectivo },
+        },
+      ] as ReportSeccion[]).filter(s => s.rows.length),
+    };
+    try {
+      if (tipo === 'excel') await this.reportes.exportExcel(cfg);
+      else await this.reportes.exportPdf(cfg);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: e?.message || 'Intenta de nuevo.' });
+    }
+  }
+
   get totalVentasGenerales(): number {
     return this.breakdown.ventasPlataforma + this.breakdown.ventasEfectivo +
            this.breakdown.ventasTarjeta +
            this.breakdown.ventasTransferencia +
            this.breakdown.ventasMercadoPago +
-           this.breakdown.ventasCredito;
+           this.breakdown.ventasCredito +
+           (this.breakdown.ventasCambio ?? 0);
   }
 }

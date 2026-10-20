@@ -95,6 +95,14 @@ const BUNDLES = {
 
   /** 0056 · Promociones, combos y precios por canal. */
   COMERCIAL_ADMINISTRAR: 'COMERCIAL_ADMINISTRAR',
+
+  /**
+   * 0060 · Produccion por tandas: planear, empezar (salen los ingredientes) y
+   * registrar lo que salio, con su merma. Es el trabajo de quien hornea, que
+   * suele ser Operador: por eso va aparte de INVENTARIO_OPERAR (ajustes,
+   * compras y traspasos), que mueve inventario sin una formula detras.
+   */
+  PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
 };
 
 const PERMISOS = Object.values(BUNDLES);
@@ -125,6 +133,8 @@ const ROLES = {
     BUNDLES.CONFIGURACION_EQUIPO,
     // Roles v2: el Encargado tambien da de alta promociones y combos.
     BUNDLES.COMERCIAL_ADMINISTRAR,
+    // 0060: produccion por tandas.
+    BUNDLES.PRODUCCION_OPERAR,
   ],
 
   /**
@@ -141,6 +151,8 @@ const ROLES = {
     BUNDLES.CATALOGO_EDITAR,
     BUNDLES.COMERCIAL_ADMINISTRAR,
     BUNDLES.CAJA_CORTES,
+    // 0060: quien hornea registra sus tandas.
+    BUNDLES.PRODUCCION_OPERAR,
   ],
 };
 
@@ -204,6 +216,7 @@ const ALTO_RIESGO = new Set([
   BUNDLES.CONFIGURACION_EQUIPO,
   BUNDLES.COMERCIAL_ADMINISTRAR,
   BUNDLES.INVENTARIO_OPERAR,
+  BUNDLES.PRODUCCION_OPERAR,
   BUNDLES.CATALOGO_EDITAR,
   BUNDLES.CONFIGURACION_ADMINISTRAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
@@ -256,6 +269,7 @@ const DESCRIPCIONES = {
   REPORTES_VER: ['Reportes', 'Estadísticas, cortes históricos y reportes.'],
   SERVICIOS_OPERAR: ['Órdenes y agenda', 'El trabajo diario de Servicios.'],
   SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],
+  PRODUCCION_OPERAR: ['Producción', 'Planear tandas, empezarlas y registrar lo que salió, con su merma.'],
 };
 
 /**

@@ -236,6 +236,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ticketBorrarLogo: () => invoke('ticket:borrar-logo'),
     ticketClosures: p => invoke('ticket:closures',p),
     ticketEmail: p => invoke('ticket:email',p),
+    aprobacionesPolitica: () => invoke('aprobaciones:politica'),
+    aprobacionesCambiar: (activas) => invoke('aprobaciones:politica-cambiar', { activas }),
+    corteCorreoLista: p => invoke('corte:correo-lista',p),
+    corteCorreoEnviar: p => invoke('corte:correo-enviar',p),
+    estadoResultados: p => invoke('reportes:estado-resultados',p),
+    clubEstado: p => invoke('club:estado',p),
+    clubAdmin: p => invoke('club:admin',p),
+    clubPlanGuardar: p => invoke('club:plan-guardar',p),
+    clubGestionar: p => invoke('club:gestionar',p),
+    clubSincronizar: () => invoke('club:sincronizar'),
+    puntosEstado: p => invoke('puntos:estado',p),
+    puntosAdmin: p => invoke('puntos:admin',p),
+    puntosHistorial: p => invoke('puntos:historial',p),
+    puntosConfigGuardar: p => invoke('puntos:config-guardar',p),
+    puntosTarjetaGuardar: p => invoke('puntos:tarjeta-guardar',p),
+    puntosCosto: p => invoke('puntos:costo',p),
+    puntosAjustar: p => invoke('puntos:ajustar',p),
     ticketPreview: p => invoke('ticket:preview',p),
     ticketPrintDocument: p => invoke('ticket:print-document',p),
     ticketLogo: () => invoke('ticket:logo'),
@@ -264,6 +281,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSaleByFolio: (payload) => invoke('sp-get-sale-by-folio', payload),
     updateSale: (payload) => invoke('sp-update-sale', payload),
     refundSale: (payload) => invoke('sp-refund-sale', payload),
+    refundCandidates: (payload) => invoke('devoluciones:ventas', payload),
+    refundExchange: (payload) => invoke('devoluciones:cambio', payload),
 
     onBarcodeScan: (cb) => {
         const handler = (_event, payload) => cb(payload);
@@ -521,6 +540,20 @@ contextBridge.exposeInMainWorld('wybix', {
         // UX, no autorizacion: la venta vuelve a validar dentro de su
         // transaccion, con los productos bloqueados.
         disponibilidad: (p) => invoke('hospitality:availability', p),
+    },
+    // 0060 · Produccion por tandas. Los ingredientes salen al EMPEZAR una
+    // tanda; al terminarla entran las piezas buenas y se registra la merma.
+    produccion: {
+        tablero: (p) => invoke('produccion:tablero', p),
+        planear: (p) => invoke('produccion:planear', p),
+        empezar: (p) => invoke('produccion:empezar', p),
+        terminar: (p) => invoke('produccion:terminar', p),
+        cancelar: (p) => invoke('produccion:cancelar', p),
+        // Merma de producto terminado: lo que estaba a la venta y se tiro.
+        merma: (p) => invoke('produccion:merma', p),
+        formula: (p) => invoke('produccion:formula', p),
+        guardarFormula: (p) => invoke('produccion:formula-guardar', p),
+        quitarFormula: (p) => invoke('produccion:formula-quitar', p),
     },
     recipes: {
         get: (p) => invoke('recipes:get', p),

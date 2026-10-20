@@ -325,10 +325,10 @@
       "nombre": "sp_close_shift",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/cash/sp_close_shift.sql",
-      "origen": "Wybix_MigTest",
+      "origen": "Wybix_TmpProduccion",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "fff451e4d397416f"
+      "checksum": "8cb44c2d3d90a21c"
     },
     {
       "nombre": "sp_cloud_daily_profit",
@@ -1787,10 +1787,10 @@
       "nombre": "sp_day_close_report",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/reports/sp_day_close_report.sql",
-      "origen": "Wybix_TmpCierre",
+      "origen": "Wybix_TmpProduccion",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "b5fdb2e389868f41"
+      "checksum": "e15bb2f995b09fc9"
     },
     {
       "nombre": "sp_resolve_cash_register",
@@ -2156,10 +2156,10 @@
       "nombre": "sp_sync_capture",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/sync/sp_sync_capture.sql",
-      "origen": "Wybix_MigTest",
+      "origen": "Wybix_TmpProduccion",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2c03a312303050bf"
+      "checksum": "c4601ce4a860ebfa"
     },
     {
       "nombre": "sp_sync_outbox_ack",
@@ -2376,6 +2376,87 @@
       "critico": false,
       "clasificacion": "incierto",
       "checksum": "32cb37abfc0871ce"
+    },
+    {
+      "nombre": "sp_production_formula_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_formula_get.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "a1e125aa7443aa6c"
+    },
+    {
+      "nombre": "sp_production_formula_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_formula_save.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "87482a149d7381b4"
+    },
+    {
+      "nombre": "sp_production_formula_delete",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_formula_delete.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8597546766a172a9"
+    },
+    {
+      "nombre": "sp_production_board",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_board.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f9d904e7a86e2b08"
+    },
+    {
+      "nombre": "sp_production_plan",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_plan.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0be1d1f5df315ea3"
+    },
+    {
+      "nombre": "sp_production_start",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_start.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4320bbb28b71c95b"
+    },
+    {
+      "nombre": "sp_production_finish",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_finish.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "9c28786283794c0e"
+    },
+    {
+      "nombre": "sp_production_cancel",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_cancel.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "15c15fd201c47923"
+    },
+    {
+      "nombre": "sp_production_waste",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_waste.sql",
+      "origen": "Wybix_TmpProduccion",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1fa886bccf360f84"
     }
   ],
   "esquema": {
@@ -2386,14 +2467,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 98,
-      "columnas": 1039,
-      "pk": 98,
-      "unicas": 8,
-      "foraneas": 124,
-      "chequeos": 68,
-      "predeterminados": 251,
-      "indices": 111
+      "tablas": 103,
+      "columnas": 1088,
+      "pk": 103,
+      "unicas": 10,
+      "foraneas": 136,
+      "chequeos": 77,
+      "predeterminados": 260,
+      "indices": 113
     },
     "objetos": [
       {
@@ -3095,6 +3176,76 @@
         "predeterminados": 3,
         "indices": 1,
         "checksum": "660f24c3b5eed1ae"
+      },
+      {
+        "nombre": "production_batch_consumption",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/production_batch_consumption.sql",
+        "origen": "Wybix_TmpProduccion",
+        "columnas": 4,
+        "pk": "PK_production_batch_consumption",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 0,
+        "indices": 0,
+        "checksum": "4316a9889ae46db5"
+      },
+      {
+        "nombre": "production_batches",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/production_batches.sql",
+        "origen": "Wybix_TmpProduccion",
+        "columnas": 22,
+        "pk": "PK_production_batches",
+        "unicas": 1,
+        "foraneas": 5,
+        "chequeos": 4,
+        "predeterminados": 3,
+        "indices": 1,
+        "checksum": "7b3e1e796ebb58c8"
+      },
+      {
+        "nombre": "production_formula_lines",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/production_formula_lines.sql",
+        "origen": "Wybix_TmpProduccion",
+        "columnas": 7,
+        "pk": "PK_production_formula_lines",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 3,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "20a152b627ed6028"
+      },
+      {
+        "nombre": "production_formulas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/production_formulas.sql",
+        "origen": "Wybix_TmpProduccion",
+        "columnas": 5,
+        "pk": "PK_production_formulas",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "79b5068e2347d45a"
+      },
+      {
+        "nombre": "production_waste",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/production_waste.sql",
+        "origen": "Wybix_TmpProduccion",
+        "columnas": 11,
+        "pk": "PK_production_waste",
+        "unicas": 1,
+        "foraneas": 2,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "09646b7ef3d3d00d"
       },
       {
         "nombre": "products",

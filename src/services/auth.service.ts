@@ -43,6 +43,8 @@ export const PAQUETES = {
   COMERCIAL_ADMINISTRAR: 'COMERCIAL_ADMINISTRAR',
   // Roles v2: el catalogo (alta y edicion de productos), separado de mover inventario.
   CATALOGO_EDITAR: 'CATALOGO_EDITAR',
+  // 0060: produccion por tandas (planear, empezar, registrar lo que salio).
+  PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];

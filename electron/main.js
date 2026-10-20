@@ -119,6 +119,8 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 // rifas). `machineId` se pasa como funcion, no como valor: al cargar este
 // modulo la huella todavia no esta construida.
 require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad,aprobacionesActivas});
+/* 0060 · Produccion por tandas: formula de producto, tablero y tandas. */
+require('./ipc/produccion').registrar({ ipcMain, sql, poolPromise });
 /* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
 const ipcMulti = require('./ipc/multisucursal');
 ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
@@ -1429,13 +1431,83 @@ const CRITICOS_ALERTA = {
   ANULADA: 'Venta anulada',
   DRAWER_NO_SALE: 'Cajón abierto sin venta',
   DELETE: 'Producto eliminado del ticket',
-  ELIMINADO: 'Producto eliminado del ticket'
+  ELIMINADO: 'Producto eliminado del ticket',
+  /* Quien apaga las aprobaciones cambia quien puede sacar dinero: el dueño se entera al momento. */
+  APPROVALS_DISABLED: 'Se apagaron las aprobaciones',
+  APPROVALS_ENABLED: 'Se encendieron las aprobaciones'
 };
 
-/* Roles v2: ¿se piden aprobaciones? Lo decide el addon del cliente
-   (custom-addons/<id>/manifest.json -> ajustes.aprobaciones). Sin addon, si. */
+/* Roles v2: ¿se piden aprobaciones (PIN o app del dueño) para retiros,
+   egresos, devoluciones, ajustes, compras y cajón sin venta?
+
+   Lo decide el NEGOCIO desde el dock (Más > Aprobaciones): un Encargado o el
+   Administrador lo enciende o lo apaga, y queda en dbo.business_modules con
+   la clave APROBACIONES -la base, para que todas las cajas obedezcan lo
+   mismo-. Mientras nadie lo haya tocado manda el addon del cliente
+   (custom-addons/<id>/manifest.json -> ajustes.aprobaciones); sin addon, si.
+
+   Las comprobaciones son sincronas, asi que se lee de una copia que se
+   refresca sola cada pocos segundos: un cambio hecho en otra caja llega
+   aqui en ese plazo. */
 const AJUSTES_ADDON = (() => { try { return require('./addon.generated.json').ajustes || {}; } catch { return {}; } })();
-function aprobacionesActivas() { return AJUSTES_ADDON.aprobaciones !== false; }
+const CLAVE_APROBACIONES = 'APROBACIONES';
+const TTL_APROBACIONES_MS = 5000;
+let politicaAprobaciones = { valor: null, leidoEn: 0, leyendo: null };
+
+function aprobacionesPorOmision() { return AJUSTES_ADDON.aprobaciones !== false; }
+
+async function leerPoliticaAprobaciones() {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request().execute('sp_get_business_modules');
+    const fila = (r.recordset || []).find(f => String(f.module_key) === CLAVE_APROBACIONES);
+    politicaAprobaciones = { valor: fila ? (fila.enabled === true || fila.enabled === 1) : null, leidoEn: Date.now(), leyendo: null };
+  } catch {
+    politicaAprobaciones = { ...politicaAprobaciones, leidoEn: Date.now(), leyendo: null };
+  }
+  return politicaAprobaciones.valor;
+}
+
+function aprobacionesActivas() {
+  const p = politicaAprobaciones;
+  if (Date.now() - p.leidoEn > TTL_APROBACIONES_MS && !p.leyendo) {
+    politicaAprobaciones.leyendo = leerPoliticaAprobaciones();
+  }
+  return p.valor ?? aprobacionesPorOmision();
+}
+
+/** Lo que el dock enseña: si se piden, y si lo decidio el negocio o el addon. */
+async function estadoAprobaciones() {
+  const valor = await leerPoliticaAprobaciones();
+  return { activas: valor ?? aprobacionesPorOmision(), origen: valor == null ? 'PREDETERMINADO' : 'NEGOCIO', predeterminado: aprobacionesPorOmision() };
+}
+
+ipcMain.handle('aprobaciones:politica', sesion.proteger('aprobaciones:politica', async () => {
+  try { return { success: true, data: await estadoAprobaciones() }; }
+  catch (e) { return { success: false, error: e.message }; }
+}));
+
+/* Encender o apagar las aprobaciones. Lo hace un Encargado o el
+   Administrador (el canal exige VENTAS_SUPERVISAR) y queda en bitácora con
+   quién fue: apagarlas cambia quién puede sacar dinero del cajón. */
+ipcMain.handle('aprobaciones:politica-cambiar', sesion.proteger('aprobaciones:politica-cambiar', async (_e, p = {}, ses) => {
+  try {
+    if (typeof p.activas !== 'boolean') return { success: false, error: 'Indica si se piden aprobaciones.' };
+    const actor = sesion.actorDe(ses);
+    const pool = await poolPromise;
+    await pool.request()
+      .input('module_key', sql.NVarChar(40), CLAVE_APROBACIONES)
+      .input('enabled', sql.Bit, p.activas ? 1 : 0)
+      .input('user_id', sql.Int, actor)
+      .execute('sp_set_business_module');
+    await registrarEventoSeguridad({
+      userId: actor, autorizadoPor: actor,
+      tipo: p.activas ? 'APPROVALS_ENABLED' : 'APPROVALS_DISABLED',
+      detalle: p.activas ? 'Se encendieron las aprobaciones' : 'Se apagaron las aprobaciones',
+    });
+    return { success: true, data: await estadoAprobaciones() };
+  } catch (e) { return { success: false, error: e.message }; }
+}));
 
 /** Roles v2: ultimo cobro por ventana, para abrir el cajon "al cobrar" sin pedir PIN. */
 const ultimoCobro = new Map();
@@ -1552,8 +1624,8 @@ ipcMain.handle('reportes:cierre-dia', sesion.proteger('reportes:cierre-dia', asy
     const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(p.fecha || '')) ? String(p.fecha) : null;
     const pool = await poolPromise;
     const r = await pool.request().input('fecha', sql.Date, fecha).execute('sp_day_close_report');
-    const [resumen, pagos, cortes, salidas, promociones, eventos, ventas] = r.recordsets;
-    return { success: true, data: { resumen: resumen?.[0] ?? null, pagos, cortes, salidas, promociones, eventos, ventas } };
+    const [resumen, pagos, cortes, salidas, promociones, eventos, ventas, produccion = [], mermas = []] = r.recordsets;
+    return { success: true, data: { resumen: resumen?.[0] ?? null, pagos, cortes, salidas, promociones, eventos, ventas, produccion, mermas } };
   } catch (e) { return { success: false, error: e.message }; }
 }));
 
@@ -2739,8 +2811,10 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
     /* 0049: el desglose lo arma SQL con el catalogo de tipos; la pantalla ya
        no clasifica tipos por su cuenta. */
     const desglose = Array.isArray(result.recordsets?.[2]) ? result.recordsets[2] : [];
+    /* 0065: las devoluciones del periodo, para su apartado en el corte. */
+    const devoluciones = Array.isArray(result.recordsets?.[3]) ? result.recordsets[3] : [];
 
-    return { success: true, data: { rows, summary, desglose } };
+    return { success: true, data: { rows, summary, desglose, devoluciones } };
   } catch (err) {
     console.error('❌ sp-get-cash-movements:', err);
     return { success: false, error: err.message };
@@ -3163,6 +3237,9 @@ ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview
 
 //CIERRE DE CAJA
 
+/** 0061: lo registra electron/ipc/corte-correo.js (más abajo, con los comprobantes). */
+let corteCorreo = null;
+
 /*
  * CERRAR UN TURNO (Fase 1).
  *
@@ -3240,6 +3317,16 @@ ipcMain.handle('sp-close-shift', sesion.proteger('sp-close-shift', async (event,
     /* El corte ya está cerrado: la nube se entera en el siguiente ciclo, y
        aquí solo se adelanta la captura. Si la nube falla, el corte no. */
     cloudSync.hechosAhora?.();
+
+    /* 0061: el correo del corte a los dueños. Sin esperarlo: el corte ya
+       está cerrado y un correo que falla queda pendiente para reenviarse
+       desde "Correos de cortes"; nunca deshace ni retrasa el cierre. */
+    const cerrado = result.recordset?.[0]?.closure_id;
+    if (cerrado && corteCorreo) {
+      corteCorreo.enviarCorte(Number(cerrado), userId)
+        .then((r) => { if (!r.ok && r.estado !== 'SIN_NUBE') console.warn('[corte-correo]', cerrado, r.error); })
+        .catch(() => {});
+    }
 
     return {
       success: true,
@@ -4049,6 +4136,9 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
     const paymentMethod = String(payload?.payment_method ?? payload?.paymentMethod ?? 'EFECTIVO');
     const items = payload?.items ?? [];
     const note = payload?.note ?? null;
+    /* 0065: el motivo es obligatorio; SQL lo vuelve a exigir. */
+    const motivo = String(payload?.motivo ?? '').trim().slice(0, 40);
+    if (!motivo) throw new Error('Elige el motivo de la devolución.');
     const applyNetUpdate = payload?.apply_net_update ? 1 : 0;
     const opDev = cajaDeLaOperacion(payload);
 
@@ -4088,7 +4178,8 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
       /* El efectivo sale de ESTA caja (0049), no del turno de quien lo abrio. */
       .input('register_id',    sql.Int, opDev.registerId)
       .input('machine_id',     sql.NVarChar(64), opDev.machineId)
-      .input('machine_name',   sql.NVarChar(120), opDev.machineName);
+      .input('machine_name',   sql.NVarChar(120), opDev.machineName)
+      .input('reason',         sql.NVarChar(40), motivo);
 
     const result = await req.execute('sp_refund_sale');
 
@@ -4098,6 +4189,69 @@ ipcMain.handle('sp-refund-sale', sesion.proteger('sp-refund-sale', async (event,
     };
   } catch (err) {
     console.error('❌ Error en sp_refund_sale:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+}));
+
+/* 0065: las ventas que se pueden devolver, para elegirlas sin teclear el
+   folio. Las de hoy de esta caja, las de un cliente o una por folio. */
+ipcMain.handle('devoluciones:ventas', sesion.proteger('devoluciones:ventas', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const op = cajaDeLaOperacion(p);
+    const r = await pool.request()
+      .input('register_id', sql.Int, Number(op.registerId) || null)
+      .input('customer_id', sql.Int, Number(p.customerId) || null)
+      .input('folio', sql.Int, Number(p.folio) || null)
+      .execute('sp_refund_candidates');
+    return { success: true, data: r.recordset ?? [] };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}));
+
+/* 0065: un CAMBIO (devuelve unas piezas y se lleva otras) en una sola
+   transacción: sp_exchange_sale. Precio de lo que se lleva: el de lista. */
+ipcMain.handle('devoluciones:cambio', sesion.proteger('devoluciones:cambio', async (_e, p = {}) => {
+  try {
+    const saleId = Number(p.sale_id), userId = Number(p.user_id);
+    const motivo = String(p.motivo ?? '').trim().slice(0, 40);
+    if (!Number.isSafeInteger(saleId) || saleId <= 0) throw new Error('Venta inválida.');
+    if (!motivo) throw new Error('Elige el motivo de la devolución.');
+    const items = Array.isArray(p.items) ? p.items : [];
+    const lleva = (Array.isArray(p.lleva) ? p.lleva : [])
+      .map((x) => ({ productId: Number(x.productId), qty: Number(x.qty) }))
+      .filter((x) => Number.isSafeInteger(x.productId) && x.productId > 0 && x.qty > 0).slice(0, 100);
+    if (!items.length) throw new Error('Elige qué devuelve.');
+    if (!lleva.length) throw new Error('Elige qué se lleva a cambio.');
+    const tvp = new sql.Table('dbo.SaleDetailType');
+    tvp.columns.add('product_id', sql.Int, { nullable: false });
+    tvp.columns.add('quantity',   sql.Decimal(12, 2), { nullable: false });
+    tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+    for (const it of items) {
+      const pid = Number(it.productId), qty = Number(it.qty), up = Number(it.unitPrice ?? 0);
+      if (!(pid > 0) || !(qty > 0) || !(up >= 0)) throw new Error('Partida inválida en el cambio.');
+      tvp.rows.add(pid, qty, up);
+    }
+    const metodo = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(p.diff_method) ? p.diff_method : null;
+    const op = cajaDeLaOperacion(p);
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('sale_id', sql.Int, saleId)
+      .input('user_id', sql.Int, userId)
+      .input('RefundDetails', tvp)
+      .input('new_lines_json', sql.NVarChar(sql.MAX), JSON.stringify(lleva))
+      .input('reason', sql.NVarChar(40), motivo)
+      .input('note', sql.NVarChar(400), p.note ? String(p.note).slice(0, 400) : null)
+      .input('diff_method', sql.NVarChar(20), metodo)
+      .input('received', sql.Decimal(12, 2), Number(p.received) > 0 ? Number(p.received) : null)
+      .input('register_id', sql.Int, op.registerId)
+      .input('machine_id', sql.NVarChar(64), op.machineId)
+      .input('machine_name', sql.NVarChar(120), op.machineName)
+      .execute('sp_exchange_sale');
+    const fin = r.recordsets?.[r.recordsets.length - 1]?.[0] ?? null;
+    return { success: true, data: fin };
+  } catch (err) {
     return { success: false, error: err?.message || String(err) };
   }
 }));
@@ -4278,6 +4432,14 @@ function buildTicketHtmlFromTemplate(header, details, extras={}) {
 // Roles v2: pedirle autorizacion al dueno desde la caja (Owner).
 require('./ipc/aprobaciones').registrar({ ipcMain, sesion, canales, reautenticacion, cloudSync, loadDeviceConfig, permisos });
 require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,ensureBusinessConfig,loadDeviceConfig,buildTicketHtmlFromTemplate,loadSaleFromDbWithSp,generateSaleTicketPdf,cloudSync,imprimirHtml});
+/* 0061: el corte de caja por correo a los dueños (se dispara al cerrar el turno). */
+corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0063: el Club (membresías). */
+require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0064: puntos y sellos. */
+require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0062: estado de resultados. */
+require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

@@ -253,7 +253,7 @@ try {
   check(esperado(t2) === 250, 'venta de $50 en la Caja 2 (espera $250)', String(esperado(t2)));
   // Devuelve el DUENO, que tiene su propio turno abierto en la Caja 1.
   q(`DECLARE @r dbo.SaleDetailType; INSERT INTO @r (product_id, quantity, unit_price) VALUES (${prod}, 1, 50);
-     EXEC dbo.sp_refund_sale @sale_id=${venta2}, @user_id=${dueno}, @payment_method=N'EFECTIVO',
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${venta2}, @user_id=${dueno}, @payment_method=N'EFECTIVO',
        @RefundDetails=@r, @note=N'QA', @apply_net_update=0, @register_id=${caja2};`);
   const mRef = uno(`SELECT TOP 1 * FROM dbo.cash_movements WHERE typee = 'REFUND' ORDER BY id DESC;`);
   check(!!mRef && n(mRef.closure_id) === t2 && n(mRef.register_id) === caja2,
@@ -263,14 +263,14 @@ try {
   // Sin caja: la cajera2 tiene UN turno abierto (Caja 2) -> compatibilidad.
   const venta3 = vender('EFECTIVO', caja2, cajera2);
   q(`DECLARE @r dbo.SaleDetailType; INSERT INTO @r (product_id, quantity, unit_price) VALUES (${prod}, 1, 50);
-     EXEC dbo.sp_refund_sale @sale_id=${venta3}, @user_id=${cajera2}, @payment_method=N'EFECTIVO',
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${venta3}, @user_id=${cajera2}, @payment_method=N'EFECTIVO',
        @RefundDetails=@r, @note=N'QA', @apply_net_update=0;`);
   const mRef2 = uno(`SELECT TOP 1 * FROM dbo.cash_movements WHERE typee = 'REFUND' ORDER BY id DESC;`);
   check(n(mRef2?.register_id) === caja2 && n(mRef2?.closure_id) === t2,
     'una app vieja (sin caja) resuelve por el unico turno de quien devuelve');
   const venta5 = vender('EFECTIVO', caja2, cajera2);
   const ref3 = falla(`DECLARE @r dbo.SaleDetailType; INSERT INTO @r (product_id, quantity, unit_price) VALUES (${prod}, 1, 50);
-     EXEC dbo.sp_refund_sale @sale_id=${venta5}, @user_id=${sinTurno}, @payment_method=N'EFECTIVO',
+     EXEC dbo.sp_refund_sale @reason=N'Prueba', @sale_id=${venta5}, @user_id=${sinTurno}, @payment_method=N'EFECTIVO',
        @RefundDetails=@r, @note=N'QA', @apply_net_update=0;`, 'caja');
   check(ref3.ok, 'y si no hay de donde saberlo, falla en vez de usar la Caja 1', ref3.error?.slice(0, 70));
 

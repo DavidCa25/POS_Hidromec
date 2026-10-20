@@ -84,6 +84,8 @@ export class PremiosVenta {
       case 'COUPON': return 'ph-ticket';
       case 'DYNAMIC': return 'ph-game-controller';
       case 'RAFFLE_ENTRY': return 'ph-confetti';
+      case 'POINTS': return 'ph-star';
+      case 'STAMPS': return 'ph-seal-check';
       default: return 'ph-star';
     }
   }
@@ -94,6 +96,8 @@ export class PremiosVenta {
       case 'COUPON': return 'Cupón para su próxima visita';
       case 'RAFFLE_ENTRY': return 'Boleto de rifa';
       case 'DYNAMIC': return 'Dinámica';
+      case 'POINTS': return 'Puntos';
+      case 'STAMPS': return 'Sellos';
       default: return '';
     }
   }
@@ -101,6 +105,7 @@ export class PremiosVenta {
   /** El codigo o el numero: lo unico que el cliente tiene que llevarse. */
   codigo(p: LoyaltyAward): string | null {
     if (p.codigo) return p.codigo;
+    if (p.tipo === 'POINTS' || p.tipo === 'STAMPS') return null;
     if (p.numero != null) return `Boleto ${p.numero}`;
     return null;
   }

@@ -82,7 +82,10 @@ export class SaleService {
   validate(cart: Cart, payment: Payment): string | null {
     const t = CartService.totalsOf(cart);
     if (!cart.lines.length) return 'Agrega productos a la venta';
-    if (t.total <= 0) return 'El total de la venta debe ser mayor a cero';
+    /* $0 solo si la cotización lo explica: un beneficio (café del Club, cupón
+       de producto gratis) dejó la cuenta en cero. SQL vuelve a validarlo. */
+    const gratisPorBeneficio = t.total === 0 && Number((cart.commercial?.quote as any)?.discount ?? 0) > 0;
+    if (t.total < 0 || (t.total === 0 && !gratisPorBeneficio)) return 'El total de la venta debe ser mayor a cero';
     if (payment.payments || payment.method === 'MIXTO') { try { validarPagos(t.total,payment.payments!); return null; } catch(e){ return (e as Error).message; } }
     if (payment.method === 'CREDITO') {
       if (payment.creditCustomerId == null) return 'Selecciona el cliente para la venta a crédito.';

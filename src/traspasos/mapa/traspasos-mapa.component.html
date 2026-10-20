@@ -1,0 +1,42 @@
+<svg class="tm" [attr.viewBox]="vista()" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="tm-tit" data-guide="traspasos-mapa">
+  <title id="tm-tit">Sucursales y envíos en camino</title>
+  <polygon *ngFor="let p of terreno()" [attr.points]="p.puntos" [attr.fill]="p.color"></polygon>
+
+  <!-- La ruta de cada envío, punteada, debajo de todo -->
+  <polyline *ngFor="let c of camiones()" class="tm-ruta" [class.es-elegido]="envioElegido() === c.envio.clave" [attr.points]="c.ruta"></polyline>
+
+  <g *ngFor="let a of arboles()" aria-hidden="true">
+    <polygon *ngFor="let p of a.tronco" [attr.points]="p.puntos" [attr.fill]="p.color"></polygon>
+    <circle [attr.cx]="a.copa.x" [attr.cy]="a.copa.y" r="21" fill="#5DB46A"></circle>
+    <circle [attr.cx]="a.copa.x - 6" [attr.cy]="a.copa.y - 6" r="13" fill="#77C882"></circle>
+  </g>
+
+  <g *ngFor="let l of locales()" class="tm-local" [class.es-elegida]="elegida() === l.id" role="button" tabindex="0"
+     [attr.aria-label]="l.nombre + (l.aqui ? ', esta sucursal' : '')"
+     (click)="tocarSucursal.emit(l.id)" (keydown.enter)="tocarSucursal.emit(l.id)"
+     data-guide="traspasos-mapa-local" [attr.data-guide-clave]="l.id">
+    <polygon *ngFor="let p of l.formas" [attr.points]="p.puntos" [attr.fill]="p.color"></polygon>
+    <path [attr.d]="'M' + l.pin.x + ' ' + l.pin.y + ' c-15 -20 -24 -30 -24 -43 a24 24 0 1 1 48 0 c0 13 -9 23 -24 43z'" [attr.fill]="l.matriz ? '#1F6C7A' : '#45B3C3'"></path>
+    <circle [attr.cx]="l.pin.x" [attr.cy]="l.pin.y - 43" r="9" fill="#FFFFFF"></circle>
+  </g>
+
+  <g aria-hidden="true"><polygon *ngFor="let p of hornoFormas()" [attr.points]="p.puntos" [attr.fill]="p.color"></polygon></g>
+
+  <g *ngFor="let c of camiones()" class="tm-camion" [class.es-elegido]="envioElegido() === c.envio.clave"
+     [style.--tx.px]="c.tx" [style.--ty.px]="c.ty" [style.animation-delay.s]="c.demora" role="button" tabindex="0"
+     [attr.aria-label]="'Envío de ' + c.envio.desdeNombre + ' a ' + c.envio.haciaNombre + ', ' + c.envio.piezas + ' piezas'"
+     (click)="tocarEnvio.emit(c.envio)" (keydown.enter)="tocarEnvio.emit(c.envio)"
+     data-guide="traspasos-mapa-camion" [attr.data-guide-clave]="c.envio.clave">
+    <polygon *ngFor="let p of c.formas" [attr.points]="p.puntos" [attr.fill]="p.color"></polygon>
+    <ellipse *ngFor="let r of c.ruedas" [attr.cx]="r.x" [attr.cy]="r.y" rx="10" ry="6" fill="#152836"></ellipse>
+    <text [attr.x]="c.texto.x" [attr.y]="c.texto.y" text-anchor="middle" class="tm-rotulo">{{ c.texto.t }}</text>
+  </g>
+
+  <!-- Etiqueta flotante de cada local (HTML dentro del dibujo). -->
+  <foreignObject *ngFor="let l of locales()" [attr.x]="l.tag.x - 120" [attr.y]="l.tag.y - 92" width="240" height="80">
+    <button type="button" class="tm-tag" [class.aqui]="l.aqui" (click)="tocarSucursal.emit(l.id)">
+      <b>{{ l.nombre }}<span class="tm-tag__m" *ngIf="l.matriz"> · matriz</span></b>
+      <small *ngIf="etiqueta(l.id) as e" class="tm-pill" [ngClass]="e.tono || ''">{{ e.sub }}</small>
+    </button>
+  </foreignObject>
+</svg>

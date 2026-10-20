@@ -6,6 +6,9 @@
     </div>
     <div class="cd-head__acc">
       <wx-date id="cd-fecha" [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" [max]="hoy" [limpiable]="false"></wx-date>
+      <wx-menu etiqueta="Exportar" icono="ph ph-download-simple" variante="neutral" data-guide="exportar-reporte"
+               [opciones]="opcionesExportar" [deshabilitado]="!datos() || cargando()"
+               (elegir)="exportar($any($event))"></wx-menu>
       <button type="button" class="btn-outline" (click)="cargar()" [disabled]="cargando()">
         <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Actualizar
       </button>
@@ -76,6 +79,37 @@
       </section>
     </div>
 
+    <!-- --------------------------------------------- 0060 producción -->
+    <section class="cd-sec" *ngIf="d.produccion?.length" data-guide="cierre-produccion">
+      <h2>Producción
+        <span class="cd-tag falta" *ngIf="d.mermas?.length">Merma {{ dinero(totalMerma()) }}</span>
+      </h2>
+      <div class="cd-tabla">
+        <table>
+          <thead><tr><th>Producto</th><th class="num">Producidas</th><th class="num">Merma al producir</th><th class="num">Vendidas</th>
+            <th class="num">Traspasadas</th><th class="num">Se tiraron</th><th class="num">Quedan</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of d.produccion" data-guide="cierre-producto" [attr.data-guide-clave]="p.product_id">
+              <td>{{ p.producto }}<small *ngIf="p.costo_unitario" class="cd-sub">{{ dinero(p.costo_unitario) }} c/u</small></td>
+              <td class="num">{{ redondo(p.producidas) }}</td>
+              <td class="num">{{ redondo(p.merma_produccion) || '—' }}</td>
+              <td class="num">{{ redondo(p.vendidas) }}</td>
+              <td class="num">{{ redondo(p.traspasadas) || '—' }}</td>
+              <td class="num">{{ redondo(p.merma_terminado) || '—' }}</td>
+              <td class="num"><b>{{ redondo(p.existencia) }}</b></td>
+              <td class="num">
+                <button *ngIf="puedeMerma() && fecha === hoy && p.existencia > 0" type="button" class="btn-outline cd-btn-chico"
+                        (click)="abrirMerma(p)" data-guide="cierre-merma">Registrar merma</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="cd-mermas" *ngIf="d.mermas?.length">
+        <li *ngFor="let m of d.mermas">{{ hora(m.created_at) }} · {{ m.producto }}: {{ redondo(m.qty) }} ({{ m.reason }}) · {{ dinero(m.costo) }} · {{ m.quien || '—' }}</li>
+      </ul>
+    </section>
+
     <!-- ------------------------------------------------------- salidas -->
     <section class="cd-sec">
       <h2>Salidas de efectivo</h2>
@@ -129,4 +163,32 @@
       </div>
     </section>
   </ng-container>
+</div>
+
+<!-- 0060 · Registrar merma de producto terminado -->
+<div class="cd-velo" *ngIf="mermaDe() as p" (click)="cerrarMerma()">
+  <div class="cd-hoja" role="dialog" aria-modal="true" aria-labelledby="cd-merma-tit" (click)="$event.stopPropagation()" data-guide="cierre-merma-hoja">
+    <div class="cd-hoja__cuerpo">
+      <h2 id="cd-merma-tit">{{ p.producto }} · ¿cuántas se tiraron?</h2>
+      <p class="cd-hoja__ayuda">Quedan {{ redondo(p.existencia) }} en el sistema. Salen del inventario con su motivo y su costo.</p>
+      <b class="cd-hoja__num">{{ mermaNumero() || 0 }}</b>
+      <div class="cd-motivos" role="radiogroup" aria-label="Motivo">
+        <button type="button" *ngFor="let m of motivosMerma" class="cd-chip" [class.es-elegido]="mermaMotivo() === m"
+                role="radio" [attr.aria-checked]="mermaMotivo() === m" (click)="mermaMotivo.set(m); mermaError.set(null)">{{ m }}</button>
+      </div>
+      <p class="cd-hoja__error" *ngIf="mermaError()" role="alert">{{ mermaError() }}</p>
+      <div class="cd-hoja__acc">
+        <button type="button" class="btn-outline" (click)="cerrarMerma()" [disabled]="mermaGuardando()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="guardarMerma()" [disabled]="mermaGuardando()" data-guide="cierre-merma-confirmar">
+          {{ mermaGuardando() ? 'Registrando…' : 'Registrar ' + (mermaNumero() || 0) + ' de merma' }}
+        </button>
+      </div>
+    </div>
+    <div class="cd-teclado">
+      <button type="button" *ngFor="let k of ['1','2','3','4','5','6','7','8','9']" (click)="teclaMerma(k)">{{ k }}</button>
+      <button type="button" (click)="teclaMerma('limpiar')" aria-label="Borrar todo">C</button>
+      <button type="button" (click)="teclaMerma('0')">0</button>
+      <button type="button" (click)="teclaMerma('borrar')" aria-label="Borrar un número"><i class="ph ph-backspace"></i></button>
+    </div>
+  </div>
 </div>
