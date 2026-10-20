@@ -1,6 +1,6 @@
 {
   "name": "wybix-pos",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
