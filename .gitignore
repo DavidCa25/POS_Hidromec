@@ -91,3 +91,21 @@ Thumbs.db
 /custom-addons/*/marca/*.pdf
 /custom-addons/*/marca/*.ai
 /custom-addons/*/mascota/fuente/
+
+# Material de marketing (guiones, voces, videos renderizados) y las skills de
+# marketing instaladas localmente: trabajo fuera del producto, pesa y no se
+# versiona.
+/docs/marketing/
+/.agents/product-marketing.md
+/.claude/skills/ad-creative/
+/.claude/skills/analytics/
+/.claude/skills/community-marketing/
+/.claude/skills/competitor-profiling/
+/.claude/skills/content-strategy/
+/.claude/skills/image/
+/.claude/skills/launch/
+/.claude/skills/product-marketing/
+/.claude/skills/prospecting/
+/.claude/skills/sales-enablement/
+/.claude/skills/social/
+/.claude/skills/video/
