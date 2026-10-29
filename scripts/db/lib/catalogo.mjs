@@ -269,6 +269,8 @@ asignar('loyalty', [
   'sp_loyalty_customer_status', 'sp_loyalty_points_earn', 'sp_loyalty_points_apply_sale',
   'sp_loyalty_points_on_refund', 'sp_loyalty_points_config_save', 'sp_loyalty_stamp_card_save',
   'sp_loyalty_points_manage', 'sp_loyalty_points_admin', 'sp_loyalty_points_ledger', 'sp_loyalty_points_apply_remote',
+  // 0066: la tarjeta del Club en Wallet (pases que esta caja reconoce sin internet).
+  'sp_club_wallet_apply', 'sp_club_wallet_resolve', 'sp_club_wallet_customer',
   // Ruleta: sectores y su sorteo, decidido en el servidor.
   'sp_dynamic_segments', 'sp_dynamic_save_segment',
 ]);

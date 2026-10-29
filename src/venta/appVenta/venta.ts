@@ -22,6 +22,7 @@ import {
   CajonService,
 } from '../../core';
 import { ClubService } from '../../core/club.service';
+import { ClubWalletLectura } from '../../core/club-wallet-lectura';
 import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
@@ -1377,6 +1378,9 @@ export class Venta implements OnInit, OnDestroy {
 
       case '-':
         event.preventDefault();
+        /* 0066 · El código de la tarjeta del Club es WXC-<serial>: ese guion
+           es parte de la lectura, no el atajo de restar una pieza. */
+        if (/^WXC$/i.test(this.scanBuffer)) { this.pushChar('-'); return; }
         this.adjustLastAddedQty(-1);
         return;
     }
@@ -1857,6 +1861,8 @@ export class Venta implements OnInit, OnDestroy {
     this.clearScanBuffer();
     if (!code) return;
 
+    if (ClubWalletLectura.esCodigo(code)) { await this.clientePorTarjeta(code); return; }
+
     if (scannerLike || code.length >= this.BARCODE_MIN_LEN) {
       await this.addByBarcode(code);
     } else {
@@ -2126,6 +2132,25 @@ export class Venta implements OnInit, OnDestroy {
 
   cerrarModalClientes() {
     this.showModalClientes = false;
+  }
+
+  /** 0066 · En el buscador de clientes también se puede leer la tarjeta del Club. */
+  async buscarClienteEnter() {
+    if (ClubWalletLectura.esCodigo(this.filtroClientes)) {
+      const codigo = this.filtroClientes;
+      this.filtroClientes = '';
+      await this.clientePorTarjeta(codigo);
+    }
+  }
+
+  /**
+   * 0066 · Se leyó la tarjeta del Club (Apple/Google Wallet): su cliente queda
+   * en la cuenta, igual que si se hubiera buscado por teléfono.
+   */
+  private async clientePorTarjeta(codigo: string) {
+    const r = await ClubWalletLectura.cliente(codigo, this.clientesSvc);
+    if (!r.ok) { await Swal.fire({ icon: 'warning', title: 'Tarjeta del Club', text: r.error }); return; }
+    await this.seleccionarCliente(r.cliente);
   }
 
   async seleccionarCliente(cliente: CartCustomer) {

@@ -246,6 +246,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clubPlanGuardar: p => invoke('club:plan-guardar',p),
     clubGestionar: p => invoke('club:gestionar',p),
     clubSincronizar: () => invoke('club:sincronizar'),
+    clubWalletEmitir: p => invoke('club:wallet-emitir',p),
+    clubWalletResolver: p => invoke('club:wallet-resolver',p),
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),

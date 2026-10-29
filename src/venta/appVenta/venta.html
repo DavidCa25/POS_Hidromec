@@ -747,7 +747,8 @@
       <div class="modal-body pt-0">
         <input class="form-control mb-2 buscador"
                placeholder="Buscar por nombre, RFC, teléfono o correo..."
-               [(ngModel)]="filtroClientes" name="filtroClientes">
+               [(ngModel)]="filtroClientes" name="filtroClientes"
+               (keydown.enter)="buscarClienteEnter()" data-guide="venta-buscar-cliente">
         <div class="prod-hint">
           <i class="ph ph-hand-pointing"></i> Toca un cliente para asignarlo a la venta
         </div>

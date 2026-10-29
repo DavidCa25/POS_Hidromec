@@ -287,6 +287,12 @@ const club = crearClub({
   log,
 });
 
+/* 0066 · Tarjeta del Club en Wallet: la función club-wallet (emitir, marca,
+   resolver), siempre con la credencial del equipo. */
+async function clubWallet(action, cuerpo = {}) {
+  return llamarFuncion('club-wallet', { action, ...cuerpo }, { token: await credencial() });
+}
+
 /**
  * Roles v2 · AUTORIZACIÓN A DISTANCIA desde la caja: un Operador pide, el
  * dueño (o un admin) aprueba en Owner y la caja consume la aprobación UNA vez.
@@ -818,6 +824,7 @@ function stopScheduler() {
 module.exports = {
   multi,
   club,
+  clubWallet,
   aprobaciones,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,

@@ -11,9 +11,10 @@
   "huecos": [
     "mascota",
     "mascotaEnTouch",
-    "fondoTouch"
+    "fondoTouch",
+    "tarjetaWallet"
   ],
-  "descripcion": "Mascota I DO NUT ME en lugar de Wybix y logo de la marca como fondo de Touch.",
+  "descripcion": "Mascota I DO NUT ME en lugar de Wybix, logo de la marca como fondo de Touch y colores y logo de la tarjeta del Club en Wallet.",
   "ajustes": {
     "aprobaciones": false
   }

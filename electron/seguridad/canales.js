@@ -81,6 +81,9 @@ const EXIGE = {
   'club:admin': REPORTES_VER,
   'club:plan-guardar': COMERCIAL_ADMINISTRAR,
   'club:gestionar': VENTAS_SUPERVISAR,
+  /* 0066 · Tarjeta del Club en Wallet: darla y reconocerla es de la caja. */
+  'club:wallet-emitir': VENTAS_OPERAR,
+  'club:wallet-resolver': VENTAS_OPERAR,
   'puntos:estado': VENTAS_OPERAR,
   'puntos:admin': REPORTES_VER,
   'puntos:historial': REPORTES_VER,

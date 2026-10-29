@@ -14,6 +14,10 @@
  * tarjetas y los movimientos de las DEMÁS sucursales); se aplican con
  * sp_loyalty_points_apply_remote, también idempotente.
  *
+ * 0066: también bajan los pases de Wallet de la empresa (wallet_passes):
+ * serial -> teléfono, para que esta caja reconozca sin internet la tarjeta
+ * de un cliente emitida en otra sucursal (sp_club_wallet_apply).
+ *
  * El cursor se guarda en cloud-config (clubCursor) y se pide con 5 minutos de
  * traslape: un cambio que la nube confirmó tarde no se pierde, y aplicar dos
  * veces no cambia nada.
@@ -43,11 +47,16 @@ function crearClub({ pool, sql, llamar, cfg, disponible, subirAntes = () => {}, 
       aplicadoPuntos = (await p.request().input('payload', sql.NVarChar(sql.MAX), JSON.stringify(puntos))
         .execute('sp_loyalty_points_apply_remote')).recordset?.[0] ?? null;
     }
+    const pases = r.wallet_passes ?? [];
+    if (pases.length) {
+      const p = await pool();
+      await p.request().input('payload', sql.NVarChar(sql.MAX), JSON.stringify(pases)).execute('sp_club_wallet_apply');
+    }
     if (r.cursor) cfg.escribir({ clubCursor: r.cursor });
     return {
       aplicado, aplicadoPuntos,
       recibidos: { planes: payload.plans.length, membresias: payload.memberships.length, canjes: payload.redemptions.length,
-                   tarjetas: puntos.stamp_cards.length, movimientos: puntos.ledger.length },
+                   tarjetas: puntos.stamp_cards.length, movimientos: puntos.ledger.length, pases: pases.length },
     };
   }
 
