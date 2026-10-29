@@ -385,6 +385,21 @@ const EXIGE = {
   'kds:listar': VENTAS_OPERAR,
   'kds:estado': VENTAS_OPERAR,
   'comandas:reimprimir': VENTAS_OPERAR,
+  // 0067: pedidos del menú en línea. Aceptar es lo mismo que mandar a cocina
+  // una comanda de mostrador (no cobra ni descuenta): trabajo del turno.
+  'menu-linea:config': VENTAS_OPERAR,
+  'menu-linea:pedidos': VENTAS_OPERAR,
+  'menu-linea:aceptar': VENTAS_OPERAR,
+  'menu-linea:rechazar': VENTAS_OPERAR,
+  'menu-linea:sincronizar': VENTAS_OPERAR,
+  // Publicar el menú, su dirección y su marca: configuración del negocio.
+  'menu-linea:guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:diseno': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:diseno-guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-borrar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-ver': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:producto-guardar': CONFIGURACION_ADMINISTRAR,
   // Cancelar lo que ya se pidio saca dinero de la cuenta: es la misma clase
   // de decision que un reembolso, y la toma un encargado.
   'comandas:cancelar': VENTAS_SUPERVISAR,

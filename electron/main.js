@@ -187,7 +187,11 @@ const SUPABASE_URL = 'https://swlpspgmkwzlrowllvvj.supabase.co';
    el dominio de Wybix, que hoy las reenvía a Supabase (vercel.json de la web).
    Así, cambiar de backend es cambiar ese reenvío, no reinstalar cajas. La app
    del dueño (QR) sigue usando SUPABASE_URL: habla con su autenticación. */
-const FUNCIONES_URL = 'https://www.wybixpos.com.mx/backend';
+const FUNCIONES_URL = (!app.isPackaged && process.env.WYBIX_FUNCIONES_URL)
+  /* Solo sin empaquetar (desarrollo y e2e): una nube LOCAL de pruebas
+     (wybix-owner/scripts/servidor-menu-local.mjs). Un instalador nunca lo lee. */
+  ? String(process.env.WYBIX_FUNCIONES_URL).replace(/\/+$/, '')
+  : 'https://www.wybixpos.com.mx/backend';
 const ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
 let businessConfig = null;
@@ -4436,6 +4440,13 @@ require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,
 corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0063: el Club (membresías). */
 require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0067: menú en línea. Aceptar un pedido usa el MISMO envío a preparación que
+   Touch (hospitalityDominio.enviarOrden); los nuevos se avisan a la ventana. */
+require('./ipc/menu-en-linea').registrar({ ipcMain, sql, poolPromise, cloudSync, hospitality: hospitalityDominio,
+  cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null });
+cloudSync.alPedidosEnLinea((nuevos) => {
+  for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('menu-linea:nuevos', nuevos); } catch { /* noop */ } }
+});
 /* 0064: puntos y sellos. */
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */

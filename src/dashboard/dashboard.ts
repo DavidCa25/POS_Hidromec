@@ -1,4 +1,6 @@
-import { Component, HostListener  } from '@angular/core';
+import { Component, HostListener, effect, inject } from '@angular/core';
+import Swal from 'sweetalert2';
+import { PedidosEnLineaService } from '../core/pedidos-en-linea.service';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgClass, NgIf, NgFor, DecimalPipe } from '@angular/common';
@@ -76,7 +78,22 @@ export class Dashboard {
   private modSub?: Subscription;
 
   constructor(private router: Router, public auth: AuthService, private updater: UpdaterService, private theme: ThemeService, private registerService: RegisterService, public modules: ModulesService, public caps: CapabilityService,
-              private giroServicios: GiroServiciosService, public nav: NavegacionService) {}
+              private giroServicios: GiroServiciosService, public nav: NavegacionService) {
+    /* 0067: un pedido del menú en línea que nadie ve es un cliente esperando.
+       Se avisa en cualquier pantalla del panel, con un toque para verlo. */
+    this.pedidosEnLinea.escuchar();
+    effect(() => {
+      const n = this.pedidosEnLinea.nuevos();
+      if (!n || this.router.url.startsWith('/dashboard/pedidos-en-linea')) return;
+      void Swal.fire({
+        toast: true, position: 'top-end', icon: 'info', timer: 12000, timerProgressBar: true,
+        title: n.n > 1 ? `${n.n} pedidos en línea nuevos` : `Pedido en línea de ${n.nombre}`,
+        showConfirmButton: true, confirmButtonText: 'Ver',
+      }).then((r) => { if (r.isConfirmed) void this.router.navigateByUrl('/dashboard/pedidos-en-linea'); });
+    });
+  }
+
+  private readonly pedidosEnLinea = inject(PedidosEnLineaService);
 
   /**
    * Contexto del negocio para el pie del rail. Se lee de la misma

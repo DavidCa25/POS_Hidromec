@@ -12,7 +12,7 @@ import { AuthService, PAQUETES } from '../services/auth.service';
  * ensenar una pantalla que despues no podria hacer nada.
  */
 
-async function comprobar(modulo: 'mesas' | 'comandas' | 'salon', paquete: string) {
+async function comprobar(modulo: 'mesas' | 'comandas' | 'salon' | 'hospitality', paquete: string) {
   const caps = inject(CapabilityService);
   const auth = inject(AuthService);
   const router = inject(Router);
@@ -26,4 +26,6 @@ async function comprobar(modulo: 'mesas' | 'comandas' | 'salon', paquete: string
 
 export const puedeUsarMesas: CanActivateFn = () => comprobar('mesas', PAQUETES.VENTAS_OPERAR);
 export const puedeUsarCocina: CanActivateFn = () => comprobar('comandas', PAQUETES.VENTAS_OPERAR);
+/* 0067: la bandeja del menú en línea. Es atender pedidos: lo mismo que vender. */
+export const puedeUsarPedidosEnLinea: CanActivateFn = () => comprobar('hospitality', PAQUETES.VENTAS_OPERAR);
 export const puedeConfigurarSalon: CanActivateFn = () => comprobar('salon', PAQUETES.CONFIGURACION_ADMINISTRAR);

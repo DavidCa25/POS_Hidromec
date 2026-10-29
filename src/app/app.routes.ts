@@ -5,7 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
-import { puedeConfigurarSalon, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
+import { puedeConfigurarSalon, puedeUsarPedidosEnLinea, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
 
 /*
  * Rutas de Wybix.
@@ -81,6 +81,7 @@ export const routes: Routes = [
       // reiniciar ni volver a entrar.
       { path: 'venta', canActivate: [experienciaDeVenta], loadComponent: () => import('../venta/appVenta/venta').then(m => m.Venta) },
       { path: 'mesas', canActivate: [puedeUsarMesas], loadComponent: () => import('../hospitality/mesas/mesas.component').then(m => m.MesasComponent) },
+      { path: 'pedidos-en-linea', canActivate: [puedeUsarPedidosEnLinea], loadComponent: () => import('../hospitality/pedidos-en-linea/pedidos-en-linea.component').then(m => m.PedidosEnLineaComponent) },
       { path: 'salon', canActivate: [puedeConfigurarSalon], loadComponent: () => import('../hospitality/salon-admin/salon-admin.component').then(m => m.SalonAdminComponent) },
       { path: 'corte-dia', loadComponent: () => import('../venta/appCorte/corte').then(m => m.Corte) },
       /* Egresos y Pagos al personal: un solo componente, un solo modelo (un

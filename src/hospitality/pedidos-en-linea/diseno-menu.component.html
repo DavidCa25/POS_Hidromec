@@ -1,0 +1,107 @@
+<section class="dm" data-guide="diseno-menu" aria-label="Diseño del menú en línea">
+  <p class="dm-cargando" *ngIf="cargando()">Cargando el diseño…</p>
+
+  <ng-container *ngIf="datos() as d">
+    <!-- ------------------------------------------------ portada y logo -->
+    <div class="dm-bloque">
+      <h3>Portada y logo</h3>
+      <p class="dm-ayuda">La portada va arriba, a todo lo ancho (mejor horizontal, 1600 × 900). El logo, en un círculo encima.</p>
+      <div class="dm-portada">
+        <div class="dm-portada__foto" [style.background-image]="vista(portada()) ? 'url(' + vista(portada()) + ')' : null">
+          <span *ngIf="!vista(portada())"><i class="ph ph-image" aria-hidden="true"></i> Sin portada</span>
+          <div class="dm-logo" [style.background-image]="vista(logo()) ? 'url(' + vista(logo()) + ')' : null">
+            <span *ngIf="!vista(logo())">Logo</span>
+          </div>
+        </div>
+        <div class="dm-acciones">
+          <!-- input file oculto detrás de su label: la única forma de abrir el diálogo de archivos (CLAUDE.md). -->
+          <label class="btn-outline dm-subir" data-guide="diseno-menu-portada">
+            <i class="ph ph-upload-simple" aria-hidden="true"></i> {{ subiendo() === 'PORTADA-' ? 'Subiendo…' : (portada() ? 'Cambiar portada' : 'Subir portada') }}
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir($event, 'PORTADA')">
+          </label>
+          <button type="button" class="btn-outline" *ngIf="portada()" (click)="quitar(portada())">Quitar portada</button>
+          <label class="btn-outline dm-subir" data-guide="diseno-menu-logo">
+            <i class="ph ph-upload-simple" aria-hidden="true"></i> {{ logo() ? 'Cambiar logo' : 'Subir logo' }}
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir($event, 'LOGO')">
+          </label>
+          <button type="button" class="btn-outline" *ngIf="logo()" (click)="quitar(logo())">Quitar logo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- --------------------------------------------- datos del negocio -->
+    <form class="dm-bloque dm-datos" (ngSubmit)="guardarDiseno()">
+      <h3>Lo que dice tu menú</h3>
+      <label class="dm-campo"><span>Frase debajo del nombre</span>
+        <input name="frase" [(ngModel)]="form.frase" maxlength="120" placeholder="Las donas, amordidas"></label>
+      <label class="dm-campo"><span>Dirección</span>
+        <input name="direccion" [(ngModel)]="form.direccion" maxlength="200" placeholder="Av. Juárez 120, Centro"></label>
+      <label class="dm-campo"><span>Horario</span>
+        <input name="horario" [(ngModel)]="form.horario" maxlength="120" placeholder="Lun a sáb · 8:00 a 21:00"></label>
+      <label class="dm-check"><input type="checkbox" name="usar" [(ngModel)]="form.usarColores"> Usar mis colores (si no, los de tu marca o los de Wybix)</label>
+      <div class="dm-colores" *ngIf="form.usarColores">
+        <label><input type="color" name="color" [(ngModel)]="form.color"> Principal</label>
+        <label><input type="color" name="acento" [(ngModel)]="form.acento"> Acento</label>
+      </div>
+      <button type="submit" class="btn-primary" data-guide="diseno-menu-guardar">Guardar</button>
+    </form>
+
+    <!-- -------------------------------------------------------- promos -->
+    <div class="dm-bloque">
+      <h3>Promociones <small>{{ promos().length }} de 5</small></h3>
+      <p class="dm-ayuda">Salen en un carrusel arriba del menú. Si eliges un producto, al tocarla se abre.</p>
+      <div class="dm-promos">
+        <div class="dm-promo" *ngFor="let p of promos(); trackBy: porImagen" data-guide="diseno-menu-promo" [attr.data-guide-clave]="p.id">
+          <div class="dm-promo__foto" [style.background-image]="vista(p) ? 'url(' + vista(p) + ')' : null"></div>
+          <input [(ngModel)]="p.titulo" (blur)="guardarPromo(p)" maxlength="60" placeholder="2x1 en glaseadas">
+          <input [(ngModel)]="p.subtitulo" (blur)="guardarPromo(p)" maxlength="120" placeholder="Solo los martes">
+          <wx-select [opciones]="opcionesProducto()" [buscable]="true" placeholder="Producto (opcional)"
+                     [(ngModel)]="p.product_id" (ngModelChange)="guardarPromo(p)"></wx-select>
+          <div class="dm-acciones">
+            <label class="btn-outline dm-subir">Cambiar foto
+              <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir($event, 'PROMO', { id: p.id })">
+            </label>
+            <button type="button" class="btn-outline" (click)="quitar(p)">Quitar</button>
+          </div>
+        </div>
+        <label class="dm-promo dm-promo--nueva" *ngIf="promos().length < 5" data-guide="diseno-menu-promo-nueva">
+          <i class="ph ph-plus" aria-hidden="true"></i> {{ subiendo() === 'PROMO-' ? 'Subiendo…' : 'Agregar promoción' }}
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir($event, 'PROMO')">
+        </label>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------------- lo más pedido -->
+    <div class="dm-bloque">
+      <h3>Lo más pedido</h3>
+      <p class="dm-ayuda" *ngIf="masPedidos().length">Sale solo de tus ventas de los últimos 30 días: {{ masPedidos().join(', ') }}.</p>
+      <p class="dm-ayuda" *ngIf="!masPedidos().length">Aparece en cuanto tengas ventas: se calcula con los últimos 30 días.</p>
+    </div>
+
+    <!-- -------------------------------------------------------- productos -->
+    <div class="dm-bloque">
+      <h3>Productos</h3>
+      <p class="dm-ayuda">Una foto grande (cuadrada, 1080 × 1080) y dos líneas que antojen. Sin foto grande se usa la de Touch.</p>
+      <input class="dm-buscar" type="search" placeholder="Buscar producto o categoría" [ngModel]="buscar()" (ngModelChange)="buscar.set($event)">
+      <ul class="dm-productos">
+        <li *ngFor="let f of visibles(); trackBy: porProducto" [class.oculto]="f.oculto" data-guide="diseno-menu-producto" [attr.data-guide-clave]="f.product_id">
+          <label class="dm-foto" [style.background-image]="fotoDe(f) ? 'url(' + fotoDe(f) + ')' : null" [attr.aria-label]="'Foto de ' + f.nombre">
+            <span *ngIf="!fotoDe(f)"><i class="ph ph-camera-plus" aria-hidden="true"></i></span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir($event, 'PRODUCTO', { productId: f.product_id })">
+          </label>
+          <div class="dm-prod">
+            <div class="dm-prod__cab"><b>{{ f.nombre }}</b> <span>{{ f.price | currency:'MXN':'symbol-narrow':'1.0-2' }} · {{ f.categoria || 'Sin categoría' }}</span></div>
+            <input [(ngModel)]="f.descripcion" (ngModelChange)="marcar(f)" maxlength="300" placeholder="Descripción corta que antoje">
+            <div class="dm-tags">
+              <button type="button" *ngFor="let t of etiquetas" [class.on]="f.tags.has(t.clave)" [attr.aria-pressed]="f.tags.has(t.clave)" (click)="alternar(f, t.clave)">{{ t.texto }}</button>
+              <label class="dm-check"><input type="checkbox" [(ngModel)]="f.destacado" (ngModelChange)="marcar(f)"> Destacado</label>
+              <label class="dm-check"><input type="checkbox" [(ngModel)]="f.oculto" (ngModelChange)="marcar(f)"> No mostrar en línea</label>
+              <button type="button" class="btn-primary dm-guardar" *ngIf="f.cambiado" (click)="guardarProducto(f)">Guardar</button>
+              <button type="button" class="btn-outline" *ngIf="f.foto_id" (click)="quitar({ id: f.foto_id, tipo: 'PRODUCTO', product_id: f.product_id, titulo: null, subtitulo: null, orden: 0, version: 0, ancho: 0, alto: 0 })">Quitar foto</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </ng-container>
+</section>
