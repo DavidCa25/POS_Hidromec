@@ -42,8 +42,20 @@ jobs:
     env:
       WYBIX_DB_SERVER: localhost\SQLEXPRESS
       WYBIX_BACKUP_DIR: C:\POS_Backups
+      # paridad-recetas compara contra el dominio de la app del dueño.
+      WYBIX_MOBILE: ${{ github.workspace }}\owner
     steps:
       - uses: actions/checkout@v4
+      # Si wybix-owner es privado, agrega el secreto OWNER_REPO_TOKEN (token
+      # fine-grained de solo lectura a ese repositorio).
+      - uses: actions/checkout@v4
+        with:
+          repository: DavidCa25/wybix-owner
+          ref: master
+          path: owner
+          token: ${{ secrets.OWNER_REPO_TOKEN || github.token }}
+          sparse-checkout: |
+            packages/domain
       - uses: actions/setup-node@v4
         with:
           node-version: 24
