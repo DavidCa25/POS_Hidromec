@@ -131,6 +131,15 @@ asignar('platforms', [
   'sp_platform_settlement_list',
 ]);
 
+// 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra).
+// Una aplicacion: solo para el negocio que la activa.
+asignar('asistencia', [
+  'sp_asistencia_reglas_get', 'sp_asistencia_reglas_guardar',
+  'sp_asistencia_horario_get', 'sp_asistencia_horario_guardar',
+  'sp_asistencia_estado', 'sp_asistencia_marcar',
+  'sp_asistencia_resumen', 'sp_asistencia_jornadas', 'sp_asistencia_corregir',
+]);
+
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [

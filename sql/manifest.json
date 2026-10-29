@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-29T17:59:51.410Z",
+  "generado": "2026-10-29T22:16:24.062Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -122,6 +122,87 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "537dfce684ed7c5b"
+    },
+    {
+      "nombre": "sp_asistencia_corregir",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_corregir.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8d45f3ff1cf196ee"
+    },
+    {
+      "nombre": "sp_asistencia_estado",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_estado.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2967f51ec2d26e8d"
+    },
+    {
+      "nombre": "sp_asistencia_horario_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_horario_get.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "88c09ccee5deeccd"
+    },
+    {
+      "nombre": "sp_asistencia_horario_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_horario_guardar.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e425546412b767d8"
+    },
+    {
+      "nombre": "sp_asistencia_jornadas",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_jornadas.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "284dbf0067e8bffa"
+    },
+    {
+      "nombre": "sp_asistencia_marcar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_marcar.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4a5be9ec3b43fe49"
+    },
+    {
+      "nombre": "sp_asistencia_reglas_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_reglas_get.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "71e5f93b6fe3c114"
+    },
+    {
+      "nombre": "sp_asistencia_reglas_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_reglas_guardar.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "08df49fd31f182b7"
+    },
+    {
+      "nombre": "sp_asistencia_resumen",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/asistencia/sp_asistencia_resumen.sql",
+      "origen": "Hidromec_DataBase",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "878ebdbcf7781cb5"
     },
     {
       "nombre": "sp_authorize_supervisor",
@@ -2926,21 +3007,21 @@
     }
   ],
   "esquema": {
-    "generado": "2026-10-29T17:59:28.895Z",
+    "generado": "2026-10-29T22:16:01.935Z",
     "base": "Hidromec_DataBase",
     "excluidas": [
       "database_metadata",
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 123,
-      "columnas": 1321,
-      "pk": 123,
+      "tablas": 128,
+      "columnas": 1359,
+      "pk": 128,
       "unicas": 19,
-      "foraneas": 161,
-      "chequeos": 123,
-      "predeterminados": 328,
-      "indices": 131
+      "foraneas": 166,
+      "chequeos": 131,
+      "predeterminados": 341,
+      "indices": 134
     },
     "objetos": [
       {
@@ -2956,6 +3037,76 @@
         "predeterminados": 2,
         "indices": 3,
         "checksum": "79499e7c896f65af"
+      },
+      {
+        "nombre": "asistencia_correcciones",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/asistencia_correcciones.sql",
+        "origen": "Hidromec_DataBase",
+        "columnas": 9,
+        "pk": "PK_asistencia_correcciones",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "161b27059e983870"
+      },
+      {
+        "nombre": "asistencia_descansos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/asistencia_descansos.sql",
+        "origen": "Hidromec_DataBase",
+        "columnas": 4,
+        "pk": "PK_asistencia_descansos",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 0,
+        "indices": 1,
+        "checksum": "b86a6daeaf6cc6c3"
+      },
+      {
+        "nombre": "asistencia_horarios",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/asistencia_horarios.sql",
+        "origen": "Hidromec_DataBase",
+        "columnas": 7,
+        "pk": "PK_asistencia_horarios",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 3,
+        "predeterminados": 2,
+        "indices": 0,
+        "checksum": "08b8423d33e2b7f0"
+      },
+      {
+        "nombre": "asistencia_jornadas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/asistencia_jornadas.sql",
+        "origen": "Hidromec_DataBase",
+        "columnas": 9,
+        "pk": "PK_asistencia_jornadas",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 3,
+        "indices": 2,
+        "checksum": "1a916e3cbcf53e74"
+      },
+      {
+        "nombre": "asistencia_reglas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/asistencia_reglas.sql",
+        "origen": "Hidromec_DataBase",
+        "columnas": 9,
+        "pk": "PK_asistencia_reglas",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 2,
+        "predeterminados": 7,
+        "indices": 0,
+        "checksum": "bba0f2982129521f"
       },
       {
         "nombre": "business_config",

@@ -103,6 +103,12 @@ const BUNDLES = {
    * compras y traspasos), que mueve inventario sin una formula detras.
    */
   PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
+  /**
+   * 0071 · Asistencia: ver las horas de todos, asignar horarios, corregir
+   * jornadas y exportar. Checar no lo necesita: cada quien checa con su
+   * sesion (VENTAS_OPERAR).
+   */
+  ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
 };
 
 const PERMISOS = Object.values(BUNDLES);
@@ -135,6 +141,8 @@ const ROLES = {
     BUNDLES.COMERCIAL_ADMINISTRAR,
     // 0060: produccion por tandas.
     BUNDLES.PRODUCCION_OPERAR,
+    // 0071: las horas de su equipo.
+    BUNDLES.ASISTENCIA_GESTIONAR,
   ],
 
   /**
@@ -217,6 +225,7 @@ const ALTO_RIESGO = new Set([
   BUNDLES.COMERCIAL_ADMINISTRAR,
   BUNDLES.INVENTARIO_OPERAR,
   BUNDLES.PRODUCCION_OPERAR,
+  BUNDLES.ASISTENCIA_GESTIONAR,
   BUNDLES.CATALOGO_EDITAR,
   BUNDLES.CONFIGURACION_ADMINISTRAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
@@ -256,6 +265,7 @@ const OTORGABLES = [
   BUNDLES.REPORTES_VER,
   BUNDLES.SERVICIOS_OPERAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
+  BUNDLES.ASISTENCIA_GESTIONAR,
 ];
 
 /** Como se llama cada paquete otorgable en pantalla, y que da. */
@@ -270,6 +280,7 @@ const DESCRIPCIONES = {
   SERVICIOS_OPERAR: ['Órdenes y agenda', 'El trabajo diario de Servicios.'],
   SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],
   PRODUCCION_OPERAR: ['Producción', 'Planear tandas, empezarlas y registrar lo que salió, con su merma.'],
+  ASISTENCIA_GESTIONAR: ['Asistencia', 'Ver las horas de todos, asignar horarios, corregir jornadas y exportar.'],
 };
 
 /**

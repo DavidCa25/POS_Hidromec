@@ -2555,6 +2555,11 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
 
   if (!lines.length) return { success: false, error: 'La venta no tiene partidas.' };
 
+  /* 0071: con la regla de Asistencia «hay que checar entrada antes de vender»,
+     quien no ha checado no cobra. Sin la aplicacion activada no frena nada. */
+  const frenoAsistencia = await require('./ipc/asistencia').frenaLaVenta(await poolPromise, sql, p.userId);
+  if (frenoAsistencia) return { success: false, error: frenoAsistencia, motivo: 'ASISTENCIA_SIN_ENTRADA' };
+
   /**
    * Reintento SOLO ante deadlock (1205).
    *
@@ -4471,6 +4476,8 @@ require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
 /* 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi). */
 require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
+/* 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra). */
+require('./ipc/asistencia').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

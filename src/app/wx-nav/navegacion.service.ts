@@ -115,6 +115,8 @@ export class NavegacionService {
     return (this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) && this.license.tiene('services');
   }
   get administrarServicios() { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
+  /** 0071: las horas del equipo, con la aplicacion Asistencia activada. */
+  get gestionarAsistencia() { return this.caps.asistencia && this.auth.puede(PAQUETES.ASISTENCIA_GESTIONAR); }
 
   // ---------------------------------------------------------------- areas
   /**
@@ -257,6 +259,7 @@ export class NavegacionService {
       { texto: 'Alertas', ruta: '/dashboard/alertas', icono: 'ph-bell', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Estadísticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Fidelización', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
+      { texto: 'Asistencia', ruta: '/dashboard/asistencia', icono: 'ph-clock', grupo: 'negocio', visible: this.gestionarAsistencia },
       { texto: 'Facturación', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
       /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
          sin contrato con el proveedor no se ofrece, aunque alguna vez se haya

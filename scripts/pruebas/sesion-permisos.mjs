@@ -53,7 +53,7 @@ const B = permisos.BUNDLES;
 seccion('1. El catalogo: tres roles, doce paquetes');
 // ===========================================================================
 
-check(permisos.PERMISOS.length === 12, 'hay doce paquetes', permisos.PERMISOS.join(' '));
+check(permisos.PERMISOS.length === 13, 'hay trece paquetes', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -71,12 +71,12 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 12, 'Administrador tiene los doce');
+check(deAdmin.size === 13, 'Administrador tiene los trece');
 // Roles v2: el Encargado tiene todo menos administrar el negocio.
-check(deEncargado.size === 11 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+check(deEncargado.size === 12 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
    && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
    && deEncargado.has(B.INVENTARIO_OPERAR) && deEncargado.has(B.CATALOGO_EDITAR),
-  'Encargado tiene once: todo menos administrar el negocio', [...deEncargado].join(' '));
+  'Encargado tiene doce: todo menos administrar el negocio', [...deEncargado].join(' '));
 // Roles v2: el Operador vende, mantiene el catalogo, promociones y combos, y
 // hace cortes. Lo que mueve dinero o inventario NO es suyo: lo pide aprobado.
 // 0060: la PRODUCCION si es suya -quien hornea suele ser Operador-, porque

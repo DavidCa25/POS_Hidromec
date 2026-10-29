@@ -35,7 +35,9 @@ import {
   ResumenOpcion, aSeleccionada, admiteCantidad, gruposAConfigurar, minimoDe,
   opcionesElegibles, resumenDeOpciones, seleccionAutomatica, topeDeGrupo,
 } from '../../core/opciones';
-import { FechaSqlPipe } from '../../core';
+import { CapabilityService, FechaSqlPipe } from '../../core';
+import { RegisterService } from '../../services/register.service';
+import { AsistenciaChecarComponent } from '../../app/asistencia/checar/asistencia-checar.component';
 
 /*
  * RETAIL POS — capa de presentacion.
@@ -81,7 +83,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -111,6 +113,17 @@ export class Venta implements OnInit, OnDestroy {
   private readonly mesaSvc = inject(MesaService);
   private readonly clientesSvc = inject(ClientesVentaService);
   private readonly licencia = inject(LicenseService);
+  /* 0071: Checar (Asistencia), solo si el negocio activo la aplicacion. */
+  readonly caps = inject(CapabilityService);
+  private readonly cajaActual = inject(RegisterService);
+  showChecar = false;
+  motivoChecar: string | null = null;
+  get cajaDeChecar(): number | null { return this.cajaActual.registerId; }
+  abrirChecar(motivo: string | null = null): void {
+    if (!this.caps.asistencia) return;
+    this.motivoChecar = motivo;
+    this.showChecar = true;
+  }
   readonly cuentaMesa = this.mesaSvc.cuentaActiva;
   readonly pendientesMesa = this.mesaSvc.pendientes;
   enviandoMesa = false;
@@ -856,6 +869,9 @@ export class Venta implements OnInit, OnDestroy {
 
     if (!res.ok) {
       this.showModal = false;
+      /* 0071: la regla «checar entrada antes de cobrar». Se abre Checar en
+         lugar de un error: la persona resuelve ahi mismo y vuelve a cobrar. */
+      if (res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
       await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: res.error || 'No se pudo registrar la venta.' });
       return;
     }
@@ -1378,6 +1394,12 @@ export class Venta implements OnInit, OnDestroy {
       case 'F10':
         event.preventDefault();
         if (!this.showCashOutModal) await this.abrirSalidaEfectivo();
+        return;
+
+      case 'F9':
+        if (!this.caps.asistencia) return;
+        event.preventDefault();
+        this.abrirChecar();
         return;
 
       case '+':

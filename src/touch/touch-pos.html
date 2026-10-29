@@ -49,6 +49,11 @@
               (click)="abrirSalida()" aria-label="Salida de efectivo">
         <i class="ph ph-hand-coins" aria-hidden="true"></i><span>Salida de efectivo</span>
       </button>
+      <!-- 0071: Checar (Asistencia), solo con la aplicacion activada. -->
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-checar" *ngIf="caps.asistencia"
+              (click)="abrirChecar()" aria-label="Checar">
+        <i class="ph ph-clock" aria-hidden="true"></i><span>Checar</span>
+      </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
@@ -692,3 +697,6 @@
 <app-receipt-viewer *ngIf="verTicket&&ultimoFolio()" [id]="ultimoFolio()!" (close)="verTicket=false"></app-receipt-viewer>
 <app-receipt-email *ngIf="enviarCorreo&&ultimoFolio()" [saleId]="ultimoFolio()!" [email]="clienteFactura?.email||''" (close)="enviarCorreo=false"></app-receipt-email>
 <app-factura-nueva *ngIf="facturaAbierta" [saleId]="ultimoFolio()" [conceptos]="conceptosFactura" [receptorRfc]="clienteFactura?.tax_id||null" [receptorNombre]="clienteFactura?.razon_social||clienteFactura?.name||null" [receptorEmail]="clienteFactura?.email||null" [receptorRegimen]="clienteFactura?.regimen_fiscal||null" [receptorUsoCfdi]="clienteFactura?.uso_cfdi||null" (cerrar)="facturaAbierta=false" (timbrada)="facturaAbierta=false"></app-factura-nueva>
+
+<!-- 0071: Checar (Asistencia). -->
+<app-asistencia-checar *ngIf="checarAbierto" [registerId]="registro.registerId" [motivo]="motivoChecar" (cerrar)="checarAbierto=false"></app-asistencia-checar>

@@ -28,7 +28,7 @@ const {
   VENTAS_OPERAR, VENTAS_SUPERVISAR, INVENTARIO_OPERAR,
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
-  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR,
+  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR, ASISTENCIA_GESTIONAR,
 } = BUNDLES;
 
 /**
@@ -318,6 +318,23 @@ const EXIGE = {
   'produccion:formula': CATALOGO_EDITAR,
   'produccion:formula-guardar': CATALOGO_EDITAR,
   'produccion:formula-quitar': CATALOGO_EDITAR,
+
+  // ------------------------------------------------------- 0071 asistencia
+  // Checar es de quien tiene la sesion: su id sale de la sesion, asi que
+  // basta con poder trabajar en la caja. Ver a los demas, sus horarios y
+  // corregirlos es de quien gestiona al equipo. Activar la aplicacion y
+  // cambiar sus reglas es decidir como funciona el negocio.
+  'asistencia:estado': VENTAS_OPERAR,
+  'asistencia:marcar': VENTAS_OPERAR,
+  'asistencia:mis-horas': VENTAS_OPERAR,
+  'asistencia:reglas': ASISTENCIA_GESTIONAR,
+  'asistencia:resumen': ASISTENCIA_GESTIONAR,
+  'asistencia:jornadas': ASISTENCIA_GESTIONAR,
+  'asistencia:corregir': ASISTENCIA_GESTIONAR,
+  'asistencia:horario': ASISTENCIA_GESTIONAR,
+  'asistencia:horario-guardar': ASISTENCIA_GESTIONAR,
+  'asistencia:activar': CONFIGURACION_ADMINISTRAR,
+  'asistencia:reglas-guardar': CONFIGURACION_ADMINISTRAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,

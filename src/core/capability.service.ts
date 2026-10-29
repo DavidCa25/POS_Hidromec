@@ -56,6 +56,7 @@ export class CapabilityService {
     servicios: 'servicios',
     mesas: 'mesas',
     comandas: 'comandas',
+    asistencia: 'asistencia',
   };
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -83,6 +84,9 @@ export class CapabilityService {
          y vuelven tal cual al encenderlo. */
       mesas: this.modulos().has('hospitality') && this.modulos().has('mesas') && lic('hospitality') && lic('hospitality.tables'),
       comandas: this.modulos().has('hospitality') && this.modulos().has('comandas') && lic('hospitality') && lic('hospitality.kds'),
+      /* No depende de la licencia: llevar las horas del equipo no es una
+         capacidad de venta que se cobre aparte. */
+      asistencia: this.modulos().has('asistencia'),
     };
   });
 
@@ -92,6 +96,7 @@ export class CapabilityService {
   get servicios(): boolean { return this.capabilities().servicios; }
   get mesas(): boolean { return this.capabilities().mesas; }
   get comandas(): boolean { return this.capabilities().comandas; }
+  get asistencia(): boolean { return this.capabilities().asistencia; }
 
   /**
    * Donde vende ESTA caja ahora mismo.

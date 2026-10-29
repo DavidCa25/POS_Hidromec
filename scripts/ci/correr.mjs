@@ -39,7 +39,7 @@ const GRUPOS = {
     'db:test-servicios', 'db:test-giros', 'db:test-comercial', 'db:test-multisucursal', 'db:test-pagos',
     'node scripts/db/pruebas/club-membresias.mjs', 'node scripts/db/pruebas/puntos-sellos.mjs',
     'node scripts/db/pruebas/devoluciones.mjs',
-    'test:club-wallet', 'db:test-menu-en-linea', 'db:test-liquidaciones',
+    'test:club-wallet', 'db:test-menu-en-linea', 'db:test-liquidaciones', 'db:test-asistencia',
     'test:local-host', 'test:licencia-integracion',
   ],
   /* Fallan hoy en main; se corren para verlas, sin bloquear. Al arreglar una,
