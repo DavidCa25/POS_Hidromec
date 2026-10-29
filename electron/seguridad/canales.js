@@ -88,6 +88,13 @@ const EXIGE = {
   'puntos:tarjeta-guardar': COMERCIAL_ADMINISTRAR,
   'puntos:costo': COMERCIAL_ADMINISTRAR,
   'puntos:ajustar': VENTAS_SUPERVISAR,
+  /* 0068 · Avisos por WhatsApp al cliente. Encenderlos, ver el registro y
+     dar de baja o reactivar un teléfono es de quien administra el negocio. */
+  'whatsapp:config': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:config-guardar': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:registro': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:telefono': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:conexion': CONFIGURACION_ADMINISTRAR,
   // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
   'reportes:estado-resultados': REPORTES_VER,
   'ticket:print-document': VENTAS_OPERAR,

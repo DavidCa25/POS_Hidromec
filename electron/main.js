@@ -154,7 +154,7 @@ ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
 /* IPC de mesas, cuentas, comandas y KDS. Las comandas que van a papel se
    imprimen con el mismo `imprimirHtml` que el ticket de venta. */
 const hospitalityDominio = ipcSalon.registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig,
-  alCambiarComandas: () => localHost.avisar() });
+  alCambiarComandas: () => { localHost.avisar(); avisosWhatsapp?.pronto(); } });
 
 /* Wybix Local Host: el KDS en tablets por la red del local. Solo la
    instalacion principal, solo con el arriendo de la base y solo si se
@@ -170,6 +170,7 @@ const localHost = crearLocalHost({
   /* La licencia firmada: qué pantallas incluye y cuántas por giro. `licencia`
      se crea más abajo; aquí solo se guarda cómo preguntarle. */
   licencia: () => licencia.evaluador(),
+  alCambiarComandas: () => avisosWhatsapp?.pronto(),
 });
 localHost.registrarIpc(ipcMain);
 
@@ -3239,6 +3240,8 @@ ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview
 
 /** 0061: lo registra electron/ipc/corte-correo.js (más abajo, con los comprobantes). */
 let corteCorreo = null;
+/** 0068: lo crea el bloque de WhatsApp (más abajo); las comandas lo despiertan. */
+let avisosWhatsapp = null;
 
 /*
  * CERRAR UN TURNO (Fase 1).
@@ -4436,6 +4439,21 @@ require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,
 corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0063: el Club (membresías). */
 require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0068: avisos por WhatsApp al cliente final. «Pedido listo» lo barre la
+   caja principal; las membresías las avisa la nube sola (cron). */
+{
+  const nubeLista = () => { const c = cloudSync.getCloudConfig?.() || {}; return !!(c.enabled && c.equipo?.registrado); };
+  const { urlDeSeguimiento } = require('./local-host/seguimiento');
+  avisosWhatsapp = require('./nube/whatsapp-avisos').crearAvisosWhatsapp({
+    pool: () => poolPromise, sql,
+    llamar: (cuerpo) => cloudSync.llamarFiscal('whatsapp-avisos', cuerpo),
+    disponible: async () => nubeLista() && (loadInstallConfig()?.role ?? 'principal') === 'principal',
+    urlDeSeguimiento: (cuentaId) => urlDeSeguimiento({ pool: () => poolPromise, sql, cuentaId }),
+    log: (m) => console.warn('[whatsapp]', m),
+  });
+  require('./ipc/whatsapp').registrar({ ipcMain, avisos: avisosWhatsapp, nubeLista, abrirExterno: (u) => shell.openExternal(u) });
+  avisosWhatsapp.iniciar();
+}
 /* 0064: puntos y sellos. */
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */

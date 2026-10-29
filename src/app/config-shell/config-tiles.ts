@@ -114,6 +114,9 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
             /* MultiSucursal: matriz, catalogo central, precios por sucursal y usuarios de empresa. */
             { id: 'multisucursal', title: 'MultiSucursal', desc: 'Catálogo de la matriz, precios por sucursal y usuarios de empresa', icon: 'buildings', color: 'blue', size: '2x1',
               load: () => import('../multisucursal-panel/multisucursal-panel.component').then(m => m.MultisucursalPanelComponent) },
+            /* 0068: avisos al cliente final (pedido listo, membresía). Los manda la nube. */
+            { id: 'whatsapp-avisos', title: 'Avisos por WhatsApp', desc: 'Pedido listo y membresía por vencer, a tus clientes', icon: 'whatsapp-logo', color: 'green', size: '2x1', amplio: true,
+              load: () => import('../whatsapp-avisos-panel/whatsapp-avisos-panel.component').then(m => m.WhatsappAvisosPanelComponent) },
             { id: 'eliminar-cuenta', title: 'Eliminar cuenta', desc: 'Borra tu cuenta y datos en la nube', icon: 'user-minus', color: 'orange', size: '1x1',
               load: () => import('../eliminar-cuenta-panel/eliminar-cuenta.component').then(m => m.EliminarCuentaPanelComponent) }
         ]

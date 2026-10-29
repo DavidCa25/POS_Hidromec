@@ -246,6 +246,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clubPlanGuardar: p => invoke('club:plan-guardar',p),
     clubGestionar: p => invoke('club:gestionar',p),
     clubSincronizar: () => invoke('club:sincronizar'),
+    /* 0068: avisos por WhatsApp al cliente final (los manda la nube). */
+    whatsappConfig: () => invoke('whatsapp:config'),
+    whatsappConfigGuardar: (p) => invoke('whatsapp:config-guardar', p),
+    whatsappRegistro: (p) => invoke('whatsapp:registro', p),
+    whatsappTelefono: (p) => invoke('whatsapp:telefono', p),
+    whatsappConexion: (p) => invoke('whatsapp:conexion', p),
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),
