@@ -19,7 +19,7 @@ CREATE TABLE dbo.expense_categories (
 END;
 
 IF OBJECT_ID(N'dbo.CK_expense_categories_kind', 'C') IS NULL
-ALTER TABLE dbo.expense_categories WITH CHECK ADD CONSTRAINT CK_expense_categories_kind CHECK ([kind]='PERSONAL' OR [kind]='GENERAL');
+ALTER TABLE dbo.expense_categories WITH CHECK ADD CONSTRAINT CK_expense_categories_kind CHECK ([kind]='PLATAFORMA' OR [kind]='PERSONAL' OR [kind]='GENERAL');
 
 IF OBJECT_ID(N'dbo.CK_expense_categories_name', 'C') IS NULL
 ALTER TABLE dbo.expense_categories WITH CHECK ADD CONSTRAINT CK_expense_categories_name CHECK (len(ltrim(rtrim([name])))>(0));
