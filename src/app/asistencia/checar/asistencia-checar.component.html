@@ -1,0 +1,62 @@
+<div class="wx-dialogo-velo asis-velo" (click)="cerrar.emit()">
+  <section class="wx-dialogo asis-checar" role="dialog" aria-modal="true" aria-labelledby="asis-checar-t"
+           data-guide="asistencia-checar" (click)="$event.stopPropagation()">
+    <header class="asis-checar__cab">
+      <h3 id="asis-checar-t">Checar</h3>
+      <button type="button" class="asis-x" aria-label="Cerrar" (click)="cerrar.emit()"><i class="ph ph-x"></i></button>
+    </header>
+
+    <p class="asis-aviso" *ngIf="motivo">{{ motivo }}</p>
+
+    <div class="asis-cargando" *ngIf="cargando()">Cargando…</div>
+
+    <ng-container *ngIf="!cargando() && estado() as e">
+      <div class="asis-hora">
+        <div class="asis-hora__reloj">{{ e.ahora | fechaSql:'HH:mm' }}</div>
+        <div class="asis-hora__dia">{{ e.ahora | fechaSql:"EEEE d 'de' MMMM":'es-MX' }}</div>
+      </div>
+
+      <div class="asis-persona">
+        <wx-avatar [semilla]="'u:' + e.user_id" [nombre]="e.usuario" [size]="56"></wx-avatar>
+        <div class="asis-persona__txt">
+          <b>{{ e.usuario }}</b>
+          <span *ngIf="e.jornada_id && !e.en_descanso">Entró a las {{ e.entrada_en | fechaSql:'HH:mm' }} · trabajando {{ horas(e.trabajado_min) }}</span>
+          <span *ngIf="e.en_descanso">En descanso desde las {{ e.descanso_desde | fechaSql:'HH:mm' }}</span>
+          <span *ngIf="!e.jornada_id">Sin entrada registrada hoy</span>
+          <span *ngIf="e.horario_entrada">Horario de hoy {{ e.horario_entrada }} – {{ e.horario_salida }}<ng-container *ngIf="e.horario_descanso_min"> · descanso {{ e.horario_descanso_min }} min</ng-container></span>
+          <span *ngIf="!e.horario_entrada">Hoy no tiene horario asignado</span>
+        </div>
+      </div>
+
+      <div class="asis-hecho" *ngIf="hecho()" role="status"><i class="ph ph-check-circle"></i> {{ hecho() }}</div>
+
+      <div class="asis-acciones" *ngIf="!hecho()">
+        <button type="button" class="asis-btn asis-btn--primario" *ngIf="e.puede_entrada" data-guide="asistencia-entrada"
+                [disabled]="enviando()" (click)="marcar('ENTRADA')">
+          <i class="ph ph-sign-in"></i> Registrar entrada
+        </button>
+        <button type="button" class="asis-btn asis-btn--primario" *ngIf="e.puede_fin_descanso" data-guide="asistencia-fin-descanso"
+                [disabled]="enviando()" (click)="marcar('FIN_DESCANSO')">
+          <i class="ph ph-play"></i> Terminar descanso
+        </button>
+        <button type="button" class="asis-btn asis-btn--primario" *ngIf="e.puede_descanso" data-guide="asistencia-descanso"
+                [disabled]="enviando()" (click)="marcar('INICIO_DESCANSO')">
+          <i class="ph ph-coffee"></i> Iniciar descanso
+        </button>
+        <button type="button" class="asis-btn" *ngIf="e.puede_salida" data-guide="asistencia-salida"
+                [disabled]="enviando()" (click)="marcar('SALIDA')">
+          <i class="ph ph-sign-out"></i> Registrar salida
+        </button>
+      </div>
+
+      <p class="asis-error" *ngIf="error()" role="alert">{{ error() }}</p>
+
+      <footer class="asis-pie">
+        <span *ngIf="semana() as s">Esta semana {{ horas(s.trabajado) }}<ng-container *ngIf="s.extra"> · extra {{ horas(s.extra) }}</ng-container></span>
+        <span>La hora la pone el servidor</span>
+      </footer>
+    </ng-container>
+
+    <p class="asis-error" *ngIf="!cargando() && !estado() && error()" role="alert">{{ error() }}</p>
+  </section>
+</div>

@@ -1,0 +1,225 @@
+<div class="asis" data-guide="asistencia">
+  <header class="asis-cab">
+    <div>
+      <h1>Asistencia</h1>
+      <p>Horas trabajadas y extra. No calcula pagos.</p>
+    </div>
+    <div class="asis-cab__acciones" *ngIf="pestana() === 'semana'">
+      <button type="button" class="asis-icono" aria-label="Semana anterior" (click)="semana(-1)"><i class="ph ph-caret-left"></i></button>
+      <span class="asis-rango">{{ lunes() | fechaSql:'d MMM':'es-MX' }} – {{ domingo() | fechaSql:'d MMM y':'es-MX' }}</span>
+      <button type="button" class="asis-icono" aria-label="Semana siguiente" (click)="semana(1)"><i class="ph ph-caret-right"></i></button>
+      <button type="button" class="asis-sec" *ngIf="!esEstaSemana()" (click)="hoy()">Esta semana</button>
+      <button type="button" class="asis-sec" data-guide="asistencia-pdf" (click)="exportar('pdf')"><i class="ph ph-file-pdf"></i> PDF</button>
+      <button type="button" class="asis-pri" data-guide="asistencia-exportar" (click)="exportar('excel')"><i class="ph ph-microsoft-excel-logo"></i> Exportar para el contador</button>
+    </div>
+  </header>
+
+  <nav class="asis-tabs" role="tablist" aria-label="Asistencia">
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'semana'" [class.on]="pestana() === 'semana'" data-guide="asistencia-tab-semana" (click)="pestana.set('semana')">Semana</button>
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'horarios'" [class.on]="pestana() === 'horarios'" data-guide="asistencia-tab-horarios" (click)="pestana.set('horarios')">
+      Horarios <span class="asis-badge" *ngIf="sinHorario()">{{ sinHorario() }} sin horario</span>
+    </button>
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'reglas'" [class.on]="pestana() === 'reglas'" data-guide="asistencia-tab-reglas" (click)="pestana.set('reglas')">Reglas</button>
+  </nav>
+
+  <p class="asis-error" *ngIf="error()" role="alert">{{ error() }}</p>
+
+  <!-- ============================================================ SEMANA -->
+  <ng-container *ngIf="pestana() === 'semana'">
+    <div class="asis-kpis">
+      <div class="asis-kpi"><span>Horas trabajadas</span><b>{{ horas(totales().trabajado) }}</b></div>
+      <div class="asis-kpi asis-kpi--extra"><span>Horas extra</span><b>{{ horas(totales().extra) }}</b></div>
+      <div class="asis-kpi asis-kpi--retardo"><span>Retardos</span><b>{{ totales().retardos }}</b></div>
+      <div class="asis-kpi asis-kpi--revisar"><span>Por revisar</span><b>{{ totales().revisar }}</b></div>
+    </div>
+
+    <p class="asis-aviso" *ngIf="sinHorario() && !cargando()">
+      {{ sinHorario() }} {{ sinHorario() === 1 ? 'persona no tiene' : 'personas no tienen' }} horario: sin horario no se cuentan horas extra ni retardos.
+      <button type="button" class="asis-link" (click)="pestana.set('horarios')">Asignar horarios</button>
+    </p>
+
+    <div class="castrol-table-container asis-tabla" data-guide="asistencia-tabla">
+      <table class="castrol-table">
+        <thead>
+          <tr>
+            <th scope="col" class="asis-col-persona">Persona</th>
+            <th scope="col" class="num" *ngFor="let f of dias(); let i = index">{{ etiquetaDia(f, i) }}</th>
+            <th scope="col" class="num">Total</th>
+            <th scope="col" class="num">Extra</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="cargando()"><td [attr.colspan]="10" class="asis-vacio">Cargando…</td></tr>
+          <tr *ngIf="!cargando() && !filas().length"><td [attr.colspan]="10" class="asis-vacio">No hay personas activas.</td></tr>
+          <tr *ngFor="let f of filas()" tabindex="0" [attr.data-guide-clave]="f.persona.user_id"
+              (click)="abrirDetalle(f.persona)" (keydown.enter)="abrirDetalle(f.persona)">
+            <td>
+              <div class="asis-persona">
+                <wx-avatar [semilla]="'u:' + f.persona.user_id" [nombre]="f.persona.usuario" [size]="34"></wx-avatar>
+                <div><b>{{ f.persona.usuario }}</b><small>{{ f.horario || 'Sin horario' }}</small></div>
+              </div>
+            </td>
+            <td class="num asis-celda" *ngFor="let c of f.celdas" [class.asis-celda--libre]="c.libre && c.vacia">
+              <span class="asis-h" [class.asis-h--vacia]="c.vacia">{{ c.horas }}</span>
+              <span class="asis-chip asis-chip--{{ x.tipo }}" *ngFor="let x of c.chips">{{ x.texto }}</span>
+            </td>
+            <td class="num asis-total">{{ horas(f.trabajado) }}</td>
+            <td class="num asis-total asis-total--extra">{{ horas(f.extra) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <section class="asis-leyenda" aria-labelledby="asis-ley-t">
+      <h2 id="asis-ley-t">Colores de la tabla</h2>
+      <div class="asis-leyenda__items">
+        <span><i class="asis-muestra asis-muestra--cab"></i>Cabecera: color del negocio</span>
+        <span><i class="asis-muestra asis-muestra--sel"></i>Fila bajo el cursor</span>
+        <span><span class="asis-chip asis-chip--extra">+0:42</span>Hora extra</span>
+        <span><span class="asis-chip asis-chip--retardo">Retardo 12</span>Llegó después de su horario</span>
+        <span><span class="asis-chip asis-chip--revisar">Revisar</span>Falta una marca</span>
+        <span><span class="asis-chip asis-chip--abierta">Trabajando</span>Jornada en curso</span>
+        <span><i class="asis-muestra asis-muestra--libre"></i>Día de descanso</span>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- ========================================================== HORARIOS -->
+  <ng-container *ngIf="pestana() === 'horarios'">
+    <div class="asis-horarios">
+      <aside class="asis-lista" aria-label="Personas">
+        <button type="button" *ngFor="let p of personas()" class="asis-lista__item" [class.on]="editando()?.user_id === p.user_id"
+                [attr.data-guide-clave]="p.user_id" (click)="editarHorario(p)">
+          <wx-avatar [semilla]="'u:' + p.user_id" [nombre]="p.usuario" [size]="34"></wx-avatar>
+          <span><b>{{ p.usuario }}</b><small>{{ resumenDe(p) }}</small></span>
+        </button>
+      </aside>
+
+      <section class="asis-editor" *ngIf="editando() as p; else elige" data-guide="asistencia-horario">
+        <header class="asis-editor__cab">
+          <h2>Horario de {{ p.usuario }}</h2>
+          <div class="asis-editor__plantillas" role="group" aria-label="Plantillas">
+            <button type="button" class="asis-pill" (click)="plantilla('08:00', '16:00')">Mañana 08–16</button>
+            <button type="button" class="asis-pill" (click)="plantilla('14:00', '22:00')">Tarde 14–22</button>
+            <wx-select *ngIf="opcionesCopiar().length" class="asis-copiar" [opciones]="opcionesCopiar()" placeholder="Copiar de otra persona"
+                       [ngModel]="copiarDe()" (ngModelChange)="copiar($event)"></wx-select>
+          </div>
+        </header>
+        <div class="castrol-table-container">
+          <table class="castrol-table">
+            <thead><tr><th scope="col">Día</th><th scope="col">Trabaja</th><th scope="col">Entrada</th><th scope="col">Salida</th><th scope="col">Descanso (min)</th><th scope="col" class="num">Horas</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let d of semanaEdit(); let i = index">
+                <td><b>{{ d.nombre }}</b></td>
+                <td>
+                  <label class="asis-switch">
+                    <input type="checkbox" [checked]="d.trabaja" (change)="actualizarDia(i, { trabaja: $any($event.target).checked })" [attr.aria-label]="'Trabaja el ' + d.nombre">
+                    <span></span>
+                  </label>
+                </td>
+                <ng-container *ngIf="d.trabaja; else libreTpl">
+                  <td><wx-time [ngModel]="d.entrada" (ngModelChange)="actualizarDia(i, { entrada: $event })" placeholder="Entrada" [pasoMinutos]="15"></wx-time></td>
+                  <td><wx-time [ngModel]="d.salida" (ngModelChange)="actualizarDia(i, { salida: $event })" placeholder="Salida" [pasoMinutos]="15"></wx-time></td>
+                  <td><input class="ctl asis-num" type="number" min="0" max="240" step="5" [ngModel]="d.descansoMin" (ngModelChange)="actualizarDia(i, { descansoMin: $event })" [attr.aria-label]="'Descanso del ' + d.nombre"></td>
+                </ng-container>
+                <ng-template #libreTpl><td colspan="3" class="asis-tenue">Descanso semanal</td></ng-template>
+                <td class="num asis-total">{{ horasDelDia(d) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="asis-editor__pie">
+          <span>{{ horas(totalSemanaEdit()) }} a la semana · la hora extra cuenta lo que pase de la salida{{ reglas()?.tolerancia ? ', después de 10 minutos' : '' }}.</span>
+          <div>
+            <button type="button" class="asis-sec" (click)="editando.set(null)">Cancelar</button>
+            <button type="button" class="asis-pri" [disabled]="guardando()" (click)="guardarHorario()">Guardar horario</button>
+          </div>
+        </footer>
+      </section>
+      <ng-template #elige><p class="asis-vacio asis-editor">Elige una persona para ver o asignar su horario.</p></ng-template>
+    </div>
+  </ng-container>
+
+  <!-- ============================================================ REGLAS -->
+  <ng-container *ngIf="pestana() === 'reglas'">
+    <section class="asis-reglas" *ngIf="reglas() as r" data-guide="asistencia-reglas">
+      <div class="asis-regla" *ngFor="let p of preguntas">
+        <div class="asis-regla__txt"><b>{{ p.texto }}</b><small>{{ p.ayuda }}</small></div>
+        <ng-container *ngIf="reglasEdit() as e; else soloVer">
+          <div class="asis-sino-ng" role="radiogroup" [attr.aria-label]="p.texto">
+            <button type="button" role="radio" [attr.aria-checked]="e[p.clave]" [class.on]="e[p.clave]" (click)="responder(p.clave, true)">Sí</button>
+            <button type="button" role="radio" [attr.aria-checked]="!e[p.clave]" [class.on]="!e[p.clave]" (click)="responder(p.clave, false)">No</button>
+          </div>
+        </ng-container>
+        <ng-template #soloVer><span class="asis-respuesta" [class.si]="r[p.clave]">{{ r[p.clave] ? 'Sí' : 'No' }}</span></ng-template>
+      </div>
+      <footer class="asis-editor__pie" *ngIf="puedeReglas">
+        <span>Cambiar una regla recalcula todas las semanas, también las pasadas.</span>
+        <div *ngIf="reglasEdit(); else botonCambiar">
+          <button type="button" class="asis-sec" (click)="reglasEdit.set(null)">Cancelar</button>
+          <button type="button" class="asis-pri" [disabled]="guardando()" (click)="guardarReglas()">Guardar reglas</button>
+        </div>
+        <ng-template #botonCambiar><button type="button" class="asis-sec" (click)="editarReglas()">Cambiar reglas</button></ng-template>
+      </footer>
+    </section>
+  </ng-container>
+</div>
+
+<!-- =================================================== DETALLE DE PERSONA -->
+<div class="wx-dialogo-velo asis-velo" *ngIf="detalle() as d" (click)="cerrarDetalle()">
+  <section class="wx-dialogo asis-detalle" role="dialog" aria-modal="true" aria-labelledby="asis-det-t" (click)="$event.stopPropagation()">
+    <header class="asis-detalle__cab">
+      <div class="asis-persona">
+        <wx-avatar [semilla]="'u:' + d.persona.user_id" [nombre]="d.persona.usuario" [size]="44"></wx-avatar>
+        <div><h3 id="asis-det-t">{{ d.persona.usuario }}</h3><small>{{ resumenDe(d.persona) }}</small></div>
+      </div>
+      <button type="button" class="asis-icono" aria-label="Cerrar" (click)="cerrarDetalle()"><i class="ph ph-x"></i></button>
+    </header>
+
+    <div class="asis-detalle__cuerpo">
+      <p class="asis-aviso" *ngIf="esYo(d.persona)">Son tus horas: las corrige otro encargado.</p>
+      <p class="asis-vacio" *ngIf="!d.jornadas.length">Sin jornadas esta semana.</p>
+      <article class="asis-jornada" *ngFor="let j of d.jornadas" [class.asis-jornada--revisar]="j.estado === 'SIN_SALIDA'">
+        <div class="asis-jornada__dia"><b>{{ j.dia | fechaSql:'EEEE':'es-MX' }}</b><small>{{ j.dia | fechaSql:'d MMM':'es-MX' }}</small></div>
+        <div class="asis-jornada__marcas">
+          <span class="asis-marca asis-marca--entrada">Entrada {{ j.entrada_en | fechaSql:'HH:mm' }}</span>
+          <span class="asis-marca" *ngFor="let x of descansosDe(j.id)">Descanso {{ x.inicio_en | fechaSql:'HH:mm' }}–{{ x.fin_en ? (x.fin_en | fechaSql:'HH:mm') : '…' }}</span>
+          <span class="asis-marca" *ngIf="j.salida_en">Salida {{ j.salida_en | fechaSql:'HH:mm' }}</span>
+          <span class="asis-chip asis-chip--revisar" *ngIf="j.estado === 'SIN_SALIDA'">Sin salida</span>
+          <span class="asis-chip asis-chip--abierta" *ngIf="j.estado === 'ABIERTA'">Trabajando</span>
+          <span class="asis-chip asis-chip--corregida" *ngIf="j.corregida">Corregida</span>
+          <small class="asis-correccion" *ngFor="let c of correccionesDe(j.id)">
+            {{ c.corregida_por_nombre }} corrigió el {{ c.corregida_en | fechaSql:'d MMM HH:mm':'es-MX' }}: «{{ c.motivo }}»
+          </small>
+        </div>
+        <button type="button" class="asis-sec asis-sec--chica" *ngIf="!esYo(d.persona)" (click)="corregir(j)">Corregir</button>
+      </article>
+
+      <form class="asis-corregir" *ngIf="corrigiendo() as c" (ngSubmit)="guardarCorreccion()" data-guide="asistencia-corregir">
+        <h4>{{ c.jornadaId ? 'Corregir jornada' : 'Registrar una jornada que no se marcó' }}</h4>
+        <div class="asis-corregir__fila">
+          <label>Entrada</label>
+          <wx-date name="fe" [(ngModel)]="c.fechaE" [limpiable]="false"></wx-date>
+          <wx-time name="he" [(ngModel)]="c.horaE" placeholder="Hora" [pasoMinutos]="1"></wx-time>
+        </div>
+        <div class="asis-corregir__fila" *ngIf="!c.abierta || c.horaS">
+          <label>Salida</label>
+          <wx-date name="fs" [(ngModel)]="c.fechaS" [limpiable]="false"></wx-date>
+          <wx-time name="hs" [(ngModel)]="c.horaS" placeholder="Hora" [pasoMinutos]="1"></wx-time>
+        </div>
+        <div class="asis-corregir__fila">
+          <label for="asis-motivo">Motivo</label>
+          <input id="asis-motivo" class="ctl" name="mo" maxlength="255" [(ngModel)]="c.motivo" placeholder="Ej. olvidó checar su salida">
+        </div>
+        <div class="asis-corregir__pie">
+          <button type="button" class="asis-sec" (click)="corrigiendo.set(null)">Cancelar</button>
+          <button type="submit" class="asis-pri" [disabled]="guardando()">Guardar corrección</button>
+        </div>
+      </form>
+    </div>
+
+    <footer class="asis-detalle__pie" *ngIf="!esYo(d.persona) && !corrigiendo()">
+      <button type="button" class="asis-sec" (click)="corregir(null)"><i class="ph ph-plus"></i> Registrar jornada que no se marcó</button>
+    </footer>
+  </section>
+</div>

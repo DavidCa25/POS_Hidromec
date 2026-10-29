@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { RegisterService } from '../services/register.service';
+import { AsistenciaChecarComponent } from '../app/asistencia/checar/asistencia-checar.component';
 import {
   CapabilityService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
@@ -58,7 +59,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
+  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -99,7 +100,15 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly licencia = inject(LicenseService);
   private readonly display = inject(CustomerDisplayService);
   private readonly auth = inject(AuthService);
-  private readonly registro = inject(RegisterService);
+  readonly registro = inject(RegisterService);
+  /* 0071: Checar (Asistencia). */
+  checarAbierto = false;
+  motivoChecar: string | null = null;
+  abrirChecar(motivo: string | null = null): void {
+    if (!this.caps.asistencia) return;
+    this.motivoChecar = motivo;
+    this.checarAbierto = true;
+  }
   private readonly router = inject(Router);
 
   /** A la agenda del día, que en Touch es la pantalla de Servicios. */
@@ -980,6 +989,8 @@ export class TouchPos implements OnInit, OnDestroy {
         autoPrint: true,
       });
 
+      /* 0071: la regla «checar entrada antes de cobrar» abre Checar ahi mismo. */
+      if (!res.ok && res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
       if (!res.ok) { this.reaccionar('error', 3500); this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
 
       /* La venta ya esta. Enlazarla libera la mesa; si fallara, se dice y la

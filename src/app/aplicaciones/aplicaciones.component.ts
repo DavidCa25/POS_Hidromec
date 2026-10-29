@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import {
+  AsistenciaService, PREGUNTAS_ASISTENCIA, ReglasAsistencia, reglasSugeridas,
   CATEGORIAS, CapabilityService, Capabilities, GiroServiciosService, MODULOS,
   ModuleCategory, ModuleDefinition, PresetServicios,
 } from '../../core';
@@ -47,6 +48,7 @@ export class Aplicaciones implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly cd = inject(ChangeDetectorRef);
+  private readonly asistencia = inject(AsistenciaService);
 
   /**
    * Activar un modulo cambia lo que puede hacer TODO el negocio, en todas las
@@ -164,6 +166,32 @@ export class Aplicaciones implements OnInit {
       return;
     }
 
+    /* Asistencia tampoco: se enciende contestando sus preguntas, y esas
+       respuestas son sus reglas. Mismo procedimiento, misma transaccion. */
+    if (!activo && m.id === 'asistencia') {
+      const reglas = await this.preguntarReglasAsistencia();
+      if (!reglas) return;
+      this.cambiando.set(m.id);
+      try {
+        const r = await this.asistencia.activar(reglas);
+        if (!r.ok) throw new Error(r.error);
+        await this.caps.load(true);
+        await Swal.fire({
+          icon: 'success',
+          title: 'Asistencia activada',
+          text: 'Asigna un horario a cada persona desde Asistencia para que se cuenten las horas extra.',
+          timer: 2600,
+          showConfirmButton: false,
+        });
+      } catch (e: any) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo activar', text: e?.message || 'Error.' });
+      } finally {
+        this.cambiando.set(null);
+        this.cd.detectChanges();
+      }
+      return;
+    }
+
     this.cambiando.set(m.id);
     try {
       await this.caps.setModulo(m.capability as keyof Capabilities, !activo);
@@ -226,6 +254,45 @@ export class Aplicaciones implements OnInit {
     });
     if (!r.isConfirmed || !r.value) return null;
     return this.giro.catalogo.find(p => p.id === r.value) ?? null;
+  }
+
+  /**
+   * Las preguntas de Asistencia. Pocas y de si o no: son las reglas que
+   * cambian el numero que ve el dueno. Vienen marcadas con lo que se sugiere,
+   * a la vista, para que se lean antes de aceptar.
+   */
+  private async preguntarReglasAsistencia(): Promise<ReglasAsistencia | null> {
+    const sug = reglasSugeridas();
+    const filas = PREGUNTAS_ASISTENCIA.map(p => `
+      <fieldset class="asis-preg">
+        <legend>${p.texto}</legend>
+        <div class="asis-preg__txt"><b>${p.texto}</b><small>${p.ayuda}</small></div>
+        <div class="asis-sino">
+          <label><input type="radio" name="${p.clave}" value="1"${sug[p.clave] ? ' checked' : ''}><span>Sí</span></label>
+          <label><input type="radio" name="${p.clave}" value="0"${sug[p.clave] ? '' : ' checked'}><span>No</span></label>
+        </div>
+      </fieldset>`).join('');
+
+    const r = await Swal.fire({
+      title: 'Activar Asistencia',
+      html: `<p class="giro-intro">Contesta y quedan como reglas del negocio. Puedes cambiarlas después en Asistencia.</p>
+        <div class="asis-preguntas">${filas}</div>`,
+      width: 600,
+      showCancelButton: true,
+      confirmButtonText: 'Activar Asistencia',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: () => {
+        const reglas: any = {};
+        for (const p of PREGUNTAS_ASISTENCIA) {
+          const sel = document.querySelector<HTMLInputElement>(`input[name="${p.clave}"]:checked`);
+          if (!sel) { Swal.showValidationMessage('Contesta todas las preguntas.'); return null; }
+          reglas[p.clave] = sel.value === '1';
+        }
+        return reglas as ReglasAsistencia;
+      },
+    });
+    return r.isConfirmed && r.value ? r.value : null;
   }
 
   /**

@@ -165,6 +165,8 @@ export interface SaleIntent {
 export interface CheckoutResult {
   ok: boolean;
   error?: string;
+  /** Por que no se cobro, cuando la pantalla tiene algo que hacer (0071: ASISTENCIA_SIN_ENTRADA). */
+  motivo?: string;
   saleId?: number | null;
   total?: number;
   paid?: number;
@@ -284,6 +286,11 @@ export interface Capabilities {
    * mostrador tambien manda a la barra.
    */
   comandas: boolean;
+  /**
+   * 0071 · Asistencia: entradas, descansos y salidas en la caja; horas
+   * trabajadas y extra. No es nomina. Solo para el negocio que la activa.
+   */
+  asistencia: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */

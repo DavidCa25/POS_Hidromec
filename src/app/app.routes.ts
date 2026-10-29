@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
+import { puedeVerAsistencia } from './asistencia.guard';
 import { puedeConfigurarSalon, puedeUsarPedidosEnLinea, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
 
 /*
@@ -73,6 +74,8 @@ export const routes: Routes = [
       { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
       { path: 'estado-resultados', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./estado-resultados/estado-resultados.component').then(m => m.EstadoResultadosComponent) },
       // 0069: lo que cobró el ticket contra lo que depositó Uber Eats, Didi o Rappi.
+      // 0071: Asistencia. Una aplicacion: solo con el modulo encendido.
+      { path: 'asistencia', canActivate: [puedeVerAsistencia], loadComponent: () => import('./asistencia/asistencia.component').then(m => m.AsistenciaComponent) },
       { path: 'liquidaciones', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./liquidaciones/liquidaciones.component').then(m => m.LiquidacionesComponent) },
 
       // ---- Retail POS ----

@@ -34,6 +34,7 @@
     "db:test-corte-correo": "node scripts/db/pruebas/corte-correo.mjs",
     "db:test-resultados": "node scripts/db/pruebas/estado-resultados.mjs",
     "db:test-liquidaciones": "node scripts/db/pruebas/liquidaciones-plataforma.mjs",
+    "db:test-asistencia": "node scripts/db/pruebas/asistencia.mjs",
     "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",

@@ -18,6 +18,10 @@
         <span class="pos-key">F10</span>
         <span class="pos-label">Salida de efectivo</span>
       </div>
+      <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" (click)="abrirChecar()">
+        <span class="pos-key">F9</span>
+        <span class="pos-label">Checar</span>
+      </button>
     </div>
 
     <!-- Chip estado turno -->
@@ -822,3 +826,6 @@
   (cerrado)="cerrarPremios()"></app-premios-venta>
 
 <app-receipt-email *ngIf="enviarCorreo&&lastSaleId" [saleId]="lastSaleId" (close)="enviarCorreo=false"></app-receipt-email>
+
+<!-- 0071: Checar (Asistencia). -->
+<app-asistencia-checar *ngIf="showChecar" [registerId]="cajaDeChecar" [motivo]="motivoChecar" (cerrar)="showChecar=false"></app-asistencia-checar>
