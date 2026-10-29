@@ -2063,6 +2063,8 @@ sesion.configurar({
 
 /* PIN personal en caja: la misma fila y el mismo scrypt que Local Host. */
 const pinPos = crearPin({ sql, pool: () => poolPromise });
+/* Contraseña olvidada: la persona la cambia con su PIN, sin nadie mas. */
+const recuperarContrasena = require('./seguridad/recuperar').crearRecuperacion({ sql, pool: () => poolPromise, pin: pinPos, contrasenas });
 
 /* La sesion muere con su ventana. Sin esto, el id de un webContents
    destruido podria reutilizarse y heredar permisos ajenos. */
@@ -2220,6 +2222,18 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
       success: false,
       message: err.message
     };
+  }
+});
+
+/* Antes del login, como el login: no hay sesion que exigir. La persona se
+   identifica con su PIN (ver seguridad/recuperar.js). */
+ipcMain.handle('auth:recuperar-contrasena', async (_event, p = {}) => {
+  try {
+    const r = await recuperarContrasena(p);
+    return r.ok ? { success: true } : { success: false, error: r.error, bloqueado: !!r.bloqueado };
+  } catch (e) {
+    console.error('[ACCESO] recuperar contraseña:', e.message);
+    return { success: false, error: 'No se pudo cambiar la contraseña. Intenta de nuevo.' };
   }
 });
 

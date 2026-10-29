@@ -522,6 +522,7 @@ const ABIERTOS = {
   'services:validate': 'comprueba el servicio de SQL durante la instalación',
   'services:get-config': 'lectura del servicio de SQL durante la instalación',
   'sp-iniciar-sesion': 'ES el login: exigir sesión sería circular',
+  'auth:recuperar-contrasena': 'contraseña olvidada, antes del login: la persona se identifica con su PIN',
 
   // --- Ventanas que no son la principal ------------------------------------
   // Tienen su propio preload y nunca inician sesión. No pueden autorizar nada

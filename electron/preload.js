@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
     onSaleResult: (callback) => ipcRenderer.on('sale-result', (event, data) => callback(data)),
     iniciarSesion: (usuario, contrasena) => invoke('sp-iniciar-sesion', { usuario, contrasena }),
+    recuperarContrasena: (p) => invoke('auth:recuperar-contrasena', p),
     /* Apuntaba a `sp-add-user`, un canal SIN handler: la llamada moria en
        "No handler registered" y la pantalla de alta no daba de alta a nadie.
        El camino real es `users:create`, que ademas valida el rol. */
