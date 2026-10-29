@@ -46,6 +46,18 @@ export interface FondoDeMarca {
   tamano: string;
 }
 
+/**
+ * 0067 · La marca del MENÚ EN LÍNEA: la página que abre el cliente con el QR.
+ * La caja la publica con el menú; la página solo sabe pintar esto.
+ */
+export interface MarcaMenuEnLinea {
+  /** Ruta bajo `assets/addon/` (SVG o PNG pequeño: viaja con el menú). */
+  logo?: string;
+  /** Color principal y de acento, en `#rrggbb`. */
+  color: string;
+  acento?: string;
+}
+
 export interface AddonWybix {
   /** Igual que su carpeta: `wybix_<cliente>`. */
   id: string;
@@ -56,4 +68,6 @@ export interface AddonWybix {
   /** La mascota también acompaña el cobro en Touch. */
   mascotaEnTouch?: boolean;
   fondoTouch?: FondoDeMarca;
+  /** La página del menú en línea con los colores y el logo de la marca. */
+  menuEnLinea?: MarcaMenuEnLinea;
 }

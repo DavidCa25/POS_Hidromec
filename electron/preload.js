@@ -246,6 +246,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clubPlanGuardar: p => invoke('club:plan-guardar',p),
     clubGestionar: p => invoke('club:gestionar',p),
     clubSincronizar: () => invoke('club:sincronizar'),
+    menuLineaConfig: () => invoke('menu-linea:config'),
+    menuLineaGuardar: p => invoke('menu-linea:guardar',p),
+    menuLineaPedidos: () => invoke('menu-linea:pedidos'),
+    menuLineaAceptar: p => invoke('menu-linea:aceptar',p),
+    menuLineaRechazar: p => invoke('menu-linea:rechazar',p),
+    menuLineaSincronizar: () => invoke('menu-linea:sincronizar'),
+    onMenuLineaNuevos: (cb) => {
+      const h = (_e, n) => cb(n);
+      ipcRenderer.on('menu-linea:nuevos', h);
+      return () => ipcRenderer.removeListener('menu-linea:nuevos', h);
+    },
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),

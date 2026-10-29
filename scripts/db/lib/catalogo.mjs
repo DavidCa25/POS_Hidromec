@@ -235,6 +235,9 @@ asignar('hospitality', [
   'sp_hosp_productos_con_preparacion',
   'sp_comanda_estado', 'sp_comanda_cancelar', 'sp_kds_get',
   'sp_prep_stations_get', 'sp_prep_station_save', 'sp_product_prep_get', 'sp_product_prep_set',
+  // 0067: menu en linea. El pedido del celular espera aqui hasta que la caja lo acepta.
+  'sp_menu_en_linea_config', 'sp_pedido_en_linea_recibir', 'sp_pedidos_en_linea_listar', 'sp_pedido_en_linea_publicado',
+  'sp_pedido_en_linea_aceptar', 'sp_pedido_en_linea_rechazar', 'sp_pedido_en_linea_revertir',
 ]);
 
 // 0034-0038: QuickStart, la carga guiada del catalogo (lotes, mapeos, filas,

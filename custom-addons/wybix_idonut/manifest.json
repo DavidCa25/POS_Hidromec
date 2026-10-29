@@ -11,9 +11,10 @@
   "huecos": [
     "mascota",
     "mascotaEnTouch",
-    "fondoTouch"
+    "fondoTouch",
+    "menuEnLinea"
   ],
-  "descripcion": "Mascota I DO NUT ME en lugar de Wybix y logo de la marca como fondo de Touch.",
+  "descripcion": "Mascota I DO NUT ME en lugar de Wybix, logo de la marca como fondo de Touch y marca del menú en línea.",
   "ajustes": {
     "aprobaciones": false
   }

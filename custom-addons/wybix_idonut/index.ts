@@ -5,7 +5,8 @@
  *   - mascota: I DO NUT ME sustituye a Wybix donde ya aparece la mascota
  *     (guía, dock, sidebar, inicio, QuickStart, venta) y acompaña el cobro
  *     en Touch;
- *   - fondoTouch: el logo, casi transparente, detrás del catálogo de Touch.
+ *   - fondoTouch: el logo, casi transparente, detrás del catálogo de Touch;
+ *   - menuEnLinea: el logo y los colores de la página del menú en línea.
  *
  * Nada de aquí toca archivos del núcleo. Si el núcleo cambia su contrato,
  * este archivo deja de compilar y el build lo dice: no se pierde en silencio.
@@ -54,6 +55,12 @@ const addon: AddonWybix = {
     claro: 'assets/addon/fondo-touch-claro.svg',
     oscuro: 'assets/addon/fondo-touch-oscuro.svg',
     tamano: '640px 420px',
+  },
+  /* La página del menú en línea (QR de mostrador, mesa y redes). */
+  menuEnLinea: {
+    logo: 'assets/addon/menu-logo.svg',
+    color: '#d0466c',
+    acento: '#f6b8c8',
   },
 };
 

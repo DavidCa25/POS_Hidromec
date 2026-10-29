@@ -162,6 +162,8 @@ export class NavegacionService {
              gana ningun icono. */
           { texto: 'Mesas', ruta: '/dashboard/mesas', icono: 'ph-armchair', visible: this.caps.mesas },
           { texto: 'Cocina', ruta: '/cocina', icono: 'ph-cooking-pot', visible: this.caps.comandas },
+          /* 0067: lo que llega del menú en línea (QR del mostrador, mesas o redes). */
+          { texto: 'Pedidos en línea', ruta: '/dashboard/pedidos-en-linea', icono: 'ph-device-mobile', visible: this.caps.hospitality },
           { texto: 'Salón y estaciones', ruta: '/dashboard/salon', icono: 'ph-squares-four',
             visible: (this.caps.mesas || this.caps.comandas) && this.administrarNegocio },
         ],
