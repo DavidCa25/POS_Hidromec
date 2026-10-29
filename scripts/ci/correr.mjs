@@ -22,12 +22,13 @@ const GRUPOS = {
     'test:red', 'test:servidor', 'test:pool', 'test:opciones', 'test:demo', 'test:presentaciones',
     'test:fase1', 'test:hospitality-operacion', 'test:wybix-guide', 'test:terminal', 'test:servicios',
     'test:giros', 'test:servicios-ui', 'test:licencia-v2', 'test:comercial', 'test:multisucursal', 'test:pagos',
+    'test:plataformas', 'test:whatsapp',
   ],
   /* El orden importa: el baseline sale de Git (installer/template.bak no se
      versiona) y venta-hospitality usa el catálogo que deja dominio-hospitality
      sobre la base conservada por probar-migracion. */
   bd: [
-    'db:baseline', 'db:check-template',
+    'db:baseline', 'node scripts/db/verificar-template.mjs --a-fondo --solo-template',
     'db:test-hospitality', 'db:test-paridad-recetas', 'db:test-mesas',
     'db:test-setup', 'db:test-latte', 'db:test-baja', 'db:test-turno', 'db:test-permisos', 'db:test-rol',
     'db:test-cajas', 'db:test-compras', 'db:test-egresos', 'db:test-bebidas', 'db:test-alertas',
@@ -38,6 +39,7 @@ const GRUPOS = {
     'db:test-servicios', 'db:test-giros', 'db:test-comercial', 'db:test-multisucursal', 'db:test-pagos',
     'node scripts/db/pruebas/club-membresias.mjs', 'node scripts/db/pruebas/puntos-sellos.mjs',
     'node scripts/db/pruebas/devoluciones.mjs',
+    'test:club-wallet', 'db:test-menu-en-linea', 'db:test-liquidaciones',
     'test:local-host', 'test:licencia-integracion',
   ],
   /* Fallan hoy en main; se corren para verlas, sin bloquear. Al arreglar una,

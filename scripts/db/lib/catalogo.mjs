@@ -322,7 +322,8 @@ export function esCritico(nombre) {
 /** Escrito pero nunca desplegado. No compila contra el esquema actual. */
 export const FUTUROS = {
   sp_import_sales: 'Importador de ventas. Nunca aplicado; su primer parametro no existe en el esquema.',
-  sp_cloud_daily_profit: 'cloudSync lo llama en try/catch tolerando su ausencia. Referencia products.last_cost, columna inexistente.',
+  // sp_cloud_daily_profit salio de aqui: la 0062 lo corrigio (ya no usa
+  // products.last_cost) y lo despliega; el baseline tambien debe traerlo.
 };
 
 export function clasificacionDe(nombre) {

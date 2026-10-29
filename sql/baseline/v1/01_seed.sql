@@ -130,3 +130,12 @@ IF OBJECT_ID(N'dbo.expense_categories', 'U') IS NOT NULL
         (N'Mantenimiento',    'GENERAL',  0, 90),
         (N'Otros',            'GENERAL',  0, 1000);
 GO
+
+/* Concepto del sistema para comisiones, promociones y retenciones de las
+ * plataformas de entrega (0069): sin el no se puede confirmar una
+ * liquidacion. Las bases que ya existian lo reciben de la migracion. */
+IF OBJECT_ID(N'dbo.expense_categories', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.expense_categories WHERE kind = 'PLATAFORMA')
+    INSERT INTO dbo.expense_categories (name, kind, is_system, sort_order)
+    VALUES (N'Comisiones de plataforma', 'PLATAFORMA', 1, 15);
+GO

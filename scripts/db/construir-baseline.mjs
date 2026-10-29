@@ -375,8 +375,9 @@ try {
     database_metadata: 3,
     // 0049: el catalogo de tipos de caja es estructura (cash_movements.typee
     // tiene llave foranea a el) y los conceptos de egreso son el punto de
-    // partida, con "Pago al personal" del sistema.
-    cash_movement_types: 9, expense_categories: 10,
+    // partida, con "Pago al personal" del sistema. 0069 suma "Comisiones de
+    // plataforma", tambien del sistema.
+    cash_movement_types: 9, expense_categories: 11,
     schema_migrations: migraciones.length,
   };
   for (const f of conFilas) console.log(`          ${String(f.filas).padStart(3)}  ${f.tabla}`);
