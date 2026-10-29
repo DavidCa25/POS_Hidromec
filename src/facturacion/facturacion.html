@@ -71,7 +71,7 @@
       <div class="c-acc"></div>
     </div>
     <div class="fac-row" *ngFor="let f of invoices">
-      <div class="c-fecha">{{ (f.fecha_timbrado || f.created_at) | date:'dd/MM/yy HH:mm' }}</div>
+      <div class="c-fecha">{{ (f.fecha_timbrado || f.created_at) | fechaSql:'dd/MM/yy HH:mm' }}</div>
       <div class="c-receptor">
         <span class="rec-nombre">{{ f.receptor_razon_social }}</span>
         <span class="rec-rfc">{{ f.receptor_rfc }}</span>

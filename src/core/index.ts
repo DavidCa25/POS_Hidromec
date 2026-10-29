@@ -25,6 +25,7 @@ export * from './loyalty.service';
 export * from './modulos';
 export * from './dinamicas';
 export * from './fechas';
+export * from './fecha-sql.pipe';
 export * from './mesas.service';
 export * from './clientes-venta.service';
 export * from './egresos.service';

@@ -31,7 +31,7 @@
         <div class="txt">
           <div class="t1">Turno abierto</div>
           <div class="t2">
-            {{ shiftOpenedAt | date:'HH:mm' }} · Fondo:
+            {{ shiftOpenedAt | fechaSql:'HH:mm' }} · Fondo:
             {{ shiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </div>
         </div>
@@ -173,7 +173,7 @@
           </div>
 
           <div class="folio-meta mt-2" *ngIf="editingHeader">
-            <span>Fecha: {{ editingHeader.datee | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span>Fecha: {{ editingHeader.datee | fechaSql:'dd/MM/yyyy HH:mm' }}</span>
             <span>Pago: {{ editingHeader.payment_method }}</span>
             <span>Reembolsado: {{ editingHeader.refund_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
           </div>

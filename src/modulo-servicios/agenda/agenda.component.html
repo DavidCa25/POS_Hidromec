@@ -83,7 +83,7 @@
                     (click)="abrirCita(c.cita)">
               <span class="ag-bloque-quien">{{ c.cita.customer_name }}</span>
               <span class="ag-bloque-que">
-                {{ c.cita.starts_at | date:'HH:mm':undefined:'es-MX' }}–{{ c.cita.ends_at | date:'HH:mm':undefined:'es-MX' }}
+                {{ c.cita.starts_at | fechaSql:'HH:mm':'es-MX' }}–{{ c.cita.ends_at | fechaSql:'HH:mm':'es-MX' }}
                 <ng-container *ngIf="c.cita.service_name"> · {{ c.cita.service_name }}</ng-container>
                 <ng-container *ngIf="c.cita.asset_label"> · {{ c.cita.asset_label }}</ng-container>
               </span>

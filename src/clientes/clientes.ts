@@ -11,6 +11,7 @@ import { CatalogosService, CatalogoItem } from '../services/catalogos.service';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
 import { AuthService } from '../services/auth.service';
+import { FechaSqlPipe } from '../core';
 
 const PLIEGUE = 'wx-clientes:pliegue:';
 function leerPliegue(seccion: string, porDefecto: boolean): boolean {
@@ -82,7 +83,7 @@ type ClienteVenta = {
 @Component({
   selector: 'app-clientes',
   templateUrl: './clientes.html',
-  imports: [WxTablaBarraComponent, WxAvatarComponent, 
+  imports: [FechaSqlPipe, WxTablaBarraComponent, WxAvatarComponent, 
     RouterOutlet,
     FormsModule,
     CommonModule,

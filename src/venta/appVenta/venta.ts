@@ -35,6 +35,7 @@ import {
   ResumenOpcion, aSeleccionada, admiteCantidad, gruposAConfigurar, minimoDe,
   opcionesElegibles, resumenDeOpciones, seleccionAutomatica, topeDeGrupo,
 } from '../../core/opciones';
+import { FechaSqlPipe } from '../../core';
 
 /*
  * RETAIL POS — capa de presentacion.
@@ -80,7 +81,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {

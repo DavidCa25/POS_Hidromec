@@ -63,6 +63,7 @@
     "test:modulos": "node scripts/pruebas/modulos-navegacion.mjs",
     "test:capas": "node scripts/pruebas/capas.mjs",
     "test:fechas": "node scripts/pruebas/fechas-locales.mjs",
+    "test:fechas-sql": "node scripts/pruebas/fechas-sql.mjs",
     "test:quickstart": "node scripts/pruebas/quickstart.mjs",
     "test:ui-contract": "node scripts/pruebas/ui-contract.mjs",
     "test:local-host": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/local-host.mjs",

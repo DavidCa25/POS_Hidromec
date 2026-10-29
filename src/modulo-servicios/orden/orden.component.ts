@@ -12,6 +12,7 @@ import { GiroServiciosService } from '../../core';
    Clientes, Compras y el punto de venta, y por eso estaban ya resueltos
    el teclado, el foco, el cierre con Escape y la colision del panel. */
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
+import { FechaSqlPipe } from '../../core';
 
 type EstadoPaso = 'hecho' | 'activo' | 'pendiente';
 
@@ -40,7 +41,7 @@ type EstadoPaso = 'hecho' | 'activo' | 'pendiente';
 @Component({
   selector: 'app-servicios-orden',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxSelectComponent],
   templateUrl: './orden.component.html',
   styleUrls: ['../servicios.css', './orden.component.css'],
 })

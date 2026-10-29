@@ -8,6 +8,7 @@ import { Router, RouterLink } from '@angular/router';
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxTablaBarraComponent } from '../../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../../app/wx-tabla/tabla-estado';
+import { FechaSqlPipe, fechaDeSql } from '../../core';
 
 interface RawRow {
   purchase_id: number;
@@ -66,7 +67,7 @@ type PageToken = number | '...';
   standalone: true,
   templateUrl: './tablaCompra.html',
   styleUrls: ['./tablaCompra.css'],
-  imports: [WxTablaBarraComponent, NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent, WxMenuComponent],
+  imports: [FechaSqlPipe, WxTablaBarraComponent, NgIf, NgFor, DatePipe, CurrencyPipe, DecimalPipe, FormsModule, RouterLink, WxSelectComponent, WxMenuComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class TablaCompra implements OnInit {
@@ -93,7 +94,7 @@ export class TablaCompra implements OnInit {
       valor: (c) => c.supplierLabel || 'Sin proveedor' },
     { clave: 'fecha', titulo: 'Fecha' },
     { clave: 'mes', titulo: 'Mes', ocultaPorDefecto: true, agrupable: true,
-      valor: (c) => new Date(c.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long' }) },
+      valor: (c) => fechaDeSql(c.date)?.toLocaleDateString('es-MX', { timeZone: 'UTC', year: 'numeric', month: 'long' }) ?? '' },
     { clave: 'total', titulo: 'Total' },
     { clave: 'pago', titulo: 'Pago', filtrable: true, agrupable: true,
       valor: (c) => c.paymentStatus === 'PAGADO' ? 'Pagada'

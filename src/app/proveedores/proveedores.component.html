@@ -129,7 +129,7 @@
           <thead><tr><th>Fecha</th><th class="right">Monto</th><th>Metodo</th><th>Nota</th></tr></thead>
           <tbody>
             <tr *ngFor="let pg of payments">
-              <td>{{ pg.datee | date:'dd/MM/yyyy' }}</td>
+              <td>{{ pg.datee | fechaSql:'dd/MM/yyyy' }}</td>
               <td class="right">{{ money(pg.amount) }}</td>
               <td>{{ pg.payment_method }}</td>
               <td class="sub">{{ pg.note }}</td>

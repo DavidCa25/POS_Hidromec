@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { hoyLocal } from '../core';
+import { fechaDeSql, hoyLocal, zonaDeSql } from '../core';
 
 /*
  * xlsx-js-style y jsPDF pesan ~600 kB juntos y solo hacen falta al pulsar
@@ -55,14 +55,12 @@ export interface ReportConfig {
  * hora de pared. Un texto sin zona ("2026-10-18T09:35:00") se trata igual.
  */
 export function fechaSql(v: any, conHora = true): string {
-  if (v == null || v === '') return '';
-  const t = String(v);
-  const d = v instanceof Date ? v
-    : new Date(/^d{4}-d{2}-d{2}$/.test(t) ? t + 'T00:00:00Z' : /(Z|[+-]d{2}:?d{2})$/.test(t) ? t : t + 'Z');
-  if (Number.isNaN(d.getTime())) return '';
+  const d = fechaDeSql(v);
+  if (!d) return '';
+  const timeZone = zonaDeSql(v);
   return conHora
-    ? d.toLocaleString('es-MX', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' })
-    : d.toLocaleDateString('es-MX', { timeZone: 'UTC' });
+    ? d.toLocaleString('es-MX', { timeZone, dateStyle: 'short', timeStyle: 'short' })
+    : d.toLocaleDateString('es-MX', { timeZone });
 }
 
 @Injectable({ providedIn: 'root' })

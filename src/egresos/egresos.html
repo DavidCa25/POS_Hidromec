@@ -131,7 +131,7 @@
           </thead>
           <tbody>
             <tr *ngFor="let f of r.filas" [class.egr-cancelado]="f.voided_at">
-              <td>{{ f.expense_date | date:'d MMM y' }}</td>
+              <td>{{ f.expense_date | fechaSql:'d MMM y' }}</td>
               <td *ngIf="!personal">{{ f.category_name }}</td>
               <td>{{ f.staff_name || f.beneficiary || '—' }}</td>
               <td *ngIf="personal">{{ periodo(f) }}</td>

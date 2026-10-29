@@ -107,8 +107,8 @@
 
               <td *ngIf="tabla.esVisible('id')" class="mono id-cell" (click)="toggle(c.id)">{{ c.id }}</td>
               <td *ngIf="tabla.esVisible('proveedor')" class="nowrap">{{ c.supplierLabel }}</td>
-              <td *ngIf="tabla.esVisible('fecha')">{{ c.date | date:'dd/MM/yyyy' }}</td>
-              <td *ngIf="tabla.esVisible('mes')" class="nowrap">{{ c.date | date:'MMMM y' }}</td>
+              <td *ngIf="tabla.esVisible('fecha')">{{ c.date | fechaSql:'dd/MM/yyyy' }}</td>
+              <td *ngIf="tabla.esVisible('mes')" class="nowrap">{{ c.date | fechaSql:'MMMM y' }}</td>
               <td *ngIf="tabla.esVisible('total')" class="fw-semibold">{{ c.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
 
               <td *ngIf="tabla.esVisible('pago')">

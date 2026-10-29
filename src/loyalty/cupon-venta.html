@@ -41,7 +41,7 @@
         <b>{{ r.ok ? beneficio(r) : r.mensaje }}</b>
         <small *ngIf="r.ok">{{ r.mensaje }}</small>
         <small *ngIf="r.ok && r.cliente">Cliente: {{ r.cliente }}</small>
-        <small *ngIf="r.ok && r.expires_at">Vence el {{ r.expires_at | date:'dd/MM/yyyy' }}</small>
+        <small *ngIf="r.ok && r.expires_at">Vence el {{ r.expires_at | fechaSql:'dd/MM/yyyy' }}</small>
         <small *ngIf="r.ok && r.uses_allowed">Usos {{ r.uses_count }}/{{ r.uses_allowed }}</small>
       </div>
       <button class="btn-primary btn-sm" type="button"
