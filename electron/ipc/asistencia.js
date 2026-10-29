@@ -40,16 +40,24 @@ const pared = (v, campo) => {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(s)) throw Error(`Indica una hora valida (${campo}).`);
   return new Date(s.length === 16 ? `${s}:00Z` : `${s}Z`);
 };
-const yo = (resto) => Number(resto.length ? resto[resto.length - 1]?.userId : null) || null;
+/* `sesion.proteger` agrega la sesion como ULTIMO argumento. Si el renderer no
+   mando payload (asistencia:estado, asistencia:reglas), la sesion es el UNICO
+   argumento: tomarla por payload dejaba a Checar sin saber quien es. */
+function argumentos(args) {
+  const ses = args.length ? args[args.length - 1] : null;
+  const p = args.length > 1 && args[0] && typeof args[0] === "object" ? args[0] : {};
+  return { p, quien: Number(ses?.userId) || null };
+}
 
 function registrar({ ipcMain, sql, poolPromise }) {
   /* Cada canal se escribe con su nombre literal en `ipcMain.handle` y en
      `sesion.proteger`: las pruebas de seguridad lo leen del fuente. */
   const ejecutar = (nombre, construir, formar = (r) => (r.recordset ?? []).map(limpia)) =>
-    async (_e, p = {}, ...resto) => {
+    async (_e, ...args) => {
+      const { p, quien } = argumentos(args);
       try {
         const req = (await poolPromise).request();
-        construir(req, p || {}, yo(resto));
+        construir(req, p, quien);
         const r = await req.execute(nombre);
         return { success: true, data: formar(r) };
       } catch (e) {
@@ -153,4 +161,4 @@ async function frenaLaVenta(pool, sql, userId) {
   }
 }
 
-module.exports = { registrar, frenaLaVenta };
+module.exports = { registrar, frenaLaVenta, argumentos };

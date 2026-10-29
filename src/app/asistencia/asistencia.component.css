@@ -74,21 +74,41 @@
 .asis-muestra--libre { background: var(--wx-raised); border: 1px solid var(--wx-edge); }
 
 /* Horarios */
-.asis-horarios { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
-.asis-lista { flex: 1 1 260px; max-width: 320px; display: flex; flex-direction: column; background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 12px; overflow: hidden; }
+/* Sin scroll dentro de un espacio chico: la lista de personas va al lado
+   solo si sobra ancho; si no, pasa arriba como fichas y el horario usa todo
+   el ancho. Pensado para dedo. */
+.asis-horarios { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.asis-lista { display: flex; flex-direction: column; background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 12px; overflow: hidden; }
+@media (max-width: 1360px) {
+  .asis-horarios { grid-template-columns: minmax(0, 1fr); }
+  .asis-lista { flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 8px; }
+  .asis-lista__item { flex: 0 1 auto; min-height: 52px; border: 1px solid var(--wx-edge); border-radius: 10px; }
+  .asis-lista__item:last-child { border-bottom: 1px solid var(--wx-edge); }
+}
 .asis-lista__item { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 16px; border: 0; border-bottom: 1px solid var(--wx-edge-soft); background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .asis-lista__item:last-child { border-bottom: 0; }
 .asis-lista__item span { display: flex; flex-direction: column; min-width: 0; }
 .asis-lista__item small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
 .asis-lista__item.on { background: var(--wx-user-accent-soft); box-shadow: inset 3px 0 0 var(--wx-user-accent); }
-.asis-editor { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.asis-editor { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+/* La semana cabe sin barra: columnas medidas y celdas mas juntas. */
+.asis-semana { overflow: visible; }
+.asis-semana table { width: 100%; table-layout: fixed; }
+.asis-semana :is(th, td) { padding: 0 10px !important; }
+.asis-semana tbody tr { height: 60px; }
+.asis-semana th:nth-child(1) { width: 18%; }
+.asis-semana th:nth-child(2) { width: 84px; }
+.asis-semana th:nth-child(5) { width: 120px; }
+.asis-semana th:nth-child(6) { width: 76px; }
+.asis-jornada { min-width: 300px; }
+.asis-dias { min-width: 180px; }
 .asis-editor__cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .asis-editor__cab h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
 .asis-editor__plantillas { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .asis-copiar { min-width: 220px; }
 .asis-pill { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); font: 500 var(--wx-text-sm) var(--wx-font); color: var(--wx-text); cursor: pointer; }
 .asis-pill:hover { border-color: var(--wx-user-accent); }
-.asis-num { width: 96px; }
+.asis-num { width: 100%; max-width: 100px; height: 44px; font-size: var(--wx-text-md); }
 .asis-editor__pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
 .asis-editor__pie > div { display: flex; gap: 8px; }
 

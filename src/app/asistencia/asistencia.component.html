@@ -98,18 +98,20 @@
       <section class="asis-editor" *ngIf="editando() as p; else elige" data-guide="asistencia-horario">
         <header class="asis-editor__cab">
           <h2>Horario de {{ p.usuario }}</h2>
-          <div class="asis-editor__plantillas" role="group" aria-label="Plantillas">
-            <button type="button" class="asis-pill" (click)="plantilla('08:00', '16:00')">Mañana 08–16</button>
-            <button type="button" class="asis-pill" (click)="plantilla('14:00', '22:00')">Tarde 14–22</button>
+          <div class="asis-editor__plantillas" role="group" aria-label="Llenar la semana">
+            <wx-select class="asis-jornada" [opciones]="opcionesJornada" [buscable]="true" placeholder="Elegir jornada" data-guide="asistencia-jornada"
+                       [ngModel]="jornadaElegida()" (ngModelChange)="aplicarJornada($event)"></wx-select>
+            <wx-select class="asis-dias" [opciones]="opcionesDias" placeholder="Días"
+                       [ngModel]="diasJornada()" (ngModelChange)="aplicarJornada(jornadaElegida(), $event)"></wx-select>
             <wx-select *ngIf="opcionesCopiar().length" class="asis-copiar" [opciones]="opcionesCopiar()" placeholder="Copiar de otra persona"
                        [ngModel]="copiarDe()" (ngModelChange)="copiar($event)"></wx-select>
           </div>
         </header>
-        <div class="castrol-table-container">
+        <div class="castrol-table-container asis-semana">
           <table class="castrol-table">
             <thead><tr><th scope="col">Día</th><th scope="col">Trabaja</th><th scope="col">Entrada</th><th scope="col">Salida</th><th scope="col">Descanso (min)</th><th scope="col" class="num">Horas</th></tr></thead>
             <tbody>
-              <tr *ngFor="let d of semanaEdit(); let i = index">
+              <tr *ngFor="let d of semanaEdit(); let i = index; trackBy: porDia">
                 <td><b>{{ d.nombre }}</b></td>
                 <td>
                   <label class="asis-switch">
@@ -118,9 +120,9 @@
                   </label>
                 </td>
                 <ng-container *ngIf="d.trabaja; else libreTpl">
-                  <td><wx-time [ngModel]="d.entrada" (ngModelChange)="actualizarDia(i, { entrada: $event })" placeholder="Entrada" [pasoMinutos]="15"></wx-time></td>
-                  <td><wx-time [ngModel]="d.salida" (ngModelChange)="actualizarDia(i, { salida: $event })" placeholder="Salida" [pasoMinutos]="15"></wx-time></td>
-                  <td><input class="ctl asis-num" type="number" min="0" max="240" step="5" [ngModel]="d.descansoMin" (ngModelChange)="actualizarDia(i, { descansoMin: $event })" [attr.aria-label]="'Descanso del ' + d.nombre"></td>
+                  <td><wx-time [ngModel]="d.entrada" (ngModelChange)="actualizarDia(i, { entrada: $event })" placeholder="Entrada" [pasoMinutos]="15" [doceHoras]="true"></wx-time></td>
+                  <td><wx-time [ngModel]="d.salida" (ngModelChange)="actualizarDia(i, { salida: $event })" placeholder="Salida" [pasoMinutos]="15" [doceHoras]="true"></wx-time></td>
+                  <td><input class="ctl asis-num" type="number" min="0" max="240" step="5" [ngModel]="d.descansoMin" (ngModelChange)="actualizarDia(i, { descansoMin: $event })" [ngModelOptions]="{ updateOn: 'blur' }" [attr.aria-label]="'Descanso del ' + d.nombre"></td>
                 </ng-container>
                 <ng-template #libreTpl><td colspan="3" class="asis-tenue">Descanso semanal</td></ng-template>
                 <td class="num asis-total">{{ horasDelDia(d) }}</td>

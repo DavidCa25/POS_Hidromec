@@ -56,7 +56,10 @@ export class AsistenciaChecarComponent implements OnInit, OnDestroy {
   private async cargar(): Promise<void> {
     this.cargando.set(true);
     const r = await this.svc.estado();
-    if (r.ok) this.estado.set(r.data); else this.error.set(r.error);
+    if (!r.ok) this.error.set(r.error);
+    else if (!r.data) this.error.set('No se pudo saber quién tiene la sesión. Cierra sesión y vuelve a entrar.');
+    else if (!r.data.activa) this.error.set('Asistencia no está activada. Actívala en Aplicaciones.');
+    else this.estado.set(r.data);
     this.cargando.set(false);
     await this.cargarSemana();
   }

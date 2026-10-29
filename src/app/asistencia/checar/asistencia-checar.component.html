@@ -57,6 +57,6 @@
       </footer>
     </ng-container>
 
-    <p class="asis-error" *ngIf="!cargando() && !estado() && error()" role="alert">{{ error() }}</p>
+    <p class="asis-error asis-error--solo" *ngIf="!cargando() && !estado()" role="alert">{{ error() || 'No se pudo cargar tu estado.' }}</p>
   </section>
 </div>

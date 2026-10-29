@@ -44,6 +44,34 @@ interface Fila {
 }
 interface DiaHorarioEdit { weekday: number; nombre: string; trabaja: boolean; entrada: string; salida: string; descansoMin: number; }
 
+/**
+ * Las jornadas que se ofrecen para llenar la semana de un golpe. Son un
+ * punto de partida: cada dia se sigue pudiendo cambiar a mano.
+ */
+interface Jornada { id: string; tipo: string; entrada: string; salida: string; descansoMin: number; }
+const JORNADAS: Jornada[] = [
+  { id: 'm7', tipo: 'Completa · mañana', entrada: '07:00', salida: '15:00', descansoMin: 30 },
+  { id: 'm8', tipo: 'Completa · mañana', entrada: '08:00', salida: '16:00', descansoMin: 30 },
+  { id: 'm9', tipo: 'Completa · mañana', entrada: '09:00', salida: '17:00', descansoMin: 30 },
+  { id: 'i10', tipo: 'Completa · intermedia', entrada: '10:00', salida: '18:00', descansoMin: 30 },
+  { id: 'i12', tipo: 'Completa · intermedia', entrada: '12:00', salida: '20:00', descansoMin: 30 },
+  { id: 't14', tipo: 'Completa · tarde', entrada: '14:00', salida: '22:00', descansoMin: 30 },
+  { id: 't15', tipo: 'Completa · tarde', entrada: '15:00', salida: '23:00', descansoMin: 30 },
+  { id: 'n22', tipo: 'Completa · noche', entrada: '22:00', salida: '06:00', descansoMin: 30 },
+  { id: 'mm8', tipo: 'Medio turno · mañana', entrada: '08:00', salida: '12:00', descansoMin: 0 },
+  { id: 'mm9', tipo: 'Medio turno · mañana', entrada: '09:00', salida: '13:00', descansoMin: 0 },
+  { id: 'mt14', tipo: 'Medio turno · tarde', entrada: '14:00', salida: '18:00', descansoMin: 0 },
+  { id: 'mt16', tipo: 'Medio turno · tarde', entrada: '16:00', salida: '20:00', descansoMin: 0 },
+  { id: 'mt18', tipo: 'Medio turno · noche', entrada: '18:00', salida: '22:00', descansoMin: 0 },
+];
+/** A que dias se aplica la jornada elegida. 1 = lunes ... 7 = domingo. */
+const DIAS_JORNADA: Record<string, number[]> = { lv: [1, 2, 3, 4, 5], ls: [1, 2, 3, 4, 5, 6], fin: [6, 7], todos: [1, 2, 3, 4, 5, 6, 7] };
+/** `16:00` -> `4 p. m.`; `16:30` -> `4:30 p. m.` */
+function doce(v: string): string {
+  const h = Number(v.slice(0, 2)); const m = v.slice(3, 5);
+  return `${h % 12 === 0 ? 12 : h % 12}${m === '00' ? '' : ':' + m} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+}
+
 @Component({
   selector: 'app-asistencia',
   standalone: true,
@@ -213,14 +241,37 @@ export class AsistenciaComponent implements OnInit {
   editarHorario(p: PersonaAsistencia): void {
     this.editando.set(p);
     this.copiarDe.set(null);
+    this.jornadaElegida.set(null);
     this.semanaEdit.set(semanaDe(this.horarios().filter(h => h.user_id === p.user_id)));
   }
 
-  plantilla(entrada: string, salida: string): void {
-    this.semanaEdit.set(DIAS_SEMANA.map((nombre, i) => ({
-      weekday: i + 1, nombre, trabaja: i < 6, entrada, salida, descansoMin: 30,
-    })));
+  readonly opcionesJornada: WxOpcion[] = JORNADAS.map(j => ({
+    valor: j.id, etiqueta: `${doce(j.entrada)} a ${doce(j.salida)}`,
+    nota: `${j.tipo}${j.descansoMin ? ` · ${j.descansoMin} min de descanso` : ''}`,
+    busca: `${j.tipo} ${j.entrada} ${j.salida}`,
+  }));
+  readonly opcionesDias: WxOpcion[] = [
+    { valor: 'lv', etiqueta: 'Lunes a viernes' }, { valor: 'ls', etiqueta: 'Lunes a sábado' },
+    { valor: 'fin', etiqueta: 'Sábado y domingo' }, { valor: 'todos', etiqueta: 'Toda la semana' },
+  ];
+  readonly jornadaElegida = signal<string | null>(null);
+  readonly diasJornada = signal('ls');
+
+  /** Llena los dias elegidos con la jornada; los demas quedan de descanso. */
+  aplicarJornada(id: string | null = this.jornadaElegida(), dias = this.diasJornada()): void {
+    this.jornadaElegida.set(id);
+    this.diasJornada.set(dias);
+    const j = JORNADAS.find(x => x.id === id);
+    if (!j) return;
+    const cuales = DIAS_JORNADA[dias] ?? DIAS_JORNADA['ls'];
+    this.semanaEdit.set(DIAS_SEMANA.map((nombre, i) => {
+      const trabaja = cuales.includes(i + 1);
+      return { weekday: i + 1, nombre, trabaja, entrada: trabaja ? j.entrada : '', salida: trabaja ? j.salida : '', descansoMin: trabaja ? j.descansoMin : 0 };
+    }));
   }
+
+  /** Las filas se reconocen por su dia: sin esto, cada tecla redibujaba la fila y el campo perdia el foco. */
+  porDia = (_: number, d: DiaHorarioEdit) => d.weekday;
 
   copiar(userId: number | null): void {
     this.copiarDe.set(userId);

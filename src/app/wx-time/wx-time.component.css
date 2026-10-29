@@ -26,6 +26,8 @@
   font-variant-numeric: tabular-nums;
 }
 .wx-time__input::placeholder { color: var(--wx-text-dim); }
+/* [doceHoras]: la misma hora leida en a. m. / p. m. */
+.wx-time__doce { flex: none; font-size: var(--wx-text-xs); color: var(--wx-text-muted); white-space: nowrap; }
 
 .wx-time__x, .wx-time__abrir {
   flex: none; display: grid; place-items: center;

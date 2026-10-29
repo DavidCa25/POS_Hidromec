@@ -66,6 +66,7 @@
     "test:fechas": "node scripts/pruebas/fechas-locales.mjs",
     "test:fechas-sql": "node scripts/pruebas/fechas-sql.mjs",
     "test:recuperar-contrasena": "node --test scripts/pruebas/recuperar-contrasena.test.mjs",
+    "test:asistencia-ipc": "node --test scripts/pruebas/asistencia-ipc.test.mjs",
     "test:quickstart": "node scripts/pruebas/quickstart.mjs",
     "test:ui-contract": "node scripts/pruebas/ui-contract.mjs",
     "test:local-host": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/local-host.mjs",

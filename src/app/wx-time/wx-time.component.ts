@@ -40,6 +40,12 @@ export class WxTimeComponent implements ControlValueAccessor {
   @Input() limpiable = true;
   /** Paso de los minutos ofrecidos en la lista. */
   @Input() pasoMinutos = 5;
+  /**
+   * Ademas de las 24 horas, dice la hora en a. m. / p. m. (junto al campo y
+   * en la lista). El valor sigue siendo 'HH:MM': cambia como se LEE, no lo
+   * que se guarda. Para quien piensa el turno como «de 8 a 4».
+   */
+  @Input() doceHoras = false;
 
   /** Igual que wx-date: el ancla es por INSTANCIA, no por componente.
    *  Un nombre compartido hace que todos los paneles se abran sobre el mismo
@@ -67,6 +73,19 @@ export class WxTimeComponent implements ControlValueAccessor {
   // -------------------------------------------------------- presentacion
   get etiqueta(): string {
     return this.valor ?? this.placeholder;
+  }
+
+  /** `16:30` -> `4:30 p. m.` */
+  static enDoce(v: string | null): string {
+    if (!v) return '';
+    const h = Number(v.slice(0, 2));
+    return `${h % 12 === 0 ? 12 : h % 12}:${v.slice(3, 5)} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+  }
+  get enDoce(): string { return WxTimeComponent.enDoce(this.valor); }
+  etiquetaHora(h: string): string {
+    if (!this.doceHoras) return h;
+    const n = Number(h);
+    return `${h} · ${n % 12 === 0 ? 12 : n % 12} ${n < 12 ? 'a. m.' : 'p. m.'}`;
   }
 
   /** Las horas del dia, 00..23. */
