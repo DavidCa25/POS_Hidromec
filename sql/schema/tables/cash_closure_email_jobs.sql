@@ -21,8 +21,8 @@ CREATE TABLE dbo.cash_closure_email_jobs (
 );
 END;
 
-IF OBJECT_ID(N'dbo.FK_cash_closure_email_jobs_closure', 'F') IS NULL
-ALTER TABLE dbo.cash_closure_email_jobs WITH CHECK ADD CONSTRAINT FK_cash_closure_email_jobs_closure FOREIGN KEY (closure_id) REFERENCES dbo.cash_closures (id);
-
 IF OBJECT_ID(N'dbo.CK_cash_closure_email_jobs_status', 'C') IS NULL
 ALTER TABLE dbo.cash_closure_email_jobs WITH CHECK ADD CONSTRAINT CK_cash_closure_email_jobs_status CHECK ([status]=N'ERROR' OR [status]=N'ENVIADO' OR [status]=N'ENVIANDO' OR [status]=N'PENDIENTE');
+
+IF OBJECT_ID(N'dbo.FK_cash_closure_email_jobs_closure', 'F') IS NULL
+ALTER TABLE dbo.cash_closure_email_jobs WITH CHECK ADD CONSTRAINT FK_cash_closure_email_jobs_closure FOREIGN KEY (closure_id) REFERENCES dbo.cash_closures (id);
