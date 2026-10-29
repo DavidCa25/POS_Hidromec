@@ -35,15 +35,20 @@ const q = (sql) => { const r = consultarTemporal(DB, sql); if (!r.ok) throw new 
 const uno = (sql) => { const f = q(sql)[0]; return f ? f[Object.keys(f)[0]] : null; };
 const lotes = (f) => readFileSync(join(DIR, f), 'utf8').replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n/gi).filter((l) => l.trim());
 
-/** Huella de TODAS las tablas de usuario: filas y checksum del contenido (sin columnas nuevas de la 0052). */
-function huella() {
+/** Huella de TODAS las tablas de usuario: filas y checksum del contenido (sin columnas nuevas de la 0052).
+ *  En sync_capture_state solo cuentan los cursores que ya existían: una migración
+ *  posterior que trae un agregado nuevo (MEMBERSHIP, puntos...) siembra su cursor
+ *  en cero, y eso es un alta, no una fila perdida ni cambiada. */
+function huella(cursores) {
   const tablas = q(`SELECT t.name FROM sys.tables t WHERE t.is_ms_shipped = 0 AND t.name NOT IN ('schema_migrations') ORDER BY t.name`).map((r) => r.name);
   const out = {};
   for (const t of tablas) {
     const cols = q(`SELECT c.name FROM sys.columns c WHERE c.object_id = OBJECT_ID(N'dbo.${t}')
                      AND c.name <> 'uuid' AND TYPE_NAME(c.user_type_id) NOT IN ('timestamp','rowversion','xml','image','text','ntext','geography','geometry','hierarchyid','sql_variant')
                      ORDER BY c.column_id`).map((r) => `[${r.name}]`);
-    out[t] = uno(`SELECT CONCAT(COUNT(*), ':', ISNULL(CHECKSUM_AGG(BINARY_CHECKSUM(${cols.join(',') || '1'})), 0)) FROM dbo.[${t}]`);
+    const donde = t === 'sync_capture_state' && cursores
+      ? ` WHERE aggregate_type IN (${cursores.map((c) => `N'${c}'`).join(',') || 'NULL'})` : '';
+    out[t] = uno(`SELECT CONCAT(COUNT(*), ':', ISNULL(CHECKSUM_AGG(BINARY_CHECKSUM(${cols.join(',') || '1'})), 0)) FROM dbo.[${t}]${donde}`);
   }
   return out;
 }
@@ -75,7 +80,8 @@ try {
        ('location_uuid', 'bbbbbbbb-0000-4000-8000-0000000ce47e'), ('server_fingerprint', 'f1f2f3f4f5'),
        ('install_secret', 'secreto-de-prueba-no-real');`);
   if (!tenia52) q('EXEC dbo.sp_sync_capture;');
-  const antes = huella();
+  const cursores = q('SELECT aggregate_type FROM dbo.sync_capture_state').map((r) => r.aggregate_type);
+  const antes = huella(cursores);
   const metaAntes = JSON.stringify(q(`SELECT clave, valor FROM dbo.database_metadata ORDER BY clave`));
   const ventas = Number(uno('SELECT COUNT(*) FROM dbo.sales'));
   check(ventas === 3 && Number(uno('SELECT COUNT(*) FROM dbo.products')) >= 2, `sucursal sembrada: ${ventas} ventas, turno abierto, outbox e identidad`);
@@ -89,7 +95,7 @@ try {
   }
   check(tenia52 || pendientes.includes(M52), tenia52 ? 'el template ya traía la 0052 (solo se prueba reaplicarla)' : `migraciones aplicadas: ${pendientes.join(', ')}`);
 
-  const despues = huella();
+  const despues = huella(cursores);
   const cambiadas = Object.keys(antes).filter((t) => antes[t] !== despues[t]);
   check(cambiadas.length === 0, 'ninguna tabla existente pierde ni cambia filas', cambiadas.map((t) => `${t} ${antes[t]} -> ${despues[t]}`).join('; '));
   check(JSON.stringify(q(`SELECT clave, valor FROM dbo.database_metadata ORDER BY clave`)) === metaAntes, 'identidad de nube y configuración de sincronización intactas');

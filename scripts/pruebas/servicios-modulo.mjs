@@ -442,7 +442,7 @@ check(/const orden = this\.ordenServicio;[\s\S]{0,400}await this\.sale\.checkout
   'checkout cierra la cuenta activa: despues ya no hay de donde sacarla');
 
 const ordenTs = leer('src', 'modulo-servicios', 'orden', 'orden.component.ts');
-check(/queryParams: \{ ordenServicio: o\.cabecera\.id \}/.test(ordenTs),
+check(/queryParams: \{ ordenServicio: o\.cabecera\.id[,\s}]/.test(ordenTs),
   'y la orden es la que la manda');
 
 /* Los activos: la otra mitad que faltaba. */

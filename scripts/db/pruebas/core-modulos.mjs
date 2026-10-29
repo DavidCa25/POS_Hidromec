@@ -146,8 +146,10 @@ try {
 
   /* La 0029 no crea tablas: los permisos viven en el binario porque son parte
      del producto, no un dato del negocio. Si algun dia aparece una tabla de
-     permisos en SQL, esta comprobacion lo dira. */
-  check(Number(escalar("SELECT COUNT(*) FROM sys.tables WHERE name IN ('permissions','role_permissions','user_permissions')")) === 0,
+     permisos en SQL, esta comprobacion lo dira. user_permissions (0056) no
+     cuenta: guarda que paquetes extra tiene una persona, no el catalogo, que
+     sigue en electron/seguridad/permisos.js. */
+  check(Number(escalar("SELECT COUNT(*) FROM sys.tables WHERE name IN ('permissions','role_permissions')")) === 0,
     'la 0029 no mete el catalogo de permisos en la base');
 
   // =================================================================

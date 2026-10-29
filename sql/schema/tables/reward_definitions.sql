@@ -17,9 +17,13 @@ CREATE TABLE dbo.reward_definitions (
     uses_allowed INT NOT NULL CONSTRAINT DF_reward_definitions_uses DEFAULT ((1)),
     active BIT NOT NULL CONSTRAINT DF_reward_definitions_active DEFAULT ((1)),
     created_at DATETIME2(0) NOT NULL CONSTRAINT DF_reward_definitions_created_at DEFAULT (sysutcdatetime()),
+    points_cost INT NULL,
     CONSTRAINT PK_reward_definitions PRIMARY KEY CLUSTERED (id)
 );
 END;
 
 IF OBJECT_ID(N'dbo.CK_reward_definitions_kind', 'C') IS NULL
 ALTER TABLE dbo.reward_definitions WITH CHECK ADD CONSTRAINT CK_reward_definitions_kind CHECK ([kind]='CUSTOM' OR [kind]='UPGRADE' OR [kind]='PERCENT' OR [kind]='AMOUNT' OR [kind]='FREE_PRODUCT');
+
+IF OBJECT_ID(N'dbo.CK_reward_definitions_points_cost', 'C') IS NULL
+ALTER TABLE dbo.reward_definitions WITH CHECK ADD CONSTRAINT CK_reward_definitions_points_cost CHECK ([points_cost] IS NULL OR [points_cost]>=(1) AND [points_cost]<=(1000000));

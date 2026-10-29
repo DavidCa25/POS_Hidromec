@@ -14,9 +14,16 @@ CREATE TABLE dbo.sale_refunds (
     refund_total DECIMAL(12, 2) NOT NULL,
     note NVARCHAR(400) COLLATE Modern_Spanish_CI_AS NULL,
     closure_id INT NULL,
+    reason NVARCHAR(40) COLLATE Modern_Spanish_CI_AS NULL,
+    register_id INT NULL,
+    exchange_amount DECIMAL(12, 2) NULL,
+    exchange_sale_id INT NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sale_refunds_register' AND object_id = OBJECT_ID(N'dbo.sale_refunds'))
+CREATE NONCLUSTERED INDEX IX_sale_refunds_register ON dbo.sale_refunds (register_id, datee) INCLUDE (closure_id, refund_total);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_sale_refunds_sale_id' AND object_id = OBJECT_ID(N'dbo.sale_refunds'))
 CREATE NONCLUSTERED INDEX IX_sale_refunds_sale_id ON dbo.sale_refunds (sale_id);
