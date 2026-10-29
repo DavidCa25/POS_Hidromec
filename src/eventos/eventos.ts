@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import * as QRCode from 'qrcode';
 import { WxSelectComponent, type WxOpcion } from '../app/wx-select/wx-select.component';
+import { FechaSqlPipe } from '../core';
 
 /**
  * ENVÍOS A EVENTOS (Fase 2).
@@ -23,7 +24,7 @@ interface Retorno { transfer_uuid: string; event_location_uuid: string; event_na
 @Component({
   selector: 'app-eventos',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxSelectComponent],
   templateUrl: './eventos.html',
   styleUrls: ['./eventos.css'],
 })

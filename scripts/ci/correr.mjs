@@ -19,7 +19,7 @@ const GRUPOS = {
     'test:ui-contract', 'test:ipc', 'test:navegacion', 'test:addons', 'test:seguridad', 'test:fechas',
     'test:modificadores', 'test:marca', 'test:ruleta', 'test:modulos', 'test:capas', 'test:quickstart',
     'test:dock', 'test:onboarding', 'test:matriz', 'test:arranque', 'test:ticket', 'test:licencia',
-    'test:red', 'test:servidor', 'test:pool', 'test:opciones', 'test:demo', 'test:presentaciones',
+    'test:fechas-sql', 'test:red', 'test:servidor', 'test:pool', 'test:opciones', 'test:demo', 'test:presentaciones',
     'test:fase1', 'test:hospitality-operacion', 'test:wybix-guide', 'test:terminal', 'test:servicios',
     'test:giros', 'test:servicios-ui', 'test:licencia-v2', 'test:comercial', 'test:multisucursal', 'test:pagos',
     'test:plataformas', 'test:whatsapp',

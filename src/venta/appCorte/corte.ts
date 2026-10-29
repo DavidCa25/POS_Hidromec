@@ -12,6 +12,7 @@ import { SupervisorAuthService } from '../../services/supervisor.service';
 import { ShiftService, fechaLocal } from '../../core';
 import Swal from 'sweetalert2';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { FechaSqlPipe } from '../../core';
 
 type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
@@ -91,7 +92,7 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
+  imports: [FechaSqlPipe, WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {

@@ -105,15 +105,15 @@
 
           <tr *ngIf="it.tipo === 'fila' && it.fila as s">
             <td *ngIf="tabla.esVisible('id')" class="fw-semibold">#{{ s.id }}</td>
-            <td *ngIf="tabla.esVisible('datee')">{{ s.datee | date:'medium':'':'es-MX' }}</td>
-            <td *ngIf="tabla.esVisible('dia')">{{ s.datee | date:'mediumDate':'':'es-MX' }}</td>
+            <td *ngIf="tabla.esVisible('datee')">{{ s.datee | fechaSql:'medium':'es-MX' }}</td>
+            <td *ngIf="tabla.esVisible('dia')">{{ s.datee | fechaSql:'mediumDate':'es-MX' }}</td>
             <td *ngIf="tabla.esVisible('user_name')">{{ s.user_name || '—' }}</td>
             <td *ngIf="tabla.esVisible('payment_method')" class="fw-semibold">{{ s.payment_method || '—' }}</td>
             <td *ngIf="tabla.esVisible('total')" class="fw-semibold">{{ s.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
             <td *ngIf="tabla.esVisible('paid_amount')">{{ s.paid_amount | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
             <td *ngIf="tabla.esVisible('cambio')">{{ calcCambio(s) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
             <td *ngIf="tabla.esVisible('customer_name')">{{ s.customer_name || '—' }}</td>
-            <td *ngIf="tabla.esVisible('due_date')">{{ s.due_date ? (s.due_date | date:'shortDate':'':'es-MX') : '—' }}</td>
+            <td *ngIf="tabla.esVisible('due_date')">{{ s.due_date ? (s.due_date | fechaSql:'shortDate':'es-MX') : '—' }}</td>
 
             <td *ngIf="tabla.esVisible('acciones')">
               <button type="button" class="wx-rowbtn" (click)="verPdfVenta(s.id)"

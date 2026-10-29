@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { horaParedLocal } from '../../core';
 
 type Tab = 'productos' | 'clientes' | 'proveedores' | 'ventas';
 
@@ -266,7 +267,7 @@ export class Migracion implements OnInit {
 
         const data = {
           ext_folio,
-          sale_date: fecha ? fecha.toISOString() : null,
+          sale_date: fecha ? horaParedLocal(fecha) : null,
           part_number,
           quantity,
           unit_price: unit_price ?? 0,

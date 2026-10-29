@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { Ausencia, Cita, horaDeFranja, Profesional, ServiciosService } from '../servicios.service';
 import { hoyLocal, moverDias } from '../../core';
+import { FechaSqlPipe } from '../../core';
 
 /** Una cita ya colocada: dónde va y de qué color. */
 interface Bloque {
@@ -50,7 +51,7 @@ interface Bloque {
 @Component({
   selector: 'app-servicios-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxDateComponent, WxSelectComponent, WxTimeComponent],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxDateComponent, WxSelectComponent, WxTimeComponent],
   templateUrl: './agenda.component.html',
   styleUrls: ['../servicios.css', './agenda.component.css'],
 })

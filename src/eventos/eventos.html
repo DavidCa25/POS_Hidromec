@@ -85,7 +85,7 @@
       <thead><tr><th>Fecha</th><th>Tipo</th><th>Evento</th><th class="num">Enviado</th><th class="num">Recibido</th><th class="num">Diferencia</th><th>Estado</th></tr></thead>
       <tbody>
         <tr *ngFor="let t of historial()">
-          <td>{{ t.created_at | date:'dd/MM/yy HH:mm' }}</td>
+          <td>{{ t.created_at | fechaSql:'dd/MM/yy HH:mm' }}</td>
           <td>{{ t.kind === 'OUT' ? 'Envío' : 'Retorno' }}</td>
           <td>{{ t.event_name }}</td>
           <td class="num">{{ t.total_sent }}</td>

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WxSelectComponent, type WxOpcion } from '../app/wx-select/wx-select.component';
 import { TraspasosMapaComponent, type MapaEnvio, type MapaEtiqueta } from './mapa/traspasos-mapa.component';
+import { FechaSqlPipe } from '../core';
 
 /**
  * TRASPASOS ENTRE SUCURSALES (MultiSucursal).
@@ -22,7 +23,7 @@ interface Entrante { id: string; from_location_id: string; from_nombre: string; 
 @Component({
   selector: 'app-traspasos',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, TraspasosMapaComponent],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxSelectComponent, TraspasosMapaComponent],
   templateUrl: './traspasos.html',
   styleUrls: ['../eventos/eventos.css', './traspasos.css'],
 })

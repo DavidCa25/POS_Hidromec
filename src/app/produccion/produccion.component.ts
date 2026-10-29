@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService, PAQUETES } from '../../services/auth.service';
+import { fechaDeSql } from '../../core';
 
 interface Tanda {
   id: number; uuid: string; product_id: number; product_name: string; base_uom: string;
@@ -183,10 +184,10 @@ export class ProduccionComponent implements OnInit {
 
   /* -------------------------------------------------------------- formato */
   redondo(n: number | string | null | undefined) { const v = Number(n || 0); return Math.round(v * 100) / 100; }
-  hora(iso: string | null) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  /** started_at / finished_at son hora de pared (SYSDATETIME): ver `fechaSql`. */
+  hora(iso: string | Date | null) {
+    const d = fechaDeSql(iso);
+    return d ? d.toLocaleTimeString('es-MX', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' }) : '';
   }
   cantidad(n: number, uom: string) {
     const v = Number(n || 0);

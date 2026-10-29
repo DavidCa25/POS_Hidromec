@@ -4974,7 +4974,15 @@ ipcMain.handle('sp-import-sales', sesion.proteger('sp-import-sales', async (_eve
 
     rows.forEach(r => {
       let d = null;
-      if (r.sale_date) { const dt = new Date(r.sale_date); if (!isNaN(dt.getTime())) d = dt; }
+      /* sales.datee es hora de pared y mssql escribe las partes UTC del Date:
+         un texto sin zona ("2026-10-01T20:00:00") se lee como UTC para que se
+         guarde tal cual. */
+      if (r.sale_date) {
+        const s = String(r.sale_date);
+        const dt = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + 'T00:00:00Z'
+          : /(Z|[+-]\d{2}:?\d{2})$/.test(s) ? s : s + 'Z');
+        if (!isNaN(dt.getTime())) d = dt;
+      }
       tvp.rows.add(str(r.ext_folio), d, str(r.part_number), num(r.quantity), num(r.unit_price), str(r.payment_method));
     });
 
