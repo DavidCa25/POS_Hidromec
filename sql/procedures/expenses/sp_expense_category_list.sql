@@ -7,7 +7,9 @@ SET QUOTED_IDENTIFIER ON;
 GO
 /* Conceptos de egreso, en el orden que el negocio eligio. Con
    @include_inactive = 0 (lo que usa quien registra un egreso) solo salen los
-   activos; la pantalla de administracion pide todos. */
+   activos; la pantalla de administracion pide todos.
+   0069: el concepto PLATAFORMA no se ofrece para registrar a mano: sus
+   egresos salen de una liquidacion de plataforma. */
 CREATE OR ALTER PROCEDURE dbo.sp_expense_category_list
     @include_inactive BIT = 0
 AS
@@ -17,7 +19,7 @@ BEGIN
         c.id, c.name, c.kind, c.is_system, c.active, c.sort_order,
         (SELECT COUNT(*) FROM dbo.expenses e WHERE e.category_id = c.id AND e.voided_at IS NULL) AS usos
     FROM dbo.expense_categories c
-    WHERE @include_inactive = 1 OR c.active = 1
+    WHERE @include_inactive = 1 OR (c.active = 1 AND c.kind <> 'PLATAFORMA')
     ORDER BY c.sort_order, c.name;
 END
 GO

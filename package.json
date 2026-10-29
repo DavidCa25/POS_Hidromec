@@ -33,6 +33,8 @@
     "db:test-permisos": "node scripts/db/pruebas/permisos-corte.mjs",
     "db:test-corte-correo": "node scripts/db/pruebas/corte-correo.mjs",
     "db:test-resultados": "node scripts/db/pruebas/estado-resultados.mjs",
+    "db:test-liquidaciones": "node scripts/db/pruebas/liquidaciones-plataforma.mjs",
+    "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
     "db:test-egresos": "node scripts/db/pruebas/egresos.mjs",
@@ -117,6 +119,7 @@
     "db:test-multisucursal": "node scripts/db/pruebas/multisucursal.mjs",
     "test:pagos": "node --test scripts/pruebas/pagos-comprobantes.test.mjs",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
+    "e2e:liquidaciones": "npm run build && node -e \"import('./e2e/preparar-bases.mjs').then(m=>m.prepararBase('Wybix_E2E_Liquidaciones',{perfil:'RETAIL'}))\" && cross-env WYBIX_E2E_DB=Wybix_E2E_Liquidaciones playwright test e2e/liquidaciones.spec.js",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"
   },
   "prettier": {

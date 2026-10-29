@@ -136,9 +136,11 @@ try {
       ('OPENING','SALE','SALE_ADJ','PAYMENT','DEPOSIT','REFUND','WITHDRAW','SUPPLIER_PAYMENT','EXPENSE');`)) === 9,
     'catalogo de tipos de movimiento con los 9 tipos');
   check(!!escalar(`SELECT OBJECT_ID(N'dbo.FK_cash_movements_type', 'F');`), 'cash_movements.typee tiene llave foranea al catalogo');
-  check(n(escalar(`SELECT COUNT(*) FROM dbo.expense_categories;`)) === 10
-      && n(escalar(`SELECT COUNT(*) FROM dbo.expense_categories WHERE kind = 'PERSONAL' AND is_system = 1;`)) === 1,
-    'conceptos iniciales: 10, uno de ellos "Pago al personal" del sistema');
+  // 0069 suma el concepto de sistema de comisiones de plataforma (kind PLATAFORMA).
+  check(n(escalar(`SELECT COUNT(*) FROM dbo.expense_categories WHERE kind <> 'PLATAFORMA';`)) === 10
+      && n(escalar(`SELECT COUNT(*) FROM dbo.expense_categories WHERE kind = 'PERSONAL' AND is_system = 1;`)) === 1
+      && n(escalar(`SELECT COUNT(*) FROM dbo.expense_categories WHERE kind = 'PLATAFORMA' AND is_system = 1;`)) === 1,
+    'conceptos iniciales: 10, uno de ellos "Pago al personal" del sistema; y el de plataforma (0069)');
   const tipoMal = falla(`INSERT INTO dbo.cash_movements (userId, typee, amount) VALUES (${dueno}, 'RETIRO_TYPO', -1);`, 'FOREIGN KEY');
   check(tipoMal.ok, 'un tipo inventado ya no entra (la deuda no crece)', tipoMal.error?.slice(0, 60));
 

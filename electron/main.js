@@ -4440,6 +4440,8 @@ require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */
 require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
+/* 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi). */
+require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

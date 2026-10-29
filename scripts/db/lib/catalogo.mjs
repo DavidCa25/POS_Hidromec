@@ -121,6 +121,16 @@ asignar('expenses', [
   'sp_register_expense', 'sp_void_expense', 'sp_get_expenses', 'sp_expense_staff_list',
 ]);
 
+// 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi): canal ->
+// plataforma, conciliacion contra la caja, reparto y egreso de comision.
+asignar('platforms', [
+  'sp_platform_channels_get', 'sp_platform_channel_set',
+  'sp_platform_settlement_candidates', 'sp_platform_settlement_match',
+  'sp_platform_settlement_save', 'sp_platform_settlement_get', 'sp_platform_settlement_link',
+  'sp_platform_settlement_confirm', 'sp_platform_settlement_void', 'sp_platform_settlement_deposit',
+  'sp_platform_settlement_list',
+]);
+
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [

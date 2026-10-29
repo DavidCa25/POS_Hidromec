@@ -43,6 +43,9 @@ export const CUENTAS = {
 export const BASES = {
   Core: 'Wybix_E2E_Core',
   Servicios: 'Wybix_E2E_Servicios',
+  /* La prepara 'npm run e2e:liquidaciones' (0069): base propia, para no pisar
+     Core si otra prueba la esta usando en el mismo servidor. */
+  Liquidaciones: 'Wybix_E2E_Liquidaciones',
   /* La levanta y la borra e2e/primer-uso.spec.js. Figura aqui para que
      'npm run e2e:limpiar' se la lleve si una ejecucion se corto en medio. */
   PrimerUso: 'Wybix_E2E_PrimerUso',

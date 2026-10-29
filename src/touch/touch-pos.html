@@ -561,6 +561,12 @@
             ? 'Cobra en la terminal y confirma aquí cuando el pago quede aprobado.'
             : 'Confirma aquí cuando el depósito esté verificado.' }}
         </p>
+        <!-- 0069: con el número de pedido, la liquidación encuentra la venta sola. -->
+        <label class="tp-pedido" *ngIf="metodo() === 'PLATAFORMA'">No. de pedido de la plataforma <small>(opcional)</small>
+          <input type="text" maxlength="100" autocomplete="off" data-teclado="TEXT" placeholder="Ej. 4F2A1"
+                 [ngModel]="pedidoPlataforma()" (ngModelChange)="pedidoPlataforma.set($event)" [disabled]="cobrando()"
+                 data-guide="touch-pedido-plataforma">
+        </label>
       </div>
 
       <p *ngIf="pagoMixto() && errorPagos()" class="tp-error" role="status">{{errorPagos()}}</p>

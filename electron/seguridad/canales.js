@@ -90,6 +90,18 @@ const EXIGE = {
   'puntos:ajustar': VENTAS_SUPERVISAR,
   // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
   'reportes:estado-resultados': REPORTES_VER,
+  /* 0069 · Liquidaciones de plataforma. Verlas es dinero del negocio; ligar
+     canales, guardar, confirmar o cancelar mueve resultados y egresos: el
+     dueno o quien administra. */
+  'plataformas:canales': REPORTES_VER,
+  'plataformas:listar': REPORTES_VER,
+  'plataformas:ver': REPORTES_VER,
+  'plataformas:canal-guardar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:guardar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:emparejar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:confirmar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:cancelar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:deposito': CONFIGURACION_ADMINISTRAR,
   'ticket:print-document': VENTAS_OPERAR,
   'generate-sale-pdf': VENTAS_OPERAR,
   'fiscal-save-invoice': VENTAS_OPERAR,
