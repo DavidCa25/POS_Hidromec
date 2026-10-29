@@ -416,7 +416,13 @@
               </div>
               <button type="button" class="btn btn-outline-primary" [disabled]="cobrando||pagosMixtos.length>=4" (click)="agregarPago()">Agregar método</button><p role="alert" *ngIf="errorMixto" class="text-danger">{{errorMixto}}</p>
             </section>
-            <p *ngIf="paymentMethod==='PLATAFORMA'" class="text-muted mt-3">Confirma que el pedido está pagado en la plataforma. No entra efectivo al cajón.</p>
+            <ng-container *ngIf="paymentMethod==='PLATAFORMA'">
+              <p class="text-muted mt-3">Confirma que el pedido está pagado en la plataforma. No entra efectivo al cajón.</p>
+              <label class="form-label small mb-1" for="pedidoPlataforma">No. de pedido de la plataforma <span class="text-muted">(opcional)</span></label>
+              <input id="pedidoPlataforma" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="pedidoPlataforma" [disabled]="cobrando"
+                     placeholder="Ej. 4F2A1" data-guide="venta-pedido-plataforma">
+              <small class="text-muted">Con él, la liquidación de la plataforma encuentra esta venta sola.</small>
+            </ng-container>
           </div>
           <div class="cobro-right">
             <div class="mb-3">

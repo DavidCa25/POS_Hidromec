@@ -30,7 +30,7 @@
         <section class="er-cifras" aria-label="Resumen del periodo">
           <div class="er-cifra">
             <span>Ventas netas</span><b>{{ dinero(a.ventas_netas) }}</b>
-            <small>{{ a.tickets }} {{ a.tickets === 1 ? 'ticket' : 'tickets' }} · sin IVA ni devoluciones</small>
+            <small>{{ a.tickets }} {{ a.tickets === 1 ? 'ticket' : 'tickets' }} · sin IVA ni devoluciones<ng-container *ngIf="a.descuentos_plataforma"> ni promociones de plataformas</ng-container></small>
           </div>
           <div class="er-cifra">
             <span>Utilidad bruta</span><b>{{ dinero(a.utilidad_bruta) }}</b>
@@ -41,8 +41,8 @@
             <small>Margen {{ pct(margen(a.utilidad_operacion, a.ventas_netas)).replace('+', '') }} · antes {{ dinero(b.utilidad_operacion) }}</small>
           </div>
           <div class="er-cifra">
-            <span>Gastos del periodo</span><b>{{ dinero(a.egresos_generales + a.pagos_personal + a.mermas + a.ajustes_inventario) }}</b>
-            <small>Egresos, personal, mermas y faltantes</small>
+            <span>Gastos del periodo</span><b>{{ dinero(a.egresos_generales + a.pagos_personal + a.mermas + a.ajustes_inventario + a.comisiones_plataforma) }}</b>
+            <small>Egresos, personal, mermas y faltantes<ng-container *ngIf="a.comisiones_plataforma">, comisiones de plataformas</ng-container></small>
           </div>
         </section>
 
@@ -51,6 +51,15 @@
           <span><b>{{ dinero(a.ventas_sin_costo) }}</b> de ventas fueron de productos sin costo registrado
             <ng-container *ngIf="a.renglones_costo_estimado"> o de ventas anteriores a que Wybix congelara el costo</ng-container>.
             Su utilidad sale más alta de lo real: captura el costo en Inventario.</span>
+        </p>
+
+        <!-- 0069: un canal de plataforma con ventas y sin liquidación: su
+             utilidad todavía es la del ticket, no la del depósito. -->
+        <p class="er-aviso" *ngIf="sinLiquidar().length" role="status" data-guide="er-sin-liquidar">
+          <i class="ph ph-moped" aria-hidden="true"></i>
+          <span>Las ventas de <b>{{ sinLiquidar().map(nombreCanal).join(', ') }}</b> todavía no tienen liquidación en este periodo:
+            su utilidad es la del ticket, sin la comisión ni las promociones que descuenta la plataforma.
+            <a routerLink="/dashboard/liquidaciones">Concilia el depósito</a>.</span>
         </p>
 
         <div class="er-dos">
@@ -71,6 +80,9 @@
               </table>
             </div>
             <p class="er-nota">No son gasto aquí, a propósito: las <b>compras</b> (son inventario; se vuelven costo al venderse), los <b>pagos a proveedores</b> (pagan esas compras) y la <b>merma de producción</b> (ya va dentro del costo de cada pieza). Las ventas a crédito cuentan el día que se venden. Descuentos otorgados en el periodo: {{ dinero(a.descuentos) }}.</p>
+            <p class="er-nota" *ngIf="a.retenciones_plataforma || a.iva_comisiones_plataforma" data-guide="er-retenciones">
+              Las plataformas retuvieron <b>{{ dinero(a.retenciones_plataforma) }}</b> de ISR e IVA y cobraron <b>{{ dinero(a.iva_comisiones_plataforma) }}</b> de IVA en sus comisiones.
+              No restan utilidad: son impuestos que normalmente se acreditan. Confirma con tu contador cómo aplicarlos.</p>
           </section>
 
           <!-- ----------------------------------------------- serie diaria -->
@@ -104,18 +116,43 @@
           </section>
         </div>
 
+        <!-- ---------------------------------------------- por canal (0069) -->
+        <section class="er-sec" *ngIf="conPlataformas() && d.canales.length" data-guide="er-por-canal">
+          <h2>Por canal de venta <small>Ventas sin IVA; lo de plataformas, de las liquidaciones confirmadas</small></h2>
+          <div class="er-tabla">
+            <table>
+              <thead><tr><th>Canal</th><th class="num">Ventas</th><th class="num">Promociones y reemb.</th><th class="num">Costo</th><th class="num">Comisiones</th><th class="num">Utilidad</th><th>Margen</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let c of d.canales" [attr.data-guide-clave]="c.canal" [attr.data-guide-estado]="c.sin_liquidar ? 'sin-liquidar' : 'ok'">
+                  <td>{{ c.nombre }}<small>{{ c.plataforma ? nombrePlataforma(c.plataforma) : 'Venta directa' }} · {{ c.tickets }} {{ c.tickets === 1 ? 'ticket' : 'tickets' }}<ng-container *ngIf="c.sin_liquidar"> · sin liquidar</ng-container><ng-container *ngIf="c.canal === 'LOCAL' && (c.descuentos_plataforma || c.comisiones_plataforma)"> · incluye pedidos de plataforma cobrados sin canal</ng-container></small></td>
+                  <td class="num">{{ dinero(c.ventas) }}</td>
+                  <td class="num tenue">{{ c.descuentos_plataforma ? dinero(-c.descuentos_plataforma) : '—' }}</td>
+                  <td class="num tenue">{{ dinero(-c.costo) }}</td>
+                  <td class="num tenue">{{ c.comisiones_plataforma ? dinero(-c.comisiones_plataforma) : '—' }}</td>
+                  <td class="num" [class.neg]="c.utilidad < 0">{{ dinero(c.utilidad) }}</td>
+                  <td class="er-margen">
+                    <span class="er-margen__barra"><i [style.width.%]="c.margen != null ? (c.margen < 0 ? 0 : (c.margen > 100 ? 100 : c.margen)) : 0"></i></span>
+                    <span class="num">{{ c.margen != null ? c.margen.toFixed(1) + '%' : '—' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <!-- ------------------------------------------------------ categorías -->
         <section class="er-sec">
-          <h2>Por categoría</h2>
+          <h2>Por categoría <small *ngIf="a.descuentos_plataforma || a.comisiones_plataforma">ya con lo que descuentan las plataformas</small></h2>
           <p class="er-vacio" *ngIf="!d.categorias.length">Sin ventas en el periodo.</p>
           <div class="er-tabla" *ngIf="d.categorias.length">
             <table>
-              <thead><tr><th>Categoría</th><th class="num">Ventas netas</th><th class="num">Costo</th><th class="num">Utilidad</th><th>Margen</th></tr></thead>
+              <thead><tr><th>Categoría</th><th class="num">Ventas netas</th><th class="num">Costo</th><th class="num" *ngIf="a.comisiones_plataforma">Comisiones</th><th class="num">Utilidad</th><th>Margen</th></tr></thead>
               <tbody>
                 <tr *ngFor="let c of d.categorias">
                   <td>{{ c.categoria }}</td>
                   <td class="num">{{ dinero(c.ventas_netas) }}</td>
                   <td class="num tenue">{{ dinero(c.costo) }}</td>
+                  <td class="num tenue" *ngIf="a.comisiones_plataforma">{{ dinero(c.comisiones_plataforma) }}</td>
                   <td class="num" [class.neg]="c.utilidad < 0">{{ dinero(c.utilidad) }}</td>
                   <td class="er-margen">
                     <span class="er-margen__barra"><i [style.width.%]="c.margen != null ? (c.margen < 0 ? 0 : (c.margen > 100 ? 100 : c.margen)) : 0"></i></span>

@@ -3,6 +3,8 @@
  *
  *   reportes:estado-resultados  ventas - costo congelado - mermas - egresos
  *                               de un periodo, contra el periodo anterior.
+ *                               0069: menos lo que descontaron las plataformas
+ *                               (liquidaciones confirmadas) y por canal.
  *
  * Todo el cálculo vive en sp_income_statement: aquí solo se validan las
  * fechas y se nombran los resultados.
@@ -27,7 +29,7 @@ function registrar({ ipcMain, sql, poolPromise }) {
           .input("desde", sql.Date, desde)
           .input("hasta", sql.Date, hasta)
           .execute("sp_income_statement");
-        const [resumen = [], egresos = [], categorias = [], dias = [], productos = [], perdidas = []] = r.recordsets;
+        const [resumen = [], egresos = [], categorias = [], dias = [], productos = [], perdidas = [], canales = []] = r.recordsets;
         const fila = (x) => (x ? numeros(x) : null);
         return {
           success: true,
@@ -39,6 +41,8 @@ function registrar({ ipcMain, sql, poolPromise }) {
             dias: dias.map(numeros),
             productos: productos.map(numeros),
             perdidas: perdidas.map(numeros),
+            /* 0069: utilidad por canal, con lo que descontaron las plataformas. */
+            canales: canales.map(numeros),
           },
         };
       } catch (e) {

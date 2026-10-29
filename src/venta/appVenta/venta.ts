@@ -170,6 +170,9 @@ export class Venta implements OnInit, OnDestroy {
   dineroRecibido: number | null = null;
   paymentMethod: PaymentMethod = 'EFECTIVO';
   pagosMixtos:PagoAplicado[]=[];
+  /** 0069: el numero de pedido de Uber Eats / Didi / Rappi (opcional). Con el,
+      Liquidaciones de plataforma empareja la venta con el pedido sin dudar. */
+  pedidoPlataforma='';
   readonly mixedMethods=[{valor:'EFECTIVO',etiqueta:'Efectivo'},{valor:'TARJETA',etiqueta:'Tarjeta'},{valor:'TRANSFERENCIA',etiqueta:'Transferencia'},{valor:'PLATAFORMA',etiqueta:'Pagado en plataforma'}];
   get errorMixto(){if(this.paymentMethod!=='MIXTO')return '';try{validarPagos(this.totalVenta,this.pagosMixtos);return '';}catch(e){return (e as Error).message;}}
   agregarPago(){if(this.cobrando)return;const m=this.mixedMethods.find(m=>!this.pagosMixtos.some(p=>p.method===m.valor));if(m)this.pagosMixtos.push({method:m.valor as PagoAplicado['method'],amount:Math.max(0,Math.round((this.totalVenta-this.pagosMixtos.reduce((a,p)=>a+p.amount,0))*100)/100)});}
@@ -705,6 +708,7 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     this.dineroRecibido = null;
+    this.pedidoPlataforma = '';
     this.showModal = true;
   }
 
@@ -715,6 +719,7 @@ export class Venta implements OnInit, OnDestroy {
     this.paymentMethod = method;
     if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
+    else this.pedidoPlataforma='';
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
@@ -820,7 +825,9 @@ export class Venta implements OnInit, OnDestroy {
     }
     const payment: Payment = {
       method: this.paymentMethod,
-      payments:this.paymentMethod==='MIXTO'?this.pagosMixtos:undefined,
+      payments:this.paymentMethod==='MIXTO'?this.pagosMixtos
+        :this.paymentMethod==='PLATAFORMA'&&this.pedidoPlataforma.trim()?[{method:'PLATAFORMA' as const,amount:this.totalVenta,reference:this.pedidoPlataforma.trim().slice(0,100)}]
+        :undefined,
       received: isCredito ? null : this.dineroRecibido,
       creditCustomerId: isCredito ? this.customerId : null,
       dueDate: isCredito ? this.dueDate : null,
@@ -906,6 +913,7 @@ export class Venta implements OnInit, OnDestroy {
     this.prepararConceptosFactura(res.lines ?? [], saleId);
 
     this.dineroRecibido = null;
+    this.pedidoPlataforma = '';
     this.customerId = null;
     this.dueDate = null;
   }

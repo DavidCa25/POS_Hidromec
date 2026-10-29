@@ -761,6 +761,13 @@
 .tp-otro i { font-size: 34px; color: var(--wx-accent-text); }
 .tp-otro h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
 .tp-otro p { margin: 0; max-width: 40ch; color: var(--wx-text-muted); font-size: var(--wx-text-sm); line-height: 1.5; }
+.tp-pedido { display: flex; flex-direction: column; gap: 6px; width: min(100%, 320px); font-size: var(--wx-text-sm); font-weight: 600; text-align: left; }
+.tp-pedido small { color: var(--wx-text-muted); font-weight: 400; }
+.tp-pedido input {
+  height: 48px; padding: 0 14px; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md);
+  background: var(--wx-sunken); color: var(--wx-text); font: inherit; font-family: var(--wx-font-mono); font-size: var(--wx-text-md); letter-spacing: 0.04em;
+}
+.tp-pedido input:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 1px; }
 
 .tp-cobro__confirmar { margin-top: auto; }
 

@@ -363,6 +363,9 @@ export class TouchPos implements OnInit, OnDestroy {
   // ------------------------------------------------------------------ cobro
   metodo = signal<PaymentMethod>('EFECTIVO');
   recibido = signal<string>('');
+  /** 0069: el numero de pedido de Uber Eats / Didi / Rappi (opcional). Con el,
+      Liquidaciones de plataforma empareja la venta con el pedido sin dudar. */
+  pedidoPlataforma = signal<string>('');
   cobrando = signal(false);
 
   readonly recibidoNum = computed(() => Number(this.recibido() || 0));
@@ -896,6 +899,7 @@ export class TouchPos implements OnInit, OnDestroy {
   private abrirCobro() {
     this.pagoMixto.set(false);this.metodosMixtos.set([]);this.capturados.set({});
     this.recibido.set('');
+    this.pedidoPlataforma.set('');
     this.metodo.set('EFECTIVO');
     this.vista.set('cobro');
   }
@@ -952,7 +956,10 @@ export class TouchPos implements OnInit, OnDestroy {
     try {
       const res = await this.sale.checkout({
         method: this.pagoMixto() ? 'MIXTO' : this.metodo(),
-        payments: this.pagoMixto() ? this.pagos().filter(p=>p.amount>0) : undefined,
+        payments: this.pagoMixto() ? this.pagos().filter(p=>p.amount>0)
+          : this.metodo()==='PLATAFORMA' && this.pedidoPlataforma().trim()
+            ? [{ method: 'PLATAFORMA' as const, amount: this.totales().total, reference: this.pedidoPlataforma().trim().slice(0, 100) }]
+            : undefined,
         /* Con tarjeta o transferencia se cobra el total exacto. Mandar `null`
            hacia que `SaleService.validate` lo rechazara como «dinero recibido
            insuficiente», y Touch no podia cobrar mas que en efectivo. */

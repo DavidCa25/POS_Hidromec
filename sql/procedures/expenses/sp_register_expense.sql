@@ -76,6 +76,10 @@ BEGIN
             RAISERROR('El concepto de egreso no existe.', 16, 1);
         IF @cat_active = 0
             RAISERROR('Ese concepto esta desactivado. Activalo o elige otro.', 16, 1);
+        /* 0069: la comision de una plataforma se registra al confirmar su
+           liquidacion, repartida entre sus pedidos. A mano contaria doble. */
+        IF @kind = 'PLATAFORMA'
+            RAISERROR('Las comisiones de plataforma se registran desde Liquidaciones de plataforma.', 16, 1);
 
         IF @expense_date IS NULL SET @expense_date = @hoy;
         IF @metodo = 'EFECTIVO' AND @expense_date <> @hoy

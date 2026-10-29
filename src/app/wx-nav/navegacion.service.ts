@@ -141,6 +141,8 @@ export class NavegacionService {
           { texto: 'Cierre del día', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
           // 0062: utilidad real (ventas - costo congelado - mermas - egresos).
           { texto: 'Estado de resultados', ruta: '/dashboard/estado-resultados', icono: 'ph-scales', visible: this.verNumeros },
+          // 0069: el ticket contra el depósito de Uber Eats, Didi o Rappi.
+          { texto: 'Liquidaciones de plataforma', ruta: '/dashboard/liquidaciones', icono: 'ph-moped', visible: this.verNumeros },
         ],
       },
       {

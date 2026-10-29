@@ -72,6 +72,8 @@ export const routes: Routes = [
       /* Roles v2: el cierre del dia, para Encargado y Administrador. El canal exige REPORTES_VER. */
       { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
       { path: 'estado-resultados', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./estado-resultados/estado-resultados.component').then(m => m.EstadoResultadosComponent) },
+      // 0069: lo que cobró el ticket contra lo que depositó Uber Eats, Didi o Rappi.
+      { path: 'liquidaciones', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./liquidaciones/liquidaciones.component').then(m => m.LiquidacionesComponent) },
 
       // ---- Retail POS ----
       // El guard decide, en cada navegacion, si esta caja vende aqui o en
