@@ -224,6 +224,8 @@ asignar('whatsapp', [
   'sp_WA_AddHistorial', 'sp_WA_DeletePlantilla', 'sp_WA_GetConfiguracion',
   'sp_WA_GetHistorial', 'sp_WA_GetPlantillas', 'sp_WA_UpdateConfiguracion',
   'sp_WA_UpsertPlantilla',
+  // 0068: aviso «pedido listo» al cliente (lo manda la nube).
+  'sp_whatsapp_pedido_candidatos', 'sp_whatsapp_pedido_job',
 ]);
 
 asignar('hospitality', [

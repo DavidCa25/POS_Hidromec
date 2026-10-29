@@ -64,7 +64,7 @@ function registrarSuperficies(registro, { dominios }) {
   registro.registrar(require('./superficies/inventario')());
 }
 
-function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname(), esPrincipal, leerConfig, guardarConfig, dominios = {}, licencia = null, log = (m) => console.log(`[LOCAL HOST] ${m}`) }) {
+function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname(), esPrincipal, leerConfig, guardarConfig, dominios = {}, licencia = null, alCambiarComandas = () => {}, log = (m) => console.log(`[LOCAL HOST] ${m}`) }) {
   const pool = () => poolPromise;
   const repo = repositorio.crear({ poolPromise, sql });
   const registro = crearRegistro();
@@ -115,7 +115,7 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
       eventos = crearEventos({ dominio, pool, sql, log });
       trabajadores.alCerrarSesion(({ sesionId, motivo }) => eventos?.cerrarSesion(sesionId, motivo));
       srvApi = crearServidor({
-        repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, dominios, log,
+        repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, dominios, log, alCambiarComandas,
         seguimiento: crearSeguimiento({ pool, sql }),
         licenciaPantallas,
         alPedir: (d, req) => {

@@ -1,4 +1,4 @@
-﻿const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 /*
  * ROLES V2 · OPERACIONES QUE SE APRUEBAN.
@@ -272,6 +272,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('menu-linea:nuevos', h);
       return () => ipcRenderer.removeListener('menu-linea:nuevos', h);
     },
+    /* 0068: avisos por WhatsApp al cliente final (los manda la nube). */
+    whatsappConfig: () => invoke('whatsapp:config'),
+    whatsappConfigGuardar: (p) => invoke('whatsapp:config-guardar', p),
+    whatsappRegistro: (p) => invoke('whatsapp:registro', p),
+    whatsappTelefono: (p) => invoke('whatsapp:telefono', p),
+    whatsappConexion: (p) => invoke('whatsapp:conexion', p),
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),

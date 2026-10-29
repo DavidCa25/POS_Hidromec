@@ -66,6 +66,7 @@
     "test:quickstart": "node scripts/pruebas/quickstart.mjs",
     "test:ui-contract": "node scripts/pruebas/ui-contract.mjs",
     "test:local-host": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/local-host.mjs",
+    "test:whatsapp": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/whatsapp-avisos.mjs",
     "test:pantallas": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/pantallas-operativas.mjs",
     "test:dock": "node scripts/pruebas/dock-y-mascota.mjs",
     "test:navegacion": "node scripts/pruebas/navegacion.mjs",
