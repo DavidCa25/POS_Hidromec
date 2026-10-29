@@ -12,9 +12,10 @@
     "mascota",
     "mascotaEnTouch",
     "fondoTouch",
-    "menuEnLinea"
+    "menuEnLinea",
+    "tarjetaWallet"
   ],
-  "descripcion": "Mascota I DO NUT ME en lugar de Wybix, logo de la marca como fondo de Touch y marca del menú en línea.",
+  "descripcion": "Mascota I DO NUT ME en lugar de Wybix, logo de la marca como fondo de Touch, marca del menú en línea y colores y logo de la tarjeta del Club en Wallet.",
   "ajustes": {
     "aprobaciones": false
   }

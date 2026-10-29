@@ -278,6 +278,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     whatsappRegistro: (p) => invoke('whatsapp:registro', p),
     whatsappTelefono: (p) => invoke('whatsapp:telefono', p),
     whatsappConexion: (p) => invoke('whatsapp:conexion', p),
+    clubWalletEmitir: p => invoke('club:wallet-emitir',p),
+    clubWalletResolver: p => invoke('club:wallet-resolver',p),
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),

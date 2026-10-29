@@ -303,6 +303,11 @@ const menuEnLinea = crearMenuEnLinea({
   alNuevos: (n) => alPedidosNuevos(n),
   log,
 });
+/* 0066 · Tarjeta del Club en Wallet: la función club-wallet (emitir, marca,
+   resolver), siempre con la credencial del equipo. */
+async function clubWallet(action, cuerpo = {}) {
+  return llamarFuncion('club-wallet', { action, ...cuerpo }, { token: await credencial() });
+}
 
 /**
  * Roles v2 · AUTORIZACIÓN A DISTANCIA desde la caja: un Operador pide, el
@@ -841,6 +846,7 @@ module.exports = {
   /** Quién se entera de pedidos nuevos (la ventana principal, para avisar). */
   alPedidosEnLinea: (fn) => { alPedidosNuevos = typeof fn === 'function' ? fn : () => {}; },
   guardarMarcaMenu: (m) => writeConfig({ ...loadConfig(), menuMarca: m ?? null }),
+  clubWallet,
   aprobaciones,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,

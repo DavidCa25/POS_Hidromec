@@ -58,6 +58,24 @@ export interface MarcaMenuEnLinea {
   acento?: string;
 }
 
+/**
+ * La tarjeta del Club en Apple Wallet y Google Wallet (0066). La nube pinta el
+ * pase de TODOS los clientes de la empresa con estos colores y este logo; sin
+ * hueco, el pase sale con los colores de Wybix y el nombre del negocio.
+ */
+export interface TarjetaWallet {
+  /** Colores del pase, `#rrggbb`: fondo, valores y etiquetas. */
+  fondo: string;
+  texto: string;
+  etiqueta: string;
+  /**
+   * Logo horizontal bajo `assets/addon/` (SVG o PNG). La caja lo convierte a
+   * PNG (480×150, el espacio de logo de Apple) y lo sube; también hace el
+   * icono cuadrado sobre el color de fondo.
+   */
+  logo?: string;
+}
+
 export interface AddonWybix {
   /** Igual que su carpeta: `wybix_<cliente>`. */
   id: string;
@@ -70,4 +88,6 @@ export interface AddonWybix {
   fondoTouch?: FondoDeMarca;
   /** La página del menú en línea con los colores y el logo de la marca. */
   menuEnLinea?: MarcaMenuEnLinea;
+  /** Colores y logo de la tarjeta del Club en Wallet. */
+  tarjetaWallet?: TarjetaWallet;
 }

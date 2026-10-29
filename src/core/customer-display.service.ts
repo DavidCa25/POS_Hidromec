@@ -111,6 +111,15 @@ export class CustomerDisplayService {
     this.push({ mode: 'dinamica-resultado', origen: 'DYNAMIC', ...p }, true);
   }
 
+  /** 0066 · La tarjeta del Club en Wallet: el QR (ya imagen) para que el cliente la guarde. */
+  showWallet(p: { qr: string; nombre: string }): void {
+    this.push({ mode: 'wallet', ...p }, true);
+  }
+  /** Quita la tarjeta si sigue en pantalla (el cajero cerró el diálogo). */
+  finWallet(): void {
+    this.push({ mode: 'wallet-fin' }, true);
+  }
+
   idle(): void {
     this.push({ mode: 'idle' }, true);
   }

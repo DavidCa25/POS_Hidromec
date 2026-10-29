@@ -2,6 +2,7 @@ import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ClubService } from '../../core/club.service';
 import { WxMenuComponent, WxMenuOpcion } from '../wx-menu/wx-menu.component';
+import { ClubWalletComponent } from './club-wallet.component';
 
 /*
  * TARJETA DEL CLUB (0063 · variante A aprobada).
@@ -14,11 +15,14 @@ import { WxMenuComponent, WxMenuOpcion } from '../wx-menu/wx-menu.component';
  *
  * 0064: debajo, en la misma tarjeta, sus puntos y sellos: el saldo, el
  * catálogo de canje y las tarjetas de sellos (llena = se canjea).
+ *
+ * 0066: «Tarjeta en Wallet» le da al cliente su tarjeta del Club en Apple
+ * Wallet o Google Wallet (club-wallet.component).
  */
 @Component({
   selector: 'app-club-cliente',
   standalone: true,
-  imports: [CommonModule, WxMenuComponent],
+  imports: [CommonModule, WxMenuComponent, ClubWalletComponent],
   template: `
   <ng-container *ngIf="club.cliente()">
     <div class="club" [class.club--touch]="touch" *ngIf="club.membresia() as m; else sinSocio" data-guide="club-tarjeta" [attr.data-guide-estado]="m.estado">
@@ -111,6 +115,12 @@ import { WxMenuComponent, WxMenuOpcion } from '../wx-menu/wx-menu.component';
         {{ e }} <button type="button" class="club__link" (click)="club.quitarCanjePuntos(); club.quitarCanjeSellos()">Quitar</button>
       </div>
     </div>
+
+    <!-- 0066 · tarjeta en Wallet -->
+    <button type="button" class="club__wallet" [class.club--touch]="touch" data-guide="club-wallet" *ngIf="conClub()" (click)="wallet = true">
+      <i class="ph ph-wallet" aria-hidden="true"></i> Tarjeta en Wallet
+    </button>
+    <app-club-wallet *ngIf="wallet" [customerId]="club.cliente()!.id" (close)="wallet = false"></app-club-wallet>
   </ng-container>`,
   styles: [`
     .club { margin-top: 8px; padding: 9px 10px; border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md); display: grid; gap: 7px; font-size: var(--wx-text-sm); background: var(--wx-surface); }
@@ -144,12 +154,21 @@ import { WxMenuComponent, WxMenuOpcion } from '../wx-menu/wx-menu.component';
     .b.pri { background: var(--wx-accent); border-color: var(--wx-accent); color: var(--wx-accent-ink); }
     .b.dark { background: var(--wx-text); border-color: var(--wx-text); color: var(--wx-surface); }
     .b.out { border-color: var(--wx-accent); color: var(--wx-accent-text); width: 100%; }
-    .b:focus-visible, .club__link:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+    .club__wallet { margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: var(--wx-text-xs); font-weight: 600; color: var(--wx-accent-text); cursor: pointer; }
+    .club__wallet.club--touch { margin: 0 16px 12px; min-height: 44px; font-size: var(--wx-text-sm); }
+    .b:focus-visible, .club__link:focus-visible, .club__wallet:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
   `],
 })
 export class ClubClienteComponent {
   @Input() touch = false;
   readonly club = inject(ClubService);
+  /** 0066 · ¿Está abierto el diálogo de la tarjeta en Wallet? */
+  wallet = false;
+
+  /** Hay algo del Club que llevar en la tarjeta: un plan, su membresía, puntos o sellos. */
+  conClub(): boolean {
+    return !!(this.club.membresia() || this.club.planes().length || this.club.puntosActivos() || this.club.tarjetas().length);
+  }
 
   beneficio(): string {
     const ps = this.club.productos();

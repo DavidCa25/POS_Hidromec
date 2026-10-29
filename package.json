@@ -120,6 +120,8 @@
     "test:multisucursal": "node scripts/pruebas/multisucursal-unidad.mjs",
     "db:test-multisucursal": "node scripts/db/pruebas/multisucursal.mjs",
     "test:pagos": "node --test scripts/pruebas/pagos-comprobantes.test.mjs",
+    "test:club-wallet": "node --test scripts/pruebas/club-wallet-nube.test.mjs && node scripts/db/pruebas/club-wallet.mjs",
+    "e2e:club-wallet": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/club-wallet.spec.js",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:liquidaciones": "npm run build && node -e \"import('./e2e/preparar-bases.mjs').then(m=>m.prepararBase('Wybix_E2E_Liquidaciones',{perfil:'RETAIL'}))\" && cross-env WYBIX_E2E_DB=Wybix_E2E_Liquidaciones playwright test e2e/liquidaciones.spec.js",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"

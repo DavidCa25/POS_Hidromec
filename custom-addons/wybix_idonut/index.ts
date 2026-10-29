@@ -6,7 +6,9 @@
  *     (guía, dock, sidebar, inicio, QuickStart, venta) y acompaña el cobro
  *     en Touch;
  *   - fondoTouch: el logo, casi transparente, detrás del catálogo de Touch;
- *   - menuEnLinea: el logo y los colores de la página del menú en línea.
+ *   - menuEnLinea: el logo y los colores de la página del menú en línea;
+ *   - tarjetaWallet: la tarjeta del Club en Wallet con el rosa y el logo de
+ *     la marca sobre un fondo claro (el logo es rosa: sobre rosa no se leería).
  *
  * Nada de aquí toca archivos del núcleo. Si el núcleo cambia su contrato,
  * este archivo deja de compilar y el build lo dice: no se pierde en silencio.
@@ -61,6 +63,12 @@ const addon: AddonWybix = {
     logo: 'assets/addon/menu-logo.svg',
     color: '#d0466c',
     acento: '#f6b8c8',
+  },
+  tarjetaWallet: {
+    fondo: '#fff5f7',
+    texto: '#3a1f27',
+    etiqueta: '#d0466c',
+    logo: 'assets/addon/wallet-logo.svg',
   },
 };
 

@@ -1,3 +1,4 @@
+import { ClubWalletLectura } from '../core/club-wallet-lectura';
 import {FacturaNueva,ConceptoFactura} from '../app/factura-nueva/factura-nueva.component';
 import {ReceiptViewer} from '../app/receipt-viewer/receipt-viewer.component';
 import {ReceiptEmail} from '../app/receipt-email/receipt-email.component';
@@ -490,9 +491,19 @@ export class TouchPos implements OnInit, OnDestroy {
 
   /** Scanner fisico: sigue funcionando aunque no haya teclado a la vista. */
   private porCodigo(code: string) {
+    /* 0066 · La tarjeta del Club (Wallet) identifica al cliente de la cuenta. */
+    if (ClubWalletLectura.esCodigo(code)) { void this.clientePorTarjeta(code); return; }
     const p = this.menu.findByBarcode(code);
     if (!p) { this.mostrar(`Sin coincidencia para ${code}`, 'error'); return; }
     this.tocar(p);
+  }
+
+  private async clientePorTarjeta(code: string) {
+    const r = await ClubWalletLectura.cliente(code, this.clientesSvc);
+    if (!r.ok) { this.mostrar(r.error, 'error'); return; }
+    const f = await this.mesaSvc.fijarCliente(r.cliente);
+    if (!f.ok) { this.mostrar(f.error, 'error'); return; }
+    this.mostrar(`Tarjeta del Club: ${r.cliente.name}`, 'ok');
   }
 
   private mostrar(texto: string, tipo: Aviso['tipo'] = 'error') {

@@ -315,6 +315,9 @@ export type CustomerDisplayState =
       pedido?: { numero: number; cuentaId: number; cliente?: string | null } | null;
     }
   | { mode: 'message'; text: string }
+  /** 0066 · La tarjeta del Club en Wallet: el QR ya hecho imagen y el nombre del socio. */
+  | { mode: 'wallet'; qr: string; nombre: string }
+  | { mode: 'wallet-fin' }
   /*
    * Fidelizacion en la pantalla del cliente.
    *
