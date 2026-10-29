@@ -12,6 +12,7 @@ import {
 } from '../../core/pedidos-en-linea.service';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { ADDON } from '../../app/marca/addon';
+import { DisenoMenuComponent } from './diseno-menu.component';
 
 /** Cada cuánto se relee la bandeja: los pedidos bajan de la nube cada 20 s. */
 const REFRESCO_MS = 6000;
@@ -35,7 +36,7 @@ const ESTADOS: Record<string, string> = {
 @Component({
   selector: 'app-pedidos-en-linea',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, CurrencyPipe, FormsModule],
+  imports: [NgIf, NgFor, NgClass, CurrencyPipe, FormsModule, DisenoMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pedidos-en-linea.component.html',
   styleUrls: ['../hx.css', './pedidos-en-linea.component.css'],
@@ -53,6 +54,8 @@ export class PedidosEnLineaComponent implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
   readonly trabajando = signal<number | null>(null);
   readonly configurando = signal(false);
+  /** 0070: la plantilla (portada, promos, fotos y descripciones). */
+  readonly disenando = signal(false);
   readonly qr = signal<string | null>(null);
   readonly guardando = signal(false);
 

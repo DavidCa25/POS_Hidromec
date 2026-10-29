@@ -107,4 +107,52 @@ export class PedidosEnLineaService {
     const r = await this.api?.menuLineaSincronizar?.();
     return r?.success ? { ok: true, datos: r.data } : { ok: false, error: r?.error || 'Sin conexión con la nube.' };
   }
+
+  // ---------------------------------------------- 0070 · diseño del menú
+  async diseno(): Promise<Resultado<DisenoMenu>> {
+    const r = await this.api?.menuLineaDiseno?.();
+    return r?.success ? { ok: true, datos: r.data } : { ok: false, error: r?.error || 'No se pudo leer el diseño.' };
+  }
+
+  async guardarDiseno(p: { color: string | null; acento: string | null; frase: string; direccion: string; horario: string }): Promise<Resultado<null>> {
+    const r = await this.api?.menuLineaDisenoGuardar?.(p);
+    return r?.success ? { ok: true, datos: null } : { ok: false, error: r?.error || 'No se pudo guardar el diseño.' };
+  }
+
+  async guardarImagen(p: { tipo: TipoImagenMenu; id?: number | null; productId?: number | null; titulo?: string | null;
+                           subtitulo?: string | null; orden?: number; dataUrl?: string | null }): Promise<Resultado<ImagenMenu>> {
+    const r = await this.api?.menuLineaImagenGuardar?.(p);
+    return r?.success ? { ok: true, datos: r.data } : { ok: false, error: r?.error || 'No se pudo guardar la imagen.' };
+  }
+
+  async borrarImagen(id: number): Promise<Resultado<null>> {
+    const r = await this.api?.menuLineaImagenBorrar?.({ id });
+    return r?.success ? { ok: true, datos: null } : { ok: false, error: r?.error || 'No se pudo quitar la imagen.' };
+  }
+
+  async verImagen(id: number): Promise<string | null> {
+    const r = await this.api?.menuLineaImagenVer?.({ id });
+    return r?.success ? r.data : null;
+  }
+
+  async guardarProducto(p: { productId: number; descripcion: string; etiquetas: string[]; destacado: boolean; oculto: boolean }): Promise<Resultado<null>> {
+    const r = await this.api?.menuLineaProductoGuardar?.(p);
+    return r?.success ? { ok: true, datos: null } : { ok: false, error: r?.error || 'No se pudo guardar el producto.' };
+  }
+}
+
+export type TipoImagenMenu = 'PORTADA' | 'LOGO' | 'PROMO' | 'PRODUCTO';
+export interface ImagenMenu {
+  id: number; tipo: TipoImagenMenu; product_id: number | null; titulo: string | null; subtitulo: string | null;
+  orden: number; version: number; ancho: number; alto: number;
+}
+export interface ProductoMenu {
+  product_id: number; nombre: string; price: number; categoria: string | null; image_version: number | null;
+  descripcion: string | null; etiquetas: string | null; destacado: boolean; oculto: boolean; foto_id: number | null; foto_version: number | null;
+}
+export interface DisenoMenu {
+  config: { color: string | null; acento: string | null; frase: string | null; direccion: string | null; horario: string | null; slug: string | null };
+  imagenes: ImagenMenu[];
+  productos: ProductoMenu[];
+  masVendidos: { product_id: number; piezas: number }[];
 }

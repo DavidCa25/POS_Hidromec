@@ -138,6 +138,94 @@ function registrar({ ipcMain, sql, poolPromise, cloudSync, hospitality, cajaDeEs
     } catch (e) { return { success: false, error: paraElUsuario(e, 'rechazar el pedido') }; }
   }, HOSPITALITY));
 
+  // ------------------------------------------------- 0070 · diseño del menú
+  /* Lado máximo por tipo: la portada se ve a lo ancho; un producto, en su ficha. */
+  const LADO = { PORTADA: 1600, PROMO: 1200, PRODUCTO: 1080, LOGO: 512 };
+  const LIMITE = 450 * 1024;
+  const { nativeImage } = require('electron');
+  const publicarLuego = () => { void cloudSync.menuEnLinea?.publicar?.(true); };
+
+  ipcMain.handle('menu-linea:diseno', sesion.proteger('menu-linea:diseno', async () => {
+    try {
+      const r = await (await pool()).request().execute('sp_menu_en_linea_diseno');
+      const [imagenes = [], productos = [], masVendidos = []] = r.recordsets || [];
+      return { success: true, data: { config: await leerConfig(), imagenes, productos, masVendidos } };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'leer el diseño del menú') }; }
+  }, HOSPITALITY));
+
+  ipcMain.handle('menu-linea:diseno-guardar', sesion.proteger('menu-linea:diseno-guardar', async (_e, p = {}, s) => {
+    try {
+      const txt = (v, n) => (v ? String(v).slice(0, n) : null);
+      await (await pool()).request().input('diseno', sql.Bit, 1)
+        .input('color', sql.NVarChar(7), txt(p.color, 7)).input('acento', sql.NVarChar(7), txt(p.acento, 7))
+        .input('frase', sql.NVarChar(120), txt(p.frase, 120)).input('direccion', sql.NVarChar(200), txt(p.direccion, 200))
+        .input('horario', sql.NVarChar(120), txt(p.horario, 120)).input('user_id', sql.Int, sesion.actorDe(s))
+        .execute('sp_menu_en_linea_config');
+      publicarLuego();
+      return { success: true };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'guardar el diseño') }; }
+  }, HOSPITALITY));
+
+  /* La foto llega como data URL y se reduce AQUÍ (nativeImage): a la base y a
+     la nube solo va el tamaño que la plantilla usa. */
+  ipcMain.handle('menu-linea:imagen-guardar', sesion.proteger('menu-linea:imagen-guardar', async (_e, p = {}) => {
+    try {
+      const tipo = String(p.tipo || '').toUpperCase();
+      if (!LADO[tipo]) return { success: false, error: 'Tipo de imagen no válido.' };
+      let buf = null, mime = null, w = null, h = null;
+      if (p.dataUrl) {
+        let img = nativeImage.createFromDataURL(String(p.dataUrl));
+        if (img.isEmpty()) return { success: false, error: 'La imagen no se pudo leer.' };
+        const t = img.getSize();
+        if (t.width > LADO[tipo]) img = img.resize({ width: LADO[tipo], quality: 'best' });
+        ({ width: w, height: h } = img.getSize());
+        if (tipo === 'LOGO' && /^data:image\/png/.test(p.dataUrl)) { buf = img.toPNG(); mime = 'image/png'; }
+        if (!buf || buf.length > LIMITE) {
+          mime = 'image/jpeg';
+          for (const q of [85, 75, 65, 55, 45]) { buf = img.toJPEG(q); if (buf.length <= LIMITE) break; }
+        }
+        if (buf.length > LIMITE) return { success: false, error: 'La imagen es demasiado pesada. Usa otra.' };
+      }
+      const r = await (await pool()).request()
+        .input('tipo', sql.NVarChar(10), tipo).input('id', sql.Int, numero(p.id)).input('product_id', sql.Int, numero(p.productId))
+        .input('titulo', sql.NVarChar(60), p.titulo ? String(p.titulo).slice(0, 60) : null)
+        .input('subtitulo', sql.NVarChar(120), p.subtitulo ? String(p.subtitulo).slice(0, 120) : null)
+        .input('orden', sql.Int, Number.isInteger(p.orden) ? p.orden : null)
+        .input('mime', sql.NVarChar(20), mime).input('data', sql.VarBinary(sql.MAX), buf)
+        .input('ancho', sql.Int, w).input('alto', sql.Int, h)
+        .execute('sp_menu_en_linea_imagen_guardar');
+      publicarLuego();
+      return { success: true, data: r.recordset?.[0] ?? null };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'guardar la imagen') }; }
+  }, HOSPITALITY));
+
+  ipcMain.handle('menu-linea:imagen-borrar', sesion.proteger('menu-linea:imagen-borrar', async (_e, p = {}) => {
+    try {
+      await (await pool()).request().input('id', sql.Int, numero(p.id)).execute('sp_menu_en_linea_imagen_borrar');
+      publicarLuego();
+      return { success: true };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'quitar la imagen') }; }
+  }, HOSPITALITY));
+
+  ipcMain.handle('menu-linea:imagen-ver', sesion.proteger('menu-linea:imagen-ver', async (_e, p = {}) => {
+    try {
+      const f = (await (await pool()).request().input('id', sql.Int, numero(p.id)).execute('sp_menu_en_linea_imagen_get')).recordset?.[0];
+      return f ? { success: true, data: `data:${f.mime};base64,${Buffer.from(f.data).toString('base64')}` } : { success: false, error: 'No existe.' };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'leer la imagen') }; }
+  }, HOSPITALITY));
+
+  ipcMain.handle('menu-linea:producto-guardar', sesion.proteger('menu-linea:producto-guardar', async (_e, p = {}) => {
+    try {
+      const etiquetas = Array.isArray(p.etiquetas) ? p.etiquetas.map(String).join(',') : null;
+      const r = await (await pool()).request().input('product_id', sql.Int, numero(p.productId))
+        .input('descripcion', sql.NVarChar(300), p.descripcion ? String(p.descripcion).slice(0, 300) : null)
+        .input('etiquetas', sql.NVarChar(100), etiquetas).input('destacado', sql.Bit, !!p.destacado).input('oculto', sql.Bit, !!p.oculto)
+        .execute('sp_menu_en_linea_producto_guardar');
+      publicarLuego();
+      return { success: true, data: r.recordset?.[0] ?? null };
+    } catch (e) { return { success: false, error: paraElUsuario(e, 'guardar el producto del menú') }; }
+  }, HOSPITALITY));
+
   ipcMain.handle('menu-linea:sincronizar', sesion.proteger('menu-linea:sincronizar', async () => {
     const r = await cloudSync.menuEnLinea?.sincronizar?.();
     return r?.error ? { success: false, error: 'Sin conexión con la nube. Los pedidos llegan cuando vuelva.' } : { success: true, data: r ?? null };

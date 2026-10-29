@@ -15,6 +15,10 @@
               [attr.aria-expanded]="configurando()" (click)="configurando.set(!configurando())">
         <i class="ph ph-gear" aria-hidden="true"></i> Configurar menú
       </button>
+      <button type="button" class="btn-outline" *ngIf="puedeConfigurar" data-guide="pedidos-en-linea-disenar"
+              [attr.aria-expanded]="disenando()" (click)="disenando.set(!disenando())">
+        <i class="ph ph-paint-brush" aria-hidden="true"></i> Diseño del menú
+      </button>
     </div>
   </header>
 
@@ -54,6 +58,8 @@
       <figcaption>Imprímelo para el mostrador o las mesas.<br><span>{{ url() }}</span></figcaption>
     </figure>
   </section>
+
+  <app-diseno-menu *ngIf="disenando() && puedeConfigurar"></app-diseno-menu>
 
   <p class="pel-error" *ngIf="error()" role="alert">
     <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ error() }}

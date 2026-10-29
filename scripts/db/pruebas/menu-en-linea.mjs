@@ -78,8 +78,9 @@ try {
     for (const lote of readFileSync(join(DIR_MIG, f), 'utf8').replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n/gi)) if (lote.trim()) q(lote);
     q(`INSERT INTO dbo.schema_migrations (filename) VALUES (N'${f}');`);
   }
-  /* Reaplicar 0067 no rompe nada (idempotente). */
-  for (const lote of readFileSync(join(DIR_MIG, '0067_menu-en-linea.sql'), 'utf8').replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n/gi)) if (lote.trim()) q(lote);
+  /* Reaplicar 0067 y 0070, en orden, no rompe nada (idempotentes). */
+  for (const f of ['0067_menu-en-linea.sql', '0070_menu-diseno.sql'])
+    for (const lote of readFileSync(join(DIR_MIG, f), 'utf8').replace(/\r\n/g, '\n').split(/\n\s*GO\s*\n/gi)) if (lote.trim()) q(lote);
 
   /* ---------------------------------------------------- el mundo */
   q(`INSERT INTO dbo.users (usuario, password_hash, rol, active, creation_date) VALUES (N'qa_caja', N'x', N'admin', 1, GETDATE());
@@ -127,7 +128,7 @@ try {
     'un pedido vacío no entra');
   let lista = q(`EXEC dbo.sp_pedidos_en_linea_listar`);
   check(lista.length === 1 && lista[0].estado_cliente === 'RECIBIDO', 'la bandeja lo enseña RECIBIDO');
-  check(Number(lista[0].minutos_espera) === 0, 'la espera sale de SQL, sin desfase de zona horaria', `${lista[0].minutos_espera} min`);
+  check(Number(lista[0].minutos_espera) <= 1, 'la espera sale de SQL, sin desfase de zona horaria (no las 6 h del UTC)', `${lista[0].minutos_espera} min`);
   let pub = q(`EXEC dbo.sp_pedidos_en_linea_listar @por_publicar = 1`);
   check(pub.length === 1 && pub[0].estado_cliente === 'RECIBIDO', 'y está por publicarse a la nube');
   q(`EXEC dbo.sp_pedido_en_linea_publicado @uuid='${ped.uuid}', @estado=N'RECIBIDO'`);
@@ -211,6 +212,42 @@ try {
   check(uno(`SELECT estado, cuenta_id FROM dbo.pedidos_en_linea WHERE id = ${r5.id}`).estado === 'PENDIENTE'
      && uno(`SELECT estado FROM dbo.hosp_cuentas WHERE id = ${a5.cuenta_id}`).estado === 'CANCELADA', 'el pedido vuelve a PENDIENTE y la cuenta se cancela');
   check(uno(`EXEC dbo.sp_pedido_en_linea_revertir @id = ${r1.id}`).revertido === false, 'uno que ya está en cocina no se revierte');
+
+  // ================================================================ 9
+  seccion('9. Diseño del menú (0070)');
+  const dis = uno(`EXEC dbo.sp_menu_en_linea_config @diseno = 1, @color = N'#D0466C', @acento = N'#f6b8c8', @frase = N'Las donas, amordidas',
+    @direccion = N'Av. Juárez 120, Centro', @horario = N'Lun a sáb · 8:00 a 21:00'`);
+  check(dis.color === '#d0466c' && dis.frase === 'Las donas, amordidas' && dis.slug === 'cafe-centro', 'guarda colores (en minúsculas), frase y horario sin tocar la publicación');
+  check(falla(`EXEC dbo.sp_menu_en_linea_config @diseno = 1, @color = N'rojo'`, '#rrggbb').ok, 'un color que no es #rrggbb no entra');
+  const pub2 = uno(`EXEC dbo.sp_menu_en_linea_config @guardar = 1, @activo = 1, @slug = N'cafe-centro', @minutos_estimados = 10`);
+  check(pub2.color === '#d0466c' && pub2.horario?.startsWith('Lun'), 'y guardar la publicación no borra el diseño');
+
+  const pm = uno(`EXEC dbo.sp_menu_en_linea_producto_guardar @product_id = ${latte}, @descripcion = N'Espresso doble con leche cremosa', @etiquetas = N'nuevo, recomendado', @destacado = 1`);
+  check(pm.etiquetas === 'NUEVO,RECOMENDADO' && pm.destacado === true, 'descripción y etiquetas del producto', pm.etiquetas);
+  check(falla(`EXEC dbo.sp_menu_en_linea_producto_guardar @product_id = ${latte}, @etiquetas = N'BARATO'`, 'Etiqueta no').ok, 'una etiqueta inventada no entra');
+
+  const img = (tipo, extra = '') => uno(`EXEC dbo.sp_menu_en_linea_imagen_guardar @tipo = '${tipo}', @mime = 'image/jpeg', @data = 0xFFD8FF00112233, @ancho = 1080, @alto = 720 ${extra}`);
+  const po1 = img('PORTADA'), po2 = img('PORTADA');
+  check(po1.id === po2.id && po2.version === 2, 'otra portada reemplaza la anterior y sube la versión', `v${po2.version}`);
+  const fp = img('PRODUCTO', `, @product_id = ${latte}`);
+  check(fp.product_id === latte, 'foto grande del latte');
+  const promos = [];
+  for (let k = 1; k <= 5; k++) promos.push(img('PROMO', `, @titulo = N'Promo ${k}', @product_id = ${dona}`));
+  check(falla(`EXEC dbo.sp_menu_en_linea_imagen_guardar @tipo = 'PROMO', @mime = 'image/jpeg', @data = 0xFF, @ancho = 1, @alto = 1`, '5 promociones').ok, 'máximo 5 promociones');
+  const ed = uno(`EXEC dbo.sp_menu_en_linea_imagen_guardar @tipo = 'PROMO', @id = ${promos[0].id}, @titulo = N'2x1 en glaseadas', @product_id = ${dona}`);
+  check(ed.titulo === '2x1 en glaseadas' && ed.version === 1, 'editar el texto de una promo no cambia su foto');
+  check(uno(`EXEC dbo.sp_menu_en_linea_imagen_borrar @id = ${promos[4].id}`).borradas === 1, 'quitar una promo');
+  check(falla(`EXEC dbo.sp_menu_en_linea_imagen_guardar @tipo = 'LOGO', @mime = 'image/gif', @data = 0xFF, @ancho = 1, @alto = 1`).ok, 'solo JPEG, PNG o WebP');
+
+  const ds = sets(`EXEC dbo.sp_menu_en_linea_diseno`);
+  const [imgs, prods, top] = [ds[0], ds[1], ds[2]];
+  check(imgs.length === 6 && !('data' in imgs[0]), 'el diseño lista 6 fotos sin sus bytes', imgs.map(x => x.tipo).join(','));
+  const pl = prods.find(x => x.product_id === latte);
+  check(pl?.descripcion?.startsWith('Espresso') && pl.foto_version === 1, 'cada producto con su descripción y su foto');
+  check(top.length >= 2 && top[0].product_id === dona, 'lo más pedido sale de ventas reales (2 donas > 1 latte)', top.map(x => `${x.product_id}:${x.piezas}`).join(' '));
+  q(`EXEC dbo.sp_menu_en_linea_producto_guardar @product_id = ${dona}, @oculto = 1`);
+  check(!sets(`EXEC dbo.sp_menu_en_linea_diseno`)[2].some(x => x.product_id === dona), 'un producto oculto no sale en lo más pedido');
+  check(uno(`EXEC dbo.sp_menu_en_linea_imagen_get @id = ${fp.id}`).version === 1 && !!uno(`SELECT DATALENGTH(data) AS n FROM dbo.menu_en_linea_imagenes WHERE id = ${fp.id}`).n, 'los bytes se leen aparte');
 } catch (e) {
   fallos++;
   console.log(`   FALLA  la prueba se interrumpió  · ${e.message}`);

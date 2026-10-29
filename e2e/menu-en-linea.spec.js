@@ -95,19 +95,30 @@ test.describe('Menú en línea', () => {
     for (const m of ['hospitality', 'comandas']) expect((await app.invocar('modulosSet', m, true))?.success).toBeTruthy();
     const est = await w(ventana, (n) => window.wybix.estaciones.guardar({ nombre: n, salida: 'PANTALLA' }), `Barra ${s}`);
     const barra = est.data[0].id;
-    await app.invocar('createCategory', { nombre: `Cafés ${s}` });
-    const cat = filasDe(await app.invocar('getCategories')).find(c => (c.namee ?? c.nombre ?? c.category_name) === `Cafés ${s}`);
+    /* Categorías con nombre de verdad (se reusan entre corridas): el menú se ve como el de un negocio. */
+    const categoria = async (n) => {
+      const nom = (c) => c.namee ?? c.nombre ?? c.category_name;
+      let c = filasDe(await app.invocar('getCategories')).find(x => nom(x) === n);
+      if (!c) { await app.invocar('createCategory', { nombre: n }); c = filasDe(await app.invocar('getCategories')).find(x => nom(x) === n); }
+      return c;
+    };
+    const cat = await categoria('Cafés');
+    const catDonas = await categoria('Donas');
     let marcas = filasDe(await app.invocar('getBrands'));
     if (!marcas.length) { await app.invocar('createBrand', { nombre: `Casa ${s}` }); marcas = filasDe(await app.invocar('getBrands')); }
     const idDe = (x) => Number(x?.id ?? x?.category_id ?? x?.brand_id);
-    const producto = async (pn, nombre, precio, modo, stock = 0) => {
-      await app.invocar('agregarProducto', idDe(marcas[0]), idDe(cat), pn, nombre, precio, stock,
+    const producto = async (pn, nombre, precio, modo, stock = 0, c = cat) => {
+      await app.invocar('agregarProducto', idDe(marcas[0]), idDe(c), pn, nombre, precio, stock,
         null, null, '02', 0.16, null, { inventory_mode: modo, sellable: 1, base_uom: 'pza' });
       return Number(filasDe(await app.invocar('getActiveProducts')).find(x => x.part_number === pn).id);
     };
-    const latte = await producto(`ML-LAT-${s}`, `Latte ${s}`, 55, 'NONE');
-    const dona = await producto(`ML-DON-${s}`, `Dona ${s}`, 25, 'DIRECT', 30);
-    for (const pid of [latte, dona]) await w(ventana, ([p, st]) => window.wybix.estaciones.asignar({ productId: p, stationId: st }), [pid, barra]);
+    const latte = await producto(`ML-LAT-${s}`, 'Latte', 55, 'NONE');
+    const dona = await producto(`ML-DON-${s}`, 'Dona glaseada', 25, 'DIRECT', 30, catDonas);
+    const velvet = await producto(`ML-RVT-${s}`, 'Red velvet', 32, 'DIRECT', 20, catDonas);
+    const caja6 = await producto(`ML-CJ6-${s}`, 'Caja de 6 donas', 135, 'NONE', 0, catDonas);
+    const americano = await producto(`ML-AME-${s}`, 'Americano', 38, 'NONE');
+    const deEstaCorrida = new Set([latte, dona, velvet, caja6, americano]);
+    for (const pid of [latte, dona, velvet, caja6, americano]) await w(ventana, ([p, st]) => window.wybix.estaciones.asignar({ productId: p, stationId: st }), [pid, barra]);
     const g = await w(ventana, (n) => window.wybix.modifiers.save({
       name: n, role: 'SIZE', minSelect: 1, maxSelect: 1, required: true,
       options: [{ name: 'Chico', priceDelta: 0, effect: 'NONE' }, { name: 'Grande', priceDelta: 10, effect: 'NONE' }],
@@ -120,6 +131,59 @@ test.describe('Menú en línea', () => {
     await app.invocar('cloudSetConfig', { enabled: true });
     const alta = await app.invocar('cloudEnsureProvisioned', `Café e2e ${s}`);
     expect(alta?.success, `alta en la nube local: ${JSON.stringify(alta)}`).toBeTruthy();
+
+    // ---------------------------------- diseño del menú (0070, por canales)
+    /* Fotos de muestra dibujadas en un canvas: un fondo de la marca y el producto. */
+    const pintar = (o) => w(ventana, ({ ancho, alto, fondo, emoji, tam, patron }) => {
+      const c = document.createElement('canvas'); c.width = ancho; c.height = alto;
+      const x = c.getContext('2d');
+      const g = x.createLinearGradient(0, 0, ancho, alto); g.addColorStop(0, fondo[0]); g.addColorStop(1, fondo[1]);
+      x.fillStyle = g; x.fillRect(0, 0, ancho, alto);
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      if (patron) {
+        for (let i = 0; i < patron; i++) {
+          x.font = `${Math.round(tam * (0.55 + ((i * 37) % 50) / 100))}px "Segoe UI Emoji"`;
+          x.fillText(emoji[i % emoji.length], (i * 263) % ancho, (i * 151) % alto);
+        }
+      } else { x.font = `${tam}px "Segoe UI Emoji"`; x.fillText(emoji[0], ancho / 2, alto / 2 + tam * 0.06); }
+      return c.toDataURL('image/jpeg', 0.88);
+    }, o);
+    const sube = async (p) => { const r = await app.invocar('menuLineaImagenGuardar', p); expect(r?.success, JSON.stringify(r)).toBeTruthy(); return r.data; };
+    /* Las promociones de corridas anteriores se quitan (son 5 como máximo). */
+    for (const i of ((await app.invocar('menuLineaDiseno'))?.data?.imagenes ?? []).filter(x => x.tipo === 'PROMO')) await app.invocar('menuLineaImagenBorrar', { id: i.id });
+    /* Solo los productos de esta corrida en el menú: las anteriores se ocultan. */
+    for (const x of ((await app.invocar('menuLineaDiseno'))?.data?.productos ?? [])) {
+      if (!deEstaCorrida.has(x.product_id) && !x.oculto) await app.invocar('menuLineaProductoGuardar', { productId: x.product_id, descripcion: x.descripcion, etiquetas: [], destacado: false, oculto: true });
+    }
+    expect((await app.invocar('menuLineaDisenoGuardar', { color: null, acento: null, frase: 'Las donas, amordidas',
+      direccion: 'Av. Juárez 120, Centro, León', horario: 'Lun a sáb · 8:00 a 21:00' }))?.success).toBeTruthy();
+    await sube({ tipo: 'PORTADA', dataUrl: await pintar({ ancho: 1600, alto: 900, fondo: ['#f6b8c8', '#d0466c'], emoji: ['🍩', '☕', '🍩', '✨'], tam: 210, patron: 26 }) });
+    await sube({ tipo: 'PROMO', productId: caja6, titulo: '2x1 en glaseadas', subtitulo: 'Solo los martes',
+      dataUrl: await pintar({ ancho: 1200, alto: 675, fondo: ['#ffd8a8', '#f08c4a'], emoji: ['🍩'], tam: 420 }) });
+    await sube({ tipo: 'PROMO', productId: latte, titulo: 'Latte + dona $70',
+      dataUrl: await pintar({ ancho: 1200, alto: 675, fondo: ['#d9c2a7', '#7b4a2e'], emoji: ['☕'], tam: 400 }) });
+    const fotos = [[latte, ['#efe1cf', '#c79a6b'], '☕'], [dona, ['#fde2ea', '#f3a6bd'], '🍩'], [velvet, ['#f6c9c9', '#b5323a'], '🍩'],
+                   [caja6, ['#fff1c9', '#f5b84c'], '🍩'], [americano, ['#e6dccf', '#5b3a26'], '☕']];
+    for (const [pid, fondo, emoji] of fotos) await sube({ tipo: 'PRODUCTO', productId: pid, dataUrl: await pintar({ ancho: 1080, alto: 1080, fondo, emoji: [emoji], tam: 560 }) });
+    for (const [pid, descripcion, etiquetas, destacado] of [
+      [latte, 'Espresso doble con leche cremosa. Pídelo grande.', ['RECOMENDADO'], false],
+      [dona, 'La clásica: masa esponjosa y glaseado brillante.', [], false],
+      [velvet, 'Rellena de queso crema, con chispas rojas.', ['NUEVO'], false],
+      [caja6, 'Seis donas surtidas para compartir (o no).', ['RECOMENDADO'], true],
+      [americano, 'Café de altura, recién molido.', [], false]]) {
+      expect((await app.invocar('menuLineaProductoGuardar', { productId: pid, descripcion, etiquetas, destacado, oculto: false }))?.success).toBeTruthy();
+    }
+    /* «Lo más pedido» sale de ventas reales: dos ventas de mostrador. */
+    const yo = (await app.invocar('sesion')).data.userId;
+    await app.invocar('openShift', { user_id: yo, opening_cash: 500 });
+    for (const lineas of [[[dona, 25, 3], [americano, 38, 1]], [[dona, 25, 2], [velvet, 32, 2]]]) {
+      const r = await app.invocar('registerSaleV2', { userId: yo, paymentMethod: 'EFECTIVO', customerId: null, dueDate: null, registerId: null,
+        lines: lineas.map(([productId, unitPrice, qty]) => ({ productId, qty, unitPrice, options: [] })) });
+      expect(r?.success, JSON.stringify(r)).toBeTruthy();
+    }
+    const diseno = (await app.invocar('menuLineaDiseno')).data;
+    expect(diseno.masVendidos[0]?.product_id, 'lo más pedido: la dona glaseada (5)').toBe(dona);
+    expect(diseno.imagenes.filter(i => i.tipo === 'PROMO').length).toBe(2);
 
     // -------------------------------------- publicar el menú desde la pantalla
     /* Aplicaciones relee los módulos: así la navegación ve Hospitality encendido. */
@@ -135,25 +199,43 @@ test.describe('Menú en línea', () => {
     await expect(ventana.locator('.pel-qr img'), 'publicado: el QR del menú').toBeVisible({ timeout: 30000 });
     await expect(ventana.locator('.hx-head__txt p')).toContainText(`/m/${slug}`);
     await ventana.screenshot({ path: path.join(CAPTURAS, '1-caja-publicar.png') });
+    await ventana.click('[data-guide="pedidos-en-linea-configurar"]');
+    await ventana.click('[data-guide="pedidos-en-linea-disenar"]');
+    await expect(ventana.locator('[data-guide="diseno-menu-producto"]').first(), 'la pantalla Diseño del menú').toBeVisible({ timeout: 20000 });
+    await expect(ventana.locator('.dm-portada__foto')).toHaveAttribute('style', /background-image/);
+    await ventana.screenshot({ path: path.join(CAPTURAS, '0-caja-diseno.png') });
+    await ventana.click('[data-guide="pedidos-en-linea-disenar"]');
 
     // ------------------------------------------------------ el celular pide
+    const stockAntes = await stockDona();
     const nav = await chromium.launch();
     const tel = await nav.newContext({ ...devices['Pixel 7'] });
     const cel = await tel.newPage();
     await cel.goto(`http://127.0.0.1:${P_WEB}/m/${slug}?origen=mostrador`);
-    await expect(cel.locator('.m-cab h1')).toHaveText(`Café e2e ${s}`, { timeout: 30000 });
-    await expect(cel.locator('.m-cab p'), 'abierto: la caja late').toContainText('Para recoger');
-    await cel.screenshot({ path: path.join(CAPTURAS, '2-celular-menu.png'), fullPage: true });
+    await expect(cel.locator('.m-hero h1')).toHaveText(`Café e2e ${s}`, { timeout: 30000 });
+    await expect(cel.locator('.m-chip--ok'), 'abierto: la caja late').toContainText('Abierto');
+    await expect(cel.locator('.m-hero__frase')).toHaveText('Las donas, amordidas');
+    await expect(cel.locator('.m-hero__portada img'), 'la portada').toBeVisible();
+    await expect(cel.locator('.m-promo'), 'dos promociones').toHaveCount(2);
+    await expect(cel.locator('[data-guide="menu-top"]').first(), 'lo más pedido: la dona').toContainText('Dona glaseada');
+    await expect(cel.locator('.m-item--destacado'), 'la caja de 6, destacada').toContainText('Caja de 6 donas');
+    await expect(cel.locator('.m-etq--nuevo').first()).toHaveText('Nuevo');
+    /* Las fotos cargan al acercarse (lazy): se recorre la página antes de la captura completa. */
+    for (let y = 0; y < 8000; y += 600) await cel.evaluate((v) => window.scrollTo(0, v), y);
+    await cel.evaluate(() => Promise.all([...document.images].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; }))));
+    await cel.evaluate(() => window.scrollTo(0, 0));
+    await cel.screenshot({ path: path.join(CAPTURAS, '2-celular-menu.png') });
+    await cel.screenshot({ path: path.join(CAPTURAS, '2b-celular-menu-completo.png'), fullPage: true });
 
-    await cel.locator('.m-prod', { hasText: `Latte ${s}` }).click();
+    await cel.locator('.m-prod', { hasText: 'Latte' }).first().click();
+    await expect(cel.locator('.m-hoja__desc')).toContainText('Espresso doble');
     await expect(cel.locator('.m-op.on'), 'el tamaño llega con Chico elegido').toHaveText(/Chico/);
     await cel.locator('.m-op', { hasText: 'Grande' }).click();
     await cel.locator('.m-campo input').first().fill('extra caliente');
     await cel.screenshot({ path: path.join(CAPTURAS, '3-celular-producto.png') });
     await cel.click('[data-guide="menu-agregar"]');
-    await cel.locator('.m-prod', { hasText: `Dona ${s}` }).click();
-    await cel.locator('.m-cantidad button[aria-label="Uno más"]').click();
-    await cel.click('[data-guide="menu-agregar"]');
+    /* La dona no pide elegir nada: el «+» la agrega sin abrir la ficha. */
+    for (let i = 0; i < 2; i++) await cel.click(`[data-guide="menu-mas"][data-guide-clave="${dona}"]`);
     await expect(cel.locator('.m-barra'), '1 latte grande + 2 donas = $115').toContainText('115');
     await cel.click('[data-guide="menu-ver-pedido"]');
     await cel.fill('[data-guide="menu-nombre"]', 'Ana Ruiz');
@@ -173,14 +255,16 @@ test.describe('Menú en línea', () => {
     await expect(tarjeta).toContainText('Grande');
     await expect(tarjeta).toContainText('extra caliente');
     await expect(tarjeta.locator('.pel-total')).toContainText('115');
-    expect(await stockDona(), 'recibir no descuenta').toBe(30);
+    expect(await stockDona(), 'recibir no descuenta').toBe(stockAntes);
     await ventana.screenshot({ path: path.join(CAPTURAS, '6-caja-por-aceptar.png') });
+    /* La fila de ESTE pedido: la base de pruebas guarda los de otras corridas del día. */
+    const miId = ((await app.invocar('menuLineaPedidos')).data).find(p => p.estado === 'PENDIENTE').id;
     await tarjeta.locator('[data-guide="pedidos-en-linea-aceptar"]').click();
-    const hoy = ventana.locator('[data-guide="pedidos-en-linea-hoy"]').first();
+    const hoy = ventana.locator(`[data-guide="pedidos-en-linea-hoy"][data-guide-clave="${miId}"]`);
     await expect(hoy).toHaveAttribute('data-guide-estado', 'PREPARANDO', { timeout: 20000 });
     const numero = (await hoy.locator('.pel-num').innerText()).replace('#', '').trim();
     expect(Number(numero), 'tiene número del día').toBeGreaterThan(0);
-    expect(await stockDona(), 'aceptar tampoco descuenta: se cobra al recoger').toBe(30);
+    expect(await stockDona(), 'aceptar tampoco descuenta: se cobra al recoger').toBe(stockAntes);
 
     // ----------------------------------------------------- cocina (KDS)
     const kds = await w(ventana, (st) => window.wybix.kds.listar({ stationId: st }), barra);
@@ -201,8 +285,7 @@ test.describe('Menú en línea', () => {
       { timeout: 60000, intervals: [2000, 3000] }).toBe('LISTO');
     await expect(cel.locator('.m-seg__titulo')).toHaveText('¡Tu pedido está listo!');
     await cel.screenshot({ path: path.join(CAPTURAS, '8-celular-listo.png') });
-    await expect.poll(async () => ((await app.invocar('menuLineaPedidos'))?.data ?? [])[0]?.estadoCliente, { timeout: 20000 }).toBe('LISTO');
-    await expect(ventana.locator('[data-guide="pedidos-en-linea-hoy"]').first()).toHaveAttribute('data-guide-estado', 'LISTO', { timeout: 20000 });
+    await expect(hoy).toHaveAttribute('data-guide-estado', 'LISTO', { timeout: 20000 });
     await ventana.screenshot({ path: path.join(CAPTURAS, '9-caja-listo.png') });
 
     await w(ventana, (id) => window.wybix.kds.estado({ comandaId: id, estado: 'ENTREGADA' }), comanda.id);
@@ -211,8 +294,7 @@ test.describe('Menú en línea', () => {
 
     // ------------------------------------------- rechazo, con motivo visible
     await cel.goto(`http://127.0.0.1:${P_WEB}/m/${slug}`);
-    await cel.locator('.m-prod', { hasText: `Dona ${s}` }).click();
-    await cel.click('[data-guide="menu-agregar"]');
+    await cel.click(`[data-guide="menu-mas"][data-guide-clave="${velvet}"]`);
     await cel.click('[data-guide="menu-ver-pedido"]');
     await cel.click('[data-guide="menu-enviar"]');
     await expect(cel.locator('[data-guide="menu-seguimiento"]')).toHaveAttribute('data-guide-estado', 'RECIBIDO', { timeout: 30000 });

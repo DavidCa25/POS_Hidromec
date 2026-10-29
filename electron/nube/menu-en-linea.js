@@ -52,6 +52,44 @@ function armarCatalogo(sets) {
   };
 }
 
+const ETIQUETAS = new Set(['NUEVO', 'RECOMENDADO', 'PICANTE', 'VEGETARIANO']);
+
+/**
+ * 0070 · El catálogo con lo de la plantilla (sp_menu_en_linea_diseno):
+ * descripción, etiquetas y foto grande por producto; portada, logo y promos;
+ * «lo más pedido» de ventas reales. Un producto oculto no se publica.
+ * Devuelve también clave de foto -> id local, para subir las que falten.
+ */
+function conDiseno(catalogo, cfg, [imagenes = [], productos = [], masVendidos = []]) {
+  const meta = new Map(productos.map((x) => [Number(x.product_id), x]));
+  const idDeFoto = new Map();
+  const fotos = [];
+  const foto = (clave, img) => { idDeFoto.set(clave, Number(img.id)); fotos.push({ clave, v: Number(img.version) }); return Number(img.version); };
+  const prods = catalogo.productos.filter((x) => !meta.get(x.id)?.oculto).map((x) => {
+    const mm = meta.get(x.id) || {};
+    const img = imagenes.find((i) => i.tipo === 'PRODUCTO' && Number(i.product_id) === x.id);
+    return {
+      ...x,
+      descripcion: mm.descripcion || null,
+      etiquetas: String(mm.etiquetas || '').split(',').filter((t) => ETIQUETAS.has(t)),
+      destacado: !!mm.destacado,
+      foto: img ? foto(`producto-${x.id}`, img) : null,
+    };
+  });
+  const visibles = new Set(prods.map((x) => x.id));
+  const una = (tipo) => { const i = imagenes.find((x) => x.tipo === tipo); return i ? { v: foto(tipo.toLowerCase(), i), ancho: i.ancho, alto: i.alto } : null; };
+  const diseno = {
+    frase: cfg.frase || null, direccion: cfg.direccion || null, horario: cfg.horario || null,
+    portada: una('PORTADA'), logo: una('LOGO'),
+    promos: imagenes.filter((i) => i.tipo === 'PROMO').map((i) => ({
+      clave: `promo-${i.id}`, v: foto(`promo-${i.id}`, i), titulo: i.titulo || null, subtitulo: i.subtitulo || null,
+      product_id: i.product_id != null && visibles.has(Number(i.product_id)) ? Number(i.product_id) : null,
+    })),
+  };
+  const masPedidos = masVendidos.map((x) => Number(x.product_id)).filter((id) => visibles.has(id));
+  return { catalogo: { ...catalogo, productos: prods, diseno, mas_pedidos: masPedidos, fotos }, idDeFoto };
+}
+
 function crearMenuEnLinea({ pool, sql, llamar, disponible, marca = () => null, negocio = () => null, alNuevos = () => {}, log = () => {} }) {
   let enCurso = null;
   let relojBandeja = null, relojMenu = null, inicio = null;
@@ -69,11 +107,19 @@ function crearMenuEnLinea({ pool, sql, llamar, disponible, marca = () => null, n
     const cfg = await config();
     if (!cfg) return { omitido: true };
     const p = await pool();
-    const catalogo = cfg.activo ? armarCatalogo((await p.request().execute('sp_get_menu_catalog')).recordsets || []) : null;
+    let catalogo = null, idDeFoto = new Map();
+    if (cfg.activo) {
+      catalogo = armarCatalogo((await p.request().execute('sp_get_menu_catalog')).recordsets || []);
+      const d = (await p.request().execute('sp_menu_en_linea_diseno')).recordsets || [];
+      ({ catalogo, idDeFoto } = conDiseno(catalogo, cfg, d));
+    }
+    /* Los colores de la pantalla Diseño mandan sobre los del addon. */
+    const m = marca() || null;
+    const marcaFinal = cfg.color || cfg.acento ? { ...(m || {}), color: cfg.color || m?.color || null, acento: cfg.acento || m?.acento || null } : m;
     const cuerpo = {
       activo: !!cfg.activo, slug: cfg.slug || null, recibe_pedidos: !!cfg.recibe_pedidos,
       minutos_estimados: Number(cfg.minutos_estimados) || 15, mensaje: cfg.mensaje || null,
-      negocio: negocio() || null, marca: marca() || null, catalogo,
+      negocio: negocio() || null, marca: marcaFinal, catalogo,
     };
     const h = crypto.createHash('sha256').update(JSON.stringify(cuerpo)).digest('hex');
     if (!forzar && h === huella) return { publicado: false };
@@ -90,6 +136,16 @@ function crearMenuEnLinea({ pool, sql, llamar, disponible, marca = () => null, n
           data: Buffer.from(f.thumb).toString('base64') });
         fotos++;
       }
+    }
+    /* 0070 · Las fotos grandes (portada, logo, promos, productos) que la nube
+       no tiene en esa versión. Hasta 450 KB cada una: también de una en una. */
+    for (const clave of Array.isArray(r?.faltan_fotos) ? r.faltan_fotos.slice(0, 200) : []) {
+      const id = idDeFoto.get(String(clave));
+      if (!id) continue;
+      const f = (await p.request().input('id', sql.Int, id).execute('sp_menu_en_linea_imagen_get')).recordset?.[0];
+      if (!f) continue;
+      await llamar('menu_foto', { clave, version: Number(f.version), mime: f.mime, data: Buffer.from(f.data).toString('base64') });
+      fotos++;
     }
     ultimo.publicado = new Date().toISOString();
     return { publicado: true, url: r?.url ?? null, fotos };
@@ -170,4 +226,4 @@ function crearMenuEnLinea({ pool, sql, llamar, disponible, marca = () => null, n
   };
 }
 
-module.exports = { crearMenuEnLinea, armarCatalogo };
+module.exports = { crearMenuEnLinea, armarCatalogo, conDiseno };

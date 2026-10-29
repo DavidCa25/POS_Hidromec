@@ -8,7 +8,11 @@ GO
 /* 0067 · La configuracion del menu en linea (una fila). Sin parametros la
    lee; con @guardar = 1 la cambia. El slug es la direccion corta del menu
    (wybix.mx/m/<slug>): minusculas, numeros y guiones; la nube decide si esta
-   libre al publicar. */
+   libre al publicar.
+
+   0070 · Con @diseno = 1 se guardan TAMBIEN los datos de la plantilla
+   (colores, frase, direccion, horario). Va aparte para que guardar la
+   publicacion no borre el diseno, y al reves. */
 CREATE OR ALTER PROCEDURE dbo.sp_menu_en_linea_config
     @guardar BIT = 0,
     @activo BIT = NULL,
@@ -16,7 +20,13 @@ CREATE OR ALTER PROCEDURE dbo.sp_menu_en_linea_config
     @slug NVARCHAR(40) = NULL,
     @minutos_estimados INT = NULL,
     @mensaje NVARCHAR(200) = NULL,
-    @user_id INT = NULL
+    @user_id INT = NULL,
+    @diseno BIT = 0,
+    @color NVARCHAR(7) = NULL,
+    @acento NVARCHAR(7) = NULL,
+    @frase NVARCHAR(120) = NULL,
+    @direccion NVARCHAR(200) = NULL,
+    @horario NVARCHAR(120) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -45,8 +55,27 @@ BEGIN
          WHERE id = 1;
     END
 
+    IF @diseno = 1
+    BEGIN
+        SET @color = LOWER(NULLIF(LTRIM(RTRIM(@color)), ''));
+        SET @acento = LOWER(NULLIF(LTRIM(RTRIM(@acento)), ''));
+        IF (@color IS NOT NULL AND (LEN(@color) <> 7 OR @color COLLATE Latin1_General_BIN NOT LIKE '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))
+        OR (@acento IS NOT NULL AND (LEN(@acento) <> 7 OR @acento COLLATE Latin1_General_BIN NOT LIKE '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'))
+        BEGIN RAISERROR('Los colores van como #rrggbb.', 16, 1); RETURN; END
+
+        UPDATE dbo.menu_en_linea_config
+           SET color = @color, acento = @acento,
+               frase = NULLIF(LTRIM(RTRIM(@frase)), ''),
+               direccion = NULLIF(LTRIM(RTRIM(@direccion)), ''),
+               horario = NULLIF(LTRIM(RTRIM(@horario)), ''),
+               actualizado_en = SYSDATETIME(),
+               actualizado_por = @user_id
+         WHERE id = 1;
+    END
+
     SELECT c.activo, c.recibe_pedidos, c.slug, c.minutos_estimados, c.mensaje, c.actualizado_en,
-           (SELECT COUNT(*) FROM dbo.pedidos_en_linea WHERE estado = 'PENDIENTE') AS pendientes
+           (SELECT COUNT(*) FROM dbo.pedidos_en_linea WHERE estado = 'PENDIENTE') AS pendientes,
+           c.color, c.acento, c.frase, c.direccion, c.horario
       FROM dbo.menu_en_linea_config c WHERE c.id = 1;
 END
 GO
