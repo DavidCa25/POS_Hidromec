@@ -28,7 +28,7 @@ const {
   VENTAS_OPERAR, VENTAS_SUPERVISAR, INVENTARIO_OPERAR,
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
-  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR,
+  SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR, ASISTENCIA_GESTIONAR,
 } = BUNDLES;
 
 /**
@@ -81,6 +81,9 @@ const EXIGE = {
   'club:admin': REPORTES_VER,
   'club:plan-guardar': COMERCIAL_ADMINISTRAR,
   'club:gestionar': VENTAS_SUPERVISAR,
+  /* 0066 · Tarjeta del Club en Wallet: darla y reconocerla es de la caja. */
+  'club:wallet-emitir': VENTAS_OPERAR,
+  'club:wallet-resolver': VENTAS_OPERAR,
   'puntos:estado': VENTAS_OPERAR,
   'puntos:admin': REPORTES_VER,
   'puntos:historial': REPORTES_VER,
@@ -88,8 +91,27 @@ const EXIGE = {
   'puntos:tarjeta-guardar': COMERCIAL_ADMINISTRAR,
   'puntos:costo': COMERCIAL_ADMINISTRAR,
   'puntos:ajustar': VENTAS_SUPERVISAR,
+  /* 0068 · Avisos por WhatsApp al cliente. Encenderlos, ver el registro y
+     dar de baja o reactivar un teléfono es de quien administra el negocio. */
+  'whatsapp:config': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:config-guardar': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:registro': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:telefono': CONFIGURACION_ADMINISTRAR,
+  'whatsapp:conexion': CONFIGURACION_ADMINISTRAR,
   // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
   'reportes:estado-resultados': REPORTES_VER,
+  /* 0069 · Liquidaciones de plataforma. Verlas es dinero del negocio; ligar
+     canales, guardar, confirmar o cancelar mueve resultados y egresos: el
+     dueno o quien administra. */
+  'plataformas:canales': REPORTES_VER,
+  'plataformas:listar': REPORTES_VER,
+  'plataformas:ver': REPORTES_VER,
+  'plataformas:canal-guardar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:guardar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:emparejar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:confirmar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:cancelar': CONFIGURACION_ADMINISTRAR,
+  'plataformas:deposito': CONFIGURACION_ADMINISTRAR,
   'ticket:print-document': VENTAS_OPERAR,
   'generate-sale-pdf': VENTAS_OPERAR,
   'fiscal-save-invoice': VENTAS_OPERAR,
@@ -296,6 +318,23 @@ const EXIGE = {
   'produccion:formula': CATALOGO_EDITAR,
   'produccion:formula-guardar': CATALOGO_EDITAR,
   'produccion:formula-quitar': CATALOGO_EDITAR,
+
+  // ------------------------------------------------------- 0071 asistencia
+  // Checar es de quien tiene la sesion: su id sale de la sesion, asi que
+  // basta con poder trabajar en la caja. Ver a los demas, sus horarios y
+  // corregirlos es de quien gestiona al equipo. Activar la aplicacion y
+  // cambiar sus reglas es decidir como funciona el negocio.
+  'asistencia:estado': VENTAS_OPERAR,
+  'asistencia:marcar': VENTAS_OPERAR,
+  'asistencia:mis-horas': VENTAS_OPERAR,
+  'asistencia:reglas': ASISTENCIA_GESTIONAR,
+  'asistencia:resumen': ASISTENCIA_GESTIONAR,
+  'asistencia:jornadas': ASISTENCIA_GESTIONAR,
+  'asistencia:corregir': ASISTENCIA_GESTIONAR,
+  'asistencia:horario': ASISTENCIA_GESTIONAR,
+  'asistencia:horario-guardar': ASISTENCIA_GESTIONAR,
+  'asistencia:activar': CONFIGURACION_ADMINISTRAR,
+  'asistencia:reglas-guardar': CONFIGURACION_ADMINISTRAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
@@ -373,6 +412,21 @@ const EXIGE = {
   'kds:listar': VENTAS_OPERAR,
   'kds:estado': VENTAS_OPERAR,
   'comandas:reimprimir': VENTAS_OPERAR,
+  // 0067: pedidos del menú en línea. Aceptar es lo mismo que mandar a cocina
+  // una comanda de mostrador (no cobra ni descuenta): trabajo del turno.
+  'menu-linea:config': VENTAS_OPERAR,
+  'menu-linea:pedidos': VENTAS_OPERAR,
+  'menu-linea:aceptar': VENTAS_OPERAR,
+  'menu-linea:rechazar': VENTAS_OPERAR,
+  'menu-linea:sincronizar': VENTAS_OPERAR,
+  // Publicar el menú, su dirección y su marca: configuración del negocio.
+  'menu-linea:guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:diseno': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:diseno-guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-guardar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-borrar': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:imagen-ver': CONFIGURACION_ADMINISTRAR,
+  'menu-linea:producto-guardar': CONFIGURACION_ADMINISTRAR,
   // Cancelar lo que ya se pidio saca dinero de la cuenta: es la misma clase
   // de decision que un reembolso, y la toma un encargado.
   'comandas:cancelar': VENTAS_SUPERVISAR,
@@ -468,6 +522,7 @@ const ABIERTOS = {
   'services:validate': 'comprueba el servicio de SQL durante la instalación',
   'services:get-config': 'lectura del servicio de SQL durante la instalación',
   'sp-iniciar-sesion': 'ES el login: exigir sesión sería circular',
+  'auth:recuperar-contrasena': 'contraseña olvidada, antes del login: la persona se identifica con su PIN',
 
   // --- Ventanas que no son la principal ------------------------------------
   // Tienen su propio preload y nunca inician sesión. No pueden autorizar nada

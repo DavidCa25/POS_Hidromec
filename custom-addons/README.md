@@ -16,7 +16,7 @@ custom-addons/
 ## Cómo funciona
 
 1. El núcleo define **huecos** en `src/app/marca/marca.ts` (hoy: `mascota`,
-   `mascotaEnTouch`, `fondoTouch`). Pregunta por el hueco, nunca por el cliente.
+   `mascotaEnTouch`, `fondoTouch`, `tarjetaWallet`). Pregunta por el hueco, nunca por el cliente.
 2. `scripts/addons.mjs` corre antes de cada build. Sin `WYBIX_ADDON` deja la app
    sin addon. Con él genera, **sin versionar**:
    - `src/app/marca/addons.generated.ts`: el import del addon;
@@ -66,7 +66,7 @@ su personaje.
 
 | Addon | Cliente | Huecos |
 |---|---|---|
-| `wybix_idonut` | I Do Nut | mascota I DO NUT ME, mascota en Touch, logo como fondo de Touch |
+| `wybix_idonut` | I Do Nut | mascota I DO NUT ME, mascota en Touch, logo como fondo de Touch, tarjeta del Club en Wallet |
 
 ## Ajustes de comportamiento
 

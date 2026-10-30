@@ -1,0 +1,118 @@
+<div class="pel" data-guide="pedidos-en-linea">
+
+  <header class="hx-head">
+    <div class="hx-head__ic"><i class="ph ph-device-mobile" aria-hidden="true"></i></div>
+    <div class="hx-head__txt">
+      <h1>Pedidos en línea</h1>
+      <p *ngIf="config()?.activo && url()">Menú publicado · {{ url() }} · se actualiza solo</p>
+      <p *ngIf="config() && !config()!.activo">Tu menú en línea está apagado</p>
+    </div>
+    <div class="hx-head__acc">
+      <button type="button" class="btn-outline" data-guide="pedidos-en-linea-sincronizar" (click)="sincronizar()">
+        <i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Revisar ahora
+      </button>
+      <button type="button" class="btn-outline" *ngIf="puedeConfigurar" data-guide="pedidos-en-linea-configurar"
+              [attr.aria-expanded]="configurando()" (click)="configurando.set(!configurando())">
+        <i class="ph ph-gear" aria-hidden="true"></i> Configurar menú
+      </button>
+      <button type="button" class="btn-outline" *ngIf="puedeConfigurar" data-guide="pedidos-en-linea-disenar"
+              [attr.aria-expanded]="disenando()" (click)="disenando.set(!disenando())">
+        <i class="ph ph-paint-brush" aria-hidden="true"></i> Diseño del menú
+      </button>
+    </div>
+  </header>
+
+  <!-- ------------------------------------------------------ configuracion -->
+  <section class="pel-config" *ngIf="configurando() && puedeConfigurar" data-guide="pedidos-en-linea-config" aria-label="Configurar el menú en línea">
+    <form class="pel-config__form" (ngSubmit)="guardar()">
+      <label class="pel-check">
+        <input type="checkbox" name="activo" [(ngModel)]="form.activo" data-guide="pedidos-en-linea-activo">
+        <span><b>Publicar mi menú</b><small>Tus clientes ven el menú y piden desde su celular, sin descargar nada.</small></span>
+      </label>
+      <label class="pel-check">
+        <input type="checkbox" name="recibe" [(ngModel)]="form.recibePedidos">
+        <span><b>Recibir pedidos</b><small>Apágalo en un día lleno: el menú se sigue viendo, sin pedir.</small></span>
+      </label>
+      <label class="pel-campo">
+        <span>Dirección del menú</span>
+        <div class="pel-url"><span>wybixpos.com.mx/m/</span>
+          <input name="slug" [(ngModel)]="form.slug" maxlength="40" placeholder="mi-cafe" autocomplete="off" data-guide="pedidos-en-linea-slug"></div>
+      </label>
+      <label class="pel-campo pel-campo--corto">
+        <span>Tiempo estimado (min)</span>
+        <input name="min" type="number" min="1" max="240" [(ngModel)]="form.minutos">
+      </label>
+      <label class="pel-campo">
+        <span>Mensaje en el menú (opcional)</span>
+        <input name="mensaje" [(ngModel)]="form.mensaje" maxlength="200" placeholder="Recoge en el mostrador de la entrada">
+      </label>
+      <div class="pel-config__acc">
+        <button type="submit" class="btn-primary" [disabled]="guardando()" data-guide="pedidos-en-linea-guardar">
+          {{ guardando() ? 'Guardando…' : 'Guardar y publicar' }}
+        </button>
+        <small *ngIf="config() && !config()!.nube">Necesita la nube encendida (Configuración › Nube).</small>
+      </div>
+    </form>
+    <figure class="pel-qr" *ngIf="qr() && config()?.activo">
+      <img [src]="qr()" alt="QR del menú en línea" width="180" height="180">
+      <figcaption>Imprímelo para el mostrador o las mesas.<br><span>{{ url() }}</span></figcaption>
+    </figure>
+  </section>
+
+  <app-diseno-menu *ngIf="disenando() && puedeConfigurar"></app-diseno-menu>
+
+  <p class="pel-error" *ngIf="error()" role="alert">
+    <i class="ph ph-warning-circle" aria-hidden="true"></i> {{ error() }}
+  </p>
+  <p class="pel-aviso" *ngIf="config()?.sincronizacion?.error" role="status">
+    <i class="ph ph-cloud-slash" aria-hidden="true"></i> Sin conexión con la nube: los pedidos llegan cuando vuelva. Mientras, el menú no recibe pedidos.
+  </p>
+
+  <!-- ---------------------------------------------------------- por aceptar -->
+  <h2 class="pel-titulo">Por aceptar <span *ngIf="pendientes().length" class="pel-n">{{ pendientes().length }}</span></h2>
+  <div class="pel-vacio" *ngIf="!cargando() && !pendientes().length" data-guide="pedidos-en-linea-vacio">
+    <i class="ph ph-check-circle" aria-hidden="true"></i> Nada esperando. Los pedidos nuevos aparecen aquí solos.
+  </div>
+  <ul class="pel-lista">
+    <li class="pel-pedido" *ngFor="let p of pendientes(); trackBy: porId" [class.tarde]="tarde(p)"
+        data-guide="pedidos-en-linea-pendiente" [attr.data-guide-clave]="p.id" data-guide-estado="PENDIENTE">
+      <div class="pel-pedido__cab">
+        <div>
+          <b class="pel-nombre">{{ p.nombre }}</b>
+          <span class="pel-meta">{{ p.telefono }} · {{ hace(p) }}<ng-container *ngIf="p.origen"> · {{ p.origen === 'MESA' ? 'desde la mesa' : p.origen === 'REDES' ? 'desde redes' : 'en mostrador' }}</ng-container></span>
+        </div>
+        <b class="pel-total">{{ p.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+      </div>
+      <ul class="pel-lineas">
+        <li *ngFor="let l of p.lineas">
+          <span class="pel-cant">{{ l.cantidad }}×</span> {{ l.nombre }}
+          <span class="pel-ops" *ngIf="l.opciones.length"><ng-container *ngFor="let o of l.opciones; let ultimo = last">{{ o.nombre }}{{ ultimo ? '' : ', ' }}</ng-container></span>
+          <em class="pel-nota" *ngIf="l.nota">«{{ l.nota }}»</em>
+        </li>
+      </ul>
+      <p class="pel-nota-gral" *ngIf="p.nota"><i class="ph ph-note" aria-hidden="true"></i> {{ p.nota }}</p>
+      <div class="pel-pedido__acc">
+        <button type="button" class="btn-outline" [disabled]="trabajando() === p.id" (click)="rechazar(p)" data-guide="pedidos-en-linea-rechazar">
+          Rechazar
+        </button>
+        <button type="button" class="btn-primary" [disabled]="trabajando() === p.id" (click)="aceptar(p)" data-guide="pedidos-en-linea-aceptar">
+          <i class="ph ph-check" aria-hidden="true"></i> {{ trabajando() === p.id ? 'Aceptando…' : 'Aceptar y mandar a cocina' }}
+        </button>
+      </div>
+    </li>
+  </ul>
+
+  <!-- ------------------------------------------------------------- de hoy -->
+  <h2 class="pel-titulo" *ngIf="deHoy().length">Hoy</h2>
+  <ul class="pel-hoy" *ngIf="deHoy().length">
+    <li *ngFor="let p of deHoy(); trackBy: porId" data-guide="pedidos-en-linea-hoy" [attr.data-guide-clave]="p.id" [attr.data-guide-estado]="p.estadoCliente">
+      <span class="pel-num">{{ p.numero ? '#' + p.numero : '—' }}</span>
+      <span class="pel-hoy__quien"><b>{{ p.nombre }}</b> <small>{{ p.total | currency:'MXN':'symbol-narrow':'1.0-2' }}</small></span>
+      <span class="pel-estado" [ngClass]="'pel-estado--' + p.estadoCliente.toLowerCase()">{{ etiqueta(p.estadoCliente) }}</span>
+      <small class="pel-motivo" *ngIf="p.motivo">{{ p.motivo }}</small>
+      <button type="button" class="btn-outline pel-cobrar" *ngIf="cobrable(p)" (click)="cobrar(p)" data-guide="pedidos-en-linea-cobrar">
+        <i class="ph ph-cash-register" aria-hidden="true"></i> Cobrar
+      </button>
+    </li>
+  </ul>
+</div>

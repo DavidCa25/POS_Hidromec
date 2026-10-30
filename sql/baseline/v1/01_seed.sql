@@ -130,3 +130,26 @@ IF OBJECT_ID(N'dbo.expense_categories', 'U') IS NOT NULL
         (N'Mantenimiento',    'GENERAL',  0, 90),
         (N'Otros',            'GENERAL',  0, 1000);
 GO
+
+/* Concepto del sistema para comisiones, promociones y retenciones de las
+ * plataformas de entrega (0069): sin el no se puede confirmar una
+ * liquidacion. Las bases que ya existian lo reciben de la migracion. */
+IF OBJECT_ID(N'dbo.expense_categories', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.expense_categories WHERE kind = 'PLATAFORMA')
+    INSERT INTO dbo.expense_categories (name, kind, is_system, sort_order)
+    VALUES (N'Comisiones de plataforma', 'PLATAFORMA', 1, 15);
+GO
+
+/* Singleton de puntos (0064). `sp_loyalty_points_config_save` hace UPDATE
+ * sobre id = 1: sin la fila, encender los puntos no guarda nada. Nace apagada,
+ * igual que en una base actualizada. */
+IF OBJECT_ID(N'dbo.loyalty_points_config', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.loyalty_points_config)
+    INSERT INTO dbo.loyalty_points_config (id, enabled) VALUES (1, 0);
+GO
+
+/* Singleton del menu en linea (0067), con sus valores por omision. */
+IF OBJECT_ID(N'dbo.menu_en_linea_config', 'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM dbo.menu_en_linea_config WHERE id = 1)
+    INSERT INTO dbo.menu_en_linea_config (id) VALUES (1);
+GO

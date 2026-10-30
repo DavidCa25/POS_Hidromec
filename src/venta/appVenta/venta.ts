@@ -22,6 +22,7 @@ import {
   CajonService,
 } from '../../core';
 import { ClubService } from '../../core/club.service';
+import { ClubWalletLectura } from '../../core/club-wallet-lectura';
 import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
@@ -34,6 +35,10 @@ import {
   ResumenOpcion, aSeleccionada, admiteCantidad, gruposAConfigurar, minimoDe,
   opcionesElegibles, resumenDeOpciones, seleccionAutomatica, topeDeGrupo,
 } from '../../core/opciones';
+import { CapabilityService, FechaSqlPipe } from '../../core';
+import { RegisterService } from '../../services/register.service';
+import { AsistenciaChecarComponent } from '../../app/asistencia/checar/asistencia-checar.component';
+import { DevolucionTouch } from '../../touch/devolucion-touch/devolucion-touch.component';
 
 /*
  * RETAIL POS — capa de presentacion.
@@ -79,7 +84,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -109,6 +114,19 @@ export class Venta implements OnInit, OnDestroy {
   private readonly mesaSvc = inject(MesaService);
   private readonly clientesSvc = inject(ClientesVentaService);
   private readonly licencia = inject(LicenseService);
+  /* 0071: Checar (Asistencia), solo si el negocio activo la aplicacion. */
+  readonly caps = inject(CapabilityService);
+  private readonly cajaActual = inject(RegisterService);
+  showChecar = false;
+  /* 0065: devolucion directa, la misma que Touch. */
+  devolviendo = false;
+  motivoChecar: string | null = null;
+  get cajaDeChecar(): number | null { return this.cajaActual.registerId; }
+  abrirChecar(motivo: string | null = null): void {
+    if (!this.caps.asistencia) return;
+    this.motivoChecar = motivo;
+    this.showChecar = true;
+  }
   readonly cuentaMesa = this.mesaSvc.cuentaActiva;
   readonly pendientesMesa = this.mesaSvc.pendientes;
   enviandoMesa = false;
@@ -170,6 +188,9 @@ export class Venta implements OnInit, OnDestroy {
   dineroRecibido: number | null = null;
   paymentMethod: PaymentMethod = 'EFECTIVO';
   pagosMixtos:PagoAplicado[]=[];
+  /** 0069: el numero de pedido de Uber Eats / Didi / Rappi (opcional). Con el,
+      Liquidaciones de plataforma empareja la venta con el pedido sin dudar. */
+  pedidoPlataforma='';
   readonly mixedMethods=[{valor:'EFECTIVO',etiqueta:'Efectivo'},{valor:'TARJETA',etiqueta:'Tarjeta'},{valor:'TRANSFERENCIA',etiqueta:'Transferencia'},{valor:'PLATAFORMA',etiqueta:'Pagado en plataforma'}];
   get errorMixto(){if(this.paymentMethod!=='MIXTO')return '';try{validarPagos(this.totalVenta,this.pagosMixtos);return '';}catch(e){return (e as Error).message;}}
   agregarPago(){if(this.cobrando)return;const m=this.mixedMethods.find(m=>!this.pagosMixtos.some(p=>p.method===m.valor));if(m)this.pagosMixtos.push({method:m.valor as PagoAplicado['method'],amount:Math.max(0,Math.round((this.totalVenta-this.pagosMixtos.reduce((a,p)=>a+p.amount,0))*100)/100)});}
@@ -705,6 +726,7 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     this.dineroRecibido = null;
+    this.pedidoPlataforma = '';
     this.showModal = true;
   }
 
@@ -715,6 +737,7 @@ export class Venta implements OnInit, OnDestroy {
     this.paymentMethod = method;
     if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
+    else this.pedidoPlataforma='';
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
@@ -820,7 +843,9 @@ export class Venta implements OnInit, OnDestroy {
     }
     const payment: Payment = {
       method: this.paymentMethod,
-      payments:this.paymentMethod==='MIXTO'?this.pagosMixtos:undefined,
+      payments:this.paymentMethod==='MIXTO'?this.pagosMixtos
+        :this.paymentMethod==='PLATAFORMA'&&this.pedidoPlataforma.trim()?[{method:'PLATAFORMA' as const,amount:this.totalVenta,reference:this.pedidoPlataforma.trim().slice(0,100)}]
+        :undefined,
       received: isCredito ? null : this.dineroRecibido,
       creditCustomerId: isCredito ? this.customerId : null,
       dueDate: isCredito ? this.dueDate : null,
@@ -847,6 +872,9 @@ export class Venta implements OnInit, OnDestroy {
 
     if (!res.ok) {
       this.showModal = false;
+      /* 0071: la regla «checar entrada antes de cobrar». Se abre Checar en
+         lugar de un error: la persona resuelve ahi mismo y vuelve a cobrar. */
+      if (res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
       await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: res.error || 'No se pudo registrar la venta.' });
       return;
     }
@@ -906,6 +934,7 @@ export class Venta implements OnInit, OnDestroy {
     this.prepararConceptosFactura(res.lines ?? [], saleId);
 
     this.dineroRecibido = null;
+    this.pedidoPlataforma = '';
     this.customerId = null;
     this.dueDate = null;
   }
@@ -1370,6 +1399,12 @@ export class Venta implements OnInit, OnDestroy {
         if (!this.showCashOutModal) await this.abrirSalidaEfectivo();
         return;
 
+      case 'F9':
+        if (!this.caps.asistencia) return;
+        event.preventDefault();
+        this.abrirChecar();
+        return;
+
       case '+':
         event.preventDefault();
         this.adjustLastAddedQty(+1);
@@ -1377,6 +1412,9 @@ export class Venta implements OnInit, OnDestroy {
 
       case '-':
         event.preventDefault();
+        /* 0066 · El código de la tarjeta del Club es WXC-<serial>: ese guion
+           es parte de la lectura, no el atajo de restar una pieza. */
+        if (/^WXC$/i.test(this.scanBuffer)) { this.pushChar('-'); return; }
         this.adjustLastAddedQty(-1);
         return;
     }
@@ -1857,6 +1895,8 @@ export class Venta implements OnInit, OnDestroy {
     this.clearScanBuffer();
     if (!code) return;
 
+    if (ClubWalletLectura.esCodigo(code)) { await this.clientePorTarjeta(code); return; }
+
     if (scannerLike || code.length >= this.BARCODE_MIN_LEN) {
       await this.addByBarcode(code);
     } else {
@@ -2126,6 +2166,25 @@ export class Venta implements OnInit, OnDestroy {
 
   cerrarModalClientes() {
     this.showModalClientes = false;
+  }
+
+  /** 0066 · En el buscador de clientes también se puede leer la tarjeta del Club. */
+  async buscarClienteEnter() {
+    if (ClubWalletLectura.esCodigo(this.filtroClientes)) {
+      const codigo = this.filtroClientes;
+      this.filtroClientes = '';
+      await this.clientePorTarjeta(codigo);
+    }
+  }
+
+  /**
+   * 0066 · Se leyó la tarjeta del Club (Apple/Google Wallet): su cliente queda
+   * en la cuenta, igual que si se hubiera buscado por teléfono.
+   */
+  private async clientePorTarjeta(codigo: string) {
+    const r = await ClubWalletLectura.cliente(codigo, this.clientesSvc);
+    if (!r.ok) { await Swal.fire({ icon: 'warning', title: 'Tarjeta del Club', text: r.error }); return; }
+    await this.seleccionarCliente(r.cliente);
   }
 
   async seleccionarCliente(cliente: CartCustomer) {

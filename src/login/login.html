@@ -3,8 +3,8 @@
     <div class="logo">
       <img src="assets/wybie_banner.png" alt="Logo" style="width: 100%;" />
     </div>
-    <h2><b>Iniciar Sesión</b></h2>
-    <form (submit)="onLogin($event)">
+    <h2 *ngIf="!recuperando"><b>Iniciar Sesión</b></h2>
+    <form *ngIf="!recuperando" (submit)="onLogin($event)">
       <div class="input-group">
         <input type="text" placeholder="Usuario" id="username" [(ngModel)]="usuario" name="usuario" (ngModelChange)="onInputChange()" required />
       </div>
@@ -26,7 +26,34 @@
         {{ advertencia }}
       </div>
       <button type="submit" id="btnLogin">Entrar</button>
+      <button type="button" class="link-btn" data-guide="login-olvide" (click)="abrirRecuperar()">¿Olvidaste tu contraseña?</button>
     </form>
+
+    <!-- Contraseña olvidada: la persona la cambia con SU PIN, sin el dueño. -->
+    <ng-container *ngIf="recuperando">
+      <h2><b>Cambiar contraseña</b></h2>
+      <p class="hint">Escribe tu usuario y tu PIN personal (el de la caja). Si no tienes PIN, pide a un administrador que te asigne uno o que te cambie la contraseña.</p>
+      <form (submit)="onRecuperar($event)" data-guide="login-recuperar">
+        <div class="input-group">
+          <input type="text" placeholder="Usuario" aria-label="Usuario" [(ngModel)]="usuario" name="r-usuario" autocomplete="username" (ngModelChange)="onInputChange()" required />
+        </div>
+        <div class="input-group">
+          <input type="password" inputmode="numeric" placeholder="Tu PIN" aria-label="Tu PIN" [(ngModel)]="pin" name="r-pin" autocomplete="off" (ngModelChange)="onInputChange()" required />
+        </div>
+        <div class="input-group">
+          <input [type]="mostrarContrasena ? 'text' : 'password'" placeholder="Contraseña nueva" aria-label="Contraseña nueva" [(ngModel)]="nueva" name="r-nueva" autocomplete="new-password" (ngModelChange)="onInputChange()" required />
+          <button type="button" class="toggle-btn" [attr.aria-label]="mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'" (click)="mostrarContrasena = !mostrarContrasena">
+            <i [class]="mostrarContrasena ? 'ph ph-eye-slash' : 'ph ph-eye'"></i>
+          </button>
+        </div>
+        <div class="input-group">
+          <input [type]="mostrarContrasena ? 'text' : 'password'" placeholder="Repite la contraseña nueva" aria-label="Repite la contraseña nueva" [(ngModel)]="confirmar" name="r-confirmar" autocomplete="new-password" (ngModelChange)="onInputChange()" required />
+        </div>
+        <div class="warning-message" *ngIf="advertencia">{{ advertencia }}</div>
+        <button type="submit" id="btnRecuperar" [disabled]="enviando">Cambiar contraseña</button>
+        <button type="button" class="link-btn" (click)="cerrarRecuperar()">Volver a iniciar sesión</button>
+      </form>
+    </ng-container>
     <div class="error-message" *ngIf="mensaje" margin-top="15px">
       🚨 {{ mensaje }}
     </div>

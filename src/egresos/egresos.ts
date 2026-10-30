@@ -12,6 +12,7 @@ import {
   EgresosService, ConceptoEgreso, FilaEgreso, FormaEgreso, PeriodoPago, ReporteEgresos,
   FORMAS_EGRESO, PERIODOS_PAGO, etiquetaForma, rangoEgresos, fechaLocal,
 } from '../core';
+import { FechaSqlPipe } from '../core';
 
 type Preset = 'HOY' | 'SEMANA' | 'MES' | 'MES_ANTERIOR' | 'RANGO';
 
@@ -39,7 +40,7 @@ type Preset = 'HOY' | 'SEMANA' | 'MES' | 'MES_ANTERIOR' | 'RANGO';
 @Component({
   selector: 'app-egresos',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxMenuComponent],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxMenuComponent],
   templateUrl: './egresos.html',
   styleUrls: ['../app/proveedores/proveedores.component.css', './egresos.css'],
 })

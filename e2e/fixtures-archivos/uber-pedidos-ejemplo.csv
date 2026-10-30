@@ -1,0 +1,9 @@
+Reporte de pedidos del 19/10/2026 al 25/10/2026
+ID del pedido,Fecha del pedido,Hora del pedido,Cliente,Tipo de cumplimiento,Estado,Ventas (sin impuestos),Impuesto,Ventas netas
+9a3f1c2e-1111-4a0b-9c3d-000000000001,19/10/2026,13:05,Cliente A,Entrega,Completado,"$200.00","$32.00","$150.80"
+b7e2d4a1-2222-4a0b-9c3d-000000000002,20/10/2026,14:10,Cliente B,Entrega,Completado,"$100.00","$16.00","$75.40"
+c1d4e5f6-3333-4a0b-9c3d-000000000003,21/10/2026,23:58,Cliente C,Recoger,Completado,"$300.00","$48.00","$226.20"
+d5e6f7a8-4444-4a0b-9c3d-000000000004,22/10/2026,12:00,Cliente D,Entrega,Completado,"$150.00","$24.00","$113.10"
+e6f7a8b9-5555-4a0b-9c3d-000000000005,23/10/2026,18:20,Cliente E,Entrega,Cancelado,"$100.00","$16.00","$0.00"
+f7a2b3c4-6666-4a0b-9c3d-000000000006,24/10/2026,12:30,Cliente F,Entrega,Completado,"$100.00","$16.00","$75.40"
+Total,,,,,,"$950.00","$152.00","$640.90"

@@ -785,3 +785,6 @@
   background: var(--wx-raised); font-size: var(--wx-text-sm); }
 .refund-cambio__pago { display: flex; gap: 8px; flex-wrap: wrap; }
 .refund-cambio__pago wx-select { min-width: 220px; }
+
+/* 0071: el atajo Checar es un boton de verdad (teclado y lector de pantalla). */
+button.pos-shortcut { font: inherit; color: inherit; }

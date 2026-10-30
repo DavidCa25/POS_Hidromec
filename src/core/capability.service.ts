@@ -42,6 +42,8 @@ export class CapabilityService {
   /** Los modulos encendidos del NEGOCIO, tal cual los da `business_modules`. */
   readonly modulos = signal<Set<string>>(new Set());
   readonly loaded = signal(false);
+  /** El registro de modulos ya se leyo bien alguna vez en esta sesion. */
+  private registroLeido = false;
 
   /**
    * De la capacidad del producto a la clave del registro.
@@ -56,6 +58,7 @@ export class CapabilityService {
     servicios: 'servicios',
     mesas: 'mesas',
     comandas: 'comandas',
+    asistencia: 'asistencia',
   };
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -83,6 +86,9 @@ export class CapabilityService {
          y vuelven tal cual al encenderlo. */
       mesas: this.modulos().has('hospitality') && this.modulos().has('mesas') && lic('hospitality') && lic('hospitality.tables'),
       comandas: this.modulos().has('hospitality') && this.modulos().has('comandas') && lic('hospitality') && lic('hospitality.kds'),
+      /* No depende de la licencia: llevar las horas del equipo no es una
+         capacidad de venta que se cobre aparte. */
+      asistencia: this.modulos().has('asistencia'),
     };
   });
 
@@ -92,6 +98,7 @@ export class CapabilityService {
   get servicios(): boolean { return this.capabilities().servicios; }
   get mesas(): boolean { return this.capabilities().mesas; }
   get comandas(): boolean { return this.capabilities().comandas; }
+  get asistencia(): boolean { return this.capabilities().asistencia; }
 
   /**
    * Donde vende ESTA caja ahora mismo.
@@ -133,6 +140,15 @@ export class CapabilityService {
                    .map((m: any) => String(m.module_key)));
         }
       } catch { /* sin registro: se cae al respaldo de abajo */ }
+      /* UN TROPIEZO NO APAGA MODULOS.
+         El respaldo de abajo (columnas de business_config) es para bases
+         ANTERIORES al registro, y no conoce los modulos que solo viven en el
+         (Asistencia). Si el registro ya se leyo bien en esta sesion y ahora
+         falla una lectura (SQL ocupado un instante), se conserva lo ultimo
+         bueno: antes, ese tropiezo escondia Checar sin que nadie supiera
+         por que. Lo vio una prueba e2e que fallaba una vez de cada pocas. */
+      if (delRegistro) this.registroLeido = true;
+      else if (this.registroLeido) delRegistro = new Set(this.modulos());
 
       try {
         const cfg = await api?.getConfig?.();

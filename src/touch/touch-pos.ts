@@ -1,3 +1,4 @@
+import { ClubWalletLectura } from '../core/club-wallet-lectura';
 import {FacturaNueva,ConceptoFactura} from '../app/factura-nueva/factura-nueva.component';
 import {ReceiptViewer} from '../app/receipt-viewer/receipt-viewer.component';
 import {ReceiptEmail} from '../app/receipt-email/receipt-email.component';
@@ -12,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { RegisterService } from '../services/register.service';
+import { AsistenciaChecarComponent } from '../app/asistencia/checar/asistencia-checar.component';
 import {
   CapabilityService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
@@ -57,7 +59,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
+  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -98,7 +100,15 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly licencia = inject(LicenseService);
   private readonly display = inject(CustomerDisplayService);
   private readonly auth = inject(AuthService);
-  private readonly registro = inject(RegisterService);
+  readonly registro = inject(RegisterService);
+  /* 0071: Checar (Asistencia). */
+  checarAbierto = false;
+  motivoChecar: string | null = null;
+  abrirChecar(motivo: string | null = null): void {
+    if (!this.caps.asistencia) return;
+    this.motivoChecar = motivo;
+    this.checarAbierto = true;
+  }
   private readonly router = inject(Router);
 
   /** A la agenda del día, que en Touch es la pantalla de Servicios. */
@@ -363,6 +373,9 @@ export class TouchPos implements OnInit, OnDestroy {
   // ------------------------------------------------------------------ cobro
   metodo = signal<PaymentMethod>('EFECTIVO');
   recibido = signal<string>('');
+  /** 0069: el numero de pedido de Uber Eats / Didi / Rappi (opcional). Con el,
+      Liquidaciones de plataforma empareja la venta con el pedido sin dudar. */
+  pedidoPlataforma = signal<string>('');
   cobrando = signal(false);
 
   readonly recibidoNum = computed(() => Number(this.recibido() || 0));
@@ -487,9 +500,19 @@ export class TouchPos implements OnInit, OnDestroy {
 
   /** Scanner fisico: sigue funcionando aunque no haya teclado a la vista. */
   private porCodigo(code: string) {
+    /* 0066 · La tarjeta del Club (Wallet) identifica al cliente de la cuenta. */
+    if (ClubWalletLectura.esCodigo(code)) { void this.clientePorTarjeta(code); return; }
     const p = this.menu.findByBarcode(code);
     if (!p) { this.mostrar(`Sin coincidencia para ${code}`, 'error'); return; }
     this.tocar(p);
+  }
+
+  private async clientePorTarjeta(code: string) {
+    const r = await ClubWalletLectura.cliente(code, this.clientesSvc);
+    if (!r.ok) { this.mostrar(r.error, 'error'); return; }
+    const f = await this.mesaSvc.fijarCliente(r.cliente);
+    if (!f.ok) { this.mostrar(f.error, 'error'); return; }
+    this.mostrar(`Tarjeta del Club: ${r.cliente.name}`, 'ok');
   }
 
   private mostrar(texto: string, tipo: Aviso['tipo'] = 'error') {
@@ -896,6 +919,7 @@ export class TouchPos implements OnInit, OnDestroy {
   private abrirCobro() {
     this.pagoMixto.set(false);this.metodosMixtos.set([]);this.capturados.set({});
     this.recibido.set('');
+    this.pedidoPlataforma.set('');
     this.metodo.set('EFECTIVO');
     this.vista.set('cobro');
   }
@@ -952,7 +976,10 @@ export class TouchPos implements OnInit, OnDestroy {
     try {
       const res = await this.sale.checkout({
         method: this.pagoMixto() ? 'MIXTO' : this.metodo(),
-        payments: this.pagoMixto() ? this.pagos().filter(p=>p.amount>0) : undefined,
+        payments: this.pagoMixto() ? this.pagos().filter(p=>p.amount>0)
+          : this.metodo()==='PLATAFORMA' && this.pedidoPlataforma().trim()
+            ? [{ method: 'PLATAFORMA' as const, amount: this.totales().total, reference: this.pedidoPlataforma().trim().slice(0, 100) }]
+            : undefined,
         /* Con tarjeta o transferencia se cobra el total exacto. Mandar `null`
            hacia que `SaleService.validate` lo rechazara como «dinero recibido
            insuficiente», y Touch no podia cobrar mas que en efectivo. */
@@ -962,6 +989,8 @@ export class TouchPos implements OnInit, OnDestroy {
         autoPrint: true,
       });
 
+      /* 0071: la regla «checar entrada antes de cobrar» abre Checar ahi mismo. */
+      if (!res.ok && res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
       if (!res.ok) { this.reaccionar('error', 3500); this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
 
       /* La venta ya esta. Enlazarla libera la mesa; si fallara, se dice y la

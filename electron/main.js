@@ -154,7 +154,7 @@ ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
 /* IPC de mesas, cuentas, comandas y KDS. Las comandas que van a papel se
    imprimen con el mismo `imprimirHtml` que el ticket de venta. */
 const hospitalityDominio = ipcSalon.registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig,
-  alCambiarComandas: () => localHost.avisar() });
+  alCambiarComandas: () => { localHost.avisar(); avisosWhatsapp?.pronto(); } });
 
 /* Wybix Local Host: el KDS en tablets por la red del local. Solo la
    instalacion principal, solo con el arriendo de la base y solo si se
@@ -170,6 +170,7 @@ const localHost = crearLocalHost({
   /* La licencia firmada: qué pantallas incluye y cuántas por giro. `licencia`
      se crea más abajo; aquí solo se guarda cómo preguntarle. */
   licencia: () => licencia.evaluador(),
+  alCambiarComandas: () => avisosWhatsapp?.pronto(),
 });
 localHost.registrarIpc(ipcMain);
 
@@ -187,7 +188,11 @@ const SUPABASE_URL = 'https://swlpspgmkwzlrowllvvj.supabase.co';
    el dominio de Wybix, que hoy las reenvía a Supabase (vercel.json de la web).
    Así, cambiar de backend es cambiar ese reenvío, no reinstalar cajas. La app
    del dueño (QR) sigue usando SUPABASE_URL: habla con su autenticación. */
-const FUNCIONES_URL = 'https://www.wybixpos.com.mx/backend';
+const FUNCIONES_URL = (!app.isPackaged && process.env.WYBIX_FUNCIONES_URL)
+  /* Solo sin empaquetar (desarrollo y e2e): una nube LOCAL de pruebas
+     (wybix-owner/scripts/servidor-menu-local.mjs). Un instalador nunca lo lee. */
+  ? String(process.env.WYBIX_FUNCIONES_URL).replace(/\/+$/, '')
+  : 'https://www.wybixpos.com.mx/backend';
 const ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
 let businessConfig = null;
@@ -2058,6 +2063,8 @@ sesion.configurar({
 
 /* PIN personal en caja: la misma fila y el mismo scrypt que Local Host. */
 const pinPos = crearPin({ sql, pool: () => poolPromise });
+/* Contraseña olvidada: la persona la cambia con su PIN, sin nadie mas. */
+const recuperarContrasena = require('./seguridad/recuperar').crearRecuperacion({ sql, pool: () => poolPromise, pin: pinPos, contrasenas });
 
 /* La sesion muere con su ventana. Sin esto, el id de un webContents
    destruido podria reutilizarse y heredar permisos ajenos. */
@@ -2215,6 +2222,18 @@ ipcMain.handle('sp-iniciar-sesion', async (event, { usuario, contrasena }) => {
       success: false,
       message: err.message
     };
+  }
+});
+
+/* Antes del login, como el login: no hay sesion que exigir. La persona se
+   identifica con su PIN (ver seguridad/recuperar.js). */
+ipcMain.handle('auth:recuperar-contrasena', async (_event, p = {}) => {
+  try {
+    const r = await recuperarContrasena(p);
+    return r.ok ? { success: true } : { success: false, error: r.error, bloqueado: !!r.bloqueado };
+  } catch (e) {
+    console.error('[ACCESO] recuperar contraseña:', e.message);
+    return { success: false, error: 'No se pudo cambiar la contraseña. Intenta de nuevo.' };
   }
 });
 
@@ -2549,6 +2568,11 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
   }));
 
   if (!lines.length) return { success: false, error: 'La venta no tiene partidas.' };
+
+  /* 0071: con la regla de Asistencia «hay que checar entrada antes de vender»,
+     quien no ha checado no cobra. Sin la aplicacion activada no frena nada. */
+  const frenoAsistencia = await require('./ipc/asistencia').frenaLaVenta(await poolPromise, sql, p.userId);
+  if (frenoAsistencia) return { success: false, error: frenoAsistencia, motivo: 'ASISTENCIA_SIN_ENTRADA' };
 
   /**
    * Reintento SOLO ante deadlock (1205).
@@ -3239,6 +3263,8 @@ ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview
 
 /** 0061: lo registra electron/ipc/corte-correo.js (más abajo, con los comprobantes). */
 let corteCorreo = null;
+/** 0068: lo crea el bloque de WhatsApp (más abajo); las comandas lo despiertan. */
+let avisosWhatsapp = null;
 
 /*
  * CERRAR UN TURNO (Fase 1).
@@ -4436,10 +4462,36 @@ require('./ipc/comprobantes').registrar({ipcMain,sql,poolPromise,receiptProfile,
 corteCorreo = require('./ipc/corte-correo').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0063: el Club (membresías). */
 require('./ipc/club').registrar({ ipcMain, sql, poolPromise, cloudSync });
+/* 0067: menú en línea. Aceptar un pedido usa el MISMO envío a preparación que
+   Touch (hospitalityDominio.enviarOrden); los nuevos se avisan a la ventana. */
+require('./ipc/menu-en-linea').registrar({ ipcMain, sql, poolPromise, cloudSync, hospitality: hospitalityDominio,
+  cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null });
+cloudSync.alPedidosEnLinea((nuevos) => {
+  for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('menu-linea:nuevos', nuevos); } catch { /* noop */ } }
+});
+/* 0068: avisos por WhatsApp al cliente final. «Pedido listo» lo barre la
+   caja principal; las membresías las avisa la nube sola (cron). */
+{
+  const nubeLista = () => { const c = cloudSync.getCloudConfig?.() || {}; return !!(c.enabled && c.equipo?.registrado); };
+  const { urlDeSeguimiento } = require('./local-host/seguimiento');
+  avisosWhatsapp = require('./nube/whatsapp-avisos').crearAvisosWhatsapp({
+    pool: () => poolPromise, sql,
+    llamar: (cuerpo) => cloudSync.llamarFiscal('whatsapp-avisos', cuerpo),
+    disponible: async () => nubeLista() && (loadInstallConfig()?.role ?? 'principal') === 'principal',
+    urlDeSeguimiento: (cuentaId) => urlDeSeguimiento({ pool: () => poolPromise, sql, cuentaId }),
+    log: (m) => console.warn('[whatsapp]', m),
+  });
+  require('./ipc/whatsapp').registrar({ ipcMain, avisos: avisosWhatsapp, nubeLista, abrirExterno: (u) => shell.openExternal(u) });
+  avisosWhatsapp.iniciar();
+}
 /* 0064: puntos y sellos. */
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */
 require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
+/* 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi). */
+require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
+/* 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra). */
+require('./ipc/asistencia').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {
@@ -4943,7 +4995,15 @@ ipcMain.handle('sp-import-sales', sesion.proteger('sp-import-sales', async (_eve
 
     rows.forEach(r => {
       let d = null;
-      if (r.sale_date) { const dt = new Date(r.sale_date); if (!isNaN(dt.getTime())) d = dt; }
+      /* sales.datee es hora de pared y mssql escribe las partes UTC del Date:
+         un texto sin zona ("2026-10-01T20:00:00") se lee como UTC para que se
+         guarde tal cual. */
+      if (r.sale_date) {
+        const s = String(r.sale_date);
+        const dt = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + 'T00:00:00Z'
+          : /(Z|[+-]\d{2}:?\d{2})$/.test(s) ? s : s + 'Z');
+        if (!isNaN(dt.getTime())) d = dt;
+      }
       tvp.rows.add(str(r.ext_folio), d, str(r.part_number), num(r.quantity), num(r.unit_price), str(r.payment_method));
     });
 

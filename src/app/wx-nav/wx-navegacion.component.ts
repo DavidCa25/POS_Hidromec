@@ -11,6 +11,9 @@ import { WxDockComponent } from '../wx-dock/wx-dock.component';
 import { WxSidebarComponent } from '../wx-sidebar/wx-sidebar.component';
 import { GuiaService } from '../wx-guia/guia.service';
 import { PaletaService } from '../wx-paleta/paleta.service';
+import { NavAccionesService } from './nav-acciones.service';
+import { AsistenciaChecarComponent } from '../asistencia/checar/asistencia-checar.component';
+import { RegisterService } from '../../services/register.service';
 
 /**
  * WX-NAVEGACION — la carcasa de la navegacion.
@@ -50,7 +53,7 @@ const GOLPE_MIN = 24;      // ...pero no un temblor
 @Component({
   selector: 'wx-navegacion',
   standalone: true,
-  imports: [NgIf, NgComponentOutlet, WxDockComponent, WxSidebarComponent, WxNavModoComponent],
+  imports: [NgIf, NgComponentOutlet, WxDockComponent, WxSidebarComponent, WxNavModoComponent, AsistenciaChecarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <wx-sidebar *ngIf="nav.modo() === 'sidebar'" (usarDock)="cambiar('dock')"></wx-sidebar>
@@ -59,12 +62,16 @@ const GOLPE_MIN = 24;      // ...pero no un temblor
       <wx-nav-modo desde="dock" (cambiar)="cambiar('sidebar')"></wx-nav-modo>
     </ng-container>
     <ng-container *ngIf="apps.abierta()"><ng-container *ngComponentOutlet="appsPanel()"></ng-container></ng-container>
+    <!-- 0071: Checar, el mismo dialogo para el dock y la barra lateral. -->
+    <app-asistencia-checar *ngIf="acc.checarAbierto()" [registerId]="caja.registerId" (cerrar)="acc.cerrarChecar()"></app-asistencia-checar>
   `,
   styles: [':host { display: contents; }'],
 })
 export class WxNavegacionComponent implements OnInit, OnDestroy {
   readonly nav = inject(NavegacionService);
   readonly apps = inject(AppsWybixService);
+  readonly acc = inject(NavAccionesService);
+  readonly caja = inject(RegisterService);
   readonly appsPanel = signal<Type<unknown> | null>(null);
   private readonly router = inject(Router);
   private readonly guia = inject(GuiaService);

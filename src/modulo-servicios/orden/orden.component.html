@@ -29,7 +29,7 @@
         <span class="mono">{{ o.cabecera.customer_mobile || o.cabecera.customer_phone }}</span>
       </ng-container>
       <span class="punto">·</span>
-      Recibida <b>{{ o.cabecera.opened_at | date:'d MMM, HH:mm':undefined:'es-MX' }}</b>
+      Recibida <b>{{ o.cabecera.opened_at | fechaSql:'d MMM, HH:mm':'es-MX' }}</b>
       <ng-container *ngIf="o.cabecera.opened_by_name">
         por <b>{{ o.cabecera.opened_by_name }}</b>
       </ng-container>
@@ -167,7 +167,7 @@
             </div>
             <div class="aut-meta" *ngIf="o.cabecera.authorized_at">
               Versión {{ o.cabecera.authorized_version }} ·
-              {{ o.cabecera.authorized_at | date:'d MMM HH:mm':undefined:'es-MX' }} ·
+              {{ o.cabecera.authorized_at | fechaSql:'d MMM HH:mm':'es-MX' }} ·
               {{ viaTexto(o.cabecera.authorized_channel) }}<br>
               Autorizó <b>{{ o.cabecera.authorized_by_name }}</b>
             </div>
@@ -194,7 +194,7 @@
         <section>
           <h3>Historial</h3>
           <div class="os-evento" *ngFor="let e of o.eventos">
-            <span class="cuando">{{ e.happened_at | date:'d MMM HH:mm':undefined:'es-MX' }}</span>
+            <span class="cuando">{{ e.happened_at | fechaSql:'d MMM HH:mm':'es-MX' }}</span>
             <span class="que">
               {{ textoEvento(e) }}
               <ng-container *ngIf="e.user_name"> · {{ e.user_name }}</ng-container>

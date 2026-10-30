@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FacturaNueva } from '../app/factura-nueva/factura-nueva.component';
 import { FacturaDetalle } from '../app/factura-detalle/factura-detalle.component';
+import { FechaSqlPipe } from '../core';
 
 interface Invoice {
   id: number;
@@ -34,7 +35,7 @@ interface Counts {
   selector: 'app-facturacion',
   standalone: true,
   templateUrl: './facturacion.html',
-  imports: [FormsModule, CommonModule, FacturaNueva, FacturaDetalle, WxMenuComponent],
+  imports: [FechaSqlPipe, FormsModule, CommonModule, FacturaNueva, FacturaDetalle, WxMenuComponent],
   styleUrls: ['./facturacion.css']
 })
 export class Facturacion implements OnInit {

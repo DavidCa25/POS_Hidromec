@@ -78,7 +78,7 @@ function limitador(max, ventanaMs) {
   };
 }
 
-function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, licenciaPantallas = null, dominios = {}, log = () => {}, alPedir = () => {} }) {
+function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, licenciaPantallas = null, dominios = {}, log = () => {}, alPedir = () => {}, alCambiarComandas = () => {} }) {
   const limiteApi = limitador(300, 60_000);
   /* Un telefono consulta cada pocos segundos; esto deja de sobra y frena a
      quien pruebe codigos (que ademas son de 128 bits). */
@@ -178,7 +178,9 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
       sesion: null,
       diferida: String(req.headers['x-wx-diferida'] || '') === '1',
       localCreadoEn: null,
-      avisarCambio: () => eventos.revisarYa(),
+      /* Una tablet movio una comanda: las pantallas se enteran ya, y quien
+         avisa fuera del local (WhatsApp, 0068) tambien. */
+      avisarCambio: () => { eventos.revisarYa(); try { alCambiarComandas(); } catch { /* noop */ } },
     };
     const loc = Date.parse(String(req.headers['x-wx-creado'] || ''));
     if (Number.isFinite(loc)) ctx.localCreadoEn = new Date(loc);

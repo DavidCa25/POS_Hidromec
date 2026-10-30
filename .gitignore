@@ -109,3 +109,6 @@ Thumbs.db
 /.claude/skills/sales-enablement/
 /.claude/skills/social/
 /.claude/skills/video/
+
+# Builds temporales de marketing (dist compilado con el addon de una marca para capturas)
+/dist.*-mkt/

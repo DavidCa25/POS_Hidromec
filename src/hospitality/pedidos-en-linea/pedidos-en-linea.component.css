@@ -1,0 +1,82 @@
+/* PEDIDOS EN LÍNEA (0067). Solo composición con los tokens de siempre. */
+.pel { display: flex; flex-direction: column; gap: 16px; padding: 4px 2px 32px; max-width: 1100px; }
+
+.pel-titulo { margin: 8px 0 0; font-size: var(--wx-text-md); font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.pel-n {
+  min-width: 24px; height: 24px; padding: 0 8px; border-radius: 999px; display: inline-grid; place-items: center;
+  background: var(--wx-accent); color: var(--wx-on-accent, #fff); font-size: 13px; font-weight: 700;
+}
+
+.pel-error, .pel-aviso {
+  margin: 0; padding: 10px 14px; border-radius: var(--wx-radius-md); display: flex; gap: 8px; align-items: center;
+  font-size: var(--wx-text-sm);
+}
+.pel-error { background: color-mix(in srgb, var(--wx-danger) 12%, transparent); color: var(--wx-danger); }
+.pel-aviso { background: color-mix(in srgb, var(--wx-warning) 14%, transparent); color: var(--wx-text); }
+
+.pel-vacio {
+  padding: 22px; border: 1px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-lg);
+  color: var(--wx-text-muted); display: flex; gap: 10px; align-items: center;
+}
+.pel-vacio i { font-size: 22px; color: var(--wx-success); }
+
+/* ------------------------------------------------------------ pendientes */
+.pel-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.pel-pedido {
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-left: 4px solid var(--wx-accent);
+  border-radius: var(--wx-radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.pel-pedido.tarde { border-left-color: var(--wx-warning); }
+.pel-pedido__cab { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.pel-nombre { display: block; font-size: 17px; }
+.pel-meta { color: var(--wx-text-muted); font-size: var(--wx-text-sm); }
+.pel-total { font-size: 18px; font-variant-numeric: tabular-nums; }
+.pel-lineas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pel-lineas li { line-height: 1.35; }
+.pel-cant { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pel-ops { display: block; color: var(--wx-text-muted); font-size: var(--wx-text-sm); padding-left: 24px; }
+.pel-nota { display: block; color: var(--wx-accent-text); font-size: var(--wx-text-sm); padding-left: 24px; }
+.pel-nota-gral { margin: 0; padding: 8px 10px; border-radius: var(--wx-radius-md); background: var(--wx-surface-2, var(--wx-bg)); font-size: var(--wx-text-sm); }
+.pel-pedido__acc { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ----------------------------------------------------------------- de hoy */
+.pel-hoy { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pel-hoy li {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: var(--wx-radius-md); background: var(--wx-surface); border: 1px solid var(--wx-edge);
+}
+.pel-num { font-weight: 750; font-size: 18px; min-width: 44px; font-variant-numeric: tabular-nums; }
+.pel-hoy__quien { margin-right: auto; }
+.pel-hoy__quien small { color: var(--wx-text-muted); margin-left: 6px; }
+.pel-motivo { color: var(--wx-text-muted); flex-basis: 100%; padding-left: 58px; }
+.pel-estado { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--wx-surface-2, var(--wx-bg)); color: var(--wx-text-muted); }
+.pel-estado--preparando { background: color-mix(in srgb, var(--wx-accent) 16%, transparent); color: var(--wx-accent-text); }
+.pel-estado--listo { background: color-mix(in srgb, var(--wx-success) 18%, transparent); color: var(--wx-success); }
+.pel-estado--rechazado, .pel-estado--cancelado { background: color-mix(in srgb, var(--wx-danger) 12%, transparent); color: var(--wx-danger); }
+
+/* ---------------------------------------------------------- configuracion */
+.pel-config {
+  display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;
+  padding: 18px; border-radius: var(--wx-radius-lg); background: var(--wx-surface); border: 1px solid var(--wx-edge);
+}
+.pel-config__form { flex: 1 1 380px; display: flex; flex-direction: column; gap: 14px; }
+.pel-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.pel-check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--wx-accent); }
+.pel-check small { display: block; color: var(--wx-text-muted); }
+.pel-campo { display: flex; flex-direction: column; gap: 6px; font-size: var(--wx-text-sm); }
+.pel-campo > span { color: var(--wx-text-muted); }
+.pel-campo input, .pel-url {
+  border: 1px solid var(--wx-edge-strong); border-radius: var(--wx-radius-md); background: var(--wx-bg); color: var(--wx-text);
+  padding: 9px 12px; font: inherit; font-size: 15px;
+}
+.pel-campo--corto input { max-width: 120px; }
+.pel-url { display: flex; align-items: center; gap: 2px; padding: 0 0 0 12px; }
+.pel-url span { color: var(--wx-text-muted); white-space: nowrap; }
+.pel-url input { border: 0; background: transparent; padding: 9px 12px 9px 0; flex: 1; min-width: 0; outline: none; }
+.pel-config__acc { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pel-config__acc small { color: var(--wx-text-muted); }
+.pel-qr { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.pel-qr img { border-radius: var(--wx-radius-md); background: #fff; padding: 6px; }
+.pel-qr span { color: var(--wx-text); word-break: break-all; }
+
+@media (prefers-reduced-motion: reduce) { .pel * { transition: none !important; } }

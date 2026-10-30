@@ -39,6 +39,8 @@ const ACCESOS: Acceso[] = [
     detalle: 'Ajustes y conteos, compras, proveedores, traspasos y dar de baja productos, sin pedir autorización.' },
   { paquete: PAQUETES.PRODUCCION_OPERAR, titulo: 'Producción', icono: 'ph-cooking-pot',
     detalle: 'Planear las tandas del día, empezarlas y registrar lo que salió y su merma.' },
+  { paquete: PAQUETES.ASISTENCIA_GESTIONAR, titulo: 'Asistencia', icono: 'ph-clock',
+    detalle: 'Ver las horas de todos, asignarles horario, corregir jornadas y exportarlas.' },
   { paquete: PAQUETES.CAJA_CORTES, titulo: 'Cortes de caja', icono: 'ph-vault',
     detalle: 'Cerrar el turno de otra persona y autorizar su corte.' },
   { paquete: PAQUETES.COMERCIAL_ADMINISTRAR, titulo: 'Promociones y combos', icono: 'ph-tag',

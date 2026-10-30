@@ -8,6 +8,7 @@ const { crearIdentidad, metadataSql } = require('./nube/identidad');
 const { crearEnvioHechos } = require('./nube/hechos');
 const { crearMultisucursal } = require('./nube/multisucursal');
 const { crearClub } = require('./nube/club');
+const { crearMenuEnLinea } = require('./nube/menu-en-linea');
 const crypto = require('crypto');
 
 // ============================================================
@@ -286,6 +287,27 @@ const club = crearClub({
   subirAntes: () => hechos.pronto(),
   log,
 });
+
+/* 0067 · Menú en línea: publicar el menú, bajar pedidos y subir su estado
+   (ver nube/menu-en-linea.js). Solo la principal: es la que tiene la
+   credencial de la sucursal. La marca la deja la pantalla de configuración
+   (hueco `menuEnLinea` de un addon) en cloud-config. */
+let alPedidosNuevos = () => {};
+const menuEnLinea = crearMenuEnLinea({
+  pool: () => poolPromise, sql,
+  llamar: (action, cuerpo) => gateway(action, cuerpo),
+  disponible: async () => instalacion.esPrincipal() && !!loadConfig().enabled
+    && !!(loadConfig().deviceTokenEnc || loadConfig().syncTokenEnc) && permitido(),
+  marca: () => loadConfig().menuMarca ?? null,
+  negocio: () => instalacion.nombres()?.negocio ?? null,
+  alNuevos: (n) => alPedidosNuevos(n),
+  log,
+});
+/* 0066 · Tarjeta del Club en Wallet: la función club-wallet (emitir, marca,
+   resolver), siempre con la credencial del equipo. */
+async function clubWallet(action, cuerpo = {}) {
+  return llamarFuncion('club-wallet', { action, ...cuerpo }, { token: await credencial() });
+}
 
 /**
  * Roles v2 · AUTORIZACIÓN A DISTANCIA desde la caja: un Operador pide, el
@@ -805,12 +827,14 @@ function startScheduler() {
   setTimeout(() => { pushSafe(); }, 15000);
   timer = setInterval(() => { pushSafe(); }, interval);
   club.iniciar();
+  menuEnLinea.iniciar();
   log(`Sincronizacion cada ${Math.round(interval / 1000)}s.`);
 }
 
 function stopScheduler() {
   if (timer) { clearInterval(timer); timer = null; }
   club.detener();
+  menuEnLinea.detener();
 }
 
 // ---- Exports (todo en un solo lugar) ----
@@ -818,6 +842,11 @@ function stopScheduler() {
 module.exports = {
   multi,
   club,
+  menuEnLinea,
+  /** Quién se entera de pedidos nuevos (la ventana principal, para avisar). */
+  alPedidosEnLinea: (fn) => { alPedidosNuevos = typeof fn === 'function' ? fn : () => {}; },
+  guardarMarcaMenu: (m) => writeConfig({ ...loadConfig(), menuMarca: m ?? null }),
+  clubWallet,
   aprobaciones,
   hechosAhora: () => hechos.pronto(),
   firmarTransferencia,

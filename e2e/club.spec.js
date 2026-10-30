@@ -79,11 +79,16 @@ test('Club: plan, afiliar, café del día, ya usó, renovar vencida y administra
   expect(cliente, 'el cliente existe').toBeTruthy();
 
   /* Aplicaciones relee los módulos: así el menú ve Fidelización encendida. */
+  /* Sin espera fija: el menu se entera del modulo cuando termina de releer
+     (1,5 s no siempre alcanzaba y la prueba fallaba una de cada pocas). */
   await p.evaluate(() => { location.hash = '#/dashboard/aplicaciones'; });
-  await p.waitForTimeout(1500);
+  await expect.poll(async () => {
+    await p.keyboard.press('Escape').catch(() => {});
+    await irPorMas(p, 'Fidelización');
+    return p.locator('.loy-nav').isVisible({ timeout: 3000 }).catch(() => false);
+  }, { timeout: 30000, intervals: [500, 1000, 2000] }).toBe(true);
 
   // ------------------------------------------------ 1. plan desde la pantalla
-  await irPorMas(p, 'Fidelización');
   await p.locator('.loy-nav button', { hasText: 'Club' }).click();
   await p.locator('[data-guide=club-nuevo-plan]').click();
   const form = p.locator('[data-guide=club-plan-form]');

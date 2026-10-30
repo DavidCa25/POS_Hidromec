@@ -1,0 +1,254 @@
+<div class="lq">
+  <header class="lq-head">
+    <div class="lq-head__txt">
+      <h1>Liquidaciones de plataforma</h1>
+      <p>Lo que cobraste en el ticket contra lo que Uber Eats, Didi o Rappi te depositan: qué descontaron, qué pedidos no cuadran y cuánto ganaste de verdad.</p>
+    </div>
+    <div class="lq-head__acc" *ngIf="abierta() === null">
+      <button type="button" class="btn-outline" (click)="verCanales.set(!verCanales())" data-guide="lq-canales-abrir">
+        <i class="ph ph-plugs-connected" aria-hidden="true"></i> Canales</button>
+      <button type="button" class="btn-primary" *ngIf="puedeAdministrar()" (click)="nueva()" data-guide="lq-nueva">
+        <i class="ph ph-plus" aria-hidden="true"></i> Nueva liquidación</button>
+    </div>
+    <div class="lq-head__acc" *ngIf="abierta() !== null">
+      <button type="button" class="btn-outline" (click)="volver()" data-guide="lq-volver"><i class="ph ph-arrow-left" aria-hidden="true"></i> Todas</button>
+    </div>
+  </header>
+
+  <p class="lq-error" *ngIf="error()" role="alert"><i class="ph ph-warning" aria-hidden="true"></i> {{ error() }}</p>
+  <p class="lq-ok" *ngIf="aviso()" role="status"><i class="ph ph-check-circle" aria-hidden="true"></i> {{ aviso() }}</p>
+
+  <!-- =============================================================== LISTA -->
+  <ng-container *ngIf="abierta() === null">
+    <!-- ---------------------------------------------- canal -> plataforma -->
+    <section class="lq-sec lq-canales" *ngIf="verCanales()" data-guide="lq-canales">
+      <h2>¿Qué canal es de qué plataforma?</h2>
+      <p class="lq-nota">Wybix sabe de qué plataforma es un pedido por el <b>canal de venta</b> con que se cobró (Inventario › Precios por canal).
+        Liga cada canal con su plataforma. Una venta pagada en plataforma con otro canal —o en Mostrador— igual se puede conciliar, pero no se sabe de cuál fue.</p>
+      <p class="lq-vacio" *ngIf="!canales().length">
+        <i class="ph ph-info" aria-hidden="true"></i> Todavía no hay canales de venta.
+        <a routerLink="/dashboard/inventario/precios" [queryParams]="{ view: 'channels' }">Crea uno por plataforma</a> para cobrar a su precio y saber de dónde vino cada pedido.</p>
+      <ul class="lq-lista" *ngIf="canales().length">
+        <li *ngFor="let c of canales()" [attr.data-guide-clave]="c.channel_id">
+          <span>{{ c.nombre }}<small>{{ c.ventas_90d }} {{ c.ventas_90d === 1 ? 'venta' : 'ventas' }} pagadas en plataforma en 90 días<ng-container *ngIf="!c.activo"> · inactivo</ng-container></small></span>
+          <wx-select class="lq-ligar" [opciones]="opcionesLigar" [ngModel]="c.plataforma ?? ''" (ngModelChange)="ligar(c, $event)"
+                     [disabled]="!puedeAdministrar()" placeholder="No es plataforma" [attr.data-guide]="'lq-ligar-' + c.channel_id"></wx-select>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ---------------------------------------------------- por cobrar -->
+    <section class="lq-cifras" *ngIf="plataformasEnUso().length" aria-label="Lo que deben las plataformas">
+      <div class="lq-cifra" *ngFor="let p of plataformasEnUso()" [attr.data-guide-clave]="p.platform">
+        <span>{{ nombrePlataforma(p.platform) }}</span>
+        <b>{{ dinero(p.importe_sin_liquidar + p.importe_sin_deposito) }}</b>
+        <small *ngIf="p.ventas_sin_liquidar">{{ p.ventas_sin_liquidar }} {{ p.ventas_sin_liquidar === 1 ? 'venta' : 'ventas' }} sin liquidar ({{ dinero(p.importe_sin_liquidar) }}, al ticket) desde {{ fecha(p.desde_sin_liquidar) }}</small>
+        <small *ngIf="p.liquidaciones_sin_deposito">{{ p.liquidaciones_sin_deposito }} {{ p.liquidaciones_sin_deposito === 1 ? 'depósito' : 'depósitos' }} por llegar ({{ dinero(p.importe_sin_deposito) }})</small>
+        <small *ngIf="!p.ventas_sin_liquidar && !p.liquidaciones_sin_deposito">Al corriente</small>
+        <small class="lq-acred" *ngIf="p.isr_retenido || p.iva_retenido || p.iva_comision">Acreditable en el año: ISR {{ dinero(p.isr_retenido) }} · IVA retenido {{ dinero(p.iva_retenido) }} · IVA de comisiones {{ dinero(p.iva_comision) }}</small>
+      </div>
+    </section>
+    <p class="lq-aviso" *ngIf="sinPlataforma().ventas > 0" role="status">
+      <i class="ph ph-question" aria-hidden="true"></i>
+      <span><b>{{ sinPlataforma().ventas }}</b> {{ sinPlataforma().ventas === 1 ? 'venta pagada' : 'ventas pagadas' }} en plataforma ({{ dinero(sinPlataforma().importe) }}) sin canal de plataforma.
+        Entran a la conciliación de cualquier plataforma; para saber de cuál fueron, cobra con el canal de esa plataforma.</span>
+    </p>
+
+    <!-- -------------------------------------------------- liquidaciones -->
+    <section class="lq-sec" data-guide="lq-lista">
+      <h2>Liquidaciones <small>últimos 12 meses</small>
+        <button type="button" class="lq-link" (click)="toggleCanceladas()">{{ verCanceladas() ? 'Ocultar canceladas' : 'Ver canceladas' }}</button>
+        <wx-cargando *ngIf="cargando()" [size]="16" alt="Cargando"></wx-cargando></h2>
+      <div class="lq-vacio lq-vacio--grande" *ngIf="!liquidaciones().length && !cargando()">
+        <i class="ph ph-receipt" aria-hidden="true"></i>
+        <div><b>Todavía no hay liquidaciones.</b>
+          <span>Descarga de tu plataforma el reporte de pedidos del periodo (en Uber Eats: <i>Ganancias › Descargar</i>) y concílialo aquí con lo que cobró tu caja.</span></div>
+      </div>
+      <div class="lq-tabla" *ngIf="liquidaciones().length">
+        <table>
+          <thead><tr><th>Periodo</th><th>Plataforma</th><th>Estado</th><th class="num">Ventas</th><th class="num">Descontado</th><th class="num">Depósito esperado</th><th class="num">Depositado</th><th>Pedidos</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of liquidaciones()" (click)="abrir(l.id)" (keydown.enter)="abrir(l.id)" tabindex="0" class="clic"
+                [attr.data-guide-clave]="l.id" [attr.data-guide-estado]="l.status">
+              <td>{{ periodo(l) }}<small *ngIf="l.source_file">{{ l.source_file }}</small></td>
+              <td>{{ nombrePlataforma(l.platform) }}</td>
+              <td><span class="lq-chip" [attr.data-estado]="l.status">{{ l.status === 'BORRADOR' ? 'Borrador' : l.status === 'CONFIRMADA' ? 'Confirmada' : 'Cancelada' }}</span></td>
+              <td class="num">{{ dinero(l.gross_sales) }}</td>
+              <td class="num tenue">{{ dinero(l.deposit_expected - l.gross_sales) }}</td>
+              <td class="num">{{ dinero(l.deposit_expected) }}</td>
+              <td class="num">
+                <ng-container *ngIf="l.deposit_real != null; else pend">{{ dinero(l.deposit_real) }}
+                  <small *ngIf="l.deposit_difference" [class.neg]="l.deposit_difference! < 0">{{ l.deposit_difference! > 0 ? '+' : '' }}{{ dinero(l.deposit_difference) }}</small></ng-container>
+                <ng-template #pend><span class="tenue">Por llegar</span></ng-template>
+              </td>
+              <td>{{ l.pedidos }}<small *ngIf="l.pedidos_faltan" class="neg">{{ l.pedidos_faltan }} sin venta</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- ============================================================= DETALLE -->
+  <ng-container *ngIf="abierta() !== null">
+    <div class="lq-estado" *ngIf="liq() as l" [attr.data-estado]="l.status" data-guide="lq-estado">
+      <span class="lq-chip" [attr.data-estado]="l.status">{{ l.status === 'BORRADOR' ? 'Borrador' : l.status === 'CONFIRMADA' ? 'Confirmada' : 'Cancelada' }}</span>
+      <span *ngIf="l.status === 'BORRADOR'">Todavía no cuenta en el estado de resultados. Revisa la conciliación y confírmala.</span>
+      <span *ngIf="l.status === 'CONFIRMADA'">Confirmada por {{ l.confirmed_by_name }} el {{ fechaHora(l.confirmed_at) }}. Ya cuenta en el <a routerLink="/dashboard/estado-resultados" [queryParams]="{ desde: l.period_from.slice(0, 10), hasta: l.period_to.slice(0, 10) }" data-guide="lq-ver-resultados">estado de resultados</a>.</span>
+      <span *ngIf="l.status === 'CANCELADA'">Cancelada: {{ l.void_reason }}. No cuenta en resultados.</span>
+    </div>
+
+    <div class="lq-dos">
+      <!-- ---------------------------------------------- 1 qué se liquida -->
+      <section class="lq-sec lq-panel" data-guide="lq-periodo">
+        <h2><span class="lq-paso">1</span> Plataforma y periodo</h2>
+        <div class="lq-campos">
+          <label>Plataforma<wx-select [opciones]="opcionesPlataforma" [(ngModel)]="plataforma" [disabled]="!editable()" data-guide="lq-plataforma"></wx-select></label>
+          <label>Desde<wx-date [(ngModel)]="desde" [max]="hasta" [limpiable]="false" [disabled]="!editable()"></wx-date></label>
+          <label>Hasta<wx-date [(ngModel)]="hasta" [min]="desde" [max]="hoy" [limpiable]="false" [disabled]="!editable()"></wx-date></label>
+        </div>
+        <ng-container *ngIf="editable()">
+          <!-- <input type="file"> OCULTO detrás de su <label>: no hay otra forma de
+               abrir el diálogo de archivos (excepción documentada en CLAUDE.md). -->
+          <label class="lq-archivo" data-guide="lq-archivo">
+            <i class="ph ph-file-arrow-up" aria-hidden="true"></i>
+            <span><b>{{ archivo() || (liq()?.source_file ? 'Reemplazar ' + liq()?.source_file : 'Subir el reporte de pedidos') }}</b>
+              <small>CSV o Excel descargado de la plataforma. En Uber Eats: Ganancias › Descargar.</small></span>
+            <input type="file" accept=".csv,.xlsx,.xls" (change)="leerArchivo($event)" hidden>
+          </label>
+          <div class="lq-leido" *ngIf="lectura() as r" data-guide="lq-leido">
+            <b>{{ r.pedidos.length }} pedidos · {{ dinero(r.ventas) }} cobrados a clientes<ng-container *ngIf="r.neto != null"> · ventas netas {{ dinero(r.neto) }}</ng-container></b>
+            <small>Del {{ fecha(r.desde) }} al {{ fecha(r.hasta) }}. Columnas: {{ r.columnas.id }}, {{ r.columnas.total || r.columnas.base }}{{ r.columnas.fecha ? ', ' + r.columnas.fecha : '' }}{{ r.columnas.estado ? ', ' + r.columnas.estado : '' }}.</small>
+            <small *ngFor="let a of r.avisos" class="lq-adv"><i class="ph ph-warning" aria-hidden="true"></i> {{ a }}</small>
+          </div>
+        </ng-container>
+        <p class="lq-nota" *ngIf="!editable() && liq()?.source_file">Archivo: {{ liq()?.source_file }}</p>
+      </section>
+
+      <!-- ------------------------------------------------ 2 el desglose -->
+      <section class="lq-sec lq-panel" data-guide="lq-desglose">
+        <h2><span class="lq-paso">2</span> Lo que descontó la plataforma <small>con IVA, como lo enseña</small></h2>
+        <div class="lq-desglose">
+          <label>Ventas brutas<small>Lo que pagaron los clientes</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.ventas" [disabled]="!editable()" data-guide="lq-ventas"></label>
+          <label>Promociones que pagas tú<small>Marketing, descuentos en artículos</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.marketing" [disabled]="!editable()" data-guide="lq-marketing"></label>
+          <label>Comisión y tasa de servicio<small>Tasas de servicio</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.comision" [disabled]="!editable()" data-guide="lq-comision"></label>
+          <label>Reembolsos<small>Pedidos reembolsados a clientes</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.reembolsos" [disabled]="!editable()" data-guide="lq-reembolsos"></label>
+          <label>Retención de ISR<small>Deducción de ISR</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.isr" [disabled]="!editable()" data-guide="lq-isr"></label>
+          <label>Retención de IVA<small>Impuestos retenidos</small>
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.iva" [disabled]="!editable()" data-guide="lq-iva"></label>
+          <label>Otros ajustes<small>Negativo si te pagaron de más</small>
+            <input type="number" class="form-control" step="0.01" [(ngModel)]="d.otros" [disabled]="!editable()" data-guide="lq-otros"></label>
+        </div>
+        <p class="lq-nota">En la pantalla de ganancias de la plataforma, abre cada renglón agrupado (los que dicen «+2», «+3»): «Modificaciones» suele juntar reembolsos y la deducción de ISR, y aquí van separados.</p>
+        <div class="lq-total" data-guide="lq-esperado">
+          <span>Depósito esperado</span><b>{{ dinero(esperado()) }}</b>
+          <small *ngIf="retenido() != null">La plataforma se queda con el {{ retenido()!.toFixed(1) }}% de lo que cobraste.</small>
+        </div>
+        <div class="lq-deposito" data-guide="lq-deposito">
+          <label>Depósito real<input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="d.depositoReal" [disabled]="liq()?.status === 'CANCELADA'"></label>
+          <label>Fecha<wx-date [(ngModel)]="d.fechaDeposito" [max]="hoy" [disabled]="liq()?.status === 'CANCELADA'"></wx-date></label>
+          <span class="lq-dif" *ngIf="d.depositoReal != null" [class.neg]="d.depositoReal - esperado() < -0.005">
+            {{ d.depositoReal - esperado() >= -0.005 && d.depositoReal - esperado() <= 0.005 ? 'Cuadra' : (d.depositoReal - esperado() > 0 ? 'Llegó ' + dinero(d.depositoReal - esperado()) + ' de más' : 'Faltan ' + dinero(esperado() - d.depositoReal)) }}</span>
+          <button type="button" class="btn-outline" *ngIf="liq()?.status === 'CONFIRMADA' && puedeAdministrar()" (click)="registrarDeposito()" data-guide="lq-deposito-guardar">Registrar depósito</button>
+        </div>
+        <label class="lq-nota-campo">Nota<input type="text" class="form-control" maxlength="255" [(ngModel)]="nota" [disabled]="!editable()"></label>
+        <div class="lq-acciones" *ngIf="editable() && puedeAdministrar()">
+          <button type="button" class="btn-primary" (click)="guardar()" [disabled]="guardando()" data-guide="lq-guardar">
+            <i class="ph ph-arrows-left-right" aria-hidden="true"></i> {{ abierta() === 0 ? 'Guardar y conciliar' : 'Guardar y volver a conciliar' }}</button>
+          <wx-cargando *ngIf="guardando()" [size]="18" alt="Guardando"></wx-cargando>
+        </div>
+      </section>
+    </div>
+
+    <!-- --------------------------------------------- 3 la conciliación -->
+    <ng-container *ngIf="liq() as l">
+      <section class="lq-sec" data-guide="lq-conciliacion">
+        <h2><span class="lq-paso">3</span> Conciliación con la caja
+          <small>{{ l.pedidos }} pedidos de {{ nombrePlataforma(l.platform) }} · {{ dinero(l.total_plataforma) }} · en caja {{ dinero(l.total_caja_emparejado) }}</small></h2>
+        <p class="lq-vacio" *ngIf="!l.pedidos">
+          <i class="ph ph-info" aria-hidden="true"></i> Sin archivo de pedidos: solo se concilia el depósito. El desglose se repartirá entre las ventas del periodo cobradas con el canal de {{ nombrePlataforma(l.platform) }}.</p>
+        <ng-container *ngIf="l.pedidos">
+          <div class="lq-seg" role="group" aria-label="Filtrar pedidos">
+            <button type="button" [class.activo]="filtro() === 'TODOS'" (click)="filtro.set('TODOS')">Todos <b>{{ l.pedidos }}</b></button>
+            <button type="button" [class.activo]="filtro() === 'FALTA_EN_CAJA'" (click)="filtro.set('FALTA_EN_CAJA')" data-guide="lq-filtro-faltan" [attr.data-tono]="cuenta()['FALTA_EN_CAJA'] ? 'malo' : null">Faltan en caja <b>{{ cuenta()['FALTA_EN_CAJA'] }}</b></button>
+            <button type="button" [class.activo]="filtro() === 'DIFERENCIA'" (click)="filtro.set('DIFERENCIA')" [attr.data-tono]="cuenta()['DIFERENCIA'] ? 'aviso' : null">Importe distinto <b>{{ cuenta()['DIFERENCIA'] }}</b></button>
+            <button type="button" [class.activo]="filtro() === 'OK'" (click)="filtro.set('OK')">Cuadran <b>{{ cuenta()['OK'] }}</b></button>
+            <button type="button" [class.activo]="filtro() === 'CANCELADO'" (click)="filtro.set('CANCELADO')">Cancelados <b>{{ cuenta()['CANCELADO'] }}</b></button>
+          </div>
+          <div class="lq-tabla">
+            <table>
+              <thead><tr><th>Pedido</th><th>Fecha</th><th class="num">Plataforma</th><th class="num">Caja</th><th>Estado</th><th>Venta</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let p of pedidosVisibles()" [attr.data-guide-clave]="p.platform_order_id" [attr.data-guide-estado]="p.estado">
+                  <td><span class="mono" [title]="p.platform_order_id">{{ pedidoCorto(p.platform_order_id) }}</span><small>{{ p.customer || '' }}{{ p.fulfillment ? ' · ' + p.fulfillment : '' }}</small></td>
+                  <td>{{ fechaHora(p.order_at) }}<small *ngIf="p.platform_status">{{ p.platform_status }}</small></td>
+                  <td class="num">{{ dinero(p.sales_total) }}</td>
+                  <td class="num">{{ p.caja_amount != null ? dinero(p.caja_amount) : '—' }}<small *ngIf="p.diferencia" [class.neg]="p.diferencia < 0">{{ p.diferencia > 0 ? '+' : '' }}{{ dinero(p.diferencia) }}</small></td>
+                  <td><span class="lq-chip" [attr.data-estado]="p.estado">{{ estadoTexto(p.estado) }}</span><small *ngIf="p.match_kind">{{ como(p) }}</small></td>
+                  <td>
+                    <ng-container *ngIf="p.sale_id">Folio {{ p.sale_id }}<small>{{ fechaHora(p.sale_datee) }}{{ p.caja_channel ? ' · ' + p.caja_channel : '' }}</small>
+                      <button type="button" class="lq-link" *ngIf="editable() && puedeAdministrar() && p.match_kind === 'MANUAL'" (click)="emparejar(p, null)">Soltar</button></ng-container>
+                    <ng-container *ngIf="!p.sale_id && !p.cancelled && editable() && puedeAdministrar()">
+                      <div class="lq-emparejar" *ngIf="sobrantes().length; else sinSobrantes">
+                        <wx-select [opciones]="opcionesSobrantes()" [(ngModel)]="elegida[p.id]" placeholder="Elegir venta de la caja" [buscable]="true" [attr.data-guide]="'lq-elegir-' + p.line_no"></wx-select>
+                        <button type="button" class="btn-outline" [disabled]="!elegida[p.id]" (click)="emparejar(p, elegida[p.id] ?? null)">Emparejar</button>
+                      </div>
+                      <ng-template #sinSobrantes><small class="tenue">No hay ventas sin pedido: regístrala en la caja o déjala sin venta.</small></ng-template>
+                    </ng-container>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="l.status === 'BORRADOR' && sobrantes().length">
+          <h2 class="lq-sub">En la caja y no en la plataforma <small>{{ sobrantes().length }} · {{ dinero(l.total_sobrantes) }}</small></h2>
+          <p class="lq-nota">Ventas pagadas en plataforma, de este periodo, que ningún pedido reclama. Puede ser un pedido de otra plataforma, uno que la plataforma pagará en otro periodo, o un error al cobrar.</p>
+          <ul class="lq-lista" data-guide="lq-sobrantes">
+            <li *ngFor="let s of sobrantes()" [attr.data-guide-clave]="s.sale_id">
+              <span>Folio {{ s.sale_id }}<small>{{ fechaHora(s.datee) }}{{ s.channel_name ? ' · ' + s.channel_name : ' · sin canal' }}{{ s.reference ? ' · pedido ' + s.reference : '' }}</small></span>
+              <b>{{ dinero(s.amount) }}</b>
+            </li>
+          </ul>
+        </ng-container>
+      </section>
+
+      <!-- ------------------------------------------- 4 qué pasa al confirmar -->
+      <section class="lq-sec lq-panel lq-efecto" data-guide="lq-efecto">
+        <h2><span class="lq-paso">4</span> En tu estado de resultados</h2>
+        <ul class="lq-lista">
+          <li><span>Promociones que pagaste<small>Descuento a la venta, sin IVA</small></span><b>{{ dinero(-(l.marketing_base ?? 0)) }}</b></li>
+          <li><span>Reembolsos y ajustes<small>Ajuste a la venta, sin IVA</small></span><b>{{ dinero(-(l.refunds_base ?? 0)) }}</b></li>
+          <li><span>Comisión de {{ nombrePlataforma(l.platform) }}<small>Gasto sin IVA; queda en Egresos ligado a esta liquidación</small></span><b>{{ dinero(-(l.fee_base ?? 0)) }}</b></li>
+          <li class="tenue"><span>IVA de la comisión<small>Acreditable: no es gasto</small></span><b>{{ dinero(l.fee_iva) }}</b></li>
+          <li class="tenue"><span>Retenciones de ISR e IVA<small>Acreditables: no son gasto</small></span><b>{{ dinero(l.isr_withheld + l.iva_withheld) }}</b></li>
+        </ul>
+        <p class="lq-nota">Se reparte entre los pedidos en proporción a su ticket y cae en el día de cada venta. Las retenciones y el IVA de la comisión normalmente se acreditan; confirma con tu contador cómo aplicarlos en tu declaración.</p>
+
+        <div class="lq-acciones" *ngIf="puedeAdministrar() && l.status !== 'CANCELADA'">
+          <ng-container *ngIf="l.status === 'BORRADOR'">
+            <button type="button" class="btn-primary" *ngIf="!confirmando()" (click)="confirmando.set(true)" [disabled]="guardando()" data-guide="lq-confirmar">
+              <i class="ph ph-seal-check" aria-hidden="true"></i> Confirmar liquidación</button>
+            <div class="lq-seguro" *ngIf="confirmando()" role="group" aria-label="Confirmar">
+              <span>Desde ahora cuenta en resultados<ng-container *ngIf="l.pedidos_faltan"> con {{ l.pedidos_faltan }} {{ l.pedidos_faltan === 1 ? 'pedido' : 'pedidos' }} sin venta en la caja</ng-container>. ¿Confirmar?</span>
+              <button type="button" class="btn-primary" (click)="confirmar()" [disabled]="guardando()" data-guide="lq-confirmar-si">Sí, confirmar</button>
+              <button type="button" class="btn-outline" (click)="confirmando.set(false)">No</button>
+            </div>
+          </ng-container>
+          <button type="button" class="btn-outline lq-peligro" *ngIf="!cancelando()" (click)="cancelando.set(true)" data-guide="lq-cancelar">Cancelar liquidación</button>
+          <div class="lq-seguro" *ngIf="cancelando()">
+            <input type="text" class="form-control" maxlength="200" [(ngModel)]="motivo" placeholder="¿Por qué se cancela?" data-guide="lq-motivo">
+            <button type="button" class="btn-outline lq-peligro" (click)="cancelar()" data-guide="lq-cancelar-si">Cancelar liquidación</button>
+            <button type="button" class="btn-outline" (click)="cancelando.set(false)">No</button>
+          </div>
+        </div>
+      </section>
+    </ng-container>
+  </ng-container>
+</div>

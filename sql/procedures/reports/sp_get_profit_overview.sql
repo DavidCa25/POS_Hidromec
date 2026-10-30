@@ -12,6 +12,8 @@ GO
 -- La tasa de IVA también es la congelada del renglón. Los renglones viejos
 -- sin costo o sin tasa usan los del producto (misma regla que
 -- sp_income_statement).
+-- 0069: menos lo que las plataformas descontaron (promociones, reembolsos y
+-- comision sin IVA) de las liquidaciones confirmadas, en el dia de la venta.
 CREATE OR ALTER PROCEDURE dbo.sp_get_profit_overview
     @from_date DATE = NULL,
     @to_date   DATE = NULL
@@ -22,6 +24,7 @@ BEGIN
     IF @from_date IS NULL SET @from_date = DATEADD(DAY, -6, CAST(GETDATE() AS DATE));
     IF @to_date   IS NULL SET @to_date   = CAST(GETDATE() AS DATE);
 
+    ;WITH v AS (
     SELECT
         CAST(s.datee AS DATE) AS datee,
         SUM(
@@ -35,7 +38,15 @@ BEGIN
     INNER JOIN dbo.products p     ON p.id = sd.product_id
     WHERE s.datee >= @from_date
       AND s.datee <  DATEADD(DAY, 1, @to_date)
-    GROUP BY CAST(s.datee AS DATE)
-    ORDER BY CAST(s.datee AS DATE);
+    GROUP BY CAST(s.datee AS DATE)),
+    pa AS (
+    SELECT a.alloc_date, SUM(a.discount_base + a.refund_base + a.fee_base) AS descontado
+      FROM dbo.platform_settlement_allocations a
+      JOIN dbo.platform_settlements t ON t.id = a.settlement_id AND t.status = 'CONFIRMADA'
+     WHERE a.alloc_date BETWEEN @from_date AND @to_date
+     GROUP BY a.alloc_date)
+    SELECT v.datee, CAST(v.profit - ISNULL(pa.descontado, 0) AS DECIMAL(18, 4)) AS profit
+      FROM v LEFT JOIN pa ON pa.alloc_date = v.datee
+     ORDER BY v.datee;
 END;
 GO

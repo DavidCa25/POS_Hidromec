@@ -6,6 +6,8 @@
  *   club:plan-guardar   alta/cambio de un plan (COMERCIAL_ADMINISTRAR)
  *   club:gestionar      cancelar una membresía o revisar un canje doble (VENTAS_SUPERVISAR)
  *   club:sincronizar    bajar ya lo de las demás sucursales (VENTAS_OPERAR)
+ *   club:wallet-emitir  la tarjeta del cliente en Apple/Google Wallet (VENTAS_OPERAR)
+ *   club:wallet-resolver  la caja leyó WXC-<serial>: ¿qué cliente es? (VENTAS_OPERAR)
  *
  * Cobrar, afiliar, renovar y dar el beneficio NO pasan por aquí: son una venta
  * (sp_register_sale -> sp_membership_apply_sale) y su cotización.
@@ -74,6 +76,65 @@ function registrar({ ipcMain, sql, poolPromise, cloudSync }) {
         .execute("sp_membership_manage");
       cloudSync.hechosAhora?.();
       return { success: true };
+    } catch (e) { return fallo(e); }
+  }));
+
+  /* ---------------------------------------------- 0066 · tarjeta en Wallet */
+  const COLOR = /^#[0-9a-f]{6}$/i;
+  const png = (x) => (typeof x === "string" && x.length < 250000 && /^iVBORw0KGgo[A-Za-z0-9+/=]+$/.test(x) ? x : null);
+  let marcaSubida = null;
+  const aplicarPases = async (pases) => (await pool()).request()
+    .input("payload", sql.NVarChar(sql.MAX), JSON.stringify(pases)).execute("sp_club_wallet_apply");
+  const resolverLocal = async (serial) => (await (await pool()).request()
+    .input("serial", sql.VarChar(40), serial).execute("sp_club_wallet_resolve")).recordset?.[0] ?? null;
+
+  /* La marca (colores y logo del addon, si lo hay) sube una vez por arranque:
+     la nube la usa para pintar todos los pases de la empresa. */
+  async function subirMarca(m) {
+    if (!m || ![m.fondo, m.texto, m.etiqueta].every((c) => typeof c === "string" && COLOR.test(c))) return;
+    const marca = { fondo: m.fondo, texto: m.texto, etiqueta: m.etiqueta, logo_png: png(m.logo_png), icon_png: png(m.icon_png) };
+    const huella = JSON.stringify(marca);
+    if (huella === marcaSubida) return;
+    await cloudSync.clubWallet("marca", marca);
+    marcaSubida = huella;
+  }
+
+  ipcMain.handle("club:wallet-emitir", sesion.proteger("club:wallet-emitir", async (_e, p = {}) => {
+    try {
+      const id = Number(p.customerId);
+      if (!Number.isSafeInteger(id) || id < 1) throw Error("Elige un cliente.");
+      const c = (await (await pool()).request().input("customer_id", sql.Int, id).execute("sp_club_wallet_customer")).recordset?.[0];
+      if (!c) throw Error("El cliente no existe.");
+      if (!c.phone_key) throw Error("El cliente necesita un teléfono de 10 dígitos para su tarjeta.");
+      if (!cloudSync.getCloudConfig?.()?.enabled || !cloudSync.clubWallet) throw Error("La tarjeta en Wallet necesita la nube de Wybix activa (Configuración > Nube).");
+      try { await subirMarca(p.marca); } catch { /* sin marca, el pase sale con los colores de Wybix */ }
+      const r = await cloudSync.clubWallet("emitir", { phone: c.phone_key, customer_name: c.customer_name });
+      await aplicarPases([{ serial: r.serial, phone: c.phone_key, customer_name: c.customer_name }]);
+      return { success: true, data: { url: r.url, codigo: r.codigo, apple: r.apple ?? null, google: r.google ?? null, nombre: c.customer_name } };
+    } catch (e) { return fallo(e); }
+  }));
+
+  /* Primero la base local (sin internet); si el pase no está, la nube (uno
+     emitido en otra sucursal antes de la siguiente bajada del Club). */
+  ipcMain.handle("club:wallet-resolver", sesion.proteger("club:wallet-resolver", async (_e, p = {}) => {
+    try {
+      const m = /^\s*WXC-([0-9a-f]{24})\s*$/i.exec(String(p.codigo ?? ""));
+      if (!m) throw Error("Ese código no es una tarjeta del Club.");
+      const serial = m[1].toLowerCase();
+      let f = await resolverLocal(serial);
+      if (!f?.pase && cloudSync.getCloudConfig?.()?.enabled && cloudSync.clubWallet) {
+        try {
+          const r = await cloudSync.clubWallet("resolver", { codigo: "WXC-" + serial });
+          await aplicarPases([{ serial, phone: r.phone, customer_name: r.customer_name }]);
+          f = await resolverLocal(serial);
+        } catch (e) {
+          if (e.code === "OFFLINE") throw Error("Esta tarjeta no está en esta caja y no hay internet para buscarla. Busca al cliente por su teléfono.");
+          throw e;
+        }
+      }
+      if (!f?.pase) throw Error("Esta tarjeta no es de este negocio.");
+      if (!f.customer_id) throw Error("No se encontró al cliente de esta tarjeta. Búscalo por su teléfono.");
+      return { success: true, data: { customerId: f.customer_id, nombre: f.customer_name } };
     } catch (e) { return fallo(e); }
   }));
 

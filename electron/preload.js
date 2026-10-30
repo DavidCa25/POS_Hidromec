@@ -1,4 +1,4 @@
-﻿const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 /*
  * ROLES V2 · OPERACIONES QUE SE APRUEBAN.
@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     makeSale: (data) => ipcRenderer.send('make-sale', data),
     onSaleResult: (callback) => ipcRenderer.on('sale-result', (event, data) => callback(data)),
     iniciarSesion: (usuario, contrasena) => invoke('sp-iniciar-sesion', { usuario, contrasena }),
+    recuperarContrasena: (p) => invoke('auth:recuperar-contrasena', p),
     /* Apuntaba a `sp-add-user`, un canal SIN handler: la llamada moria en
        "No handler registered" y la pantalla de alta no daba de alta a nadie.
        El camino real es `users:create`, que ademas valida el rol. */
@@ -241,11 +242,57 @@ contextBridge.exposeInMainWorld('electronAPI', {
     corteCorreoLista: p => invoke('corte:correo-lista',p),
     corteCorreoEnviar: p => invoke('corte:correo-enviar',p),
     estadoResultados: p => invoke('reportes:estado-resultados',p),
+    plataformasCanales: () => invoke('plataformas:canales'),
+    plataformasCanalGuardar: p => invoke('plataformas:canal-guardar',p),
+    plataformasListar: p => invoke('plataformas:listar',p),
+    plataformasVer: p => invoke('plataformas:ver',p),
+    plataformasGuardar: p => invoke('plataformas:guardar',p),
+    plataformasEmparejar: p => invoke('plataformas:emparejar',p),
+    plataformasConfirmar: p => invoke('plataformas:confirmar',p),
+    plataformasCancelar: p => invoke('plataformas:cancelar',p),
+    plataformasDeposito: p => invoke('plataformas:deposito',p),
+    // 0071: Asistencia.
+    asistenciaEstado: () => invoke('asistencia:estado'),
+    asistenciaMarcar: p => invoke('asistencia:marcar',p),
+    asistenciaMisHoras: p => invoke('asistencia:mis-horas',p),
+    asistenciaReglas: () => invoke('asistencia:reglas'),
+    asistenciaActivar: p => invoke('asistencia:activar',p),
+    asistenciaReglasGuardar: p => invoke('asistencia:reglas-guardar',p),
+    asistenciaResumen: p => invoke('asistencia:resumen',p),
+    asistenciaJornadas: p => invoke('asistencia:jornadas',p),
+    asistenciaCorregir: p => invoke('asistencia:corregir',p),
+    asistenciaHorario: p => invoke('asistencia:horario',p),
+    asistenciaHorarioGuardar: p => invoke('asistencia:horario-guardar',p),
     clubEstado: p => invoke('club:estado',p),
     clubAdmin: p => invoke('club:admin',p),
     clubPlanGuardar: p => invoke('club:plan-guardar',p),
     clubGestionar: p => invoke('club:gestionar',p),
     clubSincronizar: () => invoke('club:sincronizar'),
+    menuLineaConfig: () => invoke('menu-linea:config'),
+    menuLineaGuardar: p => invoke('menu-linea:guardar',p),
+    menuLineaPedidos: () => invoke('menu-linea:pedidos'),
+    menuLineaAceptar: p => invoke('menu-linea:aceptar',p),
+    menuLineaRechazar: p => invoke('menu-linea:rechazar',p),
+    menuLineaSincronizar: () => invoke('menu-linea:sincronizar'),
+    menuLineaDiseno: () => invoke('menu-linea:diseno'),
+    menuLineaDisenoGuardar: p => invoke('menu-linea:diseno-guardar',p),
+    menuLineaImagenGuardar: p => invoke('menu-linea:imagen-guardar',p),
+    menuLineaImagenBorrar: p => invoke('menu-linea:imagen-borrar',p),
+    menuLineaImagenVer: p => invoke('menu-linea:imagen-ver',p),
+    menuLineaProductoGuardar: p => invoke('menu-linea:producto-guardar',p),
+    onMenuLineaNuevos: (cb) => {
+      const h = (_e, n) => cb(n);
+      ipcRenderer.on('menu-linea:nuevos', h);
+      return () => ipcRenderer.removeListener('menu-linea:nuevos', h);
+    },
+    /* 0068: avisos por WhatsApp al cliente final (los manda la nube). */
+    whatsappConfig: () => invoke('whatsapp:config'),
+    whatsappConfigGuardar: (p) => invoke('whatsapp:config-guardar', p),
+    whatsappRegistro: (p) => invoke('whatsapp:registro', p),
+    whatsappTelefono: (p) => invoke('whatsapp:telefono', p),
+    whatsappConexion: (p) => invoke('whatsapp:conexion', p),
+    clubWalletEmitir: p => invoke('club:wallet-emitir',p),
+    clubWalletResolver: p => invoke('club:wallet-resolver',p),
     puntosEstado: p => invoke('puntos:estado',p),
     puntosAdmin: p => invoke('puntos:admin',p),
     puntosHistorial: p => invoke('puntos:historial',p),

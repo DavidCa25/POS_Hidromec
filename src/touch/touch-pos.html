@@ -41,13 +41,18 @@
         <i class="ph ph-armchair" aria-hidden="true"></i><span>Mesas</span>
       </button>
       <!-- Atajos de la caja (los mismos que Retail): con texto, para el dedo. -->
-      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-cajon"
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-cajon" data-caja="cajon"
               (click)="abrirCajon()" aria-label="Abrir cajón">
         <i class="ph ph-vault" aria-hidden="true"></i><span>Abrir cajón</span>
       </button>
-      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-salida"
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-salida" data-caja="salida"
               (click)="abrirSalida()" aria-label="Salida de efectivo">
         <i class="ph ph-hand-coins" aria-hidden="true"></i><span>Salida de efectivo</span>
+      </button>
+      <!-- 0071: Checar (Asistencia), solo con la aplicacion activada. -->
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-checar" data-caja="checar" *ngIf="caps.asistencia"
+              (click)="abrirChecar()" aria-label="Checar">
+        <i class="ph ph-clock" aria-hidden="true"></i><span>Checar</span>
       </button>
       <button type="button" class="tp-iconbtn" (click)="alternarBusqueda()"
               [class.on]="buscando()" aria-label="Buscar producto">
@@ -164,7 +169,7 @@
       </div>
 
       <!-- El cliente de la venta: una fila, no un formulario. Opcional. -->
-      <button type="button" class="tp-cliente" data-guide="touch-cliente" (click)="abrirClientes()"
+      <button type="button" class="tp-cliente" data-guide="touch-cliente" data-caja="cliente" (click)="abrirClientes()"
               [attr.aria-label]="cliente() ? 'Cliente: ' + cliente()!.name + '. Cambiar cliente' : 'Seleccionar cliente'">
         <i class="ph ph-user" aria-hidden="true"></i>
         <span class="tp-cliente__lbl">Cliente</span>
@@ -174,17 +179,17 @@
       </button>
 
       <!-- 0063 · Club: membresía y beneficio de hoy, bajo el cliente. -->
-      <app-club-cliente [touch]="true"></app-club-cliente>
+      <app-club-cliente data-caja="club" [touch]="true"></app-club-cliente>
 
       <!-- 0065 · Devolución: encontrar la venta sin teclear el folio, motivo y cómo se regresa el dinero. -->
-      <button type="button" class="tp-cliente" data-guide="touch-devolucion" (click)="devolviendo.set(true)" aria-label="Hacer una devolución">
+      <button type="button" class="tp-cliente" data-guide="touch-devolucion" data-caja="devolucion" (click)="devolviendo.set(true)" aria-label="Hacer una devolución">
         <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
         <span class="tp-cliente__lbl">Devolución</span>
         <span class="tp-cliente__vacio">Buscar venta</span>
         <i class="ph ph-caret-right" aria-hidden="true"></i>
       </button>
 
-      <app-commercial-sale [touch]="true"></app-commercial-sale>
+      <app-commercial-sale data-caja="promociones" [touch]="true"></app-commercial-sale>
 
       <div class="tp-lineas">
         <div class="tp-linea" *ngFor="let l of lineas()" [class.es-enviada]="l.enviada != null" data-guide="touch-linea" [attr.data-guide-clave]="l.productId">
@@ -230,7 +235,7 @@
 
       <div class="tp-cart__foot">
         <!-- El cupon, justo antes del total: es cuando el cliente lo saca. -->
-        <app-cupon-venta *ngIf="lineas().length"></app-cupon-venta>
+        <app-cupon-venta data-caja="cupon" *ngIf="lineas().length"></app-cupon-venta>
         <!-- Roles v2: el ahorro y, si una promocion no se pudo aplicar, el
              porque, aqui y no escondidos en «Combos y opciones». -->
         <p class="tp-cart__aviso" *ngIf="avisoPromo() as a" role="status">
@@ -561,6 +566,12 @@
             ? 'Cobra en la terminal y confirma aquí cuando el pago quede aprobado.'
             : 'Confirma aquí cuando el depósito esté verificado.' }}
         </p>
+        <!-- 0069: con el número de pedido, la liquidación encuentra la venta sola. -->
+        <label class="tp-pedido" *ngIf="metodo() === 'PLATAFORMA'">No. de pedido de la plataforma <small>(opcional)</small>
+          <input type="text" maxlength="100" autocomplete="off" data-teclado="TEXT" placeholder="Ej. 4F2A1"
+                 [ngModel]="pedidoPlataforma()" (ngModelChange)="pedidoPlataforma.set($event)" [disabled]="cobrando()"
+                 data-guide="touch-pedido-plataforma">
+        </label>
       </div>
 
       <p *ngIf="pagoMixto() && errorPagos()" class="tp-error" role="status">{{errorPagos()}}</p>
@@ -686,3 +697,6 @@
 <app-receipt-viewer *ngIf="verTicket&&ultimoFolio()" [id]="ultimoFolio()!" (close)="verTicket=false"></app-receipt-viewer>
 <app-receipt-email *ngIf="enviarCorreo&&ultimoFolio()" [saleId]="ultimoFolio()!" [email]="clienteFactura?.email||''" (close)="enviarCorreo=false"></app-receipt-email>
 <app-factura-nueva *ngIf="facturaAbierta" [saleId]="ultimoFolio()" [conceptos]="conceptosFactura" [receptorRfc]="clienteFactura?.tax_id||null" [receptorNombre]="clienteFactura?.razon_social||clienteFactura?.name||null" [receptorEmail]="clienteFactura?.email||null" [receptorRegimen]="clienteFactura?.regimen_fiscal||null" [receptorUsoCfdi]="clienteFactura?.uso_cfdi||null" (cerrar)="facturaAbierta=false" (timbrada)="facturaAbierta=false"></app-factura-nueva>
+
+<!-- 0071: Checar (Asistencia). -->
+<app-asistencia-checar *ngIf="checarAbierto" [registerId]="registro.registerId" [motivo]="motivoChecar" (cerrar)="checarAbierto=false"></app-asistencia-checar>

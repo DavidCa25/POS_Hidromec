@@ -121,6 +121,25 @@ asignar('expenses', [
   'sp_register_expense', 'sp_void_expense', 'sp_get_expenses', 'sp_expense_staff_list',
 ]);
 
+// 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi): canal ->
+// plataforma, conciliacion contra la caja, reparto y egreso de comision.
+asignar('platforms', [
+  'sp_platform_channels_get', 'sp_platform_channel_set',
+  'sp_platform_settlement_candidates', 'sp_platform_settlement_match',
+  'sp_platform_settlement_save', 'sp_platform_settlement_get', 'sp_platform_settlement_link',
+  'sp_platform_settlement_confirm', 'sp_platform_settlement_void', 'sp_platform_settlement_deposit',
+  'sp_platform_settlement_list',
+]);
+
+// 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra).
+// Una aplicacion: solo para el negocio que la activa.
+asignar('asistencia', [
+  'sp_asistencia_reglas_get', 'sp_asistencia_reglas_guardar',
+  'sp_asistencia_horario_get', 'sp_asistencia_horario_guardar',
+  'sp_asistencia_estado', 'sp_asistencia_marcar',
+  'sp_asistencia_resumen', 'sp_asistencia_jornadas', 'sp_asistencia_corregir',
+]);
+
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [
@@ -214,6 +233,8 @@ asignar('whatsapp', [
   'sp_WA_AddHistorial', 'sp_WA_DeletePlantilla', 'sp_WA_GetConfiguracion',
   'sp_WA_GetHistorial', 'sp_WA_GetPlantillas', 'sp_WA_UpdateConfiguracion',
   'sp_WA_UpsertPlantilla',
+  // 0068: aviso «pedido listo» al cliente (lo manda la nube).
+  'sp_whatsapp_pedido_candidatos', 'sp_whatsapp_pedido_job',
 ]);
 
 asignar('hospitality', [
@@ -235,6 +256,12 @@ asignar('hospitality', [
   'sp_hosp_productos_con_preparacion',
   'sp_comanda_estado', 'sp_comanda_cancelar', 'sp_kds_get',
   'sp_prep_stations_get', 'sp_prep_station_save', 'sp_product_prep_get', 'sp_product_prep_set',
+  // 0067: menu en linea. El pedido del celular espera aqui hasta que la caja lo acepta.
+  'sp_menu_en_linea_config', 'sp_pedido_en_linea_recibir', 'sp_pedidos_en_linea_listar', 'sp_pedido_en_linea_publicado',
+  'sp_pedido_en_linea_aceptar', 'sp_pedido_en_linea_rechazar', 'sp_pedido_en_linea_revertir',
+  // 0070: la plantilla del menu en linea (fotos grandes, promos, datos por producto).
+  'sp_menu_en_linea_diseno', 'sp_menu_en_linea_producto_guardar', 'sp_menu_en_linea_imagen_guardar',
+  'sp_menu_en_linea_imagen_borrar', 'sp_menu_en_linea_imagen_get',
 ]);
 
 // 0034-0038: QuickStart, la carga guiada del catalogo (lotes, mapeos, filas,
@@ -269,6 +296,8 @@ asignar('loyalty', [
   'sp_loyalty_customer_status', 'sp_loyalty_points_earn', 'sp_loyalty_points_apply_sale',
   'sp_loyalty_points_on_refund', 'sp_loyalty_points_config_save', 'sp_loyalty_stamp_card_save',
   'sp_loyalty_points_manage', 'sp_loyalty_points_admin', 'sp_loyalty_points_ledger', 'sp_loyalty_points_apply_remote',
+  // 0066: la tarjeta del Club en Wallet (pases que esta caja reconoce sin internet).
+  'sp_club_wallet_apply', 'sp_club_wallet_resolve', 'sp_club_wallet_customer',
   // Ruleta: sectores y su sorteo, decidido en el servidor.
   'sp_dynamic_segments', 'sp_dynamic_save_segment',
 ]);
@@ -302,7 +331,8 @@ export function esCritico(nombre) {
 /** Escrito pero nunca desplegado. No compila contra el esquema actual. */
 export const FUTUROS = {
   sp_import_sales: 'Importador de ventas. Nunca aplicado; su primer parametro no existe en el esquema.',
-  sp_cloud_daily_profit: 'cloudSync lo llama en try/catch tolerando su ausencia. Referencia products.last_cost, columna inexistente.',
+  // sp_cloud_daily_profit salio de aqui: la 0062 lo corrigio (ya no usa
+  // products.last_cost) y lo despliega; el baseline tambien debe traerlo.
 };
 
 export function clasificacionDe(nombre) {

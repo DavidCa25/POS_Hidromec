@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../../services/report.service';
 import { ProveedorFormComponent } from './proveedor-form.component';
+import { FechaSqlPipe } from '../../core';
 
 interface Prov {
   id: number; nombre: string; telefono: string | null; correo: string | null; rfc: string | null;
@@ -22,7 +23,7 @@ interface Payment { id: number; purchase_id: number | null; datee: string; amoun
 @Component({
   selector: 'app-proveedores',
   standalone: true,
-  imports: [WxTablaBarraComponent, CommonModule, FormsModule, ProveedorFormComponent],
+  imports: [FechaSqlPipe, WxTablaBarraComponent, CommonModule, FormsModule, ProveedorFormComponent],
   templateUrl: './proveedores.component.html',
   styleUrls: ['./proveedores.component.css']
 })

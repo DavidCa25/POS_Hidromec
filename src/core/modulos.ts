@@ -125,6 +125,21 @@ export const MODULOS: ModuleDefinition[] = [
     aparece: 'Cocina, dentro de Venta',
   },
   {
+    /* Se enciende contestando unas preguntas de si y no (Aplicaciones), y
+       esas respuestas son sus reglas: como Servicios con su giro. */
+    id: 'asistencia',
+    name: 'Asistencia',
+    description: 'Entradas, descansos y salidas en la caja; horas trabajadas y extra.',
+    detalle: 'Cada quien checa con su sesión. Asigna un horario a cada persona y Wybix ' +
+             'cuenta las horas, la hora extra según la salida y los retardos. No calcula pagos: ' +
+             'se exporta para el contador.',
+    icon: 'clock',
+    category: 'OPERACION',
+    capability: 'asistencia',
+    route: '/dashboard/asistencia',
+    aparece: 'Asistencia en el menú, y Checar en la caja',
+  },
+  {
     /* Antes vivia en Configuracion, como si fuera un ajuste. Es una
        integracion con un proveedor (TAECEL): recargas y pago de luz, agua,
        gas... Sin contrato con el proveedor no hay nada que encender. */

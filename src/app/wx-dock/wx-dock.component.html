@@ -132,15 +132,23 @@
     </button>
   </span>
 
+  <!-- --------------------------------------------- checar (Asistencia) -->
+  <span class="wxdock__item" *ngIf="acc.verChecar()">
+    <button type="button" class="wxdock__btn wxdock__btn--checar" data-guide="nav-checar" (click)="acc.abrirChecar()"
+            aria-haspopup="dialog" aria-label="Checar">
+      <i class="ph ph-clock" aria-hidden="true"></i><span class="wxdock__txt">Checar</span>
+    </button>
+  </span>
+
   <!-- ------------------------------------------------------------- mas -->
-  <span class="wxdock__item">
-    <button type="button" class="wxdock__btn wxdock__btn--apps" (click)="abrirApps($event)"
+  <span class="wxdock__item" *ngIf="acc.verApps">
+    <button type="button" class="wxdock__btn wxdock__btn--apps" data-guide="nav-apps" (click)="abrirApps($event)"
             [class.is-abierto]="apps.abierta()" [attr.aria-expanded]="apps.abierta()"
             aria-haspopup="dialog" aria-label="Apps Wybix">
       <i class="ph ph-device-mobile" aria-hidden="true"></i><span class="wxdock__txt">Apps</span>
     </button>
   </span>
-  <span class="wxdock__item" *ngIf="mas().length || puedeAprobaciones()">
+  <span class="wxdock__item" *ngIf="mas().length || acc.verAprobaciones">
     <button type="button" class="wxdock__btn wxdock__btn--mas" (click)="alternarMas()"
             [class.is-abierto]="masAbierto()"
             [attr.aria-expanded]="masAbierto()" aria-haspopup="menu" aria-label="Más">
@@ -186,28 +194,28 @@
 <!-- ============================================================== mas -->
 <div class="wxdock-pop wxdock-pop--mas" *ngIf="masAbierto()" role="menu">
   <!-- Aprobaciones: solo Encargado y Administrador. -->
-  <ng-container *ngIf="puedeAprobaciones()">
-    <div class="wxdock-aprob" data-guide="aprobaciones" [attr.data-guide-estado]="aprobaciones()?.activas ? 'activas' : 'apagadas'">
+  <ng-container *ngIf="acc.verAprobaciones">
+    <div class="wxdock-aprob" data-guide="aprobaciones" [attr.data-guide-estado]="acc.aprobaciones()?.activas ? 'activas' : 'apagadas'">
       <div class="wxdock-aprob__fila">
-        <i class="ph" [ngClass]="aprobaciones()?.activas ? 'ph-shield-check' : 'ph-shield-slash'" aria-hidden="true"></i>
+        <i class="ph" [ngClass]="acc.aprobaciones()?.activas ? 'ph-shield-check' : 'ph-shield-slash'" aria-hidden="true"></i>
         <span class="wxdock-aprob__txt">
           <b>Aprobaciones</b>
-          <small *ngIf="aprobaciones() as a">{{ a.activas ? 'Retiros, egresos y devoluciones piden PIN o la app del dueño.' : 'Quien vende hace retiros, egresos y devoluciones sin PIN.' }}</small>
-          <small *ngIf="!aprobaciones() && !aprobError()">Cargando…</small>
+          <small *ngIf="acc.aprobaciones() as a">{{ a.activas ? 'Retiros, egresos y devoluciones piden PIN o la app del dueño.' : 'Quien vende hace retiros, egresos y devoluciones sin PIN.' }}</small>
+          <small *ngIf="!acc.aprobaciones() && !acc.aprobError()">Cargando…</small>
         </span>
         <button type="button" class="wxdock-aprob__sw" role="switch"
-                [attr.aria-checked]="!!aprobaciones()?.activas" aria-label="Pedir aprobaciones"
-                [class.is-on]="aprobaciones()?.activas" [disabled]="!aprobaciones() || aprobGuardando()"
-                (click)="pulsarAprobaciones()"><span></span></button>
+                [attr.aria-checked]="!!acc.aprobaciones()?.activas" aria-label="Pedir aprobaciones"
+                [class.is-on]="acc.aprobaciones()?.activas" [disabled]="!acc.aprobaciones() || acc.aprobGuardando()"
+                (click)="acc.pulsarAprobaciones()"><span></span></button>
       </div>
-      <div class="wxdock-aprob__confirma" *ngIf="aprobConfirmar()" role="alert">
+      <div class="wxdock-aprob__confirma" *ngIf="acc.aprobConfirmar()" role="alert">
         <span>¿Apagarlas? Quedará en bitácora y se avisará al dueño.</span>
         <div>
-          <button type="button" class="wxdock-aprob__btn" (click)="cancelarAprobaciones()">Cancelar</button>
-          <button type="button" class="wxdock-aprob__btn wxdock-aprob__btn--peligro" [disabled]="aprobGuardando()" (click)="pulsarAprobaciones()">Sí, apagar</button>
+          <button type="button" class="wxdock-aprob__btn" (click)="acc.cancelarAprobaciones()">Cancelar</button>
+          <button type="button" class="wxdock-aprob__btn wxdock-aprob__btn--peligro" [disabled]="acc.aprobGuardando()" (click)="acc.pulsarAprobaciones()">Sí, apagar</button>
         </div>
       </div>
-      <p class="wxdock-aprob__error" *ngIf="aprobError()" role="alert">{{ aprobError() }}</p>
+      <p class="wxdock-aprob__error" *ngIf="acc.aprobError()" role="alert">{{ acc.aprobError() }}</p>
     </div>
     <span class="wxdock-pop__linea" *ngIf="mas().length" aria-hidden="true"></span>
   </ng-container>
@@ -218,3 +226,4 @@
     <span>{{ d.texto }}</span>
   </a>
 </div>
+

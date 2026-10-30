@@ -1,0 +1,62 @@
+/* DISEÑO DEL MENÚ (0070). Solo composición con los tokens de siempre. */
+.dm { display: flex; flex-direction: column; gap: 16px; }
+.dm-cargando, .dm-ayuda { color: var(--wx-text-muted); font-size: var(--wx-text-sm); margin: 0; }
+.dm-bloque {
+  padding: 18px; border-radius: var(--wx-radius-lg); background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.dm-bloque h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 650; }
+.dm-bloque h3 small { color: var(--wx-text-muted); font-weight: 500; margin-left: 6px; }
+.dm-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.dm-subir { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+
+.dm-portada__foto {
+  position: relative; height: 180px; border-radius: var(--wx-radius-md); margin-bottom: 40px;
+  background: var(--wx-bg) center / cover no-repeat; border: 1px dashed var(--wx-edge-strong);
+  display: grid; place-items: center; color: var(--wx-text-muted);
+}
+.dm-logo {
+  position: absolute; left: 18px; bottom: -34px; width: 76px; height: 76px; border-radius: 50%;
+  background: var(--wx-surface) center / cover no-repeat; border: 3px solid var(--wx-surface);
+  box-shadow: 0 0 0 1px var(--wx-edge); display: grid; place-items: center; font-size: 12px; color: var(--wx-text-muted);
+}
+
+.dm-datos { max-width: 640px; }
+.dm-campo { display: flex; flex-direction: column; gap: 6px; font-size: var(--wx-text-sm); }
+.dm-campo span { color: var(--wx-text-muted); }
+.dm-campo input, .dm-promo input, .dm-prod > input, .dm-buscar {
+  border: 1px solid var(--wx-edge-strong); border-radius: var(--wx-radius-md); background: var(--wx-bg); color: var(--wx-text);
+  padding: 9px 12px; font: inherit; font-size: 15px;
+}
+.dm-check { display: inline-flex; gap: 8px; align-items: center; font-size: var(--wx-text-sm); cursor: pointer; }
+.dm-check input { accent-color: var(--wx-accent); width: 16px; height: 16px; }
+.dm-colores { display: flex; gap: 18px; }
+.dm-colores label { display: inline-flex; gap: 8px; align-items: center; font-size: var(--wx-text-sm); }
+.dm-colores input[type=color] { width: 44px; height: 32px; border: 1px solid var(--wx-edge-strong); border-radius: var(--wx-radius-sm); background: none; padding: 2px; }
+.dm-datos .btn-primary { align-self: flex-start; }
+
+.dm-promos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.dm-promo { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--wx-radius-md); border: 1px solid var(--wx-edge); }
+.dm-promo__foto { height: 110px; border-radius: var(--wx-radius-sm); background: var(--wx-bg) center / cover no-repeat; }
+.dm-promo--nueva {
+  min-height: 140px; border-style: dashed; align-items: center; justify-content: center; cursor: pointer;
+  color: var(--wx-accent-text); font-weight: 600;
+}
+
+.dm-productos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 620px; overflow: auto; }
+.dm-productos li { display: flex; gap: 12px; padding: 10px; border-radius: var(--wx-radius-md); border: 1px solid var(--wx-edge); }
+.dm-productos li.oculto { opacity: 0.6; }
+.dm-foto {
+  width: 88px; height: 88px; flex: none; border-radius: var(--wx-radius-md); cursor: pointer;
+  background: var(--wx-bg) center / cover no-repeat; border: 1px dashed var(--wx-edge-strong);
+  display: grid; place-items: center; color: var(--wx-text-muted); font-size: 22px;
+}
+.dm-prod { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.dm-prod__cab span { color: var(--wx-text-muted); font-size: var(--wx-text-sm); margin-left: 6px; }
+.dm-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.dm-tags > button:not(.btn-primary):not(.btn-outline) {
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  font-size: 13px; color: var(--wx-text-muted); cursor: pointer;
+}
+.dm-tags > button.on { background: var(--wx-accent-soft); border-color: var(--wx-accent-line); color: var(--wx-accent-text); }
+.dm-guardar { margin-left: auto; }

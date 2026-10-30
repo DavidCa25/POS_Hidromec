@@ -148,7 +148,7 @@ export class SaleService {
 
       const resp = await this.registerIntent(intent);
       if (!resp?.success) {
-        return { ok: false, error: resp?.error || 'No se pudo registrar la venta.' };
+        return { ok: false, error: resp?.error || 'No se pudo registrar la venta.', motivo: resp?.motivo };
       }
       const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
 

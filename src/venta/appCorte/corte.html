@@ -194,7 +194,7 @@
               </span>
               <span class="meta-item" *ngIf="mode === 'TURNO' && openShiftOpenedAt">
                 <i class="ph ph-clock"></i>
-                Abierto {{ openShiftOpenedAt | date:'HH:mm' }}
+                Abierto {{ openShiftOpenedAt | fechaSql:'HH:mm' }}
               </span>
             </div>
           </div>
@@ -395,8 +395,8 @@
               <tr *ngFor="let m of movimientos" class="movement-row">
                 <td class="col-fecha">
                   <div class="datetime-cell">
-                    <span class="date">{{ m.datee | date:'dd/MM/yyyy' }}</span>
-                    <span class="time">{{ m.datee | date:'HH:mm' }}</span>
+                    <span class="date">{{ m.datee | fechaSql:'dd/MM/yyyy' }}</span>
+                    <span class="time">{{ m.datee | fechaSql:'HH:mm' }}</span>
                   </div>
                 </td>
                 <td class="col-tipo">

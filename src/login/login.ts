@@ -19,6 +19,12 @@ export class Login {
   mensaje = '';
   advertencia = '';
   mostrarContrasena = false;
+  /* Contraseña olvidada: se cambia con el PIN propio (ver electron/seguridad/recuperar.js). */
+  recuperando = false;
+  pin = '';
+  nueva = '';
+  confirmar = '';
+  enviando = false;
 
   constructor(
     private router: Router,
@@ -111,6 +117,48 @@ export class Login {
     } catch (e: any) {
       console.error('❌ Error en login:', e);
       this.mensaje = e?.message || 'Ocurrió un error al iniciar sesión';
+    }
+  }
+
+  abrirRecuperar() {
+    this.recuperando = true;
+    this.contrasena = '';
+    this.pin = this.nueva = this.confirmar = '';
+    this.onInputChange();
+  }
+
+  cerrarRecuperar() {
+    this.recuperando = false;
+    this.pin = this.nueva = this.confirmar = '';
+    this.onInputChange();
+  }
+
+  async onRecuperar(event: Event) {
+    event.preventDefault();
+    if (!this.usuario.trim() || !this.pin.trim() || !this.nueva) {
+      this.advertencia = '⚠️ Escribe tu usuario, tu PIN y la contraseña nueva.';
+      return;
+    }
+    if (this.nueva !== this.confirmar) {
+      this.advertencia = '⚠️ Las dos contraseñas no coinciden.';
+      return;
+    }
+    this.advertencia = '';
+    this.mensaje = '';
+    this.enviando = true;
+    try {
+      const r = await (window as any).electronAPI.recuperarContrasena({ usuario: this.usuario, pin: this.pin, nueva: this.nueva });
+      if (!r?.success) {
+        this.mensaje = r?.error || 'No se pudo cambiar la contraseña.';
+        this.pin = '';
+        return;
+      }
+      await Swal.fire({ icon: 'success', title: 'Contraseña cambiada', text: 'Ya puedes entrar con tu contraseña nueva.', timer: 2200, showConfirmButton: false });
+      this.cerrarRecuperar();
+    } catch (e: any) {
+      this.mensaje = e?.message || 'No se pudo cambiar la contraseña.';
+    } finally {
+      this.enviando = false;
     }
   }
 

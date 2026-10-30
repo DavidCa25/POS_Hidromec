@@ -115,6 +115,8 @@ export class NavegacionService {
     return (this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) && this.license.tiene('services');
   }
   get administrarServicios() { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
+  /** 0071: las horas del equipo, con la aplicacion Asistencia activada. */
+  get gestionarAsistencia() { return this.caps.asistencia && this.auth.puede(PAQUETES.ASISTENCIA_GESTIONAR); }
 
   // ---------------------------------------------------------------- areas
   /**
@@ -141,6 +143,8 @@ export class NavegacionService {
           { texto: 'Cierre del día', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
           // 0062: utilidad real (ventas - costo congelado - mermas - egresos).
           { texto: 'Estado de resultados', ruta: '/dashboard/estado-resultados', icono: 'ph-scales', visible: this.verNumeros },
+          // 0069: el ticket contra el depósito de Uber Eats, Didi o Rappi.
+          { texto: 'Liquidaciones de plataforma', ruta: '/dashboard/liquidaciones', icono: 'ph-moped', visible: this.verNumeros },
         ],
       },
       {
@@ -162,6 +166,8 @@ export class NavegacionService {
              gana ningun icono. */
           { texto: 'Mesas', ruta: '/dashboard/mesas', icono: 'ph-armchair', visible: this.caps.mesas },
           { texto: 'Cocina', ruta: '/cocina', icono: 'ph-cooking-pot', visible: this.caps.comandas },
+          /* 0067: lo que llega del menú en línea (QR del mostrador, mesas o redes). */
+          { texto: 'Pedidos en línea', ruta: '/dashboard/pedidos-en-linea', icono: 'ph-device-mobile', visible: this.caps.hospitality },
           { texto: 'Salón y estaciones', ruta: '/dashboard/salon', icono: 'ph-squares-four',
             visible: (this.caps.mesas || this.caps.comandas) && this.administrarNegocio },
         ],
@@ -253,6 +259,7 @@ export class NavegacionService {
       { texto: 'Alertas', ruta: '/dashboard/alertas', icono: 'ph-bell', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Estadísticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Fidelización', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
+      { texto: 'Asistencia', ruta: '/dashboard/asistencia', icono: 'ph-clock', grupo: 'negocio', visible: this.gestionarAsistencia },
       { texto: 'Facturación', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
       /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
          sin contrato con el proveedor no se ofrece, aunque alguna vez se haya

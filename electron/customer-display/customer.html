@@ -413,6 +413,11 @@
     position:fixed;right:var(--margen);bottom:calc(1.6 * var(--u));
     font-size:calc(1.15 * var(--u));color:var(--humo);opacity:.4;letter-spacing:.04em;
   }
+  /* 0066 · La tarjeta del Club en Wallet: el cliente la escanea con su teléfono. */
+  #wallet .mq__cuerpo{flex-direction:row;align-items:center;gap:calc(5 * var(--u));}
+  #wallet .wl__qr{width:calc(24 * var(--u));aspect-ratio:1;background:#fff;border-radius:var(--r-md);padding:calc(1.2 * var(--u));flex:none;}
+  #wallet .wl__qr img{display:block;width:100%;height:100%;image-rendering:pixelated;}
+  #wallet .wl__txt{font-size:var(--t-cuerpo);color:var(--humo);max-width:32ch;line-height:1.35;margin-top:calc(1.5 * var(--u));}
 </style>
 </head>
 <body>
@@ -571,6 +576,20 @@
       <div class="lista" id="prList"></div>
     </div>
     <footer class="mq__pie"><span>Muestra el código en caja</span><span></span></footer>
+  </section>
+
+  <!-- ================================= TARJETA DEL CLUB EN WALLET ===== -->
+  <section class="screen" id="wallet" data-prueba="wallet">
+    <header class="mq__top"><span class="mq__marca" id="wlBiz">Tu tarjeta del Club</span></header>
+    <div class="mq__cuerpo">
+      <div class="wl__qr"><img id="wlQr" alt="Código QR de tu tarjeta del Club"></div>
+      <div>
+        <p class="mq__et">Tu tarjeta del Club</p>
+        <h1 class="mq__titular" id="wlNombre"></h1>
+        <p class="wl__txt">Escanéalo con la cámara de tu teléfono y guárdala en Apple Wallet o Google Wallet. Tus puntos y sellos se actualizan solos.</p>
+      </div>
+    </div>
+    <footer class="mq__pie"><span>Enséñala en caja en tu próxima visita</span><span></span></footer>
   </section>
 
   <!-- ================================= RESULTADO DE UNA DINAMICA ====== -->
@@ -1323,6 +1342,20 @@
       renderResultado(s);
       show('dinres');
       checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 12000);
+    } else if (s.mode === 'wallet') {
+      // El QR llega ya hecho imagen: esta pantalla no consulta nada.
+      if (checkoutTimer) clearTimeout(checkoutTimer);
+      const conQr = typeof s.qr === 'string' && s.qr.startsWith('data:image/png;base64,');
+      if (!conQr) return;
+      document.getElementById('wlQr').src = s.qr;
+      texto('wlNombre', s.nombre || '');
+      show('wallet');
+      checkoutTimer = setTimeout(function(){ checkoutTimer = null; goIdle(); }, 60000);
+    } else if (s.mode === 'wallet-fin') {
+      if (document.getElementById('wallet').classList.contains('on')) {
+        if (checkoutTimer) { clearTimeout(checkoutTimer); checkoutTimer = null; }
+        goIdle();
+      }
     } else if (s.mode === 'idle') {
       if (checkoutTimer) return; // no interrumpir el "gracias"
       goIdle();

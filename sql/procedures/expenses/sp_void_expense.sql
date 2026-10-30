@@ -34,9 +34,10 @@ BEGIN
             RAISERROR('Escribe por que se cancela el egreso.', 16, 1);
 
         DECLARE @metodo VARCHAR(20), @monto DECIMAL(12,2), @caja INT, @turno INT,
-                @anulado DATETIME2(0), @cat NVARCHAR(60);
+                @anulado DATETIME2(0), @cat NVARCHAR(60), @liquidacion INT;
         SELECT @metodo = e.payment_method, @monto = e.amount, @caja = e.register_id,
-               @turno = e.closure_id, @anulado = e.voided_at, @cat = c.name
+               @turno = e.closure_id, @anulado = e.voided_at, @cat = c.name,
+               @liquidacion = e.platform_settlement_id
           FROM dbo.expenses e WITH (UPDLOCK, HOLDLOCK)
           JOIN dbo.expense_categories c ON c.id = e.category_id
          WHERE e.id = @expense_id;
@@ -45,6 +46,9 @@ BEGIN
             RAISERROR('El egreso no existe.', 16, 1);
         IF @anulado IS NOT NULL
             RAISERROR('Ese egreso ya estaba cancelado.', 16, 1);
+        /* 0069: lo cancela su liquidacion, que tambien quita su reparto. */
+        IF @liquidacion IS NOT NULL
+            RAISERROR('Este egreso sale de una liquidacion de plataforma: cancela la liquidacion.', 16, 1);
 
         DECLARE @devolucion INT = NULL;
         IF @metodo = 'EFECTIVO'

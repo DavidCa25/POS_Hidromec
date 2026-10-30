@@ -45,6 +45,8 @@ export const PAQUETES = {
   CATALOGO_EDITAR: 'CATALOGO_EDITAR',
   // 0060: produccion por tandas (planear, empezar, registrar lo que salio).
   PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
+  // 0071: Asistencia (horas de todos, horarios, correcciones, exportar).
+  ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];

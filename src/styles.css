@@ -407,6 +407,31 @@ html.dark .cs-drawer-body .hint { color: var(--wx-text-muted); }
 .giro-op__txt b { font-weight: 600; font-size: .95rem; color: var(--wx-text, #0f172a); }
 .giro-op__txt small { font-size: .8rem; color: var(--wx-text-muted, #64748b); }
 
+/* Las preguntas de «Activar Asistencia» (0071). Mismo motivo que el giro: el
+   dialogo vive fuera del arbol de Angular. Cada respuesta es un par Si/No con
+   radios de verdad: se navega con teclado y no hay nada preseleccionado a
+   escondidas (la sugerencia se ve marcada). */
+.asis-preguntas { display: flex; flex-direction: column; text-align: left; }
+.asis-preg {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 0; margin: 0; border: 0;
+  border-bottom: 1px solid var(--wx-edge-soft, #eff3f8);
+}
+.asis-preg:last-child { border-bottom: 0; }
+.asis-preg legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.asis-preg__txt { flex: 1; min-width: 0; }
+.asis-preg__txt b { display: block; font-weight: 600; font-size: .95rem; color: var(--wx-text, #0f172a); }
+.asis-preg__txt small { display: block; margin-top: 2px; font-size: .8rem; line-height: 1.4; color: var(--wx-text-muted, #64748b); }
+.asis-sino { display: flex; flex: none; padding: 4px; border-radius: 10px; background: var(--wx-sunken, #edf1f6); }
+.asis-sino label { position: relative; cursor: pointer; }
+.asis-sino input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.asis-sino span {
+  display: grid; place-items: center; min-width: 56px; height: 36px; padding: 0 12px;
+  border-radius: 8px; font-size: .85rem; font-weight: 500; color: var(--wx-text-muted, #64748b);
+}
+.asis-sino input:checked + span { background: var(--wx-surface, #fff); color: var(--wx-text, #0f172a); font-weight: 600; box-shadow: 0 1px 2px rgb(6 11 17 / .1); }
+.asis-sino input:focus-visible + span { outline: 2px solid var(--wx-user-accent, #1f2e86); outline-offset: 1px; }
+
 /* La linea del giro en la tarjeta de Aplicaciones. */
 .apps-card__giro {
   display: flex;

@@ -1,0 +1,110 @@
+# CI del POS (Electron + Angular + SQL Server). Corre en cada PR y en cada push a main.
+# Los grupos de pruebas viven en scripts/ci/correr.mjs: lo mismo se corre en local con
+#   node scripts/ci/correr.mjs rapidas | bd | conocidas
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * *'   # 03:00 en México: e2e completo cada noche
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rapidas:
+    name: Contratos, unidad y build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build de producción
+        run: npm run build
+      - name: Pruebas rápidas
+        run: node scripts/ci/correr.mjs rapidas
+      - name: Fallas conocidas (no bloquean)
+        run: node scripts/ci/correr.mjs conocidas
+        continue-on-error: true
+
+  bd:
+    name: Base de datos (SQL Server Express)
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      WYBIX_DB_SERVER: localhost\SQLEXPRESS
+      WYBIX_BACKUP_DIR: C:\POS_Backups
+      # paridad-recetas compara contra el dominio de la app del dueño.
+      WYBIX_MOBILE: ${{ github.workspace }}\owner
+    steps:
+      - uses: actions/checkout@v4
+      # Si wybix-owner es privado, agrega el secreto OWNER_REPO_TOKEN (token
+      # fine-grained de solo lectura a ese repositorio).
+      - uses: actions/checkout@v4
+        with:
+          repository: DavidCa25/wybix-owner
+          ref: master
+          path: owner
+          token: ${{ secrets.OWNER_REPO_TOKEN || github.token }}
+          sparse-checkout: |
+            packages/domain
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar SQL Server Express
+        shell: pwsh
+        run: |
+          choco install sql-server-express -y --no-progress
+          # Las pruebas restauran .bak desde aquí: el servicio de SQL tiene que poder leerlo.
+          New-Item -ItemType Directory -Force C:\POS_Backups | Out-Null
+          icacls C:\POS_Backups /grant "Everyone:(OI)(CI)F" | Out-Null
+          $cs = 'Server=localhost\SQLEXPRESS;Database=master;Integrated Security=True;TrustServerCertificate=True'
+          $c = New-Object System.Data.SqlClient.SqlConnection $cs; $c.Open()
+          $q = $c.CreateCommand(); $q.CommandText = "SELECT IS_SRVROLEMEMBER('sysadmin')"
+          if ($q.ExecuteScalar() -ne 1) { throw 'El usuario del runner no es sysadmin en SQLEXPRESS.' }
+          $c.Close(); Write-Host 'SQL Server Express listo.'
+      - run: npm ci --no-audit --no-fund
+      - name: Pruebas de base de datos
+        run: node scripts/ci/correr.mjs bd
+
+  e2e:
+    name: E2E en la app real
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      WYBIX_DB_SERVER: localhost\SQLEXPRESS
+      WYBIX_BACKUP_DIR: C:\POS_Backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar SQL Server Express
+        shell: pwsh
+        run: |
+          choco install sql-server-express -y --no-progress
+          New-Item -ItemType Directory -Force C:\POS_Backups | Out-Null
+          icacls C:\POS_Backups /grant "Everyone:(OI)(CI)F" | Out-Null
+      - run: npm ci --no-audit --no-fund
+      - run: npm run db:baseline
+      - name: E2E
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-resultados
+          path: |
+            test-results
+            playwright-report
+          retention-days: 7

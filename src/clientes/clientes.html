@@ -200,7 +200,7 @@
                 <span>Vencido</span>
                 <b class="mono">{{ (c.overdueBalance ?? 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
                 <small *ngIf="c.overdueCount > 0">{{ c.overdueCount }} {{ c.overdueCount === 1 ? 'venta' : 'ventas' }} · {{ c.maxDaysLate }} {{ c.maxDaysLate === 1 ? 'día' : 'días' }} de atraso</small>
-                <small *ngIf="!c.overdueCount && c.nextDueDate">Vence {{ c.nextDueDate | date:'dd/MM/yyyy' }}</small>
+                <small *ngIf="!c.overdueCount && c.nextDueDate">Vence {{ c.nextDueDate | fechaSql:'dd/MM/yyyy' }}</small>
               </div>
               <div class="cli-cifra" [class.es-mal]="(c.lateFeeEstimate ?? 0) > 0">
                 <span>Mora estimada</span>
@@ -347,13 +347,13 @@
                            [checked]="v.id === selectedSaleId"
                            (click)="$event.stopPropagation(); selectedSaleId = v.id; abonoAmount = v.balance;">
                   </td>
-                  <td>{{ v.datee | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ v.datee | fechaSql:'dd/MM/yyyy HH:mm' }}</td>
                   <td class="right">$ {{ v.total | number:'1.2-2' }}</td>
                   <td class="right">$ {{ v.paid_amount | number:'1.2-2' }}</td>
                   <td class="right">$ {{ v.balance | number:'1.2-2' }}</td>
                   <td>
                     <span *ngIf="v.due_date; else sinFecha">
-                      {{ v.due_date | date:'dd/MM/yyyy' }}
+                      {{ v.due_date | fechaSql:'dd/MM/yyyy' }}
                     </span>
                     <ng-template #sinFecha>
                       <span class="nota">Sin fecha</span>

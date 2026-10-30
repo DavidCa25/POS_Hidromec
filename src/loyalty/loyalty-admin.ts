@@ -12,6 +12,7 @@ import { WxDateComponent } from '../app/wx-date/wx-date.component';
 import { WxTimeComponent } from '../app/wx-time/wx-time.component';
 import { DinamicaJuego } from './dinamica-juego';import { ClubAdmin } from './club-admin';
 import { PuntosAdmin } from './puntos-admin';
+import { FechaSqlPipe } from '../core';
 
 /*
  * Administracion de Fidelizacion.
@@ -98,7 +99,7 @@ interface DraftRifa {
 @Component({
   selector: 'app-loyalty-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent, DinamicaJuego, ClubAdmin, PuntosAdmin],
+  imports: [FechaSqlPipe, CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxTimeComponent, DinamicaJuego, ClubAdmin, PuntosAdmin],
   templateUrl: './loyalty-admin.html',
   styleUrls: ['./loyalty-admin.css'],
 })
@@ -955,9 +956,10 @@ export class LoyaltyAdmin implements OnInit {
    * por no encajar en su patron, y el campo aparecia vacio aunque la fecha
    * estuviera guardada. TypeScript no lo ve porque la firma miente.
    *
-   * Se leen los componentes LOCALES, que son los que el usuario escribio y
-   * los que ensena la lista: tomarlos en UTC retrocederia un dia en
-   * cualquier huso al oeste de Greenwich.
+   * Se leen los componentes UTC: `mssql` entrega la hora de pared de la base
+   * como si fuera UTC (ver `fechaSql`). Un `2026-10-29` guardado llega como
+   * `2026-10-29T00:00Z`; leido en local, en Mexico era el 28, y cada vez que
+   * se guardaba la campana sin tocar la fecha retrocedia un dia.
    */
   private static fecha(v: string | Date | null | undefined): string {
     if (!v) return '';
@@ -965,7 +967,7 @@ export class LoyaltyAdmin implements OnInit {
     if (d) {
       if (Number.isNaN(d.getTime())) return '';
       const p = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
     }
     const s = String(v);
     return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';

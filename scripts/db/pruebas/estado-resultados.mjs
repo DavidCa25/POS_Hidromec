@@ -111,7 +111,7 @@ try {
   // =============================================================== 1
   seccion('1. El resumen del mes');
   const r = consultarTemporal(DB, `EXEC dbo.sp_income_statement @desde='2026-09-01', @hasta='2026-09-30';`);
-  check(r.ok && r.sets.length === 6, 'devuelve los seis resultados', r.ok ? String(r.sets.length) : limpiar(r.error));
+  check(r.ok && r.sets.length === 7, 'devuelve los siete resultados (0069: por canal)', r.ok ? String(r.sets.length) : limpiar(r.error));
   if (!r.ok) throw new Error(limpiar(r.error));
   const [res, egr, cats, dias, top, perdidas] = r.sets;
   const act = res[0], ant = res[1];

@@ -114,6 +114,15 @@ if (A_FONDO) {
   console.log('    que el template las declara restaurandolo en una base temporal)');
 }
 
+// --solo-template: CI comprueba el .bak, no el paquete. Los medios de
+// Microsoft (installer/sqlexpress/, el GDR) no viajan en Git ni en el runner.
+if (process.argv.includes('--solo-template')) {
+  console.log(fallos
+    ? `\nRESULTADO: ${fallos} FALLO(S) en el template`
+    : '\nRESULTADO: PASS - el template es correcto (dependencias del instalador no comprobadas)');
+  process.exit(fallos ? 1 : 0);
+}
+
 // ==========================================================================
 // DEPENDENCIA EXTERNA: el medio de SQL Server Express
 // ==========================================================================

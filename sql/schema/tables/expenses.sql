@@ -26,6 +26,7 @@ CREATE TABLE dbo.expenses (
     voided_by INT NULL,
     void_reason NVARCHAR(200) COLLATE Modern_Spanish_CI_AS NULL,
     void_cash_movement_id INT NULL,
+    platform_settlement_id INT NULL,
     CONSTRAINT PK_expenses PRIMARY KEY CLUSTERED (id)
 );
 END;
@@ -56,6 +57,9 @@ ALTER TABLE dbo.expenses WITH CHECK ADD CONSTRAINT FK_expenses_category FOREIGN 
 
 IF OBJECT_ID(N'dbo.FK_expenses_closure', 'F') IS NULL
 ALTER TABLE dbo.expenses WITH CHECK ADD CONSTRAINT FK_expenses_closure FOREIGN KEY (closure_id) REFERENCES dbo.cash_closures (id);
+
+IF OBJECT_ID(N'dbo.FK_expenses_platform_settlement', 'F') IS NULL
+ALTER TABLE dbo.expenses WITH CHECK ADD CONSTRAINT FK_expenses_platform_settlement FOREIGN KEY (platform_settlement_id) REFERENCES dbo.platform_settlements (id);
 
 IF OBJECT_ID(N'dbo.FK_expenses_register', 'F') IS NULL
 ALTER TABLE dbo.expenses WITH CHECK ADD CONSTRAINT FK_expenses_register FOREIGN KEY (register_id) REFERENCES dbo.registers (id);

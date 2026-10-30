@@ -2,7 +2,7 @@
   <!-- Barra de atajos POS -->
   <div class="pos-shortcuts-bar mb-3">
     <div class="pos-shortcuts-left">
-      <div class="pos-shortcut" (click)="abrirCajonManual()">
+      <div class="pos-shortcut" data-caja="cajon" (click)="abrirCajonManual()">
         <span class="pos-key">F1</span>
         <span class="pos-label">Abrir cajón</span>
       </div>
@@ -14,10 +14,14 @@
         <span class="pos-key">F8</span>
         <span class="pos-label">Cobrar</span>
       </div>
-      <div class="pos-shortcut" (click)="abrirSalidaEfectivo()">
+      <div class="pos-shortcut" data-caja="salida" (click)="abrirSalidaEfectivo()">
         <span class="pos-key">F10</span>
         <span class="pos-label">Salida de efectivo</span>
       </div>
+      <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" data-caja="checar" (click)="abrirChecar()">
+        <span class="pos-key">F9</span>
+        <span class="pos-label">Checar</span>
+      </button>
     </div>
 
     <!-- Chip estado turno -->
@@ -31,7 +35,7 @@
         <div class="txt">
           <div class="t1">Turno abierto</div>
           <div class="t2">
-            {{ shiftOpenedAt | date:'HH:mm' }} · Fondo:
+            {{ shiftOpenedAt | fechaSql:'HH:mm' }} · Fondo:
             {{ shiftOpeningCash | currency:'MXN':'symbol-narrow':'1.2-2' }}
           </div>
         </div>
@@ -49,7 +53,7 @@
     </div>
   </div>
 
-  <app-commercial-sale *ngIf="!isEditing && !ordenServicio"></app-commercial-sale>
+  <app-commercial-sale data-caja="promociones" *ngIf="!isEditing && !ordenServicio"></app-commercial-sale>
   <!-- ===== Cuentas en espera (varias ventas a la vez) ===== -->
   <div class="pos-tabs mb-3" *ngIf="!isEditing">
     <div class="pos-tab"
@@ -115,7 +119,7 @@
           
           <div *ngIf="!clienteSeleccionado" class="d-flex justify-content-between align-items-center">
             <span class="text-muted small">Público General</span>
-            <button class="btn btn-sm btn-outline-primary" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
+            <button class="btn btn-sm btn-outline-primary" data-caja="cliente" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
               <i class="ph ph-magnifying-glass"></i> Buscar
             </button>
           </div>
@@ -136,8 +140,15 @@
               </button>
             </div>
             <!-- 0063 · Club: membresía, beneficio de hoy, renovar. -->
-            <app-club-cliente *ngIf="!isEditing"></app-club-cliente>
+            <app-club-cliente data-caja="club" *ngIf="!isEditing"></app-club-cliente>
           </div>
+
+          <!-- 0065 · Devolucion directa, como en Touch, con o sin cliente: encontrar la
+               venta sin ir a Ventas realizadas. Mismo componente que Touch (acciones-caja.ts). -->
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" data-caja="devolucion" data-guide="venta-devolucion"
+                  *ngIf="!isEditing" (click)="devolviendo = true" aria-label="Hacer una devolución">
+            <i class="ph ph-arrow-counter-clockwise"></i> Devolución
+          </button>
         </div>
 
         <div class="folio-box">
@@ -173,7 +184,7 @@
           </div>
 
           <div class="folio-meta mt-2" *ngIf="editingHeader">
-            <span>Fecha: {{ editingHeader.datee | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span>Fecha: {{ editingHeader.datee | fechaSql:'dd/MM/yyyy HH:mm' }}</span>
             <span>Pago: {{ editingHeader.payment_method }}</span>
             <span>Reembolsado: {{ editingHeader.refund_total | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
           </div>
@@ -274,7 +285,7 @@
           cliente saca el papel. Aplicar deja la linea en 0.00 y se puede
           quitar hasta el momento de cobrar.
         -->
-        <app-cupon-venta></app-cupon-venta>
+        <app-cupon-venta data-caja="cupon"></app-cupon-venta>
 
         <!-- ===== BARRA INFERIOR: total + acciones ===== -->
         <div class="pos-footer">
@@ -416,7 +427,13 @@
               </div>
               <button type="button" class="btn btn-outline-primary" [disabled]="cobrando||pagosMixtos.length>=4" (click)="agregarPago()">Agregar método</button><p role="alert" *ngIf="errorMixto" class="text-danger">{{errorMixto}}</p>
             </section>
-            <p *ngIf="paymentMethod==='PLATAFORMA'" class="text-muted mt-3">Confirma que el pedido está pagado en la plataforma. No entra efectivo al cajón.</p>
+            <ng-container *ngIf="paymentMethod==='PLATAFORMA'">
+              <p class="text-muted mt-3">Confirma que el pedido está pagado en la plataforma. No entra efectivo al cajón.</p>
+              <label class="form-label small mb-1" for="pedidoPlataforma">No. de pedido de la plataforma <span class="text-muted">(opcional)</span></label>
+              <input id="pedidoPlataforma" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="pedidoPlataforma" [disabled]="cobrando"
+                     placeholder="Ej. 4F2A1" data-guide="venta-pedido-plataforma">
+              <small class="text-muted">Con él, la liquidación de la plataforma encuentra esta venta sola.</small>
+            </ng-container>
           </div>
           <div class="cobro-right">
             <div class="mb-3">
@@ -747,7 +764,8 @@
       <div class="modal-body pt-0">
         <input class="form-control mb-2 buscador"
                placeholder="Buscar por nombre, RFC, teléfono o correo..."
-               [(ngModel)]="filtroClientes" name="filtroClientes">
+               [(ngModel)]="filtroClientes" name="filtroClientes"
+               (keydown.enter)="buscarClienteEnter()" data-guide="venta-buscar-cliente">
         <div class="prod-hint">
           <i class="ph ph-hand-pointing"></i> Toca un cliente para asignarlo a la venta
         </div>
@@ -815,3 +833,10 @@
   (cerrado)="cerrarPremios()"></app-premios-venta>
 
 <app-receipt-email *ngIf="enviarCorreo&&lastSaleId" [saleId]="lastSaleId" (close)="enviarCorreo=false"></app-receipt-email>
+
+<!-- 0071: Checar (Asistencia). -->
+<app-asistencia-checar *ngIf="showChecar" [registerId]="cajaDeChecar" [motivo]="motivoChecar" (cerrar)="showChecar=false"></app-asistencia-checar>
+
+<!-- 0065: Devolucion directa (la misma que Touch). -->
+<app-devolucion-touch *ngIf="devolviendo" [clienteId]="clienteSeleccionado?.id ?? null" [clienteNombre]="clienteSeleccionado?.name ?? null"
+                      (cerrar)="devolviendo = false"></app-devolucion-touch>

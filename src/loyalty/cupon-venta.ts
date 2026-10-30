@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, computed, inject, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AppliedCoupon, CartService, CouponCheck, LoyaltyService } from '../core';
+import { FechaSqlPipe } from '../core';
 
 /*
  * Cupon en el punto de venta.
@@ -24,7 +25,7 @@ import { AppliedCoupon, CartService, CouponCheck, LoyaltyService } from '../core
 @Component({
   selector: 'app-cupon-venta',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FechaSqlPipe, CommonModule, FormsModule],
   templateUrl: './cupon-venta.html',
   styleUrls: ['./cupon-venta.css'],
 })

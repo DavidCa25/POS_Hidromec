@@ -9,6 +9,7 @@ import { RouterOutlet } from "@angular/router";
 import { NgIf, NgFor, DatePipe, CurrencyPipe, NgClass } from "@angular/common";
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { FechaSqlPipe } from '../../core';
 
 interface SaleRow {
   id: number;
@@ -28,7 +29,7 @@ type PageToken = number | "...";
   templateUrl: "./tablaVenta.html",
   styleUrls: ["./tablaVenta.css"],
   standalone: true,
-  imports: [WxMenuComponent, WxTablaBarraComponent, NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet, WxSelectComponent, WxDateComponent],
+  imports: [FechaSqlPipe, WxMenuComponent, WxTablaBarraComponent, NgIf, NgFor, NgClass, DatePipe, CurrencyPipe, FormsModule, RouterOutlet, WxSelectComponent, WxDateComponent],
 })
 export class TablaVentaComponent {
   /** Mismas opciones de siempre, en el formato del selector Wybix. */

@@ -10,6 +10,7 @@ import { GuiaService } from '../wx-guia/guia.service';
 import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { Area, Destino, NavegacionService } from '../wx-nav/navegacion.service';
 import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
+import { NavAccionesService } from '../wx-nav/nav-acciones.service';
 
 /**
  * WX-DOCK — la barra de trabajo de Wybix.
@@ -100,53 +101,9 @@ export class WxDockComponent implements OnDestroy {
   private readonly paleta = inject(PaletaService);
   readonly guia = inject(GuiaService);
   readonly apps = inject(AppsWybixService);
-  /*
-   * APROBACIONES (Más > Aprobaciones).
-   *
-   * Si el negocio pide PIN o la app del dueño para retiros, egresos,
-   * devoluciones, ajustes, compras y cajón sin venta. Solo lo ven y lo cambian
-   * el Encargado y el Administrador (lo pregunta NavegacionService); el proceso principal
-   * lo vuelve a exigir en su canal. Apagarlas pide confirmar: cambia quién
-   * puede sacar dinero del cajón, y queda en bitácora con aviso al dueño.
-   */
-  readonly puedeAprobaciones = computed(() => this.nav.cambiarAprobaciones);
-  readonly aprobaciones = signal<{ activas: boolean; origen: string } | null>(null);
-  readonly aprobConfirmar = signal(false);
-  readonly aprobGuardando = signal(false);
-  readonly aprobError = signal('');
-
-  private async cargarAprobaciones() {
-    this.aprobConfirmar.set(false);
-    this.aprobError.set('');
-    try {
-      const r = await (window as any).electronAPI?.aprobacionesPolitica?.();
-      this.aprobaciones.set(r?.success ? r.data : null);
-      if (!r?.success) this.aprobError.set(r?.error || 'No se pudo leer.');
-    } catch { this.aprobaciones.set(null); }
-  }
-
-  /** Encender es inmediato; apagar pasa por "¿Seguro?". */
-  pulsarAprobaciones() {
-    const a = this.aprobaciones();
-    if (!a || this.aprobGuardando()) return;
-    if (a.activas && !this.aprobConfirmar()) { this.aprobConfirmar.set(true); return; }
-    void this.cambiarAprobaciones(!a.activas);
-  }
-
-  cancelarAprobaciones() { this.aprobConfirmar.set(false); }
-
-  private async cambiarAprobaciones(activas: boolean) {
-    this.aprobGuardando.set(true);
-    this.aprobError.set('');
-    try {
-      const r = await (window as any).electronAPI?.aprobacionesCambiar?.(activas);
-      if (!r?.success) { this.aprobError.set(r?.error || 'No se pudo cambiar.'); return; }
-      this.aprobaciones.set(r.data);
-      this.aprobConfirmar.set(false);
-    } finally {
-      this.aprobGuardando.set(false);
-    }
-  }
+  /* Checar, Aprobaciones y Apps son de LA navegacion, no del dock: su estado y
+     quien las ve viven en NavAccionesService, y la barra lateral pinta lo mismo. */
+  readonly acc = inject(NavAccionesService);
 
   abrirApps(e: Event) {
     const abierta = this.apps.abierta();
@@ -242,7 +199,7 @@ export class WxDockComponent implements OnDestroy {
     const v = !this.masAbierto();
     this.cerrarTodo();
     this.masAbierto.set(v);
-    if (v && this.puedeAprobaciones()) void this.cargarAprobaciones();
+    if (v && this.acc.verAprobaciones) void this.acc.cargarAprobaciones();
   }
 
   private cerrarPopovers() {

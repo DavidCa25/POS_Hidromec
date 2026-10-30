@@ -496,13 +496,13 @@
                   <!-- La venta que lo genero: es por donde se rastrea cualquier reclamo. -->
                   <small *ngIf="i.sale_id">Venta #{{ i.sale_id }}<span *ngIf="i.caja"> · {{ i.caja }}</span></small>
                 </td>
-                <td><small>{{ i.issued_at | date:'dd/MM/yyyy HH:mm' }}</small></td>
-                <td><small>{{ i.expires_at ? (i.expires_at | date:'dd/MM/yyyy') : 'Sin caducidad' }}</small></td>
+                <td><small>{{ i.issued_at | fechaSql:'dd/MM/yyyy HH:mm' }}</small></td>
+                <td><small>{{ i.expires_at ? (i.expires_at | fechaSql:'dd/MM/yyyy') : 'Sin caducidad' }}</small></td>
                 <td class="num">{{ i.uses_count }}/{{ i.uses_allowed }}</td>
                 <td>
                   <span class="loy-estado" [class.si]="i.vigente">{{ i.situacion }}</span>
                   <small *ngIf="i.ultima_redencion">
-                    Usada {{ i.ultima_redencion | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="i.venta_redencion"> · venta #{{ i.venta_redencion }}</span>
+                    Usada {{ i.ultima_redencion | fechaSql:'dd/MM/yyyy HH:mm' }}<span *ngIf="i.venta_redencion"> · venta #{{ i.venta_redencion }}</span>
                   </small>
                 </td>
               </tr>
@@ -837,7 +837,7 @@
               <tr *ngFor="let r of loyalty.rifas()">
                 <td>
                   <b>{{ r.name }}</b>
-                  <small *ngIf="r.ends_at">Hasta {{ r.ends_at | date:'dd/MM/yyyy' }}</small>
+                  <small *ngIf="r.ends_at">Hasta {{ r.ends_at | fechaSql:'dd/MM/yyyy' }}</small>
                 </td>
                 <td>{{ r.prize || '—' }}</td>
                 <td><span class="loy-estado" [class.si]="r.status === 'OPEN'">{{ estadoRifa(r.status) }}</span></td>
@@ -919,7 +919,7 @@
         </p>
         <p class="loy-nota" *ngIf="r.status === 'CLOSED'">
           <i class="ph ph-lock-simple"></i>
-          Cerrada el {{ r.closed_at | date:'dd/MM/yyyy HH:mm' }} con
+          Cerrada el {{ r.closed_at | fechaSql:'dd/MM/yyyy HH:mm' }} con
           <b>{{ r.closed_entries_count }}</b> boletos participando. Ese número ya no cambia,
           aunque el sorteo se haga más tarde.
         </p>
@@ -987,7 +987,7 @@
                 <td>{{ e.cliente || '—' }}</td>
                 <td><small>{{ $any(e).caja || '—' }}</small></td>
                 <td><small>{{ $any(e).campana || '—' }}</small></td>
-                <td><small>{{ e.created_at | date:'dd/MM/yyyy HH:mm' }}</small></td>
+                <td><small>{{ e.created_at | fechaSql:'dd/MM/yyyy HH:mm' }}</small></td>
               </tr>
             </tbody>
           </table>

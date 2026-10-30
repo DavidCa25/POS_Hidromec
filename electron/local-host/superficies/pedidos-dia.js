@@ -32,7 +32,9 @@ const RECIENTE_SEG = 45;
 async function pedidosPublicos(pool, { mesas = false, minutosListo = MIN_LISTO } = {}) {
   const r = await pool.request().input('mesas', mesas ? 1 : 0).input('reciente', RECIENTE_SEG).query(`
     SELECT c.numero_dia, c.mesa_id, m.nombre AS mesa,
-           dbo.fn_nombre_publico_cliente(cu.customerName) AS nombre_publico,
+           /* Un pedido en linea (0067) no tiene ficha de cliente: el nombre que
+              dejo al pedir pasa por la MISMA funcion (solo el primer nombre). */
+           COALESCE(dbo.fn_nombre_publico_cliente(cu.customerName), dbo.fn_nombre_publico_cliente(pl.cliente_nombre)) AS nombre_publico,
            SUM(CASE WHEN k.estado IN ('NUEVA', 'PREPARANDO') THEN 1 ELSE 0 END) AS pendientes,
            SUM(CASE WHEN k.estado = 'LISTA' THEN 1 ELSE 0 END) AS listas,
            DATEDIFF(SECOND, MAX(k.lista_en), SYSDATETIME()) AS seg_desde_lista
@@ -40,9 +42,10 @@ async function pedidosPublicos(pool, { mesas = false, minutosListo = MIN_LISTO }
       JOIN dbo.hosp_cuentas c ON c.id = k.cuenta_id
       LEFT JOIN dbo.salon_mesas m ON m.id = c.mesa_id
       LEFT JOIN dbo.customers cu ON cu.id = c.customer_id
+      LEFT JOIN dbo.pedidos_en_linea pl ON pl.cuenta_id = c.id
      WHERE k.creada_en >= CAST(SYSDATETIME() AS DATE) AND k.estado <> 'CANCELADA'
        AND (c.numero_dia IS NOT NULL OR (@mesas = 1 AND c.mesa_id IS NOT NULL))
-     GROUP BY c.id, c.numero_dia, c.mesa_id, m.nombre, cu.customerName
+     GROUP BY c.id, c.numero_dia, c.mesa_id, m.nombre, cu.customerName, pl.cliente_nombre
     HAVING SUM(CASE WHEN k.estado IN ('NUEVA', 'PREPARANDO', 'LISTA') THEN 1 ELSE 0 END) > 0
      ORDER BY MIN(k.creada_en);
     SELECT TOP 1 business_name FROM dbo.business_config;`);
