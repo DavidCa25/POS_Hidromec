@@ -10,6 +10,9 @@ import { GuiaService } from '../wx-guia/guia.service';
 import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { Area, Destino, NavegacionService } from '../wx-nav/navegacion.service';
 import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
+import { AsistenciaChecarComponent } from '../asistencia/checar/asistencia-checar.component';
+import { CapabilityService } from '../../core';
+import { RegisterService } from '../../services/register.service';
 
 /**
  * WX-DOCK — la barra de trabajo de Wybix.
@@ -77,7 +80,7 @@ const GRACIA = 220;
 @Component({
   selector: 'wx-dock',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, RouterLink, RouterLinkActive, WxMascotaComponent, WxGuiaComponent],
+  imports: [NgIf, NgFor, NgClass, RouterLink, RouterLinkActive, WxMascotaComponent, WxGuiaComponent, AsistenciaChecarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './wx-dock.component.html',
   styleUrls: ['./wx-dock.component.css'],
@@ -100,6 +103,12 @@ export class WxDockComponent implements OnDestroy {
   private readonly paleta = inject(PaletaService);
   readonly guia = inject(GuiaService);
   readonly apps = inject(AppsWybixService);
+  /* 0071: Checar desde cualquier pantalla. Al llegar a trabajar todavia no
+     hay turno y la caja abre en Inicio: si Checar solo viviera en Venta,
+     nadie podria checar antes de abrir la caja. */
+  readonly caps = inject(CapabilityService);
+  readonly caja = inject(RegisterService);
+  readonly checarAbierto = signal(false);
   /*
    * APROBACIONES (Más > Aprobaciones).
    *

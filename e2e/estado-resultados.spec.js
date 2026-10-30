@@ -41,6 +41,23 @@ test('Estado de resultados y correos de cortes', async ({ app }) => {
   await p.setViewportSize?.({ width: 1440, height: 900 });
   await login(app, CUENTAS.admin);
   const userId = (await app.invocar('sesion')).data.userId;
+  /* Codigos propios de esta corrida: la base se reutiliza entre corridas. */
+  const corrida = Date.now().toString(36).toUpperCase();
+  /* La pantalla abre en el MES en curso: lo que otras pruebas vendieron,
+     devolvieron, gastaron o mermaron este mes en esta misma base se manda
+     dos meses atras (fuera del mes y del periodo anterior). Sin esto la
+     prueba dependia del orden: en la corrida completa siempre fallaba. */
+  await sql(app.base, `
+    DECLARE @ini DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+    DECLARE @atras DATE = DATEADD(MONTH, -2, @ini);
+    UPDATE dbo.sales SET datee = DATEADD(MONTH, -2, datee) WHERE datee >= @atras;
+    UPDATE dbo.sale_refunds SET datee = DATEADD(MONTH, -2, datee) WHERE datee >= @atras;
+    UPDATE dbo.expenses SET expense_date = DATEADD(MONTH, -2, expense_date) WHERE expense_date >= @atras;
+    UPDATE dbo.inventory_movements SET datee = DATEADD(MONTH, -2, datee) WHERE datee >= @atras;
+    IF OBJECT_ID(N'dbo.production_waste', 'U') IS NOT NULL
+      UPDATE dbo.production_waste SET waste_date = DATEADD(MONTH, -2, waste_date) WHERE waste_date >= @atras;
+    IF OBJECT_ID(N'dbo.platform_settlement_allocations', 'U') IS NOT NULL
+      UPDATE dbo.platform_settlement_allocations SET alloc_date = DATEADD(MONTH, -2, alloc_date) WHERE alloc_date >= @atras;`);
 
   const turno = await app.invocar('openShift', { user_id: userId, opening_cash: 500 });
   expect(turno?.success || /ya existe un turno/i.test(String(turno?.error ?? '')), JSON.stringify(turno)).toBeTruthy();
@@ -49,10 +66,10 @@ test('Estado de resultados y correos de cortes', async ({ app }) => {
   /* Dos productos: uno que se vendió a costo 40 y HOY cuesta 50; otro bajo costo. */
   await sql(app.base, `
     INSERT INTO dbo.products (part_number, nombre, price, stock, cost, objeto_impuesto, tasa_iva, active, registrated_date)
-    VALUES (N'E2E-ER-A', N'Aceite 20W-50 1L', 116, 50, 50, '02', 0.16, 1, GETDATE()),
-           (N'E2E-ER-C', N'Filtro en oferta', 11.6, 50, 15, '02', 0.16, 1, GETDATE());
-    DECLARE @a INT = (SELECT id FROM dbo.products WHERE part_number = N'E2E-ER-A');
-    DECLARE @c INT = (SELECT id FROM dbo.products WHERE part_number = N'E2E-ER-C');
+    VALUES (N'E2E-ER-A-${corrida}', N'Aceite 20W-50 1L', 116, 50, 50, '02', 0.16, 1, GETDATE()),
+           (N'E2E-ER-C-${corrida}', N'Filtro en oferta', 11.6, 50, 15, '02', 0.16, 1, GETDATE());
+    DECLARE @a INT = (SELECT id FROM dbo.products WHERE part_number = N'E2E-ER-A-${corrida}');
+    DECLARE @c INT = (SELECT id FROM dbo.products WHERE part_number = N'E2E-ER-C-${corrida}');
     INSERT INTO dbo.sales (datee, useer_id, total, payment_method, paid_amount, balance, register_id, closure_id)
     VALUES (GETDATE(), ${userId}, 591.6, 'EFECTIVO', 591.6, 0, 1, ${closureId});
     DECLARE @s INT = SCOPE_IDENTITY();

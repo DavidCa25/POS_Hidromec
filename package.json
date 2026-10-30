@@ -128,6 +128,10 @@
     "e2e:club-wallet": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/club-wallet.spec.js",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:liquidaciones": "npm run build && node -e \"import('./e2e/preparar-bases.mjs').then(m=>m.prepararBase('Wybix_E2E_Liquidaciones',{perfil:'RETAIL'}))\" && cross-env WYBIX_E2E_DB=Wybix_E2E_Liquidaciones playwright test e2e/liquidaciones.spec.js",
+    "e2e:asistencia": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/asistencia.spec.js",
+    "e2e:contrasena": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/contrasena-olvidada.spec.js",
+    "e2e:whatsapp": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/whatsapp-avisos.spec.js",
+    "e2e:1.5.0": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/asistencia.spec.js e2e/club.spec.js e2e/club-wallet.spec.js e2e/contrasena-olvidada.spec.js e2e/devoluciones.spec.js e2e/estado-resultados.spec.js e2e/menu-en-linea.spec.js e2e/puntos.spec.js e2e/whatsapp-avisos.spec.js && npm run e2e:liquidaciones",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"
   },
   "prettier": {

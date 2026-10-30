@@ -132,6 +132,14 @@
     </button>
   </span>
 
+  <!-- --------------------------------------------- checar (Asistencia) -->
+  <span class="wxdock__item" *ngIf="caps.asistencia">
+    <button type="button" class="wxdock__btn wxdock__btn--checar" data-guide="dock-checar" (click)="checarAbierto.set(true)"
+            aria-haspopup="dialog" aria-label="Checar">
+      <i class="ph ph-clock" aria-hidden="true"></i><span class="wxdock__txt">Checar</span>
+    </button>
+  </span>
+
   <!-- ------------------------------------------------------------- mas -->
   <span class="wxdock__item">
     <button type="button" class="wxdock__btn wxdock__btn--apps" (click)="abrirApps($event)"
@@ -218,3 +226,6 @@
     <span>{{ d.texto }}</span>
   </a>
 </div>
+
+<!-- 0071: Checar (Asistencia), desde cualquier pantalla. -->
+<app-asistencia-checar *ngIf="checarAbierto()" [registerId]="caja.registerId" (cerrar)="checarAbierto.set(false)"></app-asistencia-checar>
