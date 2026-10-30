@@ -10,6 +10,7 @@ import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { GuiaService } from '../wx-guia/guia.service';
 import { PaletaService } from '../wx-paleta/paleta.service';
 import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
+import { NavAccionesService } from '../wx-nav/nav-acciones.service';
 
 /**
  * WX-SIDEBAR — la barra lateral de Wybix.
@@ -40,6 +41,11 @@ export class WxSidebarComponent {
 
   readonly nav = inject(NavegacionService);
   readonly apps = inject(AppsWybixService);
+  /* Checar, Aprobaciones y Apps: las mismas acciones que el dock, de la misma fuente. */
+  readonly acc = inject(NavAccionesService);
+  /** Lo que se crea: la misma lista que el boton «+» del dock. */
+  readonly crear = computed<Destino[]>(() => this.nav.crear());
+  readonly crearAbierto = signal(false);
   abrirApps(e: Event) { this.guia.cerrar(); this.apps.abrir(e.currentTarget as HTMLElement); }
   readonly guia = inject(GuiaService);
   private readonly paleta = inject(PaletaService);
@@ -49,6 +55,10 @@ export class WxSidebarComponent {
 
   readonly negocio = computed<DestinoMas[]>(() => this.nav.mas().filter(d => d.grupo === 'negocio'));
   readonly sistema = computed<DestinoMas[]>(() => this.nav.mas().filter(d => d.grupo === 'sistema'));
+
+  ngOnInit(): void {
+    if (this.acc.verAprobaciones) void this.acc.cargarAprobaciones();
+  }
 
   /** Los grupos desplegados. El del area activa se abre solo. */
   private readonly abiertos = signal<ReadonlySet<string>>(new Set());

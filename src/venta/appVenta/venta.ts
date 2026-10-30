@@ -38,6 +38,7 @@ import {
 import { CapabilityService, FechaSqlPipe } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { AsistenciaChecarComponent } from '../../app/asistencia/checar/asistencia-checar.component';
+import { DevolucionTouch } from '../../touch/devolucion-touch/devolucion-touch.component';
 
 /*
  * RETAIL POS — capa de presentacion.
@@ -83,7 +84,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -117,6 +118,8 @@ export class Venta implements OnInit, OnDestroy {
   readonly caps = inject(CapabilityService);
   private readonly cajaActual = inject(RegisterService);
   showChecar = false;
+  /* 0065: devolucion directa, la misma que Touch. */
+  devolviendo = false;
   motivoChecar: string | null = null;
   get cajaDeChecar(): number | null { return this.cajaActual.registerId; }
   abrirChecar(motivo: string | null = null): void {

@@ -2,7 +2,7 @@
   <!-- Barra de atajos POS -->
   <div class="pos-shortcuts-bar mb-3">
     <div class="pos-shortcuts-left">
-      <div class="pos-shortcut" (click)="abrirCajonManual()">
+      <div class="pos-shortcut" data-caja="cajon" (click)="abrirCajonManual()">
         <span class="pos-key">F1</span>
         <span class="pos-label">Abrir cajón</span>
       </div>
@@ -14,11 +14,11 @@
         <span class="pos-key">F8</span>
         <span class="pos-label">Cobrar</span>
       </div>
-      <div class="pos-shortcut" (click)="abrirSalidaEfectivo()">
+      <div class="pos-shortcut" data-caja="salida" (click)="abrirSalidaEfectivo()">
         <span class="pos-key">F10</span>
         <span class="pos-label">Salida de efectivo</span>
       </div>
-      <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" (click)="abrirChecar()">
+      <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" data-caja="checar" (click)="abrirChecar()">
         <span class="pos-key">F9</span>
         <span class="pos-label">Checar</span>
       </button>
@@ -53,7 +53,7 @@
     </div>
   </div>
 
-  <app-commercial-sale *ngIf="!isEditing && !ordenServicio"></app-commercial-sale>
+  <app-commercial-sale data-caja="promociones" *ngIf="!isEditing && !ordenServicio"></app-commercial-sale>
   <!-- ===== Cuentas en espera (varias ventas a la vez) ===== -->
   <div class="pos-tabs mb-3" *ngIf="!isEditing">
     <div class="pos-tab"
@@ -119,7 +119,7 @@
           
           <div *ngIf="!clienteSeleccionado" class="d-flex justify-content-between align-items-center">
             <span class="text-muted small">Público General</span>
-            <button class="btn btn-sm btn-outline-primary" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
+            <button class="btn btn-sm btn-outline-primary" data-caja="cliente" [disabled]="isEditing && !editUnlocked" (click)="abrirModalClientes()">
               <i class="ph ph-magnifying-glass"></i> Buscar
             </button>
           </div>
@@ -140,8 +140,15 @@
               </button>
             </div>
             <!-- 0063 · Club: membresía, beneficio de hoy, renovar. -->
-            <app-club-cliente *ngIf="!isEditing"></app-club-cliente>
+            <app-club-cliente data-caja="club" *ngIf="!isEditing"></app-club-cliente>
           </div>
+
+          <!-- 0065 · Devolucion directa, como en Touch, con o sin cliente: encontrar la
+               venta sin ir a Ventas realizadas. Mismo componente que Touch (acciones-caja.ts). -->
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" data-caja="devolucion" data-guide="venta-devolucion"
+                  *ngIf="!isEditing" (click)="devolviendo = true" aria-label="Hacer una devolución">
+            <i class="ph ph-arrow-counter-clockwise"></i> Devolución
+          </button>
         </div>
 
         <div class="folio-box">
@@ -278,7 +285,7 @@
           cliente saca el papel. Aplicar deja la linea en 0.00 y se puede
           quitar hasta el momento de cobrar.
         -->
-        <app-cupon-venta></app-cupon-venta>
+        <app-cupon-venta data-caja="cupon"></app-cupon-venta>
 
         <!-- ===== BARRA INFERIOR: total + acciones ===== -->
         <div class="pos-footer">
@@ -829,3 +836,7 @@
 
 <!-- 0071: Checar (Asistencia). -->
 <app-asistencia-checar *ngIf="showChecar" [registerId]="cajaDeChecar" [motivo]="motivoChecar" (cerrar)="showChecar=false"></app-asistencia-checar>
+
+<!-- 0065: Devolucion directa (la misma que Touch). -->
+<app-devolucion-touch *ngIf="devolviendo" [clienteId]="clienteSeleccionado?.id ?? null" [clienteNombre]="clienteSeleccionado?.name ?? null"
+                      (cerrar)="devolviendo = false"></app-devolucion-touch>
