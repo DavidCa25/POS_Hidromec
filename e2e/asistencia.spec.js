@@ -159,8 +159,8 @@ test('Asistencia: activar, horario, checar con la sesión y corregir', async ({ 
      en cualquier pantalla (antes solo vivia en Venta y no se podia checar). */
   const aviso = p.getByRole('button', { name: 'Salir', exact: true });
   if (await aviso.isVisible().catch(() => false)) await aviso.click();
-  await expect(p.locator('[data-guide="dock-checar"]')).toBeVisible();
-  await p.locator('[data-guide="dock-checar"]').click();
+  await expect(p.locator('[data-guide="nav-checar"]')).toBeVisible();
+  await p.locator('[data-guide="nav-checar"]').click();
   const dialogo = p.locator('[data-guide="asistencia-checar"]');
   await expect(dialogo).toBeVisible();
   await expect(dialogo).toContainText(CUENTAS.operador.usuario);
@@ -172,7 +172,7 @@ test('Asistencia: activar, horario, checar con la sesión y corregir', async ({ 
   await dialogo.locator('[data-guide="asistencia-entrada"]').click();
   await expect(dialogo).toContainText('Entrada registrada');
   await expect(dialogo).toBeHidden({ timeout: 10000 });
-  await p.locator('[data-guide="dock-checar"]').click();
+  await p.locator('[data-guide="nav-checar"]').click();
   await expect(dialogo).toContainText(/Entró a las \d{2}:\d{2}/);
   await expect(dialogo.locator('[data-guide="asistencia-descanso"]')).toBeVisible();
   await expect(dialogo.locator('[data-guide="asistencia-salida"]')).toBeVisible();

@@ -22,6 +22,13 @@ async function entrar(app, cuenta) {
     try { return (await app.invocar('sesion'))?.data?.usuario ?? null; } catch { return null; }
   }, { timeout: 30000 }).toBe(cuenta.usuario);
   await ventana.waitForSelector('.wxdock, .wxside', { timeout: 30000 });
+  /* El Operador entra a Venta y, sin turno, le sale el aviso de abrirlo: tapa
+     la navegacion. Se cierra (vuelve a Inicio), como haria la persona. */
+  const aviso = ventana.getByRole('button', { name: 'Salir', exact: true });
+  if (await aviso.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false)) {
+    await aviso.click();
+    await expect(ventana.locator('.modal.show')).toHaveCount(0);
+  }
 }
 
 async function salir(ventana) {
@@ -280,8 +287,9 @@ test.describe('Navegación · dock y barra lateral', () => {
        ensancha a zona de dedo. Se mide DESPUES de encender el tactil. */
     expect(await ventana.evaluate(() => matchMedia('(hover: none)').matches)).toBe(true);
     const tocar = async (sel) => {
-      await expect(ventana.locator(sel), 'zona de dedo de 44 px').toHaveCSS('width', '44px');
+      /* Zona de dedo de AL MENOS 44 px: el boton mide 56 y su pestana visible 44. */
       const c = await ventana.locator(sel).boundingBox();
+      expect(c.width, 'zona de dedo de al menos 44 px').toBeGreaterThanOrEqual(44);
       const x = c.x + c.width / 2, y = c.y + c.height / 2;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
       await ventana.waitForTimeout(80);
@@ -368,7 +376,7 @@ test.describe('Navegación · dock y barra lateral', () => {
     expect(await destinosBarra(ventana), 'la barra, exactamente las mismas pantallas').toEqual(enDock);
 
     await ventana.click('.wxside__link:has-text("Servicios")');
-    await ventana.click('.wxside__item:has-text("Ordenes")');
+    await ventana.click('.wxside__item:has-text("Órdenes")');
     await expect.poll(() => ruta(ventana)).toBe('/dashboard/ordenes-de-servicio/ordenes');
     await expect(ventana.locator('.wxside__link.active')).toContainText('Servicios');
 

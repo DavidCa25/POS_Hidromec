@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { AuthService, PAQUETES } from '../../services/auth.service';
 
 export type AppWybix = 'owner' | 'mobile';
 export const APPS_WYBIX = [
@@ -17,7 +18,15 @@ export class AppsWybixService {
   readonly app = signal<AppWybix | null>(null);
   ancla: HTMLElement | null = null;
 
+  private readonly auth = inject(AuthService);
+
+  /**
+   * Solo el Administrador: instalar Wybix Owner o POS Mobile y vincularlos es
+   * decision del dueno. El boton ya se esconde a los demas (NavAccionesService);
+   * esto es para que ningun otro camino lo salte.
+   */
   abrir(ancla: HTMLElement | null = null, app: AppWybix | null = null) {
+    if (!this.auth.puede(PAQUETES.CONFIGURACION_ADMINISTRAR)) return;
     this.ancla = ancla;
     this.app.set(app);
     this.abierta.set(true);

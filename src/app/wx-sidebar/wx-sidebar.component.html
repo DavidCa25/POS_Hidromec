@@ -20,6 +20,12 @@
     <kbd class="wxside__kbd">Ctrl K</kbd>
   </button>
 
+  <!-- Las acciones del dia, las mismas que el dock (NavAccionesService). -->
+  <button type="button" class="wxside__accion" data-guide="nav-checar" *ngIf="acc.verChecar()" (click)="acc.abrirChecar()"
+          aria-haspopup="dialog" aria-label="Checar" [attr.title]="plegada() ? 'Checar' : null">
+    <i class="ph ph-clock" aria-hidden="true"></i><span class="wxside__txt">Checar</span>
+  </button>
+
   <ul class="wxside__menu">
     <!-- ------------------------------------------------------------ areas -->
     <li *ngFor="let a of areas(); trackBy: porId" class="wxside__area" [class.is-open]="estaAbierto(a)">
@@ -63,9 +69,28 @@
       </ng-template>
     </li>
 
+    <!-- ------------------------------------------------------------ crear (despues de las areas, como en el dock) -->
+    <li class="wxside__area" *ngIf="crear().length" [class.is-open]="crearAbierto()">
+      <button type="button" class="wxside__link" data-guide="crear" (click)="crearAbierto.set(!crearAbierto())"
+              [attr.aria-expanded]="crearAbierto()" aria-controls="wxside-crear" [attr.title]="plegada() ? 'Crear' : null">
+        <i class="ph ph-plus-circle" aria-hidden="true"></i>
+        <span class="wxside__txt">Crear</span>
+        <i class="ph ph-caret-down wxside__chevron" aria-hidden="true"></i>
+      </button>
+      <div class="wx-abrir wxside__sub" [class.es-cerrado]="!crearAbierto()" id="wxside-crear">
+        <ul>
+          <li *ngFor="let d of crear(); trackBy: porRuta">
+            <a class="wxside__item" [routerLink]="d.ruta" [attr.tabindex]="crearAbierto() ? null : -1" (click)="crearAbierto.set(false)">
+              <i class="ph {{ d.icono }}" aria-hidden="true"></i><span>{{ d.texto }}</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </li>
+
     <!-- ------------------------------------------ mas: negocio y sistema -->
-    <li class="wxside__area">
-      <button type="button" class="wxside__link" (click)="abrirApps($event)"
+    <li class="wxside__area" *ngIf="acc.verApps">
+      <button type="button" class="wxside__link" data-guide="nav-apps" (click)="abrirApps($event)"
               [attr.aria-expanded]="apps.abierta()" aria-haspopup="dialog"
               [attr.title]="plegada() ? 'Apps Wybix' : null" aria-label="Apps Wybix">
         <i class="ph ph-device-mobile" aria-hidden="true"></i><span class="wxside__txt">Apps Wybix</span>
@@ -84,8 +109,26 @@
       </ul>
     </li>
 
-    <li class="wxside__grp wxside__grp--sistema" *ngIf="sistema().length">
+    <li class="wxside__grp wxside__grp--sistema" *ngIf="sistema().length || acc.verAprobaciones">
       <ul>
+        <!-- Aprobaciones: el mismo interruptor que en «Más» del dock. -->
+        <li *ngIf="acc.verAprobaciones">
+          <div class="wxside__aprob" data-guide="aprobaciones" [attr.data-guide-estado]="acc.aprobaciones()?.activas ? 'activas' : 'apagadas'">
+            <button type="button" class="wxside__link" role="switch" [attr.aria-checked]="!!acc.aprobaciones()?.activas"
+                    [disabled]="!acc.aprobaciones() || acc.aprobGuardando()" (click)="acc.pulsarAprobaciones()"
+                    [attr.title]="plegada() ? 'Aprobaciones' : null">
+              <i class="ph" [ngClass]="acc.aprobaciones()?.activas ? 'ph-shield-check' : 'ph-shield-slash'" aria-hidden="true"></i>
+              <span class="wxside__txt">Aprobaciones</span>
+              <span class="wxside__sw" [class.is-on]="acc.aprobaciones()?.activas" aria-hidden="true"><span></span></span>
+            </button>
+            <div class="wxside__aprobconfirma" *ngIf="acc.aprobConfirmar() && !plegada()" role="alert">
+              <span>Quien vende hará retiros, egresos y devoluciones sin PIN.</span>
+              <button type="button" (click)="acc.cancelarAprobaciones()">Cancelar</button>
+              <button type="button" class="es-peligro" [disabled]="acc.aprobGuardando()" (click)="acc.pulsarAprobaciones()">Sí, apagar</button>
+            </div>
+            <p class="wxside__aproberror" *ngIf="acc.aprobError() && !plegada()" role="alert">{{ acc.aprobError() }}</p>
+          </div>
+        </li>
         <li *ngFor="let d of sistema(); trackBy: porRuta">
           <a class="wxside__link" [class.active]="esActivoDestino(d)"
              [attr.aria-current]="esActivoDestino(d) ? 'page' : null"

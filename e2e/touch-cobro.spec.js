@@ -90,6 +90,13 @@ test.describe('Touch · cobro fuera de efectivo', () => {
       expect(String(nueva.payment_method), `la venta queda registrada como ${metodo}`).toBe(metodo);
       expect(Number(nueva.total), 'por el total de la cuenta').toBe(40);
       await expect(ventana.locator('.tp-cobro__confirmar'), 'y Touch vuelve al menú').toHaveCount(0);
+      /* Cobrado, Touch ensena el resumen (cambio, ticket, factura): se cierra con
+         «Listo», como la persona, antes de la siguiente venta. */
+      const exito = ventana.locator('.tp-overlay--exito');
+      if (await exito.isVisible().catch(() => false)) {
+        await exito.getByRole('button', { name: 'Listo' }).click();
+        await expect(exito).toHaveCount(0);
+      }
     }
   });
 });
