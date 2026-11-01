@@ -7,6 +7,9 @@
     </header>
 
     <p class="asis-aviso" *ngIf="motivo">{{ motivo }}</p>
+    <p class="asis-aviso" *ngIf="estado()?.olvido_dia as dia" data-guide="asistencia-olvido" role="status">
+      No se registró tu salida del {{ dia | fechaSql:"EEEE d 'de' MMMM":'es-MX' }}. Registra tu entrada de hoy; ese día lo corrige un encargado.
+    </p>
 
     <div class="asis-cargando" *ngIf="cargando()">Cargando…</div>
 

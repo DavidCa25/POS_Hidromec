@@ -13,8 +13,10 @@ GO
    UX_asistencia_jornadas_abierta (una sola abierta por persona).
 
    OLVIDO DE SALIDA: si al marcar ENTRADA hay una jornada abierta de un dia
-   anterior, esa queda SIN_SALIDA (0 horas, "Revisar") y empieza la nueva. No
-   se adivina a que hora salio: lo corrige un encargado.
+   anterior con mas de 14 horas, esa queda SIN_SALIDA (0 horas, "Revisar") y
+   empieza la nueva. No se adivina a que hora salio: lo corrige un encargado.
+   Esa jornada ya no admite descanso ni salida: una salida cerrada al dia
+   siguiente eran 24 horas falsas (0072). Un turno nocturno no llega a 14.
 
    SALIDA en pleno descanso cierra el descanso a la misma hora.
    ==================================================================== */
@@ -36,25 +38,29 @@ BEGIN
         THROW 51000, N'Marca no válida.', 1;
 
     DECLARE @ahora DATETIME2(0) = SYSDATETIME();
-    DECLARE @jid INT, @jdia DATE, @desc INT;
+    DECLARE @jid INT, @jdia DATE, @desc INT, @jentrada DATETIME2(0), @olvido BIT = 0;
 
     BEGIN TRAN;
-        SELECT @jid = id, @jdia = dia
+        SELECT @jid = id, @jdia = dia, @jentrada = entrada_en
           FROM dbo.asistencia_jornadas WITH (UPDLOCK, HOLDLOCK)
          WHERE user_id = @user_id AND estado = 'ABIERTA';
+        IF @jid IS NOT NULL AND @jdia < CAST(@ahora AS DATE) AND DATEDIFF(MINUTE, @jentrada, @ahora) > 840
+            SET @olvido = 1;
         IF @jid IS NOT NULL
             SELECT @desc = id FROM dbo.asistencia_descansos WITH (UPDLOCK)
              WHERE jornada_id = @jid AND fin_en IS NULL;
 
         IF @tipo = 'ENTRADA'
         BEGIN
-            IF @jid IS NOT NULL AND @jdia = CAST(@ahora AS DATE)
+            IF @jid IS NOT NULL AND @olvido = 0
                 THROW 51000, N'Ya registraste tu entrada.', 1;
             IF @jid IS NOT NULL
                 UPDATE dbo.asistencia_jornadas SET estado = 'SIN_SALIDA' WHERE id = @jid;
             INSERT INTO dbo.asistencia_jornadas (user_id, dia, entrada_en, estado, register_id)
             VALUES (@user_id, CAST(@ahora AS DATE), @ahora, 'ABIERTA', @register_id);
         END
+        ELSE IF @olvido = 1
+            THROW 51000, N'Tu jornada anterior quedó sin salida: registra tu entrada de hoy.', 1;
         ELSE IF @tipo = 'INICIO_DESCANSO'
         BEGIN
             IF @jid IS NULL THROW 51000, N'Primero registra tu entrada.', 1;

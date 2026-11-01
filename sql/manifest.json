@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-29T22:16:24.062Z",
+  "generado": "2026-11-01T01:49:38.680Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -130,7 +130,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "8d45f3ff1cf196ee"
+      "checksum": "6ecf2e053b48fcce"
     },
     {
       "nombre": "sp_asistencia_estado",
@@ -139,7 +139,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2967f51ec2d26e8d"
+      "checksum": "dc36bdc2b24dc022"
     },
     {
       "nombre": "sp_asistencia_horario_get",
@@ -166,7 +166,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "284dbf0067e8bffa"
+      "checksum": "9c241b2c7ee0f1c6"
     },
     {
       "nombre": "sp_asistencia_marcar",
@@ -175,7 +175,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "4a5be9ec3b43fe49"
+      "checksum": "159ff85702a88e1a"
     },
     {
       "nombre": "sp_asistencia_reglas_get",
@@ -202,7 +202,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "878ebdbcf7781cb5"
+      "checksum": "9dca88225ec60280"
     },
     {
       "nombre": "sp_authorize_supervisor",

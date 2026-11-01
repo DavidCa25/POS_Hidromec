@@ -636,6 +636,9 @@
         </div>
       </div>
       <footer class="tp-hoja__foot">
+        <button type="button" class="tp-secundaria" *ngIf="caps.asistencia" data-caja="turno-checar" data-guide="turno-checar" (click)="abrirChecar()">
+          <i class="ph ph-clock" aria-hidden="true"></i> Checar
+        </button>
         <button type="button" class="tp-primaria" (click)="confirmarTurno()">Abrir turno</button>
       </footer>
     </div>

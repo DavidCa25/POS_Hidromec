@@ -186,6 +186,36 @@ try {
   check(escalar(`SELECT salida_en FROM dbo.asistencia_jornadas WHERE id = ${vieja};`) == null, 'y no se adivina a que hora salio');
 
   // ================================================================
+  seccion('3b. Olvido de salida: al otro dia se puede trabajar (0072)');
+  const OLV2 = alta('olvido.ayer', 'cajero');
+  const ayer = uno(`SELECT CONVERT(CHAR(19), DATEADD(HOUR, -24, SYSDATETIME()), 126) AS t;`).t;
+  const olvidada = jornada(OLV2, ayer, null, 'ABIERTA');
+  e = uno(`EXEC dbo.sp_asistencia_estado @user_id=${OLV2};`);
+  check(e.puede_entrada === true && e.puede_salida === false && e.jornada_id == null && e.olvido_dia != null,
+    'con la salida de ayer olvidada se ofrece la entrada de hoy y se dice que dia quedo sin salida');
+  check(Number(e.trabajado_min) === 0, 'y no cuenta como «trabajando 24 horas»');
+  f = falla(`EXEC dbo.sp_asistencia_marcar @user_id=${OLV2}, @tipo='SALIDA';`, 'sin salida');
+  check(f.ok, 'una salida ya no cierra la jornada olvidada con 24 horas falsas', f.error);
+  const hoyTxt = uno(`SELECT CONVERT(CHAR(10), SYSDATETIME(), 23) AS d;`).d;
+  const antesDeEntrar = q(`EXEC dbo.sp_asistencia_resumen @desde='${ayer.slice(0, 10)}', @hasta='${hoyTxt}', @persona_id=${OLV2};`)[0];
+  check(antesDeEntrar?.revisar === true && Number(antesDeEntrar?.trabajado_min) === 0 && Number(antesDeEntrar?.extra_min) === 0,
+    'aunque no vuelva, la tabla ya la marca «Revisar» con 0 horas');
+  e = marcar(OLV2, 'ENTRADA');
+  check(e.jornada_id && e.jornada_id !== olvidada && escalar(`SELECT estado FROM dbo.asistencia_jornadas WHERE id = ${olvidada};`) === 'SIN_SALIDA',
+    'la entrada de hoy deja la de ayer SIN_SALIDA y abre la nueva');
+
+  /* Turno nocturno: empezo ayer, va en curso y sigue siendo su jornada. */
+  const NOCHE = alta('turno.noche', 'cajero');
+  const hace8 = uno(`SELECT CONVERT(CHAR(19), DATEADD(HOUR, -8, SYSDATETIME()), 126) AS t;`).t;
+  const nocturna = escalar(`INSERT INTO dbo.asistencia_jornadas (user_id, dia, entrada_en, estado)
+    VALUES (${NOCHE}, DATEADD(DAY, -1, CAST(SYSDATETIME() AS DATE)), '${hace8}', 'ABIERTA'); SELECT CAST(SCOPE_IDENTITY() AS INT) AS id;`);
+  e = uno(`EXEC dbo.sp_asistencia_estado @user_id=${NOCHE};`);
+  check(Number(e.jornada_id) === nocturna && e.puede_salida === true && e.puede_entrada === false,
+    'un turno nocturno de 8 horas no es un olvido: sigue ofreciendo su salida');
+  f = falla(`EXEC dbo.sp_asistencia_marcar @user_id=${NOCHE}, @tipo='ENTRADA';`, 'Ya registraste');
+  check(f.ok, 'y no se le abre otra jornada encima', f.error);
+
+  // ================================================================
   seccion('4. El calculo, con una semana conocida (5 al 11 de octubre)');
   /* Ana, L-V 08:00-16:00, descanso de 30 min. */
   const lun = jornada(ANA, '2026-10-05T07:58:00', '2026-10-05T16:42:00');
@@ -217,6 +247,14 @@ try {
   x = resumen(SIN).get('2026-10-05');
   check(x && x.tiene_horario === false && Number(x.extra_min) === 0 && Number(x.trabajado_min) === 660,
     'sin horario asignado: cuenta las horas, no la extra');
+
+  /* Una jornada cerrada de 40 horas (la dejo la version anterior) no se cree. */
+  const ABS = alta('jornada.absurda', 'cajero');
+  jornada(ABS, '2026-10-05T08:00:00', '2026-10-07T00:00:00');
+  q(`EXEC dbo.sp_asistencia_horario_guardar @persona_id=${ABS}, @dias=N'${json(semana)}';`);
+  x = resumen(ABS).get('2026-10-05');
+  check(x && x.revisar === true && Number(x.trabajado_min) === 0 && Number(x.extra_min) === 0,
+    'una jornada cerrada de 40 horas sin corregir va a «Revisar», con 0 horas y 0 extra', JSON.stringify({ t: x?.trabajado_min, e: x?.extra_min, r: x?.revisar }));
 
   q(reglas({ pagado: 1 }));
   check(Number(resumen(ANA).get('2026-10-05').trabajado_min) === 524, 'con descanso pagado el lunes son 8:44');

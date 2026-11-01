@@ -37,11 +37,14 @@ async function sql(base, texto) {
   return r.sets.length ? r.sets[r.sets.length - 1] : [];
 }
 async function aBarra(p) {
+  await p.waitForSelector('.wxdock, .wxside', { timeout: 15000 });
   if (await p.locator('.wxside').isVisible().catch(() => false)) return;
   await p.click('.wxmodo.es-dock');
   await p.waitForSelector('.wxside', { timeout: 5000 });
 }
 async function aDock(p) {
+  /* Tras cerrar el aviso de turno la pantalla se esta montando: se espera a la forma actual. */
+  await p.waitForSelector('.wxdock, .wxside', { timeout: 15000 });
   if (await p.locator('.wxdock').isVisible().catch(() => false)) return;
   await p.click('.wxmodo.es-sidebar');
   await p.waitForSelector('.wxdock', { timeout: 5000 });

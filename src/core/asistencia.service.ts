@@ -78,6 +78,9 @@ export interface EstadoAsistencia {
   descanso_desde: string | null;
   trabajado_min: number;
   descanso_min: number;
+  /** 0072: el dia que quedo sin salida, si hay un olvido por corregir. */
+  olvido_dia: string | null;
+  olvido_entrada: string | null;
   horario_entrada: string | null;
   horario_salida: string | null;
   horario_descanso_min: number | null;

@@ -19,7 +19,13 @@ BEGIN
     IF @desde IS NULL OR @hasta IS NULL OR @hasta < @desde
         THROW 51000, N'Indica un rango de fechas válido.', 1;
 
-    SELECT j.id, j.user_id, j.dia, j.entrada_en, j.salida_en, j.estado, j.corregida, j.register_id
+    /* Mismo criterio que sp_asistencia_resumen: el detalle dice lo mismo que la tabla. */
+    DECLARE @ahora DATETIME2(0) = SYSDATETIME();
+    SELECT j.id, j.user_id, j.dia, j.entrada_en, j.salida_en,
+           CASE WHEN j.estado = 'ABIERTA' AND j.dia < CAST(@ahora AS DATE) AND DATEDIFF(MINUTE, j.entrada_en, @ahora) > 840 THEN 'SIN_SALIDA'
+                WHEN j.estado = 'CERRADA' AND j.corregida = 0 AND DATEDIFF(MINUTE, j.entrada_en, j.salida_en) > 960 THEN 'SIN_SALIDA'
+                ELSE j.estado END AS estado,
+           j.corregida, j.register_id
       FROM dbo.asistencia_jornadas j
      WHERE j.user_id = @persona_id AND j.dia BETWEEN @desde AND @hasta
      ORDER BY j.entrada_en DESC;
