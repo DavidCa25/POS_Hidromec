@@ -48,6 +48,10 @@ BEGIN
             SELECT @persona_id = user_id, @estado = estado, @e_antes = entrada_en, @s_antes = salida_en
               FROM dbo.asistencia_jornadas WITH (UPDLOCK, HOLDLOCK) WHERE id = @jornada_id;
             IF @estado IS NULL THROW 51000, N'Esa jornada no existe.', 1;
+            /* Un olvido sigue ABIERTA hasta la siguiente entrada: necesita salida. */
+            IF @estado = 'ABIERTA' AND CAST(@e_antes AS DATE) < CAST(SYSDATETIME() AS DATE)
+               AND DATEDIFF(MINUTE, @e_antes, SYSDATETIME()) > 840
+                SET @estado = 'SIN_SALIDA';
         END
         ELSE IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE id = @persona_id)
             THROW 51000, N'Esa persona no existe.', 1;
@@ -59,12 +63,14 @@ BEGIN
         IF @salida IS NOT NULL AND @salida <= @entrada
             THROW 51000, N'La salida tiene que ser después de la entrada.', 1;
         IF DATEDIFF(MINUTE, @entrada, ISNULL(@salida, SYSDATETIME())) > 24 * 60
-            THROW 51000, N'Una jornada no puede pasar de 24 horas.', 1;
+            THROW 51000, N'Una jornada no puede pasar de 24 horas: revisa la fecha de salida.', 1;
         IF @entrada > SYSDATETIME() OR @salida > SYSDATETIME()
             THROW 51000, N'No se pueden registrar horas en el futuro.', 1;
         IF EXISTS (SELECT 1 FROM dbo.asistencia_jornadas o
                     WHERE o.user_id = @persona_id AND (@jornada_id IS NULL OR o.id <> @jornada_id)
                       AND o.estado <> 'SIN_SALIDA'
+                      AND NOT (o.estado = 'ABIERTA' AND o.dia < CAST(SYSDATETIME() AS DATE)
+                               AND DATEDIFF(MINUTE, o.entrada_en, SYSDATETIME()) > 840)
                       AND o.entrada_en < ISNULL(@salida, SYSDATETIME())
                       AND ISNULL(o.salida_en, SYSDATETIME()) > @entrada)
             THROW 51000, N'Se encima con otra jornada de esa persona.', 1;

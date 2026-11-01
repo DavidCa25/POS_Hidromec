@@ -376,6 +376,9 @@
           </div>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-primary me-auto" *ngIf="caps.asistencia" data-caja="turno-checar" data-guide="turno-checar" (click)="abrirChecar()">
+            <i class="ph ph-clock"></i> Checar
+          </button>
           <button type="button" class="btn btn-outline-secondary" *ngIf="openShiftRequired" (click)="salirDeVentas()">Salir</button>
           <button type="button" class="btn btn-primary" data-guide="turno-abrir-confirmar" [disabled]="openingShiftLoading" (click)="confirmarAbrirTurno()">
             <span *ngIf="!openingShiftLoading">Abrir turno</span>

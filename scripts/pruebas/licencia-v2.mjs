@@ -411,7 +411,10 @@ seccion('Prueba de UN giro');
     'una respuesta del servidor SIN certificado no se guarda: la licencia actual queda intacta');
 
   store.clearLicense();
-  const T0 = { machine_id: 'PC-L', started_at: '2026-10-01T15:00:00Z', expires_at: '2026-10-31T15:00:00Z' };
+  /* Relativas a hoy: esta prueba corre contra el reloj real y una fecha fija
+     la hizo caducar el 31 de octubre. */
+  const DIA = 86400000;
+  const T0 = { machine_id: 'PC-L', started_at: new Date(Date.now() - DIA).toISOString(), expires_at: new Date(Date.now() + 29 * DIA).toISOString() };
   const sinGiro = await firmarPayload(payloadDePrueba(T0, { verticals: [], entitlements: BASE, screens: {} }, ACT));
   ll.aplicarRespuesta({ certificate: sinGiro });
   const e0 = ll.estado(true), ev0 = ll.evaluador(true);

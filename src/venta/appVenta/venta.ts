@@ -1373,6 +1373,13 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
+    /* Con el aviso de abrir turno, F9 sigue checando: es lo primero al llegar. */
+    if (event.key === 'F9' && this.showOpenShiftModal && this.caps.asistencia) {
+      event.preventDefault();
+      this.abrirChecar();
+      return;
+    }
+
     if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }

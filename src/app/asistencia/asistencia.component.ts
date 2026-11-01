@@ -105,7 +105,7 @@ export class AsistenciaComponent implements OnInit {
   readonly filas = computed<Fila[]>(() => {
     const por = new Map<string, DiaAsistencia>();
     for (const r of this.registros()) por.set(`${r.user_id}|${String(r.dia).slice(0, 10)}`, r);
-    return this.personas().map(p => {
+    return this.personasDeLaTabla().map(p => {
       const suyos = this.horarios().filter(h => h.user_id === p.user_id);
       const celdas = this.dias().map((fecha, i): Celda => {
         const r = por.get(`${p.user_id}|${fecha}`);
@@ -137,7 +137,10 @@ export class AsistenciaComponent implements OnInit {
     retardos: t.retardos + f.retardos, revisar: t.revisar + f.revisar,
   }), { trabajado: 0, extra: 0, retardos: 0, revisar: 0 }));
 
-  readonly sinHorario = computed(() => this.personas().filter(p => !this.horarios().some(h => h.user_id === p.user_id)).length);
+  /** Quien se espera en la tabla: cajeros, y cualquiera con horario o con horas esta semana. El dueno sin horario no es un pendiente. */
+  readonly personasDeLaTabla = computed(() => this.personas().filter(p => String(p.rol).toLowerCase() === 'cajero'
+    || this.horarios().some(h => h.user_id === p.user_id) || this.registros().some(r => r.user_id === p.user_id)));
+  readonly sinHorario = computed(() => this.personasDeLaTabla().filter(p => !this.horarios().some(h => h.user_id === p.user_id)).length);
 
   async ngOnInit(): Promise<void> {
     await Promise.all([this.cargar(), this.cargarReglas()]);
@@ -186,6 +189,11 @@ export class AsistenciaComponent implements OnInit {
   }
   cerrarDetalle(): void { this.detalle.set(null); this.corrigiendo.set(null); }
 
+  /** La salida cayo otro dia que la entrada: se dice cual, no solo la hora. */
+  salidaOtroDia(j: any): boolean {
+    return !!j?.salida_en && String(j.salida_en).slice(0, 10) !== String(j.entrada_en).slice(0, 10);
+  }
+
   descansosDe(jornadaId: number): any[] {
     return (this.detalle()?.descansos ?? []).filter(d => d.jornada_id === jornadaId);
   }
@@ -196,7 +204,9 @@ export class AsistenciaComponent implements OnInit {
   corregir(j: any | null): void {
     const hoy = fechaLocal();
     const e = j ? String(j.entrada_en) : `${hoy}T00:00:00`;
-    const s = j?.salida_en ? String(j.salida_en) : null;
+    /* En «Revisar» la salida guardada no sirve (no hay, o es de otro dia): se
+       parte de la fecha de entrada y se escribe solo la hora. */
+    const s = j?.salida_en && j?.estado !== 'SIN_SALIDA' ? String(j.salida_en) : null;
     this.corrigiendo.set({
       jornadaId: j?.id ?? null,
       fechaE: e.slice(0, 10), horaE: j ? e.slice(11, 16) : '',

@@ -30,4 +30,5 @@ export const ACCIONES_CAJA: AccionCaja[] = [
   { id: 'cajon', para: 'Abrir el cajón sin venta (con su autorización).' },
   { id: 'salida', para: 'Salida de efectivo de la caja.' },
   { id: 'checar', para: 'Entrada, descanso y salida (con Asistencia activada).' },
+  { id: 'turno-checar', para: 'Checar desde el aviso de abrir turno: lo primero al llegar es checar, y ese aviso tapa la caja.' },
 ];
