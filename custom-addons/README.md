@@ -67,6 +67,7 @@ su personaje.
 | Addon | Cliente | Huecos |
 |---|---|---|
 | `wybix_idonut` | I Do Nut | mascota I DO NUT ME, mascota en Touch, logo como fondo de Touch, tarjeta del Club en Wallet |
+| `wybix_bjsuper` | B&J Super | mascota Carri, mascota en Touch, logo como fondo de Touch, menú en línea, tarjeta del Club en Wallet; Venta suelta de arranque |
 
 ## Ajustes de comportamiento
 
@@ -76,4 +77,5 @@ Solo claves conocidas y booleanas (`scripts/addons.mjs` descarta el resto).
 
 | Ajuste | Qué hace |
 |---|---|
+| `ventaSuelta: true` | **Valor de arranque**: enciende la aplicación Venta suelta la primera vez que arranca la caja, si el negocio nunca la encendió ni la apagó. Después manda lo que se decida en **Aplicaciones**. |
 | `aprobaciones: false` | **Valor de arranque**: no se piden aprobaciones (PIN o app) para retiros, egresos, devoluciones, ajustes, compras ni cajón sin venta: quien vende las hace. Siguen en bitácora, en el Cierre del día y con aviso al dueño. El cliente puede cambiarlo cuando quiera desde el dock (**Más > Aprobaciones**, solo Encargado y Administrador); lo que decida queda en la base (`business_modules`, clave `APROBACIONES`) y manda sobre este valor. |

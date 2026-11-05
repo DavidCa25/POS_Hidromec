@@ -328,7 +328,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "ae92f89a36a84bfd"
+      "checksum": "8db3cc4ec301e66b"
     },
     {
       "nombre": "sp_close_shift",
@@ -697,7 +697,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "aa6bed15a6319e2f"
+      "checksum": "725bda70108d3c80"
     },
     {
       "nombre": "sp_get_actual_folio",
@@ -931,7 +931,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "46bedb01793043ff"
+      "checksum": "b3aff98eb1b48022"
     },
     {
       "nombre": "sp_get_modifier_groups",
@@ -2254,7 +2254,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "9337c96878a5c6f5"
+      "checksum": "91fcd2f8bbcbd1a8"
     },
     {
       "nombre": "sp_register_supplier_payment",
@@ -2281,7 +2281,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "aea0f1da69275f1b"
+      "checksum": "50cad8ba9af3f983"
     },
     {
       "nombre": "sp_report_actividad_horaria",
@@ -2907,6 +2907,24 @@
       "checksum": "2ae5e8720f258538"
     },
     {
+      "nombre": "sp_venta_suelta_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/venta_suelta/sp_venta_suelta_get.sql",
+      "origen": "Wybix_E2E_Core",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "dcb0c8f491138e64"
+    },
+    {
+      "nombre": "sp_venta_suelta_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/venta_suelta/sp_venta_suelta_guardar.sql",
+      "origen": "Wybix_E2E_Core",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "10a6c4fc349a7ed3"
+    },
+    {
       "nombre": "HospOrdenLineaV2Type",
       "tipo": "USER_TABLE_TYPE",
       "archivo": "sql/types/HospOrdenLineaV2Type.sql",
@@ -3014,14 +3032,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 128,
-      "columnas": 1359,
-      "pk": 128,
+      "tablas": 129,
+      "columnas": 1364,
+      "pk": 129,
       "unicas": 19,
-      "foraneas": 166,
-      "chequeos": 131,
-      "predeterminados": 341,
-      "indices": 134
+      "foraneas": 168,
+      "chequeos": 133,
+      "predeterminados": 342,
+      "indices": 135
     },
     "objetos": [
       {
@@ -4801,6 +4819,20 @@
         "predeterminados": 3,
         "indices": 0,
         "checksum": "13e07beac0312577"
+      },
+      {
+        "nombre": "venta_suelta",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/venta_suelta.sql",
+        "origen": "Wybix_E2E_Core",
+        "columnas": 5,
+        "pk": "PK_venta_suelta",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "f04c2c286417afe0"
       },
       {
         "nombre": "whatsapp_pedido_avisos",

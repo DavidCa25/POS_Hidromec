@@ -59,6 +59,7 @@ export class CapabilityService {
     mesas: 'mesas',
     comandas: 'comandas',
     asistencia: 'asistencia',
+    ventaSuelta: 'venta-suelta',
   };
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -89,6 +90,9 @@ export class CapabilityService {
       /* No depende de la licencia: llevar las horas del equipo no es una
          capacidad de venta que se cobre aparte. */
       asistencia: this.modulos().has('asistencia'),
+      /* Tampoco depende de la licencia: es como se descuenta el inventario,
+         no una capacidad de venta que se cobre aparte. */
+      ventaSuelta: this.modulos().has('venta-suelta'),
     };
   });
 
@@ -99,6 +103,7 @@ export class CapabilityService {
   get mesas(): boolean { return this.capabilities().mesas; }
   get comandas(): boolean { return this.capabilities().comandas; }
   get asistencia(): boolean { return this.capabilities().asistencia; }
+  get ventaSuelta(): boolean { return this.capabilities().ventaSuelta; }
 
   /**
    * Donde vende ESTA caja ahora mismo.

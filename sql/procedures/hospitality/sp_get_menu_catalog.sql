@@ -85,7 +85,7 @@ BEGIN
             WHERE pmg.product_id = p.id) THEN 1 ELSE 0 END AS has_modifiers,
         CASE p.inventory_mode
             WHEN 'NONE'   THEN 999999
-            WHEN 'DIRECT' THEN FLOOR(p.stock)
+            WHEN 'DIRECT' THEN FLOOR(p.stock) + ISNULL(vs.extra, 0)
             ELSE ISNULL(po.units, 0)
         END AS available_units,
         /* Solo tiene sentido en una receta: quien limita y por cuanto. */
@@ -97,6 +97,13 @@ BEGIN
     FROM dbo.products p
     LEFT JOIN dbo.CAT_categories c ON c.id = p.category_id
     LEFT JOIN posibles po ON po.product_id = p.id
+    /* 0073 Venta suelta: el suelto alcanza tambien con los paquetes cerrados. */
+    OUTER APPLY (SELECT CASE WHEN pk.stock > 0 THEN FLOOR(pk.stock) * v.piezas ELSE 0 END AS extra
+                   FROM dbo.venta_suelta v
+                   JOIN dbo.products pk ON pk.id = v.parent_product_id
+                  WHERE v.product_id = p.id
+                    AND EXISTS (SELECT 1 FROM dbo.business_modules
+                                 WHERE module_key = N'venta-suelta' AND enabled = 1)) vs
     WHERE p.active = 1 AND p.sellable = 1;
 
     /* 1) Categorias con producto vendible */

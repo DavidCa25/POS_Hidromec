@@ -606,6 +606,95 @@ export class Inventario {
     }
   }
 
+  // ------------------------------------------------- venta suelta (0073)
+  /**
+   * De que paquete sale este producto cuando se vende suelto: el cigarro de
+   * la cajetilla de 20. Solo con la aplicacion Venta suelta encendida.
+   *
+   * Aqui solo se guarda el vinculo. Abrir el paquete cuando faltan piezas lo
+   * hace sp_register_sale en la misma transaccion de la venta.
+   */
+  suelto: { padre: number | null; piezas: number | null } = { padre: null, piezas: null };
+  private sueltoOriginal: { padre: number | null; piezas: number | null } = { padre: null, piezas: null };
+  /** Los sueltos que salen de ESTE producto. Si tiene, es paquete: no puede ser suelto. */
+  sueltosDeEste: string[] = [];
+
+  get gestionaSuelto(): boolean {
+    return this.caps.ventaSuelta && this.capturaStock;
+  }
+
+  private opcPaquetesMemo: { fuente: any[]; id: number | null; lista: WxOpcion[] } | null = null;
+  /** Los productos que pueden ser su paquete: con existencias propias y que no sea el mismo. */
+  get opcPaquetes(): WxOpcion[] {
+    const m = this.opcPaquetesMemo;
+    if (m && m.fuente === this.inventario && m.id === this.editingProductId) return m.lista;
+    const lista = (this.inventario ?? [])
+      .filter((p: any) => Number(p.id) !== Number(this.editingProductId)
+        && String(p.inventory_mode ?? 'DIRECT') === 'DIRECT')
+      .map((p: any) => ({
+        valor: Number(p.id),
+        etiqueta: String(p.product_name ?? p.nombre ?? p.name ?? ''),
+        nota: p.part_number ? String(p.part_number) : undefined,
+      }));
+    this.opcPaquetesMemo = { fuente: this.inventario, id: this.editingProductId, lista };
+    return lista;
+  }
+
+  /** Lo que cuesta cada pieza, para enseñarlo mientras se escribe. */
+  get precioPorPieza(): string {
+    const padre = (this.inventario ?? []).find((p: any) => Number(p.id) === Number(this.suelto.padre));
+    const n = Number(this.suelto.piezas ?? 0);
+    if (!padre || n < 2) return '';
+    const precio = Number(padre.price ?? 0);
+    return precio > 0 ? `El paquete vale $${precio.toFixed(2)}: $${(precio / n).toFixed(2)} por pieza.` : '';
+  }
+
+  private limpiarSuelto() {
+    this.suelto = { padre: null, piezas: null };
+    this.sueltoOriginal = { padre: null, piezas: null };
+    this.sueltosDeEste = [];
+  }
+
+  private async cargarSuelto(productId: number) {
+    this.limpiarSuelto();
+    if (!productId || !this.caps.ventaSuelta) return;
+    try {
+      const r = await (window as any).electronAPI?.ventaSueltaGet?.({ productId });
+      if (!r?.success) return;
+      const paq = r.data?.paquete;
+      if (paq) {
+        this.suelto = { padre: Number(paq.parent_product_id), piezas: Number(paq.piezas) };
+        this.sueltoOriginal = { ...this.suelto };
+      }
+      this.sueltosDeEste = (r.data?.sueltos ?? []).map((s: any) => String(s.product_name ?? ''));
+      this.cdr.detectChanges();
+    } catch {
+      // Sin el vinculo el producto se edita igual: es opcional.
+    }
+  }
+
+  /**
+   * Guarda el vinculo. Como las presentaciones, necesita el id del producto,
+   * asi que corre DESPUES de crearlo o actualizarlo. Un fallo aqui no invalida
+   * el producto: ya quedo guardado.
+   */
+  private async guardarSuelto(productId: number) {
+    if (!productId || !this.caps.ventaSuelta) return;
+    const padre = this.gestionaSuelto ? this.suelto.padre : null;
+    const piezas = padre ? Number(this.suelto.piezas ?? 0) : null;
+    if (padre === this.sueltoOriginal.padre && piezas === this.sueltoOriginal.piezas) return;
+    try {
+      const r = await (window as any).electronAPI.ventaSueltaGuardar({ productId, parentProductId: padre, piezas });
+      if (!r?.success) throw new Error(r?.error);
+    } catch (e: any) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'El producto se guardó, la venta suelta no',
+        text: e?.message || 'Puedes volver a intentarlo editándolo.',
+      });
+    }
+  }
+
   async cargarCategorias() {
     try {
       const rs = await (window as any).electronAPI.getCategories();
@@ -670,6 +759,7 @@ export class Inventario {
         // La imagen necesita el id que acaba de devolver el alta.
         const nuevoId = Number(result?.data?.[0]?.id ?? 0);
         await this.guardarPresentaciones(nuevoId);
+        await this.guardarSuelto(nuevoId);
         await this.guardarImagen(nuevoId);
         await this.consultarInventario();
         this.cerrarProductoModal();
@@ -783,6 +873,7 @@ export class Inventario {
       }
 
       await this.guardarPresentaciones(Number(this.editingProductId));
+      await this.guardarSuelto(Number(this.editingProductId));
       await this.guardarImagen(Number(this.editingProductId));
       await this.consultarInventario();
       this.cerrarProductoModal();
@@ -805,6 +896,7 @@ export class Inventario {
     this.limpiarImagen();
     this.presentaciones = [];
     this.presentacionesOriginales = [];
+    this.limpiarSuelto();
     this.presentacionStock = null;
     this.capturandoCodigo = false;
     this.productoModalAbierto = true;
@@ -842,6 +934,7 @@ export class Inventario {
     this.limpiarImagen();
     this.presentacionStock = null;
     this.cargarPresentaciones(Number(item?.id ?? 0));
+    this.cargarSuelto(Number(item?.id ?? 0));
     this.cargarImagen(item);
     this.stockAntesDeEditar = Number(item?.stock ?? 0) || 0;
     this.modoAntesDeEditar = this.form.inventoryMode;

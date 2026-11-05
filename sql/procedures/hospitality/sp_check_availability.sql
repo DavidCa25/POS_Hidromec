@@ -116,26 +116,36 @@ BEGIN
         RETURN;
     END
 
+    /* 0073 Venta suelta: un suelto tambien alcanza con los paquetes cerrados
+       de su paquete, porque la venta los abre (sp_register_sale, paso 3c).
+       Solo con el modulo encendido. */
+    DECLARE @vs BIT = CASE WHEN EXISTS (SELECT 1 FROM dbo.business_modules
+                                         WHERE module_key = N'venta-suelta' AND enabled = 1) THEN 1 ELSE 0 END;
+
     /* Cuantas unidades alcanzan, y cual es el ingrediente que pone el limite.
        Se agrupa por producto: si un ingrediente aparece dos veces -receta mas
        un extra del mismo- lo que manda es la suma, no cada parte. */
     SELECT TOP 1
         CAST(CASE WHEN t.necesita <= 0 THEN 999999
-                  ELSE FLOOR(ISNULL(p.stock, 0) / t.necesita) END AS INT) AS disponible,
+                  ELSE FLOOR((ISNULL(p.stock, 0) + ISNULL(vs.extra, 0)) / t.necesita) END AS INT) AS disponible,
         CAST(1 AS BIT) AS hay_receta,
         p.id AS limita_product_id,
         p.nombre AS limita_nombre,
         t.necesita AS limita_necesita,
-        ISNULL(p.stock, 0) AS limita_stock,
+        (ISNULL(p.stock, 0) + ISNULL(vs.extra, 0)) AS limita_stock,
         p.base_uom AS limita_uom,
-        CASE WHEN ISNULL(p.stock, 0) < t.necesita
+        CASE WHEN (ISNULL(p.stock, 0) + ISNULL(vs.extra, 0)) < t.necesita
              THEN CONCAT(N'No hay suficiente ', p.nombre, N' para preparar esta combinacion.')
              ELSE NULL END AS motivo
     FROM (SELECT product_id, SUM(qty_per_unit) AS necesita
             FROM #ef_requerimientos GROUP BY product_id) t
     JOIN dbo.products p ON p.id = t.product_id
+    OUTER APPLY (SELECT CASE WHEN pp.stock > 0 THEN FLOOR(pp.stock) * v.piezas ELSE 0 END AS extra
+                   FROM dbo.venta_suelta v
+                   JOIN dbo.products pp ON pp.id = v.parent_product_id
+                  WHERE @vs = 1 AND v.product_id = p.id) vs
     ORDER BY CASE WHEN t.necesita <= 0 THEN 999999
-                  ELSE FLOOR(ISNULL(p.stock, 0) / t.necesita) END ASC,
+                  ELSE FLOOR((ISNULL(p.stock, 0) + ISNULL(vs.extra, 0)) / t.necesita) END ASC,
              p.id ASC;
 END
 GO

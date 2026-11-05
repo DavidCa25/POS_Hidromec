@@ -66,7 +66,7 @@ if (existsSync(assets)) { mkdirSync(ASSETS, { recursive: true }); cpSync(assets,
 
 /* `ajustes`: comportamiento que el CLIENTE decide (p. ej. `aprobaciones: false`).
    Solo claves conocidas y booleanas: un addon no inyecta configuracion arbitraria. */
-const AJUSTES = ['aprobaciones'];
+const AJUSTES = ['aprobaciones', 'ventaSuelta'];
 const ajustes = Object.fromEntries(Object.entries(manifiesto.ajustes || {}).filter(([k, v]) => AJUSTES.includes(k) && typeof v === 'boolean'));
 writeFileSync(ELECTRON, JSON.stringify({ id, nombre: manifiesto.nombre, version: manifiesto.version, canal: manifiesto.canal, ajustes }, null, 2) + '\n');
 console.log(`addons: ${id} ${manifiesto.version} (canal "${manifiesto.canal}")`);
