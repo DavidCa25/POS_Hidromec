@@ -788,3 +788,10 @@
 
 /* 0071: el atajo Checar es un boton de verdad (teclado y lector de pantalla). */
 button.pos-shortcut { font: inherit; color: inherit; }
+
+/* Renglón elegido con las flechas: + y − cambian su cantidad, Supr lo quita. */
+tr.linea-activa > td {
+  background: color-mix(in srgb, var(--wx-accent) 10%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--wx-accent) 35%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--wx-accent) 35%, transparent);
+}
+tr.linea-activa > td:first-child { box-shadow: inset 3px 0 0 var(--wx-accent); }

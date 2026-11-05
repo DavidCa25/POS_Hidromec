@@ -19,6 +19,8 @@ export class CartLine {
   objetoImpuesto: string | null;
   tasaIva: number | null;
   inventoryMode: LineSource['inventoryMode'];
+  /** Se vende por peso o medida: acepta 0.25 kg. Ver `CartService.setQty`. */
+  decimal: boolean;
   /** Nota libre de la linea ("sin hielo"). No afecta inventario. */
   note: string | null = null;
   /**
@@ -49,6 +51,7 @@ export class CartLine {
     this.objetoImpuesto = src.objetoImpuesto ?? null;
     this.tasaIva = src.tasaIva ?? null;
     this.inventoryMode = src.inventoryMode;
+    this.decimal = !!src.decimal;
   }
 
   /** Precio unitario efectivo: base + deltas de opciones. */
@@ -322,14 +325,26 @@ export class CartService {
     return line;
   }
 
-  setQty(line: CartLine, qty: number, min = 1): void {
+  /**
+   * LA CANTIDAD MÍNIMA DEPENDE DE CÓMO SE VENDE.
+   *
+   * Por pieza, el mínimo es 1. Por peso o medida (`decimal`), el mínimo es
+   * 0.01 y la cantidad se guarda con 2 decimales, los mismos que la base
+   * (DECIMAL(12,2)). Antes el mínimo era 1 para todo: 0.250 kg de jamón se
+   * cobraba como 1 kg.
+   */
+  setQty(line: CartLine, qty: number, min?: number): void {
     if (line.enviada != null) return;
-    const q = Number(qty);
-    line.qty = Number.isFinite(q) && q >= min ? q : min;
+    const piso = min ?? CartService.minimoDe(line);
+    let q = Number(qty);
+    if (line.decimal && Number.isFinite(q)) q = Math.round(q * 100) / 100;
+    line.qty = Number.isFinite(q) && q >= piso ? q : piso;
     this.touch();
   }
 
-  adjustQty(line: CartLine, delta: number, min = 1): void {
+  static minimoDe(line: { decimal?: boolean }): number { return line.decimal ? 0.01 : 1; }
+
+  adjustQty(line: CartLine, delta: number, min?: number): void {
     if(line.combo)return;
     this.setQty(line, Number(line.qty || 0) + delta, min);
   }

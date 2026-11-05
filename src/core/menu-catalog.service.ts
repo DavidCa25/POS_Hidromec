@@ -159,6 +159,7 @@ export class MenuCatalogService {
       limita_necesita: p.limita_necesita != null ? Number(p.limita_necesita) : null,
       sellable: true,
       allow_decimal_qty: !!p.allow_decimal_qty,
+      base_uom: p.base_uom ?? undefined,
       has_modifiers: !!p.has_modifiers,
       available_units: Number(p.available_units ?? 0),
       image_version: Number(p.image_version ?? 0),

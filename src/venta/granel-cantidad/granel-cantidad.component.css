@@ -1,0 +1,30 @@
+/* ¿Cuánto? Encima de cualquier otro modal de la caja. */
+.granel-velo { background: rgba(0, 0, 0, 0.22); z-index: 12500; }
+
+.granel { max-width: 460px; margin-inline: auto; }
+.granel__producto { margin-top: 2px; color: var(--wx-text-muted); font-size: var(--wx-text-sm, 0.875rem); }
+
+.granel__campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.granel__campo { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.granel__campo > span { font-weight: 600; font-size: var(--wx-text-sm, 0.875rem); color: var(--wx-text); }
+.granel__entrada { display: flex; align-items: center; gap: 6px; }
+.granel__entrada b { color: var(--wx-text-muted); font-weight: 600; }
+.granel__entrada input { font-family: var(--wx-font-mono); text-align: right; }
+
+.granel__cobro { margin: 12px 0 0; color: var(--wx-text); }
+.granel__cobro span { color: var(--wx-text-muted); }
+.granel__error { margin: 12px 0 0; color: var(--wx-danger, #b42318); font-weight: 600; }
+.granel__ayuda { margin: 12px 0 0; color: var(--wx-text-muted); font-size: var(--wx-text-sm, 0.875rem); }
+
+.granel__rapidos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.granel__rapido {
+  padding: 10px 0; border-radius: var(--wx-radius-sm, 10px);
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); color: var(--wx-text);
+  font-weight: 600;
+  transition: background-color var(--wx-dur-micro, 120ms) ease, border-color var(--wx-dur-micro, 120ms) ease;
+}
+.granel__rapido:hover { background: var(--wx-raised); border-color: var(--wx-edge-strong); }
+
+@media (max-width: 420px) {
+  .granel__campos { grid-template-columns: 1fr; }
+}

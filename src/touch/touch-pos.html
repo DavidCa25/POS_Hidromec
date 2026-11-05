@@ -695,6 +695,9 @@
 </div>
 
 <!-- Salida de dinero: el mismo componente que Retail. -->
+<!-- ¿CUÁNTO? Granel: por peso o por dinero (venta/granel-cantidad). -->
+<app-granel-cantidad *ngIf="granel() as g" [nombre]="g.p.product_name" [precio]="g.precio" [uom]="g.p.base_uom ?? 'kg'"
+                     (aceptar)="cerrarGranel($event)" (cancelar)="cerrarGranel(null)"></app-granel-cantidad>
 <app-salida-efectivo *ngIf="salidaAbierta()" (cerrado)="salidaAbierta.set(false)"></app-salida-efectivo>
 
 <app-receipt-viewer *ngIf="verTicket&&ultimoFolio()" [id]="ultimoFolio()!" (close)="verTicket=false"></app-receipt-viewer>

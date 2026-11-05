@@ -1,6 +1,7 @@
 <div class="wx-dialogo-velo asis-velo" (click)="cerrar.emit()">
   <section class="wx-dialogo asis-checar" role="dialog" aria-modal="true" aria-labelledby="asis-checar-t"
-           data-guide="asistencia-checar" (click)="$event.stopPropagation()">
+           data-guide="asistencia-checar" (click)="$event.stopPropagation()"
+           wxFlechas wxFlechasInicio=".asis-checar button:not(.asis-x):not([disabled])">
     <header class="asis-checar__cab">
       <h3 id="asis-checar-t">Checar</h3>
       <button type="button" class="asis-x" aria-label="Cerrar" (click)="cerrar.emit()"><i class="ph ph-x"></i></button>

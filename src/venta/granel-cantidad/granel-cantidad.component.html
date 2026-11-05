@@ -1,0 +1,58 @@
+<!-- ¿CUÁNTO? Granel: por peso o por dinero. Ver granel-cantidad.component.ts. -->
+<div class="modal fade show d-block granel-velo" role="presentation">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 granel" role="dialog" aria-modal="true" aria-labelledby="granel-t"
+         data-guide="granel-cantidad"
+         wxFlechas wxFlechasInicio="#granel-cantidad" (wxFlechasEscape)="cancelar.emit()">
+      <div class="modal-header border-0 pb-1">
+        <div>
+          <h5 class="modal-title fw-bold m-0" id="granel-t">¿Cuánto?</h5>
+          <div class="granel__producto">{{ nombre }} · {{ precio | currency:'MXN':'symbol-narrow':'1.2-2' }} / {{ unidad }}</div>
+        </div>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="granel__campos">
+          <label class="granel__campo">
+            <span>Cantidad</span>
+            <div class="granel__entrada">
+              <input id="granel-cantidad" class="form-control form-control-lg" inputmode="decimal" autocomplete="off"
+                     [ngModel]="cantidadTexto" (ngModelChange)="alEscribirCantidad($event)"
+                     (focus)="$any($event.target).select()" (keydown.enter)="alPulsarEnter($event)"
+                     data-guide="granel-cantidad-kg" aria-describedby="granel-ayuda">
+              <b>{{ unidad }}</b>
+            </div>
+          </label>
+          <label class="granel__campo">
+            <span>Importe</span>
+            <div class="granel__entrada">
+              <b>$</b>
+              <input class="form-control form-control-lg" inputmode="decimal" autocomplete="off"
+                     [ngModel]="importeTexto" (ngModelChange)="alEscribirImporte($event)"
+                     (focus)="$any($event.target).select()" (keydown.enter)="alPulsarEnter($event)"
+                     data-guide="granel-importe">
+            </div>
+          </label>
+        </div>
+
+        <p class="granel__cobro" *ngIf="importe != null" aria-live="polite">
+          Se cobra <b>{{ importe | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          por <b>{{ cantidad }} {{ unidad }}</b>
+          <span *ngIf="diferenciaPorRedondeo"> · lo más cercano a lo pedido</span>
+        </p>
+        <p class="granel__error" *ngIf="error" role="alert">{{ error }}</p>
+        <p class="granel__ayuda" id="granel-ayuda" *ngIf="!error && importe == null">
+          Ejemplos: 0.25, 1.5 o 250 g. O escribe el dinero en Importe.
+        </p>
+
+        <div class="granel__rapidos" *ngIf="rapidos.length" role="group" aria-label="Cantidades rápidas">
+          <button type="button" class="granel__rapido" *ngFor="let r of rapidos" (click)="elegirRapido(r.valor)">{{ r.texto }}</button>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelar.emit()">Cancelar</button>
+          <button type="button" class="btn btn-primary px-4" data-guide="granel-agregar" (click)="confirmar()">Agregar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

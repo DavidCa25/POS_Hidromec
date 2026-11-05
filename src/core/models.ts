@@ -90,6 +90,11 @@ export interface LineSource {
   objetoImpuesto?: string | null;
   tasaIva?: number | null;
   inventoryMode?: InventoryMode;
+  /**
+   * Se vende por peso o medida (jamón, queso, frijol a granel): admite
+   * cantidades con decimales y MENORES a 1, como 0.25 kg.
+   */
+  decimal?: boolean;
 }
 
 /** Cabecera de una venta cargada por folio. */
