@@ -766,8 +766,15 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     this.dineroRecibido = null;
+    this.recibidoAutomatico = false;
     this.pedidoPlataforma = '';
     this.imprimirEstaVenta = true;
+    /* Si la venta anterior fue con tarjeta, el método sigue elegido: el total
+       exacto se pone de una vez. */
+    if (this.paymentMethod === 'TARJETA' || this.paymentMethod === 'TRANSFERENCIA' || this.paymentMethod === 'TERMINAL_MP') {
+      this.dineroRecibido = this.totalVenta;
+      this.recibidoAutomatico = true;
+    }
     this.showModal = true;
   }
 
@@ -784,12 +791,27 @@ export class Venta implements OnInit, OnDestroy {
 
   cerrarModalCobrar() { this.showModal = false; }
 
+  /** «Dinero recibido» lo puso Wybix (pago exacto), no la persona. */
+  private recibidoAutomatico = false;
+
   async onPaymentMethodChange(method: PaymentMethod) {
     if(this.cobrando)return;
     this.paymentMethod = method;
     if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
     else this.pedidoPlataforma='';
+
+    /* Con tarjeta, transferencia o Mercado Pago se cobra el total exacto: se
+       pone solo. Antes había que escribirlo, y si no, el cobro fallaba con
+       «el dinero recibido debe ser mayor o igual al total». Touch ya lo hacía.
+       Al volver a efectivo se borra, para que se escriba lo que dio el cliente. */
+    if (method === 'TARJETA' || method === 'TRANSFERENCIA' || method === 'TERMINAL_MP') {
+      this.dineroRecibido = this.totalVenta;
+      this.recibidoAutomatico = true;
+    } else if (method === 'EFECTIVO' && this.recibidoAutomatico) {
+      this.dineroRecibido = null;
+      this.recibidoAutomatico = false;
+    }
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
