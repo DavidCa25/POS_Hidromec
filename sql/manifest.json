@@ -2902,8 +2902,7 @@
       "origen": "repo:sql/_heredado/importador_ventas.sql",
       "critico": false,
       "clasificacion": "current",
-      "ausenteEnBase": true,
-      "nota": "Nunca desplegado.",
+      "nota": "Desplegado en la 0074 (ventas historicas).",
       "checksum": "2ae5e8720f258538"
     },
     {
@@ -2995,6 +2994,15 @@
       "critico": true,
       "clasificacion": "current",
       "checksum": "3b16dcb7b927e0ac"
+    },
+    {
+      "nombre": "SaleLineImportType",
+      "tipo": "USER_TABLE_TYPE",
+      "archivo": "sql/types/SaleLineImportType.sql",
+      "origen": "repo:sql/_heredado/importador_ventas.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "eb5340dd995971ee"
     },
     {
       "nombre": "SaleModifierType",

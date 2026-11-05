@@ -419,10 +419,15 @@ export class WxQuickstartComponent implements OnInit {
       /* Una importación que se detuvo NO puede enseñar la pantalla de
          «terminada»: lo que entró, entró, pero queda trabajo, y mandar al
          usuario a la vista de resultado le haría creer que acabó.
-         Se queda en la revisión, donde puede volver a pulsar. */
+         Se queda en la revisión, donde puede volver a pulsar.
+         Y DICE POR QUÉ: sin el motivo, «se detuvo» no deja saber si basta
+         con volver a pulsar o si hay algo que corregir. */
+      const motivo = String(r?.error ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       await Swal.fire({
         icon: 'error', title: 'Se detuvo a medias',
         html: `Entraron <b>${r?.data?.procesadas ?? 0}</b> antes de parar.` +
+              (motivo ? `<br><br><small>${motivo}</small>` : '') +
               `<br><br>Lo que entró se queda. Puedes volver a intentarlo con el resto.`,
         confirmButtonText: 'Entendido',
       });

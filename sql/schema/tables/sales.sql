@@ -25,6 +25,8 @@ CREATE TABLE dbo.sales (
     client_sale_key UNIQUEIDENTIFIER NULL,
     client_sale_hash VARCHAR(64) COLLATE Modern_Spanish_CI_AS NULL,
     closure_id INT NULL,
+    migrated BIT NOT NULL CONSTRAINT DF_sales_migrated DEFAULT ((0)),
+    ext_folio NVARCHAR(40) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;
