@@ -14,6 +14,7 @@ import { PaletaService } from '../wx-paleta/paleta.service';
 import { NavAccionesService } from './nav-acciones.service';
 import { AsistenciaChecarComponent } from '../asistencia/checar/asistencia-checar.component';
 import { RegisterService } from '../../services/register.service';
+import { WxFlechasDirective } from '../wx-flechas/wx-flechas.directive';
 
 /**
  * WX-NAVEGACION — la carcasa de la navegacion.
@@ -252,6 +253,33 @@ export class WxNavegacionComponent implements OnInit, OnDestroy {
    */
   @HostListener('document:keydown', ['$event'])
   alTeclear(e: KeyboardEvent) {
+    /* F6 / Shift+F6: de la navegación al contenido y de vuelta, como en un
+       navegador. Sin esto, quien usa solo teclado se queda encerrado en la
+       zona donde esté. */
+    if (e.key === 'F6' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      const nav = document.querySelector('[data-zona="navegacion"]') as HTMLElement | null;
+      const cont = document.querySelector('[data-zona="contenido"]') as HTMLElement | null;
+      /* Desde el contenido se va a la navegación; desde cualquier otro lado
+         (la navegación, o nada enfocado tras cambiar de pantalla) al contenido. */
+      const enContenido = !!cont && cont.contains(document.activeElement);
+      e.preventDefault();
+      WxFlechasDirective.enfocarZona(enContenido ? nav : (cont?.querySelector('main') as HTMLElement ?? cont));
+      return;
+    }
+
+    /* NADA ENFOCADO: la primera flecha entra a la pantalla. Sin esto, en
+       Inicio recién abierto las flechas no hacían nada porque la tecla le
+       llega al <body>, que no es de ninguna zona. La venta se queda con sus
+       flechas (son del carrito) y un diálogo abierto recibe el foco primero. */
+    if (/^Arrow/.test(e.key) && !e.defaultPrevented && !e.ctrlKey && !e.altKey && !e.metaKey
+        && (document.activeElement === document.body || !document.activeElement)
+        && !document.querySelector('[data-flechas-cuerpo="propio"]')) {
+      const cont = document.querySelector('[data-zona="contenido"]') as HTMLElement | null;
+      const dialogo = cont?.querySelector('.modal.show .modal-content, .wx-dialogo, [aria-modal="true"]') as HTMLElement | null;
+      if (WxFlechasDirective.enfocarZona(dialogo ?? (cont?.querySelector('main') as HTMLElement | null) ?? cont)) e.preventDefault();
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && /^[1-6]$/.test(e.key)) {
       const areas = this.nav.areas();
       const i = Number(e.key) - 1;

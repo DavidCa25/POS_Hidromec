@@ -15,6 +15,8 @@ import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-n
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
+import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
+import { GranelCantidadComponent } from '../granel-cantidad/granel-cantidad.component';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
@@ -84,7 +86,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -181,6 +183,13 @@ export class Venta implements OnInit, OnDestroy {
   enviarCorreo=false;
 
   autoPrintTicketOnSale = true;
+
+  /**
+   * «Cobrar sin ticket» apaga la impresion SOLO de la venta en curso. Se
+   * vuelve a encender al abrir el siguiente cobro: olvidarlo apagado dejaria
+   * a la siguiente persona de la fila sin su comprobante.
+   */
+  imprimirEstaVenta = true;
 
   private lastAddedProductId: number | null = null;
 
@@ -336,7 +345,7 @@ export class Venta implements OnInit, OnDestroy {
         if (!code) return;
 
         if (this.isTypingInInput()) return;
-        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) return;
+        if (this.granel || this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) return;
         if (this.isEditing && !this.editUnlocked) return;
 
         await this.addByBarcode(code);
@@ -580,6 +589,33 @@ export class Venta implements OnInit, OnDestroy {
   private pulsoTimer: any;
   private totalAnterior: number | null = null;
 
+  /**
+   * El renglón del carrito elegido con ↑ ↓ (resaltado). Con uno elegido, + y −
+   * cambian SU cantidad y Supr lo quita; sin elegir, + y − siguen actuando
+   * sobre el último agregado, como siempre. Agregar un producto lo suelta.
+   */
+  lineaSeleccionada: number | null = null;
+
+  private moverSeleccion(delta: number) {
+    const n = this.items.length;
+    if (!n) { this.lineaSeleccionada = null; return; }
+    const actual = this.lineaSeleccionada;
+    const sig = actual == null ? (delta > 0 ? 0 : n - 1) : Math.min(n - 1, Math.max(0, actual + delta));
+    this.lineaSeleccionada = sig;
+    setTimeout(() => document.querySelector('tr.linea-activa')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  private get lineaElegida(): CartLine | null {
+    const i = this.lineaSeleccionada;
+    return i != null && i < this.items.length ? this.items[i] : null;
+  }
+
+  private ajustarCantidad(delta: number) {
+    const l = this.lineaElegida;
+    if (l) { if (!l.combo) this.cart.adjustQty(l, delta); return; }
+    this.adjustLastAddedQty(delta);
+  }
+
   private adjustLastAddedQty(delta: number) {
     const lines = this.items;
     if (!lines.length) return;
@@ -611,6 +647,9 @@ export class Venta implements OnInit, OnDestroy {
     const removed = this.items[i];
     if (!removed) return;
     this.cart.removeLine(removed);
+    if (this.lineaSeleccionada != null) {
+      this.lineaSeleccionada = this.items.length ? Math.min(this.lineaSeleccionada, this.items.length - 1) : null;
+    }
 
     if (removed.productId === this.lastAddedProductId) {
       const last = this.cart.lastLine();
@@ -727,7 +766,19 @@ export class Venta implements OnInit, OnDestroy {
 
     this.dineroRecibido = null;
     this.pedidoPlataforma = '';
+    this.imprimirEstaVenta = true;
     this.showModal = true;
+  }
+
+  /** La misma venta, sin papel. Funciona con cualquier método de pago. */
+  async cobrarSinTicket() {
+    if (this.cobrando) return;
+    this.imprimirEstaVenta = false;
+    await this.confirmarCobro();
+  }
+
+  private get imprimirAlCobrar(): boolean {
+    return this.autoPrintTicketOnSale && this.imprimirEstaVenta;
   }
 
   cerrarModalCobrar() { this.showModal = false; }
@@ -867,7 +918,7 @@ export class Venta implements OnInit, OnDestroy {
 
     const res = await this.sale.checkout(payment, {
       openDrawer: this.paymentMethod==='MIXTO'?this.pagosMixtos.some(p=>p.method==='EFECTIVO'):this.paymentMethod==='EFECTIVO',
-      autoPrint: this.autoPrintTicketOnSale,
+      autoPrint: this.imprimirAlCobrar,
     });
 
     if (!res.ok) {
@@ -1001,6 +1052,23 @@ export class Venta implements OnInit, OnDestroy {
 
   cerrarModalProductos() { this.showModalProductos = false; }
 
+  /**
+   * Enter en el buscador: si lo escrito deja productos a la vista, agrega el
+   * primero. Es lo que se espera al teclear un nombre o una clave completa;
+   * para otro, ↓ baja a la lista y las flechas eligen.
+   */
+  async agregarPrimerProductoVisible() {
+    const t = (this.filtro || '').trim().toLowerCase();
+    if (!t) return;
+    const p = this.productos.find(x =>
+      (x.product_name || '').toLowerCase().includes(t) ||
+      (x.part_number || '').toLowerCase().includes(t) ||
+      (x.bar_code || '').toLowerCase().includes(t) ||
+      (x.brand_name || '').toLowerCase().includes(t) ||
+      (x.category_name || '').toLowerCase().includes(t));
+    if (p) await this.seleccionarProducto(p);
+  }
+
   /** Relee el catalogo (stock fresco al abrir el buscador). */
   async cargarProductosActivos() {
     await this.catalog.load(true);
@@ -1022,9 +1090,48 @@ export class Venta implements OnInit, OnDestroy {
     const opciones = await this.resolverOpciones(p);
     if (opciones === null) return;        // hacía falta elegir y se canceló
 
-    this.cart.addProduct(CatalogService.toLineSource(p), 1, opciones);
+    const fuente = CatalogService.toLineSource(p);
+    /* A granel se pregunta cuánto: el jamón no se vende «uno». */
+    let qty = 1;
+    if (fuente.decimal) {
+      this.showModalProductos = false;
+      const q = await this.preguntarCantidad(p.product_name, Number(fuente.unitPrice ?? 0), p.base_uom ?? 'kg', null);
+      if (q == null) return;
+      qty = q;
+    }
+
+    this.cart.addProduct(fuente, qty, opciones);
     this.lastAddedProductId = p.id;
+    this.lineaSeleccionada = null;
     this.showModalProductos = false;
+  }
+
+  // ==================
+  // GRANEL: ¿CUÁNTO?
+  // ==================
+  /** La ventana «¿Cuánto?» abierta, y a quién le contesta. */
+  granel: { nombre: string; precio: number; uom: string; inicial: number | null; resolver: (q: number | null) => void } | null = null;
+
+  /** Abre «¿Cuánto?» y espera: la cantidad elegida, o null si se canceló. */
+  private preguntarCantidad(nombre: string, precio: number, uom: string, inicial: number | null): Promise<number | null> {
+    return new Promise(resolve => {
+      this.granel = { nombre, precio, uom, inicial, resolver: resolve };
+    });
+  }
+
+  cerrarGranel(q: number | null) {
+    const g = this.granel;
+    this.granel = null;
+    g?.resolver(q);
+  }
+
+  /** Enter sobre un renglón a granel del carrito: corregir su cantidad. */
+  private async corregirGranel(i: number) {
+    const l = this.items[i];
+    if (!l?.decimal || l.enviada != null) return;
+    const uom = this.catalog.findById(l.productId)?.base_uom ?? 'kg';
+    const q = await this.preguntarCantidad(l.productName, l.effectiveUnitPrice, uom, l.qty);
+    if (q != null) this.cart.setQty(l, q);
   }
 
   /**
@@ -1380,7 +1487,7 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
+    if (this.granel || this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }
 
@@ -1414,7 +1521,7 @@ export class Venta implements OnInit, OnDestroy {
 
       case '+':
         event.preventDefault();
-        this.adjustLastAddedQty(+1);
+        this.ajustarCantidad(+1);
         return;
 
       case '-':
@@ -1422,7 +1529,27 @@ export class Venta implements OnInit, OnDestroy {
         /* 0066 · El código de la tarjeta del Club es WXC-<serial>: ese guion
            es parte de la lectura, no el atajo de restar una pieza. */
         if (/^WXC$/i.test(this.scanBuffer)) { this.pushChar('-'); return; }
-        this.adjustLastAddedQty(-1);
+        this.ajustarCantidad(-1);
+        return;
+
+      /* ↑ ↓ eligen renglón del carrito; Supr lo quita; Esc suelta la elección. */
+      case 'ArrowDown':
+      case 'ArrowUp':
+        if (this.isEditing && !this.editUnlocked) return;
+        event.preventDefault();
+        this.moverSeleccion(event.key === 'ArrowDown' ? 1 : -1);
+        return;
+
+      case 'Delete':
+        if (this.lineaSeleccionada == null || (this.isEditing && !this.editUnlocked)) return;
+        event.preventDefault();
+        this.quitarItem(this.lineaSeleccionada);
+        return;
+
+      case 'Escape':
+        if (this.lineaSeleccionada == null) return;
+        event.preventDefault();
+        this.lineaSeleccionada = null;
         return;
     }
 
@@ -1430,6 +1557,10 @@ export class Venta implements OnInit, OnDestroy {
       if (this.scanBuffer.length) {
         event.preventDefault();
         await this.commitScanBuffer();
+      } else if (this.lineaSeleccionada != null && this.items[this.lineaSeleccionada]?.decimal
+                 && (!this.isEditing || this.editUnlocked)) {
+        event.preventDefault();
+        await this.corregirGranel(this.lineaSeleccionada);
       }
       return;
     }
@@ -1513,6 +1644,9 @@ export class Venta implements OnInit, OnDestroy {
           claveUnidad: d.clave_unidad ?? null,
           objetoImpuesto: d.objeto_impuesto ?? null,
           tasaIva: d.tasa_iva != null ? Number(d.tasa_iva) : null,
+          /* Un folio con 0.25 kg se vendió por peso: al modificarlo no puede
+             subirse a 1 por la regla de las piezas. */
+          decimal: Number(d.quantity ?? 1) % 1 !== 0,
         }, Number(d.quantity ?? 1));
       });
 
@@ -2110,7 +2244,7 @@ export class Venta implements OnInit, OnDestroy {
     const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
       mpOrderId:orderId,
       openDrawer: false, // pago con tarjeta: no se abre el cajon
-      autoPrint: this.autoPrintTicketOnSale,
+      autoPrint: this.imprimirAlCobrar,
     });
 
     if (!res.ok) {
