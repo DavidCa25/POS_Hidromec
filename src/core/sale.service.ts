@@ -308,6 +308,25 @@ export class SaleService {
     return resp ?? { success: false };
   }
 
+  /**
+   * ¿Hay cajón habilitado en esta caja? Sin cajón no tiene sentido preguntar
+   * si se abre para guardar el voucher.
+   */
+  async cajonHabilitado(): Promise<boolean> {
+    try {
+      const r = await this.bridge.api?.getDeviceConfig?.();
+      return !!r?.data?.drawer?.enabled;
+    } catch { return false; }
+  }
+
+  /** Abre el cajón para guardar el voucher de la venta que se acaba de cobrar. */
+  async abrirCajonVoucher(): Promise<boolean> {
+    try {
+      const r = await this.bridge.api?.openCashDrawer?.({ reason: 'voucher' });
+      return r?.success !== false;
+    } catch { return false; }
+  }
+
   async openDrawer(): Promise<boolean> {
     const api = this.bridge.api;
     if (!api?.openCashDrawer) return false;

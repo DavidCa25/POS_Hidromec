@@ -3152,12 +3152,20 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
     if (payload?.reason === 'payment' && (!d.enabled || !d.openOnPayment)) {
       return { success: true, skipped: true };
     }
+    /* Guardar el voucher de una venta con tarjeta: lo PIDE quien cobra, así
+       que no depende de «Abrir al cobrar»; solo de que haya cajón. */
+    if (payload?.reason === 'voucher' && !d.enabled) {
+      return { success: true, skipped: true };
+    }
 
     /* ROLES V2. Abrir al COBRAR es de quien vende -antes un Operador no podia,
        y el cajon no se abria tras su cobro-, pero solo si en esta caja acaba de
        haber un cobro. Abrir SIN venta (o "al cobrar" sin cobro) es el gesto del
        robo hormiga: lo autoriza un Encargado o el dueno, y queda en bitacora. */
-    const trasCobro = payload?.reason === 'payment' && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
+    /* El voucher cuenta como apertura «al cobrar»: es de la venta que se acaba
+       de registrar en esta caja, no una apertura sin venta. */
+    const trasCobro = (payload?.reason === 'payment' || payload?.reason === 'voucher')
+      && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
     if (trasCobro) ultimoCobro.delete(_event.sender.id);
     else {
       const propio = ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR) || !aprobacionesActivas();

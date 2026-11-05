@@ -24,6 +24,7 @@ import {
 import { ClubService } from '../core/club.service';
 import { SalidaEfectivo } from '../venta/salida-efectivo/salida-efectivo.component';
 import { GranelCantidadComponent } from '../venta/granel-cantidad/granel-cantidad.component';
+import { preguntarCajonVoucher } from '../venta/cajon-voucher';
 import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
 import { LicenseService } from '../services/license.service';
 import { nombreDeMesa } from '../hospitality/hx';
@@ -1017,6 +1018,7 @@ export class TouchPos implements OnInit, OnDestroy {
         const e = await this.mesaSvc.enlazarCobro(mesa.id, res.saleId ?? null);
         if (!e.ok) this.mostrar(e.error, 'error');
       }
+      await preguntarCajonVoucher(this.sale, this.pagoMixto() ? this.pagos().filter(p => p.amount > 0).map(p => p.method) : [this.metodo()]);
 
       this.clienteFactura=res.customer??null;
       this.conceptosFactura=(res.lines??[]).map(l=>({description:l.productName,quantity:l.qty,unitPrice:l.unitPrice,claveProdServ:l.claveProdServ,claveUnidad:l.claveUnidad,taxObject:l.objetoImpuesto,taxRate:l.tasaIva}));

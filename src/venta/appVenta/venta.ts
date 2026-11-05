@@ -17,6 +17,7 @@ import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 import { GranelCantidadComponent } from '../granel-cantidad/granel-cantidad.component';
+import { preguntarCajonVoucher } from '../cajon-voucher';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
@@ -936,6 +937,7 @@ export class Venta implements OnInit, OnDestroy {
     this.afterSale(res.saleId ?? null, res, isCredito);
     this.lastSalePedido = mesa?.numero ?? null;
     this.showModal = false;
+    await preguntarCajonVoucher(this.sale, this.paymentMethod === 'MIXTO' ? this.pagosMixtos.map(p => p.method) : [this.paymentMethod]);
     this.showPostSaleModal = true;
     await this.avisarCuponFallido(res.cupon);
 
@@ -2258,6 +2260,7 @@ export class Venta implements OnInit, OnDestroy {
 
     if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
     await this.cerrarMesa(mesa, res.saleId ?? null);
+    await preguntarCajonVoucher(this.sale, ['TERMINAL_MP']);
 
     this.afterSale(res.saleId ?? null, res, false);
     this.paymentMethod = 'EFECTIVO';
