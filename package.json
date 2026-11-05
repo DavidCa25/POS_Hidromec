@@ -1,6 +1,6 @@
 {
   "name": "wybix-pos",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
@@ -131,7 +131,7 @@
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:liquidaciones": "npm run build && node -e \"import('./e2e/preparar-bases.mjs').then(m=>m.prepararBase('Wybix_E2E_Liquidaciones',{perfil:'RETAIL'}))\" && cross-env WYBIX_E2E_DB=Wybix_E2E_Liquidaciones playwright test e2e/liquidaciones.spec.js",
     "e2e:venta-suelta": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/venta-suelta.spec.js",
-    "e2e:asistencia":"npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/asistencia.spec.js",
+    "e2e:asistencia": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/asistencia.spec.js",
     "e2e:contrasena": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/contrasena-olvidada.spec.js",
     "e2e:usuario-5-dias": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/usuario-5-dias.spec.js",
     "e2e:paridad": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/paridad.spec.js",
