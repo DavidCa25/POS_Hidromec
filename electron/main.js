@@ -441,6 +441,7 @@ async function bootMainApp(poolYaAbierto) {
 
   const mig = await runMigrations({ pool, sql, migrationsDir });
   console.log('Migraciones:', mig);
+  await encenderModulosDeArranque(pool);
 
   // Comprobacion de presencia de los objetos SQL criticos, DESPUES de aplicar
   // las migraciones. Antes de esto, a una instalacion podia faltarle un
@@ -1460,6 +1461,33 @@ const TTL_APROBACIONES_MS = 5000;
 let politicaAprobaciones = { valor: null, leidoEn: 0, leyendo: null };
 
 function aprobacionesPorOmision() { return AJUSTES_ADDON.aprobaciones !== false; }
+
+/* Modulos que el addon del cliente pide encendidos DE ARRANQUE (p. ej.
+   `ajustes.ventaSuelta: true`). Solo si el negocio nunca lo decidio: sin fila
+   en business_modules se enciende una vez; si ya hay fila -lo encendio o lo
+   apago alguien en Aplicaciones- manda esa decision y no se toca. */
+const MODULOS_DE_ARRANQUE = { ventaSuelta: 'venta-suelta' };
+
+async function encenderModulosDeArranque(pool) {
+  const pedidos = Object.entries(MODULOS_DE_ARRANQUE)
+    .filter(([ajuste]) => AJUSTES_ADDON[ajuste] === true).map(([, clave]) => clave);
+  if (!pedidos.length) return;
+  try {
+    const r = await pool.request().execute('sp_get_business_modules');
+    const decididos = new Set((r.recordset || []).map(f => String(f.module_key)));
+    for (const clave of pedidos.filter(c => !decididos.has(c))) {
+      await pool.request()
+        .input('module_key', sql.NVarChar(40), clave)
+        .input('enabled', sql.Bit, 1)
+        .input('user_id', sql.Int, null)
+        .execute('sp_set_business_module');
+      console.log(`[ADDON] modulo ${clave} encendido de arranque.`);
+    }
+  } catch (e) {
+    // Un fallo aqui no impide vender: el modulo se puede encender a mano.
+    console.error('[ADDON] modulos de arranque:', e.message);
+  }
+}
 
 async function leerPoliticaAprobaciones() {
   try {
@@ -4492,6 +4520,8 @@ require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
 require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
 /* 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra). */
 require('./ipc/asistencia').registrar({ ipcMain, sql, poolPromise });
+/* 0073: Venta suelta (el cigarro de la cajetilla). */
+require('./ipc/venta-suelta').registrar({ ipcMain, sql, poolPromise });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

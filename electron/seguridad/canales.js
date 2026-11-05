@@ -335,6 +335,10 @@ const EXIGE = {
   'asistencia:horario-guardar': ASISTENCIA_GESTIONAR,
   'asistencia:activar': CONFIGURACION_ADMINISTRAR,
   'asistencia:reglas-guardar': CONFIGURACION_ADMINISTRAR,
+
+  // ----------------------------------------------------- 0073 venta suelta
+  // Ligar un suelto a su paquete es editar el catalogo, como una presentacion.
+  'venta-suelta:guardar': CATALOGO_EDITAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
@@ -607,6 +611,7 @@ const ABIERTOS = {
   'recipes:get': 'lectura de recetas',
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
+  'venta-suelta:get': 'lectura de venta suelta',
   'hospitality:availability': 'lectura de disponibilidad',
   'loyalty:catalog': 'lectura de fidelización',
   'loyalty:instances': 'lectura de fidelización',

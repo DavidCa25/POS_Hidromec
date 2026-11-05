@@ -140,6 +140,10 @@ asignar('asistencia', [
   'sp_asistencia_resumen', 'sp_asistencia_jornadas', 'sp_asistencia_corregir',
 ]);
 
+// 0073: Venta suelta (el cigarro de la cajetilla). Una aplicacion: solo para
+// el negocio que la activa. El descuento vive en sp_register_sale (paso 3c).
+asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar']);
+
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [

@@ -251,6 +251,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     plataformasConfirmar: p => invoke('plataformas:confirmar',p),
     plataformasCancelar: p => invoke('plataformas:cancelar',p),
     plataformasDeposito: p => invoke('plataformas:deposito',p),
+    // 0073: Venta suelta.
+    ventaSueltaGet: p => invoke('venta-suelta:get',p),
+    ventaSueltaGuardar: p => invoke('venta-suelta:guardar',p),
     // 0071: Asistencia.
     asistenciaEstado: () => invoke('asistencia:estado'),
     asistenciaMarcar: p => invoke('asistencia:marcar',p),

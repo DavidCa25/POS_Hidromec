@@ -291,6 +291,11 @@ export interface Capabilities {
    * trabajadas y extra. No es nomina. Solo para el negocio que la activa.
    */
   asistencia: boolean;
+  /**
+   * 0073 · Venta suelta: vender por pieza lo que se compra en paquete (el
+   * cigarro de la cajetilla). Al faltar piezas, la venta abre un paquete.
+   */
+  ventaSuelta: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */
