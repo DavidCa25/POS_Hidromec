@@ -204,7 +204,7 @@ export class GuiaService {
          `getOpenShift()` sin datos: el proceso principal fallaba y la guia lo
          leia como «No hay turno abierto» con el turno abierto. */
       operarVentas ? this.shift.refresh().catch(() => null) : Promise.resolve(null),
-      verNumeros ? pedir(api.getSalesDayly?.()) : Promise.resolve(null),
+      this.auth.puede(PAQUETES.VER_NUMEROS_DIA) ? pedir(api.getSalesDayly?.()) : Promise.resolve(null),
       servicios ? pedir(api.serviciosOrdenes?.({})) : Promise.resolve(null),
       /* Las cargas a medias. Leerlas no exige permiso: saber que el catalogo
          esta vacio no es informacion sensible, y sin esto un cajero veria

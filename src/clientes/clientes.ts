@@ -161,6 +161,9 @@ export class Clientes implements OnInit {
 
   constructor(private catalogos: CatalogosService, private auth: AuthService) {}
 
+  /** 0077 · «Crédito y cupones a clientes». */
+  get puedeCredito(): boolean { return this.auth.puede('CREDITO_CUPONES'); }
+
   async ngOnInit() {
     await this.cargarCatalogos();
     await this.loadClientes();

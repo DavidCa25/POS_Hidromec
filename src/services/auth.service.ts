@@ -47,6 +47,16 @@ export const PAQUETES = {
   PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
   // 0071: Asistencia (horas de todos, horarios, correcciones, exportar).
   ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
+  // 0077: permisos por persona (lo delicado y lo que se ve).
+  DEVOLUCIONES: 'DEVOLUCIONES',
+  RETIROS_EGRESOS: 'RETIROS_EGRESOS',
+  CAJON_SIN_VENTA: 'CAJON_SIN_VENTA',
+  MODIFICAR_VENTA: 'MODIFICAR_VENTA',
+  PRECIOS: 'PRECIOS',
+  CREDITO_CUPONES: 'CREDITO_CUPONES',
+  VER_VENTAS_TODOS: 'VER_VENTAS_TODOS',
+  VER_NUMEROS_DIA: 'VER_NUMEROS_DIA',
+  VER_COSTOS: 'VER_COSTOS',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];
@@ -137,7 +147,7 @@ export class AuthService {
    * caja. Ahora es el paquete de supervisión, con autorización presencial para
    * quien no lo tenga.
    */
-  get puedeAbrirCajon(): boolean { return this.puede(PAQUETES.VENTAS_SUPERVISAR); }
+  get puedeAbrirCajon(): boolean { return this.puede(PAQUETES.CAJON_SIN_VENTA); }
 
   get puedeRegistrarVenta(): boolean { return this.puede(PAQUETES.VENTAS_OPERAR); }
 

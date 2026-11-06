@@ -1,0 +1,46 @@
+<!-- MODAL ENTRADA DE EFECTIVO (0076): dinero que entra al cajón sin ser venta.
+     Usa los estilos de la salida: es la misma decisión vista al revés. -->
+<div class="modal fade show d-block" style="background:rgba(0,0,0,0.20);z-index:11000;">
+  <div class="modal-dialog modal-dialog-centered">
+    <!-- Con teclado: el foco empieza en el concepto elegido, las flechas
+         recorren conceptos, campos y botones, y Esc cierra. -->
+    <div class="modal-content rounded-4" wxFlechas wxFlechasInicio=".salida-tipo.activa" (wxFlechasEscape)="cerrar()">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold">Registrar entrada de efectivo</h5>
+        <button type="button" class="btn-close" (click)="cerrar()"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-3">
+
+        <div class="salida-tipos entrada-tipos mb-3" role="radiogroup" aria-label="De dónde viene el dinero" data-guide="entrada-concepto">
+          <button type="button" role="radio" class="salida-tipo" *ngFor="let c of conceptos"
+                  [class.activa]="concepto === c.valor" [attr.aria-checked]="concepto === c.valor"
+                  (click)="concepto = c.valor" [attr.data-guide-clave]="c.valor">
+            <i class="ph {{ c.icono }}"></i><span>{{ c.valor }}</span><small>{{ c.nota }}</small>
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Monto</label>
+          <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="monto" name="monto" placeholder="0.00" data-guide="entrada-monto" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">
+            Nota <span class="text-muted small" *ngIf="concepto !== 'Otro'">(opcional)</span>
+          </label>
+          <textarea class="form-control" rows="2" [(ngModel)]="nota" name="nota"
+                    [placeholder]="concepto === 'Otro' ? '¿De dónde viene el dinero?' : 'Detalle o referencia'"></textarea>
+        </div>
+
+        <div class="alert alert-info small">
+          Entra al cajón y aparece en el corte como <strong>entrada de efectivo</strong>: suma al efectivo esperado.
+        </div>
+        <div class="d-flex justify-content-end mt-3 gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrar()">Cancelar</button>
+          <button type="button" class="btn btn-success" (click)="confirmar()" [disabled]="guardando" data-guide="entrada-registrar">
+            {{ guardando ? 'Registrando…' : 'Registrar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

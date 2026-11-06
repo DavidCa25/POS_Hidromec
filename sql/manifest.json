@@ -2194,6 +2194,15 @@
       "checksum": "1a9a53bff48b712a"
     },
     {
+      "nombre": "sp_register_cash_in",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/cash/sp_register_cash_in.sql",
+      "origen": "Wybix_Production",
+      "critico": true,
+      "clasificacion": "current",
+      "checksum": "c5f0c49d8660a010"
+    },
+    {
       "nombre": "sp_register_claim",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/setup/sp_register_claim.sql",

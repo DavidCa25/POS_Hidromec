@@ -109,6 +109,31 @@ const BUNDLES = {
    * sesion (VENTAS_OPERAR).
    */
   ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
+
+  /* ---------------------------------------------------------------------
+   * PERMISOS POR PERSONA (0077). Lo delicado que se marca con una casilla
+   * en «Usuarios y permisos» y lo que se puede VER. Salieron de paquetes
+   * grandes (VENTAS_SUPERVISAR, REPORTES_VER) para poder darlos o quitarlos
+   * uno por uno, sin volver a nadie Encargado.
+   * ------------------------------------------------------------------- */
+  /** Devoluciones y cambios. */
+  DEVOLUCIONES: 'DEVOLUCIONES',
+  /** Retiros de efectivo y egresos (registrar y cancelar). */
+  RETIROS_EGRESOS: 'RETIROS_EGRESOS',
+  /** Abrir el cajón sin una venta. */
+  CAJON_SIN_VENTA: 'CAJON_SIN_VENTA',
+  /** Modificar una venta cobrada, cancelar su factura o una comanda enviada. */
+  MODIFICAR_VENTA: 'MODIFICAR_VENTA',
+  /** Cambiar precios: en la venta y en la ficha del producto. */
+  PRECIOS: 'PRECIOS',
+  /** Límite de crédito, días y recargos de un cliente, y emitir cupones. */
+  CREDITO_CUPONES: 'CREDITO_CUPONES',
+  /** VER · Las ventas de los demás (sin él, solo las suyas). */
+  VER_VENTAS_TODOS: 'VER_VENTAS_TODOS',
+  /** VER · Los números del día: totales de Inicio y el cierre del día. */
+  VER_NUMEROS_DIA: 'VER_NUMEROS_DIA',
+  /** VER · Costos de productos y lo que se debe a proveedores. */
+  VER_COSTOS: 'VER_COSTOS',
 };
 
 const PERMISOS = Object.values(BUNDLES);
@@ -143,6 +168,16 @@ const ROLES = {
     BUNDLES.PRODUCCION_OPERAR,
     // 0071: las horas de su equipo.
     BUNDLES.ASISTENCIA_GESTIONAR,
+    // 0077: lo que antes venia dentro de VENTAS_SUPERVISAR y REPORTES_VER.
+    BUNDLES.DEVOLUCIONES,
+    BUNDLES.RETIROS_EGRESOS,
+    BUNDLES.CAJON_SIN_VENTA,
+    BUNDLES.MODIFICAR_VENTA,
+    BUNDLES.PRECIOS,
+    BUNDLES.CREDITO_CUPONES,
+    BUNDLES.VER_VENTAS_TODOS,
+    BUNDLES.VER_NUMEROS_DIA,
+    BUNDLES.VER_COSTOS,
   ],
 
   /**
@@ -230,6 +265,15 @@ const ALTO_RIESGO = new Set([
   BUNDLES.CONFIGURACION_ADMINISTRAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
   BUNDLES.REPORTES_VER,
+  BUNDLES.DEVOLUCIONES,
+  BUNDLES.RETIROS_EGRESOS,
+  BUNDLES.CAJON_SIN_VENTA,
+  BUNDLES.MODIFICAR_VENTA,
+  BUNDLES.PRECIOS,
+  BUNDLES.CREDITO_CUPONES,
+  BUNDLES.VER_VENTAS_TODOS,
+  BUNDLES.VER_NUMEROS_DIA,
+  BUNDLES.VER_COSTOS,
 ]);
 
 function esAltoRiesgo(permiso) {
@@ -266,7 +310,84 @@ const OTORGABLES = [
   BUNDLES.SERVICIOS_OPERAR,
   BUNDLES.SERVICIOS_ADMINISTRAR,
   BUNDLES.ASISTENCIA_GESTIONAR,
+  // 0077
+  BUNDLES.DEVOLUCIONES,
+  BUNDLES.RETIROS_EGRESOS,
+  BUNDLES.CAJON_SIN_VENTA,
+  BUNDLES.MODIFICAR_VENTA,
+  BUNDLES.PRECIOS,
+  BUNDLES.CREDITO_CUPONES,
+  BUNDLES.VER_VENTAS_TODOS,
+  BUNDLES.VER_NUMEROS_DIA,
+  BUNDLES.VER_COSTOS,
 ];
+
+/**
+ * 0077 · LO QUE SE AJUSTA POR PERSONA en «Usuarios y permisos»: se DA a quien
+ * su puesto no lo trae o se QUITA a quien sí. Lo de todos los días (vender,
+ * cobrar, clientes, su corte) no se ofrece: quitarlo deja a alguien sin poder
+ * trabajar.
+ *
+ *   HACER  casillas, agrupadas como en la pantalla. pideAutorizacion: sin la
+ *          casilla, la operación se pide con el PIN de un encargado o desde la
+ *          app del dueño (APROBABLES); si es false, sin la casilla no se puede.
+ *   VER    opciones de una sola elección: cada opción es el conjunto de
+ *          permisos que da, de menos a más.
+ *
+ * Un quitado se guarda en user_permissions como «-PERMISO». Una versión
+ * anterior lo ignora (no es otorgable), así que nunca da de más.
+ */
+const HACER = [
+  { grupo: 'Dinero', icono: 'ph-money', permisos: [
+    [BUNDLES.DEVOLUCIONES, 'Devoluciones y cambios', true],
+    [BUNDLES.RETIROS_EGRESOS, 'Retiros y egresos', true],
+    [BUNDLES.CAJON_SIN_VENTA, 'Abrir el cajón sin venta', true],
+    [BUNDLES.MODIFICAR_VENTA, 'Modificar o cancelar una venta cobrada', true],
+    [BUNDLES.CAJA_CORTES, 'Cerrar el corte de otra persona', false],
+  ] },
+  { grupo: 'Precios y clientes', icono: 'ph-tag', permisos: [
+    [BUNDLES.PRECIOS, 'Cambiar precios', true],
+    [BUNDLES.COMERCIAL_ADMINISTRAR, 'Promociones y combos', false],
+    [BUNDLES.CREDITO_CUPONES, 'Crédito y cupones a clientes', false],
+  ] },
+  { grupo: 'Inventario y equipo', icono: 'ph-package', permisos: [
+    [BUNDLES.INVENTARIO_OPERAR, 'Compras, ajustes y proveedores', true],
+    [BUNDLES.CONFIGURACION_EQUIPO, 'Equipo de la caja', false],
+    [BUNDLES.ASISTENCIA_GESTIONAR, 'Asistencia del equipo', false],
+  ] },
+].map(g => ({ ...g, permisos: g.permisos.map(([clave, nombre, pideAutorizacion]) => ({ clave, nombre, pideAutorizacion })) }));
+
+const VER = [
+  { clave: 'ventas', nombre: 'Ventas', icono: 'ph-receipt', opciones: [
+    { valor: 'propias', nombre: 'Solo las suyas', permisos: [] },
+    { valor: 'todas', nombre: 'De todos', permisos: [BUNDLES.VER_VENTAS_TODOS] },
+  ] },
+  { clave: 'numeros', nombre: 'Números', icono: 'ph-chart-line',
+    ayuda: 'Totales de hoy y cierre del día. «Todo» suma estadísticas, cortes anteriores y reportes.', opciones: [
+    { valor: 'nada', nombre: 'Nada', permisos: [] },
+    { valor: 'dia', nombre: 'Del día', permisos: [BUNDLES.VER_NUMEROS_DIA] },
+    { valor: 'todo', nombre: 'Todo', permisos: [BUNDLES.VER_NUMEROS_DIA, BUNDLES.REPORTES_VER] },
+  ] },
+  { clave: 'costos', nombre: 'Costos', icono: 'ph-currency-dollar',
+    ayuda: 'Costo de los productos y lo que se debe a proveedores.', opciones: [
+    { valor: 'ocultos', nombre: 'Ocultos', permisos: [] },
+    { valor: 'visibles', nombre: 'Visibles', permisos: [BUNDLES.VER_COSTOS] },
+  ] },
+];
+
+const AJUSTABLES = [...new Set([
+  ...HACER.flatMap(g => g.permisos.map(p => p.clave)),
+  ...VER.flatMap(v => v.opciones.flatMap(o => o.permisos)),
+])];
+
+/**
+ * Paquetes que ANTES traían lo que ahora va aparte. Quien tenía el paquete
+ * grande como extra (dado en la 0056) conserva exactamente lo que podía hacer.
+ */
+const HEREDADOS = {
+  [BUNDLES.VENTAS_SUPERVISAR]: [BUNDLES.DEVOLUCIONES, BUNDLES.RETIROS_EGRESOS, BUNDLES.CAJON_SIN_VENTA, BUNDLES.MODIFICAR_VENTA],
+  [BUNDLES.REPORTES_VER]: [BUNDLES.VER_NUMEROS_DIA],
+};
 
 /** Como se llama cada paquete otorgable en pantalla, y que da. */
 const DESCRIPCIONES = {
@@ -281,6 +402,15 @@ const DESCRIPCIONES = {
   SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],
   PRODUCCION_OPERAR: ['Producción', 'Planear tandas, empezarlas y registrar lo que salió, con su merma.'],
   ASISTENCIA_GESTIONAR: ['Asistencia', 'Ver las horas de todos, asignar horarios, corregir jornadas y exportar.'],
+  DEVOLUCIONES: ['Devoluciones y cambios', 'Devolver o cambiar sin pedir autorización.'],
+  RETIROS_EGRESOS: ['Retiros y egresos', 'Sacar dinero del cajón y registrar gastos sin pedir autorización.'],
+  CAJON_SIN_VENTA: ['Abrir el cajón sin venta', 'Abrir el cajón sin un cobro, sin pedir autorización.'],
+  MODIFICAR_VENTA: ['Modificar una venta cobrada', 'Corregir o cancelar una venta, su factura o una comanda enviada.'],
+  PRECIOS: ['Cambiar precios', 'En la venta y en la ficha del producto.'],
+  CREDITO_CUPONES: ['Crédito y cupones', 'Límite de crédito, días y recargos de un cliente; emitir cupones.'],
+  VER_VENTAS_TODOS: ['Ventas de todos', 'Ver las ventas de los demás, no solo las suyas.'],
+  VER_NUMEROS_DIA: ['Números del día', 'Totales de hoy en Inicio y el cierre del día.'],
+  VER_COSTOS: ['Costos', 'Costo de los productos y lo que se debe a proveedores.'],
 };
 
 /**
@@ -305,13 +435,30 @@ function catalogoCompleto() {
  */
 function permisosDeUsuario(rol, extras = []) {
   const base = permisosDeRol(rol);
-  if (normalizarRol(rol) === SIN_ROL) return base;
-  for (const p of extras || []) if (OTORGABLES.includes(p)) base.add(p);
+  const r = normalizarRol(rol);
+  if (r === SIN_ROL) return base;
+  /* El Administrador lo tiene todo: no se le quita nada desde la pantalla. */
+  if (ROLES[r] === '*') return base;
+  const lista = extras || [];
+  for (const p of lista) {
+    if (!OTORGABLES.includes(p)) continue;
+    base.add(p);
+    for (const h of HEREDADOS[p] || []) base.add(h);
+  }
+  /* 0077 · Quitados: solo los AJUSTABLES. «-VENTAS_OPERAR» no deja a nadie sin vender. */
+  for (const p of lista) {
+    if (typeof p !== 'string' || !p.startsWith('-')) continue;
+    const q = p.slice(1);
+    if (AJUSTABLES.includes(q)) base.delete(q);
+  }
+  /* Ver «Todo» incluye ver lo del día. */
+  if (base.has(BUNDLES.REPORTES_VER)) base.add(BUNDLES.VER_NUMEROS_DIA);
   return base;
 }
 
 module.exports = {
   BUNDLES, PERMISOS, ROLES, ETIQUETAS, SIN_ROL, ALTO_RIESGO, SOLO_ADMIN, OTORGABLES, DESCRIPCIONES,
+  HACER, VER, AJUSTABLES, HEREDADOS,
   normalizarRol, etiquetaDeRol, esRolConocido,
   permisosDeRol, permisosDeUsuario, esAltoRiesgo, catalogoCompleto,
 };

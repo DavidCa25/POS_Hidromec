@@ -214,21 +214,24 @@
               <i class="ph ph-lock-simple" aria-hidden="true"></i> No se le puede vender a crédito. {{ m }}
             </p>
 
+            <p class="cli-aviso" *ngIf="!puedeCredito">
+              <i class="ph ph-lock-simple" aria-hidden="true"></i> El crédito (límite, días y recargos) lo asigna un encargado.
+            </p>
             <div class="cli-grid">
               <div class="filter-group">
                 <label for="cli-limite">Límite de crédito ($)</label>
-                <input id="cli-limite" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.creditLimit">
+                <input id="cli-limite" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.creditLimit" [disabled]="!puedeCredito">
                 <small class="cli-hint" *ngIf="!limiteBajoDeuda">0 = no se le vende a crédito.</small>
                 <small class="cli-hint es-mal" *ngIf="limiteBajoDeuda">Ya debe más que eso: no podrá comprar a crédito hasta abonar.</small>
               </div>
               <div class="filter-group">
                 <label for="cli-plazo">Días de plazo</label>
-                <input id="cli-plazo" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.termsDays">
+                <input id="cli-plazo" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.termsDays" [disabled]="!puedeCredito">
                 <small class="cli-hint">La venta vence a los días que pongas.</small>
               </div>
               <div class="filter-group">
                 <label for="cli-gracia">Días de gracia</label>
-                <input id="cli-gracia" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.graceDays" placeholder="0">
+                <input id="cli-gracia" class="form-control" type="number" min="0" step="1" [(ngModel)]="form.graceDays" placeholder="0" [disabled]="!puedeCredito">
                 <small class="cli-hint">Tolerancia antes de contarla vencida.</small>
               </div>
               <div class="filter-group">
@@ -238,12 +241,12 @@
               </div>
               <div class="filter-group">
                 <label for="cli-interes">Interés moratorio mensual (%)</label>
-                <input id="cli-interes" class="form-control" type="number" min="0" max="100" step="0.01" [(ngModel)]="form.lateFeePct" placeholder="0.00">
+                <input id="cli-interes" class="form-control" type="number" min="0" max="100" step="0.01" [(ngModel)]="form.lateFeePct" placeholder="0.00" [disabled]="!puedeCredito">
                 <small class="cli-hint">Sobre lo vencido, por día de atraso.</small>
               </div>
               <div class="filter-group">
                 <label for="cli-recargo">Recargo por venta vencida ($)</label>
-                <input id="cli-recargo" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.lateFeeFixed" placeholder="0.00">
+                <input id="cli-recargo" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="form.lateFeeFixed" placeholder="0.00" [disabled]="!puedeCredito">
                 <small class="cli-hint">Una vez por venta, al vencer.</small>
               </div>
             </div>

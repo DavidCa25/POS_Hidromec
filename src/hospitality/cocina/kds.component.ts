@@ -131,7 +131,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     };
   });
 
-  get puedeCancelar(): boolean { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
+  get puedeCancelar(): boolean { return this.auth.puede(PAQUETES.MODIFICAR_VENTA); }
 
   private get api(): any { return (window as any).wybix; }
   private relojDatos: any = null;

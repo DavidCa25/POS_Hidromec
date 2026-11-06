@@ -29,6 +29,7 @@ export const ACCIONES_CAJA: AccionCaja[] = [
   { id: 'devolucion', para: 'Encontrar una venta y devolver o cambiar, con su motivo.' },
   { id: 'cajon', para: 'Abrir el cajón sin venta (con su autorización).' },
   { id: 'salida', para: 'Salida de efectivo de la caja.' },
+  { id: 'entrada', para: 'Entrada de efectivo a la caja (cambio, dinero del dueño, préstamo).' },
   { id: 'checar', para: 'Entrada, descanso y salida (con Asistencia activada).' },
   { id: 'turno-checar', para: 'Checar desde el aviso de abrir turno: lo primero al llegar es checar, y ese aviso tapa la caja.' },
 ];

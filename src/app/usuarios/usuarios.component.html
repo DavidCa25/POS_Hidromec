@@ -105,8 +105,60 @@
         </div>
       </div>
 
-      <!-- Permisos adicionales: se SUMAN al puesto de esta persona, uno por uno. -->
-      <div class="exp-extras" *ngIf="persona() && extrasPersona() as extras" data-guide="usuarios-permisos-extra">
+      <!-- 0077 · QUÉ PUEDE VER (una opción por fila) Y QUÉ PUEDE HACER (casillas).
+           El puesto es la plantilla; aquí se ajusta lo delicado de esta persona. -->
+      <ng-container *ngIf="infoAjuste() as info">
+        <div class="aj-sec" data-guide="usuarios-ver">
+          <h2><i class="ph ph-eye"></i> Qué puede ver
+            <span class="aj-dif" *ngIf="distintasVer() as n">{{ n }} distinto{{ n === 1 ? '' : 's' }} al puesto</span></h2>
+          <div class="aj-ver">
+            <ng-container *ngFor="let f of ajustes()!.ver">
+              <span class="aj-ver__t"><i class="ph {{ f.icono }}"></i>{{ f.nombre }}</span>
+              <div class="aj-seg" role="radiogroup" [attr.aria-label]="f.nombre" [attr.data-guide-clave]="f.clave">
+                <label *ngFor="let o of f.opciones" [class.on]="valorVer(f) === o.valor"
+                       [class.dif]="valorVer(f) === o.valor && verDistinto(f)">
+                  <input type="radio" [name]="'ver-' + f.clave" [checked]="valorVer(f) === o.valor"
+                         (change)="elegirVer(f, o)" [attr.data-guide]="'usuarios-ver-' + f.clave + '-' + o.valor">
+                  {{ o.nombre }}
+                </label>
+              </div>
+              <span class="aj-ver__ayuda" *ngIf="f.ayuda">{{ f.ayuda }}</span>
+            </ng-container>
+          </div>
+        </div>
+
+        <div class="aj-sec" data-guide="usuarios-hacer">
+          <h2><i class="ph ph-hand-pointing"></i> Qué puede hacer sin pedir permiso
+            <span class="aj-dif" *ngIf="distintasHacer() as n">{{ n }} distinto{{ n === 1 ? '' : 's' }}</span></h2>
+          <p class="aj-ayuda">Lo de todos los días (vender, cobrar, clientes, su corte) ya viene con el puesto. Aquí solo lo delicado.</p>
+          <div class="aj-grupo" *ngFor="let g of ajustes()!.hacer">
+            <div class="aj-grupo__t"><i class="ph {{ g.icono }}"></i>{{ g.grupo }}</div>
+            <label class="aj-ck" *ngFor="let x of g.permisos" [class.dif]="hacerDistinto(x.clave)"
+                   data-guide="usuarios-hacer-permiso" [attr.data-guide-clave]="x.clave">
+              <input type="checkbox" [checked]="tieneHacer(x.clave)" (change)="alternarHacer(x.clave, $any($event.target).checked)">
+              <span>{{ x.nombre }}</span>
+              <small *ngIf="hacerDistinto(x.clave)" class="dif">Distinto al puesto</small>
+              <small *ngIf="!hacerDistinto(x.clave) && !tieneHacer(x.clave) && x.pideAutorizacion" class="pide"><i class="ph ph-key"></i> Pide autorización</small>
+              <small *ngIf="!hacerDistinto(x.clave) && !tieneHacer(x.clave) && !x.pideAutorizacion">No puede</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="aj-pie">
+          <span>
+            <ng-container *ngIf="diferencias() as n; else igual">{{ n }} ajuste{{ n === 1 ? '' : 's' }} sobre {{ puesto()?.nombre }} ·
+              <button type="button" class="aj-link" (click)="volverAlPuesto()">Volver a lo del puesto</button></ng-container>
+            <ng-template #igual>Igual que cualquier {{ puesto()?.nombre }}</ng-template>
+          </span>
+          <button type="button" class="btn-outline" *ngIf="sinGuardar()" (click)="descartarAjustes()" [disabled]="guardandoAjustes()">Descartar</button>
+          <button type="button" class="btn-primary" data-guide="usuarios-guardar-permisos" [disabled]="!sinGuardar() || guardandoAjustes()" (click)="guardarAjustes()">
+            {{ guardandoAjustes() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- Permisos adicionales de antes (0056): solo si esta versión no trae el catálogo nuevo. -->
+      <div class="exp-extras" *ngIf="persona() && !infoAjuste() && extrasPersona() as extras" data-guide="usuarios-permisos-extra">
         <h2>Permisos adicionales</h2>
         <p class="exp-extras__ayuda">Además de lo que trae su puesto. Se aplica al momento, sin cerrar sesión.</p>
         <ul class="exp-extras__lista">
@@ -124,7 +176,7 @@
       </div>
 
       <!-- Qué incluye el puesto: de la misma tabla con la que se autoriza. -->
-      <div class="exp-accesos" *ngIf="accesos() as a">
+      <div class="exp-accesos" *ngIf="!infoAjuste() && accesos() as a">
         <h2 *ngIf="a.puede.length">Puede</h2>
         <ul class="exp-lista" *ngIf="a.puede.length">
           <li *ngFor="let x of a.puede">

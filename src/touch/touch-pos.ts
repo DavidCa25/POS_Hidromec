@@ -23,6 +23,7 @@ import {
 } from '../core';
 import { ClubService } from '../core/club.service';
 import { SalidaEfectivo } from '../venta/salida-efectivo/salida-efectivo.component';
+import { EntradaEfectivo } from '../venta/entrada-efectivo/entrada-efectivo.component';
 import { GranelCantidadComponent } from '../venta/granel-cantidad/granel-cantidad.component';
 import { preguntarCajonVoucher } from '../venta/cajon-voucher';
 import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
@@ -61,7 +62,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
+  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -1111,6 +1112,13 @@ export class TouchPos implements OnInit, OnDestroy {
     this.salidaAbierta.set(true);
   }
 
+  /** 0076: entrada de efectivo (cambio, dinero del dueño, préstamo). Sin turno, primero el turno. */
+  readonly entradaAbierta = signal(false);
+  abrirEntrada() {
+    if (!this.hayTurno()) { this.abrirTurno.set(true); return; }
+    this.entradaAbierta.set(true);
+  }
+
   /** Abrir el cajon sin venta: lo autoriza otra persona y queda registrado. */
   async abrirCajon() {
     await this.cajon.abrirSinVenta();
@@ -1121,6 +1129,9 @@ export class TouchPos implements OnInit, OnDestroy {
 
   @HostListener('window:keydown.f10', ['$event'])
   onF10(e: Event) { e.preventDefault(); this.abrirSalida(); }
+
+  @HostListener('window:keydown.f4', ['$event'])
+  onF4(e: Event) { e.preventDefault(); this.abrirEntrada(); }
 
   /** Escape cierra lo que este abierto: util con teclado conectado. */
   @HostListener('window:keydown.escape')

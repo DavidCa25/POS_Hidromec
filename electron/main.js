@@ -2265,13 +2265,20 @@ ipcMain.handle('auth:recuperar-contrasena', async (_event, p = {}) => {
   }
 });
 
-ipcMain.handle('sp-get-products', async () => {
+
+/** 0077 · «Costos: ocultos». El costo de un producto no llega a quien no puede verlo. */
+function catalogoParaVentana(evento, filas) {
+  const ses = sesion.de(evento?.sender?.id);
+  if (ses && ses.permisos.has(permisos.BUNDLES.VER_COSTOS)) return filas;
+  return (filas || []).map(({ cost, last_cost, costo, ...resto }) => resto);
+}
+ipcMain.handle('sp-get-products', async (event) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
             .execute('sp_get_active_products');
 
-        return result.recordset; 
+        return catalogoParaVentana(event, result.recordset); 
 
     } catch (err) {
         console.error('❌ Error al ejecutar sp_get_active_products:', err);
@@ -2430,7 +2437,17 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     let ajusteAutorizado = null;
     const cambiaExistencia = antes && String(antes.inventory_mode || '').toUpperCase() !== 'RECIPE'
       && Math.abs(Number(antes.stock || 0) - stock) > 0.0001;
-    if (cambiaExistencia && !ses.permisos.has(permisos.BUNDLES.INVENTARIO_OPERAR) && aprobacionesActivas()) {
+    /* 0077 · Cambiar el precio es «Cambiar precios»: sin la casilla, lo autoriza un encargado. */
+    const cambiaPrecio = antes && Math.abs(Number(antes.price || 0) - precio) > 0.004;
+    if (cambiaPrecio && !ses.permisos.has(permisos.BUNDLES.PRECIOS)) {
+      ajusteAutorizado = aprobacionesActivas() ? autorizacionEnCanal(event, ses, payload, 'sp-update-product') : null;
+      if (!ajusteAutorizado) {
+        if (!aprobacionesActivas()) return { success: false, error: 'No tienes permiso para cambiar precios.' };
+        return pideAutorizacion('sp-update-product', 'Cambiar el precio lo autoriza un encargado.',
+          { Producto: antes.nombre, Precio: `${Number(antes.price).toFixed(2)} → ${precio.toFixed(2)}` });
+      }
+    }
+    if (cambiaExistencia && !ajusteAutorizado && !ses.permisos.has(permisos.BUNDLES.INVENTARIO_OPERAR) && aprobacionesActivas()) {
       ajusteAutorizado = autorizacionEnCanal(event, ses, payload, 'sp-update-product');
       if (!ajusteAutorizado) {
         return pideAutorizacion('sp-update-product', 'Cambiar la existencia es un ajuste de inventario: lo autoriza un encargado.',
@@ -2479,7 +2496,7 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
       }
       const precioAntes = Number(antes.price || 0);
       if (Math.abs(precioAntes - precio) > 0.004) {
-        const vigilado = !ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR) && (precioAntes - precio) > 7;
+        const vigilado = !ses.permisos.has(permisos.BUNDLES.PRECIOS) && (precioAntes - precio) > 7;
         registrarEventoSeguridad({ userId: ses.userId, tipo: vigilado ? 'PRICE_DROP' : 'PRICE_CHANGE',
           monto: Math.round((precioAntes - precio) * 100) / 100,
           detalle: `${antes.nombre}: $${precioAntes.toFixed(2)} → $${precio.toFixed(2)} · ${ses.usuario}`, alertar: vigilado }).catch(() => {});
@@ -2526,7 +2543,7 @@ ipcMain.handle('sp-get-active-products', async (event, data) => {
         const result = await pool.request()
             .execute('sp_get_active_products');
 
-        return result.recordset; 
+        return catalogoParaVentana(event, result.recordset); 
 
     } catch (err) {
         console.error('❌ Error al ejecutar sp_get_active_products:', err);
@@ -2778,7 +2795,7 @@ ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', a
 }));
 
 
-ipcMain.handle('sp-get-top-selling-products', async (event, data) => {
+ipcMain.handle('sp-get-top-selling-products', sesion.proteger('sp-get-top-selling-products', async (event, data) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -2789,9 +2806,9 @@ ipcMain.handle('sp-get-top-selling-products', async (event, data) => {
         console.error('❌ Error en sp_get_top_selling_product:', err);
         return { success: false, error: err.message };
     }
-});
+}));
 
-ipcMain.handle('sp-get-total-sales-month', async (event, data) => {
+ipcMain.handle('sp-get-total-sales-month', sesion.proteger('sp-get-total-sales-month', async (event, data) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -2802,9 +2819,9 @@ ipcMain.handle('sp-get-total-sales-month', async (event, data) => {
         console.error('❌ Error en sp_get_total_sales_month:', err);
         return { success: false, error: err.message };
     }
-});
+}));
 
-ipcMain.handle('sp-get-total-sales-today', async (event, data) => {
+ipcMain.handle('sp-get-total-sales-today', sesion.proteger('sp-get-total-sales-today', async (event, data) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -2815,9 +2832,9 @@ ipcMain.handle('sp-get-total-sales-today', async (event, data) => {
         console.error('❌ Error en sp_get_total_sales_today:', err);
         return { success: false, error: err.message };
     }
-});
+}));
 
-ipcMain.handle('sp-get-total-orders', async (event, data) => {
+ipcMain.handle('sp-get-total-orders', sesion.proteger('sp-get-total-orders', async (event, data) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
@@ -2827,7 +2844,7 @@ ipcMain.handle('sp-get-total-orders', async (event, data) => {
         console.error('❌ Error en sp_get_total_orders:', err);
         return { success: false, error: err.message };
     }
-});
+}));
 
 // main.js
 ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
@@ -2878,11 +2895,17 @@ ipcMain.handle('sp-get-cash-movements', async (_event, payload = {}) => {
 // CREATE
 ipcMain.handle(
   'sp-create-customer', sesion.proteger('sp-create-customer',
-  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
+  async (event, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel, ...resto) => {
     /* El alta ignoraba gracia, mora y riesgo: se capturaban en el formulario y
        se perdian. `proteger` anexa la sesion al final de los argumentos; si un
        llamador viejo manda menos, lo que cae aqui no es un numero y vale 0. */
     const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0));
+    /* 0077 · Dar crédito al dar de alta también es «Crédito y cupones». */
+    const sesAlta = [creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel, ...resto]
+      .find(x => x && typeof x === 'object' && x.permisos instanceof Set);
+    if (sesAlta && !sesAlta.permisos.has(permisos.BUNDLES.CREDITO_CUPONES) && (n(creditLimit) > 0 || n(lateFeePct) > 0 || n(lateFeeFixed) > 0)) {
+      return { success: false, error: 'No tienes permiso para dar crédito a un cliente. Guárdalo sin límite de crédito y pide a un encargado que lo asigne.' };
+    }
     try {
       const pool = await poolPromise;
       const request = pool.request();
@@ -2990,9 +3013,23 @@ ipcMain.handle('sp-get-customers-summary', async () => {
 
 ipcMain.handle(
   'sp-update-customer', sesion.proteger('sp-update-customer', 
-  async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel) => {
+  async (event, id, code, customerName, taxId, email, phone, creditLimit, termsDays, active, regimenFiscal, usoCfdi, razonSocial, graceDays, lateFeePct, lateFeeFixed, riskLevel, ...resto) => {
     try {
       const pool = await poolPromise;
+      /* 0077 · Límite, días, gracia y recargos son «Crédito y cupones». Sin la
+         casilla se respetan los que ya tiene: los demás datos sí se guardan. */
+      const ses = resto.length ? resto[resto.length - 1] : null;
+      if (!ses?.permisos?.has?.(permisos.BUNDLES.CREDITO_CUPONES)) {
+        const a = (await pool.request().input('id', sql.Int, id)
+          .query('SELECT credit_limit, terms_days, grace_days, late_fee_pct, late_fee_fixed FROM dbo.customers WHERE id = @id;')).recordset?.[0];
+        if (a) {
+          const cambia = (x, y) => Math.abs(Number(x || 0) - Number(y || 0)) > 0.004;
+          if (cambia(a.credit_limit, creditLimit) || cambia(a.terms_days, termsDays) || cambia(a.grace_days, graceDays)
+            || cambia(a.late_fee_pct, lateFeePct) || cambia(a.late_fee_fixed, lateFeeFixed)) {
+            return { success: false, error: 'No tienes permiso para cambiar el crédito del cliente (límite, días o recargos).' };
+          }
+        }
+      }
       const request = pool.request();
 
       request
@@ -3168,7 +3205,7 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
       && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
     if (trasCobro) ultimoCobro.delete(_event.sender.id);
     else {
-      const propio = ses.permisos.has(permisos.BUNDLES.VENTAS_SUPERVISAR) || !aprobacionesActivas();
+      const propio = ses.permisos.has(permisos.BUNDLES.CAJON_SIN_VENTA) || !aprobacionesActivas();
       const c = propio ? null : autorizacionEnCanal(_event, ses, payload, 'open-cash-drawer');
       if (!propio && !c) return pideAutorizacion('open-cash-drawer', 'Abrir el cajón sin una venta tiene que autorizarlo un encargado.');
       registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c ? (c.via === 'APP' ? null : Number(c.autorizadorId) || null) : ses.userId,
@@ -3234,7 +3271,7 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
   }
 }));
 
-ipcMain.handle('sp-get-daily-sales-last-7-days', async () => {
+ipcMain.handle('sp-get-daily-sales-last-7-days', sesion.proteger('sp-get-daily-sales-last-7-days', async () => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -3250,9 +3287,9 @@ ipcMain.handle('sp-get-daily-sales-last-7-days', async () => {
     console.error('❌ Error sp_get_daily_sales_last_7_days:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-get-daily-sales-current-month', async () => {
+ipcMain.handle('sp-get-daily-sales-current-month', sesion.proteger('sp-get-daily-sales-current-month', async () => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -3266,7 +3303,7 @@ ipcMain.handle('sp-get-daily-sales-current-month', async () => {
     console.error('❌ Error sp_get_daily_sales_current_month:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 ipcMain.handle('sp-get-profit-overview', sesion.proteger('sp-get-profit-overview', async (event, { fromDate, toDate }) => {
   try {
@@ -3769,16 +3806,24 @@ ipcMain.handle('users:permissions', sesion.proteger('users:permissions', async (
     const catalogo = permisos.OTORGABLES.map(clave => ({
       clave, nombre: permisos.DESCRIPCIONES[clave]?.[0] || clave, descripcion: permisos.DESCRIPCIONES[clave]?.[1] || '',
     }));
+    /* 0077 · Lo que la pantalla ofrece: casillas de «qué puede hacer» y
+       opciones de «qué puede ver». Sale de permisos.js, igual que la autorización. */
+    const ajustes = { hacer: permisos.HACER, ver: permisos.VER, ajustables: permisos.AJUSTABLES };
     const usuarios = (u.recordset || []).map(x => {
       const deRol = permisos.permisosDeRol(x.rol);
+      const propios = extras[x.id] || [];
+      const efectivos = permisos.permisosDeUsuario(x.rol, propios);
       return {
         id: x.id,
-        extras: (extras[x.id] || []).filter(p => permisos.OTORGABLES.includes(p) && !deRol.has(p)),
+        extras: propios.filter(p => permisos.OTORGABLES.includes(p) && !deRol.has(p)),
         deRol: permisos.OTORGABLES.filter(p => deRol.has(p)),
+        /* De lo ajustable: lo que trae su puesto y lo que tiene de verdad. */
+        puesto: permisos.AJUSTABLES.filter(p => deRol.has(p)),
+        tiene: permisos.AJUSTABLES.filter(p => efectivos.has(p)),
         todos: permisos.normalizarRol(x.rol) === 'admin',
       };
     });
-    return { success: true, data: { catalogo, usuarios } };
+    return { success: true, data: { catalogo, usuarios, ajustes } };
   } catch (e) { return { success: false, error: e.message }; }
 }));
 
@@ -3786,14 +3831,36 @@ ipcMain.handle('users:set-permissions', sesion.proteger('users:set-permissions',
   try {
     const id = Number(p.id);
     if (!Number.isFinite(id) || id <= 0) return { success: false, error: 'id invalido.' };
-    const pedidos = [...new Set((Array.isArray(p.permisos) ? p.permisos : []).map(String))];
-    const raros = pedidos.filter(x => !permisos.OTORGABLES.includes(x));
-    if (raros.length) return { success: false, error: `Permiso no otorgable: ${raros.join(', ')}` };
     const pool = await poolPromise;
     const t = await pool.request().input('id', sql.Int, id).query('SELECT rol FROM users WHERE id = @id');
     if (!t.recordset[0]) return { success: false, error: 'Ese usuario no existe.' };
     const deRol = permisos.permisosDeRol(t.recordset[0].rol);
-    const guardar = pedidos.filter(x => !deRol.has(x));
+    let guardar;
+    if (Array.isArray(p.tiene)) {
+      /* 0077 · La pantalla manda lo que la persona DEBE tener de lo ajustable.
+         Se guarda solo la diferencia con su puesto: lo que se le da (PERMISO)
+         y lo que se le quita (-PERMISO). Lo que no es ajustable se conserva. */
+      const tiene = new Set(p.tiene.map(String));
+      const raros = [...tiene].filter(x => !permisos.AJUSTABLES.includes(x));
+      if (raros.length) return { success: false, error: `Permiso no ajustable: ${raros.join(', ')}` };
+      if (tiene.has(permisos.BUNDLES.REPORTES_VER)) tiene.add(permisos.BUNDLES.VER_NUMEROS_DIA);
+      const previos = (await pool.request().input('id', sql.Int, id).query(`IF OBJECT_ID(N'dbo.user_permissions','U') IS NOT NULL
+        SELECT permiso FROM dbo.user_permissions WHERE user_id = @id;`)).recordset?.map(r => r.permiso) || [];
+      const fuera = previos.filter(x => !permisos.AJUSTABLES.includes(x.replace(/^-/, '')) && permisos.OTORGABLES.includes(x) && !deRol.has(x));
+      /* La base es su puesto MÁS lo no ajustable que ya tenía (un «Supervisar
+         ventas» viejo trae devoluciones, retiros...): contra eso se calcula. */
+      const base = permisos.permisosDeUsuario(t.recordset[0].rol, fuera);
+      guardar = [...fuera];
+      for (const x of permisos.AJUSTABLES) {
+        if (tiene.has(x) && !base.has(x)) guardar.push(x);
+        if (!tiene.has(x) && base.has(x)) guardar.push('-' + x);
+      }
+    } else {
+      const pedidos = [...new Set((Array.isArray(p.permisos) ? p.permisos : []).map(String))];
+      const raros = pedidos.filter(x => !permisos.OTORGABLES.includes(x));
+      if (raros.length) return { success: false, error: `Permiso no otorgable: ${raros.join(', ')}` };
+      guardar = pedidos.filter(x => !deRol.has(x));
+    }
     const actor = sesion.actorDe(ses);
     const tx = new sql.Transaction(pool);
     await tx.begin();
@@ -3910,6 +3977,31 @@ ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', a
   }
 }));
 
+/* ENTRADA DE EFECTIVO (0076): cambio del banco, dinero del dueno, un prestamo.
+   Espejo del retiro: DEPOSIT, y el corte lo suma en «Otras entradas». */
+ipcMain.handle('sp-register-cash-in', sesion.proteger('sp-register-cash-in', async (event, payload, ...resto) => {
+  try {
+    const ses = resto.length ? resto[resto.length - 1] : null;
+    const op = cajaDeLaOperacion(payload);
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('user_id', sql.Int, sesion.actorDe(ses))
+      .input('amount', sql.Decimal(10,2), payload.amount)
+      .input('concept', sql.NVarChar(60), payload.concept || null)
+      .input('note', sql.NVarChar(255), payload.note || null)
+      .input('register_id', sql.Int, op.registerId)
+      .input('machine_id', sql.NVarChar(64), op.machineId)
+      .input('machine_name', sql.NVarChar(120), op.machineName)
+      .execute('sp_register_cash_in');
+
+    return { success: true, data: result.recordset?.[0] ?? null };
+  } catch (err) {
+    console.error('sp_register_cash_in:', err);
+    return { success: false, error: err.message };
+  }
+}));
+
 
 async function loadSaleFromDbWithSp(saleId) {
   const pool = await poolPromise;
@@ -4017,7 +4109,13 @@ ipcMain.handle('sp-get-sales', async (_event, payload = {}) => {
       .input('end_date',   sql.Date, end_date)
       .execute('sp_get_sales_filtered');
 
-    return { success: true, data: result.recordset ?? [] };
+    /* 0077 · «Qué puede ver · Ventas: solo las suyas». Sin VER_VENTAS_TODOS
+       la lista trae únicamente lo que vendió esta persona. Sin sesión, nada. */
+    const ses = sesion.de(_event.sender.id);
+    let filas = result.recordset ?? [];
+    if (!ses) filas = [];
+    else if (!ses.permisos.has(permisos.BUNDLES.VER_VENTAS_TODOS)) filas = filas.filter(v => Number(v.useer_id) === Number(ses.userId));
+    return { success: true, data: filas };
   } catch (err) {
     console.error('❌ sp-get-sales:', err);
     return { success: false, error: err.message };
@@ -5058,7 +5156,7 @@ ipcMain.handle('sp-import-sales', sesion.proteger('sp-import-sales', async (_eve
 }));
 
 // Proveedores: cuenta (lo que se debe) y detalle
-ipcMain.handle('sp-get-suppliers-account', async () => {
+ipcMain.handle('sp-get-suppliers-account', sesion.proteger('sp-get-suppliers-account', async () => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().execute('sp_get_suppliers_account');
@@ -5067,9 +5165,9 @@ ipcMain.handle('sp-get-suppliers-account', async () => {
     console.error('sp-get-suppliers-account:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
-ipcMain.handle('sp-get-supplier-account-detail', async (_event, payload = {}) => {
+ipcMain.handle('sp-get-supplier-account-detail', sesion.proteger('sp-get-supplier-account-detail', async (_event, payload = {}) => {
   try {
     const supplierId = Number(payload?.supplier_id) || null;
     if (!supplierId) return { success: false, error: 'Falta supplier_id.' };
@@ -5082,7 +5180,7 @@ ipcMain.handle('sp-get-supplier-account-detail', async (_event, payload = {}) =>
     console.error('sp-get-supplier-account-detail:', err);
     return { success: false, error: err.message };
   }
-});
+}));
 
 // Alta / edicion de proveedor
 ipcMain.handle('sp-supplier-save', sesion.proteger('sp-supplier-save', async (_event, payload = {}) => {
@@ -5114,13 +5212,13 @@ ipcMain.handle('sp-top-customers', async (_e, payload = {}) => {
   } catch (err) { console.error('sp-top-customers:', err); return { success: false, error: err.message }; }
 });
 
-ipcMain.handle('sp-sales-by-payment', async (_e, payload = {}) => {
+ipcMain.handle('sp-sales-by-payment', sesion.proteger('sp-sales-by-payment', async (_e, payload = {}) => {
   try {
     const pool = await poolPromise;
     const r = await pool.request().input('days', sql.Int, Number(payload?.days) || 30).execute('sp_sales_by_payment');
     return { success: true, data: r.recordset };
   } catch (err) { console.error('sp-sales-by-payment:', err); return { success: false, error: err.message }; }
-});
+}));
 
 ipcMain.handle('sp-dead-products', sesion.proteger('sp-dead-products', async (_e, payload = {}) => {
   try {

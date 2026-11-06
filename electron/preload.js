@@ -212,6 +212,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>
         invoke('sp-register-cash-out', payload),
+    /* 0076: entrada de efectivo (DEPOSIT). */
+    registerCashIn: (payload) =>
+        invoke('sp-register-cash-in', payload),
     /* Egresos y pagos al personal (0049). Un pago al personal es un egreso de
        concepto "Pago al personal": mismo canal, misma fuente de verdad. */
     egresosConceptos: (p) => invoke('egresos:conceptos', p),

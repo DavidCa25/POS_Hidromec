@@ -271,10 +271,15 @@ export class WxNavegacionComponent implements OnInit, OnDestroy {
        Inicio recién abierto las flechas no hacían nada porque la tecla le
        llega al <body>, que no es de ninguna zona. La venta se queda con sus
        flechas (son del carrito) y un diálogo abierto recibe el foco primero. */
+    /* Con un diálogo abierto manda el diálogo, aunque la pantalla de abajo
+       (la venta) se quede con sus flechas: si un botón se desactivó y el foco
+       cayó al <body>, la primera flecha lo regresa al diálogo. */
+    const contAbierto = document.querySelector('[data-zona="contenido"]') as HTMLElement | null;
+    const hayDialogo = !!contAbierto?.querySelector('.modal.show .modal-content, .wx-dialogo, [aria-modal="true"]');
     if (/^Arrow/.test(e.key) && !e.defaultPrevented && !e.ctrlKey && !e.altKey && !e.metaKey
         && (document.activeElement === document.body || !document.activeElement)
-        && !document.querySelector('[data-flechas-cuerpo="propio"]')) {
-      const cont = document.querySelector('[data-zona="contenido"]') as HTMLElement | null;
+        && (hayDialogo || !document.querySelector('[data-flechas-cuerpo="propio"]'))) {
+      const cont = contAbierto;
       const dialogo = cont?.querySelector('.modal.show .modal-content, .wx-dialogo, [aria-modal="true"]') as HTMLElement | null;
       if (WxFlechasDirective.enfocarZona(dialogo ?? (cont?.querySelector('main') as HTMLElement | null) ?? cont)) e.preventDefault();
       return;

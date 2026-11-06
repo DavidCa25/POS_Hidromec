@@ -99,6 +99,16 @@
 .badge-new { background: var(--wx-success-soft); color: var(--wx-success); font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 10px; }
 .badge-edit { background: var(--wx-warning-soft); color: var(--wx-warning); font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 10px; }
 .fecha-box .fw-bold { font-size: 15px; color: var(--wx-text); }
+/* Venta anterior: el total grande y el cambio en verde, lo que se pregunta en el mostrador. */
+.venta-anterior { background: var(--wx-surface); border: 1px solid var(--wx-accent-line, #cfe9ef); border-radius: 14px; padding: 13px 15px; }
+.va-cab { display: flex; justify-content: space-between; font-size: 12px; color: var(--wx-text-muted); }
+.va-total { font-size: 24px; font-weight: 700; color: var(--wx-text); margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+.va-fila { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--wx-text); padding: 2px 0; }
+.va-fila > span:first-child { color: var(--wx-text-muted); }
+.va-cambio { color: var(--wx-success); font-size: 15px; font-variant-numeric: tabular-nums; }
+.va-acciones { display: flex; gap: 6px; margin-top: 10px; }
+.va-acciones .btn { flex: 1; border-radius: 10px; font-size: 12px; }
+:host-context(html.dark) .venta-anterior { border-color: rgba(255,255,255,.10); }
 .side-hint { margin-top: auto; }
 .form-label { font-size: 12.5px; font-weight: 600; color: var(--wx-text); margin-bottom: 5px; }
 

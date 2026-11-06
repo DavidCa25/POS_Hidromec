@@ -20,6 +20,10 @@
         <span class="pos-key">F10</span>
         <span class="pos-label">Salida de efectivo</span>
       </div>
+      <div class="pos-shortcut" data-caja="entrada" data-guide="venta-entrada" (click)="abrirEntradaEfectivo()">
+        <span class="pos-key">F4</span>
+        <span class="pos-label">Entrada de efectivo</span>
+      </div>
       <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" data-caja="checar" (click)="abrirChecar()">
         <span class="pos-key">F9</span>
         <span class="pos-label">Checar</span>
@@ -197,6 +201,26 @@
           <div class="fw-bold">{{ today | date: 'longDate' : undefined : 'es-MX' }}</div>
         </div>
 
+        <!-- VENTA ANTERIOR: total, cómo pagó y el cambio, para resolver dudas
+             en el mostrador sin abrir el historial. -->
+        <div class="venta-anterior" *ngIf="ventaAnterior as va" data-guide="venta-anterior">
+          <div class="va-cab">
+            <span>Venta anterior<ng-container *ngIf="va.id"> #{{ va.id }}</ng-container></span>
+            <span>{{ va.hora | date:'HH:mm' }}</span>
+          </div>
+          <div class="va-total">{{ va.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          <div class="va-fila"><span>Pagó</span>
+            <span><ng-container *ngIf="va.pagado != null">{{ va.pagado | currency:'MXN':'symbol-narrow':'1.2-2' }} · </ng-container>{{ va.metodo }}</span></div>
+          <div class="va-fila" *ngIf="va.cambio != null"><span>Cambio</span>
+            <b class="va-cambio" data-guide="venta-anterior-cambio">{{ va.cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+          <div class="va-acciones" *ngIf="va.id">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="imprimirTicketUltimaVenta(false)">
+              <i class="ph ph-printer"></i> Reimprimir</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="verTicketAnterior = true">
+              <i class="ph ph-receipt"></i> Ver ticket</button>
+          </div>
+        </div>
+
         <div class="side-hint">
           <div class="small text-muted" *ngIf="isEditing && !editUnlocked">
             Venta cargada en <b>solo lectura</b>. Para devolver usa <b>Devolución</b>.
@@ -258,7 +282,9 @@
                 <td>
                   <div *ngIf="priced(it).applied" class="locked-cell">{{priced(it).unit|currency:'MXN':'symbol-narrow':'1.2-2'}}<small *ngIf="it.qty>1"> / unidad (promedio)</small></div>
                   <ng-container *ngIf="!priced(it).applied && (!isEditing || editUnlocked); else priceLocked">
+                    <!-- 0077 · «Cambiar precios»: sin la casilla, el precio se ve pero no se escribe. -->
                     <input type="number" class="form-control form-control-sm" min="0" step="0.01"
+                           [readonly]="!puedeCambiarPrecio" [attr.title]="puedeCambiarPrecio ? null : 'Cambiar precios lo autoriza un encargado'"
                            [(ngModel)]="it.unitPrice" name="price-{{i}}" (ngModelChange)="onPriceChange(i)"/>
                   </ng-container>
                   <ng-template #priceLocked>
@@ -602,6 +628,8 @@
 <!-- SALIDA DE DINERO: Retiro · Pago a proveedor · Gasto. Componente
      compartido con Touch (src/venta/salida-efectivo). -->
 <app-salida-efectivo *ngIf="showCashOutModal" (cerrado)="showCashOutModal = false"></app-salida-efectivo>
+<!-- 0076: entrada de efectivo (F4), compartida con Touch (src/venta/entrada-efectivo). -->
+<app-entrada-efectivo *ngIf="showCashInModal" (cerrado)="showCashInModal = false"></app-entrada-efectivo>
 
 <!-- MODAL POST-VENTA: PDF / WHATSAPP / FACTURAR -->
 <div class="modal fade show d-block"
@@ -777,6 +805,7 @@
   </div>
 </div>
 
+<app-receipt-viewer *ngIf="verTicketAnterior && ventaAnterior?.id" [id]="ventaAnterior!.id!" document="sale" (close)="verTicketAnterior = false"></app-receipt-viewer>
 <app-receipt-viewer *ngIf="refundComprobante" [id]="refundComprobante" document="refund" (close)="refundComprobante = null"></app-receipt-viewer>
 
 <div class="modal fade show d-block modal-productos" *ngIf="showModalClientes" style="background:rgba(0,0,0,0.13);z-index:10000;">
