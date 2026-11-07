@@ -1,0 +1,149 @@
+{
+  "real": true,
+  "nota": "Foto real (Bimbo). Arriba el papel está arrugado: los 3 primeros renglones no se leen. El ticket trae 10 piezas más arriba del corte (152 vs 142).",
+  "proveedor": "BIMBO",
+  "lineas": [
+    {
+      "codigo": "7501030478386",
+      "descripcion": "suPBlan567g5",
+      "cantidad": 4,
+      "factor": 1,
+      "precio_unitario": 44.82,
+      "importe": 179.28
+    },
+    {
+      "codigo": "7501030478409",
+      "descripcion": "wonAjon567g5",
+      "cantidad": 1,
+      "factor": 1,
+      "precio_unitario": 46.48,
+      "importe": 51.28
+    },
+    {
+      "codigo": "7500810029206",
+      "descripcion": "bigotcaje80g",
+      "cantidad": 10,
+      "factor": 1,
+      "precio_unitario": 12.3,
+      "importe": 123
+    },
+    {
+      "codigo": "7500810029077",
+      "descripcion": "BigoChoc80g",
+      "cantidad": 10,
+      "factor": 1,
+      "precio_unitario": 12.3,
+      "importe": 123
+    },
+    {
+      "codigo": "7501030431220",
+      "descripcion": "Concha2p130g",
+      "cantidad": 4,
+      "factor": 1,
+      "precio_unitario": 16.91,
+      "importe": 67.64
+    },
+    {
+      "codigo": "7501030464242",
+      "descripcion": "TiritDora127",
+      "cantidad": 25,
+      "factor": 1,
+      "precio_unitario": 13.83,
+      "importe": 345.75
+    },
+    {
+      "codigo": "7501030457008",
+      "descripcion": "tiradorad58g",
+      "cantidad": 12,
+      "factor": 1,
+      "precio_unitario": 7.69,
+      "importe": 92.28
+    },
+    {
+      "codigo": "7501030456322",
+      "descripcion": "MantVaini157",
+      "cantidad": 10,
+      "factor": 1,
+      "precio_unitario": 19.98,
+      "importe": 199.8
+    },
+    {
+      "codigo": "7501030456124",
+      "descripcion": "mantecachoc3",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 19.98,
+      "importe": 99.9
+    },
+    {
+      "codigo": "7501030474357",
+      "descripcion": "PachoncSP140",
+      "cantidad": 8,
+      "factor": 1,
+      "precio_unitario": 16.91,
+      "importe": 135.28
+    },
+    {
+      "codigo": "7503029151638",
+      "descripcion": "PanquCase235",
+      "cantidad": 3,
+      "factor": 1,
+      "precio_unitario": 26.9,
+      "importe": 80.7
+    },
+    {
+      "codigo": "7501000103034",
+      "descripcion": "dalmatanvo55",
+      "cantidad": 8,
+      "factor": 1,
+      "precio_unitario": 11.53,
+      "importe": 92.24
+    },
+    {
+      "codigo": "7501000103065",
+      "descripcion": "chocotfresp5",
+      "cantidad": 8,
+      "factor": 1,
+      "precio_unitario": 11.53,
+      "importe": 92.24
+    },
+    {
+      "codigo": "7501030429340",
+      "descripcion": "twinchosp114",
+      "cantidad": 4,
+      "factor": 1,
+      "precio_unitario": 14.6,
+      "importe": 58.4
+    },
+    {
+      "codigo": "7501030429319",
+      "descripcion": "twivainsp114",
+      "cantidad": 4,
+      "factor": 1,
+      "precio_unitario": 14.6,
+      "importe": 58.4
+    },
+    {
+      "codigo": "7500810015834",
+      "descripcion": "PasCua1p54g",
+      "cantidad": 21,
+      "factor": 1,
+      "precio_unitario": 9.33,
+      "importe": 195.93
+    },
+    {
+      "codigo": "7500810015261",
+      "descripcion": "tarfre8p133.",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 15.56,
+      "importe": 77.8
+    }
+  ],
+  "subtotal": 2532.92,
+  "descuento": 0,
+  "ieps": 140.91,
+  "iva": 0,
+  "envases": 0,
+  "total": 2593.13
+}

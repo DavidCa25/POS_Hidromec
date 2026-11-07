@@ -1,0 +1,41 @@
+{
+ "real": true,
+ "fuente": "https://ahorratelasvueltas.com/teescucha/",
+ "nota": "Ticket de ejemplo de Casa Ley: cantidad, descripción, total.",
+ "proveedor": "CASA LEY S. A. P .I. DE C. V.",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "PAPAS SAL",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 5.4,
+   "importe": 5.4
+  },
+  {
+   "codigo": null,
+   "descripcion": "CHOCOLATE DONUT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 8.13,
+   "importe": 8.13
+  },
+  {
+   "codigo": null,
+   "descripcion": "ATÚN MAZ",
+   "cantidad": 2,
+   "factor": 1,
+   "precio_unitario": 11.69,
+   "importe": 23.38
+  },
+  {
+   "codigo": null,
+   "descripcion": "ICED TEA",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 4.6,
+   "importe": 4.6
+  }
+ ],
+ "total": 44.61
+}

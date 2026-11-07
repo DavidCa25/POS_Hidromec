@@ -1,0 +1,17 @@
+{
+ "real": true,
+ "fuente": "https://www.autozone.com.mx (ejemplo de factura)",
+ "nota": "Factura CFDI de AutoZone de un solo producto con IVA desglosado.",
+ "proveedor": "AutoZone de México, S. de R.L. de C.V.",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "Estabilizador de",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 155.08,
+   "importe": 155.08
+  }
+ ],
+ "total": 179.9
+}

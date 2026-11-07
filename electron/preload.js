@@ -143,6 +143,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSuppliers: () => invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => invoke('get-next-purchase-folio'),
     registerPurchase: (payload) => invoke('sp-register-purchase', payload),
+    /* 0077: documentos de compra (ticket, nota o XML del SAT). */
+    comprasDocLeer: (p) => invoke('compras-doc:leer', p),
+    comprasDocAprender: (p) => invoke('compras-doc:aprender', p),
+    comprasDocArchivo: (p) => invoke('compras-doc:archivo', p),
+    comprasDocDeCompra: (p) => invoke('compras-doc:de-compra', p),
+    comprasDocDuplicados: (p) => invoke('compras-doc:duplicados', p),
     getPurchases: () => invoke('sp-get-purchases'),
     getUserById: (userId) => invoke('sp-get-user-by-id', userId),
 

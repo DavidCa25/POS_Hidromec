@@ -1,0 +1,41 @@
+{
+ "real": true,
+ "fuente": "https://www.promodescuentos.com/ofertas/oxxo-garrafon-bonafont-20l",
+ "nota": "Ticket de Oxxo: garrafón con la promoción como renglón negativo debajo de cada uno.",
+ "proveedor": "Cadena Comercial Oxxo, S.A. de C.V",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "AGUA BONAFONT 20 LT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 65,
+   "importe": 65
+  },
+  {
+   "codigo": null,
+   "descripcion": "AGUA BONAFONT 20 LT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 65,
+   "importe": 65
+  },
+  {
+   "codigo": null,
+   "descripcion": "AGUA BONAFONT 20 LT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 65,
+   "importe": 65
+  },
+  {
+   "codigo": null,
+   "descripcion": "AGUA BONAFONT 20 LT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 65,
+   "importe": 65
+  }
+ ],
+ "total": 140
+}

@@ -170,7 +170,7 @@
                 <!-- Mensaje cuando no hay productos -->
                 <tr *ngIf="items.length === 0">
                   <td colspan="8" class="text-center text-muted py-4">
-                    No hay productos agregados. Usa “Agregar producto”.
+                    No hay productos agregados. Usa “Agregar producto” o sube el ticket o la factura del proveedor.
                   </td>
                 </tr>
               </tbody>
@@ -178,11 +178,20 @@
           </div>
 
           <!-- Botón agregar producto -->
-          <button type="button"
-                  class="btn btn-outline-primary btn-sm mt-2 btn-compact"
-                  (click)="abrirModalProductos()">
-            <i class="ph ph-plus"></i> Agregar producto
-          </button>
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button"
+                    class="btn btn-outline-primary btn-sm mt-2 btn-compact"
+                    (click)="abrirModalProductos()">
+              <i class="ph ph-plus"></i> Agregar producto
+            </button>
+            <!-- Ticket, nota o factura del proveedor: se lee y llena la compra. -->
+            <button type="button"
+                    class="btn btn-primary btn-sm mt-2 btn-compact"
+                    data-guide="compra-subir-documento"
+                    (click)="abrirDocumento()">
+              <i class="ph ph-receipt"></i> Subir ticket o factura
+            </button>
+          </div>
         </div>
 
         <!-- Cierre de la compra: como se paga y cuanto se paga -->
@@ -324,3 +333,10 @@
 <app-proveedor-form *ngIf="altaProveedorAbierta"
                     (guardado)="alAgregarProveedor($event)"
                     (cerrado)="altaProveedorAbierta = false"></app-proveedor-form>
+
+<app-compra-documento *ngIf="documentoAbierto"
+                      [productos]="productos"
+                      [proveedores]="proveedores"
+                      (proveedorCreado)="alCrearProveedorDesdeDocumento($event)"
+                      (aplicar)="alAplicarDocumento($event)"
+                      (cerrado)="documentoAbierto = false"></app-compra-documento>

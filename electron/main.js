@@ -121,6 +121,8 @@ ipcHospitality.registrar({ ipcMain, sql, poolPromise, nativeImage });
 require('./ipc/comercial').registrar({ipcMain,sql,poolPromise,cajaDeLaOperacion,autorizacionEnCanal,pideAutorizacion,registrarEventoSeguridad,aprobacionesActivas});
 /* 0060 · Produccion por tandas: formula de producto, tablero y tandas. */
 require('./ipc/produccion').registrar({ ipcMain, sql, poolPromise });
+/* 0077: subir el ticket, la nota o la factura de una compra y que se llene sola. */
+require('./ipc/compras-documentos').registrar({ ipcMain, sql, poolPromise });
 /* MultiSucursal: matriz, catalogo corporativo, excepciones y traspasos. */
 const ipcMulti = require('./ipc/multisucursal');
 ipcMulti.registrar({ ipcMain, sql, poolPromise, cloudSync,
@@ -2726,7 +2728,7 @@ ipcMain.handle('get-next-purchase-folio', async () => {
   }
 });
 
-ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id, socio_pago_id }) => {
+ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id, apply_payment_id, socio_pago_id }) => {
   try {
     const pool = await poolPromise;
 
@@ -2781,6 +2783,8 @@ ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', a
     // salida de ese turno para que salga en el corte.
     request.input('payment_method', sql.NVarChar(20), payment_method || 'CREDITO');
     request.input('register_id', sql.Int, Number(register_id) || null);
+    // Pago a proveedor que ya salió de la caja: se aplica a esta compra (0078).
+    request.input('apply_payment_id', sql.Int, Number(apply_payment_id) || null);
 
     const result = await request.execute('sp_register_purchase');
     const fila = result.recordset?.[0] ?? {};
