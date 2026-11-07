@@ -144,6 +144,21 @@ asignar('asistencia', [
 // el negocio que la activa. El descuento vive en sp_register_sale (paso 3c).
 asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar']);
 
+// 0079: Socios (de quien es cada producto, reparto de cada venta, gastos,
+// anticipos, liquidacion) y Propinas (cobro y reparto al personal). Dos
+// aplicaciones: solo para el negocio que las activa. docs/socios.md.
+asignar('socios', [
+  'sp_socios_llenar_duenos', 'sp_socios_asignar', 'sp_socios_calcular',
+  'sp_socios_config_get', 'sp_socios_config_guardar', 'sp_socios_producto_dueno',
+  'sp_socios_gasto_guardar', 'sp_socios_compra_guardar',
+  'sp_socios_movimiento', 'sp_socios_movimientos', 'sp_socios_ejemplo',
+  'sp_socios_resumen', 'sp_socios_liquidar', 'sp_socios_liquidacion', 'sp_socios_por_corte',
+]);
+asignar('propinas', [
+  'sp_propinas_config_get', 'sp_propinas_config_guardar', 'sp_propina_registrar',
+  'sp_propinas_repartir', 'sp_propinas_historial',
+]);
+
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.
 asignar('sync', [

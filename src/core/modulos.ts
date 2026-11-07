@@ -153,6 +153,35 @@ export const MODULOS: ModuleDefinition[] = [
     aparece: 'Vender suelto, en el formulario de cada producto',
   },
   {
+    /* Se enciende con un asistente (socios, que es de quien, como se reparte
+       la ganancia), como Asistencia con sus preguntas. docs/socios.md. */
+    id: 'socios',
+    name: 'Socios',
+    description: 'Para negocios con dos o más dueños: cuánto le toca a cada uno de cada venta.',
+    detalle: 'Cada producto e insumo es de un socio. Cada venta se reparte según quién vende ' +
+             'y quién puso los insumos; los gastos, según quién los hizo. Cada corte lleva su ' +
+             'cuenta y se liquida cada semana o cada mes.',
+    icon: 'handshake',
+    category: 'OPERACION',
+    capability: 'socios',
+    route: '/dashboard/socios',
+    aparece: 'Socios en el menú, y «Pertenece a» en cada producto',
+  },
+  {
+    /* Se enciende contestando como se reparten. La propina no es venta: no
+       lleva IVA ni entra en la utilidad ni en Socios. */
+    id: 'propinas',
+    name: 'Propinas',
+    description: 'Cobra propina al pagar y repártela al personal.',
+    detalle: 'Botones de porcentaje o cantidad libre, en efectivo o tarjeta. Se reparte a quien ' +
+             'atendió, por horas trabajadas (Asistencia) o en partes iguales, y se paga desde el cajón.',
+    icon: 'hand-coins',
+    category: 'VENTAS',
+    capability: 'propinas',
+    route: '/dashboard/propinas',
+    aparece: 'Propina en la pantalla de cobro, y Propinas en el menú',
+  },
+  {
     /* Antes vivia en Configuracion, como si fuera un ajuste. Es una
        integracion con un proveedor (TAECEL): recargas y pago de luz, agua,
        gas... Sin contrato con el proveedor no hay nada que encender. */

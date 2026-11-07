@@ -138,6 +138,12 @@ export interface Payment {
   /** Cliente de credito (obligatorio en CREDITO). */
   creditCustomerId?: number | null;
   dueDate?: string | null;
+  /**
+   * 0079 · La propina, si la aplicacion Propinas esta activada. NO suma al
+   * total de la venta: se registra aparte despues del COMMIT. En efectivo,
+   * el dinero recibido tiene que cubrir cuenta + propina.
+   */
+  tip?: { monto: number; metodo: 'EFECTIVO' | 'TARJETA' } | null;
 }
 
 /**
@@ -172,6 +178,8 @@ export interface CheckoutResult {
   error?: string;
   /** Por que no se cobro, cuando la pantalla tiene algo que hacer (0071: ASISTENCIA_SIN_ENTRADA). */
   motivo?: string;
+  /** 0079: la propina no se pudo guardar (la venta si). */
+  propinaError?: string | null;
   saleId?: number | null;
   total?: number;
   paid?: number;
@@ -301,6 +309,13 @@ export interface Capabilities {
    * cigarro de la cajetilla). Al faltar piezas, la venta abre un paquete.
    */
   ventaSuelta: boolean;
+  /**
+   * 0079 · Socios: de quien es cada producto e insumo, cuanto le toca a cada
+   * socio de cada venta, gastos, anticipos y liquidacion. docs/socios.md.
+   */
+  socios: boolean;
+  /** 0079 · Propinas: se cobran al pagar y se reparten al personal. */
+  propinas: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */

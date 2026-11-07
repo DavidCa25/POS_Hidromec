@@ -2675,11 +2675,16 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
       const fila = result.recordset?.[0] ?? null;
       // Roles v2: el cajon se abre "al cobrar" solo si de verdad hubo un cobro aqui.
       ultimoCobro.set(event.sender.id, Date.now());
+      const saleId = fila?.sale_id ?? fila?.id ?? null;
+      /* 0079: ya con la venta registrada, su reparto entre socios y su
+         propina. Nunca tumban la venta: lo que falle se dice en `propina`. */
+      const despues = await require('./ipc/socios').despuesDeVender(pool, sql, { saleId, userId: p.userId, tip: p.tip });
       return {
         success: true,
-        saleId: fila?.sale_id ?? fila?.id ?? null,
+        saleId,
         total: fila?.total ?? null,
         data: result.recordset ?? [],
+        propina: despues.propina,
       };
     } catch (err) {
       if (esDeadlock(err) && intento < MAX_INTENTOS) {
@@ -2721,7 +2726,7 @@ ipcMain.handle('get-next-purchase-folio', async () => {
   }
 });
 
-ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id }) => {
+ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', async (event, { user_id, supplier_id, tax_rate, tax_amount, subtotal, total, detalles, payment_method, register_id, socio_pago_id }) => {
   try {
     const pool = await poolPromise;
 
@@ -2779,9 +2784,12 @@ ipcMain.handle('sp-register-purchase', sesion.proteger('sp-register-purchase', a
 
     const result = await request.execute('sp_register_purchase');
     const fila = result.recordset?.[0] ?? {};
+    /* 0079: la pago un socio de su bolsa (no es anticipo). */
+    const socios = await require('./ipc/socios').despuesDeCompra(pool, sql, fila.purchase_id, socio_pago_id);
 
     return {
       success: true,
+      socios,
       purchase_id: fila.purchase_id,
       payment_method: fila.payment_method ?? null,
       balance: fila.balance ?? null,
@@ -4628,6 +4636,9 @@ require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
 require('./ipc/asistencia').registrar({ ipcMain, sql, poolPromise });
 /* 0073: Venta suelta (el cigarro de la cajetilla). */
 require('./ipc/venta-suelta').registrar({ ipcMain, sql, poolPromise });
+/* 0079: Socios (reparto de ganancias entre duenos) y Propinas. */
+require('./ipc/socios').registrar({ ipcMain, sql, poolPromise,
+  cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null });
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {

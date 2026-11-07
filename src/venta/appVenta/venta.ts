@@ -43,6 +43,7 @@ import {
 import { CapabilityService, FechaSqlPipe } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { AsistenciaChecarComponent } from '../../app/asistencia/checar/asistencia-checar.component';
+import { PropinaCobroComponent, PropinaElegida } from '../../app/socios/propina-cobro.component';
 import { DevolucionTouch } from '../../touch/devolucion-touch/devolucion-touch.component';
 
 /*
@@ -89,7 +90,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -578,8 +579,18 @@ export class Venta implements OnInit, OnDestroy {
 
   get cambio(): number {
     if (this.dineroRecibido == null) return 0;
-    const c = this.dineroRecibido - this.totalVenta;
+    /* 0079: la propina en efectivo se queda en el cajon: no es cambio. */
+    const c = this.dineroRecibido - this.totalVenta - this.propinaEfectivo;
     return c > 0 ? c : 0;
+  }
+
+  /** 0079 · La propina elegida en el cobro (no suma al total de la venta). */
+  propina: PropinaElegida | null = null;
+  get propinaEfectivo(): number { return this.propina?.metodo === 'EFECTIVO' ? this.propina.monto : 0; }
+  /** Con tarjeta se cobra cuenta + propina: el recibido automatico la incluye. */
+  alCambiarPropina(p: PropinaElegida | null): void {
+    this.propina = p;
+    if (this.recibidoAutomatico && this.paymentMethod === 'TARJETA') this.dineroRecibido = this.totalVenta + (p?.monto ?? 0);
   }
 
   /**
@@ -796,6 +807,7 @@ export class Venta implements OnInit, OnDestroy {
     this.dineroRecibido = null;
     this.recibidoAutomatico = false;
     this.pedidoPlataforma = '';
+    this.propina = null;
     this.imprimirEstaVenta = true;
     /* Si la venta anterior fue con tarjeta, el método sigue elegido: el total
        exacto se pone de una vez. */
@@ -951,6 +963,7 @@ export class Venta implements OnInit, OnDestroy {
       received: isCredito ? null : this.dineroRecibido,
       creditCustomerId: isCredito ? this.customerId : null,
       dueDate: isCredito ? this.dueDate : null,
+      tip: this.propina,
     };
 
     // Mismos mensajes que antes: el Core valida, la pantalla los muestra.
@@ -985,6 +998,8 @@ export class Venta implements OnInit, OnDestroy {
     await this.cerrarMesa(mesa, res.saleId ?? null);
 
     this.afterSale(res.saleId ?? null, res, isCredito);
+    this.propina = null;
+    if (res.propinaError) await Swal.fire({ icon: 'warning', title: 'La venta quedó; la propina no', text: res.propinaError });
     this.lastSalePedido = mesa?.numero ?? null;
     this.showModal = false;
     await preguntarCajonVoucher(this.sale, this.paymentMethod === 'MIXTO' ? this.pagosMixtos.map(p => p.method) : [this.paymentMethod]);

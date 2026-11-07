@@ -1,0 +1,167 @@
+<div class="soc" data-guide="socios">
+  <header class="soc-cab">
+    <div>
+      <h1>Socios</h1>
+      <p>Lo que le toca a cada socio de cada venta, sus gastos, anticipos y retiros.</p>
+    </div>
+    <div class="soc-cab__acciones">
+      <button type="button" class="soc-sec" *ngIf="puedeConfigurar" (click)="configurar()" data-guide="socios-configurar">
+        <i class="ph ph-gear-six"></i> Configurar
+      </button>
+      <button type="button" class="soc-pri" (click)="liquidar()" data-guide="socios-liquidar">
+        <i class="ph ph-scales"></i> Liquidar
+      </button>
+    </div>
+  </header>
+
+  <nav class="soc-tabs" role="tablist" aria-label="Socios">
+    <button type="button" role="tab" [class.on]="pestana() === 'periodo'" [attr.aria-selected]="pestana() === 'periodo'" (click)="cambiar('periodo')" data-guide="socios-tab-periodo">Periodo</button>
+    <button type="button" role="tab" [class.on]="pestana() === 'cortes'" [attr.aria-selected]="pestana() === 'cortes'" (click)="cambiar('cortes')" data-guide="socios-tab-cortes">Por corte</button>
+    <button type="button" role="tab" [class.on]="pestana() === 'liquidaciones'" [attr.aria-selected]="pestana() === 'liquidaciones'" (click)="cambiar('liquidaciones')" data-guide="socios-tab-liquidaciones">Liquidaciones</button>
+    <button type="button" role="tab" [class.on]="pestana() === 'movimientos'" [attr.aria-selected]="pestana() === 'movimientos'" (click)="cambiar('movimientos')" data-guide="socios-tab-movimientos">Retiros y pagos</button>
+  </nav>
+
+  <p class="soc-error" *ngIf="error()" role="alert">{{ error() }}</p>
+  <p class="soc-vacio" *ngIf="cargando()">Cargando…</p>
+
+  <!-- ============================================================ PERIODO -->
+  <ng-container *ngIf="pestana() === 'periodo' && !cargando()">
+    <p class="soc-ayuda">Periodo abierto: {{ rango() }}. Vendido {{ dinero(totales().vendido) }}; dinero del negocio sin repartir {{ dinero(totales().saldo) }}.</p>
+    <div class="soc-tarjetas" data-guide="socios-tarjetas">
+      <article class="soc-tarjeta" *ngFor="let s of periodo()" [attr.data-guide-clave]="s.socio_id">
+        <div class="soc-tarjeta__cab">
+          <wx-avatar [semilla]="'socio:' + s.socio_id" [nombre]="s.nombre" [size]="36"></wx-avatar>
+          <b>{{ s.nombre }}</b>
+        </div>
+        <div class="soc-tarjeta__saldo" [class.soc-neg]="s.saldo_final < 0">
+          {{ dinero(s.saldo_final) }}
+          <small>{{ s.saldo_final >= 0 ? 'el negocio le debe' : 'le debe al negocio' }}</small>
+        </div>
+        <dl class="soc-desglose">
+          <dt>Vendió</dt><dd>{{ dinero(s.vendido) }}</dd>
+          <dt>Recupera de sus insumos</dt><dd>{{ dinero(s.costo) }}</dd>
+          <dt>Su ganancia</dt><dd>{{ dinero(s.ganancia) }}</dd>
+          <dt>Gastos a su cargo</dt><dd>{{ resta(s.gastos) }}</dd>
+          <dt>Compras con dinero del negocio</dt><dd>{{ resta(s.anticipos) }}</dd>
+          <dt>Aportaciones</dt><dd>{{ dinero(s.aportaciones) }}</dd>
+          <dt>Retiros y pagos</dt><dd>{{ resta(s.retiros) }}</dd>
+          <dt *ngIf="s.faltantes">Faltantes del corte</dt><dd *ngIf="s.faltantes">{{ resta(s.faltantes) }}</dd>
+          <dt *ngIf="s.saldo_inicial">Saldo anterior</dt><dd *ngIf="s.saldo_inicial">{{ dinero(s.saldo_inicial) }}</dd>
+        </dl>
+      </article>
+    </div>
+  </ng-container>
+
+  <!-- ========================================================== POR CORTE -->
+  <ng-container *ngIf="pestana() === 'cortes'">
+    <div class="soc-filtros">
+      <label class="soc-campo"><span>Desde</span><wx-date [ngModel]="desde()" (ngModelChange)="desde.set($event)" [limpiable]="false"></wx-date></label>
+      <label class="soc-campo"><span>Hasta</span><wx-date [ngModel]="hasta()" (ngModelChange)="hasta.set($event)" [limpiable]="false"></wx-date></label>
+      <button type="button" class="soc-sec" (click)="cargarCortes()">Ver</button>
+    </div>
+    <div class="castrol-table-container" *ngIf="!cargando()" data-guide="socios-cortes">
+      <table class="castrol-table">
+        <thead>
+          <tr><th scope="col">Corte</th><th scope="col">Caja</th><th scope="col">Abierto</th>
+            <th scope="col" class="num" *ngFor="let n of tablaCortes().nombres">{{ n }}</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="!tablaCortes().filas.length"><td [attr.colspan]="3 + tablaCortes().nombres.length" class="soc-vacio">Sin ventas repartidas en esos días.</td></tr>
+          <tr *ngFor="let f of tablaCortes().filas">
+            <td>#{{ f.id }} <small class="soc-ayuda" *ngIf="!f.cerrado">abierto</small></td>
+            <td>{{ f.caja }}</td>
+            <td>{{ f.abierto | date:'d MMM HH:mm':'':'es-MX' }}</td>
+            <td class="num" *ngFor="let id of tablaCortes().socios">{{ dinero(monto(f.montos, id)) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <!-- ====================================================== LIQUIDACIONES -->
+  <ng-container *ngIf="pestana() === 'liquidaciones' && !cargando()">
+    <div class="castrol-table-container" *ngIf="!detalle()">
+      <table class="castrol-table">
+        <thead><tr><th scope="col">Periodo</th><th scope="col">Cerró</th><th scope="col" class="num">Resultado</th><th scope="col" class="num">Saldo</th></tr></thead>
+        <tbody>
+          <tr *ngIf="!liquidaciones().length"><td colspan="4" class="soc-vacio">Todavía no hay liquidaciones.</td></tr>
+          <tr *ngFor="let l of liquidaciones()" tabindex="0" (click)="abrirLiquidacion(l.id)" (keydown.enter)="abrirLiquidacion(l.id)" [attr.data-guide-clave]="l.id">
+            <td>{{ l.desde | date:'d MMM':'':'es-MX' }} – {{ l.hasta | date:'d MMM y':'':'es-MX' }}</td>
+            <td>{{ l.usuario || '—' }}</td>
+            <td class="num">{{ dinero(l.resultado) }}</td>
+            <td class="num">{{ dinero(l.saldo_final) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-container *ngIf="detalle() as d">
+      <div class="soc-cab">
+        <h2>Liquidación del {{ d.liquidacion?.desde | date:'d MMM':'':'es-MX' }} al {{ d.liquidacion?.hasta | date:'d MMM y':'':'es-MX' }}</h2>
+        <button type="button" class="soc-sec" (click)="detalle.set(null)">Todas las liquidaciones</button>
+      </div>
+      <div class="castrol-table-container" data-guide="socios-liquidacion">
+        <table class="castrol-table">
+          <thead>
+            <tr><th scope="col">Socio</th><th scope="col" class="num">Vendió</th><th scope="col" class="num">Insumos</th>
+              <th scope="col" class="num">Ganancia</th><th scope="col" class="num">Gastos</th><th scope="col" class="num">Anticipos</th>
+              <th scope="col" class="num">Aport.</th><th scope="col" class="num">Retiros</th><th scope="col" class="num">Resultado</th>
+              <th scope="col" class="num">Saldo</th><th scope="col"></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let l of d.lineas">
+              <td>{{ l.nombre }}</td>
+              <td class="num">{{ dinero(l.vendido) }}</td><td class="num">{{ dinero(l.costo) }}</td>
+              <td class="num">{{ dinero(l.ganancia) }}</td><td class="num">{{ dinero(l.gastos) }}</td>
+              <td class="num">{{ dinero(l.anticipos) }}</td><td class="num">{{ dinero(l.aportaciones) }}</td>
+              <td class="num">{{ dinero(l.retiros) }}</td><td class="num">{{ dinero(l.resultado) }}</td>
+              <td class="num" [class.soc-neg]="l.saldo_final < 0"><b>{{ dinero(l.saldo_final) }}</b></td>
+              <td><button type="button" class="soc-sec" *ngIf="l.saldo_final != 0" (click)="pagarSaldo(l)">
+                {{ l.saldo_final > 0 ? 'Pagarle' : 'Cobrarle' }}</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <!-- ========================================================= MOVIMIENTOS -->
+  <ng-container *ngIf="pestana() === 'movimientos'">
+    <section class="soc-panel" data-guide="socios-movimiento">
+      <h2>Registrar</h2>
+      <div class="soc-form">
+        <label class="soc-campo"><span>Socio</span>
+          <wx-select [opciones]="opcionesSocio()" placeholder="Elegir socio" [(ngModel)]="mov.socioId"></wx-select></label>
+        <label class="soc-campo"><span>Movimiento</span>
+          <wx-select [opciones]="opcionesTipo" [(ngModel)]="mov.tipo"></wx-select></label>
+        <label class="soc-campo"><span>Monto</span>
+          <input type="number" min="0" step="0.01" [(ngModel)]="mov.monto" data-guide="socios-mov-monto"></label>
+        <label class="soc-campo"><span>Cómo</span>
+          <wx-select [opciones]="opcionesMetodo" [(ngModel)]="mov.metodo"></wx-select></label>
+        <label class="soc-campo"><span>Nota</span>
+          <input type="text" maxlength="255" [(ngModel)]="mov.nota"></label>
+        <button type="button" class="soc-pri" (click)="registrarMovimiento()" data-guide="socios-mov-registrar">Registrar</button>
+      </div>
+      <p class="soc-ayuda">En efectivo pasa por el cajón de esta caja y el corte lo cuenta.</p>
+    </section>
+    <div class="soc-filtros">
+      <label class="soc-campo"><span>Desde</span><wx-date [ngModel]="desde()" (ngModelChange)="desde.set($event)" [limpiable]="false"></wx-date></label>
+      <label class="soc-campo"><span>Hasta</span><wx-date [ngModel]="hasta()" (ngModelChange)="hasta.set($event)" [limpiable]="false"></wx-date></label>
+      <button type="button" class="soc-sec" (click)="cargarMovimientos()">Ver</button>
+    </div>
+    <div class="castrol-table-container" *ngIf="!cargando()">
+      <table class="castrol-table">
+        <thead><tr><th scope="col">Fecha</th><th scope="col">Socio</th><th scope="col">Movimiento</th><th scope="col">Cómo</th><th scope="col" class="num">Monto</th><th scope="col">Nota</th></tr></thead>
+        <tbody>
+          <tr *ngIf="!movimientos().length"><td colspan="6" class="soc-vacio">Sin movimientos en esos días.</td></tr>
+          <tr *ngFor="let m of movimientos()">
+            <td>{{ m.fecha | date:'d MMM HH:mm':'':'es-MX' }}</td><td>{{ m.nombre }}</td>
+            <td>{{ m.tipo === 'RETIRO' ? 'Retiro' : m.tipo === 'PAGO' ? 'Pago de saldo' : 'Aportación' }}</td>
+            <td>{{ m.metodo }}</td>
+            <td class="num" [class.soc-pos]="m.tipo === 'APORTACION'">{{ m.tipo === 'APORTACION' ? '+' : '−' }}{{ dinero(m.monto) }}</td>
+            <td>{{ m.nota }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</div>

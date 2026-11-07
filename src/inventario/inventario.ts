@@ -11,7 +11,7 @@ import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component'
 import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
-import { CapabilityService, HospitalityService, InventoryMode, Uom } from '../core';
+import { CapabilityService, HospitalityService, InventoryMode, SociosService, Uom } from '../core';
 import { AuthService, PAQUETES } from '../services/auth.service';
 
 
@@ -565,7 +565,77 @@ export class Inventario {
     public caps: CapabilityService,
     private hosp: HospitalityService,
     private cdr: ChangeDetectorRef,
+    private socios: SociosService,
   ) {}
+
+  /* ===================== 0079 · Socios: «Pertenece a» =====================
+     De quien es este producto. Sin elegir, es de quien sea su categoria (o
+     "sin dueno"); elegir aqui gana sobre la categoria. Solo con la
+     aplicacion Socios. Como la venta suelta, se guarda DESPUES del producto. */
+  sociosActivos: { id: number; nombre: string }[] = [];
+  /** '' = el de su categoria; 'COMP' = compartido; o el id de un socio. */
+  dueno: { eleccion: string; pcts: Record<number, number> } = { eleccion: '', pcts: {} };
+  private duenoOriginal = '';
+  /** De quien es hoy, resuelto, y de donde sale. */
+  duenoResuelto = '';
+  /** Se arma una vez al cargar los socios: wx-select no debe recibir una lista nueva en cada ciclo. */
+  opcDueno: WxOpcion[] = [];
+  get sumaDueno(): number { return Object.values(this.dueno.pcts).reduce((a, b) => a + (Number(b) || 0), 0); }
+
+  private async cargarSocios() {
+    if (!this.caps.socios) return;
+    const r = await this.socios.config();
+    if (!r.ok) return;
+    this.sociosActivos = r.data.socios.filter(s => s.activo).map(s => ({ id: s.id, nombre: s.nombre }));
+    this.opcDueno = [
+      { valor: '', etiqueta: 'El de su categoría' },
+      ...this.sociosActivos.map(s => ({ valor: String(s.id), etiqueta: s.nombre })),
+      { valor: 'COMP', etiqueta: 'Compartido…', nota: 'por porcentaje' },
+    ];
+  }
+
+  private limpiarDueno() {
+    this.dueno = { eleccion: '', pcts: {} };
+    this.duenoOriginal = '';
+    this.duenoResuelto = '';
+  }
+
+  private async cargarDueno(productId: number) {
+    this.limpiarDueno();
+    if (!productId || !this.caps.socios) return;
+    const r = await this.socios.duenoProducto(productId);
+    if (!r.ok) return;
+    const filas = r.data ?? [];
+    this.duenoResuelto = filas.map((f: any) => `${f.nombre}${Number(f.pct) < 100 ? ` ${Number(f.pct)} %` : ''}`).join(', ')
+      + (filas[0]?.origen === 'CATEGORIA' ? ' (por su categoría)' : filas[0]?.origen === 'SIN_DUENO' ? ' (sin dueño)' : '');
+    if (filas[0]?.origen === 'PRODUCTO') {
+      this.dueno = filas.length === 1
+        ? { eleccion: String(filas[0].socio_id), pcts: { [filas[0].socio_id]: 100 } }
+        : { eleccion: 'COMP', pcts: Object.fromEntries(filas.map((f: any) => [f.socio_id, Number(f.pct)])) };
+    }
+    this.duenoOriginal = JSON.stringify(this.dueno);
+    this.cdr.detectChanges();
+  }
+
+  cambiarDueno(v: string) {
+    if (v === 'COMP') {
+      const n = this.sociosActivos.length || 1, base = Math.floor(10000 / n) / 100;
+      this.dueno = { eleccion: v, pcts: Object.fromEntries(this.sociosActivos.map((s, i) => [s.id, i === 0 ? +(100 - base * (n - 1)).toFixed(2) : base])) };
+    } else {
+      this.dueno = { eleccion: v, pcts: v ? { [Number(v)]: 100 } : {} };
+    }
+  }
+
+  private async guardarDueno(productId: number) {
+    if (!productId || !this.caps.socios || JSON.stringify(this.dueno) === this.duenoOriginal) return;
+    const duenos = this.dueno.eleccion
+      ? Object.entries(this.dueno.pcts).filter(([, p]) => Number(p) > 0).map(([id, pct]) => ({ socioId: Number(id), pct: Number(pct) }))
+      : [];
+    const r = await this.socios.guardarDuenoProducto(productId, duenos);
+    if (!r.ok) {
+      await Swal.fire({ icon: 'warning', title: 'El producto se guardó, su dueño no', text: r.error });
+    }
+  }
 
   async ngOnInit() {
     await this.consultarInventario();
@@ -573,6 +643,7 @@ export class Inventario {
     await this.cargarMarcas();
     await this.cargarCatalogoProveedores();
     await this.verificarFacturacion();
+    await this.cargarSocios();
     
 
     const api = (window as any).electronAPI;
@@ -760,6 +831,7 @@ export class Inventario {
         const nuevoId = Number(result?.data?.[0]?.id ?? 0);
         await this.guardarPresentaciones(nuevoId);
         await this.guardarSuelto(nuevoId);
+        await this.guardarDueno(nuevoId);
         await this.guardarImagen(nuevoId);
         await this.consultarInventario();
         this.cerrarProductoModal();
@@ -874,6 +946,7 @@ export class Inventario {
 
       await this.guardarPresentaciones(Number(this.editingProductId));
       await this.guardarSuelto(Number(this.editingProductId));
+      await this.guardarDueno(Number(this.editingProductId));
       await this.guardarImagen(Number(this.editingProductId));
       await this.consultarInventario();
       this.cerrarProductoModal();
@@ -897,6 +970,7 @@ export class Inventario {
     this.presentaciones = [];
     this.presentacionesOriginales = [];
     this.limpiarSuelto();
+    this.limpiarDueno();
     this.presentacionStock = null;
     this.capturandoCodigo = false;
     this.productoModalAbierto = true;
@@ -935,6 +1009,7 @@ export class Inventario {
     this.presentacionStock = null;
     this.cargarPresentaciones(Number(item?.id ?? 0));
     this.cargarSuelto(Number(item?.id ?? 0));
+    this.cargarDueno(Number(item?.id ?? 0));
     this.cargarImagen(item);
     this.stockAntesDeEditar = Number(item?.stock ?? 0) || 0;
     this.modoAntesDeEditar = this.form.inventoryMode;

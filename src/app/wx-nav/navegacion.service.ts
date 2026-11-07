@@ -119,6 +119,10 @@ export class NavegacionService {
   get administrarServicios() { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
   /** 0071: las horas del equipo, con la aplicacion Asistencia activada. */
   get gestionarAsistencia() { return this.caps.asistencia && this.auth.puede(PAQUETES.ASISTENCIA_GESTIONAR); }
+  /** 0079: lo de cada socio y su liquidacion, con la aplicacion Socios activada. */
+  get gestionarSocios() { return this.caps.socios && this.auth.puede(PAQUETES.SOCIOS_GESTIONAR); }
+  /** 0079: repartir las propinas, con la aplicacion Propinas activada. */
+  get repartirPropinas() { return this.caps.propinas && this.auth.puede(PAQUETES.CAJA_CORTES); }
 
   // ---------------------------------------------------------------- areas
   /**
@@ -262,6 +266,8 @@ export class NavegacionService {
       { texto: 'Estadísticas', ruta: '/dashboard/estadisticas', icono: 'ph-chart-line', grupo: 'negocio', visible: this.verNumeros },
       { texto: 'Fidelización', ruta: '/dashboard/fidelizacion', icono: 'ph-gift', grupo: 'negocio', visible: this.administrarNegocio && this.caps.loyalty },
       { texto: 'Asistencia', ruta: '/dashboard/asistencia', icono: 'ph-clock', grupo: 'negocio', visible: this.gestionarAsistencia },
+      { texto: 'Socios', ruta: '/dashboard/socios', icono: 'ph-handshake', grupo: 'negocio', visible: this.gestionarSocios },
+      { texto: 'Propinas', ruta: '/dashboard/propinas', icono: 'ph-hand-coins', grupo: 'negocio', visible: this.repartirPropinas },
       { texto: 'Facturación', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
       /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
          sin contrato con el proveedor no se ofrece, aunque alguna vez se haya

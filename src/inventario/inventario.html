@@ -370,6 +370,28 @@
           </button>
         </div>
 
+        <!-- ===== PERTENECE A (0079, solo con la aplicacion Socios) =====
+             Sin elegir, es de quien sea su categoria. Un insumo es de quien
+             lo compra; un producto que se vende, de quien lo vende. -->
+        <div class="grid-col-span-3 prod-present" *ngIf="caps.socios && sociosActivos.length" data-guide="producto-dueno">
+          <label>Pertenece a</label>
+          <p class="prod-ayuda">El dueño de un insumo es quien lo compra; el de un producto que se vende, quien lo vende.
+            <ng-container *ngIf="duenoResuelto"> Hoy: {{ duenoResuelto }}.</ng-container></p>
+          <div class="prod-present__fila">
+            <wx-select class="prod-present__nombre" name="duenoEleccion" [opciones]="opcDueno" placeholder="El de su categoría"
+                       [ngModel]="dueno.eleccion" (ngModelChange)="cambiarDueno($event)" data-guide="producto-dueno-socio"></wx-select>
+          </div>
+          <div class="prod-present__fila" *ngIf="dueno.eleccion === 'COMP'">
+            <ng-container *ngFor="let s of sociosActivos">
+              <span class="prod-present__uom">{{ s.nombre }}</span>
+              <input type="number" min="0" max="100" step="1" class="prod-present__factor" [name]="'duenoPct' + s.id"
+                     [(ngModel)]="dueno.pcts[s.id]" [attr.aria-label]="'Porcentaje de ' + s.nombre">
+              <span class="prod-present__uom">%</span>
+            </ng-container>
+          </div>
+          <span class="prod-ayuda" *ngIf="dueno.eleccion === 'COMP' && sumaDueno !== 100">Suma {{ sumaDueno }} %: debe sumar 100.</span>
+        </div>
+
         <!-- ===== VENTA SUELTA (0073, solo con la aplicacion encendida) =====
              El suelto es un producto normal ligado a su paquete. Abrir el
              paquete cuando faltan piezas lo hace sp_register_sale. -->

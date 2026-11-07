@@ -6,7 +6,7 @@ import { registerLocaleData } from '@angular/common';
 import localeEsMX from '@angular/common/locales/es-MX';
 import { AuthService } from '../../services/auth.service';
 import Swal from 'sweetalert2';
-import { HospitalityService } from '../../core';
+import { CapabilityService, HospitalityService, SociosService } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 import { ProveedorFormComponent } from '../../app/proveedores/proveedor-form.component';
@@ -157,12 +157,29 @@ export class RegistrarCompra implements OnInit {
     private authService: AuthService,
     private hosp: HospitalityService,
     private register: RegisterService,
+    public caps: CapabilityService,
+    private socios: SociosService,
   ) {
     this.cargarProveedores();
   }
 
+  /* 0079 · Socios: quien pago la compra. Con dinero del negocio (cajon,
+     banco), lo comprado es anticipo del dueno de cada producto; si la pago
+     un socio de su bolsa, no. En efectivo salio del cajon: lo pago el negocio. */
+  opcSocioPago: WxOpcion[] = [];
+  socioPago: number | null = null;
+
   ngOnInit() {
     this.cargarFolio();
+    this.cargarSocios();
+  }
+
+  private async cargarSocios() {
+    if (!this.caps.socios) return;
+    const r = await this.socios.config();
+    if (!r.ok) return;
+    this.opcSocioPago = [{ valor: null, etiqueta: 'El negocio', nota: 'es anticipo del dueño de cada producto' },
+      ...r.data.socios.filter(s => s.activo).map(s => ({ valor: s.id, etiqueta: `${s.nombre}, de su bolsa` }))];
   }
 
   cargarFolio() {
@@ -416,6 +433,7 @@ export class RegistrarCompra implements OnInit {
       // procedimiento exige turno abierto y cuelga la salida de ese turno.
       payment_method: this.formaDePago,
       register_id: this.register.registerId,
+      socio_pago_id: this.formaDePago === 'EFECTIVO' ? null : this.socioPago,
       detalles: this.items.map(it => ({
         product_id: it.productId,
         quantity: it.qty,
@@ -439,8 +457,12 @@ export class RegistrarCompra implements OnInit {
                     ? `Pagada por ${this.etiquetaPago(this.formaDePago).toLowerCase()}.`
                     : 'Queda como cuenta por pagar del proveedor.')
           });
+          if (res.socios && !res.socios.ok) {
+            Swal.fire({ icon: 'warning', title: 'La compra quedó; quién la pagó no', text: res.socios.error });
+          }
           this.items = [];
           this.formaDePago = 'CREDITO';
+          this.socioPago = null;
           this.cargarFolio();
         } else {
           Swal.fire({ icon: 'error', title: 'Error al registrar compra', text: res?.message || res?.error || 'Ocurrió un error.' });

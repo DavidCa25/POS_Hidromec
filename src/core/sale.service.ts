@@ -92,8 +92,12 @@ export class SaleService {
       return null;
     }
     if (payment.method === 'TERMINAL_MP') return null;
-    if (payment.received == null || payment.received < t.total) {
-      return 'El dinero recibido debe ser mayor o igual al total de la venta';
+    /* 0079: la propina en efectivo tambien sale de lo recibido. */
+    const propina = payment.tip?.metodo === 'EFECTIVO' ? Number(payment.tip.monto) || 0 : 0;
+    if (payment.received == null || payment.received < t.total + propina) {
+      return propina
+        ? 'El dinero recibido debe cubrir la cuenta y la propina'
+        : 'El dinero recibido debe ser mayor o igual al total de la venta';
     }
     return null;
   }
@@ -146,7 +150,10 @@ export class SaleService {
     const cuentaPedido = cart.meta?.['cuentaMesa'] as { id?: number; numero?: number | null } | undefined;
     const pedido = Number(cuentaPedido?.numero) || null;
 
-      const resp = await this.registerIntent(intent);
+      /* 0079: la propina viaja con la venta; el proceso principal la
+         registra despues del COMMIT, en el mismo canal. */
+      const tip = !isCredit && payment.tip && payment.tip.monto > 0 ? payment.tip : null;
+      const resp = await this.registerIntent(intent, tip);
       if (!resp?.success) {
         return { ok: false, error: resp?.error || 'No se pudo registrar la venta.', motivo: resp?.motivo };
       }
@@ -160,7 +167,9 @@ export class SaleService {
           paid = totals.total; change = 0;
         } else {
           paid = payment.received ?? totals.total;
-          change = Math.max(0, paid - totals.total);
+          /* 0079: la propina en efectivo se queda; no es cambio. */
+          const propina = payment.tip?.metodo === 'EFECTIVO' ? Number(payment.tip.monto) || 0 : 0;
+          change = Math.max(0, paid - totals.total - propina);
         }
         if (opts.openDrawer && (!payment.payments || payment.payments.some(p=>p.method==='EFECTIVO'))) {
           try { await api.openCashDrawer?.({ reason: 'payment' }); } catch { /* noop */ }
@@ -201,7 +210,8 @@ export class SaleService {
       this.cart.completeActive();
       this.catalog.invalidate();
 
-      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios, cupon };
+      return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios, cupon,
+               propinaError: resp?.propina && !resp.propina.ok ? (resp.propina.error || 'No se pudo guardar la propina.') : null };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Ocurrió un error inesperado.' };
     } finally {
@@ -216,10 +226,11 @@ export class SaleService {
    * Si el preload es anterior, se degrada a la firma posicional: la venta se
    * registra igual, sin modificadores, que es justo lo que hace Retail.
    */
-  private registerIntent(intent: SaleIntent): Promise<any> {
+  private registerIntent(intent: SaleIntent, tip: Payment['tip'] = null): Promise<any> {
     const api = this.bridge.api;
     if (api.registerSaleV2) {
       return api.registerSaleV2({
+        tip,
         payments:intent.payments,
         clientSaleKey:intent.clientSaleKey,
         commercialQuote:intent.commercialQuote,
