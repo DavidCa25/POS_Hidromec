@@ -1,0 +1,49 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com/document/755042461",
+ "nota": "Factura CFDI impresa de Propimex (Coca-Cola FEMSA): tabla con UPC, clave SAT, cajas, total de artículos, IVA por renglón.",
+ "proveedor": "PROPIMEX S. DE R.L. DE C.V.",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "SIDRAL 12 OZ VR 24PK",
+   "cantidad": 1,
+   "factor": 24,
+   "precio_unitario": 203.64,
+   "importe": 203.64
+  },
+  {
+   "codigo": "7501055374182",
+   "descripcion": "FANTA NARANJA 12 OZ VIDRIO R 24 G",
+   "cantidad": 1,
+   "factor": 24,
+   "precio_unitario": 203.64,
+   "importe": 203.64
+  },
+  {
+   "codigo": "7501055305711",
+   "descripcion": "CIEL MINERAL 355 ML VID R 24PK",
+   "cantidad": 1,
+   "factor": 24,
+   "precio_unitario": 220.69,
+   "importe": 220.69
+  },
+  {
+   "codigo": "7501055374175",
+   "descripcion": "SPRITE 12 OZ VIDRIO R 24 G",
+   "cantidad": 1,
+   "factor": 24,
+   "precio_unitario": 203.64,
+   "importe": 203.64
+  },
+  {
+   "codigo": "7501055307906",
+   "descripcion": "CIEL 600 ML PET NR 12 G",
+   "cantidad": 2,
+   "factor": 12,
+   "precio_unitario": 100,
+   "importe": 200
+  }
+ ],
+ "total": 1164.66
+}

@@ -1,0 +1,65 @@
+{
+ "real": true,
+ "fuente": "https://www.scribd.com/document/763655765",
+ "nota": "Factura hecha en Excel (ejercicio escolar con logo de Bimbo): «16% Imp.» y descuento al pie.",
+ "proveedor": "BIMBO",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "Mantecadas con Nuez",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 24.5,
+   "importe": 98
+  },
+  {
+   "codigo": null,
+   "descripcion": "Conchas",
+   "cantidad": 10,
+   "factor": 1,
+   "precio_unitario": 19,
+   "importe": 190
+  },
+  {
+   "codigo": null,
+   "descripcion": "Nito",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 19,
+   "importe": 76
+  },
+  {
+   "codigo": null,
+   "descripcion": "Donas Azucaradas",
+   "cantidad": 6,
+   "factor": 1,
+   "precio_unitario": 23,
+   "importe": 138
+  },
+  {
+   "codigo": null,
+   "descripcion": "Panquecitos de chocolate",
+   "cantidad": 2,
+   "factor": 1,
+   "precio_unitario": 27,
+   "importe": 54
+  },
+  {
+   "codigo": null,
+   "descripcion": "Panqué con Nuez",
+   "cantidad": 8,
+   "factor": 1,
+   "precio_unitario": 44,
+   "importe": 352
+  },
+  {
+   "codigo": null,
+   "descripcion": "Bimbuñuelos",
+   "cantidad": 12,
+   "factor": 1,
+   "precio_unitario": 21.5,
+   "importe": 258
+  }
+ ],
+ "total": 1294.26
+}

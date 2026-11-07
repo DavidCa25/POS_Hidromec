@@ -1,0 +1,14 @@
+{
+  "model_name": "PP-OCRv3_mobile_det",
+  "model_type": "detection",
+  "framework": "PaddleOCR",
+  "version": "PP-OCRv3",
+  "version_note": "Legacy model - PP-OCRv3 (use with v3 recognition models)",
+  "description": "PP-OCRv3 text detection model (for legacy language support)",
+  "original_format": "PaddlePaddle",
+  "converted_format": "ONNX",
+  "opset_version": 11,
+  "input_shape": "dynamic (batch_size, 3, height, width)",
+  "output_shape": "dynamic",
+  "source": "https://github.com/PaddlePaddle/PaddleOCR"
+}

@@ -1,0 +1,81 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com/document/946830804",
+ "nota": "Ticket de entrega Coca-Cola (Propimex, Silao). CANT en cajas/botellas «2/0»; página cortada antes del total.",
+ "proveedor": "COCA-COLA",
+ "lineas": [
+  {
+   "codigo": "455",
+   "descripcion": "SIDRAL MUNDET 2L PET NR 4 PK",
+   "cantidad": 2,
+   "factor": 4,
+   "precio_unitario": 102,
+   "importe": 204
+  },
+  {
+   "codigo": "501",
+   "descripcion": "COCA COLA 2.5L RET PET 8PK",
+   "cantidad": 6,
+   "factor": 8,
+   "precio_unitario": 255,
+   "importe": 1529.99
+  },
+  {
+   "codigo": "1538",
+   "descripcion": "SPRITE 1.5 LT PET NR 6PK",
+   "cantidad": 1,
+   "factor": 6,
+   "precio_unitario": 120.5,
+   "importe": 120.5
+  },
+  {
+   "codigo": "1740",
+   "descripcion": "SIDRAL MZN 3L NR PET 4PK",
+   "cantidad": 1,
+   "factor": 4,
+   "precio_unitario": 140,
+   "importe": 140
+  },
+  {
+   "codigo": "2591",
+   "descripcion": "Coca Cola 1.75L 12pk",
+   "cantidad": 1,
+   "factor": 12,
+   "precio_unitario": 334,
+   "importe": 334
+  },
+  {
+   "codigo": "2909",
+   "descripcion": "COCA-COLA 1.35L 12pk PET",
+   "cantidad": 2,
+   "factor": 12,
+   "precio_unitario": 281,
+   "importe": 562
+  },
+  {
+   "codigo": "3158",
+   "descripcion": "CCO 3LT PET NR 4PK",
+   "cantidad": 4,
+   "factor": 4,
+   "precio_unitario": 156,
+   "importe": 624
+  },
+  {
+   "codigo": "3275",
+   "descripcion": "CCO 1.25 VR Ret 8PK",
+   "cantidad": 2,
+   "factor": 8,
+   "precio_unitario": 136,
+   "importe": 272
+  },
+  {
+   "codigo": "97152",
+   "descripcion": "VFRUT PON CITRICO 2L 8PK NR",
+   "cantidad": 1,
+   "factor": 8,
+   "precio_unitario": 203,
+   "importe": 203
+  }
+ ],
+ "total": null
+}

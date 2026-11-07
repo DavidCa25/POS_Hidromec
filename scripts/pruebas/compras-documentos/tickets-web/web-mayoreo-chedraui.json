@@ -1,0 +1,161 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com/document/726154834",
+ "nota": "Chedraui: departamentos como títulos, granel con 3 decimales, marcas A/B/K; «IVA 0%/16%» e «IEPS» al pie son BASES, no impuestos.",
+ "proveedor": "TIENDAS CHEDRAUI SA DE CV",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "Galletas Quinoa",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 29.9,
+   "importe": 29.9
+  },
+  {
+   "codigo": null,
+   "descripcion": "Galletas Saladitas",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 29.9,
+   "importe": 29.9
+  },
+  {
+   "codigo": null,
+   "descripcion": "Artesano 567gr",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 55,
+   "importe": 55
+  },
+  {
+   "codigo": null,
+   "descripcion": "Caramelo Deemint 6",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 5,
+   "importe": 5
+  },
+  {
+   "codigo": null,
+   "descripcion": "Leche Lala 100 Red",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 37,
+   "importe": 37
+  },
+  {
+   "codigo": null,
+   "descripcion": "Cre Jif Cru 454g",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 95.5,
+   "importe": 95.5
+  },
+  {
+   "codigo": null,
+   "descripcion": "SalsHeiCatsuDoP397",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 24,
+   "importe": 24
+  },
+  {
+   "codigo": null,
+   "descripcion": "Mix Cool! Ara 50g",
+   "cantidad": 3,
+   "factor": 1,
+   "precio_unitario": 18.5,
+   "importe": 55.5
+  },
+  {
+   "codigo": null,
+   "descripcion": "Arom Glade Repuest",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 150,
+   "importe": 150
+  },
+  {
+   "codigo": null,
+   "descripcion": "Molida de Ternera",
+   "cantidad": 0.43,
+   "factor": 1,
+   "precio_unitario": 297,
+   "importe": 127.71
+  },
+  {
+   "codigo": null,
+   "descripcion": "Top Sirloin de Res",
+   "cantidad": 0.702,
+   "factor": 1,
+   "precio_unitario": 249,
+   "importe": 174.8
+  },
+  {
+   "codigo": null,
+   "descripcion": "Cebolla Blanca Kg",
+   "cantidad": 0.715,
+   "factor": 1,
+   "precio_unitario": 9.5,
+   "importe": 6.79
+  },
+  {
+   "codigo": null,
+   "descripcion": "Cilantro Rollo",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 5.6,
+   "importe": 5.6
+  },
+  {
+   "codigo": null,
+   "descripcion": "Uva VerdBlancS/Sem",
+   "cantidad": 0.765,
+   "factor": 1,
+   "precio_unitario": 128,
+   "importe": 97.92
+  },
+  {
+   "codigo": null,
+   "descripcion": "Manz Golden Med",
+   "cantidad": 1.045,
+   "factor": 1,
+   "precio_unitario": 29.9,
+   "importe": 31.25
+  },
+  {
+   "codigo": null,
+   "descripcion": "JamVirgFud290Gr",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 44.5,
+   "importe": 44.5
+  },
+  {
+   "codigo": null,
+   "descripcion": "Salchicha de Pavo",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 50,
+   "importe": 50
+  },
+  {
+   "codigo": null,
+   "descripcion": "Tocino Fud Ahumado",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 72,
+   "importe": 72
+  },
+  {
+   "codigo": null,
+   "descripcion": "Cero Rayas Azul Gr",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 38.5,
+   "importe": 38.5
+  }
+ ],
+ "total": 1130.87
+}

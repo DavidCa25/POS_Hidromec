@@ -1,0 +1,81 @@
+{
+ "real": true,
+ "fuente": "https://mis-servicios.org/mexico/descargar-factura-bimbo/",
+ "nota": "Factura CFDI impresa de Bimbo a tienda: clave, EAN, cantidad, unidad, costo, importe y columnas de IEPS e IVA en 0.",
+ "proveedor": "BIMBO",
+ "lineas": [
+  {
+   "codigo": "7501000111800",
+   "descripcion": "Tostado 210g TNB",
+   "cantidad": 9,
+   "factor": 1,
+   "precio_unitario": 15.77,
+   "importe": 141.93
+  },
+  {
+   "codigo": null,
+   "descripcion": "Pan Blanco 640g MTA",
+   "cantidad": 20,
+   "factor": 1,
+   "precio_unitario": 23.24,
+   "importe": 464.8
+  },
+  {
+   "codigo": "7501000111855",
+   "descripcion": "Pan Molido 210g MTA",
+   "cantidad": 56,
+   "factor": 1,
+   "precio_unitario": 11.48,
+   "importe": 642.88
+  },
+  {
+   "codigo": "7501030459637",
+   "descripcion": "Rendidor Fibra 500g",
+   "cantidad": 5,
+   "factor": 1,
+   "precio_unitario": 19.92,
+   "importe": 99.6
+  },
+  {
+   "codigo": "7501000111465",
+   "descripcion": "Pan Integral 675g",
+   "cantidad": 15,
+   "factor": 1,
+   "precio_unitario": 25.73,
+   "importe": 385.95
+  },
+  {
+   "codigo": "7501000111695",
+   "descripcion": "Super Bimbollos 6p 480g",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 24.9,
+   "importe": 99.6
+  },
+  {
+   "codigo": "7501000111503",
+   "descripcion": "Medias Noches 8p 340g",
+   "cantidad": 30,
+   "factor": 1,
+   "precio_unitario": 18.26,
+   "importe": 547.8
+  },
+  {
+   "codigo": "7501000112333",
+   "descripcion": "Tostado Doble Fibra 250g",
+   "cantidad": 9,
+   "factor": 1,
+   "precio_unitario": 17.43,
+   "importe": 156.87
+  },
+  {
+   "codigo": "7501030460879",
+   "descripcion": "Pan Blanco Rendidor Azul 454g",
+   "cantidad": 25,
+   "factor": 1,
+   "precio_unitario": 19.09,
+   "importe": 477.25
+  }
+ ],
+ "total": 3016.68
+}

@@ -1,0 +1,105 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com/document/919622099",
+ "nota": "Bodega Aurrera Express: EAN + descripción + importe; la multiplicación «5 X $ 8.00» va en el renglón de abajo.",
+ "proveedor": "NUEVA WAL MART DE MEXICO S DE RL DE CV",
+ "lineas": [
+  {
+   "codigo": "758104100422",
+   "descripcion": "BIMBOLLO 8 PZS",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 56,
+   "importe": 56
+  },
+  {
+   "codigo": "7501086106899",
+   "descripcion": "AU HAM IND",
+   "cantidad": 5,
+   "factor": 1,
+   "precio_unitario": 8,
+   "importe": 40
+  },
+  {
+   "codigo": "7501040004740",
+   "descripcion": "FUD JAMON VIRG",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 52,
+   "importe": 52
+  },
+  {
+   "codigo": "7501791637150",
+   "descripcion": "AU QSO TP MANC",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 15,
+   "importe": 15
+  },
+  {
+   "codigo": "7581091005347",
+   "descripcion": "CACAHUATE",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 10,
+   "importe": 10
+  },
+  {
+   "codigo": "7501791566439",
+   "descripcion": "AU QSO NACHOS",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 20,
+   "importe": 20
+  },
+  {
+   "codigo": "7501030418887",
+   "descripcion": "PRINCIPE 8",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 10,
+   "importe": 10
+  },
+  {
+   "codigo": "7501003340130",
+   "descripcion": "MCCORMICK MAYO",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 55,
+   "importe": 55
+  },
+  {
+   "codigo": "735051016372",
+   "descripcion": "HEINZ SALSA CAT",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 26,
+   "importe": 26
+  },
+  {
+   "codigo": "758132050012",
+   "descripcion": "JITOMATE SALA",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 15.4,
+   "importe": 15.4
+  },
+  {
+   "codigo": "758132050057",
+   "descripcion": "LECHUGA ROM",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 19,
+   "importe": 19
+  },
+  {
+   "codigo": "750101400065",
+   "descripcion": "JARRITOS",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 21,
+   "importe": 21
+  }
+ ],
+ "total": 339.4
+}

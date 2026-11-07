@@ -1,0 +1,89 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com (factura Maquipartes Rex)",
+ "nota": "Factura CFDI impresa de refacciones: cantidad, PZA H87, número de parte con puntos, clave SAT, descripción en dos líneas. Página 1 de 2: sin totales.",
+ "proveedor": "MAQUIPARTES REX, S.A. DE C.V.",
+ "lineas": [
+  {
+   "codigo": "4461.253.530",
+   "descripcion": "CAJA DIFERENC.",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 11660,
+   "importe": 11660
+  },
+  {
+   "codigo": "0730.105.019",
+   "descripcion": "ARANDELA DE TOPE A=1.9",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 240,
+   "importe": 240
+  },
+  {
+   "codigo": "0730.113.090",
+   "descripcion": "ARANDELA DE TOPE",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 130,
+   "importe": 520
+  },
+  {
+   "codigo": "4461.351.065",
+   "descripcion": "EJE DE DIFERENCIAL",
+   "cantidad": 2,
+   "factor": 1,
+   "precio_unitario": 2100,
+   "importe": 4200
+  },
+  {
+   "codigo": "4481.333.084",
+   "descripcion": "SATELITE DIFER.",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 1440,
+   "importe": 5760
+  },
+  {
+   "codigo": "4461.351.022",
+   "descripcion": "PIÑON PLANETARIO",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 4499.8,
+   "importe": 4499.8
+  },
+  {
+   "codigo": "4461.351.061",
+   "descripcion": "PIÑON PLANETARIO",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 6453.6,
+   "importe": 6453.6
+  },
+  {
+   "codigo": "0730.110.347",
+   "descripcion": "ARANDELA DE TOPE A=1.9",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 228.8,
+   "importe": 228.8
+  },
+  {
+   "codigo": "0501.315.974",
+   "descripcion": "LAMINA INTERIOR",
+   "cantidad": 6,
+   "factor": 1,
+   "precio_unitario": 1558,
+   "importe": 9348
+  },
+  {
+   "codigo": "4475.319.021",
+   "descripcion": "LAMINA EXTERIOR Z=81 A=4,0",
+   "cantidad": 4,
+   "factor": 1,
+   "precio_unitario": 1449.4,
+   "importe": 5797.6
+  }
+ ],
+ "total": null
+}

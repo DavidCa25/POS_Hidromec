@@ -59,6 +59,13 @@ const EXIGE = {
   /* 0076: meter dinero al cajon (cambio, dinero del dueno) no lo saca: lo
      registra quien opera la caja y queda en el corte con su concepto. */
   'sp-register-cash-in': VENTAS_OPERAR,
+  /* 0077 · Documentos de compra. Leer un ticket o un XML solo PROPONE: lo que
+     mueve inventario y dinero es sp-register-purchase, con su propio permiso. */
+  'compras-doc:leer': VENTAS_OPERAR,
+  'compras-doc:aprender': VENTAS_OPERAR,
+  'compras-doc:archivo': VENTAS_OPERAR,
+  'compras-doc:de-compra': VENTAS_OPERAR,
+  'compras-doc:duplicados': VENTAS_OPERAR,
   /* Roles v2: pedir y seguir la aprobacion del dueno desde la caja. Cualquiera
      que venda puede PEDIR; lo que se aprueba lo decide la nube (rol en Owner). */
   /* Si el negocio pide aprobaciones o no (dock > Más). Lo ve y lo cambia
