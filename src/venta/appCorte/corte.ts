@@ -305,7 +305,8 @@ export class Corte {
     return true;
   }
 
-  async consultar() {
+  /** `trasCerrar`: se acaba de cerrar el turno; que ya no haya uno no es un aviso. */
+  async consultar(trasCerrar = false) {
     void this.cargarCortes();
     if (!this.selectedRegisterId) {
       await Swal.fire({
@@ -321,7 +322,7 @@ export class Corte {
         if (!ok || !this.openShiftId) {
           this.movimientos = [];
           this.summary = { total_entradas: 0, total_salidas: 0, neto: 0 };
-          await Swal.fire({
+          if (!trasCerrar) await Swal.fire({
             icon: 'info', title: 'Sin turno abierto', text: 'Esta caja no tiene un turno abierto para cerrar.', confirmButtonColor: '#10b981'
           });
           return;
@@ -604,7 +605,7 @@ export class Corte {
       // aqui se puede haber cerrado el turno de OTRA caja.
       await this.shift.refresh();
 
-      await this.consultar();
+      await this.consultar(true);
     } catch (e: any) {
       console.error('closeShift:', e);
       await Swal.fire({

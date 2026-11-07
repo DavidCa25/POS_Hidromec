@@ -370,6 +370,34 @@
           </button>
         </div>
 
+        <!-- ===== VENTA SUELTA (0073, solo con la aplicacion encendida) =====
+             El suelto es un producto normal ligado a su paquete. Abrir el
+             paquete cuando faltan piezas lo hace sp_register_sale. -->
+        <div class="grid-col-span-3 prod-present" *ngIf="gestionaSuelto" data-guide="producto-suelto">
+          <label>Vender suelto <span class="prod-imagen__opt">(opcional)</span></label>
+          <ng-container *ngIf="!sueltosDeEste.length; else esPaquete">
+            <p class="prod-ayuda">Si este producto es la pieza de un paquete -el cigarro de la cajetilla-, elige el paquete. Cuando no haya piezas, la venta abre uno sola.</p>
+            <div class="prod-present__fila">
+              <wx-select class="prod-present__nombre" name="sueltoPadre" data-guide="producto-suelto-paquete"
+                         [(ngModel)]="suelto.padre" [opciones]="opcPaquetes" [buscable]="true"
+                         placeholder="No se vende suelto"></wx-select>
+              <input type="number" min="2" step="1" class="prod-present__factor" placeholder="20"
+                     name="sueltoPiezas" data-guide="producto-suelto-piezas"
+                     [(ngModel)]="suelto.piezas" [disabled]="!suelto.padre"
+                     aria-label="Piezas por paquete">
+              <span class="prod-present__uom">piezas</span>
+              <button type="button" class="prod-present__x" *ngIf="suelto.padre"
+                      (click)="suelto.padre = null; suelto.piezas = null" aria-label="No vender suelto">
+                <i class="ph ph-x" aria-hidden="true"></i>
+              </button>
+            </div>
+            <span class="prod-ayuda" *ngIf="precioPorPieza">{{ precioPorPieza }}</span>
+          </ng-container>
+          <ng-template #esPaquete>
+            <p class="prod-ayuda">Este producto es el paquete de: {{ sueltosDeEste.join(', ') }}.</p>
+          </ng-template>
+        </div>
+
         <!-- Codigo de barras: opcional y tambien al dar de alta. El
              procedimiento lo acepta desde hace tiempo; el formulario solo lo
              ofrecia al editar. Sin marcar, se guarda NULL. -->

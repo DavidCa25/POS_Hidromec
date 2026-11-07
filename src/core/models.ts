@@ -90,6 +90,11 @@ export interface LineSource {
   objetoImpuesto?: string | null;
   tasaIva?: number | null;
   inventoryMode?: InventoryMode;
+  /**
+   * Se vende por peso o medida (jamón, queso, frijol a granel): admite
+   * cantidades con decimales y MENORES a 1, como 0.25 kg.
+   */
+  decimal?: boolean;
 }
 
 /** Cabecera de una venta cargada por folio. */
@@ -291,6 +296,11 @@ export interface Capabilities {
    * trabajadas y extra. No es nomina. Solo para el negocio que la activa.
    */
   asistencia: boolean;
+  /**
+   * 0073 · Venta suelta: vender por pieza lo que se compra en paquete (el
+   * cigarro de la cajetilla). Al faltar piezas, la venta abre un paquete.
+   */
+  ventaSuelta: boolean;
 }
 
 /** Estado que se empuja a la pantalla de cliente (push unidireccional). */

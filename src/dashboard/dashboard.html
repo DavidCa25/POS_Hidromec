@@ -18,9 +18,12 @@
   <!-- LA NAVEGACION: el dock o la barra lateral, segun quien entro. Va
        primero para que la barra ocupe su columna a la izquierda; el dock es
        fijo y no ocupa sitio en el flujo. -->
-  <wx-navegacion></wx-navegacion>
+  <!-- DOS ZONAS CON FLECHAS: la navegación y el contenido. Dentro de cada una
+       las flechas mueven el foco según la pantalla; F6 salta de una a otra
+       (ver wx-navegacion). -->
+  <wx-navegacion wxFlechas data-zona="navegacion"></wx-navegacion>
 
-  <div class="dashboard-content">
+  <div class="dashboard-content" wxFlechas data-zona="contenido">
 
     <header class="dashboard-header d-flex align-items-center px-3 py-2">
 

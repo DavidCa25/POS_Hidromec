@@ -4,6 +4,7 @@ import {
   AsistenciaService, EstadoAsistencia, FechaSqlPipe, TipoMarca, fechaLocal, horasMin, moverDias,
 } from '../../../core';
 import { WxAvatarComponent } from '../../wx-avatar/wx-avatar.component';
+import { WxFlechasDirective } from '../../wx-flechas/wx-flechas.directive';
 
 /**
  * CHECAR EN LA CAJA (0071).
@@ -19,7 +20,7 @@ import { WxAvatarComponent } from '../../wx-avatar/wx-avatar.component';
 @Component({
   selector: 'app-asistencia-checar',
   standalone: true,
-  imports: [CommonModule, FechaSqlPipe, WxAvatarComponent],
+  imports: [CommonModule, FechaSqlPipe, WxAvatarComponent, WxFlechasDirective],
   templateUrl: './asistencia-checar.component.html',
   styleUrls: ['./asistencia-checar.component.css'],
 })

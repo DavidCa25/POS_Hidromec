@@ -1,6 +1,6 @@
 {
   "name": "wybix-pos",
-  "version": "1.4.8",
+  "version": "1.5.4",
   "main": "electron/main.js",
   "scripts": {
     "assets:rive": "node scripts/assets/rive.mjs",
@@ -35,6 +35,7 @@
     "db:test-resultados": "node scripts/db/pruebas/estado-resultados.mjs",
     "db:test-liquidaciones": "node scripts/db/pruebas/liquidaciones-plataforma.mjs",
     "db:test-asistencia": "node scripts/db/pruebas/asistencia.mjs",
+    "db:test-venta-suelta": "node scripts/db/pruebas/venta-suelta.mjs",
     "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
@@ -129,11 +130,13 @@
     "e2e:club-wallet": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/club-wallet.spec.js",
     "db:test-pagos": "node scripts/db/pruebas/pagos-comprobantes.mjs",
     "e2e:liquidaciones": "npm run build && node -e \"import('./e2e/preparar-bases.mjs').then(m=>m.prepararBase('Wybix_E2E_Liquidaciones',{perfil:'RETAIL'}))\" && cross-env WYBIX_E2E_DB=Wybix_E2E_Liquidaciones playwright test e2e/liquidaciones.spec.js",
+    "e2e:venta-suelta": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/venta-suelta.spec.js",
     "e2e:asistencia": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/asistencia.spec.js",
     "e2e:contrasena": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/contrasena-olvidada.spec.js",
+    "e2e:usuario-5-dias": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/usuario-5-dias.spec.js",
     "e2e:paridad": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/paridad.spec.js",
     "e2e:whatsapp": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/whatsapp-avisos.spec.js",
-    "e2e:1.5.0": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/asistencia.spec.js e2e/club.spec.js e2e/club-wallet.spec.js e2e/contrasena-olvidada.spec.js e2e/devoluciones.spec.js e2e/estado-resultados.spec.js e2e/menu-en-linea.spec.js e2e/paridad.spec.js e2e/puntos.spec.js e2e/whatsapp-avisos.spec.js && npm run e2e:liquidaciones",
+    "e2e:1.5.0": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/asistencia.spec.js e2e/club.spec.js e2e/club-wallet.spec.js e2e/contrasena-olvidada.spec.js e2e/devoluciones.spec.js e2e/estado-resultados.spec.js e2e/menu-en-linea.spec.js e2e/paridad.spec.js e2e/puntos.spec.js e2e/usuario-5-dias.spec.js e2e/whatsapp-avisos.spec.js && npm run e2e:liquidaciones",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js"
   },
   "prettier": {
@@ -162,7 +165,12 @@
       "node_modules/**/*",
       "package.json",
       "!electron/demo",
-      "!electron/demo/**"
+      "!electron/demo/**",
+      "!node_modules/onnxruntime-node/bin/napi-v*/{darwin,linux}/**",
+      "!node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**"
+    ],
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/bin/**"
     ],
     "extraResources": [
       {
@@ -278,6 +286,7 @@
     "msnodesqlv8": "^5.1.3",
     "mssql": "^11.0.1",
     "ng-apexcharts": "^1.16.0",
+    "onnxruntime-node": "^1.22.0",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
     "serialport": "^13.0.0",

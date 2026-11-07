@@ -10,6 +10,9 @@ import { HospitalityService } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { WxOpcion, WxSelectComponent } from '../../app/wx-select/wx-select.component';
 import { ProveedorFormComponent } from '../../app/proveedores/proveedor-form.component';
+import { CompraDocumentoComponent, DocumentoAplicado } from './documento/compra-documento.component';
+import { fechaDeSql, zonaDeSql } from '../../core/fechas';
+import { ShiftService } from '../../core/shift.service';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -18,6 +21,8 @@ interface ProductRow {
   part_number: string;
   product_name: string;
   price: number;
+  cost?: number;
+  bar_code?: string;
   stock: number;
   category_name: string;
   brand_name: string;
@@ -130,7 +135,7 @@ const FORMAS_DE_PAGO: WxOpcion[] = [
   standalone: true,
   templateUrl: './registrarCompra.html',
   styleUrls: ['./registrarCompra.css'],
-  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectComponent, ProveedorFormComponent],
+  imports: [RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, DecimalPipe, WxSelectComponent, ProveedorFormComponent, CompraDocumentoComponent],
   providers: [{ provide: LOCALE_ID, useValue: 'es-MX' }]
 })
 export class RegistrarCompra implements OnInit {
@@ -148,6 +153,14 @@ export class RegistrarCompra implements OnInit {
 
   items: PurchaseItem[] = [];
 
+  /** Ticket o factura subido: se lee, se revisa y llena la compra. */
+  documentoAbierto = false;
+  /**
+   * Lo que se paso desde un documento. Al registrar la compra se liga el
+   * documento a ella y se recuerda que renglon del proveedor es que producto.
+   */
+  private documentoPendiente: DocumentoAplicado | null = null;
+
   ivaTasa = 0.16;
 
   formasDePago = FORMAS_DE_PAGO;
@@ -157,6 +170,7 @@ export class RegistrarCompra implements OnInit {
     private authService: AuthService,
     private hosp: HospitalityService,
     private register: RegisterService,
+    private shift: ShiftService,
   ) {
     this.cargarProveedores();
   }
@@ -271,6 +285,8 @@ export class RegistrarCompra implements OnInit {
         part_number: r.part_number,
         product_name: r.product_name,
         price: r.price,
+        cost: r.cost != null ? Number(r.cost) : undefined,
+        bar_code: r.bar_code,
         stock: r.stock,
         category_name: r.category_name,
         brand_name: r.brand_name,
@@ -334,7 +350,7 @@ export class RegistrarCompra implements OnInit {
    * definidas, la lista se queda vacia y el selector no se dibuja. Quien no las
    * use no ve nada nuevo, y quien las defina las tiene en cualquier perfil.
    */
-  private async cargarPresentaciones(item: PurchaseItem) {
+  private async cargarPresentaciones(item: PurchaseItem, conservar = false) {
     try {
       const lista = await this.hosp.presentations(item.productId);
       if (!lista.length) return;
@@ -352,7 +368,7 @@ export class RegistrarCompra implements OnInit {
         nota: p.id === null ? item.baseUom : `x${p.factor}`,
       }));
       const porDefecto = lista.find((p: any) => p.is_default);
-      if (porDefecto) item.presentationId = Number(porDefecto.id);
+      if (porDefecto && !conservar) item.presentationId = Number(porDefecto.id);
     } catch {
       // Sin presentaciones la linea se compra en unidad base, como siempre.
     }
@@ -387,9 +403,166 @@ export class RegistrarCompra implements OnInit {
     this.items.splice(i, 1);
   }
 
-  trackByItem = (_: number, it: PurchaseItem) => it.productId;
+  // Por objeto: un documento puede traer el mismo producto en dos presentaciones.
+  trackByItem = (_: number, it: PurchaseItem) => it;
 
-  registrarCompra() {
+  // ---- Ticket o factura del proveedor ----
+  async abrirDocumento() {
+    if (!this.productos.length) await this.cargarProductosActivos();
+    this.documentoAbierto = true;
+  }
+
+  async alCrearProveedorDesdeDocumento(p: { id: number | null; nombre: string }) {
+    await this.cargarProveedores();
+    const id = p.id ?? this.proveedores.find(x => x.nombre === p.nombre)?.id ?? null;
+    if (id != null) this.seleccionarProveedor(Number(id));
+  }
+
+  /**
+   * % de ganancia para un renglon que llega de un documento.
+   *
+   * `sp_register_purchase` SIEMPRE reescribe el precio de venta con
+   * costo x IVA x (1 + ganancia). Con ganancia 0 el producto quedaria a
+   * precio de costo. Se conserva el margen que el producto ya tenia sobre
+   * su costo; sin costo conocido, el que deja el precio actual igual.
+   */
+  private margenDe(p: ProductRow, costoBase: number): number {
+    const iva = (p.objeto_impuesto || '02') !== '02' ? 0 : (Number(p.tasa_iva) || 0);
+    const precio = Number(p.price) || 0;
+    const ref = Number(p.cost) > 0 ? Number(p.cost) : costoBase;
+    if (!(precio > 0) || !(ref > 0)) return 0;
+    const m = (precio / (ref * (1 + iva)) - 1) * 100;
+    return Math.min(100, Math.max(0, Math.round(m * 100) / 100));
+  }
+
+  async alAplicarDocumento(d: DocumentoAplicado) {
+    this.documentoAbierto = false;
+    this.seleccionarProveedor(d.supplier_id);
+    for (const l of d.lineas) {
+      const p = this.productos.find(x => x.id === l.productId);
+      if (!p) continue;
+      /* El mismo producto en la misma presentacion: una sola linea. */
+      const ya = this.items.find(it => it.productId === l.productId && it.presentationId === l.presentationId);
+      if (ya) {
+        const q = (Number(ya.qty) || 0) + l.cantidad;
+        ya.purchasePrice = Math.round((((Number(ya.qty) || 0) * (Number(ya.purchasePrice) || 0) + l.cantidad * l.costo) / q) * 10000) / 10000;
+        ya.qty = q;
+        continue;
+      }
+      const item = new PurchaseItem(
+        p.id, p.product_name, l.cantidad, p.price ?? 0, l.costo,
+        this.margenDe(p, l.factor > 0 ? l.costo / l.factor : l.costo),
+        l.presentationId, [], [], p.base_uom || 'pza', p.sellable, p.objeto_impuesto || '02', p.tasa_iva,
+      );
+      this.items.push(item);
+      await this.cargarPresentaciones(item, true);
+    }
+    this.documentoPendiente = d;
+    /* Un ticket o nota de repartidor se paga al recibir, del cajón: se
+       propone «Efectivo» (sale de la caja y entra al corte) si hay turno
+       abierto en esta caja; sin turno no hay de dónde sacarlo. Una factura
+       CFDI suele ser a crédito: se deja como estaba. */
+    if (d.tipo !== 'CFDI' && this.formaDePago === 'CREDITO') {
+      const turno = await this.shift.refresh().catch(() => false);
+      if (turno) this.formaDePago = 'EFECTIVO';
+    }
+  }
+
+  /** Despues de registrar: liga el documento y recuerda los renglones. */
+  private async aprenderDocumento(purchaseId: number | null) {
+    const d = this.documentoPendiente;
+    this.documentoPendiente = null;
+    if (!d) return;
+    try {
+      await (window as any).electronAPI.comprasDocAprender({
+        document_id: d.document_id,
+        supplier_id: this.proveedorSeleccionado ?? d.supplier_id,
+        purchase_id: purchaseId,
+        lineas: d.lineas.map(l => ({
+          texto: l.texto, codigo: l.codigo, product_id: l.productId,
+          presentation_id: l.presentationId, factor: l.factor,
+        })),
+      });
+    } catch (e) {
+      // No impide la compra: solo no se recuerda para la proxima.
+      console.error('compras-doc:aprender', e);
+    }
+  }
+
+  /**
+   * ¿Ya se registró? Antes de guardar se busca, del mismo día, una compra del
+   * mismo proveedor por el mismo total, un pago a ese proveedor que ya salió
+   * de la caja, una salida de efectivo por el mismo monto o el mismo archivo
+   * ya ligado a otra compra. Decide la persona; aquí solo se le muestra.
+   *
+   * Devuelve null si no hay que registrar, o el pago ya hecho a aplicarle.
+   */
+  private async revisarDuplicados(): Promise<{ applyPaymentId: number | null } | null> {
+    let r: any;
+    try {
+      r = await (window as any).electronAPI.comprasDocDuplicados({
+        supplier_id: this.proveedorSeleccionado,
+        total: this.total,
+        document_id: this.documentoPendiente?.document_id ?? null,
+      });
+    } catch { return { applyPaymentId: null }; }
+    if (!r?.success) return { applyPaymentId: null };   // no impide registrar
+    const { compras = [], pagos = [], salidas = [], documento = null } = r.data || {};
+    const prov = this.proveedorLabel;
+    const dinero = (n: number) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const hora = (v: any) => fechaDeSql(v)?.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: zonaDeSql(v) }) ?? '';
+    const quien = (u: string | null) => (u ? ` por <b>${u}</b>` : '');
+
+    if (documento?.purchase_id) {
+      const x = await Swal.fire({
+        icon: 'warning', title: 'Este ticket ya se registró',
+        html: `El mismo archivo ya está en la compra <b>#${documento.purchase_id}</b>.`,
+        showCancelButton: true, confirmButtonText: 'Registrar de todos modos', cancelButtonText: 'No registrar',
+        focusCancel: true,
+      });
+      if (!x.isConfirmed) return null;
+    }
+    if (compras.length) {
+      const c = compras[0];
+      const x = await Swal.fire({
+        icon: 'warning', title: '¿La misma compra?',
+        html: `Hoy ya se registró una compra de <b>${prov}</b> por <b>${dinero(c.total)}</b>: `
+            + `folio <b>#${c.id}</b> a las ${hora(c.fecha)}${quien(c.usuario)}.<br>¿Es otra compra?`,
+        showCancelButton: true, confirmButtonText: 'Es otra, registrarla', cancelButtonText: 'Es la misma, no registrar',
+        focusCancel: true,
+      });
+      if (!x.isConfirmed) return null;
+    }
+    if (pagos.length) {
+      const pg = pagos[0];
+      const x = await Swal.fire({
+        icon: 'question', title: 'Ese pago ya salió de la caja',
+        html: `A las ${hora(pg.fecha)} se le pagó a <b>${prov}</b> <b>${dinero(pg.monto)}</b>`
+            + `${pg.forma === 'EFECTIVO' ? ' en efectivo' : ''}${quien(pg.usuario)}.<br>`
+            + `¿Es el pago de esta compra? Si lo es, se le aplica y el efectivo <b>no sale otra vez</b>.`,
+        showDenyButton: true, showCancelButton: true,
+        confirmButtonText: 'Sí, es este pago', denyButtonText: 'No, es otro pago', cancelButtonText: 'Cancelar',
+      });
+      if (x.isConfirmed) return { applyPaymentId: Number(pg.id) };
+      if (!x.isDenied) return null;
+    }
+    if (salidas.length && this.formaDePago === 'EFECTIVO') {
+      const sa = salidas[0];
+      const x = await Swal.fire({
+        icon: 'warning', title: '¿Ya se pagó con una salida de efectivo?',
+        html: `A las ${hora(sa.fecha)} salió de la caja un <b>${(sa.tipo_nombre || 'movimiento').toLowerCase()}</b> por <b>${dinero(sa.monto)}</b>`
+            + `${sa.nota ? ` («${sa.nota}»)` : ''}${quien(sa.usuario)}.<br>`
+            + `Si fue para pagar esta compra, registrarla en efectivo la sacaría <b>dos veces</b> del corte: `
+            + `cancela esa salida o registra la compra a crédito y abónala.`,
+        showCancelButton: true, confirmButtonText: 'Es otra salida, registrar', cancelButtonText: 'Revisar primero',
+        focusCancel: true,
+      });
+      if (!x.isConfirmed) return null;
+    }
+    return { applyPaymentId: null };
+  }
+
+  async registrarCompra() {
     if (this.items.length === 0) {
       Swal.fire({ icon: 'error', title: 'Oops...', text: 'No hay productos en la compra' });
       return;
@@ -405,6 +578,9 @@ export class RegistrarCompra implements OnInit {
       return;
     }
 
+    const revision = await this.revisarDuplicados();
+    if (!revision) return;
+
     const payload = {
       user_id: this.usuarioActualId,
       supplier_id: this.proveedorSeleccionado,
@@ -416,6 +592,8 @@ export class RegistrarCompra implements OnInit {
       // procedimiento exige turno abierto y cuelga la salida de ese turno.
       payment_method: this.formaDePago,
       register_id: this.register.registerId,
+      // Pago que ya salió de la caja antes de capturar la compra: se le aplica.
+      apply_payment_id: revision.applyPaymentId,
       detalles: this.items.map(it => ({
         product_id: it.productId,
         quantity: it.qty,
@@ -430,12 +608,15 @@ export class RegistrarCompra implements OnInit {
       .then((res: any) => {
         if (res?.success) {
           const folio = res.folio ?? res.purchase_id ?? '';
+          this.aprenderDocumento(Number(res.purchase_id) || null);
           const pagada = this.formaDePago !== 'CREDITO';
           Swal.fire({
             icon: 'success',
             title: 'Compra registrada',
             html: `Folio: <b>${folio}</b><br>`
-                + (pagada
+                + (revision.applyPaymentId
+                    ? 'Se le aplicó el pago que ya había salido de la caja.'
+                    : pagada
                     ? `Pagada por ${this.etiquetaPago(this.formaDePago).toLowerCase()}.`
                     : 'Queda como cuenta por pagar del proveedor.')
           });

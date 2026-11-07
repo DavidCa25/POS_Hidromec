@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Serie="FA" Folio="10432" Fecha="2026-11-04T09:12:44" FormaPago="99" MetodoPago="PPD" SubTotal="1788.80" Descuento="45.00" Moneda="MXN" Total="2334.55" TipoDeComprobante="I" Exportacion="01" LugarExpedicion="37000">
+  <cfdi:Emisor Rfc="DRC9807224A1" Nombre="DISTRIBUIDORA REFRESQUERA DEL CENTRO" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="XAXX010101000" Nombre="PUBLICO EN GENERAL" DomicilioFiscalReceptor="37000" RegimenFiscalReceptor="616" UsoCFDI="G01"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="50202306" NoIdentificacion="7501055300075" Cantidad="3" ClaveUnidad="XBX" Unidad="CAJA" Descripcion="REF COLA 600ML NR CJ24" ValorUnitario="312.00" Importe="936.00" Descuento="23.53" ObjetoImp="02">
+      <cfdi:Impuestos><cfdi:Traslados>
+        <cfdi:Traslado Base="912.47" Impuesto="003" TipoFactor="Cuota" TasaOCuota="3.081800" Importe="133.14"/>
+        <cfdi:Traslado Base="1045.61" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="167.30"/>
+      </cfdi:Traslados></cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50202306" NoIdentificacion="7501055303786" Cantidad="2" ClaveUnidad="XBX" Unidad="CAJA" Descripcion="REF NARANJA 2L PET CJ8" ValorUnitario="198.40" Importe="396.80" Descuento="9.98" ObjetoImp="02">
+      <cfdi:Impuestos><cfdi:Traslados>
+        <cfdi:Traslado Base="386.82" Impuesto="003" TipoFactor="Cuota" TasaOCuota="3.081800" Importe="98.62"/>
+        <cfdi:Traslado Base="485.44" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="77.67"/>
+      </cfdi:Traslados></cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50202301" Cantidad="2" ClaveUnidad="XBX" Unidad="CAJA" Descripcion="AGUA NATURAL 1L CJ12" ValorUnitario="96.00" Importe="192.00" Descuento="4.83" ObjetoImp="02">
+      <cfdi:Impuestos><cfdi:Traslados>
+        <cfdi:Traslado Base="187.17" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="29.95"/>
+      </cfdi:Traslados></cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50202306" Cantidad="1" ClaveUnidad="XBX" Unidad="CAJA" Descripcion="REF COLA 500ML VID RET CJ24" ValorUnitario="264.00" Importe="264.00" Descuento="6.66" ObjetoImp="02">
+      <cfdi:Impuestos><cfdi:Traslados>
+        <cfdi:Traslado Base="257.34" Impuesto="003" TipoFactor="Cuota" TasaOCuota="3.081800" Importe="36.98"/>
+        <cfdi:Traslado Base="294.32" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="47.09"/>
+      </cfdi:Traslados></cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="590.75"/>
+  <cfdi:Complemento><tfd:TimbreFiscalDigital Version="1.1" UUID="6F2B9C1E-3A4D-4E5F-9A1B-2C3D4E5F6A7B" FechaTimbrado="2026-11-04T09:13:02"/></cfdi:Complemento>
+</cfdi:Comprobante>

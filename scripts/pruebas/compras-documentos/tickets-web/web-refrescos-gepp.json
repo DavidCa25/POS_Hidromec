@@ -1,0 +1,41 @@
+{
+ "real": true,
+ "fuente": "https://www.studocu.com (nota GEPP Tonalá)",
+ "nota": "Nota de venta GEPP: precio de lista, cajas, neto, importe; combo. Página cortada antes del neto.",
+ "proveedor": "BEBIDAS PURIFICADAS S DE RL DE CV",
+ "lineas": [
+  {
+   "codigo": "7640",
+   "descripcion": "Pepsi 1.75 Lts Pet 12",
+   "cantidad": 5,
+   "factor": 12,
+   "precio_unitario": 194,
+   "importe": 970
+  },
+  {
+   "codigo": "120",
+   "descripcion": "Pepsi 600 Ml Pet 12",
+   "cantidad": 1,
+   "factor": 12,
+   "precio_unitario": 177.5,
+   "importe": 177.5
+  },
+  {
+   "codigo": "1544",
+   "descripcion": "Epura 1 L Pet 12",
+   "cantidad": 1,
+   "factor": 12,
+   "precio_unitario": 129,
+   "importe": 129
+  },
+  {
+   "codigo": "1527",
+   "descripcion": "Epura 1.5 Lts Pet 12",
+   "cantidad": 1,
+   "factor": 12,
+   "precio_unitario": 154,
+   "importe": 154
+  }
+ ],
+ "total": null
+}

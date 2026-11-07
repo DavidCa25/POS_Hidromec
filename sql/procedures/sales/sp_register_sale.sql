@@ -544,6 +544,16 @@ BEGIN
 
     CREATE TABLE #map (sale_detail_id INT NOT NULL, line_no INT NOT NULL);
 
+    /* 0073 Venta suelta: los paquetes que esta venta abre (ver paso 3c). Se
+       crea siempre, vacia, para que los pasos siguientes la lean sin
+       preguntar si existe. */
+    CREATE TABLE #vs_abrir (
+        hijo   INT NOT NULL PRIMARY KEY CLUSTERED,
+        padre  INT NOT NULL,
+        piezas INT NOT NULL,
+        abrir  INT NOT NULL
+    );
+
     BEGIN TRY
         BEGIN TRAN;
         IF @client_sale_key IS NOT NULL BEGIN
@@ -570,6 +580,65 @@ BEGIN
              LEFT JOIN dbo.modifier_options o WITH(HOLDLOCK) ON o.id=c.id WHERE o.id IS NULL OR o.active=0 OR o.price_delta<>c.price)
             THROW 51000,'Cambió el precio de una opción. Revisa la cuenta.',1;
         END;
+
+        /* 3c) 0073 Venta suelta: abrir paquetes.
+           Un producto suelto (el cigarro) cuelga de su paquete (la cajetilla
+           de 20) en dbo.venta_suelta. Si la venta pide mas piezas sueltas de
+           las que hay, se abren los paquetes justos: paquete -N, suelto
+           +N x piezas. Asi el stock sigue en piezas enteras y la validacion
+           del paso 4 ya ve las piezas que salieron del paquete.
+           Bloqueo: sueltos y paquetes juntos, en orden ascendente de id, el
+           mismo orden del paso 4 (que despues los vuelve a pedir y ya los
+           tiene). Sin el modulo o en Venta Esencial no se abre nada. */
+        IF ISNULL(@venta_esencial, 0) = 0
+           AND EXISTS (SELECT 1 FROM dbo.business_modules WHERE module_key = N'venta-suelta' AND enabled = 1)
+           AND EXISTS (SELECT 1 FROM #need n JOIN dbo.venta_suelta v ON v.product_id = n.product_id)
+        BEGIN
+            CREATE TABLE #vs_lock (product_id INT NOT NULL PRIMARY KEY CLUSTERED);
+            INSERT INTO #vs_lock (product_id)
+            SELECT product_id FROM #need
+            UNION
+            SELECT v.parent_product_id FROM #need n JOIN dbo.venta_suelta v ON v.product_id = n.product_id;
+
+            SELECT p.id AS product_id, p.stock, p.nombre
+            INTO #vs_stk
+            FROM #vs_lock AS l
+            INNER LOOP JOIN dbo.products AS p WITH (UPDLOCK, HOLDLOCK) ON p.id = l.product_id
+            OPTION (FORCE ORDER);
+
+            INSERT INTO #vs_abrir (hijo, padre, piezas, abrir)
+            SELECT v.product_id, v.parent_product_id, v.piezas,
+                   CAST(CEILING((n.qty - h.stock) / v.piezas) AS INT)
+            FROM #need n
+            JOIN dbo.venta_suelta v ON v.product_id = n.product_id
+            JOIN #vs_stk h ON h.product_id = n.product_id
+            WHERE n.qty > h.stock;
+
+            /* El paquete tambien puede venderse entero en la misma venta: lo
+               que se abre sale de lo que sobra despues de eso. */
+            DECLARE @vs_padre NVARCHAR(100) = NULL, @vs_hijo NVARCHAR(100) = NULL;
+            SELECT TOP 1 @vs_padre = pp.nombre, @vs_hijo = ph.nombre
+            FROM (SELECT padre, SUM(abrir) AS abrir FROM #vs_abrir GROUP BY padre) a
+            JOIN #vs_stk pp ON pp.product_id = a.padre
+            LEFT JOIN #need np ON np.product_id = a.padre
+            CROSS APPLY (SELECT TOP 1 s.nombre FROM #vs_abrir x JOIN #vs_stk s ON s.product_id = x.hijo
+                          WHERE x.padre = a.padre ORDER BY x.hijo) ph
+            WHERE pp.stock - ISNULL(np.qty, 0) < a.abrir
+            ORDER BY a.padre;
+            IF @vs_padre IS NOT NULL
+            BEGIN
+                SET @errmsg = CONCAT('No alcanzan las piezas de ', @vs_hijo, ' y no hay ', @vs_padre, ' para abrir.');
+                RAISERROR(@errmsg, 16, 1);
+            END
+
+            UPDATE p SET p.stock = p.stock - a.abrir
+            FROM dbo.products p
+            JOIN (SELECT padre, SUM(abrir) AS abrir FROM #vs_abrir GROUP BY padre) a ON a.padre = p.id;
+
+            UPDATE p SET p.stock = p.stock + a.abrir * a.piezas
+            FROM dbo.products p
+            JOIN #vs_abrir a ON a.hijo = p.id;
+        END
 
         /* 4) Bloqueo consistente y validacion de stock.
            LOOP JOIN + FORCE ORDER: se recorre #need por su clave y se toma el
@@ -777,6 +846,24 @@ BEGIN
         JOIN #map mp ON mp.line_no = r.line_no
         JOIN dbo.products p ON p.id = r.product_id
         GROUP BY r.line_no, r.product_id, l.quantity, l.product_name, l.product_id, mp.sale_detail_id, p.cost;
+
+        /* 9b) 0073 Los paquetes abiertos (paso 3c): salida del paquete y
+              entrada de sus piezas, con la venta como referencia. Fuente
+              'APERTURA': la devolucion (que repone solo SALE/RECIPE) no los
+              deshace; las piezas devueltas vuelven sueltas. */
+        INSERT INTO inventory_movements
+            (product_id, typee, reference, quantity, datee, descriptionn, source, unit_cost, sold_product_id)
+        SELECT a.padre, 'salida', CAST(@sale_id AS NVARCHAR(50)), a.abrir, GETDATE(),
+               CONCAT('Abierto para vender suelto: ', h.nombre), 'APERTURA', ISNULL(pp.cost, 0), a.hijo
+        FROM #vs_abrir a
+        JOIN dbo.products pp ON pp.id = a.padre
+        JOIN dbo.products h ON h.id = a.hijo
+        UNION ALL
+        SELECT a.hijo, 'entrada', CAST(@sale_id AS NVARCHAR(50)), a.abrir * a.piezas, GETDATE(),
+               CONCAT('Piezas de ', pp.nombre, ' abierto'), 'APERTURA',
+               CAST(ISNULL(pp.cost, 0) / a.piezas AS DECIMAL(14, 4)), a.hijo
+        FROM #vs_abrir a
+        JOIN dbo.products pp ON pp.id = a.padre;
         END
 
         /* 10) Movimiento CAJA (solo EFECTIVO contado) - turno POR CAJA */

@@ -1,0 +1,93 @@
+{
+  "real": true,
+  "nota": "Foto real (Sabritas), nota de venta con IEPS 8% aparte. Debajo del total repite los precios agrupados: no son renglones.",
+  "proveedor": "SABRITAS",
+  "lineas": [
+    {
+      "codigo": null,
+      "descripcion": "SABRITAS SAL GU2 45GRX50X1",
+      "cantidad": 4,
+      "factor": 1,
+      "precio_unitario": 15.85,
+      "importe": 63.4
+    },
+    {
+      "codigo": null,
+      "descripcion": "RUFFLES QUESO GD 48GRX50X1",
+      "cantidad": 7,
+      "factor": 1,
+      "precio_unitario": 15.85,
+      "importe": 110.95
+    },
+    {
+      "codigo": null,
+      "descripcion": "DORITOS 3D HBSF RS 50GRX50X1",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 15.85,
+      "importe": 79.25
+    },
+    {
+      "codigo": null,
+      "descripcion": "DORITOS DINAM FH HBSF RS 70GRX50X1",
+      "cantidad": 6,
+      "factor": 1,
+      "precio_unitario": 15.85,
+      "importe": 95.1
+    },
+    {
+      "codigo": null,
+      "descripcion": "CRUJITOS QUESO GU 45GRX50X1",
+      "cantidad": 6,
+      "factor": 1,
+      "precio_unitario": 14.27,
+      "importe": 85.62
+    },
+    {
+      "codigo": null,
+      "descripcion": "CHEETOS TORCIDITO MB GD 55GRX64X1",
+      "cantidad": 8,
+      "factor": 1,
+      "precio_unitario": 13.47,
+      "importe": 107.76
+    },
+    {
+      "codigo": null,
+      "descripcion": "PAKETAXO MEZCLADITO M NS MB 81GRX26X1",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 17.44,
+      "importe": 87.2
+    },
+    {
+      "codigo": null,
+      "descripcion": "PAKETAXO QUEXO M NS MB 81GRX26X1",
+      "cantidad": 10,
+      "factor": 1,
+      "precio_unitario": 17.44,
+      "importe": 174.4
+    },
+    {
+      "codigo": null,
+      "descripcion": "PAKETAXO XFH M NS MB 81GRX26X1",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 17.44,
+      "importe": 87.2
+    },
+    {
+      "codigo": null,
+      "descripcion": "PAKETAXO BOT HBSF2 RS 255GRX8X1",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 43.7,
+      "importe": 218.5
+    }
+  ],
+  "subtotal": 1109.38,
+  "descuento": 0,
+  "ieps": 88.76,
+  "iva": 0,
+  "envases": 0,
+  "total": 1198.14
+}

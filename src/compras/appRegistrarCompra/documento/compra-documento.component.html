@@ -1,0 +1,184 @@
+<div class="cd-velo" (click)="cerrar()"></div>
+<section class="cd-dialogo" role="dialog" aria-modal="true" aria-labelledby="cd-titulo" data-guide="compra-documento">
+  <header class="cd-cabecera">
+    <div>
+      <h3 id="cd-titulo">{{ paso === 'revisar' ? 'Revisa lo que se leyó' : 'Subir ticket o factura' }}</h3>
+      <p *ngIf="paso !== 'revisar'">Foto del ticket o nota del proveedor, o el XML de la factura. Se lee en esta computadora.</p>
+      <p *ngIf="paso === 'revisar'">
+        {{ tipo === 'CFDI' ? 'Factura electrónica: los datos son exactos.' : 'Ticket leído con OCR: confirma los renglones marcados en amarillo.' }}
+      </p>
+    </div>
+    <button type="button" class="cd-x" (click)="cerrar()" aria-label="Cerrar"><i class="ph ph-x"></i></button>
+  </header>
+
+  <!-- 1. Elegir archivo -->
+  <div class="cd-cuerpo" *ngIf="paso === 'elegir'">
+    <!-- input file OCULTO detrás de un label: única forma de abrir el diálogo de archivos (CLAUDE.md). -->
+    <label class="cd-zona" [class.cd-zona--sobre]="arrastrando" data-guide="compra-documento-zona"
+           (dragover)="$event.preventDefault(); arrastrando = true"
+           (dragleave)="arrastrando = false"
+           (drop)="alSoltar($event)">
+      <input type="file" hidden accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp,.xml,text/xml,application/xml"
+             (change)="alElegir($event)" data-guide="compra-documento-archivo">
+      <i class="ph ph-receipt cd-zona-icono"></i>
+      <strong>Arrastra aquí el documento o haz clic para elegirlo</strong>
+      <span>JPG o PNG del ticket · XML de la factura (CFDI)</span>
+    </label>
+    <ul class="cd-consejos">
+      <li><i class="ph ph-sun"></i> Foto con buena luz, el ticket completo y derecho.</li>
+      <li><i class="ph ph-file-code"></i> Si te dieron factura, sube el XML: se lee sin errores.</li>
+      <li><i class="ph ph-brain"></i> Lo que confirmes se recuerda para el siguiente ticket de ese proveedor.</li>
+    </ul>
+    <div class="cd-error" *ngIf="error" role="alert"><i class="ph ph-warning-circle"></i> {{ error }}</div>
+  </div>
+
+  <!-- 2. Leyendo -->
+  <div class="cd-cuerpo cd-leyendo" *ngIf="paso === 'leyendo'">
+    <wx-cargando [size]="44" alt="Leyendo el documento"></wx-cargando>
+    <strong>Leyendo {{ nombreArchivo }}…</strong>
+    <span>Detectando productos, presentaciones, IVA y totales.</span>
+  </div>
+
+  <!-- 3. Revisar -->
+  <div class="cd-cuerpo cd-revisar" *ngIf="paso === 'revisar'">
+    <aside class="cd-vista">
+      <img *ngIf="vistaPrevia" [src]="vistaPrevia" alt="Documento subido">
+      <div *ngIf="!vistaPrevia" class="cd-xml">
+        <i class="ph ph-file-code"></i>
+        <strong>{{ nombreArchivo }}</strong>
+        <span *ngIf="doc?.uuid">UUID {{ doc.uuid }}</span>
+      </div>
+      <dl class="cd-datos">
+        <div *ngIf="doc?.proveedor"><dt>Emisor</dt><dd>{{ doc.proveedor }}</dd></div>
+        <div *ngIf="doc?.rfc"><dt>RFC</dt><dd>{{ doc.rfc }}</dd></div>
+        <div *ngIf="doc?.folio"><dt>Folio</dt><dd>{{ doc.folio }}</dd></div>
+        <div *ngIf="doc?.fecha"><dt>Fecha</dt><dd>{{ doc.fecha }}</dd></div>
+      </dl>
+    </aside>
+
+    <div class="cd-principal">
+      <div class="cd-proveedor">
+        <label>Proveedor</label>
+        <div class="cd-proveedor-fila">
+          <wx-select [(ngModel)]="proveedorId" name="cd-proveedor" [opciones]="opcionesProveedor"
+                     [buscable]="true" placeholder="Elige el proveedor" data-guide="compra-documento-proveedor"></wx-select>
+          <button type="button" class="btn btn-outline-primary btn-sm" (click)="abrirAltaProveedor()">
+            <i class="ph ph-plus"></i> Agregar
+          </button>
+        </div>
+        <span class="cd-chip cd-chip--ok" *ngIf="proveedorDetectado && proveedorId === proveedorDetectado.id">
+          Detectado por {{ proveedorDetectado.por === 'rfc' ? 'RFC' : 'nombre' }}
+        </span>
+        <span class="cd-chip cd-chip--falta" *ngIf="!proveedorId">
+          {{ doc?.proveedor ? '«' + doc.proveedor + '» no está dado de alta' : 'No se detectó el proveedor' }}
+        </span>
+      </div>
+
+      <div class="cd-avisos" *ngIf="doc?.avisos?.length">
+        <div *ngFor="let a of doc.avisos"><i class="ph ph-info"></i> {{ a }}</div>
+      </div>
+
+      <label class="cd-check" *ngIf="tipo !== 'CFDI'">
+        <input type="checkbox" [(ngModel)]="preciosConIva" name="cd-con-iva" (ngModelChange)="alCambiarPrecioConIva()">
+        Los precios del ticket ya incluyen IVA
+      </label>
+
+      <div class="cd-tabla-caja">
+        <table class="cd-tabla" data-guide="compra-documento-renglones">
+          <thead>
+            <tr>
+              <th class="cd-col-check"></th>
+              <th>Del documento</th>
+              <th class="cd-col-prod">Producto</th>
+              <th class="cd-col-pres">Presentación</th>
+              <th class="cd-col-num">Cantidad</th>
+              <th class="cd-col-num">Costo s/IVA</th>
+              <th class="cd-col-num">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of renglones; let i = index" [class.cd-fuera]="!r.incluir"
+                [class.cd-duda]="r.incluir && etiquetaPor(r).clase !== 'ok'"
+                data-guide="compra-documento-renglon" [attr.data-guide-clave]="i">
+              <td class="cd-col-check">
+                <input type="checkbox" [(ngModel)]="r.incluir" name="cd-inc-{{i}}" aria-label="Pasar este renglón">
+              </td>
+              <td class="cd-texto">
+                <div class="cd-texto-desc">{{ r.texto }}</div>
+                <div class="cd-texto-meta">
+                  {{ r.cantidadDoc | number:'1.0-3' }} {{ r.unidad }}<span *ngIf="r.factorDoc > 1"> de {{ r.factorDoc }}</span>
+                  · {{ r.importe | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                  <span *ngIf="r.codigo"> · {{ r.codigo }}</span>
+                  <span *ngIf="r.ieps"> · IEPS {{ r.ieps | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                  <span *ngIf="r.descuento"> · sin cargo {{ r.descuento | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                </div>
+                <span class="cd-chip cd-chip--duda" *ngIf="r.regalo">Sin cargo (promoción)</span>
+              </td>
+              <td class="cd-col-prod">
+                <wx-select [ngModel]="r.productId" (ngModelChange)="elegirProducto(r, $event)" name="cd-prod-{{i}}"
+                           [opciones]="opcionesProducto" [buscable]="true" placeholder="Elige el producto"
+                           textoBusqueda="Buscar por nombre o código..."></wx-select>
+                <span class="cd-chip" [ngClass]="'cd-chip--' + etiquetaPor(r).clase">{{ etiquetaPor(r).texto }}</span>
+                <div class="cd-candidatos" *ngIf="r.candidatos.length && r.por !== 'memoria' && r.por !== 'codigo'">
+                  <span>¿Es…?</span>
+                  <button type="button" *ngFor="let c of r.candidatos | slice:0:3" (click)="usarCandidato(r, c.product_id)">{{ c.nombre }}</button>
+                </div>
+              </td>
+              <td class="cd-col-pres">
+                <wx-select *ngIf="r.presOpciones.length > 1" class="wx-sel-compacto"
+                           [(ngModel)]="r.presSel" (ngModelChange)="recalcular(r)" name="cd-pres-{{i}}"
+                           [opciones]="r.presOpciones"></wx-select>
+                <span *ngIf="r.presOpciones.length <= 1" class="cd-tenue">{{ r.presentaciones.length ? r.presentaciones[0].nombre : '—' }}</span>
+                <div class="cd-tenue" *ngIf="r.presSel === 'nueva'">Se creará al pasar</div>
+              </td>
+              <td class="cd-col-num">
+                <input type="number" class="form-control form-control-sm" min="0" step="any"
+                       [(ngModel)]="r.cantidad" name="cd-cant-{{i}}">
+              </td>
+              <td class="cd-col-num">
+                <input type="number" class="form-control form-control-sm" min="0" step="any"
+                       [(ngModel)]="r.costo" name="cd-costo-{{i}}">
+                <div class="cd-tenue">IVA {{ tasaDe(r) * 100 | number:'1.0-0' }}%</div>
+              </td>
+              <td class="cd-col-num cd-fuerte">{{ (r.cantidad || 0) * (r.costo || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+            </tr>
+            <tr *ngIf="renglones.length === 0">
+              <td colspan="7" class="cd-vacio">No se encontraron renglones de productos. Prueba con una foto más clara o súbelos a mano.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cd-pie-datos">
+        <div class="cd-doc-totales" *ngIf="doc?.totales as t">
+          <span>Documento:</span>
+          <span *ngIf="t.subtotal != null">Subtotal {{ t.subtotal | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span *ngIf="t.descuento">Desc. {{ t.descuento | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span *ngIf="t.ieps">IEPS {{ t.ieps | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span *ngIf="t.iva">IVA {{ t.iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          <span *ngIf="t.envases">Envases {{ t.envases | currency:'MXN':'symbol-narrow':'1.2-2' }} (no es mercancía)</span>
+          <strong *ngIf="t.total != null">Total {{ t.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
+        </div>
+        <div class="cd-compra-totales">
+          <span>Pasa a la compra: {{ subtotalCompra | currency:'MXN':'symbol-narrow':'1.2-2' }} + IVA {{ ivaCompra | currency:'MXN':'symbol-narrow':'1.2-2' }}
+            = <strong>{{ totalCompra | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong></span>
+          <span class="cd-chip" *ngIf="diferencia != null" [ngClass]="cuadra ? 'cd-chip--ok' : 'cd-chip--duda'" data-guide="compra-documento-cuadre">
+            {{ cuadra ? 'Cuadra con el documento' : 'Diferencia ' + (diferencia | currency:'MXN':'symbol-narrow':'1.2-2') }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="cd-pie" *ngIf="paso === 'revisar'">
+    <button type="button" class="btn btn-ghost" (click)="otroDocumento()">Subir otro</button>
+    <span class="cd-pie-nota" *ngIf="sinProducto">{{ sinProducto }} sin producto</span>
+    <button type="button" class="btn btn-primary" (click)="pasar()" [disabled]="pasando" data-guide="compra-documento-pasar">
+      <i class="ph ph-arrow-right"></i> Pasar {{ incluidos.length }} {{ incluidos.length === 1 ? 'renglón' : 'renglones' }} a la compra
+    </button>
+  </footer>
+</section>
+
+<app-proveedor-form *ngIf="altaProveedor" [proveedor]="altaProveedor"
+                    (guardado)="alGuardarProveedor($event)"
+                    (cerrado)="altaProveedor = null"></app-proveedor-form>

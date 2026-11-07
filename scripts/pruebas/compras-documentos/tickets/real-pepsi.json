@@ -1,0 +1,101 @@
+{
+  "real": true,
+  "nota": "Foto real (Pepsi/GEPP), 480 px, inclinada. Precio de lista, cantidad en cajas, precio neto, total. Combos sin cargo.",
+  "proveedor": "PEPSI",
+  "lineas": [
+    {
+      "codigo": "3546",
+      "descripcion": "Pepsi 3 Lts Pet 8 PROM",
+      "cantidad": 1,
+      "factor": 8,
+      "precio_unitario": 0,
+      "importe": 0
+    },
+    {
+      "codigo": "127",
+      "descripcion": "Pepsi 2 Lts Pet 8",
+      "cantidad": 2,
+      "factor": 8,
+      "precio_unitario": 0,
+      "importe": 0
+    },
+    {
+      "codigo": "4174",
+      "descripcion": "Sting Fresa 400 ML Pet 6 PRO",
+      "cantidad": 1,
+      "factor": 6,
+      "precio_unitario": 48.3,
+      "importe": 48.3
+    },
+    {
+      "codigo": "98",
+      "descripcion": "Pepsi 237 ML Lata 6 Pack",
+      "cantidad": 1,
+      "factor": 6,
+      "precio_unitario": 78.5,
+      "importe": 78.5
+    },
+    {
+      "codigo": "1542",
+      "descripcion": "Epura 600 ML Pet 12",
+      "cantidad": 2,
+      "factor": 12,
+      "precio_unitario": 115,
+      "importe": 230
+    },
+    {
+      "codigo": "120",
+      "descripcion": "Pepsi 600 ML Pet 12",
+      "cantidad": 3,
+      "factor": 12,
+      "precio_unitario": 168,
+      "importe": 504
+    },
+    {
+      "codigo": "4044",
+      "descripcion": "Gatorade Moras Freeze 750 ML",
+      "cantidad": 1,
+      "factor": 1,
+      "precio_unitario": 125,
+      "importe": 125
+    },
+    {
+      "codigo": "5327",
+      "descripcion": "Epura 2 Lts Pet 8",
+      "cantidad": 1,
+      "factor": 8,
+      "precio_unitario": 147,
+      "importe": 147
+    },
+    {
+      "codigo": "8426",
+      "descripcion": "Jumex Fresh Sun Light Conga",
+      "cantidad": 1,
+      "factor": 1,
+      "precio_unitario": 212.5,
+      "importe": 212.5
+    },
+    {
+      "codigo": "1627",
+      "descripcion": "Squirt 2 Lts Pet 8",
+      "cantidad": 2,
+      "factor": 8,
+      "precio_unitario": 196,
+      "importe": 392
+    },
+    {
+      "codigo": "1670",
+      "descripcion": "Epura 10 Lts Pet 1",
+      "cantidad": 5,
+      "factor": 1,
+      "precio_unitario": 39.5,
+      "importe": 197.5
+    }
+  ],
+  "subtotal": 1934.8,
+  "descuento": 0,
+  "ieps": 0,
+  "iva": 0,
+  "envases": 0,
+  "total": 1934.8
+}

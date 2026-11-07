@@ -71,7 +71,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       { path: 'inicio', loadComponent: () => import('../dashboard/inicio/inicio.component').then(m => m.Inicio) },
       /* Roles v2: el cierre del dia, para Encargado y Administrador. El canal exige REPORTES_VER. */
-      { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
+      { path: 'cierre-dia', canActivate: [() => inject(AuthService).puede('VER_NUMEROS_DIA') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./cierre-dia/cierre-dia.component').then(m => m.CierreDiaComponent) },
       { path: 'estado-resultados', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./estado-resultados/estado-resultados.component').then(m => m.EstadoResultadosComponent) },
       // 0069: lo que cobró el ticket contra lo que depositó Uber Eats, Didi o Rappi.
       // 0071: Asistencia. Una aplicacion: solo con el modulo encendido.

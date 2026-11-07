@@ -1,0 +1,22 @@
+{
+  "id": "wybix_bjsuper",
+  "nombre": "B&J Super",
+  "version": "1.0.0",
+  "wybixMin": "1.5.0",
+  "canal": "bjsuper",
+  "publicacion": {
+    "owner": "Wybix-POS",
+    "repo": "wybix-addons-b-j"
+  },
+  "huecos": [
+    "mascota",
+    "mascotaEnTouch",
+    "fondoTouch",
+    "menuEnLinea",
+    "tarjetaWallet"
+  ],
+  "descripcion": "Carri (el carrito del logo) en lugar de Wybix, logo como fondo de Touch, marca del menú en línea y tarjeta del Club en azul y amarillo. Venta suelta encendida de arranque.",
+  "ajustes": {
+    "ventaSuelta": true
+  }
+}

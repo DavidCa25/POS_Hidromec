@@ -94,6 +94,8 @@ export class NavegacionService {
 
   // ------------------------------------------------------------- permisos
   get verNumeros() { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  /** 0077 · «Números: del día». */
+  get verDia() { return this.auth.puede(PAQUETES.VER_NUMEROS_DIA); }
   /** 0056: hacer cortes (tambien de otros) sin ver todos los numeros. */
   get hacerCortes() { return this.auth.puede(PAQUETES.CAJA_CORTES); }
   get supervisarVentas() { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
@@ -140,7 +142,7 @@ export class NavegacionService {
         destinos: [
           { texto: 'Resumen del día', ruta: '/dashboard/inicio', icono: 'ph-house', visible: true, principal: true },
           // Roles v2: todo el dia del negocio en una pantalla.
-          { texto: 'Cierre del día', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verNumeros },
+          { texto: 'Cierre del día', ruta: '/dashboard/cierre-dia', icono: 'ph-calendar-check', visible: this.verDia },
           // 0062: utilidad real (ventas - costo congelado - mermas - egresos).
           { texto: 'Estado de resultados', ruta: '/dashboard/estado-resultados', icono: 'ph-scales', visible: this.verNumeros },
           // 0069: el ticket contra el depósito de Uber Eats, Didi o Rappi.
@@ -153,7 +155,7 @@ export class NavegacionService {
         aviso: dato('venta').aviso,
         destinos: [
           { texto: 'Nueva venta', ruta: '/dashboard/venta', icono: 'ph-cash-register', visible: true, principal: true, pie: pie('venta', 'turno') },
-          { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: this.supervisarVentas },
+          { texto: 'Ventas realizadas', ruta: '/dashboard/tablaVenta', icono: 'ph-receipt', visible: true },
           { texto: 'Corte del día', ruta: '/dashboard/corte-dia', icono: 'ph-calendar-check', visible: this.verNumeros || this.hacerCortes },
           /* Lo que sale del negocio y no es una compra. Verlo es ver numeros;
              registrar lo decide la pantalla (VENTAS_SUPERVISAR). */

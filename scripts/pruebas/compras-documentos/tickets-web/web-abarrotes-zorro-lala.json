@@ -1,0 +1,33 @@
+{
+ "real": true,
+ "fuente": "https://www.promodescuentos.com (ticket Zorro Abarrotero)",
+ "nota": "Foto real arrugada y sellada de Zorro Abarrotero: «24.00 PZA DESCRIPCIÓN» arriba y «P.Sug · P.U. · Tot.» abajo; promoción 3x2 como renglón en 0.",
+ "proveedor": "GRUPO ZORRO ABARROTERO S DE RL DE CV",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "LECHE LALA ENTERA 12-1LT",
+   "cantidad": 24,
+   "factor": 1,
+   "precio_unitario": 15.17,
+   "importe": 364.08
+  },
+  {
+   "codigo": null,
+   "descripcion": "LECHE LALA ENTERA 12-1LT",
+   "cantidad": 12,
+   "factor": 1,
+   "precio_unitario": 0,
+   "importe": 0
+  },
+  {
+   "codigo": null,
+   "descripcion": "JUMEX MINIBRICK DURAZNO 44-125 ML (JUGO)",
+   "cantidad": 2,
+   "factor": 1,
+   "precio_unitario": 2.92,
+   "importe": 5.84
+  }
+ ],
+ "total": null
+}

@@ -175,8 +175,40 @@ export class EstadoTabla {
    * Se devuelve una lista PLANA a proposito: asi la pantalla la puede paginar
    * con el mismo `slice` de siempre y la paginacion no se rompe.
    */
+  /**
+   * LA MISMA FILA, EL MISMO OBJETO.
+   *
+   * Las plantillas pintan `*ngFor="let it of tabla.aplanar(...)"` sin
+   * `trackBy`, y esto se llama en cada detección de cambios. Si cada vez
+   * devolviera envoltorios NUEVOS, Angular tiraría y volvería a crear todas
+   * las filas en cada evento. Así pasaba: el mousedown sobre «Editar» provocaba
+   * una detección, la fila se recreaba y, al soltar el botón, el puntero ya
+   * estaba sobre OTRO elemento; el navegador no da `click` y el botón «no
+   * hacía nada». Pasaba en Clientes, Proveedores, Compras, Inventario y Ventas.
+   *
+   * Con el envoltorio guardado por fila (y por grupo), mientras la fila es la
+   * misma el elemento en pantalla también lo es.
+   */
+  private envoltorios = new WeakMap<object, WxItem>();
+  private gruposPintados = new Map<string, Extract<WxItem, { tipo: 'grupo' }>>();
+
+  private envolver(fila: any): WxItem {
+    if (fila === null || typeof fila !== 'object') return { tipo: 'fila', fila };
+    let it = this.envoltorios.get(fila);
+    if (!it) { it = { tipo: 'fila', fila }; this.envoltorios.set(fila, it); }
+    return it;
+  }
+
+  private grupoPintado(clave: string, total: number, abierto: boolean): WxItem {
+    let g = this.gruposPintados.get(clave);
+    if (!g) { g = { tipo: 'grupo', clave, etiqueta: clave, total, abierto }; this.gruposPintados.set(clave, g); }
+    g.total = total;
+    g.abierto = abierto;
+    return g;
+  }
+
   aplanar(filas: any[]): WxItem[] {
-    if (!this.grupo) return filas.map(fila => ({ tipo: 'fila', fila }) as WxItem);
+    if (!this.grupo) return filas.map(fila => this.envolver(fila));
 
     const porGrupo = new Map<string, any[]>();
     for (const f of filas) {
@@ -189,8 +221,8 @@ export class EstadoTabla {
     for (const clave of [...porGrupo.keys()].sort((a, b) => a.localeCompare(b, 'es'))) {
       const filasDelGrupo = porGrupo.get(clave)!;
       const abierto = this.estaAbierto(clave);
-      salida.push({ tipo: 'grupo', clave, etiqueta: clave, total: filasDelGrupo.length, abierto });
-      if (abierto) for (const fila of filasDelGrupo) salida.push({ tipo: 'fila', fila });
+      salida.push(this.grupoPintado(clave, filasDelGrupo.length, abierto));
+      if (abierto) for (const fila of filasDelGrupo) salida.push(this.envolver(fila));
     }
     return salida;
   }

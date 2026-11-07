@@ -53,7 +53,8 @@ const B = permisos.BUNDLES;
 seccion('1. El catalogo: tres roles, doce paquetes');
 // ===========================================================================
 
-check(permisos.PERMISOS.length === 13, 'hay trece paquetes', permisos.PERMISOS.join(' '));
+/* 0077: 13 paquetes + 9 permisos por persona (lo delicado y lo que se ve). */
+check(permisos.PERMISOS.length === 22, 'hay veintidós permisos', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -71,12 +72,12 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 13, 'Administrador tiene los trece');
+check(deAdmin.size === 22, 'Administrador tiene los veintidós');
 // Roles v2: el Encargado tiene todo menos administrar el negocio.
-check(deEncargado.size === 12 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+check(deEncargado.size === 21 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
    && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
    && deEncargado.has(B.INVENTARIO_OPERAR) && deEncargado.has(B.CATALOGO_EDITAR),
-  'Encargado tiene doce: todo menos administrar el negocio', [...deEncargado].join(' '));
+  'Encargado tiene todo menos administrar el negocio', [...deEncargado].join(' '));
 // Roles v2: el Operador vende, mantiene el catalogo, promociones y combos, y
 // hace cortes. Lo que mueve dinero o inventario NO es suyo: lo pide aprobado.
 // 0060: la PRODUCCION si es suya -quien hornea suele ser Operador-, porque
@@ -210,8 +211,28 @@ check(sinEnvolver.length === 0,
   sinEnvolver.join(' ') || `${Object.keys(canales.EXIGE).length} canales`);
 
 // Las operaciones contra las que nacio el blindaje anti robo hormiga.
-for (const c of ['sp-refund-sale', 'sp-update-sale', 'sp-register-cash-out', 'egresos:registrar']) {
-  check(canales.exigePara(c) === B.VENTAS_SUPERVISAR, `${c} exige supervisar la venta`);
+/* 0077: cada una con su casilla, para darla o quitarla por persona. */
+for (const [c, p] of [['sp-refund-sale', B.DEVOLUCIONES], ['sp-update-sale', B.MODIFICAR_VENTA],
+  ['sp-register-cash-out', B.RETIROS_EGRESOS], ['egresos:registrar', B.RETIROS_EGRESOS]]) {
+  check(canales.exigePara(c) === p, `${c} exige ${p}`);
+}
+/* 0077 · Permisos por persona: dar, quitar y lo que ya estaba dado. */
+{
+  const op = permisos.permisosDeUsuario('cajero', [B.DEVOLUCIONES, '-' + B.CAJA_CORTES, '-' + B.VENTAS_OPERAR]);
+  check(op.has(B.DEVOLUCIONES) && !op.has(B.CAJA_CORTES) && op.has(B.VENTAS_OPERAR),
+    'a una persona se le da y se le quita lo ajustable; vender no se quita', [...op].join(' '));
+  const enc = permisos.permisosDeUsuario('supervisor', ['-' + B.REPORTES_VER, '-' + B.VER_COSTOS]);
+  check(!enc.has(B.REPORTES_VER) && enc.has(B.VER_NUMEROS_DIA) && !enc.has(B.VER_COSTOS),
+    'a un Encargado se le puede dejar en «Números: del día» y «Costos: ocultos»');
+  const viejo = permisos.permisosDeUsuario('cajero', [B.VENTAS_SUPERVISAR]);
+  check([B.DEVOLUCIONES, B.RETIROS_EGRESOS, B.CAJON_SIN_VENTA, B.MODIFICAR_VENTA].every(p => viejo.has(p)),
+    'quien tenía «Supervisar ventas» como extra conserva devoluciones, retiros, cajón y modificar');
+  check(permisos.permisosDeUsuario('admin', ['-' + B.DEVOLUCIONES]).has(B.DEVOLUCIONES),
+    'al Administrador no se le quita nada');
+  check(canales.autorizaPara('open-cash-drawer') === B.CAJON_SIN_VENTA,
+    'abrir el cajón sin venta lo autoriza quien tiene esa casilla, no cualquier cajero');
+  check(canales.exigePara('sp-get-total-sales-today') === B.VER_NUMEROS_DIA && canales.exigePara('sp-get-suppliers-account') === B.VER_COSTOS,
+    'los totales del negocio y lo que se debe a proveedores ya no son lecturas abiertas');
 }
 /* Roles v2: el cajon se abre tras un cobro (operar), y SIN venta lo decide el
    propio canal pidiendo autorizacion. */

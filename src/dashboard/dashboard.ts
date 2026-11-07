@@ -15,6 +15,7 @@ import { WxNavegacionComponent } from '../app/wx-nav/wx-navegacion.component';
 import { NavegacionService } from '../app/wx-nav/navegacion.service';
 import { WxPaletaComponent } from '../app/wx-paleta/wx-paleta.component';
 import { WxAvatarComponent } from '../app/wx-avatar/wx-avatar.component';
+import { WxFlechasDirective } from '../app/wx-flechas/wx-flechas.directive';
 import { Router, RouterLink } from '@angular/router';
 import { PAQUETES } from '../services/auth.service';
 
@@ -34,7 +35,7 @@ type AppNotification = {
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
-  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxNavegacionComponent, WxPaletaComponent, WxAvatarComponent],
+  imports: [RouterOutlet, FormsModule, NgClass, NgIf, NgFor, DecimalPipe, RouterLink, WxNavegacionComponent, WxPaletaComponent, WxAvatarComponent, WxFlechasDirective],
   styleUrls: ['./dashboard.css']
 })
 

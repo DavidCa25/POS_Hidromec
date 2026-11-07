@@ -1,0 +1,37 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com (factura Cervezas Cuauhtémoc Moctezuma)",
+ "nota": "Factura CFDI de cervecera a tienda: unidad en hectolitros, cantidad en cajas, precio, descuento e importe neto por renglón; desglose de IVA debajo de cada uno. IEPS 26.5 % incluido.",
+ "proveedor": "CERVEZAS CUAUHTEMOC MOCTEZUMA SA DE CV",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "TECATE STD 20/2 325ml",
+   "cantidad": 1,
+   "precio_unitario": 231.04,
+   "importe": 231.04
+  },
+  {
+   "codigo": null,
+   "descripcion": "XX LAGER 1X20 BOT 325ML",
+   "cantidad": 2,
+   "precio_unitario": 248.28,
+   "importe": 496.56
+  },
+  {
+   "codigo": null,
+   "descripcion": "BOHEMIA OBSCURA OBSCURA 4X6 BOT 355ML",
+   "cantidad": 2,
+   "precio_unitario": 366.38,
+   "importe": 732.76
+  },
+  {
+   "codigo": null,
+   "descripcion": "BOHEMIA CLASICA 12/2 355ml",
+   "cantidad": 1,
+   "precio_unitario": 168.97,
+   "importe": 168.97
+  }
+ ],
+ "total": 2107.01
+}

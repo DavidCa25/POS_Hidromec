@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CambioHecho, DevolucionesService, LineaCambio, MOTIVOS_DEVOLUCION, MetodoDiferencia, Regreso, VentaDevolvible, VentaParaDevolver,
@@ -6,6 +6,7 @@ import {
 import { CatalogService } from '../../core/catalog.service';
 import { AuthService } from '../../services/auth.service';
 import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
+import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 
 /*
  * DEVOLUCIÓN Y CAMBIO EN TOUCH (0065).
@@ -30,11 +31,14 @@ type Modo = 'dinero' | 'cambio';
 @Component({
   selector: 'app-devolucion-touch',
   standalone: true,
-  imports: [CommonModule, ReceiptViewer],
+  imports: [CommonModule, ReceiptViewer, WxFlechasDirective],
   styleUrls: ['../touch-pos.css', './devolucion-touch.css'],
   template: `
   <div class="tp-overlay" *ngIf="!imprimiendo()" (click)="cerrar.emit()">
-    <div class="tp-hoja tp-hoja--dev" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="tp-dev-titulo" data-guide="touch-devolucion-hoja">
+    <!-- Con teclado: las flechas recorren folio, ventas, cantidades, motivos y
+         botones; Enter elige y Esc cierra. Al cambiar de paso el foco va al
+         primer lugar útil (enfocarPaso). -->
+    <div class="tp-hoja tp-hoja--dev" (click)="$event.stopPropagation()" wxFlechas (wxFlechasEscape)="cerrar.emit()" role="dialog" aria-modal="true" aria-labelledby="tp-dev-titulo" data-guide="touch-devolucion-hoja">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
           <span class="tp-hoja__media"><i class="ph" [class.ph-arrow-counter-clockwise]="modo() === 'dinero'" [class.ph-arrows-left-right]="modo() === 'cambio'" aria-hidden="true"></i></span>
@@ -93,9 +97,9 @@ type Modo = 'dinero' | 'cambio';
               <span class="tp-dev-renglon__txt"><b>{{ l.nombre }}</b>
                 <small>{{ l.precio | currency:'MXN':'symbol-narrow':'1.2-2' }} · puede devolver {{ l.maximo }}</small></span>
               <div class="tp-hoja__qty">
-                <button type="button" (click)="cambiarCantidad(l, -1)" [disabled]="l.cantidad <= 0" [attr.aria-label]="'Menos ' + l.nombre"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                <button type="button" (click)="cambiarCantidad(l, -1); sostenerFoco($event)" [disabled]="l.cantidad <= 0" [attr.aria-label]="'Menos ' + l.nombre"><i class="ph ph-minus" aria-hidden="true"></i></button>
                 <span>{{ l.cantidad }}</span>
-                <button type="button" (click)="cambiarCantidad(l, 1)" [disabled]="l.cantidad >= l.maximo" [attr.aria-label]="'Más ' + l.nombre"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                <button type="button" (click)="cambiarCantidad(l, 1); sostenerFoco($event)" [disabled]="l.cantidad >= l.maximo" [attr.aria-label]="'Más ' + l.nombre"><i class="ph ph-plus" aria-hidden="true"></i></button>
               </div>
             </div>
           </section>
@@ -254,6 +258,31 @@ export class DevolucionTouch implements OnInit {
   readonly cobrado = signal<{ metodo: string; etiqueta: string; monto: number; cambio: number } | null>(null);
   /* Los renglones se mutan en su lugar; esto obliga a recalcular. */
   private readonly version = signal(0);
+
+  /* TECLADO: cada paso pinta botones nuevos y el foco se quedaría en el
+     aire (en el body, fuera de la hoja), donde las flechas ya no llegan.
+     Al cambiar de paso se enfoca el primer lugar útil:
+       elegir   → el folio (↓ baja a las ventas)
+       devolver → el primer «+» de lo que devuelve
+       listo    → «Listo» */
+  private readonly host = inject(ElementRef<HTMLElement>);
+
+  /* Al llegar al máximo (o a 0) el botón se desactiva y el navegador suelta
+     el foco: pasa al botón de al lado para que las flechas sigan aquí. */
+  sostenerFoco(ev: Event) {
+    const qty = (ev.currentTarget as HTMLElement | null)?.closest('.tp-hoja__qty');
+    setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      (qty?.querySelector('button:not([disabled])') as HTMLElement | null)?.focus();
+    });
+  }
+  private readonly enfocarPaso = effect(() => {
+    const p = this.paso();
+    const sel = p === 'elegir' ? '[data-guide="touch-devolucion-folio"]'
+      : p === 'devolver' ? '[data-guide="touch-devolucion-renglon"] button:not([disabled])'
+      : '[data-guide="touch-devolucion-listo"]';
+    setTimeout(() => (this.host.nativeElement.querySelector(sel) as HTMLElement | null)?.focus());
+  });
 
   readonly total = computed(() => { this.version(); return this.dev.total(this.venta()); });
   readonly totalLleva = computed(() => this.dev.totalLleva(this.lleva()));

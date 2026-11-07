@@ -17,7 +17,14 @@ type ClaveRol = 'admin' | 'supervisor' | 'cajero';
 
 /** Un permiso que se puede dar a una persona encima de su puesto (0056). */
 interface Otorgable { clave: string; nombre: string; descripcion: string; }
-interface PermisosPersona { id: number; extras: string[]; deRol: string[]; todos: boolean; }
+interface PermisosPersona { id: number; extras: string[]; deRol: string[]; todos: boolean; puesto?: string[]; tiene?: string[]; }
+
+/** 0077 · Lo que se ajusta por persona: casillas de «hacer» y opciones de «ver». Llega de permisos.js. */
+interface PermisoHacer { clave: string; nombre: string; pideAutorizacion: boolean; }
+interface GrupoHacer { grupo: string; icono: string; permisos: PermisoHacer[]; }
+interface OpcionVer { valor: string; nombre: string; permisos: string[]; }
+interface FilaVer { clave: string; nombre: string; icono: string; ayuda?: string; opciones: OpcionVer[]; }
+interface Ajustes { hacer: GrupoHacer[]; ver: FilaVer[]; ajustables: string[]; }
 
 /** Que significa cada paquete dicho como lo diria quien lleva el negocio. */
 interface Acceso { paquete: string; titulo: string; detalle: string; icono: string; servicios?: boolean; }
@@ -123,6 +130,10 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly otorgables = signal<Otorgable[]>([]);
   private readonly permisosPersona = signal<Record<number, PermisosPersona>>({});
   readonly guardandoPermiso = signal<string | null>(null);
+  /** 0077 · El catálogo de ajustes y lo que se está editando de la persona elegida. */
+  readonly ajustes = signal<Ajustes | null>(null);
+  readonly borrador = signal<Set<string> | null>(null);
+  readonly guardandoAjustes = signal(false);
 
   /** Lo elegido: un puesto o una persona. Nada = Wybix presenta el equipo. */
   readonly rolElegido = signal<ClaveRol | null>(null);
@@ -190,6 +201,83 @@ export class Usuarios implements OnInit, OnDestroy {
     return visibles.map(o => ({ ...o, activo: tiene.has(o.clave) }));
   });
 
+  /* ------------------------------------------------------------------
+   * 0077 · QUÉ PUEDE VER Y QUÉ PUEDE HACER, POR PERSONA.
+   * El puesto es la plantilla; aquí se ajusta lo delicado. Lo que se ve en
+   * pantalla es el borrador: no se aplica hasta «Guardar».
+   * ------------------------------------------------------------------ */
+  /** La persona elegida, si se le puede ajustar (Administrador lo tiene todo). */
+  readonly infoAjuste = computed(() => {
+    const p = this.persona();
+    if (!p || !PUESTOS.some(x => x.clave === p.rol)) return null;
+    const info = this.permisosPersona()[p.id];
+    if (!info || !this.ajustes() || !info.tiene) return null;
+    return info;
+  });
+
+  /** Lo que tendrá: el borrador si se está editando, o lo guardado. */
+  readonly tieneAhora = computed(() => this.borrador() ?? new Set(this.infoAjuste()?.tiene ?? []));
+  private readonly delPuesto = computed(() => new Set(this.infoAjuste()?.puesto ?? []));
+
+  /** Cuántas cosas son distintas a su puesto. */
+  readonly diferencias = computed(() => {
+    const t = this.tieneAhora(), d = this.delPuesto();
+    return (this.ajustes()?.ajustables ?? []).filter(a => t.has(a) !== d.has(a)).length;
+  });
+  readonly sinGuardar = computed(() => {
+    const b = this.borrador(); const info = this.infoAjuste();
+    if (!b || !info) return false;
+    const g = new Set(info.tiene ?? []);
+    return b.size !== g.size || [...b].some(x => !g.has(x));
+  });
+
+  /** La opción elegida de una fila de «ver»: la más alta cuyos permisos tiene. */
+  valorVer(f: FilaVer, conjunto: Set<string> = this.tieneAhora()): string {
+    for (let i = f.opciones.length - 1; i >= 0; i--) {
+      if (f.opciones[i].permisos.every(p => conjunto.has(p))) return f.opciones[i].valor;
+    }
+    return f.opciones[0].valor;
+  }
+  verDistinto(f: FilaVer): boolean { return this.valorVer(f) !== this.valorVer(f, this.delPuesto()); }
+  distintasVer = computed(() => (this.ajustes()?.ver ?? []).filter(f => this.verDistinto(f)).length);
+  distintasHacer = computed(() => {
+    const t = this.tieneAhora(), d = this.delPuesto();
+    return (this.ajustes()?.hacer ?? []).flatMap(g => g.permisos).filter(p => t.has(p.clave) !== d.has(p.clave)).length;
+  });
+
+  elegirVer(f: FilaVer, o: OpcionVer) {
+    const t = new Set(this.tieneAhora());
+    for (const op of f.opciones) for (const p of op.permisos) t.delete(p);
+    for (const p of o.permisos) t.add(p);
+    this.borrador.set(t);
+  }
+  tieneHacer(clave: string): boolean { return this.tieneAhora().has(clave); }
+  hacerDistinto(clave: string): boolean { return this.tieneAhora().has(clave) !== this.delPuesto().has(clave); }
+  alternarHacer(clave: string, activo: boolean) {
+    const t = new Set(this.tieneAhora());
+    if (activo) t.add(clave); else t.delete(clave);
+    this.borrador.set(t);
+  }
+  volverAlPuesto() { this.borrador.set(new Set(this.delPuesto())); }
+  descartarAjustes() { this.borrador.set(null); }
+
+  async guardarAjustes() {
+    const p = this.persona(); const b = this.borrador();
+    if (!p || !b || this.guardandoAjustes()) return;
+    this.guardandoAjustes.set(true);
+    try {
+      const r = await this.api?.usersSetPermissions?.({ id: p.id, tiene: [...b] });
+      if (!r?.success) throw new Error(r?.error || 'No se pudieron guardar los permisos.');
+      await this.cargarPermisos();
+      this.borrador.set(null);
+      this.gesto('success');
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo', text: e?.message || 'Error.' });
+    } finally {
+      this.guardandoAjustes.set(false);
+    }
+  }
+
   /** Lo que dice Wybix. Entero: sin letra a letra, tambien sin movimiento reducido. */
   readonly frase = computed(() => {
     const p = this.persona();
@@ -201,8 +289,8 @@ export class Usuarios implements OnInit, OnDestroy {
     if (p && puesto) {
       const quien = p.id === this.yo ? 'Tú eres' : `${p.usuario} es`;
       const inactivo = p.active ? '' : ' Ahora está desactivado: no puede entrar hasta que lo actives.';
-      const n = this.permisosPersona()[p.id]?.extras.length ?? 0;
-      const extra = n ? ` Además tiene ${n} ${n === 1 ? 'permiso adicional' : 'permisos adicionales'} que le diste tú.` : '';
+      const n = this.infoAjuste() ? this.diferencias() : (this.permisosPersona()[p.id]?.extras.length ?? 0);
+      const extra = n ? ` Tiene ${n} ${n === 1 ? 'ajuste' : 'ajustes'} sobre lo que trae su puesto.` : '';
       return `${quien} ${puesto.nombre}. ${puesto.explica}${extra}${inactivo}`;
     }
     if (puesto) return puesto.explica;
@@ -251,6 +339,7 @@ export class Usuarios implements OnInit, OnDestroy {
       const r = await this.api?.usersPermissions?.();
       if (!r?.success) return;
       this.otorgables.set(r.data?.catalogo ?? []);
+      this.ajustes.set(r.data?.ajustes ?? null);
       this.permisosPersona.set(Object.fromEntries((r.data?.usuarios ?? []).map((x: PermisosPersona) => [x.id, x])));
     } catch { /* sin 0056: la pantalla no ofrece extras */ }
   }
@@ -270,11 +359,13 @@ export class Usuarios implements OnInit, OnDestroy {
 
   elegirPersona(u: Usuario) {
     this.rolElegido.set(null);
+    this.borrador.set(null);
     this.personaElegida.set(this.personaElegida() === u.id ? null : u.id);
     this.gesto('speaking');
   }
 
   limpiar() {
+    this.borrador.set(null);
     this.rolElegido.set(null);
     this.personaElegida.set(null);
   }

@@ -41,6 +41,16 @@ async function sql(base, texto) {
   return r.sets.length ? r.sets[r.sets.length - 1] : [];
 }
 
+/* Pase lo que pase, las aprobaciones quedan encendidas: las pruebas siguientes cuentan con ellas. */
+test.beforeEach(async ({ app }) => {
+  await sql(app.base, "UPDATE dbo.business_modules SET enabled = 1 WHERE module_key = N'APROBACIONES'; EXEC dbo.sp_bump_security_revision;").catch(() => {});
+});
+test.afterEach(async ({ app }) => {
+  /* El turno que abrió el Operador se cierra: la prueba que siga lo encontraría ajeno. */
+  await sql(app.base, "UPDATE dbo.cash_closures SET closed_at = GETDATE() WHERE closed_at IS NULL AND opening_user_id = (SELECT id FROM dbo.users WHERE usuario = N'e2e_operador');").catch(() => {});
+  await sql(app.base, "UPDATE dbo.business_modules SET enabled = 1 WHERE module_key = N'APROBACIONES'; EXEC dbo.sp_bump_security_revision;").catch(() => {});
+});
+
 test('Aprobaciones: el encargado las apaga desde el dock y el operador deja de necesitarlas', async ({ app }) => {
   test.setTimeout(180000);
   const p = app.ventana;
@@ -68,7 +78,9 @@ test('Aprobaciones: el encargado las apaga desde el dock y el operador deja de n
   expect(antes.r?.success).toBeFalsy();
   await salir(app);
 
-  /* 1. El Administrador las apaga desde Más. */
+  /* 1. El Administrador las apaga desde Más. (Se cuentan solo los eventos de esta corrida:
+     la base de pruebas puede traer los de corridas anteriores.) */
+  const evAntes = Number((await sql(app.base, "SELECT COUNT(*) n FROM dbo.security_events WHERE event_type = N'APPROVALS_DISABLED'"))[0].n);
   await login(app, CUENTAS.admin);
   await p.locator('.wxdock__btn--mas').click();
   const panel = p.locator('[data-guide="aprobaciones"]');
@@ -82,7 +94,7 @@ test('Aprobaciones: el encargado las apaga desde el dock y el operador deja de n
   const fila = (await sql(app.base, "SELECT enabled FROM dbo.business_modules WHERE module_key = N'APROBACIONES'"))[0];
   expect(fila?.enabled === false || fila?.enabled === 0).toBe(true);
   const ev = await sql(app.base, "SELECT COUNT(*) n FROM dbo.security_events WHERE event_type = N'APPROVALS_DISABLED'");
-  expect(Number(ev[0].n)).toBe(1);
+  expect(Number(ev[0].n)).toBe(evAntes + 1);
   await salir(app);
 
   /* 2. El Operador: sin interruptor, sin canal, y retira sin PIN. */

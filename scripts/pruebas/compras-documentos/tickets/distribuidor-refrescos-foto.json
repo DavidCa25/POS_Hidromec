@@ -1,0 +1,54 @@
+{
+  "proveedor": "DISTRIBUIDORA REFRESQUERA DEL CENTRO",
+  "rfc": "DRC9807224A1",
+  "folio": "NR 001-77412",
+  "fecha": "05/11/2026",
+  "lineas": [
+    {
+      "descripcion": "REF COLA 600ML NR CJ24",
+      "cantidad": 3,
+      "unidad": "CJ",
+      "factor": 24,
+      "precio_unitario": 312,
+      "importe": 936,
+      "tasa_iva": 0.16,
+      "ieps": 133.13
+    },
+    {
+      "descripcion": "REF NARANJA 2L PET CJ8",
+      "cantidad": 2,
+      "unidad": "CJ",
+      "factor": 8,
+      "precio_unitario": 198.4,
+      "importe": 396.8,
+      "tasa_iva": 0.16,
+      "ieps": 98.62
+    },
+    {
+      "descripcion": "AGUA NATURAL 1L CJ12",
+      "cantidad": 2,
+      "unidad": "CJ",
+      "factor": 12,
+      "precio_unitario": 96,
+      "importe": 192,
+      "tasa_iva": 0.16,
+      "ieps": 0
+    },
+    {
+      "descripcion": "REF COLA 500ML VID RET CJ24",
+      "cantidad": 1,
+      "unidad": "CJ",
+      "factor": 24,
+      "precio_unitario": 264,
+      "importe": 264,
+      "tasa_iva": 0.16,
+      "ieps": 36.98
+    }
+  ],
+  "subtotal": 1788.8,
+  "descuento": 45,
+  "ieps": 268.73,
+  "iva": 329.21,
+  "envases": 96,
+  "total": 2437.74
+}

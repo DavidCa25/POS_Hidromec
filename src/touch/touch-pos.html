@@ -49,6 +49,10 @@
               (click)="abrirSalida()" aria-label="Salida de efectivo">
         <i class="ph ph-hand-coins" aria-hidden="true"></i><span>Salida de efectivo</span>
       </button>
+      <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-entrada" data-caja="entrada"
+              (click)="abrirEntrada()" aria-label="Entrada de efectivo">
+        <i class="ph ph-piggy-bank" aria-hidden="true"></i><span>Entrada de efectivo</span>
+      </button>
       <!-- 0071: Checar (Asistencia), solo con la aplicacion activada. -->
       <button type="button" class="tp-iconbtn tp-iconbtn--txt" data-guide="touch-checar" data-caja="checar" *ngIf="caps.asistencia"
               (click)="abrirChecar()" aria-label="Checar">
@@ -636,6 +640,9 @@
         </div>
       </div>
       <footer class="tp-hoja__foot">
+        <button type="button" class="tp-secundaria" *ngIf="caps.asistencia" data-caja="turno-checar" data-guide="turno-checar" (click)="abrirChecar()">
+          <i class="ph ph-clock" aria-hidden="true"></i> Checar
+        </button>
         <button type="button" class="tp-primaria" (click)="confirmarTurno()">Abrir turno</button>
       </footer>
     </div>
@@ -692,7 +699,11 @@
 </div>
 
 <!-- Salida de dinero: el mismo componente que Retail. -->
+<!-- ¿CUÁNTO? Granel: por peso o por dinero (venta/granel-cantidad). -->
+<app-granel-cantidad *ngIf="granel() as g" [nombre]="g.p.product_name" [precio]="g.precio" [uom]="g.p.base_uom ?? 'kg'"
+                     (aceptar)="cerrarGranel($event)" (cancelar)="cerrarGranel(null)"></app-granel-cantidad>
 <app-salida-efectivo *ngIf="salidaAbierta()" (cerrado)="salidaAbierta.set(false)"></app-salida-efectivo>
+<app-entrada-efectivo *ngIf="entradaAbierta()" (cerrado)="entradaAbierta.set(false)"></app-entrada-efectivo>
 
 <app-receipt-viewer *ngIf="verTicket&&ultimoFolio()" [id]="ultimoFolio()!" (close)="verTicket=false"></app-receipt-viewer>
 <app-receipt-email *ngIf="enviarCorreo&&ultimoFolio()" [saleId]="ultimoFolio()!" [email]="clienteFactura?.email||''" (close)="enviarCorreo=false"></app-receipt-email>

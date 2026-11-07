@@ -76,7 +76,7 @@ export class Egresos implements OnInit {
   guardando = false;
   form = this.formVacio();
 
-  get puedeRegistrar(): boolean { return this.auth.puede(PAQUETES.VENTAS_SUPERVISAR); }
+  get puedeRegistrar(): boolean { return this.auth.puede(PAQUETES.RETIROS_EGRESOS); }
   get titulo(): string { return this.personal ? 'Pagos al personal' : 'Egresos'; }
   get conceptoPersonal(): ConceptoEgreso | undefined { return this.conceptos.find(c => c.kind === 'PERSONAL'); }
 

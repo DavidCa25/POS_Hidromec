@@ -12,6 +12,12 @@ GO
 
    Dia de la semana: 1 = lunes ... 7 = domingo, contado desde el 1900-01-01
    (lunes) para no depender de SET DATEFIRST.
+
+   OLVIDO DE SALIDA (0072): una jornada ABIERTA de un dia anterior con mas de
+   14 horas ya no es «trabajando»: es un olvido. Se ofrece la entrada de hoy
+   y se dice que dia quedo sin salida. Un turno nocturno de 22:00 a 06:00 no
+   llega a 14 horas y sigue ofreciendo su salida. La misma regla vive en
+   sp_asistencia_marcar, _resumen, _jornadas y _corregir.
    ==================================================================== */
 CREATE OR ALTER PROCEDURE dbo.sp_asistencia_estado
     @user_id INT
@@ -22,10 +28,15 @@ BEGIN
     DECLARE @hoy DATE = CAST(@ahora AS DATE);
     DECLARE @wd TINYINT = (DATEDIFF(DAY, '19000101', @hoy) % 7) + 1;
 
-    DECLARE @jid INT, @entrada DATETIME2(0), @desc_inicio DATETIME2(0);
-    SELECT @jid = j.id, @entrada = j.entrada_en
+    DECLARE @jid INT, @entrada DATETIME2(0), @desc_inicio DATETIME2(0), @jdia DATE;
+    DECLARE @olvido_dia DATE = NULL, @olvido_entrada DATETIME2(0) = NULL;
+    SELECT @jid = j.id, @entrada = j.entrada_en, @jdia = j.dia
       FROM dbo.asistencia_jornadas j
      WHERE j.user_id = @user_id AND j.estado = 'ABIERTA';
+    IF @jid IS NOT NULL AND @jdia < @hoy AND DATEDIFF(MINUTE, @entrada, @ahora) > 840
+    BEGIN
+        SELECT @olvido_dia = @jdia, @olvido_entrada = @entrada, @jid = NULL, @entrada = NULL;
+    END
     IF @jid IS NOT NULL
         SELECT @desc_inicio = d.inicio_en FROM dbo.asistencia_descansos d
          WHERE d.jornada_id = @jid AND d.fin_en IS NULL;
@@ -50,6 +61,8 @@ BEGIN
                 ELSE DATEDIFF(MINUTE, @entrada, @ahora) - CASE WHEN @pagado = 1 THEN 0 ELSE @descanso_min END
            END AS trabajado_min,
            @descanso_min AS descanso_min,
+           @olvido_dia AS olvido_dia,
+           @olvido_entrada AS olvido_entrada,
            CONVERT(CHAR(5), h.entrada, 108) AS horario_entrada,
            CONVERT(CHAR(5), h.salida, 108) AS horario_salida,
            h.descanso_min AS horario_descanso_min,

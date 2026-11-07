@@ -1,0 +1,74 @@
+{
+  "proveedor": "MAYORISTA DEL BAJIO SA DE CV",
+  "rfc": "MBA0512153K9",
+  "folio": "T-48213",
+  "fecha": "04/11/2026 10:42",
+  "lineas": [
+    {
+      "descripcion": "ACEITE VEGETAL 1L CJ12",
+      "cantidad": 2,
+      "unidad": "CJ",
+      "factor": 12,
+      "precio_unitario": 412.8,
+      "importe": 825.6,
+      "tasa_iva": 0,
+      "ieps": 0
+    },
+    {
+      "descripcion": "ARROZ SUPER EXTRA 1KG",
+      "cantidad": 10,
+      "unidad": "PZA",
+      "factor": 1,
+      "precio_unitario": 28.5,
+      "importe": 285,
+      "tasa_iva": 0,
+      "ieps": 0
+    },
+    {
+      "descripcion": "DETERGENTE POLVO 1KG CJ10",
+      "cantidad": 1,
+      "unidad": "CJ",
+      "factor": 10,
+      "precio_unitario": 389,
+      "importe": 389,
+      "tasa_iva": 0.16,
+      "ieps": 0
+    },
+    {
+      "descripcion": "PAPEL HIG 4R PAQ12",
+      "cantidad": 3,
+      "unidad": "PAQ",
+      "factor": 12,
+      "precio_unitario": 96.9,
+      "importe": 290.7,
+      "tasa_iva": 0.16,
+      "ieps": 0
+    },
+    {
+      "descripcion": "FRIJOL NEGRO 900G",
+      "cantidad": 12,
+      "unidad": "PZA",
+      "factor": 1,
+      "precio_unitario": 31.2,
+      "importe": 374.4,
+      "tasa_iva": 0,
+      "ieps": 0
+    },
+    {
+      "descripcion": "ATUN EN AGUA 140G PAQ4",
+      "cantidad": 6,
+      "unidad": "PAQ",
+      "factor": 4,
+      "precio_unitario": 74,
+      "importe": 444,
+      "tasa_iva": 0,
+      "ieps": 0
+    }
+  ],
+  "subtotal": 2608.7,
+  "descuento": 0,
+  "ieps": 0,
+  "iva": 108.75,
+  "envases": 0,
+  "total": 2717.45
+}

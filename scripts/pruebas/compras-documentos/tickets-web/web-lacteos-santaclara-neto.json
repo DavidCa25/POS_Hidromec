@@ -1,0 +1,17 @@
+{
+ "real": true,
+ "fuente": "https://www.promodescuentos.com/ofertas/tiendas-neto-leche-santa-clara-1071990",
+ "nota": "Foto real de ticket de Tiendas Neto: precio, descuento e importe por renglón. Total impreso 116 (el OCR lo lee 118).",
+ "proveedor": "TIENDAS SUPER PRECIO, S.A. de C.V",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "LECHE SANTA CLARA ENTERA 1 LT",
+   "cantidad": 6,
+   "factor": 1,
+   "precio_unitario": 29,
+   "importe": 174
+  }
+ ],
+ "total": 116
+}

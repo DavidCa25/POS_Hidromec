@@ -1,0 +1,17 @@
+{
+ "real": true,
+ "fuente": "https://es.scribd.com/document/748613900",
+ "nota": "Factura CFDI impresa de Abarrotera del Duero (Grupo Merza): tabla ancha con precio sugerido, IEPS, IVA y precio con impuestos.",
+ "proveedor": "ABARROTERA DEL DUERO S.A DE C.V.",
+ "lineas": [
+  {
+   "codigo": null,
+   "descripcion": "WK JACK DANIELS TENNESSEE HONEY 700ML",
+   "cantidad": 1,
+   "factor": 1,
+   "precio_unitario": 402.6,
+   "importe": 402.6
+  }
+ ],
+ "total": 467.02
+}

@@ -15,7 +15,7 @@ import { AuthService } from '../services/auth.service';
 import { RegisterService } from '../services/register.service';
 import { AsistenciaChecarComponent } from '../app/asistencia/checar/asistencia-checar.component';
 import {
-  CapabilityService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
+  CapabilityService, CatalogService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
   SelectedOption, ServiceMode, ShiftService,
   MesaService, MesaSalon,
@@ -23,6 +23,9 @@ import {
 } from '../core';
 import { ClubService } from '../core/club.service';
 import { SalidaEfectivo } from '../venta/salida-efectivo/salida-efectivo.component';
+import { EntradaEfectivo } from '../venta/entrada-efectivo/entrada-efectivo.component';
+import { GranelCantidadComponent } from '../venta/granel-cantidad/granel-cantidad.component';
+import { preguntarCajonVoucher } from '../venta/cajon-voucher';
 import { SelectorMesasComponent } from '../hospitality/selector-mesas/selector-mesas.component';
 import { LicenseService } from '../services/license.service';
 import { nombreDeMesa } from '../hospitality/hx';
@@ -59,7 +62,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, ClubClienteComponent, DevolucionTouch],
+  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -625,8 +628,24 @@ export class TouchPos implements OnInit, OnDestroy {
       this.mostrar('Este producto no tiene precio en el canal seleccionado.');
       return;
     }
+    /* A granel se pregunta cuánto, igual que en Retail. */
+    if (CatalogService.esGranel(p)) {
+      this.granel.set({ p, precio: Number(this.commercial.catalogPrice(p.id, p.price) ?? p.price) });
+      return;
+    }
     this.agregar(p, 1, [], null);
     this.mostrar(`${p.product_name} agregado`, 'ok');
+  }
+
+  /** «¿Cuánto?» abierta para un producto a granel. */
+  readonly granel = signal<{ p: MenuProduct; precio: number } | null>(null);
+
+  cerrarGranel(q: number | null) {
+    const g = this.granel();
+    this.granel.set(null);
+    if (!g || q == null) return;
+    this.agregar(g.p, q, [], null);
+    this.mostrar(`${g.p.product_name} agregado`, 'ok');
   }
 
   /** Toque largo o boton de opciones: abre la hoja aunque no sea obligatoria. */
@@ -830,6 +849,7 @@ export class TouchPos implements OnInit, OnDestroy {
       objetoImpuesto: p.objeto_impuesto ?? null,
       tasaIva: p.tasa_iva ?? null,
       inventoryMode: p.inventory_mode,
+      decimal: CatalogService.esGranel(p),
     }, qty, opciones);
     if (nota) linea.note = nota;
     // La disponibilidad mostrada baja al instante; el stock real lo valida SQL.
@@ -999,6 +1019,7 @@ export class TouchPos implements OnInit, OnDestroy {
         const e = await this.mesaSvc.enlazarCobro(mesa.id, res.saleId ?? null);
         if (!e.ok) this.mostrar(e.error, 'error');
       }
+      await preguntarCajonVoucher(this.sale, this.pagoMixto() ? this.pagos().filter(p => p.amount > 0).map(p => p.method) : [this.metodo()]);
 
       this.clienteFactura=res.customer??null;
       this.conceptosFactura=(res.lines??[]).map(l=>({description:l.productName,quantity:l.qty,unitPrice:l.unitPrice,claveProdServ:l.claveProdServ,claveUnidad:l.claveUnidad,taxObject:l.objetoImpuesto,taxRate:l.tasaIva}));
@@ -1091,6 +1112,13 @@ export class TouchPos implements OnInit, OnDestroy {
     this.salidaAbierta.set(true);
   }
 
+  /** 0076: entrada de efectivo (cambio, dinero del dueño, préstamo). Sin turno, primero el turno. */
+  readonly entradaAbierta = signal(false);
+  abrirEntrada() {
+    if (!this.hayTurno()) { this.abrirTurno.set(true); return; }
+    this.entradaAbierta.set(true);
+  }
+
   /** Abrir el cajon sin venta: lo autoriza otra persona y queda registrado. */
   async abrirCajon() {
     await this.cajon.abrirSinVenta();
@@ -1101,6 +1129,9 @@ export class TouchPos implements OnInit, OnDestroy {
 
   @HostListener('window:keydown.f10', ['$event'])
   onF10(e: Event) { e.preventDefault(); this.abrirSalida(); }
+
+  @HostListener('window:keydown.f4', ['$event'])
+  onF4(e: Event) { e.preventDefault(); this.abrirEntrada(); }
 
   /** Escape cierra lo que este abierto: util con teclado conectado. */
   @HostListener('window:keydown.escape')

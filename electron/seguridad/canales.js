@@ -29,6 +29,9 @@ const {
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
   SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR, ASISTENCIA_GESTIONAR,
+  // 0077: permisos por persona.
+  DEVOLUCIONES, RETIROS_EGRESOS, CAJON_SIN_VENTA, MODIFICAR_VENTA, CREDITO_CUPONES,
+  VER_NUMEROS_DIA, VER_COSTOS,
 } = BUNDLES;
 
 /**
@@ -52,7 +55,17 @@ const EXIGE = {
   'sp-close-shift': VENTAS_OPERAR,
   /* Roles v2: un retiro saca dinero del cajon. El Operador lo pide y lo
      aprueba un Encargado (PIN) o el dueno desde su app: ver APROBABLES. */
-  'sp-register-cash-out': VENTAS_SUPERVISAR,
+  'sp-register-cash-out': RETIROS_EGRESOS,
+  /* 0076: meter dinero al cajon (cambio, dinero del dueno) no lo saca: lo
+     registra quien opera la caja y queda en el corte con su concepto. */
+  'sp-register-cash-in': VENTAS_OPERAR,
+  /* 0077 · Documentos de compra. Leer un ticket o un XML solo PROPONE: lo que
+     mueve inventario y dinero es sp-register-purchase, con su propio permiso. */
+  'compras-doc:leer': VENTAS_OPERAR,
+  'compras-doc:aprender': VENTAS_OPERAR,
+  'compras-doc:archivo': VENTAS_OPERAR,
+  'compras-doc:de-compra': VENTAS_OPERAR,
+  'compras-doc:duplicados': VENTAS_OPERAR,
   /* Roles v2: pedir y seguir la aprobacion del dueno desde la caja. Cualquiera
      que venda puede PEDIR; lo que se aprueba lo decide la nube (rol en Owner). */
   /* Si el negocio pide aprobaciones o no (dock > Más). Lo ve y lo cambia
@@ -123,7 +136,7 @@ const EXIGE = {
   'register-set-current': VENTAS_OPERAR,
   'register-release': VENTAS_OPERAR,
   // Fidelización en el mostrador: emitir y canjear mueven saldo del cliente.
-  'coupons:issue': VENTAS_OPERAR,
+  'coupons:issue': CREDITO_CUPONES,
   'coupons:redeem': VENTAS_OPERAR,
   'loyalty:evaluate-sale': VENTAS_OPERAR,
   'dynamics:play': VENTAS_OPERAR,
@@ -138,15 +151,15 @@ const EXIGE = {
   // las que nació el blindaje anti robo hormiga. Siguen admitiendo autorización
   // presencial: si quien opera no las tiene, otra persona con el paquete puede
   // autorizarlas con sus credenciales, y las dos identidades quedan registradas.
-  'sp-refund-sale': VENTAS_SUPERVISAR,
+  'sp-refund-sale': DEVOLUCIONES,
   'devoluciones:ventas': VENTAS_OPERAR,
-  'devoluciones:cambio': VENTAS_SUPERVISAR,
-  'sp-update-sale': VENTAS_SUPERVISAR,
+  'devoluciones:cambio': DEVOLUCIONES,
+  'sp-update-sale': MODIFICAR_VENTA,
   /* Roles v2: abrir tras un cobro es de quien vende; abrir SIN venta lo
      decide el propio canal (pide autorizacion). Ver APROBABLES. */
   'open-cash-drawer': VENTAS_OPERAR,
-  'fiscal-cancel-invoice': VENTAS_SUPERVISAR,
-  'fiscal:cancelar': VENTAS_SUPERVISAR,
+  'fiscal-cancel-invoice': MODIFICAR_VENTA,
+  'fiscal:cancelar': MODIFICAR_VENTA,
   // Un sorteo reparte premio: quien lo cierra o lo celebra responde de él.
   'raffles:draw': VENTAS_SUPERVISAR,
   'raffles:close': VENTAS_SUPERVISAR,
@@ -185,8 +198,8 @@ const EXIGE = {
   // Roles v2: leer conceptos y personal para PEDIR un gasto (registrar se aprueba).
   'egresos:conceptos': VENTAS_OPERAR,
   'egresos:personal': VENTAS_OPERAR,
-  'egresos:registrar': VENTAS_SUPERVISAR,
-  'egresos:cancelar': VENTAS_SUPERVISAR,
+  'egresos:registrar': RETIROS_EGRESOS,
+  'egresos:cancelar': RETIROS_EGRESOS,
   // Que conceptos existen es una decision del negocio, como las formas de pago.
   'egresos:concepto-guardar': CONFIGURACION_ADMINISTRAR,
   'egresos:concepto-mover': CONFIGURACION_ADMINISTRAR,
@@ -206,7 +219,18 @@ const EXIGE = {
   'security:by-cashier': REPORTES_VER,
   'security:risk': REPORTES_VER,
   // Roles v2: el cierre del dia (Inicio), para Encargado y Administrador.
-  'reportes:cierre-dia': REPORTES_VER,
+  'reportes:cierre-dia': VER_NUMEROS_DIA,
+  /* 0077 · «Qué puede ver». Eran lecturas abiertas: cualquier sesión veía los
+     totales del negocio y lo que se debe a proveedores. */
+  'sp-get-total-sales-today': VER_NUMEROS_DIA,
+  'sp-get-total-sales-month': VER_NUMEROS_DIA,
+  'sp-get-total-orders': VER_NUMEROS_DIA,
+  'sp-get-daily-sales-last-7-days': VER_NUMEROS_DIA,
+  'sp-get-daily-sales-current-month': VER_NUMEROS_DIA,
+  'sp-get-top-selling-products': VER_NUMEROS_DIA,
+  'sp-sales-by-payment': VER_NUMEROS_DIA,
+  'sp-get-suppliers-account': VER_COSTOS,
+  'sp-get-supplier-account-detail': VER_COSTOS,
   'alerts:refunds-by-cashier': REPORTES_VER,
 
   // ------------------------------------------------------------ configuración
@@ -335,6 +359,10 @@ const EXIGE = {
   'asistencia:horario-guardar': ASISTENCIA_GESTIONAR,
   'asistencia:activar': CONFIGURACION_ADMINISTRAR,
   'asistencia:reglas-guardar': CONFIGURACION_ADMINISTRAR,
+
+  // ----------------------------------------------------- 0073 venta suelta
+  // Ligar un suelto a su paquete es editar el catalogo, como una presentacion.
+  'venta-suelta:guardar': CATALOGO_EDITAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
@@ -429,7 +457,7 @@ const EXIGE = {
   'menu-linea:producto-guardar': CONFIGURACION_ADMINISTRAR,
   // Cancelar lo que ya se pidio saca dinero de la cuenta: es la misma clase
   // de decision que un reembolso, y la toma un encargado.
-  'comandas:cancelar': VENTAS_SUPERVISAR,
+  'comandas:cancelar': MODIFICAR_VENTA,
   // Como es el salon y quien prepara que es configuracion del negocio.
   'salon:area-guardar': CONFIGURACION_ADMINISTRAR,
   'salon:mesa-guardar': CONFIGURACION_ADMINISTRAR,
@@ -569,8 +597,6 @@ const ABIERTOS = {
   'sp-get-product-suppliers': 'lectura de catálogo',
   'sp-get-product-default-supplier': 'lectura de catálogo',
   'sp-get-suppliers': 'lectura de catálogo',
-  'sp-get-suppliers-account': 'lectura de cuentas por pagar',
-  'sp-get-supplier-account-detail': 'lectura de cuentas por pagar',
   'sp-get-purchases': 'lectura de compras',
   'get-next-purchase-folio': 'lectura del siguiente folio',
   'sp-get-customers': 'lectura de clientes',
@@ -585,13 +611,6 @@ const ABIERTOS = {
   'sp-get-actual-folio': 'lectura del folio en curso',
   'sp-get-open-shift': 'lectura del turno propio',
   'sp-get-cash-movements': 'lectura del turno propio',
-  'sp-get-total-sales-today': 'lectura del propio mostrador',
-  'sp-get-total-sales-month': 'lectura del propio mostrador',
-  'sp-get-total-orders': 'lectura del propio mostrador',
-  'sp-get-daily-sales-last-7-days': 'lectura del propio mostrador',
-  'sp-get-daily-sales-current-month': 'lectura del propio mostrador',
-  'sp-get-top-selling-products': 'lectura del propio mostrador',
-  'sp-sales-by-payment': 'lectura del propio mostrador',
   'sp-get-active-users': 'lista de nombres para elegir cajero en el turno',
   'sp-get-user-by-id': 'nombre del usuario para pintarlo',
   'alerts:counts': 'avisos operativos del día',
@@ -607,6 +626,7 @@ const ABIERTOS = {
   'recipes:get': 'lectura de recetas',
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
+  'venta-suelta:get': 'lectura de venta suelta',
   'hospitality:availability': 'lectura de disponibilidad',
   'loyalty:catalog': 'lectura de fidelización',
   'loyalty:instances': 'lectura de fidelización',
@@ -692,6 +712,7 @@ const ACTOR = {
   'devoluciones:cambio':          { campos: ['user_id', 'userId'] },
   'sp-import-sales':              { campos: ['user_id', 'userId'] },
   'sp-register-cash-out':         { campos: ['user_id', 'userId'] },
+  'sp-register-cash-in':          { campos: ['user_id', 'userId'] },
   'sp-register-supplier-payment': { campos: ['user_id', 'userId'] },
   'raffles:draw':                 { campos: ['userId'] },
   'raffles:close':                { campos: ['userId'] },
@@ -717,6 +738,10 @@ const AUTORIZA = {
      30% o bajo costo es regalar mercancia: las autoriza un Encargado. */
   'sp-update-product': INVENTARIO_OPERAR,
   'commercial:save': VENTAS_SUPERVISAR,
+  /* 0077 · Abrir el cajón sin venta lo autoriza quien tiene esa casilla.
+     Antes caía en VENTAS_OPERAR (el paquete del canal) y cualquier cajero
+     podía autorizar con su PIN la apertura de otro. */
+  'open-cash-drawer': CAJON_SIN_VENTA,
 };
 
 /**

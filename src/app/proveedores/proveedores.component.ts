@@ -91,7 +91,13 @@ export class Proveedores implements OnInit {
   async cargar() {
     this.cargando = true;
     try {
-      const acc = await this.api?.getSuppliersAccount?.();
+      let acc = await this.api?.getSuppliersAccount?.();
+      /* 0077 · Sin «Costos: visibles» no se ve lo que se debe: la lista sale sin saldos. */
+      if (!acc?.success) {
+        const base = await this.api?.getSuppliers?.();
+        const lista = Array.isArray(base?.recordset) ? base.recordset : (Array.isArray(base) ? base : (base?.data ?? []));
+        acc = { success: true, data: lista.map((x: any) => ({ supplier_id: x.id, nombre: x.nombre ?? x.name, telefono: x.telefono ?? null, correo: x.correo ?? null })) };
+      }
       const rows = acc?.success ? (acc.data || []) : [];
       this.proveedores = rows.map((r: any) => ({
         id: Number(r.supplier_id),

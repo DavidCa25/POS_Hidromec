@@ -105,6 +105,19 @@ export class ShiftService {
     });
   }
 
+  /** Entrada de efectivo del turno (DEPOSIT, 0076): cambio, dinero del dueño, préstamo. */
+  async registerCashIn(amount: number, concept: string, note: string): Promise<any> {
+    const api = this.bridge.api;
+    if (!api?.registerCashIn) return { success: false, error: 'No se pudo registrar la entrada de efectivo (API no disponible).' };
+    return api.registerCashIn({
+      user_id: this.userId,
+      amount,
+      concept,
+      note,
+      register_id: this.register.registerId,
+    });
+  }
+
   /**
    * Pago a proveedor en efectivo desde el cajon de ESTA caja.
    *

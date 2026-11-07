@@ -1,6 +1,7 @@
 /* Checar (0071). Usa la primitiva de dialogo de Wybix (.wx-dialogo-velo /
    .wx-dialogo): colores y modo oscuro salen de sus tokens, no de aqui. */
-.asis-velo { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: center; padding: 16px; }
+/* Checar es un aviso: va en su franja, por encima del de abrir turno (ver scripts/pruebas/capas.mjs). */
+.asis-velo { position: fixed; inset: 0; z-index: calc(var(--wx-z-alerta) - 1); display: grid; place-items: center; padding: 16px; }
 .asis-checar { width: min(480px, 100%); padding: 0; border-radius: 16px; overflow: hidden; }
 .asis-checar__cab { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--wx-dialogo-borde); }
 .asis-checar__cab h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
@@ -12,7 +13,8 @@
 
 .asis-hora { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 20px 18px 6px; }
 .asis-hora__reloj { font-family: var(--wx-font-mono); font-size: var(--wx-text-2xl); font-weight: 600; font-variant-numeric: tabular-nums; }
-.asis-hora__dia { font-size: var(--wx-text-sm); color: var(--wx-dialogo-tenue); text-transform: capitalize; }
+.asis-hora__dia { font-size: var(--wx-text-sm); color: var(--wx-dialogo-tenue); }
+.asis-hora__dia::first-letter { text-transform: uppercase; }
 
 .asis-persona { display: flex; gap: 14px; align-items: center; margin: 12px 18px 0; padding: 14px; border-radius: 12px; background: var(--wx-dialogo-elevado); border: 1px solid var(--wx-dialogo-borde); }
 .asis-persona__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--wx-text-sm); color: var(--wx-dialogo-tenue); }

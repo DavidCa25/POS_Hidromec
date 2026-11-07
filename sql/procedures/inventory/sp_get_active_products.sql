@@ -94,7 +94,7 @@ BEGIN
         /* Cuantas unidades hay DE VERDAD, segun lo que el producto es. */
         CASE p.inventory_mode
             WHEN 'NONE'   THEN 999999
-            WHEN 'DIRECT' THEN FLOOR(p.stock)
+            WHEN 'DIRECT' THEN FLOOR(p.stock) + ISNULL(vs.extra, 0)
             ELSE ISNULL(po.units, 0)
         END AS available_units,
 
@@ -111,6 +111,13 @@ BEGIN
     INNER JOIN CAT_categories c ON p.category_id = c.id
     INNER JOIN CAT_brands m ON p.brand_id = m.id
     LEFT JOIN posibles po ON po.product_id = p.id
+    /* 0073 Venta suelta: el suelto alcanza tambien con los paquetes cerrados. */
+    OUTER APPLY (SELECT CASE WHEN pk.stock > 0 THEN FLOOR(pk.stock) * v.piezas ELSE 0 END AS extra
+                   FROM dbo.venta_suelta v
+                   JOIN dbo.products pk ON pk.id = v.parent_product_id
+                  WHERE v.product_id = p.id
+                    AND EXISTS (SELECT 1 FROM dbo.business_modules
+                                 WHERE module_key = N'venta-suelta' AND enabled = 1)) vs
     OUTER APPLY (
       SELECT TOP 1 s.nombre AS supplier_name
       FROM dbo.product_suppliers ps

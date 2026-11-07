@@ -139,7 +139,7 @@ test.describe('De la recepción a la entrega', () => {
     expect(hayTurno, `no hay turno para cobrar: ${JSON.stringify(abierto)}`).toBeTruthy();
 
     // ============================================================ la orden
-    await irPorDock(ventana, 'Servicios', 'Ordenes');
+    await irPorDock(ventana, 'Servicios', 'Órdenes');
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
     await ventana.click('button:has-text("Nueva orden")');
 
@@ -250,7 +250,7 @@ test.describe('De la recepción a la entrega', () => {
     await ventana.waitForSelector('#username', { timeout: 60000 });
     await entrar(app, CUENTAS.admin);
 
-    await irPorDock(ventana, 'Servicios', 'Ordenes');
+    await irPorDock(ventana, 'Servicios', 'Órdenes');
     await ventana.waitForSelector('.srv-tabla', { timeout: 30000 });
     /* «POR COBRAR» YA NO LA TIENE, Y ESO ES EL ARREGLO.
        Esta orden se acaba de cobrar. Antes seguía apareciendo ahí porque el

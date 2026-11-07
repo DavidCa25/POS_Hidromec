@@ -16,7 +16,7 @@
  *   - Sin fecha, la venta no vencia nunca: ahora vence a los dias de plazo.
  *   - El abono quedaba a nombre del usuario 1, cobrara quien cobrara.
  */
-const { test, expect, CUENTAS } = require('./fixtures');
+const { test, expect, CUENTAS, irPorDock } = require('./fixtures');
 const { BASE_CORE } = require('./perfil');
 
 async function entrar(app, cuenta) {
@@ -136,7 +136,8 @@ test.describe('Crédito de clientes', () => {
 
     // ------------------------------------------------ la pantalla, con cifras
     /* Salir y volver: la pantalla relee de la base. */
-    await ventana.locator('.wxdock a', { hasText: 'Inicio' }).click();
+    /* Inicio abre un panel en el dock (ya no es un enlace directo). */
+    await irPorDock(ventana, 'Inicio');
     await ventana.locator('.wxdock a', { hasText: 'Clientes' }).click();
     const fila = ventana.locator('tbody tr', { hasText: nombre });
     await expect(fila, 'la lista ya no dice 0').toContainText('200.00');

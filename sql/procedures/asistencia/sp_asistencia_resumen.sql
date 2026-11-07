@@ -13,6 +13,10 @@ GO
      TRABAJADO  entrada -> salida, menos los descansos si el descanso no se
                 paga. Un descanso se recorta a su jornada. Una jornada
                 abierta cuenta hasta ahora; una SIN_SALIDA cuenta 0.
+     REVISAR    (0072) lo que no se puede creer: sin salida, una jornada abierta
+                de un dia anterior con mas de 14 horas, o una cerrada de mas
+                de 16 sin corregir. Cuenta 0 horas y 0 extra hasta que un
+                encargado la corrija: nunca llega inflada al contador.
      EXTRA      depende SOLO de la hora de salida: lo que pasa de la salida
                 del horario de ese dia, si pasa de la tolerancia (si pasa,
                 cuenta entero). Con varias jornadas el mismo dia, la ultima
@@ -42,9 +46,13 @@ BEGIN
       FROM dbo.asistencia_reglas WHERE id = 1;
 
     ;WITH j AS (
-        SELECT j.id, j.user_id, j.dia, j.entrada_en, j.salida_en, j.estado, j.corregida,
-               CASE j.estado WHEN 'CERRADA' THEN j.salida_en WHEN 'ABIERTA' THEN @ahora END AS fin
+        SELECT j.id, j.user_id, j.dia, j.entrada_en, j.salida_en, e.estado, j.corregida,
+               CASE e.estado WHEN 'CERRADA' THEN j.salida_en WHEN 'ABIERTA' THEN @ahora END AS fin
           FROM dbo.asistencia_jornadas j
+         CROSS APPLY (SELECT CASE
+             WHEN j.estado = 'ABIERTA' AND j.dia < CAST(@ahora AS DATE) AND DATEDIFF(MINUTE, j.entrada_en, @ahora) > 840 THEN 'SIN_SALIDA'
+             WHEN j.estado = 'CERRADA' AND j.corregida = 0 AND DATEDIFF(MINUTE, j.entrada_en, j.salida_en) > 960 THEN 'SIN_SALIDA'
+             ELSE j.estado END AS estado) e
          WHERE j.dia BETWEEN @desde AND @hasta
            AND (@persona_id IS NULL OR j.user_id = @persona_id)
     ), jm AS (
@@ -64,7 +72,7 @@ BEGIN
     ), dia AS (
         SELECT user_id, dia,
                MIN(entrada_en) AS entrada,
-               MAX(salida_en) AS salida,
+               MAX(CASE WHEN estado = 'CERRADA' THEN salida_en END) AS salida,
                SUM(CASE WHEN trabajado_min > 0 THEN trabajado_min ELSE 0 END) AS trabajado_min,
                SUM(descanso_min) AS descanso_min,
                MAX(CASE WHEN estado = 'ABIERTA' THEN 1 ELSE 0 END) AS abierta,
@@ -88,7 +96,7 @@ BEGIN
            CAST(c.corregida AS BIT) AS corregida, c.jornadas, c.tiene_horario,
            CAST(CASE WHEN c.tiene_horario = 1 AND c.h_user IS NULL THEN 1 ELSE 0 END AS BIT) AS dia_libre,
            CASE
-             WHEN @extra = 0 OR c.tiene_horario = 0 THEN 0
+             WHEN @extra = 0 OR c.tiene_horario = 0 OR c.revisar = 1 THEN 0
              WHEN c.h_user IS NULL THEN CASE WHEN @libre = 1 THEN c.trabajado_min ELSE 0 END
              WHEN c.abierta = 1 OR c.salida IS NULL THEN 0
              WHEN DATEDIFF(MINUTE, c.prog_salida, c.salida) > @tol THEN DATEDIFF(MINUTE, c.prog_salida, c.salida)

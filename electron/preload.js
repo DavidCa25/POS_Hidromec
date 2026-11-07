@@ -143,6 +143,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSuppliers: () => invoke('sp-get-suppliers'),
     getNextPurchaseFolio: () => invoke('get-next-purchase-folio'),
     registerPurchase: (payload) => invoke('sp-register-purchase', payload),
+    /* 0077: documentos de compra (ticket, nota o XML del SAT). */
+    comprasDocLeer: (p) => invoke('compras-doc:leer', p),
+    comprasDocAprender: (p) => invoke('compras-doc:aprender', p),
+    comprasDocArchivo: (p) => invoke('compras-doc:archivo', p),
+    comprasDocDeCompra: (p) => invoke('compras-doc:de-compra', p),
+    comprasDocDuplicados: (p) => invoke('compras-doc:duplicados', p),
     getPurchases: () => invoke('sp-get-purchases'),
     getUserById: (userId) => invoke('sp-get-user-by-id', userId),
 
@@ -212,6 +218,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         invoke('sp-register-supplier-payment', payload),
     registerCashMovement: (payload) =>
         invoke('sp-register-cash-out', payload),
+    /* 0076: entrada de efectivo (DEPOSIT). */
+    registerCashIn: (payload) =>
+        invoke('sp-register-cash-in', payload),
     /* Egresos y pagos al personal (0049). Un pago al personal es un egreso de
        concepto "Pago al personal": mismo canal, misma fuente de verdad. */
     egresosConceptos: (p) => invoke('egresos:conceptos', p),
@@ -251,6 +260,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     plataformasConfirmar: p => invoke('plataformas:confirmar',p),
     plataformasCancelar: p => invoke('plataformas:cancelar',p),
     plataformasDeposito: p => invoke('plataformas:deposito',p),
+    // 0073: Venta suelta.
+    ventaSueltaGet: p => invoke('venta-suelta:get',p),
+    ventaSueltaGuardar: p => invoke('venta-suelta:guardar',p),
     // 0071: Asistencia.
     asistenciaEstado: () => invoke('asistencia:estado'),
     asistenciaMarcar: p => invoke('asistencia:marcar',p),

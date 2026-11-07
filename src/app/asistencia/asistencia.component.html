@@ -186,7 +186,7 @@
         <div class="asis-jornada__marcas">
           <span class="asis-marca asis-marca--entrada">Entrada {{ j.entrada_en | fechaSql:'HH:mm' }}</span>
           <span class="asis-marca" *ngFor="let x of descansosDe(j.id)">Descanso {{ x.inicio_en | fechaSql:'HH:mm' }}–{{ x.fin_en ? (x.fin_en | fechaSql:'HH:mm') : '…' }}</span>
-          <span class="asis-marca" *ngIf="j.salida_en">Salida {{ j.salida_en | fechaSql:'HH:mm' }}</span>
+          <span class="asis-marca" *ngIf="j.salida_en">Salida {{ j.salida_en | fechaSql:(salidaOtroDia(j) ? 'EEE d MMM, HH:mm' : 'HH:mm'):'es-MX' }}</span>
           <span class="asis-chip asis-chip--revisar" *ngIf="j.estado === 'SIN_SALIDA'">Sin salida</span>
           <span class="asis-chip asis-chip--abierta" *ngIf="j.estado === 'ABIERTA'">Trabajando</span>
           <span class="asis-chip asis-chip--corregida" *ngIf="j.corregida">Corregida</span>

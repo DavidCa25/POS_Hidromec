@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-29T22:16:24.062Z",
+  "generado": "2026-11-01T01:49:38.680Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -130,7 +130,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "8d45f3ff1cf196ee"
+      "checksum": "6ecf2e053b48fcce"
     },
     {
       "nombre": "sp_asistencia_estado",
@@ -139,7 +139,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2967f51ec2d26e8d"
+      "checksum": "dc36bdc2b24dc022"
     },
     {
       "nombre": "sp_asistencia_horario_get",
@@ -166,7 +166,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "284dbf0067e8bffa"
+      "checksum": "9c241b2c7ee0f1c6"
     },
     {
       "nombre": "sp_asistencia_marcar",
@@ -175,7 +175,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "4a5be9ec3b43fe49"
+      "checksum": "159ff85702a88e1a"
     },
     {
       "nombre": "sp_asistencia_reglas_get",
@@ -202,7 +202,7 @@
       "origen": "Hidromec_DataBase",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "878ebdbcf7781cb5"
+      "checksum": "9dca88225ec60280"
     },
     {
       "nombre": "sp_authorize_supervisor",
@@ -328,7 +328,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "ae92f89a36a84bfd"
+      "checksum": "8db3cc4ec301e66b"
     },
     {
       "nombre": "sp_close_shift",
@@ -697,7 +697,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "aa6bed15a6319e2f"
+      "checksum": "725bda70108d3c80"
     },
     {
       "nombre": "sp_get_actual_folio",
@@ -931,7 +931,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "46bedb01793043ff"
+      "checksum": "b3aff98eb1b48022"
     },
     {
       "nombre": "sp_get_modifier_groups",
@@ -1372,7 +1372,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2e83ef1d4d3e78f8"
+      "checksum": "57fe7163cb25a272"
     },
     {
       "nombre": "sp_import_mapping_find",
@@ -2194,6 +2194,15 @@
       "checksum": "1a9a53bff48b712a"
     },
     {
+      "nombre": "sp_register_cash_in",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/cash/sp_register_cash_in.sql",
+      "origen": "Wybix_Production",
+      "critico": true,
+      "clasificacion": "current",
+      "checksum": "c5f0c49d8660a010"
+    },
+    {
       "nombre": "sp_register_claim",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/setup/sp_register_claim.sql",
@@ -2254,7 +2263,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "9337c96878a5c6f5"
+      "checksum": "91fcd2f8bbcbd1a8"
     },
     {
       "nombre": "sp_register_supplier_payment",
@@ -2281,7 +2290,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "aea0f1da69275f1b"
+      "checksum": "50cad8ba9af3f983"
     },
     {
       "nombre": "sp_report_actividad_horaria",
@@ -2902,9 +2911,26 @@
       "origen": "repo:sql/_heredado/importador_ventas.sql",
       "critico": false,
       "clasificacion": "current",
-      "ausenteEnBase": true,
-      "nota": "Nunca desplegado.",
+      "nota": "Desplegado en la 0074 (ventas historicas).",
       "checksum": "2ae5e8720f258538"
+    },
+    {
+      "nombre": "sp_venta_suelta_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/venta_suelta/sp_venta_suelta_get.sql",
+      "origen": "Wybix_E2E_Core",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "dcb0c8f491138e64"
+    },
+    {
+      "nombre": "sp_venta_suelta_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/venta_suelta/sp_venta_suelta_guardar.sql",
+      "origen": "Wybix_E2E_Core",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "10a6c4fc349a7ed3"
     },
     {
       "nombre": "HospOrdenLineaV2Type",
@@ -2997,6 +3023,15 @@
       "checksum": "3b16dcb7b927e0ac"
     },
     {
+      "nombre": "SaleLineImportType",
+      "tipo": "USER_TABLE_TYPE",
+      "archivo": "sql/types/SaleLineImportType.sql",
+      "origen": "repo:sql/_heredado/importador_ventas.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "eb5340dd995971ee"
+    },
+    {
       "nombre": "SaleModifierType",
       "tipo": "USER_TABLE_TYPE",
       "archivo": "sql/types/SaleModifierType.sql",
@@ -3014,14 +3049,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 128,
-      "columnas": 1359,
-      "pk": 128,
+      "tablas": 129,
+      "columnas": 1364,
+      "pk": 129,
       "unicas": 19,
-      "foraneas": 166,
-      "chequeos": 131,
-      "predeterminados": 341,
-      "indices": 134
+      "foraneas": 168,
+      "chequeos": 133,
+      "predeterminados": 342,
+      "indices": 135
     },
     "objetos": [
       {
@@ -4801,6 +4836,20 @@
         "predeterminados": 3,
         "indices": 0,
         "checksum": "13e07beac0312577"
+      },
+      {
+        "nombre": "venta_suelta",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/venta_suelta.sql",
+        "origen": "Wybix_E2E_Core",
+        "columnas": 5,
+        "pk": "PK_venta_suelta",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "f04c2c286417afe0"
       },
       {
         "nombre": "whatsapp_pedido_avisos",

@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
+import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 import {
   ShiftService, EgresosService, ConceptoEgreso, FormaEgreso, PeriodoPago, FORMAS_EGRESO, PERIODOS_PAGO,
 } from '../../core';
@@ -23,7 +24,7 @@ import {
 @Component({
   selector: 'app-salida-efectivo',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, WxDateComponent, WxFlechasDirective],
   templateUrl: './salida-efectivo.component.html',
   styleUrls: ['./salida-efectivo.component.css'],
 })

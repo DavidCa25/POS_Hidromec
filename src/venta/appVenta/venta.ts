@@ -15,6 +15,10 @@ import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-n
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
+import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
+import { GranelCantidadComponent } from '../granel-cantidad/granel-cantidad.component';
+import { confirmarQuitar } from '../confirmar-quitar';
+import { preguntarCajonVoucher } from '../cajon-voucher';
 import {
   Cart, CartLine, CartService, CatalogProduct, CatalogService, CartCustomer,
   LoyaltyAward, Payment, PaymentMethod, SaleDetailRow, SaleHeader, SaleService,
@@ -24,6 +28,7 @@ import {
 import { ClubService } from '../../core/club.service';
 import { ClubWalletLectura } from '../../core/club-wallet-lectura';
 import { SalidaEfectivo } from '../salida-efectivo/salida-efectivo.component';
+import { EntradaEfectivo } from '../entrada-efectivo/entrada-efectivo.component';
 import { PremiosVenta } from '../../loyalty/premios-venta';
 import { LicenseService } from '../../services/license.service';
 import { ServiciosService } from '../../modulo-servicios/servicios.service';
@@ -84,7 +89,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, SalidaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -174,13 +179,19 @@ export class Venta implements OnInit, OnDestroy {
   private readonly SCAN_GAP_MS = 35;
   private readonly IDLE_CLEAR_MS = 600;
   private readonly MAX_BUFFER_LEN = 32;
-  private readonly PART_MAX_LEN = 3;
   private readonly BARCODE_MIN_LEN = 6;
 
   printingTicket = false;
   enviarCorreo=false;
 
   autoPrintTicketOnSale = true;
+
+  /**
+   * «Cobrar sin ticket» apaga la impresion SOLO de la venta en curso. Se
+   * vuelve a encender al abrir el siguiente cobro: olvidarlo apagado dejaria
+   * a la siguiente persona de la fila sin su comprobante.
+   */
+  imprimirEstaVenta = true;
 
   private lastAddedProductId: number | null = null;
 
@@ -336,7 +347,9 @@ export class Venta implements OnInit, OnDestroy {
         if (!code) return;
 
         if (this.isTypingInInput()) return;
-        if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal) return;
+        if (Swal.isVisible()) return;
+
+    if (this.granel || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal) return;
         if (this.isEditing && !this.editUnlocked) return;
 
         await this.addByBarcode(code);
@@ -580,7 +593,34 @@ export class Venta implements OnInit, OnDestroy {
   private pulsoTimer: any;
   private totalAnterior: number | null = null;
 
-  private adjustLastAddedQty(delta: number) {
+  /**
+   * El renglón del carrito elegido con ↑ ↓ (resaltado). Con uno elegido, + y −
+   * cambian SU cantidad y Supr lo quita; sin elegir, + y − siguen actuando
+   * sobre el último agregado, como siempre. Agregar un producto lo suelta.
+   */
+  lineaSeleccionada: number | null = null;
+
+  private moverSeleccion(delta: number) {
+    const n = this.items.length;
+    if (!n) { this.lineaSeleccionada = null; return; }
+    const actual = this.lineaSeleccionada;
+    const sig = actual == null ? (delta > 0 ? 0 : n - 1) : Math.min(n - 1, Math.max(0, actual + delta));
+    this.lineaSeleccionada = sig;
+    setTimeout(() => document.querySelector('tr.linea-activa')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  private get lineaElegida(): CartLine | null {
+    const i = this.lineaSeleccionada;
+    return i != null && i < this.items.length ? this.items[i] : null;
+  }
+
+  private async ajustarCantidad(delta: number) {
+    const l = this.lineaElegida;
+    if (l) { if (!l.combo) await this.bajarOQuitar(l, delta); return; }
+    await this.adjustLastAddedQty(delta);
+  }
+
+  private async adjustLastAddedQty(delta: number) {
     const lines = this.items;
     if (!lines.length) return;
 
@@ -590,18 +630,43 @@ export class Venta implements OnInit, OnDestroy {
       : fallback;
 
     if (!target) return;
-    this.cart.adjustQty(target, delta);
+    await this.bajarOQuitar(target, delta);
   }
 
-  onQtyChange(i: number) {
+  /* Bajar de la cantidad mínima (1 pieza, 0.01 a granel) ya no se queda
+     atorado en el mínimo: pregunta si se quita el producto de la venta. */
+  private async bajarOQuitar(l: CartLine, delta: number) {
+    if (delta < 0 && Number(l.qty || 0) + delta < CartService.minimoDe(l)) {
+      await this.preguntarQuitar(l);
+      return;
+    }
+    this.cart.adjustQty(l, delta);
+  }
+
+  private async preguntarQuitar(l: CartLine): Promise<boolean> {
+    if (!(await confirmarQuitar(l.productName || 'Producto'))) return false;
+    const i = this.items.indexOf(l);
+    if (i >= 0) this.quitarItem(i);
+    return true;
+  }
+
+  async onQtyChange(i: number) {
     const it = this.items[i];
     if (!it) return;
+    /* Escribir 0 en la cantidad también pregunta; si no se quita, vuelve al mínimo. */
+    if (it.qty != null && (it.qty as any) !== '' && Number(it.qty) <= 0) {
+      if (await this.preguntarQuitar(it)) return;
+    }
     this.cart.setQty(it, it.qty);
   }
+
+  /** 0077 · «Cambiar precios». */
+  get puedeCambiarPrecio(): boolean { return this.auth.puede(PAQUETES.PRECIOS); }
 
   onPriceChange(i: number) {
     const it = this.items[i];
     if (!it) return;
+    if (!this.puedeCambiarPrecio) return;
     this.cart.setPrice(it, it.unitPrice);
     // Detección (robo hormiga): registra el cambio de precio en la venta.
     this.supervisor.registrar('PRICE_CHANGE', { detail: (it.productName || 'Producto') + ' -> $' + Number(it.unitPrice).toFixed(2) });
@@ -611,6 +676,9 @@ export class Venta implements OnInit, OnDestroy {
     const removed = this.items[i];
     if (!removed) return;
     this.cart.removeLine(removed);
+    if (this.lineaSeleccionada != null) {
+      this.lineaSeleccionada = this.items.length ? Math.min(this.lineaSeleccionada, this.items.length - 1) : null;
+    }
 
     if (removed.productId === this.lastAddedProductId) {
       const last = this.cart.lastLine();
@@ -726,11 +794,33 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     this.dineroRecibido = null;
+    this.recibidoAutomatico = false;
     this.pedidoPlataforma = '';
+    this.imprimirEstaVenta = true;
+    /* Si la venta anterior fue con tarjeta, el método sigue elegido: el total
+       exacto se pone de una vez. */
+    if (this.paymentMethod === 'TARJETA' || this.paymentMethod === 'TRANSFERENCIA' || this.paymentMethod === 'TERMINAL_MP') {
+      this.dineroRecibido = this.totalVenta;
+      this.recibidoAutomatico = true;
+    }
     this.showModal = true;
   }
 
+  /** La misma venta, sin papel. Funciona con cualquier método de pago. */
+  async cobrarSinTicket() {
+    if (this.cobrando) return;
+    this.imprimirEstaVenta = false;
+    await this.confirmarCobro();
+  }
+
+  private get imprimirAlCobrar(): boolean {
+    return this.autoPrintTicketOnSale && this.imprimirEstaVenta;
+  }
+
   cerrarModalCobrar() { this.showModal = false; }
+
+  /** «Dinero recibido» lo puso Wybix (pago exacto), no la persona. */
+  private recibidoAutomatico = false;
 
   async onPaymentMethodChange(method: PaymentMethod) {
     if(this.cobrando)return;
@@ -738,6 +828,18 @@ export class Venta implements OnInit, OnDestroy {
     if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
     else this.pedidoPlataforma='';
+
+    /* Con tarjeta, transferencia o Mercado Pago se cobra el total exacto: se
+       pone solo. Antes había que escribirlo, y si no, el cobro fallaba con
+       «el dinero recibido debe ser mayor o igual al total». Touch ya lo hacía.
+       Al volver a efectivo se borra, para que se escriba lo que dio el cliente. */
+    if (method === 'TARJETA' || method === 'TRANSFERENCIA' || method === 'TERMINAL_MP') {
+      this.dineroRecibido = this.totalVenta;
+      this.recibidoAutomatico = true;
+    } else if (method === 'EFECTIVO' && this.recibidoAutomatico) {
+      this.dineroRecibido = null;
+      this.recibidoAutomatico = false;
+    }
 
     if (method === 'CREDITO') {
       this.dineroRecibido = null;
@@ -867,7 +969,7 @@ export class Venta implements OnInit, OnDestroy {
 
     const res = await this.sale.checkout(payment, {
       openDrawer: this.paymentMethod==='MIXTO'?this.pagosMixtos.some(p=>p.method==='EFECTIVO'):this.paymentMethod==='EFECTIVO',
-      autoPrint: this.autoPrintTicketOnSale,
+      autoPrint: this.imprimirAlCobrar,
     });
 
     if (!res.ok) {
@@ -885,6 +987,7 @@ export class Venta implements OnInit, OnDestroy {
     this.afterSale(res.saleId ?? null, res, isCredito);
     this.lastSalePedido = mesa?.numero ?? null;
     this.showModal = false;
+    await preguntarCajonVoucher(this.sale, this.paymentMethod === 'MIXTO' ? this.pagosMixtos.map(p => p.method) : [this.paymentMethod]);
     this.showPostSaleModal = true;
     await this.avisarCuponFallido(res.cupon);
 
@@ -919,6 +1022,16 @@ export class Venta implements OnInit, OnDestroy {
     });
   }
 
+  /* VENTA ANTERIOR: lo mínimo para resolver una duda en el mostrador
+     («¿cuánto le di de cambio?») sin abrir el historial. Vive en memoria:
+     la última venta cobrada en esta pantalla. */
+  ventaAnterior: { id: number | null; total: number; pagado: number | null; cambio: number | null; metodo: string; hora: Date } | null = null;
+  verTicketAnterior = false;
+  private static readonly METODOS: Record<string, string> = {
+    EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia', TERMINAL_MP: 'Mercado Pago',
+    MIXTO: 'Mixto', CREDITO: 'Crédito', PLATAFORMA: 'Plataforma',
+  };
+
   /** Estado posventa comun a efectivo/tarjeta/credito/terminal. */
   private afterSale(saleId: number | null, res: { total?: number; paid?: number; change?: number; lines?: SoldLine[]; customer?: CartCustomer | null; premios?: LoyaltyAward[] }, isCredito: boolean) {
     this.premiosUltimaVenta = res.premios ?? [];
@@ -929,6 +1042,15 @@ export class Venta implements OnInit, OnDestroy {
       this.lastSalePaid = res.paid ?? this.lastSaleTotal;
       this.lastSaleChange = res.change ?? 0;
     }
+    const metodo = isCredito ? 'CREDITO' : this.paymentMethod;
+    this.ventaAnterior = {
+      id: saleId,
+      total: this.lastSaleTotal,
+      pagado: isCredito ? null : this.lastSalePaid,
+      cambio: isCredito ? null : this.lastSaleChange,
+      metodo: Venta.METODOS[metodo] ?? String(metodo || ''),
+      hora: new Date(),
+    };
     // Cliente en memoria para facturar despues de limpiar la vista.
     this.lastClienteSeleccionado = res.customer ?? null;
     this.prepararConceptosFactura(res.lines ?? [], saleId);
@@ -1001,6 +1123,23 @@ export class Venta implements OnInit, OnDestroy {
 
   cerrarModalProductos() { this.showModalProductos = false; }
 
+  /**
+   * Enter en el buscador: si lo escrito deja productos a la vista, agrega el
+   * primero. Es lo que se espera al teclear un nombre o una clave completa;
+   * para otro, ↓ baja a la lista y las flechas eligen.
+   */
+  async agregarPrimerProductoVisible() {
+    const t = (this.filtro || '').trim().toLowerCase();
+    if (!t) return;
+    const p = this.productos.find(x =>
+      (x.product_name || '').toLowerCase().includes(t) ||
+      (x.part_number || '').toLowerCase().includes(t) ||
+      (x.bar_code || '').toLowerCase().includes(t) ||
+      (x.brand_name || '').toLowerCase().includes(t) ||
+      (x.category_name || '').toLowerCase().includes(t));
+    if (p) await this.seleccionarProducto(p);
+  }
+
   /** Relee el catalogo (stock fresco al abrir el buscador). */
   async cargarProductosActivos() {
     await this.catalog.load(true);
@@ -1022,9 +1161,48 @@ export class Venta implements OnInit, OnDestroy {
     const opciones = await this.resolverOpciones(p);
     if (opciones === null) return;        // hacía falta elegir y se canceló
 
-    this.cart.addProduct(CatalogService.toLineSource(p), 1, opciones);
+    const fuente = CatalogService.toLineSource(p);
+    /* A granel se pregunta cuánto: el jamón no se vende «uno». */
+    let qty = 1;
+    if (fuente.decimal) {
+      this.showModalProductos = false;
+      const q = await this.preguntarCantidad(p.product_name, Number(fuente.unitPrice ?? 0), p.base_uom ?? 'kg', null);
+      if (q == null) return;
+      qty = q;
+    }
+
+    this.cart.addProduct(fuente, qty, opciones);
     this.lastAddedProductId = p.id;
+    this.lineaSeleccionada = null;
     this.showModalProductos = false;
+  }
+
+  // ==================
+  // GRANEL: ¿CUÁNTO?
+  // ==================
+  /** La ventana «¿Cuánto?» abierta, y a quién le contesta. */
+  granel: { nombre: string; precio: number; uom: string; inicial: number | null; resolver: (q: number | null) => void } | null = null;
+
+  /** Abre «¿Cuánto?» y espera: la cantidad elegida, o null si se canceló. */
+  private preguntarCantidad(nombre: string, precio: number, uom: string, inicial: number | null): Promise<number | null> {
+    return new Promise(resolve => {
+      this.granel = { nombre, precio, uom, inicial, resolver: resolve };
+    });
+  }
+
+  cerrarGranel(q: number | null) {
+    const g = this.granel;
+    this.granel = null;
+    g?.resolver(q);
+  }
+
+  /** Enter sobre un renglón a granel del carrito: corregir su cantidad. */
+  private async corregirGranel(i: number) {
+    const l = this.items[i];
+    if (!l?.decimal || l.enviada != null) return;
+    const uom = this.catalog.findById(l.productId)?.base_uom ?? 'kg';
+    const q = await this.preguntarCantidad(l.productName, l.effectiveUnitPrice, uom, l.qty);
+    if (q != null) this.cart.setQty(l, q);
   }
 
   /**
@@ -1238,6 +1416,14 @@ export class Venta implements OnInit, OnDestroy {
     this.showCashOutModal = true;
   }
 
+  /* F4 · 0076: entrada de efectivo (cambio, dinero del dueño, préstamo). */
+  showCashInModal = false;
+  async abrirEntradaEfectivo() {
+    const ok = await this.ensureShiftOpen('SALIDA');
+    if (!ok) return;
+    this.showCashInModal = true;
+  }
+
   // ==================
   // POST-VENTA
   // ==================
@@ -1373,7 +1559,19 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.showModal || this.showModalProductos || this.showCashOutModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
+    /* Con el aviso de abrir turno, F9 sigue checando: es lo primero al llegar. */
+    if (event.key === 'F9' && this.showOpenShiftModal && this.caps.asistencia) {
+      event.preventDefault();
+      this.abrirChecar();
+      return;
+    }
+
+    /* Con un aviso abierto (p. ej. «¿Quitar de la venta?») las teclas son suyas. */
+    if (Swal.isVisible()) return;
+
+    /* La devolución (y el reembolso de un folio cargado) tienen sus propias
+       flechas: aquí no se mueve el carrito ni Supr borra un renglón por debajo. */
+    if (this.granel || this.devolviendo || this.showRefundModal || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }
 
@@ -1399,6 +1597,11 @@ export class Venta implements OnInit, OnDestroy {
         if (!this.showCashOutModal) await this.abrirSalidaEfectivo();
         return;
 
+      case 'F4':
+        event.preventDefault();
+        if (!this.showCashInModal) await this.abrirEntradaEfectivo();
+        return;
+
       case 'F9':
         if (!this.caps.asistencia) return;
         event.preventDefault();
@@ -1407,7 +1610,7 @@ export class Venta implements OnInit, OnDestroy {
 
       case '+':
         event.preventDefault();
-        this.adjustLastAddedQty(+1);
+        this.ajustarCantidad(+1);
         return;
 
       case '-':
@@ -1415,7 +1618,27 @@ export class Venta implements OnInit, OnDestroy {
         /* 0066 · El código de la tarjeta del Club es WXC-<serial>: ese guion
            es parte de la lectura, no el atajo de restar una pieza. */
         if (/^WXC$/i.test(this.scanBuffer)) { this.pushChar('-'); return; }
-        this.adjustLastAddedQty(-1);
+        this.ajustarCantidad(-1);
+        return;
+
+      /* ↑ ↓ eligen renglón del carrito; Supr lo quita; Esc suelta la elección. */
+      case 'ArrowDown':
+      case 'ArrowUp':
+        if (this.isEditing && !this.editUnlocked) return;
+        event.preventDefault();
+        this.moverSeleccion(event.key === 'ArrowDown' ? 1 : -1);
+        return;
+
+      case 'Delete':
+        if (this.lineaSeleccionada == null || (this.isEditing && !this.editUnlocked)) return;
+        event.preventDefault();
+        this.quitarItem(this.lineaSeleccionada);
+        return;
+
+      case 'Escape':
+        if (this.lineaSeleccionada == null) return;
+        event.preventDefault();
+        this.lineaSeleccionada = null;
         return;
     }
 
@@ -1423,6 +1646,10 @@ export class Venta implements OnInit, OnDestroy {
       if (this.scanBuffer.length) {
         event.preventDefault();
         await this.commitScanBuffer();
+      } else if (this.lineaSeleccionada != null && this.items[this.lineaSeleccionada]?.decimal
+                 && (!this.isEditing || this.editUnlocked)) {
+        event.preventDefault();
+        await this.corregirGranel(this.lineaSeleccionada);
       }
       return;
     }
@@ -1506,6 +1733,9 @@ export class Venta implements OnInit, OnDestroy {
           claveUnidad: d.clave_unidad ?? null,
           objetoImpuesto: d.objeto_impuesto ?? null,
           tasaIva: d.tasa_iva != null ? Number(d.tasa_iva) : null,
+          /* Un folio con 0.25 kg se vendió por peso: al modificarlo no puede
+             subirse a 1 por la regla de las piezas. */
+          decimal: Number(d.quantity ?? 1) % 1 !== 0,
         }, Number(d.quantity ?? 1));
       });
 
@@ -1867,6 +2097,10 @@ export class Venta implements OnInit, OnDestroy {
   private clearScanBuffer() {
     this.scanBuffer = '';
     this.lastKeyTs = 0;
+    /* Cada lectura decide de nuevo si vino del escáner. Antes esto no se
+       limpiaba: tras el primer escaneo, todo lo tecleado se buscaba como
+       código de barras y un No. de parte salía «No encontrado». */
+    this.isScannerLike = false;
     if (this.scanTimer) clearTimeout(this.scanTimer);
     this.scanTimer = null;
   }
@@ -1904,40 +2138,31 @@ export class Venta implements OnInit, OnDestroy {
     }
   }
 
-  private async addByPartNumber(code: string) {
-    const key = (code || '').trim().toLowerCase();
-    if (!key) return;
+  private async addByPartNumber(code: string) { await this.buscarPorCodigo(code); }
 
-    if (key.length > this.PART_MAX_LEN) {
-      await Swal.fire({ icon:'warning', title:'No. Parte inválido', text:`Máximo ${this.PART_MAX_LEN} dígitos.`, timer: 1200, showConfirmButton:false });
-      return;
-    }
+  private async addByBarcode(code: string) { await this.buscarPorCodigo(code); }
 
-    await this.catalog.load();
-
-    const p = this.catalog.findByPartNumber(key);
-    if (!p) {
-      await Swal.fire({ icon:'warning', title:'No encontrado', text:`No existe No. Parte: ${code}`, timer: 1000, showConfirmButton:false });
-      return;
-    }
-
-    this.seleccionarProducto(p);
-  }
-
-  private async addByBarcode(code: string) {
+  /**
+   * Busca lo leído o tecleado por código de barras y por No. de parte, sin
+   * importar cómo llegó. Si no está, recarga el catálogo UNA vez (un producto
+   * dado de alta con la caja abierta no estaba en la copia en memoria) y
+   * vuelve a buscar antes de decir que no existe.
+   */
+  private async buscarPorCodigo(code: string) {
     const key = (code || '').trim().toLowerCase();
     if (!key) return;
 
     await this.catalog.load();
-
-    const p = this.catalog.findByBarcode(key);
+    const buscar = () => this.catalog.findByBarcode(key) ?? this.catalog.findByPartNumber(key);
+    let p = buscar();
+    if (!p) { await this.catalog.load(true); p = buscar(); }
 
     if (!p) {
       await Swal.fire({
         icon: 'warning',
         title: 'No encontrado',
-        text: `No existe código de barras: ${code}`,
-        timer: 1000,
+        text: `No hay un producto con el código ${code}`,
+        timer: 1200,
         showConfirmButton: false
       });
       return;
@@ -2103,7 +2328,7 @@ export class Venta implements OnInit, OnDestroy {
     const res = await this.sale.checkout({ method: 'TERMINAL_MP' }, {
       mpOrderId:orderId,
       openDrawer: false, // pago con tarjeta: no se abre el cajon
-      autoPrint: this.autoPrintTicketOnSale,
+      autoPrint: this.imprimirAlCobrar,
     });
 
     if (!res.ok) {
@@ -2117,7 +2342,9 @@ export class Venta implements OnInit, OnDestroy {
 
     if (orden) await this.enlazarOrdenDeServicio(res.saleId ?? null, orden);
     await this.cerrarMesa(mesa, res.saleId ?? null);
+    await preguntarCajonVoucher(this.sale, ['TERMINAL_MP']);
 
+    this.paymentMethod = 'TERMINAL_MP';
     this.afterSale(res.saleId ?? null, res, false);
     this.paymentMethod = 'EFECTIVO';
 

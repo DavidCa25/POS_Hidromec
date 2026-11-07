@@ -1,12 +1,16 @@
 <div class="wx-dialogo-velo asis-velo" (click)="cerrar.emit()">
   <section class="wx-dialogo asis-checar" role="dialog" aria-modal="true" aria-labelledby="asis-checar-t"
-           data-guide="asistencia-checar" (click)="$event.stopPropagation()">
+           data-guide="asistencia-checar" (click)="$event.stopPropagation()"
+           wxFlechas wxFlechasInicio=".asis-checar button:not(.asis-x):not([disabled])">
     <header class="asis-checar__cab">
       <h3 id="asis-checar-t">Checar</h3>
       <button type="button" class="asis-x" aria-label="Cerrar" (click)="cerrar.emit()"><i class="ph ph-x"></i></button>
     </header>
 
     <p class="asis-aviso" *ngIf="motivo">{{ motivo }}</p>
+    <p class="asis-aviso" *ngIf="estado()?.olvido_dia as dia" data-guide="asistencia-olvido" role="status">
+      No se registró tu salida del {{ dia | fechaSql:"EEEE d 'de' MMMM":'es-MX' }}. Registra tu entrada de hoy; ese día lo corrige un encargado.
+    </p>
 
     <div class="asis-cargando" *ngIf="cargando()">Cargando…</div>
 

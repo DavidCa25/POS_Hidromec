@@ -133,8 +133,11 @@ BEGIN
                    r.clave_prod_serv, r.clave_unidad, r.tasa_iva,
                    ISNULL(r.base_uom, 'pza') AS base_uom,
                    /* Un ingrediente se mide en gramos o mililitros: fraccion
-                      permitida. Una pieza no. */
-                   CASE WHEN r.tipo = 'INGREDIENTE' THEN 1 ELSE 0 END AS decimales
+                      permitida. Una pieza no. Y lo que se vende por peso o
+                      medida (kg de jamon, frijol a granel) tambien: es el
+                      mismo criterio que Inventario al elegir la unidad. */
+                   CASE WHEN r.tipo = 'INGREDIENTE' OR ISNULL(r.base_uom, 'pza') <> 'pza'
+                        THEN 1 ELSE 0 END AS decimales
               FROM dbo.import_rows r JOIN @lote l ON l.id = r.id
              WHERE r.accion = 'CREATE'
         ) AS origen

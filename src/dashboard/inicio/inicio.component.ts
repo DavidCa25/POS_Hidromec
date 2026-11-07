@@ -177,6 +177,8 @@ export class Inicio implements OnInit {
 
   get puedeVender(): boolean { return this.auth.puede(PAQUETES.VENTAS_OPERAR); }
   get verNumeros(): boolean { return this.auth.puede(PAQUETES.REPORTES_VER); }
+  /** 0077 · Los totales de hoy son «Qué puede ver · Números: del día». */
+  get verDia(): boolean { return this.auth.puede(PAQUETES.VER_NUMEROS_DIA); }
   /** 0060 · Quien hornea ve su tablero desde Inicio (Hospitality). */
   get producir(): boolean { return this.caps.hospitality && this.auth.puede(PAQUETES.PRODUCCION_OPERAR); }
 
@@ -256,10 +258,10 @@ export class Inicio implements OnInit {
       (p ?? Promise.resolve(null as any)).catch(() => null);
 
     const [hoy, ords, usuarios, top] = await Promise.all([
-      this.verNumeros ? pedir(api.getSalesDayly?.()) : Promise.resolve(null),
-      this.verNumeros ? pedir(api.getTotalOrders?.()) : Promise.resolve(null),
+      this.verDia ? pedir(api.getSalesDayly?.()) : Promise.resolve(null),
+      this.verDia ? pedir(api.getTotalOrders?.()) : Promise.resolve(null),
       pedir(api.getActiveUsers?.()),
-      this.verNumeros ? pedir(api.getTopSellingProducts?.()) : Promise.resolve(null),
+      this.verDia ? pedir(api.getTopSellingProducts?.()) : Promise.resolve(null),
     ]);
 
     /* Si NINGUNA de las dos lecturas de estado respondio, no se sabe como va

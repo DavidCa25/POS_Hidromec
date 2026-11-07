@@ -57,7 +57,8 @@ BEGIN
       SELECT m.product_id, SUM(m.quantity) AS consumido
       FROM dbo.inventory_movements m
       WHERE m.typee = 'salida'
-        AND m.source IN ('SALE', 'RECIPE')
+        /* 0073: el paquete que se abre para vender suelto tambien se consume. */
+        AND m.source IN ('SALE', 'RECIPE', 'APERTURA')
         AND m.datee >= @desde
       GROUP BY m.product_id
   ),

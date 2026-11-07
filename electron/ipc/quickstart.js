@@ -37,10 +37,35 @@ const LOTE_EJECUCION = 300;
  * para algo; la persona que acaba de comprar un punto de venta recibe una
  * frase que puede usar.
  */
+/**
+ * ¿El lote se corto por tiempo, no por un error de datos?
+ *
+ * El pool tiene `requestTimeout` de 30 s para toda la aplicacion y el driver
+ * nativo no deja darle mas a una sola consulta. En una caja lenta un lote de
+ * 300 productos puede pasarse; SQL lo cancela y, con XACT_ABORT, lo deshace
+ * entero, asi que repetirlo mas chico es seguro.
+ */
+function esTiempoAgotado(e) {
+  const m = String((e && e.message) || '');
+  return (e && (e.code === 'ETIMEOUT' || e.code === 'ECANCEL'))
+    || /timeout|timed out|tiempo de espera|HYT00/i.test(m);
+}
+
+/** El lote mas chico que se intenta antes de rendirse. */
+const LOTE_MINIMO = 10;
+
 function alHumano(e, contexto) {
   console.error('[QUICKSTART] ' + contexto + ':', String((e && e.stack) || (e && e.message) || e));
 
   const m = String((e && e.message) || '');
+  /* Al CONFIRMAR ya no hay archivo que leer: el fallo es de la base, y decir
+     «no pude leer este archivo» mandaba a revisar el Excel equivocado. */
+  if (contexto === 'ejecutar') {
+    if (esTiempoAgotado(e)) {
+      return 'La base tardo demasiado en guardar, incluso en lotes chicos. Lo que entro se queda; vuelve a pulsar Importar para seguir con el resto.';
+    }
+    return 'La base rechazo un lote: ' + (m || 'error sin detalle') + '. Lo que entro antes se queda.';
+  }
   if (/solo puedo leer archivos/i.test(m)) {
     return 'Solo puedo leer archivos de Excel (.xlsx) y CSV. Prueba a guardarlo en uno de esos formatos.';
   }
@@ -621,13 +646,30 @@ function registrar({ ipcMain, sql, poolPromise, app, contexto }) {
                  WHERE batch_id = @batch_id AND aplicada = 0 AND accion IN ('CREATE','UPDATE')`);
       const aPlanificar = Number(prev.recordset?.[0]?.n) || 0;
 
+      /* EL LOTE SE ACHICA SI LA CAJA ES LENTA.
+         En una caja de tienda un lote de 300 se pasaba de los 30 s del pool y
+         la carga se paraba «a medias» aunque no hubiera nada mal en los datos.
+         Ahora un lote cortado por tiempo se repite a la mitad, y el tamano que
+         si cupo se queda para los siguientes. */
+      let tope = num(p.lote) ?? LOTE_EJECUCION;
+
       try {
         for (;;) {
-          const r = await pool0.request()
-            .input('batch_id', sql.Int, batchId)
-            .input('user_id', sql.Int, num(p.userId))
-            .input('tope', sql.Int, num(p.lote) ?? LOTE_EJECUCION)
-            .execute('sp_import_execute_chunk');
+          let r;
+          try {
+            r = await pool0.request()
+              .input('batch_id', sql.Int, batchId)
+              .input('user_id', sql.Int, num(p.userId))
+              .input('tope', sql.Int, tope)
+              .execute('sp_import_execute_chunk');
+          } catch (e) {
+            if (esTiempoAgotado(e) && tope > LOTE_MINIMO) {
+              tope = Math.max(LOTE_MINIMO, Math.floor(tope / 2));
+              console.warn('[QUICKSTART] lote cortado por tiempo; se reintenta con', tope);
+              continue;
+            }
+            throw e;
+          }
           const d = r.recordset?.[0] ?? { procesadas: 0 };
           if (!d.procesadas) break;
 

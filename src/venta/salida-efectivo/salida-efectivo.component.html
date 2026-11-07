@@ -5,7 +5,9 @@
 <div class="modal fade show d-block"
      style="background:rgba(0,0,0,0.20);z-index:11000;">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4">
+    <!-- Con teclado: el foco empieza en el tipo elegido, las flechas recorren
+         tipos, campos y botones, y Esc cierra. -->
+    <div class="modal-content rounded-4" wxFlechas wxFlechasInicio=".salida-tipo.activa" (wxFlechasEscape)="cerrar()">
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold">Registrar salida de dinero</h5>
         <button type="button" class="btn-close" (click)="cerrar()"></button>

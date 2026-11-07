@@ -1,0 +1,5 @@
+# Tickets y facturas bajados de la web (Scribd, Promodescuentos, sitios de
+# facturación). Traen nombres, direcciones y RFC de terceros: se quedan en
+# la máquina, no van al repositorio. Solo se versiona su verdad (*.json).
+*.png
+*.ocr.json

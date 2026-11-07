@@ -26,6 +26,14 @@ GO
 --   TRANSFERENCIA  registra el pago al proveedor y nada mas.
 -- Asi el corte cuadra con lo que hay fisicamente en el cajon, y la cuenta por
 -- pagar vive en purchase.balance / supplier_payments.
+--
+-- PAGO YA HECHO (@apply_payment_id, 0078). El repartidor cobro y la caja le
+-- pago con «Salida de efectivo > Pago a proveedor» ANTES de que alguien
+-- capturara la compra: ese pago quedo suelto (purchase_id NULL) y el
+-- efectivo ya salio del cajon. Registrar la compra en EFECTIVO lo sacaria
+-- dos veces. Con @apply_payment_id la compra nace a credito y ese pago se le
+-- aplica: la deuda baja, el cajon no se toca de nuevo. Solo un pago del
+-- MISMO proveedor que no este aplicado a otra compra.
 CREATE OR ALTER PROCEDURE dbo.sp_register_purchase
     @user_id     INT,
     @supplier_id INT,
@@ -36,7 +44,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_register_purchase
     @PurchaseDetails  dbo.PurchaseDetailType READONLY,
     @PurchaseDetails2 dbo.PurchaseDetailType2 READONLY,
     @payment_method NVARCHAR(20) = 'CREDITO',
-    @register_id    INT = NULL
+    @register_id    INT = NULL,
+    @apply_payment_id INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -53,6 +62,21 @@ BEGIN
     BEGIN
         RAISERROR('Forma de pago no valida para una compra.', 16, 1);
         RETURN;
+    END
+
+    DECLARE @pago_previo DECIMAL(10,2) = NULL;
+    IF @apply_payment_id IS NOT NULL
+    BEGIN
+        SELECT @pago_previo = amount
+          FROM dbo.supplier_payments WITH (UPDLOCK, HOLDLOCK)
+         WHERE id = @apply_payment_id AND supplier_id = @supplier_id AND purchase_id IS NULL;
+        IF @pago_previo IS NULL
+        BEGIN
+            RAISERROR('Ese pago no es de este proveedor o ya esta aplicado a otra compra.', 16, 1);
+            RETURN;
+        END
+        -- El pago ya hecho cubre la compra: no hay otro pago que registrar.
+        SET @metodo = 'CREDITO';
     END
 
     -- El efectivo sale del cajon: sin turno abierto no hay de donde sacarlo, y
@@ -132,13 +156,23 @@ BEGIN
         BEGIN TRAN;
 
         DECLARE @saldo DECIMAL(10,2) = CASE WHEN @metodo = 'CREDITO' THEN @total ELSE 0 END;
+        IF @pago_previo IS NOT NULL
+            SET @saldo = CASE WHEN @total - @pago_previo > 0 THEN @total - @pago_previo ELSE 0 END;
 
         -- Cabecera: proveedor unico de la compra
         DECLARE @purchase_id INT;
         INSERT INTO purchase (datee, useer_id, total, tax_rate, tax_amount, supplier_id, balance, payment_status)
         VALUES (GETDATE(), @user_id, @total, @tax_rate, @tax_amount, @supplier_id, @saldo,
-                CASE WHEN @metodo = 'CREDITO' THEN 'PENDIENTE' ELSE 'PAGADO' END);
+                CASE WHEN @saldo <= 0 THEN 'PAGADO'
+                     WHEN @pago_previo IS NOT NULL THEN 'PARCIAL'
+                     WHEN @metodo = 'CREDITO' THEN 'PENDIENTE' ELSE 'PAGADO' END);
         SET @purchase_id = SCOPE_IDENTITY();
+
+        IF @apply_payment_id IS NOT NULL
+            UPDATE dbo.supplier_payments
+               SET purchase_id = @purchase_id,
+                   note = LEFT(CONCAT(ISNULL(note + N' · ', N''), N'Aplicado a la compra ', @purchase_id), 255)
+             WHERE id = @apply_payment_id;
 
         -- Mismo proveedor en la linea (compatibilidad con sp_get_purchases)
         INSERT INTO purchase_detail (
@@ -207,7 +241,7 @@ BEGIN
 
         COMMIT TRAN;
         SELECT @purchase_id AS purchase_id,
-               @metodo      AS payment_method,
+               CASE WHEN @apply_payment_id IS NOT NULL THEN 'PAGO_PREVIO' ELSE @metodo END AS payment_method,
                @saldo       AS balance,
                @payment_id  AS payment_id,
                @cash_id     AS cash_movement_id,

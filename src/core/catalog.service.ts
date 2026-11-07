@@ -117,7 +117,17 @@ export class CatalogService {
       objetoImpuesto: p.objeto_impuesto ?? null,
       tasaIva: p.tasa_iva ?? null,
       inventoryMode: p.inventory_mode,
+      /* Mismo criterio que Inventario al elegir la unidad: lo que no es pieza
+         se vende con decimales. Solo mercancía de existencia directa: una
+         receta o un producto de menú se venden por unidad aunque se midan en ml. */
+      decimal: CatalogService.esGranel(p),
     };
+  }
+
+  /** ¿Se vende por peso o medida? Ver `LineSource.decimal`. */
+  static esGranel(p: { allow_decimal_qty?: boolean | number | null; base_uom?: string | null; inventory_mode?: string | null }): boolean {
+    if (p.inventory_mode && p.inventory_mode !== 'DIRECT') return false;
+    return !!p.allow_decimal_qty || (!!p.base_uom && p.base_uom !== 'pza');
   }
 
   static normalizar(r: any): CatalogProduct {

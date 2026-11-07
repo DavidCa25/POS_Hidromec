@@ -1,4 +1,6 @@
-<div class="container-fluid pos-wrap">
+<!-- Sin nada enfocado, ↑ ↓ eligen renglón del carrito: el respaldo de
+     wx-navegacion no se las lleva (data-flechas-cuerpo). -->
+<div class="container-fluid pos-wrap" data-flechas-cuerpo="propio">
   <!-- Barra de atajos POS -->
   <div class="pos-shortcuts-bar mb-3">
     <div class="pos-shortcuts-left">
@@ -17,6 +19,10 @@
       <div class="pos-shortcut" data-caja="salida" (click)="abrirSalidaEfectivo()">
         <span class="pos-key">F10</span>
         <span class="pos-label">Salida de efectivo</span>
+      </div>
+      <div class="pos-shortcut" data-caja="entrada" data-guide="venta-entrada" (click)="abrirEntradaEfectivo()">
+        <span class="pos-key">F4</span>
+        <span class="pos-label">Entrada de efectivo</span>
       </div>
       <button type="button" class="pos-shortcut" *ngIf="caps.asistencia" data-guide="venta-checar" data-caja="checar" (click)="abrirChecar()">
         <span class="pos-key">F9</span>
@@ -195,6 +201,26 @@
           <div class="fw-bold">{{ today | date: 'longDate' : undefined : 'es-MX' }}</div>
         </div>
 
+        <!-- VENTA ANTERIOR: total, cómo pagó y el cambio, para resolver dudas
+             en el mostrador sin abrir el historial. -->
+        <div class="venta-anterior" *ngIf="ventaAnterior as va" data-guide="venta-anterior">
+          <div class="va-cab">
+            <span>Venta anterior<ng-container *ngIf="va.id"> #{{ va.id }}</ng-container></span>
+            <span>{{ va.hora | date:'HH:mm' }}</span>
+          </div>
+          <div class="va-total">{{ va.total | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+          <div class="va-fila"><span>Pagó</span>
+            <span><ng-container *ngIf="va.pagado != null">{{ va.pagado | currency:'MXN':'symbol-narrow':'1.2-2' }} · </ng-container>{{ va.metodo }}</span></div>
+          <div class="va-fila" *ngIf="va.cambio != null"><span>Cambio</span>
+            <b class="va-cambio" data-guide="venta-anterior-cambio">{{ va.cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></div>
+          <div class="va-acciones" *ngIf="va.id">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="imprimirTicketUltimaVenta(false)">
+              <i class="ph ph-printer"></i> Reimprimir</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="verTicketAnterior = true">
+              <i class="ph ph-receipt"></i> Ver ticket</button>
+          </div>
+        </div>
+
         <div class="side-hint">
           <div class="small text-muted" *ngIf="isEditing && !editUnlocked">
             Venta cargada en <b>solo lectura</b>. Para devolver usa <b>Devolución</b>.
@@ -233,7 +259,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let it of items; let i = index" data-guide="venta-linea" [attr.data-guide-clave]="it.productId">
+              <tr *ngFor="let it of items; let i = index" data-guide="venta-linea" [attr.data-guide-clave]="it.productId"
+                  [class.linea-activa]="i === lineaSeleccionada" (click)="lineaSeleccionada = i">
                 <td class="fw-semibold">
                   {{ it.productName }}
                   <span class="venta-opts" *ngIf="priced(it).label">{{priced(it).label}}</span>
@@ -246,7 +273,8 @@
                 </td>
                 <td>
                   <ng-container *ngIf="!isEditing || editUnlocked; else qtyLocked">
-                    <input type="number" class="form-control form-control-sm" min="1"
+                    <input type="number" class="form-control form-control-sm"
+                           [attr.min]="it.decimal ? 0.01 : 1" [attr.step]="it.decimal ? 0.01 : 1"
                            [(ngModel)]="it.qty" name="qty-{{i}}" [disabled]="!!it.combo" (ngModelChange)="onQtyChange(i)"/>
                   </ng-container>
                   <ng-template #qtyLocked><div class="locked-cell">{{ it.qty }}</div></ng-template>
@@ -254,7 +282,9 @@
                 <td>
                   <div *ngIf="priced(it).applied" class="locked-cell">{{priced(it).unit|currency:'MXN':'symbol-narrow':'1.2-2'}}<small *ngIf="it.qty>1"> / unidad (promedio)</small></div>
                   <ng-container *ngIf="!priced(it).applied && (!isEditing || editUnlocked); else priceLocked">
+                    <!-- 0077 · «Cambiar precios»: sin la casilla, el precio se ve pero no se escribe. -->
                     <input type="number" class="form-control form-control-sm" min="0" step="0.01"
+                           [readonly]="!puedeCambiarPrecio" [attr.title]="puedeCambiarPrecio ? null : 'Cambiar precios lo autoriza un encargado'"
                            [(ngModel)]="it.unitPrice" name="price-{{i}}" (ngModelChange)="onPriceChange(i)"/>
                   </ng-container>
                   <ng-template #priceLocked>
@@ -351,7 +381,8 @@
      *ngIf="showOpenShiftModal"
      [ngStyle]="{'background': openShiftRequired ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.16)', 'z-index': '13000'}">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 open-shift-modal" data-guide="turno-modal">
+    <div class="modal-content rounded-4 open-shift-modal" data-guide="turno-modal"
+         wxFlechas wxFlechasInicio="[data-flechas-inicio]" (wxFlechasEscape)="!openShiftRequired && cerrarModalAbrirTurno()">
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold m-0">Abrir turno</h5>
         <button *ngIf="!openShiftRequired" type="button" class="btn-close" (click)="cerrarModalAbrirTurno()"></button>
@@ -367,7 +398,8 @@
         <div class="row g-3 mt-3">
           <div class="col-12">
             <label class="form-label">Fondo inicial (opcional)</label>
-            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="openingCash" name="openingCash" placeholder="0.00">
+            <input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="openingCash" name="openingCash" placeholder="0.00"
+                   data-flechas-inicio (keydown.enter)="confirmarAbrirTurno()">
             <div class="hint">Si vas a dejar cambio en el cajón, ponlo aquí. Si no, déjalo en 0.00.</div>
           </div>
           <div class="col-12">
@@ -376,6 +408,9 @@
           </div>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-primary me-auto" *ngIf="caps.asistencia" data-caja="turno-checar" data-guide="turno-checar" (click)="abrirChecar()">
+            <i class="ph ph-clock"></i> Checar
+          </button>
           <button type="button" class="btn btn-outline-secondary" *ngIf="openShiftRequired" (click)="salirDeVentas()">Salir</button>
           <button type="button" class="btn btn-primary" data-guide="turno-abrir-confirmar" [disabled]="openingShiftLoading" (click)="confirmarAbrirTurno()">
             <span *ngIf="!openingShiftLoading">Abrir turno</span>
@@ -392,7 +427,10 @@
      *ngIf="showModal"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <!-- Todo el cobro va con teclado: el foco empieza en «Dinero recibido»
+         (Enter cobra), las flechas llegan a los métodos de pago y a los
+         botones, y Esc cierra. -->
+    <div class="modal-content" wxFlechas wxFlechasInicio="[data-flechas-inicio], .pay-pill.active" (wxFlechasEscape)="cerrarModalCobrar()">
       <div class="modal-header border-0 pb-1">
         <h5 class="modal-title fw-bold m-0">Cobro</h5>
         <button type="button" class="btn-close" (click)="cerrarModalCobrar()"></button>
@@ -411,7 +449,8 @@
               <div class="mt-3">
                 <label class="form-label mb-1">Dinero recibido</label>
                 <input type="number" min="0" step="0.01" class="form-control form-control-lg"
-                       data-guide="venta-recibido" [(ngModel)]="dineroRecibido" name="dineroRecibido" data-teclado="MONEY" placeholder="¿Cuánto recibió del cliente?" />
+                       data-guide="venta-recibido" [(ngModel)]="dineroRecibido" name="dineroRecibido" data-teclado="MONEY" placeholder="¿Cuánto recibió del cliente?"
+                       data-flechas-inicio (keydown.enter)="$event.preventDefault(); confirmarCobro()" />
               </div>
               <div class="mt-3">
                 <label class="form-label mb-1">Cambio a regresar</label>
@@ -499,7 +538,13 @@
             </ng-template>
           </div>
         </div>
-        <div class="d-flex justify-content-end mt-4">
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <!-- La misma venta, sin papel: el cliente no lo quiere o se acabó el
+               rollo. Solo para ESTA venta; la siguiente vuelve a imprimir. -->
+          <button type="button" class="btn btn-outline-secondary" data-guide="venta-cobrar-sin-ticket"
+                  [disabled]="cobrando||!!errorMixto" (click)="cobrarSinTicket()">
+            <i class="ph ph-receipt-x me-1" aria-hidden="true"></i> Cobrar sin ticket
+          </button>
           <button type="button" class="btn btn-primary px-4 btn-cobrar" data-guide="venta-confirmar-cobro"
                   [class.is-procesando]="cobrando"
                   [class.is-listo]="cobroConfirmado"
@@ -519,7 +564,7 @@
 <div class="modal fade show d-block modal-productos" *ngIf="showModalProductos"
      style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content rounded-4">
+    <div class="modal-content rounded-4" wxFlechas wxFlechasInicio=".buscador" (wxFlechasEscape)="cerrarModalProductos()">
       <div class="modal-header border-0 py-2">
         <h5 class="modal-title fw-bold m-0">Seleccionar producto</h5>
         <button type="button" class="btn-close" (click)="cerrarModalProductos()"></button>
@@ -527,7 +572,8 @@
       <div class="modal-body pt-0">
         <input class="form-control mb-2 buscador" data-guide="venta-buscar"
                placeholder="Buscar por nombre, número de parte, marca o categoría..."
-               [(ngModel)]="filtro" name="filtro">
+               [(ngModel)]="filtro" name="filtro"
+               (keydown.enter)="agregarPrimerProductoVisible()">
         <div class="prod-hint">
   <i class="ph ph-hand-pointing"></i> Toca un producto para agregarlo a la venta
       </div>
@@ -575,16 +621,23 @@
   </div>
 </div>
 
+<!-- ¿CUÁNTO? Granel: por peso o por dinero (venta/granel-cantidad). -->
+<app-granel-cantidad *ngIf="granel as g" [nombre]="g.nombre" [precio]="g.precio" [uom]="g.uom" [cantidadInicial]="g.inicial"
+                     (aceptar)="cerrarGranel($event)" (cancelar)="cerrarGranel(null)"></app-granel-cantidad>
+
 <!-- SALIDA DE DINERO: Retiro · Pago a proveedor · Gasto. Componente
      compartido con Touch (src/venta/salida-efectivo). -->
 <app-salida-efectivo *ngIf="showCashOutModal" (cerrado)="showCashOutModal = false"></app-salida-efectivo>
+<!-- 0076: entrada de efectivo (F4), compartida con Touch (src/venta/entrada-efectivo). -->
+<app-entrada-efectivo *ngIf="showCashInModal" (cerrado)="showCashInModal = false"></app-entrada-efectivo>
 
 <!-- MODAL POST-VENTA: PDF / WHATSAPP / FACTURAR -->
 <div class="modal fade show d-block"
      *ngIf="showPostSaleModal"
      style="background:rgba(0,0,0,0.25);z-index:12000;">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4">
+    <!-- Enter cierra y sigue vendiendo; ↑ ↓ llegan a imprimir, PDF, WhatsApp... -->
+    <div class="modal-content rounded-4" wxFlechas wxFlechasInicio="[data-flechas-inicio]" (wxFlechasEscape)="cerrarPostSaleModal()">
       <div class="modal-header border-0 pb-1 align-items-center">
         <!-- Wybix en exito. Es el UNICO momento del punto de venta en el que
              aparece de cuerpo entero: da el salto, se le ven los ojos
@@ -624,7 +677,7 @@
           <button type="button" class="btn btn-outline-dark w-100" [disabled]="!lastSaleId || printingTicket" (click)="imprimirTicketUltimaVenta(true)">
             <i class="ph ph-printer me-2"></i> Imprimir tickets
           </button>
-          <button type="button" class="btn btn-light w-100" (click)="cerrarPostSaleModal()">Nada más, cerrar</button>
+          <button type="button" class="btn btn-light w-100" data-flechas-inicio (click)="cerrarPostSaleModal()">Nada más, cerrar</button>
         </div>
       </div>
     </div>
@@ -633,7 +686,7 @@
 
 <!-- ===== MODAL REEMBOLSO / CAMBIO (simplificado) ===== -->
 <div class="modal-backdrop-refund" *ngIf="showRefundModal" (click)="cerrarReembolso()">
-  <div class="refund-dialog" (click)="$event.stopPropagation()">
+  <div class="refund-dialog" (click)="$event.stopPropagation()" wxFlechas (wxFlechasEscape)="cerrarReembolso()">
     <div class="refund-header">
       <div class="refund-title">
         <i class="ph ph-arrow-counter-clockwise"></i>
@@ -752,11 +805,12 @@
   </div>
 </div>
 
+<app-receipt-viewer *ngIf="verTicketAnterior && ventaAnterior?.id" [id]="ventaAnterior!.id!" document="sale" (close)="verTicketAnterior = false"></app-receipt-viewer>
 <app-receipt-viewer *ngIf="refundComprobante" [id]="refundComprobante" document="refund" (close)="refundComprobante = null"></app-receipt-viewer>
 
 <div class="modal fade show d-block modal-productos" *ngIf="showModalClientes" style="background:rgba(0,0,0,0.13);z-index:10000;">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4">
+    <div class="modal-content rounded-4" wxFlechas wxFlechasInicio=".buscador" (wxFlechasEscape)="cerrarModalClientes()">
       <div class="modal-header border-0 py-2">
         <h5 class="modal-title fw-bold m-0">Seleccionar cliente</h5>
         <button type="button" class="btn-close" (click)="cerrarModalClientes()"></button>
@@ -780,8 +834,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="prod-pick-row" *ngFor="let c of clientesGenerales"
-                  (click)="seleccionarCliente(c)"
+              <tr class="prod-pick-row" *ngFor="let c of clientesGenerales" tabindex="0"
+                  (click)="seleccionarCliente(c)" (keydown.enter)="seleccionarCliente(c)"
                   [hidden]="!coincideCliente(c)">
                 <td class="fw-semibold">
                   {{ c.name }}

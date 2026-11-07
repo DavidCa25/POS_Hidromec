@@ -1,0 +1,64 @@
+{
+  "proveedor": "ABARROTERA LA ESTRELLA",
+  "rfc": "AES1103187T2",
+  "folio": "0005513",
+  "fecha": "03/11/2026 18:05",
+  "lineas": [
+    {
+      "descripcion": "PAPAS FRITAS SAL 45G",
+      "cantidad": 20,
+      "unidad": "PZA",
+      "factor": 1,
+      "precio_unitario": 14.2,
+      "importe": 284,
+      "tasa_iva": 0.16,
+      "ieps": 22.72
+    },
+    {
+      "descripcion": "GALLETA CHOC 6PZ",
+      "cantidad": 12,
+      "unidad": "PAQ",
+      "factor": 6,
+      "precio_unitario": 19.8,
+      "importe": 237.6,
+      "tasa_iva": 0.16,
+      "ieps": 19.01
+    },
+    {
+      "descripcion": "AZUCAR ESTANDAR 1KG",
+      "cantidad": 10,
+      "unidad": "KG",
+      "factor": 1,
+      "precio_unitario": 27.9,
+      "importe": 279,
+      "tasa_iva": 0,
+      "ieps": 0
+    },
+    {
+      "descripcion": "JAMON PAVO",
+      "cantidad": 1.35,
+      "unidad": "KG",
+      "factor": 1,
+      "precio_unitario": 142,
+      "importe": 191.7,
+      "tasa_iva": 0,
+      "ieps": 0
+    },
+    {
+      "descripcion": "CERILLOS CAJA 50",
+      "cantidad": 10,
+      "unidad": "PZA",
+      "factor": 1,
+      "precio_unitario": 4.5,
+      "importe": 45,
+      "tasa_iva": 0.16,
+      "ieps": 0
+    }
+  ],
+  "subtotal": 1037.3,
+  "descuento": 0,
+  "ieps": 41.73,
+  "iva": 97.34,
+  "envases": 0,
+  "total": 1176.37
+}
