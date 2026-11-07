@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import {
   AsistenciaService, PREGUNTAS_ASISTENCIA, ReglasAsistencia, reglasSugeridas,
   CATEGORIAS, CapabilityService, Capabilities, GiroServiciosService, MODULOS,
-  ModuleCategory, ModuleDefinition, PresetServicios,
+  ModuleCategory, ModuleDefinition, PresetServicios, REPARTOS_PROPINA, SociosService,
 } from '../../core';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 
@@ -49,6 +49,7 @@ export class Aplicaciones implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly cd = inject(ChangeDetectorRef);
   private readonly asistencia = inject(AsistenciaService);
+  private readonly socios = inject(SociosService);
 
   /**
    * Activar un modulo cambia lo que puede hacer TODO el negocio, en todas las
@@ -192,6 +193,33 @@ export class Aplicaciones implements OnInit {
       return;
     }
 
+    /* 0079: Socios se enciende con su asistente (socios, que es de quien,
+       como se reparte la ganancia). El asistente guarda y enciende en una
+       sola transaccion al terminar; aqui solo se abre. */
+    if (!activo && m.id === 'socios') {
+      this.router.navigateByUrl('/dashboard/socios/configurar');
+      return;
+    }
+
+    /* 0079: Propinas, con sus preguntas: como se reparten y la comision. */
+    if (!activo && m.id === 'propinas') {
+      const r = await this.preguntarPropinas();
+      if (!r) return;
+      this.cambiando.set(m.id);
+      try {
+        const res = await this.socios.activarPropinas(r);
+        if (!res.ok) throw new Error(res.error);
+        await this.caps.load(true);
+        await Swal.fire({ icon: 'success', title: 'Propinas activado', text: m.aparece ? `Ya aparece ${m.aparece}.` : undefined, timer: 2200, showConfirmButton: false });
+      } catch (e: any) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo activar', text: e?.message || 'Error.' });
+      } finally {
+        this.cambiando.set(null);
+        this.cd.detectChanges();
+      }
+      return;
+    }
+
     this.cambiando.set(m.id);
     try {
       await this.caps.setModulo(m.capability as keyof Capabilities, !activo);
@@ -290,6 +318,52 @@ export class Aplicaciones implements OnInit {
           reglas[p.clave] = sel.value === '1';
         }
         return reglas as ReglasAsistencia;
+      },
+    });
+    return r.isConfirmed && r.value ? r.value : null;
+  }
+
+  /**
+   * Las preguntas de Propinas (0079). Como se reparten, los botones de % y
+   * la comision de tarjeta. Lo sugerido viene marcado y a la vista.
+   */
+  private async preguntarPropinas(): Promise<{ reparto: string; sugeridas: number[]; comisionPct: number; comisionA: string } | null> {
+    const opciones = REPARTOS_PROPINA.map((o, i) => `
+      <label class="giro-op">
+        <input type="radio" name="prop-reparto" value="${o.id}"${i === 0 ? ' checked' : ''}>
+        <span class="giro-op__txt"><b>${o.nombre}</b><small>${o.ayuda}</small></span>
+      </label>`).join('');
+    const r = await Swal.fire({
+      title: 'Activar Propinas',
+      html: `<p class="giro-intro">La propina es del personal: no es venta, no lleva IVA y no entra en la utilidad. Puedes cambiar esto después en Propinas.</p>
+        <div class="giro-lista">${opciones}</div>
+        <fieldset class="asis-preg"><legend>Porcentajes sugeridos</legend>
+          <div class="asis-preg__txt"><b>Botones al cobrar</b><small>De 1 a 4, separados por coma.</small></div>
+          <input id="prop-sug" class="swal2-input" value="10,15,20" aria-label="Porcentajes sugeridos"></fieldset>
+        <fieldset class="asis-preg"><legend>Comisión de tarjeta</legend>
+          <div class="asis-preg__txt"><b>¿La comisión del banco se le quita a la propina con tarjeta?</b><small>Si es no, la absorbe el negocio.</small></div>
+          <div class="asis-sino">
+            <label><input type="radio" name="prop-com" value="PROPINA"><span>Sí</span></label>
+            <label><input type="radio" name="prop-com" value="NEGOCIO" checked><span>No</span></label>
+          </div>
+          <input id="prop-pct" class="swal2-input" type="number" min="0" max="20" step="0.1" value="0" aria-label="Comisión de tarjeta en porcentaje"></fieldset>`,
+      width: 600,
+      showCancelButton: true,
+      confirmButtonText: 'Activar Propinas',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: () => {
+        const reparto = document.querySelector<HTMLInputElement>('input[name="prop-reparto"]:checked')?.value;
+        const comisionA = document.querySelector<HTMLInputElement>('input[name="prop-com"]:checked')?.value ?? 'NEGOCIO';
+        const sugeridas = (document.querySelector<HTMLInputElement>('#prop-sug')?.value ?? '')
+          .split(',').map(x => Number(x.trim())).filter(x => x > 0);
+        const comisionPct = Number(document.querySelector<HTMLInputElement>('#prop-pct')?.value) || 0;
+        if (!reparto) { Swal.showValidationMessage('Elige cómo se reparten.'); return null; }
+        if (!sugeridas.length || sugeridas.length > 4 || sugeridas.some(x => x > 50)) {
+          Swal.showValidationMessage('De 1 a 4 porcentajes, entre 1 y 50.'); return null;
+        }
+        if (comisionPct < 0 || comisionPct > 20) { Swal.showValidationMessage('La comisión va de 0 a 20 %.'); return null; }
+        return { reparto, sugeridas, comisionPct, comisionA };
       },
     });
     return r.isConfirmed && r.value ? r.value : null;

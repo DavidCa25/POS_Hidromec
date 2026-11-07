@@ -42,6 +42,12 @@ export interface NuevoEgreso {
   period_from?: string | null;
   period_to?: string | null;
   register_id?: number | null;
+  /**
+   * 0079 · Con la aplicacion Socios: a cargo de quien es y quien lo pago.
+   * modo COMUN = con la regla del negocio; SOCIOS = los de `lineas` (100 %).
+   * pagadoPor = un socio de su bolsa (no en efectivo: eso sale del cajon).
+   */
+  socios?: { modo: 'COMUN' | 'SOCIOS'; lineas?: { socioId: number; pct: number }[]; pagadoPor?: number | null } | null;
 }
 
 export interface FiltroEgresos {

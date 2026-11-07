@@ -60,6 +60,8 @@ export class CapabilityService {
     comandas: 'comandas',
     asistencia: 'asistencia',
     ventaSuelta: 'venta-suelta',
+    socios: 'socios',
+    propinas: 'propinas',
   };
 
   readonly capabilities = computed<Capabilities>(() => {
@@ -93,6 +95,10 @@ export class CapabilityService {
       /* Tampoco depende de la licencia: es como se descuenta el inventario,
          no una capacidad de venta que se cobre aparte. */
       ventaSuelta: this.modulos().has('venta-suelta'),
+      /* 0079: llevar las cuentas entre duenos y las propinas no son
+         capacidades de venta que se cobren aparte. */
+      socios: this.modulos().has('socios'),
+      propinas: this.modulos().has('propinas'),
     };
   });
 
@@ -104,6 +110,8 @@ export class CapabilityService {
   get comandas(): boolean { return this.capabilities().comandas; }
   get asistencia(): boolean { return this.capabilities().asistencia; }
   get ventaSuelta(): boolean { return this.capabilities().ventaSuelta; }
+  get socios(): boolean { return this.capabilities().socios; }
+  get propinas(): boolean { return this.capabilities().propinas; }
 
   /**
    * Donde vende ESTA caja ahora mismo.

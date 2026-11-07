@@ -1,0 +1,190 @@
+<div class="soc" data-guide="socios-asistente">
+  <header class="soc-cab">
+    <div>
+      <h1>{{ yaActivo() ? 'Configurar Socios' : 'Activar Socios' }}</h1>
+      <p>Para negocios con dos o más dueños. Todo se puede cambiar después; un cambio aplica desde ese momento.</p>
+    </div>
+  </header>
+
+  <ol class="soc-pasos" aria-label="Pasos">
+    <li *ngFor="let p of PASOS; let i = index" [class.on]="i === paso()" [class.hecho]="i < paso()">
+      <button type="button" (click)="ir(i)" [disabled]="i >= paso()" [attr.aria-current]="i === paso() ? 'step' : null">
+        <span class="soc-pasos__n">{{ i + 1 }}</span><span class="soc-pasos__t">{{ p }}</span>
+      </button>
+    </li>
+  </ol>
+
+  <p class="soc-error" *ngIf="error()" role="alert">{{ error() }}</p>
+  <p class="soc-vacio" *ngIf="cargando()">Cargando…</p>
+
+  <section class="soc-panel" *ngIf="!cargando()" [attr.data-guide]="'socios-paso-' + (paso() + 1)">
+
+    <!-- ================================================ 1 socios -->
+    <ng-container *ngIf="paso() === 0">
+      <h2>¿Quiénes son los socios?</h2>
+      <p class="soc-ayuda">De 2 a {{ MAX }}. Si un socio entra a Wybix, elige su usuario: así ve lo suyo.</p>
+      <div class="soc-socios">
+        <div class="soc-socio" *ngFor="let s of activos(); let i = index" [attr.data-guide-clave]="s.clave">
+          <span class="soc-socio__n">{{ i + 1 }}</span>
+          <label class="soc-campo">
+            <span>Nombre</span>
+            <input type="text" maxlength="80" [ngModel]="s.nombre" (ngModelChange)="cambiarSocio(s, 'nombre', $event)"
+                   [attr.aria-label]="'Nombre del socio ' + (i + 1)" data-guide="socio-nombre">
+          </label>
+          <label class="soc-campo">
+            <span>Usuario</span>
+            <wx-select [opciones]="usuarios()" [buscable]="true" placeholder="Sin usuario"
+                       [ngModel]="s.userId" (ngModelChange)="cambiarSocio(s, 'userId', $event)"></wx-select>
+          </label>
+          <button type="button" class="soc-icono" (click)="quitarSocio(s)" [disabled]="activos().length <= 2"
+                  [attr.aria-label]="'Quitar a ' + (s.nombre || 'este socio')"><i class="ph ph-trash"></i></button>
+        </div>
+      </div>
+      <button type="button" class="soc-sec" (click)="agregarSocio()" [disabled]="activos().length >= MAX" data-guide="socio-agregar">
+        <i class="ph ph-plus"></i> Agregar socio
+      </button>
+    </ng-container>
+
+    <!-- ======================================== 2 que es de quien -->
+    <ng-container *ngIf="paso() === 1">
+      <h2>¿De quién es cada categoría?</h2>
+      <p class="soc-ayuda">El dueño de un <b>insumo</b> es quien lo compra; el de un <b>producto que se vende</b> es quien lo vende.
+        Después puedes cambiar un producto suelto desde su ficha («Pertenece a»).</p>
+      <p class="soc-vacio" *ngIf="!categorias().length">No hay categorías todavía. Los productos quedarán «sin dueño» (siguiente paso).</p>
+      <div class="soc-cats">
+        <div class="soc-cat" *ngFor="let c of categorias()" [attr.data-guide-clave]="c.id">
+          <div class="soc-cat__nom"><b>{{ c.nombre }}</b><small>{{ c.productos }} producto{{ c.productos === 1 ? '' : 's' }}</small></div>
+          <wx-select [opciones]="opcionesDuenoCategoria()" placeholder="Sin dueño"
+                     [ngModel]="c.dueno" (ngModelChange)="cambiarDueno(c, $event)"></wx-select>
+          <div class="soc-cat__pcts" *ngIf="c.dueno === 'COMP'">
+            <label class="soc-pct" *ngFor="let s of activos()">
+              <span>{{ s.nombre }}</span>
+              <input type="number" min="0" max="100" step="1" [ngModel]="c.pcts[s.clave] || 0"
+                     (ngModelChange)="cambiarPct(c, s.clave, $event)"> %
+            </label>
+            <small [class.soc-mal]="sumaCategoria(c) !== 100">Suma {{ sumaCategoria(c) }} %</small>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ============================================== 3 sin dueno -->
+    <ng-container *ngIf="paso() === 2">
+      <h2>Productos sin dueño</h2>
+      <p class="soc-ayuda">Un producto cuya categoría no tiene dueño y que no tiene uno propio.</p>
+      <wx-select class="soc-ancho" [opciones]="opcionesSinDueno()" placeholder="Partes iguales entre todos"
+                 [ngModel]="sinDueno()" (ngModelChange)="sinDueno.set($event)" data-guide="socios-sin-dueno"></wx-select>
+    </ng-container>
+
+    <!-- =============================================== 4 ganancia -->
+    <ng-container *ngIf="paso() === 3">
+      <h2>¿Cómo se reparte la ganancia de cada venta?</h2>
+      <p class="soc-ayuda">Primero cada socio recupera lo que costaron sus insumos. Lo que queda es la ganancia.</p>
+      <div class="soc-opciones" role="radiogroup" aria-label="Regla de reparto">
+        <button type="button" role="radio" class="soc-op" *ngFor="let r of REGLAS" [class.on]="regla() === r.id"
+                [attr.aria-checked]="regla() === r.id" (click)="regla.set(r.id)" [attr.data-guide]="'socios-regla-' + r.id">
+          <b>{{ r.id }}. {{ r.nombre }}</b><span>{{ r.corto }}</span><small>{{ r.cuando }}</small>
+        </button>
+      </div>
+      <label class="soc-deslizador" *ngIf="regla() === 'C'">
+        <span>A quien prepara y vende: <b>{{ pctVende() }} %</b> · según lo que aportó: <b>{{ 100 - pctVende() }} %</b></span>
+        <input type="range" min="0" max="100" step="5" [ngModel]="pctVende()" (ngModelChange)="pctVende.set(+$event)"
+               aria-label="Porcentaje para quien vende" data-guide="socios-pct-vende">
+      </label>
+
+      <div class="soc-ejemplo" *ngIf="tablaEjemplo() as t" data-guide="socios-ejemplo">
+        <div class="soc-ejemplo__cab">
+          <div>
+            <h3>Ejemplo con un producto tuyo</h3>
+            <p><b>{{ t.producto }}</b>, {{ dinero(t.precio) }}. Insumos {{ dinero(t.costo) }}<ng-container *ngIf="t.aporta.length">:
+              <span *ngFor="let a of t.aporta; let last = last">{{ a.nombre }} {{ dinero(a.costo) }}{{ last ? '' : ', ' }}</span></ng-container>.
+              Lo vende {{ t.vende }}.</p>
+          </div>
+          <wx-select class="soc-ejemplo__prod" [opciones]="opcionesEjemplo()" [buscable]="true" placeholder="Otro producto"
+                     (ngModelChange)="cambiarEjemplo($event)" [ngModel]="null"></wx-select>
+        </div>
+        <div class="castrol-table-container">
+          <table class="castrol-table">
+            <thead><tr><th scope="col">Regla</th><th scope="col" class="num" *ngFor="let s of t.socios">{{ s }}</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let f of t.filas" [class.soc-fila-on]="f.id === regla()">
+                <td>{{ f.titulo }}</td>
+                <td class="num soc-mono" *ngFor="let m of f.montos">{{ dinero(m) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="soc-ayuda" *ngIf="t.costo === 0">Este producto no tiene costo capturado: todo es ganancia y A, B y C reparten igual que su dueño. Elige uno con receta.</p>
+      </div>
+    </ng-container>
+
+    <!-- ================================================= 5 gastos -->
+    <ng-container *ngIf="paso() === 4">
+      <h2>Gastos comunes</h2>
+      <p class="soc-ayuda">Al registrar un gasto se pregunta de quién es. Si es de todos (renta, luz, gas), se reparte así:</p>
+      <div class="soc-opciones" role="radiogroup" aria-label="Gastos comunes">
+        <button type="button" role="radio" class="soc-op" *ngFor="let g of GASTO_REGLAS" [class.on]="gastoRegla() === g.id"
+                [attr.aria-checked]="gastoRegla() === g.id" (click)="gastoRegla.set(g.id)" [attr.data-guide]="'socios-gasto-' + g.id">
+          <b>{{ g.nombre }}</b><span>{{ g.ayuda }}</span>
+        </button>
+      </div>
+      <div class="soc-cat__pcts" *ngIf="gastoRegla() === 'FIJO'">
+        <label class="soc-pct" *ngFor="let s of activos()">
+          <span>{{ s.nombre }}</span>
+          <input type="number" min="0" max="100" step="1" [ngModel]="s.pctFijo ?? 0" (ngModelChange)="cambiarSocio(s, 'pctFijo', $event)"> %
+        </label>
+        <small [class.soc-mal]="sumaFijo() !== 100">Suma {{ sumaFijo() }} %</small>
+      </div>
+    </ng-container>
+
+    <!-- ============================================== 6 faltantes -->
+    <ng-container *ngIf="paso() === 5">
+      <h2>Faltantes y sobrantes del corte</h2>
+      <p class="soc-ayuda">Si al cerrar la caja falta o sobra dinero, ¿a quién le toca?</p>
+      <div class="soc-opciones" role="radiogroup" aria-label="Faltantes">
+        <button type="button" role="radio" class="soc-op" [class.on]="faltanteRegla() === 'VENTAS'" [attr.aria-checked]="faltanteRegla() === 'VENTAS'"
+                (click)="faltanteRegla.set('VENTAS')"><b>Según lo vendido en ese corte</b><span>Recomendado: quien vendió más en el turno absorbe más.</span></button>
+        <button type="button" role="radio" class="soc-op" [class.on]="faltanteRegla() === 'IGUALES'" [attr.aria-checked]="faltanteRegla() === 'IGUALES'"
+                (click)="faltanteRegla.set('IGUALES')"><b>Partes iguales</b><span>Se divide igual entre todos.</span></button>
+      </div>
+    </ng-container>
+
+    <!-- ============================================ 7 liquidacion -->
+    <ng-container *ngIf="paso() === 6">
+      <h2>¿Cada cuánto se liquida?</h2>
+      <p class="soc-ayuda">Cada corte de caja lleva su cuenta por socio. Al liquidar se cierra el periodo y se ve cuánto se le debe a cada quien.</p>
+      <div class="soc-opciones" role="radiogroup" aria-label="Liquidación">
+        <button type="button" role="radio" class="soc-op" [class.on]="liquidacion() === 'SEMANAL'" [attr.aria-checked]="liquidacion() === 'SEMANAL'"
+                (click)="liquidacion.set('SEMANAL')"><b>Cada semana</b></button>
+        <button type="button" role="radio" class="soc-op" [class.on]="liquidacion() === 'MENSUAL'" [attr.aria-checked]="liquidacion() === 'MENSUAL'"
+                (click)="liquidacion.set('MENSUAL')"><b>Cada mes</b></button>
+      </div>
+      <label class="soc-campo soc-ancho" *ngIf="liquidacion() === 'SEMANAL'">
+        <span>La semana cierra el</span>
+        <wx-select [opciones]="opcionesDia" [ngModel]="diaCierre()" (ngModelChange)="diaCierre.set($event)"></wx-select>
+      </label>
+    </ng-container>
+
+    <!-- ================================================= 8 inicio -->
+    <ng-container *ngIf="paso() === 7">
+      <h2>¿Desde cuándo se llevan las cuentas?</h2>
+      <p class="soc-ayuda">Lo vendido antes de este día no se reparte.
+        <ng-container *ngIf="hayLiquidaciones()"> Ya hay liquidaciones: el inicio ya no se mueve.</ng-container></p>
+      <wx-date class="soc-ancho" [ngModel]="inicio()" (ngModelChange)="inicio.set($event)" [limpiable]="false"
+               [max]="'2099-12-31'"></wx-date>
+    </ng-container>
+
+    <p class="soc-falta" *ngIf="falta()" role="status">{{ falta() }}</p>
+
+    <footer class="soc-pie">
+      <button type="button" class="soc-sec" (click)="cancelar()">Cancelar</button>
+      <span class="soc-pie__esp"></span>
+      <button type="button" class="soc-sec" *ngIf="paso() > 0" (click)="anterior()">Anterior</button>
+      <button type="button" class="soc-pri" *ngIf="paso() < PASOS.length - 1" (click)="siguiente()" [disabled]="!!falta()" data-guide="socios-siguiente">Siguiente</button>
+      <button type="button" class="soc-pri" *ngIf="paso() === PASOS.length - 1" (click)="terminar()"
+              [disabled]="!!falta() || guardando()" data-guide="socios-terminar">
+        {{ guardando() ? 'Guardando…' : (yaActivo() ? 'Guardar' : 'Activar Socios') }}
+      </button>
+    </footer>
+  </section>
+</div>

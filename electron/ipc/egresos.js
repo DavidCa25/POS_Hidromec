@@ -76,7 +76,7 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad }) {
   ipcMain.handle('egresos:registrar', sesion.proteger('egresos:registrar', async (_e, p = {}, ...resto) => {
     const ses = resto.length ? resto[resto.length - 1] : null;
     const eq = equipo();
-    return ejecutar(poolPromise, 'sp_register_expense', (r) => {
+    const r = await ejecutar(poolPromise, 'sp_register_expense', (r) => {
       r.input('user_id', sql.Int, quien(ses))
        .input('category_id', sql.Int, num(p?.category_id))
        .input('amount', sql.Decimal(12, 2), num(p?.amount))
@@ -92,6 +92,13 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad }) {
        .input('machine_id', sql.NVarChar(64), eq.machineId || null)
        .input('machine_name', sql.NVarChar(120), eq.machineName || null);
     });
+    /* 0079: a cargo de que socios es y quien lo pago, si Socios esta activado
+       y la pantalla lo pregunto. El egreso ya quedo: un fallo aqui se dice
+       aparte y se corrige desde Socios. */
+    if (r.success && p?.socios) {
+      r.socios = await require('./socios').despuesDeGasto(await poolPromise, sql, r.data?.[0]?.expense_id, p.socios);
+    }
+    return r;
   }));
 
   ipcMain.handle('egresos:cancelar', sesion.proteger('egresos:cancelar', async (_e, p = {}, ...resto) => {

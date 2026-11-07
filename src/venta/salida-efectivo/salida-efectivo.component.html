@@ -61,6 +61,24 @@
               </button>
             </div>
           </div>
+          <!-- 0079: con la aplicacion Socios, de quien es y quien lo pago. -->
+          <div class="mb-3" *ngIf="opcCargo.length" data-guide="gasto-socios">
+            <label class="form-label">¿De quién es el gasto?</label>
+            <wx-select [opciones]="opcCargo" [ngModel]="gastoCargo" (ngModelChange)="cambiarCargo($event)" name="gastoCargo"
+                       placeholder="De todos"></wx-select>
+            <div class="d-flex flex-wrap gap-2 mt-2 align-items-center" *ngIf="gastoCargo === 'DIV'">
+              <label class="small d-inline-flex align-items-center gap-1" *ngFor="let s of sociosActivos">
+                {{ s.nombre }} <input type="number" class="form-control form-control-sm" style="width:84px" min="0" max="100" step="1"
+                                      [(ngModel)]="gastoPcts[s.id]" [name]="'gastoPct' + s.id"> %
+              </label>
+              <span class="small" [class.text-danger]="sumaCargo !== 100">Suma {{ sumaCargo }} %</span>
+            </div>
+            <ng-container *ngIf="gastoForma !== 'EFECTIVO'">
+              <label class="form-label mt-2">¿Quién lo pagó?</label>
+              <wx-select [opciones]="opcPago" [(ngModel)]="gastoPagadoPor" name="gastoPagadoPor" placeholder="El negocio"></wx-select>
+              <div class="small text-muted mt-1" *ngIf="gastoPagadoPor">Se le abona a ese socio como aportación.</div>
+            </ng-container>
+          </div>
           <ng-container *ngIf="gastoEsPersonal">
             <div class="mb-3">
               <label class="form-label">¿A quién se le paga?</label>

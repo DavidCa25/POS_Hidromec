@@ -1,0 +1,109 @@
+/* Socios y Propinas (0079). Mismo lenguaje que Asistencia: tabla de Wybix
+   (.castrol-table), botones de 44 px, numeros en mono a la derecha. */
+:host { display: block; }
+.soc { display: flex; flex-direction: column; gap: 16px; padding: 24px 32px; max-width: 1400px; }
+.soc-cab { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.soc-cab h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 600; }
+.soc-cab p { margin: 2px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.soc-cab__acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.soc-icono, .soc-sec, .soc-pri {
+  height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 10px; font: 500 var(--wx-text-base) var(--wx-font); cursor: pointer;
+}
+.soc-icono { width: 44px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); }
+.soc-sec { padding: 0 16px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); }
+.soc-pri { padding: 0 18px; border: 0; background: var(--wx-accent); color: var(--wx-accent-ink); font-weight: 600; }
+:is(.soc-icono, .soc-sec, .soc-pri):disabled { opacity: .55; cursor: not-allowed; }
+.soc-icono:hover:not(:disabled), .soc-sec:hover:not(:disabled) { background: var(--wx-sunken); }
+.soc-pri:hover:not(:disabled) { background: var(--wx-accent-hover); }
+:is(.soc-icono, .soc-sec, .soc-pri, .soc-op, .soc-tabs button):focus-visible { outline: 2px solid var(--wx-user-accent); outline-offset: 2px; }
+
+.soc-error { margin: 0; color: var(--wx-danger); }
+.soc-falta { margin: 0; font-size: var(--wx-text-sm); color: var(--wx-warning); }
+.soc-mal { color: var(--wx-danger); font-weight: 600; }
+.soc-vacio { color: var(--wx-text-muted); text-align: center; padding: 24px !important; margin: 0; }
+.soc-ayuda { margin: 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); max-width: 72ch; }
+.soc-mono, .num { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.num { text-align: right !important; }
+.soc-neg { color: var(--wx-danger); }
+.soc-pos { color: var(--wx-success); }
+
+/* ----------------------------------------------------------- asistente */
+.soc-pasos { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.soc-pasos button { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 6px; border-radius: 999px;
+  border: 1px solid var(--wx-edge); background: var(--wx-surface); color: var(--wx-text-muted); font: 500 var(--wx-text-sm) var(--wx-font); }
+.soc-pasos button:not(:disabled) { cursor: pointer; }
+.soc-pasos__n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--wx-sunken); font-size: var(--wx-text-xs); font-weight: 600; }
+.soc-pasos li.on button { border-color: var(--wx-user-accent); color: var(--wx-text); font-weight: 600; }
+.soc-pasos li.on .soc-pasos__n { background: var(--wx-user-accent); color: var(--wx-accent-ink); }
+.soc-pasos li.hecho .soc-pasos__n { background: var(--wx-success-soft); color: var(--wx-success); }
+
+.soc-panel { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; border-radius: 14px; background: var(--wx-surface); border: 1px solid var(--wx-edge); }
+.soc-panel h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
+.soc-panel h3 { margin: 0; font-size: var(--wx-text-base); font-weight: 600; }
+.soc-pie { display: flex; gap: 8px; align-items: center; padding-top: 8px; border-top: 1px solid var(--wx-edge); flex-wrap: wrap; }
+.soc-pie__esp { flex: 1; }
+.soc-ancho { max-width: 360px; }
+
+.soc-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.soc-campo > span { font-size: var(--wx-text-xs); color: var(--wx-text-muted); font-weight: 500; }
+.soc-campo input, .soc-pct input, .soc-form input {
+  height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--wx-edge-strong);
+  background: var(--wx-surface); color: var(--wx-text); font: 400 var(--wx-text-base) var(--wx-font);
+}
+.soc-campo input:focus-visible, .soc-pct input:focus-visible, .soc-form input:focus-visible { outline: 2px solid var(--wx-user-accent); outline-offset: 1px; }
+
+.soc-socios { display: flex; flex-direction: column; gap: 10px; }
+.soc-socio { display: grid; grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 12px; align-items: end; }
+.soc-socio__n { width: 32px; height: 44px; display: grid; place-items: center; font-weight: 600; color: var(--wx-text-muted); }
+
+.soc-cats { display: flex; flex-direction: column; gap: 8px; }
+.soc-cat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 320px); gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--wx-edge); }
+.soc-cat__nom b { display: block; }
+.soc-cat__nom small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.soc-cat__pcts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.soc-pct { display: inline-flex; align-items: center; gap: 6px; font-size: var(--wx-text-sm); }
+.soc-pct input { width: 84px; text-align: right; }
+
+.soc-opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.soc-op { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); font: inherit; cursor: pointer; }
+.soc-op b { font-weight: 600; }
+.soc-op span { font-size: var(--wx-text-sm); }
+.soc-op small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+.soc-op.on { border-color: var(--wx-user-accent); box-shadow: inset 0 0 0 1px var(--wx-user-accent); background: var(--wx-raised); }
+.soc-deslizador { display: flex; flex-direction: column; gap: 6px; font-size: var(--wx-text-sm); max-width: 520px; }
+.soc-deslizador input { width: 100%; accent-color: var(--wx-user-accent); }
+
+.soc-ejemplo { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--wx-raised); }
+.soc-ejemplo__cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.soc-ejemplo__cab p { margin: 4px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.soc-ejemplo__prod { min-width: 240px; }
+.soc-fila-on td { font-weight: 600; background: var(--wx-accent-soft, var(--wx-sunken)); }
+
+/* --------------------------------------------------------- pantallas */
+.soc-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wx-edge); flex-wrap: wrap; }
+.soc-tabs button { height: 44px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; background: none;
+  font: 500 var(--wx-text-base) var(--wx-font); color: var(--wx-text-muted); cursor: pointer; }
+.soc-tabs button.on { color: var(--wx-text); border-bottom-color: var(--wx-user-accent); font-weight: 600; }
+
+.soc-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.soc-tarjeta { padding: 16px; border-radius: 12px; background: var(--wx-surface); border: 1px solid var(--wx-edge); display: flex; flex-direction: column; gap: 10px; }
+.soc-tarjeta__cab { display: flex; align-items: center; gap: 10px; }
+.soc-tarjeta__cab b { font-size: var(--wx-text-md); }
+.soc-tarjeta__saldo { font-family: var(--wx-font-mono); font-size: var(--wx-text-xl); font-weight: 600; font-variant-numeric: tabular-nums; }
+.soc-tarjeta__saldo small { display: block; font-family: var(--wx-font); font-size: var(--wx-text-xs); font-weight: 500; color: var(--wx-text-muted); }
+.soc-desglose { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: var(--wx-text-sm); margin: 0; }
+.soc-desglose dt { color: var(--wx-text-muted); }
+.soc-desglose dd { margin: 0; text-align: right; font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.soc-filtros { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.soc-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
+
+@media (max-width: 760px) {
+  .soc { padding: 16px; }
+  .soc-socio { grid-template-columns: 24px minmax(0, 1fr) 44px; }
+  .soc-socio .soc-campo:nth-of-type(2) { grid-column: 2 / 3; }
+  .soc-cat { grid-template-columns: 1fr; }
+}

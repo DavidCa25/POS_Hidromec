@@ -546,6 +546,9 @@
           </div>
         </div>
 
+        <!-- 0079: la propina, con la aplicacion Propinas. No suma al total. -->
+        <app-propina-cobro *ngIf="!pagoMixto()" [total]="totales().total" [metodo]="metodo()" (cambio)="propina.set($event)"></app-propina-cobro>
+
         <div class="tp-rapidas">
           <button type="button" *ngFor="let s of sugerencias()" data-guide="touch-cobro-rapido"
                   [class.on]="recibidoNum() === s" (click)="usarSugerencia(s)">

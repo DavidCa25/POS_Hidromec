@@ -202,6 +202,12 @@
                        name="formaDePago"
                        [opciones]="formasDePago"></wx-select>
             <div class="small text-muted mt-2">{{ notaFormaDePago }}</div>
+            <!-- 0079: con la aplicacion Socios. -->
+            <ng-container *ngIf="opcSocioPago.length && formaDePago !== 'EFECTIVO'">
+              <label class="form-label mt-3">¿Quién la pagó?</label>
+              <wx-select [(ngModel)]="socioPago" name="socioPago" [opciones]="opcSocioPago" placeholder="El negocio"
+                         data-guide="compra-socio-pago"></wx-select>
+            </ng-container>
           </div>
 
           <div class="compra-totales">

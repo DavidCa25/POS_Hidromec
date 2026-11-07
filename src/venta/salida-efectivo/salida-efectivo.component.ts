@@ -8,6 +8,7 @@ import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 import {
   ShiftService, EgresosService, ConceptoEgreso, FormaEgreso, PeriodoPago, FORMAS_EGRESO, PERIODOS_PAGO,
+  CapabilityService, SociosService, NuevoEgreso,
 } from '../../core';
 
 /**
@@ -71,8 +72,55 @@ export class SalidaEfectivo implements OnInit {
     return this.gastoConceptos.find(c => c.id === this.gastoConceptoId)?.kind === 'PERSONAL';
   }
 
+  /* ===================== 0079 · Socios: de quien es el gasto =============
+     Solo con la aplicacion Socios. '' = de todos (la regla del negocio);
+     el id de un socio; o 'DIV' = dividido por porcentaje. */
+  private readonly caps = inject(CapabilityService);
+  private readonly socios = inject(SociosService);
+  sociosActivos: { id: number; nombre: string }[] = [];
+  opcCargo: WxOpcion[] = [];
+  opcPago: WxOpcion[] = [];
+  gastoCargo = '';
+  gastoPcts: Record<number, number> = {};
+  /** null = lo pago el negocio; un socio = de su bolsa. */
+  gastoPagadoPor: number | null = null;
+  get sumaCargo(): number { return Object.values(this.gastoPcts).reduce((a, b) => a + (Number(b) || 0), 0); }
+
+  private async cargarSocios() {
+    if (!this.caps.socios) return;
+    const r = await this.socios.config();
+    if (!r.ok) return;
+    this.sociosActivos = r.data.socios.filter(s => s.activo).map(s => ({ id: s.id, nombre: s.nombre }));
+    this.opcCargo = [
+      { valor: '', etiqueta: 'De todos', nota: 'con la regla del negocio' },
+      ...this.sociosActivos.map(s => ({ valor: String(s.id), etiqueta: s.nombre })),
+      { valor: 'DIV', etiqueta: 'Dividido…', nota: 'por porcentaje' },
+    ];
+    this.opcPago = [{ valor: null, etiqueta: 'El negocio' },
+      ...this.sociosActivos.map(s => ({ valor: s.id, etiqueta: `${s.nombre}, de su bolsa` }))];
+  }
+
+  cambiarCargo(v: string) {
+    this.gastoCargo = v;
+    if (v === 'DIV') {
+      const n = this.sociosActivos.length || 1, base = Math.floor(10000 / n) / 100;
+      this.gastoPcts = Object.fromEntries(this.sociosActivos.map((s, i) => [s.id, i === 0 ? +(100 - base * (n - 1)).toFixed(2) : base]));
+    } else this.gastoPcts = {};
+  }
+
+  private repartoGasto(): NuevoEgreso['socios'] {
+    if (!this.caps.socios || !this.sociosActivos.length) return null;
+    const pagadoPor = this.gastoForma === 'EFECTIVO' ? null : this.gastoPagadoPor;
+    if (!this.gastoCargo) return { modo: 'COMUN', pagadoPor };
+    const lineas = this.gastoCargo === 'DIV'
+      ? Object.entries(this.gastoPcts).filter(([, p]) => Number(p) > 0).map(([id, pct]) => ({ socioId: Number(id), pct: Number(pct) }))
+      : [{ socioId: Number(this.gastoCargo), pct: 100 }];
+    return { modo: 'SOCIOS', lineas, pagadoPor };
+  }
+
   async ngOnInit() {
     await this.cargarDatosSalida();
+    await this.cargarSocios();
   }
 
   cerrar() { this.cerrado.emit(); }
@@ -126,6 +174,10 @@ export class SalidaEfectivo implements OnInit {
         await Swal.fire({ icon: 'warning', title: '¿A quién se le paga?', text: 'Elige a la persona del personal.' });
         return;
       }
+      if (this.gastoCargo === 'DIV' && Math.abs(this.sumaCargo - 100) > 0.01) {
+        await Swal.fire({ icon: 'warning', title: 'Revisa el reparto', text: 'Lo de cada socio debe sumar 100 %.' });
+        return;
+      }
       if (this.gastoEsPersonal && this.gastoPeriodo === 'OTRO' && (!this.gastoDesde || !this.gastoHasta)) {
         await Swal.fire({ icon: 'warning', title: 'Indica el periodo', text: 'Para "otro periodo" elige desde y hasta qué fecha se paga.' });
         return;
@@ -153,6 +205,7 @@ export class SalidaEfectivo implements OnInit {
           period_kind: this.gastoEsPersonal ? this.gastoPeriodo : null,
           period_from: this.gastoEsPersonal && this.gastoPeriodo === 'OTRO' ? this.gastoDesde : null,
           period_to: this.gastoEsPersonal && this.gastoPeriodo === 'OTRO' ? this.gastoHasta : null,
+          socios: this.repartoGasto(),
         });
         resp = { success: r.ok, error: r.error };
         titulo = this.gastoEsPersonal ? 'Pago al personal registrado' : 'Gasto registrado';

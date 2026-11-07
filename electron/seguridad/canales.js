@@ -29,6 +29,7 @@ const {
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
   SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR, ASISTENCIA_GESTIONAR,
+  SOCIOS_GESTIONAR,
   // 0077: permisos por persona.
   DEVOLUCIONES, RETIROS_EGRESOS, CAJON_SIN_VENTA, MODIFICAR_VENTA, CREDITO_CUPONES,
   VER_NUMEROS_DIA, VER_COSTOS,
@@ -363,6 +364,30 @@ const EXIGE = {
   // ----------------------------------------------------- 0073 venta suelta
   // Ligar un suelto a su paquete es editar el catalogo, como una presentacion.
   'venta-suelta:guardar': CATALOGO_EDITAR,
+
+  // ------------------------------------------------- 0079 socios y propinas
+  // Activar y cambiar las reglas es decidir como funciona el negocio. Ver lo
+  // de cada socio, liquidar y sus retiros es dinero de los duenos. El dueno
+  // de un producto es editar el catalogo; a cargo de quien es un gasto, de
+  // quien registra el gasto; quien pago una compra, de quien compra. Repartir
+  // propinas mueve el cajon como un corte.
+  'socios:activar': CONFIGURACION_ADMINISTRAR,
+  'socios:config-guardar': CONFIGURACION_ADMINISTRAR,
+  'socios:ejemplo': CONFIGURACION_ADMINISTRAR,
+  'socios:producto-dueno': CATALOGO_EDITAR,
+  'socios:resumen': SOCIOS_GESTIONAR,
+  'socios:por-corte': SOCIOS_GESTIONAR,
+  'socios:liquidar': SOCIOS_GESTIONAR,
+  'socios:liquidaciones': SOCIOS_GESTIONAR,
+  'socios:liquidacion': SOCIOS_GESTIONAR,
+  'socios:movimiento': SOCIOS_GESTIONAR,
+  'socios:movimientos': SOCIOS_GESTIONAR,
+  'socios:gasto': RETIROS_EGRESOS,
+  'socios:compra': INVENTARIO_OPERAR,
+  'propinas:activar': CONFIGURACION_ADMINISTRAR,
+  'propinas:config-guardar': CONFIGURACION_ADMINISTRAR,
+  'propinas:repartir': CAJA_CORTES,
+  'propinas:historial': CAJA_CORTES,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,
@@ -627,6 +652,8 @@ const ABIERTOS = {
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
   'venta-suelta:get': 'lectura de venta suelta',
+  'socios:config': 'lectura de socios y de quien es cada categoria',
+  'propinas:config': 'lectura de los porcentajes de propina',
   'hospitality:availability': 'lectura de disponibilidad',
   'loyalty:catalog': 'lectura de fidelización',
   'loyalty:instances': 'lectura de fidelización',

@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { RegisterService } from '../services/register.service';
 import { AsistenciaChecarComponent } from '../app/asistencia/checar/asistencia-checar.component';
+import { PropinaCobroComponent, PropinaElegida } from '../app/socios/propina-cobro.component';
 import {
   CapabilityService, CatalogService, CartCustomer, CartLine, CartService, ClientesVentaService, CustomerDisplayService, LoyaltyAward, MenuCatalogService,
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
@@ -62,7 +63,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [AsistenciaChecarComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
+  imports: [AsistenciaChecarComponent, PropinaCobroComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -416,7 +417,10 @@ export class TouchPos implements OnInit, OnDestroy {
     return out;
   });
   readonly saldoPagos = computed(() => Math.round((this.totales().total-this.pagos().reduce((a,p)=>a+p.amount,0))*100)/100);
-  readonly cambio = computed(() => { if (!this.pagoMixto()) return Math.max(0,this.recibidoNum()-this.totales().total); const c=this.pagos().find(p=>p.method==='EFECTIVO'); return c ? Math.max(0,Math.round(((c.received??c.amount)-c.amount)*100)/100) : 0; });
+  /** 0079 · La propina elegida (no suma al total de la venta). */
+  readonly propina = signal<PropinaElegida | null>(null);
+  private readonly propinaEfectivo = computed(() => this.propina()?.metodo === 'EFECTIVO' ? this.propina()!.monto : 0);
+  readonly cambio = computed(() => { if (!this.pagoMixto()) return Math.max(0,this.recibidoNum()-this.totales().total-this.propinaEfectivo()); const c=this.pagos().find(p=>p.method==='EFECTIVO'); return c ? Math.max(0,Math.round(((c.received??c.amount)-c.amount)*100)/100) : 0; });
   alternarMixto(enabled:boolean) {
     if(this.cobrando())return;
     this.pagoMixto.set(enabled); this.capturados.set({}); this.recibido.set('');
@@ -439,7 +443,7 @@ export class TouchPos implements OnInit, OnDestroy {
     if(Math.round(otros*100)>Math.round(total*100)) return 'Tarjeta, transferencia y plataforma suman más que el total.';
     try{validarPagos(total,this.pagos());return '';}catch(e){return (e as Error).message;}
   });
-  readonly alcanza = computed(() => this.pagoMixto() ? !this.errorPagos() : this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total);
+  readonly alcanza = computed(() => this.pagoMixto() ? !this.errorPagos() : this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total + this.propinaEfectivo());
 
   /** Sugerencias de billete: el importe exacto y los redondeos utiles. */
   readonly sugerencias = computed(() => {
@@ -1004,6 +1008,7 @@ export class TouchPos implements OnInit, OnDestroy {
            hacia que `SaleService.validate` lo rechazara como «dinero recibido
            insuficiente», y Touch no podia cobrar mas que en efectivo. */
         received: this.metodo() === 'EFECTIVO' ? this.recibidoNum() : this.totales().total,
+        tip: this.pagoMixto() ? null : this.propina(),
       }, {
         openDrawer: this.pagoMixto() ? this.pagos().some(p=>p.method==='EFECTIVO'&&p.amount>0) : this.metodo()==='EFECTIVO',
         autoPrint: true,
@@ -1023,6 +1028,8 @@ export class TouchPos implements OnInit, OnDestroy {
 
       this.clienteFactura=res.customer??null;
       this.conceptosFactura=(res.lines??[]).map(l=>({description:l.productName,quantity:l.qty,unitPrice:l.unitPrice,claveProdServ:l.claveProdServ,claveUnidad:l.claveUnidad,taxObject:l.objetoImpuesto,taxRate:l.tasaIva}));
+      this.propina.set(null);
+      if (res.propinaError) this.mostrar(`La venta quedó; la propina no: ${res.propinaError}`, 'error');
       const cambio = res.change ?? 0;
       this.ultimoCambio.set(cambio);
       this.ultimoFolio.set(res.saleId ?? null);

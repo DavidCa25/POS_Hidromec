@@ -457,6 +457,8 @@
                 <div class="cobro-cambio">{{ cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
               </div>
             </ng-container>
+            <!-- 0079: la propina, con la aplicacion Propinas. No suma al total. -->
+            <app-propina-cobro [total]="totalVenta" [metodo]="paymentMethod" (cambio)="alCambiarPropina($event)"></app-propina-cobro>
             <section *ngIf="paymentMethod==='MIXTO'" class="mt-3">
               <div *ngFor="let p of pagosMixtos;let i=index" class="mixed-payment">
                 <wx-select [opciones]="mixedMethods" [(ngModel)]="p.method" [disabled]="cobrando"></wx-select>

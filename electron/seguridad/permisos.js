@@ -109,6 +109,12 @@ const BUNDLES = {
    * sesion (VENTAS_OPERAR).
    */
   ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
+  /**
+   * 0079 · Socios: ver lo de cada socio, liquidar y registrar retiros,
+   * pagos y aportaciones. Es dinero de los duenos: solo Administrador, o a
+   * quien se le de (un socio que entra como Encargado).
+   */
+  SOCIOS_GESTIONAR: 'SOCIOS_GESTIONAR',
 
   /* ---------------------------------------------------------------------
    * PERMISOS POR PERSONA (0077). Lo delicado que se marca con una casilla
@@ -254,6 +260,7 @@ function permisosDeRol(rol) {
  * fallo peor que el que se intenta evitar.
  */
 const ALTO_RIESGO = new Set([
+  BUNDLES.SOCIOS_GESTIONAR,
   BUNDLES.VENTAS_SUPERVISAR,
   BUNDLES.CAJA_CORTES,
   BUNDLES.CONFIGURACION_EQUIPO,
@@ -292,6 +299,9 @@ function esAltoRiesgo(permiso) {
  */
 const SOLO_ADMIN = new Set([
   BUNDLES.CONFIGURACION_ADMINISTRAR,
+  // 0079: el dinero de los duenos. Se puede OTORGAR a un socio que entra con
+  // otro rol, pero ningun rol lo trae.
+  BUNDLES.SOCIOS_GESTIONAR,
 ]);
 
 /**
@@ -300,6 +310,7 @@ const SOLO_ADMIN = new Set([
  * Administrador, no de un extra.
  */
 const OTORGABLES = [
+  BUNDLES.SOCIOS_GESTIONAR,
   BUNDLES.CAJA_CORTES,
   BUNDLES.CONFIGURACION_EQUIPO,
   BUNDLES.INVENTARIO_OPERAR,
@@ -354,6 +365,7 @@ const HACER = [
     [BUNDLES.INVENTARIO_OPERAR, 'Compras, ajustes y proveedores', true],
     [BUNDLES.CONFIGURACION_EQUIPO, 'Equipo de la caja', false],
     [BUNDLES.ASISTENCIA_GESTIONAR, 'Asistencia del equipo', false],
+    [BUNDLES.SOCIOS_GESTIONAR, 'Socios: ver, liquidar y retiros', false],
   ] },
 ].map(g => ({ ...g, permisos: g.permisos.map(([clave, nombre, pideAutorizacion]) => ({ clave, nombre, pideAutorizacion })) }));
 
@@ -402,6 +414,7 @@ const DESCRIPCIONES = {
   SERVICIOS_ADMINISTRAR: ['Administrar Servicios', 'Catálogo de servicios, profesionales, horarios y comisiones.'],
   PRODUCCION_OPERAR: ['Producción', 'Planear tandas, empezarlas y registrar lo que salió, con su merma.'],
   ASISTENCIA_GESTIONAR: ['Asistencia', 'Ver las horas de todos, asignar horarios, corregir jornadas y exportar.'],
+  SOCIOS_GESTIONAR: ['Socios', 'Ver lo de cada socio, liquidar y registrar retiros, pagos y aportaciones.'],
   DEVOLUCIONES: ['Devoluciones y cambios', 'Devolver o cambiar sin pedir autorización.'],
   RETIROS_EGRESOS: ['Retiros y egresos', 'Sacar dinero del cajón y registrar gastos sin pedir autorización.'],
   CAJON_SIN_VENTA: ['Abrir el cajón sin venta', 'Abrir el cajón sin un cobro, sin pedir autorización.'],

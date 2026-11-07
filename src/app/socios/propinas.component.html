@@ -1,0 +1,81 @@
+<div class="soc" data-guide="propinas">
+  <header class="soc-cab">
+    <div>
+      <h1>Propinas</h1>
+      <p>No son venta: no llevan IVA ni entran en la utilidad ni en Socios. Son del personal.</p>
+    </div>
+  </header>
+
+  <p class="soc-error" *ngIf="error()" role="alert">{{ error() }}</p>
+
+  <section class="soc-panel" data-guide="propinas-pendiente">
+    <h2>Pendientes en esta caja</h2>
+    <p class="soc-vacio" *ngIf="cargando()">Cargando…</p>
+    <p class="soc-error" *ngIf="!cargando() && !pendiente() && error()">{{ error() }}</p>
+    <ng-container *ngIf="!cargando() && pendiente() as p">
+      <p class="soc-vacio" *ngIf="!p.reparto?.propinas">No hay propinas por repartir.</p>
+      <ng-container *ngIf="p.reparto?.propinas">
+        <p class="soc-ayuda">
+          {{ p.reparto.propinas }} propina{{ p.reparto.propinas === 1 ? '' : 's' }} por {{ dinero(p.reparto.total) }}
+          <ng-container *ngIf="p.reparto.comision > 0">, menos {{ dinero(p.reparto.comision) }} de comisión de tarjeta</ng-container>.
+          Se reparten <b>{{ nombreReparto(p.reparto.modo) }}</b>.
+        </p>
+        <div class="castrol-table-container">
+          <table class="castrol-table">
+            <thead><tr><th scope="col">Persona</th><th scope="col" class="num">Horas</th><th scope="col" class="num">Le toca</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of p.lineas" [attr.data-guide-clave]="l.user_id">
+                <td>{{ l.usuario }}</td><td class="num">{{ l.horas ?? '—' }}</td><td class="num"><b>{{ dinero(l.monto) }}</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="soc-pie">
+          <span class="soc-pie__esp"></span>
+          <button type="button" class="soc-pri" (click)="pagar()" [disabled]="pagando()" data-guide="propinas-pagar">
+            <i class="ph ph-hand-coins"></i> {{ pagando() ? 'Pagando…' : 'Pagar ' + dinero(p.reparto.neto) }}
+          </button>
+        </div>
+      </ng-container>
+    </ng-container>
+  </section>
+
+  <section class="soc-panel" data-guide="propinas-historial">
+    <h2>Historial</h2>
+    <div class="soc-filtros">
+      <label class="soc-campo"><span>Desde</span><wx-date [ngModel]="desde()" (ngModelChange)="desde.set($event)" [limpiable]="false"></wx-date></label>
+      <label class="soc-campo"><span>Hasta</span><wx-date [ngModel]="hasta()" (ngModelChange)="hasta.set($event)" [limpiable]="false"></wx-date></label>
+      <button type="button" class="soc-sec" (click)="cargarHistorial()">Ver</button>
+    </div>
+    <div class="castrol-table-container" *ngIf="historial() as h">
+      <table class="castrol-table">
+        <thead><tr><th scope="col">Pagado</th><th scope="col">Reparto</th><th scope="col" class="num">Total</th><th scope="col" class="num">Comisión</th><th scope="col">A quién</th></tr></thead>
+        <tbody>
+          <tr *ngIf="!h.repartos.length"><td colspan="5" class="soc-vacio">Sin repartos en esos días.</td></tr>
+          <tr *ngFor="let r of h.repartos">
+            <td>{{ r.created_at | date:'d MMM HH:mm':'':'es-MX' }}</td>
+            <td>{{ nombreReparto(r.modo) }}</td>
+            <td class="num">{{ dinero(r.total) }}</td>
+            <td class="num">{{ dinero(r.comision) }}</td>
+            <td><span *ngFor="let l of lineasDe(r.id); let last = last">{{ l.usuario }} {{ dinero(l.monto) }}{{ last ? '' : ' · ' }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="soc-panel" *ngIf="puedeConfigurar" data-guide="propinas-reglas">
+    <h2>Reglas</h2>
+    <div class="soc-form">
+      <label class="soc-campo"><span>Cómo se reparten</span>
+        <wx-select [opciones]="opcionesReparto" [(ngModel)]="form.reparto"></wx-select></label>
+      <label class="soc-campo"><span>Porcentajes sugeridos</span>
+        <input type="text" maxlength="40" [(ngModel)]="form.sugeridas" placeholder="10,15,20"></label>
+      <label class="soc-campo"><span>Comisión de tarjeta (%)</span>
+        <input type="number" min="0" max="20" step="0.1" [(ngModel)]="form.comisionPct"></label>
+      <label class="soc-campo"><span>La comisión</span>
+        <wx-select [opciones]="opcionesComision" [(ngModel)]="form.comisionA"></wx-select></label>
+      <button type="button" class="soc-pri" (click)="guardarConfig()">Guardar</button>
+    </div>
+  </section>
+</div>

@@ -6,6 +6,7 @@ import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
 import { puedeVerAsistencia } from './asistencia.guard';
+import { puedeConfigurarSocios, puedeVerPropinas, puedeVerSocios } from './socios.guard';
 import { puedeConfigurarSalon, puedeUsarPedidosEnLinea, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
 
 /*
@@ -76,6 +77,10 @@ export const routes: Routes = [
       // 0069: lo que cobró el ticket contra lo que depositó Uber Eats, Didi o Rappi.
       // 0071: Asistencia. Una aplicacion: solo con el modulo encendido.
       { path: 'asistencia', canActivate: [puedeVerAsistencia], loadComponent: () => import('./asistencia/asistencia.component').then(m => m.AsistenciaComponent) },
+      // 0079: Socios y Propinas. El asistente abre tambien antes de activar: es como se activa.
+      { path: 'socios/configurar', canActivate: [puedeConfigurarSocios], loadComponent: () => import('./socios/socios-asistente.component').then(m => m.SociosAsistenteComponent) },
+      { path: 'socios', canActivate: [puedeVerSocios], loadComponent: () => import('./socios/socios.component').then(m => m.SociosComponent) },
+      { path: 'propinas', canActivate: [puedeVerPropinas], loadComponent: () => import('./socios/propinas.component').then(m => m.PropinasComponent) },
       { path: 'liquidaciones', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./liquidaciones/liquidaciones.component').then(m => m.LiquidacionesComponent) },
 
       // ---- Retail POS ----

@@ -47,6 +47,8 @@ export const PAQUETES = {
   PRODUCCION_OPERAR: 'PRODUCCION_OPERAR',
   // 0071: Asistencia (horas de todos, horarios, correcciones, exportar).
   ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
+  // 0079: Socios (ver, liquidar, retiros y aportaciones).
+  SOCIOS_GESTIONAR: 'SOCIOS_GESTIONAR',
   // 0077: permisos por persona (lo delicado y lo que se ve).
   DEVOLUCIONES: 'DEVOLUCIONES',
   RETIROS_EGRESOS: 'RETIROS_EGRESOS',

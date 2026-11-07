@@ -27,6 +27,7 @@ export * from './dinamicas';
 export * from './fechas';
 export * from './fecha-sql.pipe';
 export * from './asistencia.service';
+export * from './socios.service';
 export * from './mesas.service';
 export * from './clientes-venta.service';
 export * from './egresos.service';

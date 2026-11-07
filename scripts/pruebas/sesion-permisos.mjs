@@ -54,7 +54,7 @@ seccion('1. El catalogo: tres roles, doce paquetes');
 // ===========================================================================
 
 /* 0077: 13 paquetes + 9 permisos por persona (lo delicado y lo que se ve). */
-check(permisos.PERMISOS.length === 22, 'hay veintidós permisos', permisos.PERMISOS.join(' '));
+check(permisos.PERMISOS.length === 23, 'hay veintitrés permisos (0079: SOCIOS_GESTIONAR)', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -72,7 +72,7 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 22, 'Administrador tiene los veintidós');
+check(deAdmin.size === 23, 'Administrador tiene los veintitrés');
 // Roles v2: el Encargado tiene todo menos administrar el negocio.
 check(deEncargado.size === 21 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
    && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
