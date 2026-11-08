@@ -224,7 +224,7 @@ test("Editor de ticket: campos, papel de 70 mm, visor antes/después de guardar 
 }) => {
   await login(app, CUENTAS.admin);
   const p = app.ventana;
-  await irPorMas(p, "Configuracion");
+  await irPorMas(p, "Configuración");
   await p.getByRole("button", { name: /Tickets y cortes/ }).click();
   const panel = p.locator("app-ticket-panel");
   await expect(panel).toBeVisible();

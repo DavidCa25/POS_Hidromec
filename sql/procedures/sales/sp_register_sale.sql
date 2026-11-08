@@ -74,6 +74,10 @@ BEGIN
     DECLARE @sale_id INT;
     DECLARE @total   DECIMAL(10,2);
     DECLARE @is_credit BIT;
+    /* 0081: lo que queda a credito. Una venta CREDITO entera fia todo el
+       total; una que paga una parte (pago dividido con CREDITO) fia solo el
+       resto. Se fija al conocer el total. */
+    DECLARE @credito DECIMAL(12,2) = NULL;
     DECLARE @errmsg NVARCHAR(400);
 
     /* Si este equipo dice quien es, SU caja es la que tiene arrendada. Caer a
@@ -669,10 +673,10 @@ BEGIN
         DECLARE @cash_applied DECIMAL(12,2)=CASE WHEN @payment_method='EFECTIVO' THEN @total ELSE 0 END;
         DECLARE @pay TABLE(method NVARCHAR(50),amount DECIMAL(12,2),received DECIMAL(12,2),reference NVARCHAR(100));
         IF @payments_json IS NOT NULL BEGIN
-          IF ISJSON(@payments_json)<>1 OR LEFT(LTRIM(@payments_json),1)<>'[' OR @is_credit=1 OR @payment_method='TERMINAL_MP' THROW 51000,'Distribucion de pagos invalida.',1;
+          IF ISJSON(@payments_json)<>1 OR LEFT(LTRIM(@payments_json),1)<>'[' OR @payment_method='TERMINAL_MP' THROW 51000,'Distribucion de pagos invalida.',1;
           IF EXISTS(SELECT 1 FROM OPENJSON(@payments_json) j WHERE j.type<>5 OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.amount')) IS NULL OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.amount'))<>TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(j.value,'$.amount')) OR (JSON_VALUE(j.value,'$.received') IS NOT NULL AND (TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.received')) IS NULL OR TRY_CONVERT(DECIMAL(18,4),JSON_VALUE(j.value,'$.received'))<>TRY_CONVERT(DECIMAL(12,2),JSON_VALUE(j.value,'$.received')))) OR LEN(JSON_VALUE(j.value,'$.reference'))>100) THROW 51000,'Importe o referencia de pago invalido.',1;
           INSERT @pay SELECT method,amount,CASE WHEN method='EFECTIVO' THEN ISNULL(received,amount) ELSE NULL END,reference FROM OPENJSON(@payments_json) WITH(method NVARCHAR(50),amount DECIMAL(12,2),received DECIMAL(12,2),reference NVARCHAR(100));
-          IF (SELECT COUNT(*) FROM @pay) NOT BETWEEN 1 AND 4 OR EXISTS(SELECT 1 FROM @pay WHERE method IS NULL OR method NOT IN('EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA','CAMBIO') OR amount IS NULL OR amount<=0 OR (method='EFECTIVO' AND received<amount)) OR EXISTS(SELECT method FROM @pay GROUP BY method HAVING COUNT(*)>1) OR (SELECT SUM(amount) FROM @pay)<>@total THROW 51000,'Los pagos deben cubrir exactamente la venta, sin metodos duplicados.',1;
+          IF (SELECT COUNT(*) FROM @pay) NOT BETWEEN 1 AND 4 OR EXISTS(SELECT 1 FROM @pay WHERE method IS NULL OR method NOT IN('EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA','CAMBIO','CREDITO') OR amount IS NULL OR amount<=0 OR (method='EFECTIVO' AND received<amount)) OR EXISTS(SELECT method FROM @pay GROUP BY method HAVING COUNT(*)>1) OR (SELECT SUM(amount) FROM @pay)<>@total THROW 51000,'Los pagos deben cubrir exactamente la venta, sin metodos duplicados.',1;
           /* 0065: CAMBIO paga con lo que una devolución apartó para el cambio. La
              referencia es esa devolución; se usa entera y una sola vez. */
           IF EXISTS(SELECT 1 FROM @pay p WHERE p.method='CAMBIO' AND NOT EXISTS(
@@ -680,7 +684,20 @@ BEGIN
                 WHERE r.id=TRY_CONVERT(INT,p.reference) AND r.exchange_amount=p.amount AND r.exchange_sale_id IS NULL))
             THROW 51000,'Ese cambio ya se usó o no coincide con la devolución.',1;
           SELECT @cash_applied=ISNULL(SUM(CASE WHEN method='EFECTIVO' THEN amount ELSE 0 END),0) FROM @pay;
-          SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @pay)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @pay) END;
+          /* 0081: una parte A CREDITO. La venta SIGUE SIENDO de credito
+             (payment_method CREDITO, saldo = lo fiado): asi la ven los abonos,
+             el limite del cliente, la cobranza y las devoluciones, que ya
+             saben de ventas a credito con una parte pagada. Lo demas se cobra
+             ahora y queda en sale_payments, como cualquier pago dividido. */
+          SET @credito=(SELECT amount FROM @pay WHERE method='CREDITO');
+          IF @credito IS NOT NULL
+          BEGIN
+            IF @customer_id IS NULL THROW 51000,'La parte a credito necesita el cliente.',1;
+            SET @is_credit=1;
+            SET @payment_method='CREDITO';
+          END
+          ELSE
+            SET @payment_method=CASE WHEN (SELECT COUNT(*) FROM @pay)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @pay) END;
         END
         ELSE IF @payment_method='MIXTO' THROW 51000,'Falta la distribucion del pago mixto.',1;
 
@@ -694,6 +711,7 @@ BEGIN
              - sin ventas VENCIDAS: vencida = vencimiento + dias de gracia < hoy;
              - la deuda abierta mas esta venta no pasa del limite.
            Y si la venta no trae vencimiento, vence a los dias de plazo del cliente. */
+        IF @is_credit = 1 AND @credito IS NULL SET @credito = @total;
         IF @is_credit = 1
         BEGIN
             DECLARE @cr_limite DECIMAL(12,2), @cr_activo BIT, @cr_riesgo TINYINT,
@@ -726,9 +744,10 @@ BEGIN
             IF @cr_vencidas > 0
                 RAISERROR('Este cliente tiene ventas a credito vencidas. Registra un abono antes de volver a venderle a credito.', 16, 1);
 
-            IF @cr_deuda + @total > @cr_limite
+            IF @cr_deuda + @credito > @cr_limite
             BEGIN
-                SET @errmsg = CONCAT('La venta ($', FORMAT(@total, 'N2', 'es-MX'),
+                SET @errmsg = CONCAT(CASE WHEN @credito < @total THEN 'Lo que queda a credito ($' ELSE 'La venta ($' END,
+                                     FORMAT(@credito, 'N2', 'es-MX'),
                                      ') supera el credito disponible del cliente ($',
                                      FORMAT(CASE WHEN @cr_limite - @cr_deuda > 0 THEN @cr_limite - @cr_deuda ELSE 0 END, 'N2', 'es-MX'),
                                      ').');
@@ -744,8 +763,8 @@ BEGIN
         VALUES (
           GETDATE(), @user_id, @total, @payment_method,
           @customer_id,
-          CASE WHEN @is_credit = 1 THEN 0 ELSE @total END,
-          CASE WHEN @is_credit = 1 THEN @total ELSE 0 END,
+          CASE WHEN @is_credit = 1 THEN @total - @credito ELSE @total END,
+          CASE WHEN @is_credit = 1 THEN @credito ELSE 0 END,
           @due_date,
           @register_id,
           @service_mode,
@@ -754,7 +773,7 @@ BEGIN
 
         SET @sale_id = SCOPE_IDENTITY();
         UPDATE dbo.sales SET client_sale_key=@client_sale_key,client_sale_hash=@client_sale_hash,closure_id=@sale_closure WHERE id=@sale_id;
-        IF @payments_json IS NOT NULL INSERT dbo.sale_payments(sale_id,payment_method,amount,received,reference) SELECT @sale_id,method,amount,received,reference FROM @pay;
+        IF @payments_json IS NOT NULL INSERT dbo.sale_payments(sale_id,payment_method,amount,received,reference) SELECT @sale_id,method,amount,received,reference FROM @pay WHERE method<>'CREDITO';
         IF @payments_json IS NOT NULL
           UPDATE r SET exchange_sale_id=@sale_id FROM dbo.sale_refunds r JOIN @pay p ON p.method='CAMBIO' AND r.id=TRY_CONVERT(INT,p.reference);
         /* 0063: una venta de $0 (solo el beneficio del Club o un producto gratis) no tiene pago que registrar. */
@@ -866,8 +885,10 @@ BEGIN
         JOIN dbo.products pp ON pp.id = a.padre;
         END
 
-        /* 10) Movimiento CAJA (solo EFECTIVO contado) - turno POR CAJA */
-        IF @is_credit = 0 AND @cash_applied > 0
+        /* 10) Movimiento CAJA (solo EFECTIVO contado) - turno POR CAJA.
+           0081: tambien la parte en efectivo de una venta con una parte a
+           credito: ese dinero si entro al cajon. */
+        IF @cash_applied > 0
         BEGIN
             DECLARE @closure_id_open INT;
 

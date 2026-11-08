@@ -126,9 +126,21 @@ BEGIN
     DECLARE @keep DECIMAL(12,2) = CASE WHEN ISNULL(@exchange_amount, 0) <= 0 THEN 0
                                        WHEN @exchange_amount > @refund_total THEN @refund_total ELSE @exchange_amount END;
     DECLARE @por_repartir DECIMAL(12,2) = @refund_total - @keep;
+    /* 0065 · Venta a CRÉDITO: primero se descuenta de lo que todavía debe.
+       0081 · Una venta a crédito puede traer una parte pagada al vender
+       (enganche, en sale_payments): lo que no cubre el saldo se regresa por
+       esos mismos métodos, y lo que pagó después en abonos, en efectivo. */
+    IF @sale_method = N'CREDITO' AND @por_repartir > 0
+    BEGIN
+      DECLARE @saldo DECIMAL(12,2) = ISNULL((SELECT balance FROM dbo.sales WHERE id = @sale_id), 0);
+      SET @credito_aplicado = CASE WHEN @saldo >= @por_repartir THEN @por_repartir WHEN @saldo > 0 THEN @saldo ELSE 0 END;
+      IF @credito_aplicado > 0 INSERT @rp VALUES (N'CREDITO', @credito_aplicado);
+    END
+    DECLARE @rest DECIMAL(12,2) = @por_repartir - @credito_aplicado;
+
     IF EXISTS(SELECT 1 FROM dbo.sale_payments WHERE sale_id=@sale_id) BEGIN
       SET @apply_net_update=0;
-      DECLARE @rest DECIMAL(12,2)=@por_repartir,@pm NVARCHAR(50),@available DECIMAL(12,2),@part DECIMAL(12,2);
+      DECLARE @pm NVARCHAR(50),@available DECIMAL(12,2),@part DECIMAL(12,2);
       DECLARE refunds_cursor CURSOR LOCAL FAST_FORWARD FOR
       SELECT p.payment_method,p.amount-ISNULL((SELECT SUM(rp.amount) FROM dbo.refund_payments rp JOIN dbo.sale_refunds r ON r.id=rp.refund_id WHERE r.sale_id=@sale_id AND rp.payment_method=p.payment_method),0)-ISNULL((SELECT SUM(r.refund_total) FROM dbo.sale_refunds r WHERE r.sale_id=@sale_id AND r.payment_method=p.payment_method AND NOT EXISTS(SELECT 1 FROM dbo.refund_payments rp WHERE rp.refund_id=r.id)),0)
       FROM dbo.sale_payments p WHERE p.sale_id=@sale_id ORDER BY CASE WHEN p.payment_method='EFECTIVO' THEN 0 ELSE 1 END,p.id;
@@ -139,22 +151,24 @@ BEGIN
         FETCH NEXT FROM refunds_cursor INTO @pm,@available;
       END;
       CLOSE refunds_cursor;DEALLOCATE refunds_cursor;
-      IF @rest>0 THROW 51000,'El reembolso supera los pagos originales disponibles.',1;
-      /* 0063: devolver algo de $0 (un beneficio del Club) no reparte dinero: conserva la forma de pago indicada. */
-      SET @payment_method=ISNULL(CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END, @payment_method);
-    /* 0064: una venta en $0 (todo canjeado) no tiene pagos ni reparte dinero al devolverse. */
-    END ELSE IF @por_repartir>0
-    BEGIN
-      /* 0065: venta a CRÉDITO. Primero se descuenta de lo que debe; si ya
-         había abonado más de lo que queda, esa parte sí se le regresa en efectivo. */
-      DECLARE @saldo DECIMAL(12,2) = CASE WHEN @sale_method = N'CREDITO' THEN ISNULL((SELECT balance FROM dbo.sales WHERE id = @sale_id), 0) ELSE 0 END;
-      SET @credito_aplicado = CASE WHEN @saldo >= @por_repartir THEN @por_repartir WHEN @saldo > 0 THEN @saldo ELSE 0 END;
-      IF @credito_aplicado > 0 INSERT @rp VALUES (N'CREDITO', @credito_aplicado);
-      IF @por_repartir - @credito_aplicado > 0
-        INSERT @rp VALUES (CASE WHEN @sale_method = N'CREDITO' THEN N'EFECTIVO' ELSE @payment_method END, @por_repartir - @credito_aplicado);
-      IF @sale_method = N'CREDITO'
-        SET @payment_method = CASE WHEN @credito_aplicado >= @por_repartir THEN N'CREDITO' WHEN @credito_aplicado > 0 THEN N'MIXTO' ELSE N'EFECTIVO' END;
     END
+
+    IF @rest > 0
+    BEGIN
+      /* Una venta a crédito: lo que queda lo pagó en abonos y se regresa en
+         efectivo. Cualquier otra: sin pagos registrados, por el método indicado;
+         con pagos registrados, no puede regresarse más de lo que entró. */
+      IF @sale_method = N'CREDITO' OR NOT EXISTS(SELECT 1 FROM dbo.sale_payments WHERE sale_id=@sale_id)
+      BEGIN
+        DECLARE @metodo_resto NVARCHAR(50) = CASE WHEN @sale_method = N'CREDITO' THEN N'EFECTIVO' ELSE @payment_method END;
+        IF EXISTS(SELECT 1 FROM @rp WHERE method = @metodo_resto) UPDATE @rp SET amount = amount + @rest WHERE method = @metodo_resto;
+        ELSE INSERT @rp VALUES (@metodo_resto, @rest);
+        SET @rest = 0;
+      END
+      ELSE THROW 51000,'El reembolso supera los pagos originales disponibles.',1;
+    END
+    /* 0063/0064: devolver algo de $0 no reparte dinero: conserva la forma de pago indicada. */
+    SET @payment_method=ISNULL(CASE WHEN (SELECT COUNT(*) FROM @rp)>1 THEN 'MIXTO' ELSE (SELECT TOP 1 method FROM @rp) END, @payment_method);
     IF @keep > 0
     BEGIN
       INSERT @rp VALUES (N'CAMBIO', @keep);

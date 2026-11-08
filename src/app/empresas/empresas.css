@@ -1,0 +1,127 @@
+/* Mis empresas y la empresa remota (0080). Mismo lenguaje que Socios y
+   Asistencia: tabla de Wybix (.castrol-table), botones de 44 px, números en
+   mono alineados a la derecha, tokens del sistema y nada de colores sueltos. */
+:host { display: block; }
+.emp { display: flex; flex-direction: column; gap: 16px; padding: 24px 32px; max-width: 1400px; }
+.emp-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.emp-cab h1 { margin: 0; font-size: var(--wx-text-lg); font-weight: 600; }
+.emp-cab p { margin: 2px 0 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.emp-cab__acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.emp-volver { margin-bottom: 6px; padding-left: 0; }
+
+.emp-sec, .emp-pri {
+  height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 16px; border-radius: 10px; font: 500 var(--wx-text-base) var(--wx-font); cursor: pointer;
+}
+.emp-sec { border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); }
+.emp-pri { border: 0; background: var(--wx-accent); color: var(--wx-accent-ink); font-weight: 600; padding: 0 18px; }
+.emp-sec:hover:not(:disabled) { background: var(--wx-sunken); }
+.emp-pri:hover:not(:disabled) { background: var(--wx-accent-hover); }
+:is(.emp-sec, .emp-pri):disabled { opacity: .55; cursor: not-allowed; }
+.emp-texto {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--wx-user-accent-text); font: 500 var(--wx-text-sm) var(--wx-font); cursor: pointer;
+}
+.emp-texto:hover { background: var(--wx-hover); }
+:is(.emp-sec, .emp-pri, .emp-texto, .emp-chip, .emp-tabs button):focus-visible { outline: 2px solid var(--wx-user-accent); outline-offset: 2px; }
+
+.emp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wx-edge); flex-wrap: wrap; }
+.emp-tabs button {
+  height: 40px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent;
+  color: var(--wx-text-muted); font: 500 var(--wx-text-base) var(--wx-font); cursor: pointer;
+}
+.emp-tabs button.on { color: var(--wx-text); border-bottom-color: var(--wx-user-accent); font-weight: 600; }
+
+.emp-periodos { display: flex; gap: 6px; flex-wrap: wrap; }
+.emp-chip {
+  height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  color: var(--wx-text-muted); font: 500 var(--wx-text-sm) var(--wx-font); cursor: pointer;
+}
+.emp-chip.on { background: var(--wx-user-accent-soft); border-color: var(--wx-user-accent); color: var(--wx-user-accent-text); font-weight: 600; }
+
+.emp-error { margin: 0; color: var(--wx-danger); font-size: var(--wx-text-sm); }
+.emp-vacio { color: var(--wx-text-muted); text-align: center; padding: 24px; margin: 0; }
+.emp-ayuda { margin: 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); max-width: 72ch; }
+.emp-tenue { color: var(--wx-text-muted); }
+.emp-bloque { display: block; margin-top: 2px; }
+.emp-mono, .num { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
+.num { text-align: right !important; }
+
+/* -------------------------------------------------------------- total */
+.emp-total {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px;
+  border: 1px solid var(--wx-edge); border-radius: 14px; overflow: hidden; background: var(--wx-edge);
+}
+.emp-total > div { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px; background: var(--wx-surface); }
+.emp-total span { font-size: var(--wx-text-xs); color: var(--wx-text-muted); font-weight: 500; }
+.emp-total b { font-size: var(--wx-text-lg); font-weight: 600; }
+.emp-total small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+
+/* ----------------------------------------------------------- tarjetas */
+.emp-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.emp-tarjeta {
+  display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 14px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge);
+}
+.emp-tarjeta.es-esta { border-color: var(--wx-user-accent); box-shadow: 0 0 0 1px var(--wx-user-accent) inset; }
+.emp-tarjeta__cab { display: flex; align-items: center; gap: 10px; }
+.emp-tarjeta__icono {
+  width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 999px;
+  background: var(--wx-navy-800); color: var(--wx-accent); font-size: 17px;
+}
+:host-context(html.dark) .emp-tarjeta__icono { background: var(--wx-navy-900); }
+.emp-tarjeta__titulo { display: flex; flex-direction: column; min-width: 0; }
+.emp-tarjeta__titulo b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-tarjeta__titulo small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+.emp-tarjeta__ventas { font-size: 26px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; }
+.emp-tarjeta__ventas small { font-family: var(--wx-font); font-size: var(--wx-text-sm); font-weight: 400; color: var(--wx-text-muted); }
+.emp-desglose { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: var(--wx-text-sm); }
+.emp-desglose dt { color: var(--wx-text-muted); font-weight: 400; }
+.emp-desglose dd { margin: 0; text-align: right; }
+.emp-tarjeta__pie { margin-top: auto; display: flex; gap: 8px; }
+.emp-tarjeta__pie:empty { display: none; }
+
+/* --------------------------------------------------------- tabla/estado */
+.emp-tabla { width: 100%; }
+.emp-estado {
+  display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--wx-text-xs); font-weight: 600;
+  background: var(--wx-sunken); color: var(--wx-text-muted);
+}
+.emp-estado[data-tono="espera"] { background: var(--wx-warning-soft); color: var(--wx-warning); }
+.emp-estado[data-tono="bien"] { background: var(--wx-success-soft); color: var(--wx-success); }
+.emp-estado[data-tono="mal"] { background: var(--wx-danger-soft); color: var(--wx-danger); }
+
+/* --------------------------------------------------------- paneles/form */
+.emp-agregar { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.emp-panel { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; border-radius: 14px; background: var(--wx-surface); border: 1px solid var(--wx-edge); }
+.emp-panel h2 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.emp-panel h3 { margin: 8px 0 0; font-size: var(--wx-text-base); font-weight: 600; }
+.emp-panel__cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.emp-buscar {
+  margin-left: auto; height: 40px; min-width: 240px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--wx-edge-strong);
+  background: var(--wx-surface); color: var(--wx-text); font: 400 var(--wx-text-base) var(--wx-font);
+}
+.emp-form { display: flex; flex-direction: column; gap: 12px; }
+.emp-form--linea { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+.emp-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.emp-campo > span { font-size: var(--wx-text-xs); color: var(--wx-text-muted); font-weight: 500; }
+.emp-campo input {
+  height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--wx-edge-strong);
+  background: var(--wx-surface); color: var(--wx-text); font: 400 var(--wx-text-base) var(--wx-font);
+}
+:is(.emp-campo input, .emp-buscar):focus-visible { outline: 2px solid var(--wx-user-accent); outline-offset: 1px; }
+.emp-codigo { letter-spacing: 0.08em; text-transform: uppercase; min-width: 220px; }
+.emp-codigo-generado { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 12px; background: var(--wx-sunken); }
+.emp-codigo-generado b { font-size: 24px; letter-spacing: 0.1em; }
+.emp-codigo-generado small { color: var(--wx-text-muted); }
+.emp-pie { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.emp-pie__esp { flex: 1; }
+.emp-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.emp-lista li { display: flex; align-items: center; justify-content: space-between; min-height: 44px; border-bottom: 1px solid var(--wx-edge); }
+.emp-dialogo { width: min(480px, 92vw); }
+
+@media (max-width: 720px) {
+  .emp { padding: 16px; }
+  .emp-agregar { grid-template-columns: 1fr; }
+  .emp-buscar { margin-left: 0; min-width: 0; width: 100%; }
+}

@@ -7,6 +7,7 @@ import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
 import { puedeVerAsistencia } from './asistencia.guard';
 import { puedeConfigurarSocios, puedeVerPropinas, puedeVerSocios } from './socios.guard';
+import { puedeVerEmpresas } from './empresas/empresas.guard';
 import { puedeConfigurarSalon, puedeUsarPedidosEnLinea, puedeUsarCocina, puedeUsarMesas } from './hospitality-operacion.guard';
 
 /*
@@ -81,6 +82,9 @@ export const routes: Routes = [
       { path: 'socios/configurar', canActivate: [puedeConfigurarSocios], loadComponent: () => import('./socios/socios-asistente.component').then(m => m.SociosAsistenteComponent) },
       { path: 'socios', canActivate: [puedeVerSocios], loadComponent: () => import('./socios/socios.component').then(m => m.SociosComponent) },
       { path: 'propinas', canActivate: [puedeVerPropinas], loadComponent: () => import('./socios/propinas.component').then(m => m.PropinasComponent) },
+      // 0080 · MultiEmpresa (docs/multiempresa.md).
+      { path: 'empresas', canActivate: [puedeVerEmpresas], loadComponent: () => import('./empresas/mis-empresas.component').then(m => m.MisEmpresasComponent) },
+      { path: 'empresas/remota/:id', canActivate: [puedeVerEmpresas], loadComponent: () => import('./empresas/empresa-remota.component').then(m => m.EmpresaRemotaComponent) },
       { path: 'liquidaciones', canActivate: [() => inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./liquidaciones/liquidaciones.component').then(m => m.LiquidacionesComponent) },
 
       // ---- Retail POS ----

@@ -1,5 +1,5 @@
 import {ReceiptEmail} from '../../app/receipt-email/receipt-email.component';
-import {validarPagos,type PagoAplicado} from '../../../shared/pagos';
+import {distribuirPagoDividido,type MetodoDividido,type PagoAplicado} from '../../../shared/pagos';
 import {CommercialService} from '../../core/commercial.service';
 import { DevolucionesService, MOTIVOS_DEVOLUCION, type LineaCambio, type MetodoDiferencia, type Regreso, type VentaParaDevolver } from '../../core/devoluciones.service';
 import { ReceiptViewer } from '../../app/receipt-viewer/receipt-viewer.component';
@@ -17,6 +17,7 @@ import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 import { GranelCantidadComponent } from '../granel-cantidad/granel-cantidad.component';
+import { OpcionesProductoComponent } from '../opciones-producto/opciones-producto.component';
 import { confirmarQuitar } from '../confirmar-quitar';
 import { preguntarCajonVoucher } from '../cajon-voucher';
 import {
@@ -37,10 +38,9 @@ import { ClubClienteComponent } from '../../app/club-cliente/club-cliente.compon
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { SelectedOption } from '../../core/models';
 import {
-  ResumenOpcion, aSeleccionada, admiteCantidad, gruposAConfigurar, minimoDe,
-  opcionesElegibles, resumenDeOpciones, seleccionAutomatica, topeDeGrupo,
+  ResumenOpcion, gruposAConfigurar, resumenDeOpciones, seleccionAutomatica,
 } from '../../core/opciones';
-import { CapabilityService, FechaSqlPipe } from '../../core';
+import { CapabilityService, FechaSqlPipe, MOTIVOS_SIN_CREDITO } from '../../core';
 import { RegisterService } from '../../services/register.service';
 import { AsistenciaChecarComponent } from '../../app/asistencia/checar/asistencia-checar.component';
 import { PropinaCobroComponent, PropinaElegida } from '../../app/socios/propina-cobro.component';
@@ -73,11 +73,8 @@ interface CreditCustomer {
   block: 'RIESGO' | 'VENCIDAS' | 'SIN_DISPONIBLE' | null;
 }
 
-const MOTIVO_CREDITO: Record<string, string> = {
-  RIESGO: 'Riesgo alto: crédito suspendido',
-  VENCIDAS: 'Tiene ventas vencidas',
-  SIN_DISPONIBLE: 'Sin crédito disponible',
-};
+/* Los motivos viven en el servicio compartido: Touch dice lo mismo. */
+const MOTIVO_CREDITO = MOTIVOS_SIN_CREDITO;
 
 interface RefundLine {
   productId: number;
@@ -90,7 +87,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, OpcionesProductoComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -199,13 +196,81 @@ export class Venta implements OnInit, OnDestroy {
   showModal = false;
   dineroRecibido: number | null = null;
   paymentMethod: PaymentMethod = 'EFECTIVO';
-  pagosMixtos:PagoAplicado[]=[];
   /** 0069: el numero de pedido de Uber Eats / Didi / Rappi (opcional). Con el,
       Liquidaciones de plataforma empareja la venta con el pedido sin dudar. */
   pedidoPlataforma='';
-  readonly mixedMethods=[{valor:'EFECTIVO',etiqueta:'Efectivo'},{valor:'TARJETA',etiqueta:'Tarjeta'},{valor:'TRANSFERENCIA',etiqueta:'Transferencia'},{valor:'PLATAFORMA',etiqueta:'Pagado en plataforma'}];
-  get errorMixto(){if(this.paymentMethod!=='MIXTO')return '';try{validarPagos(this.totalVenta,this.pagosMixtos);return '';}catch(e){return (e as Error).message;}}
-  agregarPago(){if(this.cobrando)return;const m=this.mixedMethods.find(m=>!this.pagosMixtos.some(p=>p.method===m.valor));if(m)this.pagosMixtos.push({method:m.valor as PagoAplicado['method'],amount:Math.max(0,Math.round((this.totalVenta-this.pagosMixtos.reduce((a,p)=>a+p.amount,0))*100)/100)});}
+  /* Pago dividido, igual que en Touch: se eligen los métodos y en cada uno se
+     escribe cuánto lleva. El que falta por escribir se llena solo con lo que
+     falta; del efectivo sale el cambio. La regla es `distribuirPagoDividido`
+     (shared/pagos), la misma de Touch.
+     0081: «A crédito» también se combina: el cliente paga una parte y el
+     resto queda en su crédito («trae $100 de $150»). */
+  readonly mixedMethods: { valor: MetodoDividido; etiqueta: string; icono: string }[] = [
+    { valor: 'EFECTIVO', etiqueta: 'Efectivo', icono: 'ph-coins' },
+    { valor: 'TARJETA', etiqueta: 'Tarjeta', icono: 'ph-credit-card' },
+    { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia', icono: 'ph-bank' },
+    { valor: 'PLATAFORMA', etiqueta: 'Plataforma', icono: 'ph-moped' },
+    { valor: 'CREDITO', etiqueta: 'A crédito', icono: 'ph-hourglass' },
+  ];
+  metodosMixtos: MetodoDividido[] = [];
+  capturadosMixtos: Partial<Record<MetodoDividido, number>> = {};
+  get dividido() { return distribuirPagoDividido(this.totalVenta, this.metodosMixtos, this.capturadosMixtos); }
+  /** Lo que se registra en la venta. */
+  get pagosMixtos(): PagoAplicado[] { return this.dividido.pagos; }
+  get errorMixto() { return this.paymentMethod === 'MIXTO' ? this.dividido.error : ''; }
+  /** Cómo se llama el campo de cada método: el de efectivo dice lo que dio. */
+  etiquetaMixto(m: MetodoDividido): string {
+    return m === 'EFECTIVO' ? 'Efectivo recibido' : this.mixedMethods.find(x => x.valor === m)?.etiqueta ?? m;
+  }
+  /** Tocar un método: entra al pago; si ya estaba, sale (queda al menos uno). */
+  alternarMetodoMixto(m: MetodoDividido) {
+    if (this.cobrando) return;
+    if (this.metodosMixtos.includes(m)) {
+      if (this.metodosMixtos.length <= 1) return;
+      this.metodosMixtos = this.metodosMixtos.filter(x => x !== m);
+      const { [m]: _, ...resto } = this.capturadosMixtos;
+      this.capturadosMixtos = resto;
+    } else {
+      if (this.metodosMixtos.length >= 4) return;
+      this.metodosMixtos = [...this.metodosMixtos, m];
+    }
+    void this.alCambiarPagosMixtos();
+  }
+  /** Lo que se escribe en un método. Vacío: vuelve a llenarse solo. */
+  capturarMixto(m: MetodoDividido, v: number | string | null) {
+    const n = Number(v);
+    const { [m]: _, ...resto } = this.capturadosMixtos;
+    this.capturadosMixtos = v === '' || v == null || !Number.isFinite(n) ? resto : { ...resto, [m]: n };
+  }
+
+  /** ¿Algo de esta venta queda a crédito? La venta entera o una parte del pago dividido. */
+  get usaCredito(): boolean {
+    return this.paymentMethod === 'CREDITO' || (this.paymentMethod === 'MIXTO' && this.metodosMixtos.includes('CREDITO'));
+  }
+  /** Lo que queda a crédito: el total, o la parte «A crédito» del pago dividido. */
+  get montoACredito(): number {
+    if (this.paymentMethod === 'CREDITO') return this.totalVenta;
+    return this.metodosMixtos.includes('CREDITO') ? Number(this.dividido.valores.CREDITO) || 0 : 0;
+  }
+  /** Lo que se cobra ahora cuando una parte queda a crédito. */
+  get cobradoAhora(): number { return Math.max(0, Math.round((this.totalVenta - this.montoACredito) * 100) / 100); }
+
+  /**
+   * Al elegir «A crédito» en el pago dividido hace falta el cliente: se cargan
+   * los que tienen crédito y se propone el de la cuenta, como en Crédito.
+   * Al quitarlo, el cliente de crédito se suelta.
+   */
+  async alCambiarPagosMixtos(): Promise<void> {
+    if (!this.usaCredito) { if (this.customerId != null) { this.customerId = null; this.dueDate = null; } return; }
+    /* Solo al EMPEZAR a usar crédito: después, el cliente que se elija a mano
+       se respeta. Manda el de la cuenta, como en «Crédito»; la lista solo
+       propone al primero que puede fiar cuando la cuenta no tiene cliente. */
+    if (this.customerId != null) return;
+    await this.loadCreditCustomers();
+    const cli = this.clienteSeleccionado;
+    const match = cli ? this.creditCustomers.find(c => c.id === cli.id && !c.block) : null;
+    if (match) this.customerId = match.id;
+  }
 
 
   dueDate: string | null = null;
@@ -350,7 +415,7 @@ export class Venta implements OnInit, OnDestroy {
         if (this.isTypingInInput()) return;
         if (Swal.isVisible()) return;
 
-    if (this.granel || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal) return;
+    if (this.granel || this.opcionesAbiertas || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal) return;
         if (this.isEditing && !this.editUnlocked) return;
 
         await this.addByBarcode(code);
@@ -544,7 +609,7 @@ export class Venta implements OnInit, OnDestroy {
   /** La venta pasa del disponible del cliente: se dice ANTES de cobrar. */
   get excedeCredito(): boolean {
     const c = this.clienteCredito;
-    return !!c && this.totalVenta > c.availableCredit + 0.001;
+    return !!c && this.montoACredito > c.availableCredit + 0.001;
   }
 
   get shiftOpen(): boolean { return this.shift.isOpen; }
@@ -836,8 +901,10 @@ export class Venta implements OnInit, OnDestroy {
 
   async onPaymentMethodChange(method: PaymentMethod) {
     if(this.cobrando)return;
+    const antes = this.paymentMethod;
     this.paymentMethod = method;
-    if(method==='MIXTO' && !this.pagosMixtos.length)this.pagosMixtos=[{method:'EFECTIVO',amount:0,received:0}];
+    /* Al entrar a dividir: efectivo y tarjeta, sin nada escrito (Touch igual). */
+    if (method === 'MIXTO' && antes !== 'MIXTO') { this.metodosMixtos = ['EFECTIVO', 'TARJETA']; this.capturadosMixtos = {}; }
     if(method==='PLATAFORMA')this.dineroRecibido=this.totalVenta;
     else this.pedidoPlataforma='';
 
@@ -943,7 +1010,7 @@ export class Venta implements OnInit, OnDestroy {
       return;
     }
 
-    const isCredito = this.paymentMethod === 'CREDITO';
+    const isCredito = this.usaCredito;
     /* La base tiene la ultima palabra (sp_register_sale), pero decirlo aqui
        ahorra un viaje y un mensaje menos claro. */
     if (isCredito && this.excedeCredito) {
@@ -951,7 +1018,7 @@ export class Venta implements OnInit, OnDestroy {
       this.showModal = false;
       await Swal.fire({
         icon: 'warning', title: 'Supera el crédito disponible',
-        text: `${c.customerName} tiene ${c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} disponibles y la venta es de ${this.totalVenta.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}.`,
+        text: `${c.customerName} tiene ${c.availableCredit.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} disponibles y ${this.paymentMethod === 'CREDITO' ? 'la venta es' : 'lo que queda a crédito es'} de ${this.montoACredito.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}.`,
       });
       return;
     }
@@ -1053,7 +1120,9 @@ export class Venta implements OnInit, OnDestroy {
     this.lastSaleId = saleId;
     this.lastSaleIsCredito = isCredito;
     this.lastSaleTotal = res.total ?? 0;
-    if (!isCredito) {
+    /* 0081: a crédito con una parte pagada: lo pagado y el cambio sí existen. */
+    const pagoUnaParte = isCredito && (res.paid ?? 0) > 0;
+    if (!isCredito || pagoUnaParte) {
       this.lastSalePaid = res.paid ?? this.lastSaleTotal;
       this.lastSaleChange = res.change ?? 0;
     }
@@ -1061,8 +1130,8 @@ export class Venta implements OnInit, OnDestroy {
     this.ventaAnterior = {
       id: saleId,
       total: this.lastSaleTotal,
-      pagado: isCredito ? null : this.lastSalePaid,
-      cambio: isCredito ? null : this.lastSaleChange,
+      pagado: isCredito && !pagoUnaParte ? null : this.lastSalePaid,
+      cambio: isCredito && !pagoUnaParte ? null : this.lastSaleChange,
       metodo: Venta.METODOS[metodo] ?? String(metodo || ''),
       hora: new Date(),
     };
@@ -1264,7 +1333,7 @@ export class Venta implements OnInit, OnDestroy {
   }
 
   /**
-   * UNA hoja con todos los grupos del producto.
+   * UNA ventana con todos los grupos del producto (`app-opciones-producto`).
    *
    * Es el equivalente de Retail a la hoja de Touch, y usa exactamente la misma
    * regla para decidir que grupos salen (`gruposAConfigurar`), cuantas
@@ -1274,106 +1343,18 @@ export class Venta implements OnInit, OnDestroy {
    *
    * Devuelve `null` si se cancela.
    */
-  private async preguntarOpciones(
-    p: CatalogProduct, grupos: ModifierGroup[],
-  ): Promise<SelectedOption[] | null> {
-    const esc = (t: string) => String(t ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  opcionesAbiertas: { nombre: string; precio: number; grupos: ModifierGroup[]; resolver: (s: SelectedOption[] | null) => void } | null = null;
 
-    const html = grupos.map(g => {
-      const min = minimoDe(g);
-      const tope = topeDeGrupo(g);
-      const conCantidad = admiteCantidad(g);
-      /* Radio cuando solo cabe una: asi el control DICE que es excluyente en
-         vez de dejar marcar dos y quejarse despues. */
-      const unico = tope <= 1;
-      const marca = unico ? 'radio' : 'checkbox';
-
-      const reglas = [
-        min > 0 ? 'obligatorio' : null,
-        tope > 1 ? `hasta ${tope}` : null,
-      ].filter(Boolean).join(' · ');
-
-      const filas = opcionesElegibles(g).map(o => {
-        const extra = Number(o.price_delta || 0);
-        const precio = extra ? `<span class="vo-precio">+$${extra.toFixed(2)}</span>` : '';
-        const cant = conCantidad && !unico
-          ? `<input type="number" class="vo-cant" min="1" max="${tope}" value="1"
-                    data-cant="${o.id}" title="Cantidad">`
-          : '';
-        return `<label class="vo-fila">
-                  <input type="${marca}" name="g${g.id}" data-opt="${o.id}" data-grupo="${g.id}">
-                  <span class="vo-nombre">${esc(o.name)}</span>${precio}${cant}
-                </label>`;
-      }).join('');
-
-      return `<div class="vo-grupo" data-g="${g.id}" data-min="${min}" data-max="${tope}">
-                <div class="vo-titulo">
-                  <span class="vo-titulo__n">${esc(g.name)}</span>
-                  ${reglas ? `<span class="vo-regla">${reglas}</span>` : ''}
-                </div>${filas}
-              </div>`;
-    }).join('');
-
-    const r = await Swal.fire({
-      title: p.product_name,
-      html: `<div class="vo">${html}</div>`,
-      width: 560,
-      showCancelButton: true,
-      confirmButtonText: 'Agregar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#2563eb',
-      /* La validacion vive aqui y no despues de cerrar: cerrar la hoja y
-         recibir un error obliga a reconstruir la seleccion entera. */
-      preConfirm: () => {
-        const sel: { grupo: number; opcion: number; cant: number }[] = [];
-        const faltan: string[] = [];
-        const pasados: string[] = [];
-
-        document.querySelectorAll<HTMLElement>('.vo .vo-grupo').forEach(bloque => {
-          const gid = Number(bloque.dataset['g']);
-          const min = Number(bloque.dataset['min'] || 0);
-          const max = Number(bloque.dataset['max'] || 1);
-          const titulo = bloque.querySelector('.vo-titulo__n')?.textContent || '';
-          let unidades = 0;
-          let elegidas = 0;
-
-          bloque.querySelectorAll<HTMLInputElement>('input[data-opt]').forEach(el => {
-            if (!el.checked) return;
-            const id = Number(el.dataset['opt']);
-            const c = bloque.querySelector<HTMLInputElement>(`[data-cant="${id}"]`);
-            const n = Math.max(1, Number(c?.value || 1));
-            unidades += n;
-            elegidas += 1;
-            sel.push({ grupo: gid, opcion: id, cant: n });
-          });
-
-          if (elegidas < min) faltan.push(titulo);
-          // El tope se cuenta en UNIDADES, igual que en Touch.
-          if (unidades > max) pasados.push(`${titulo} (máximo ${max})`);
-        });
-
-        if (faltan.length) {
-          Swal.showValidationMessage(`Falta elegir: ${faltan.join(', ')}`);
-          return false;
-        }
-        if (pasados.length) {
-          Swal.showValidationMessage(`Te pasaste en: ${pasados.join(', ')}`);
-          return false;
-        }
-        return sel;
-      },
+  private preguntarOpciones(p: CatalogProduct, grupos: ModifierGroup[]): Promise<SelectedOption[] | null> {
+    return new Promise(resolve => {
+      this.opcionesAbiertas = { nombre: p.product_name, precio: Number(p.price) || 0, grupos, resolver: resolve };
     });
+  }
 
-    if (!r.isConfirmed) return null;
-    const elegidas: SelectedOption[] = [];
-    for (const x of (r.value as { grupo: number; opcion: number; cant: number }[] | undefined) || []) {
-      const g = grupos.find(y => y.id === x.grupo);
-      const o = g ? opcionesElegibles(g).find(y => y.id === x.opcion) : null;
-      // Sin cantidad donde no significa nada: no existe "dos tamanos".
-      if (g && o) elegidas.push({ ...aSeleccionada(g, o), quantity: admiteCantidad(g) ? x.cant : 1 });
-    }
-    return elegidas;
+  cerrarOpciones(sel: SelectedOption[] | null) {
+    const o = this.opcionesAbiertas;
+    this.opcionesAbiertas = null;
+    o?.resolver(sel);
   }
 
   /**
@@ -1586,7 +1567,7 @@ export class Venta implements OnInit, OnDestroy {
 
     /* La devolución (y el reembolso de un folio cargado) tienen sus propias
        flechas: aquí no se mueve el carrito ni Supr borra un renglón por debajo. */
-    if (this.granel || this.devolviendo || this.showRefundModal || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
+    if (this.granel || this.opcionesAbiertas || this.devolviendo || this.showRefundModal || this.showModal || this.showModalProductos || this.showCashOutModal || this.showCashInModal || this.showPostSaleModal || this.showOpenShiftModal || this.showFacturaModal) {
       return;
     }
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, screen, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, screen, nativeImage, webContents } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
@@ -39,6 +39,20 @@ const backup = require('./backupManager');
 const logger = require('./logger');
 const db = require('./db');
 const DB_NAME = 'Wybix_POS';
+
+/* MULTIEMPRESA (docs/multiempresa.md): qué archivos de `userData` son de la
+   empresa activa. Se configura antes que nada lea uno; la base de la
+   instalación conserva las rutas de siempre. */
+const ambito = require('./empresas/ambito');
+ambito.configurar({
+  userData: () => app.getPath('userData'),
+  baseActiva: () => db.getConnectionConfig().database || null,
+  baseDeInstalacion: () => loadInstallConfig()?.empresaPrincipal ?? null,
+});
+/* Los servicios en segundo plano y las memorias de la empresa activa: se
+   registran junto a su estado y se detienen, olvidan y arrancan como unidad
+   al cambiar de empresa (electron/empresas/ciclo.js). */
+const ciclo = require('./empresas/ciclo').crearCiclo({ log: console.log, logError: console.error });
 
 /* ------------------------------------------------------ GESTOR DE DEMOS
    Solo existe en el build INTERNO. En el instalador publico esta carpeta no
@@ -198,6 +212,7 @@ const FUNCIONES_URL = (!app.isPackaged && process.env.WYBIX_FUNCIONES_URL)
 const ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bHBzcGdta3d6bHJvd2xsdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDMyNzAsImV4cCI6MjA5ODYxOTI3MH0.Wyh4fjmhYJp-USPHtrj_dKAJow038Nj62jR44qirmlM';
 
 let businessConfig = null;
+ciclo.registrarMemoria('negocio', () => { businessConfig = null; });
 
 let updateCheckTimer = null;
 let mainWindow = null;
@@ -432,15 +447,20 @@ function createSetupWindow() {
   return win;
 }
 
-async function bootMainApp(poolYaAbierto) {
-  // El pool llega del paso "conectar" del arranque. Se acepta tambien sin
-  // argumento porque `setup-run` llama aqui despues de dar de alta la
-  // instalacion, y ahi la conexion ya quedo establecida igualmente.
-  const pool = poolYaAbierto || await poolPromise;
-  const migrationsDir = isDev
-    ? path.join(__dirname, 'migrations')
-    : path.join(process.resourcesPath, 'migrations');
+const migrationsDir = isDev
+  ? path.join(__dirname, 'migrations')
+  : path.join(process.resourcesPath, 'migrations');
 
+/**
+ * Deja la base ACTIVA lista para operar: migraciones, módulos de arranque y
+ * objetos críticos. La usan el arranque y el cambio de empresa: una empresa a
+ * la que se entra pasa por lo mismo que la que abre la caja.
+ *
+ * Lanza `MISSING_OBJECTS` si faltan objetos críticos. Antes de esta
+ * comprobación, a una instalación podía faltarle un procedure durante meses:
+ * cada pantalla fallaba por su cuenta y parecía un problema de datos.
+ */
+async function prepararBase(pool) {
   const mig = await runMigrations({ pool, sql, migrationsDir });
   console.log('Migraciones:', mig);
   await encenderModulosDeArranque(pool);
@@ -449,31 +469,45 @@ async function bootMainApp(poolYaAbierto) {
   // las migraciones. Antes de esto, a una instalacion podia faltarle un
   // procedure durante meses: cada pantalla fallaba por su cuenta y parecia un
   // problema de datos. Ahora se detecta al arrancar y se dice cual falta.
+  let chequeo;
   try {
-    const chequeo = await verificarObjetosCriticos(pool);
-    if (chequeo.sinLista) {
-      console.warn('[OBJETOS] Sin lista de objetos criticos: no se verifico nada.');
-    } else if (!chequeo.ok) {
-      const detalle = chequeo.faltantes.join(', ');
-      console.error(`[OBJETOS] Faltan ${chequeo.faltantes.length} objetos criticos: ${detalle}`);
-      dialog.showErrorBox(
-        'Instalacion incompleta',
-        'A esta base de datos le faltan objetos que Wybix necesita para operar:\n\n' +
-        chequeo.faltantes.map(n => `  · ${n}`).join('\n') +
-        '\n\nNo se puede continuar de forma segura. Contacta a soporte con este mensaje.',
-      );
-      app.quit();
-      return;
-    } else {
-      console.log(`[OBJETOS] ${chequeo.comprobados} objetos criticos presentes.`);
-    }
+    chequeo = await verificarObjetosCriticos(pool);
   } catch (e) {
     // Un fallo de la propia comprobacion no debe impedir vender.
     console.error('[OBJETOS] No se pudo verificar:', e.message);
+    return;
   }
+  if (chequeo.sinLista) {
+    console.warn('[OBJETOS] Sin lista de objetos criticos: no se verifico nada.');
+    return;
+  }
+  if (!chequeo.ok) {
+    console.error(`[OBJETOS] Faltan ${chequeo.faltantes.length} objetos criticos: ${chequeo.faltantes.join(', ')}`);
+    const e = new Error(`a la base le faltan objetos de Wybix (${chequeo.faltantes.join(', ')})`);
+    e.code = 'MISSING_OBJECTS';
+    e.faltantes = chequeo.faltantes;
+    throw e;
+  }
+  console.log(`[OBJETOS] ${chequeo.comprobados} objetos criticos presentes.`);
+}
 
-  mainWindow = createWindow();
+/**
+ * La base con la que se instaló esta caja conserva sus archivos de siempre
+ * en `userData` (electron/empresas/ambito.js). Se anota la primera vez que
+ * arranca esta versión, antes de que exista otra empresa a la que cambiar.
+ */
+function recordarEmpresaPrincipal() {
+  const inst = loadInstallConfig();
+  const base = db.getConnectionConfig().database;
+  if (inst && !inst.empresaPrincipal && base) saveInstallConfig({ ...inst, empresaPrincipal: base });
+}
 
+/* ------------------------------------------------ SERVICIOS DE LA EMPRESA
+   Lo que trabaja solo en segundo plano para la empresa activa. Se arranca
+   al abrir Wybix y se detiene y se vuelve a arrancar, como unidad, al cambiar
+   de empresa (electron/empresas/ciclo.js). Se inician en este orden y se
+   detienen en el inverso. */
+ciclo.registrarServicio('caja-arrendada', {
   /* ARRIENDO DE CAJA
      ----------------
      Esta maquina reclama la caja que tiene guardada y empieza a latir. En una
@@ -483,47 +517,95 @@ async function bootMainApp(poolYaAbierto) {
 
      La identidad es la MISMA que usa la licencia -la huella sellada-, no el
      hostname: renombrar un equipo no puede costarle su caja. */
-  try {
-    cajaArrendada.configurar({
-      machineId: machineIdDeEsteEquipo(),
-      machineName: os.hostname(),
-      leerCaja: () => loadDeviceConfig()?.register ?? null,
-    });
-    await cajaArrendada.iniciar();
-    const c = cajaArrendada.instantanea();
-    if (c.registerId) {
-      console.log(`[CAJA] ${c.registerName ?? c.registerId}: ${c.ultimo ?? c.error ?? 'sin respuesta'}`);
+  async iniciar() {
+    try {
+      cajaArrendada.configurar({
+        machineId: machineIdDeEsteEquipo(),
+        machineName: os.hostname(),
+        leerCaja: () => loadDeviceConfig()?.register ?? null,
+      });
+      await cajaArrendada.iniciar();
+      const c = cajaArrendada.instantanea();
+      if (c.registerId) console.log(`[CAJA] ${c.registerName ?? c.registerId}: ${c.ultimo ?? c.error ?? 'sin respuesta'}`);
+    } catch (e) {
+      // Sin arriendo se opera como siempre. No es motivo para no abrir.
+      console.error('[CAJA] No se pudo iniciar el arriendo:', e.message);
     }
+  },
+  /* Al salir de la empresa se suelta su caja: quien entre en ella desde otro
+     equipo no tiene que esperar a que caduque. */
+  async detener() {
+    try { await cajaArrendada.soltar('EQUIPO'); } finally { cajaArrendada.detener(); }
+  },
+});
+ciclo.registrarServicio('local-host', {
+  /* El Local Host arranca DESPUES de la caja: no compite por la base con el
+     arranque, y si no esta encendido en Configuracion no abre nada. No se
+     espera: la ventana no depende de el. */
+  iniciar() { localHost.iniciar().catch(e => console.error('[LOCAL HOST] No se pudo iniciar:', e.message)); },
+  detener: () => localHost.detener(),
+});
+ciclo.registrarServicio('respaldos', {
+  iniciar: () => backup.startScheduler(),
+  detener: () => backup.stopScheduler(),
+});
+ciclo.registrarServicio('nube', {
+  /* La nube va por la Edge Function pos-sync (sin service role) y se pausa
+     en Venta Esencial: es un servicio conectado. Su credencial es la de la
+     empresa activa (cloud-config.json de su ámbito). */
+  iniciar() {
+    // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
+    if (!cachedMachineId) cachedMachineId = generarMachineId();
+    cloudSync.setLicenseMachineId(cachedMachineId);
+    cloudSync.configurar({
+      url: SUPABASE_URL, funciones: FUNCIONES_URL, anonKey: ANON_KEY,
+      licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
+      /* Fase 1: la base de SQL Server es la sucursal; solo la principal la da
+         de alta, sincroniza y manda hechos. */
+      esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
+      nombres: () => ({
+        negocio: businessConfig?.business_name || os.hostname() || 'Mi negocio',
+        sucursal: 'Matriz',
+        equipo: os.hostname() || 'Caja',
+      }),
+      version: app.getVersion(),
+    });
+    cloudSync.startScheduler();
+  },
+  detener: () => cloudSync.stopScheduler(),
+});
+
+async function bootMainApp(poolYaAbierto) {
+  // El pool llega del paso "conectar" del arranque. Se acepta tambien sin
+  // argumento porque `setup-run` llama aqui despues de dar de alta la
+  // instalacion, y ahi la conexion ya quedo establecida igualmente.
+  const pool = poolYaAbierto || await poolPromise;
+  recordarEmpresaPrincipal();
+  const sinRegistrar = ciclo.faltantes();
+  if (sinRegistrar.length) console.error(`[EMPRESA] Falta registrar en el ciclo: ${sinRegistrar.join(', ')}`);
+
+  try {
+    await prepararBase(pool);
   } catch (e) {
-    // Sin arriendo se opera como siempre. No es motivo para no abrir.
-    console.error('[CAJA] No se pudo iniciar el arriendo:', e.message);
+    if (e.code !== 'MISSING_OBJECTS') throw e;
+    dialog.showErrorBox(
+      'Instalacion incompleta',
+      'A esta base de datos le faltan objetos que Wybix necesita para operar:\n\n' +
+      e.faltantes.map(n => `  · ${n}`).join('\n') +
+      '\n\nNo se puede continuar de forma segura. Contacta a soporte con este mensaje.',
+    );
+    app.quit();
+    return;
   }
 
-  /* El Local Host arranca DESPUES de la caja: no compite por la base con el
-     arranque, y si no esta encendido en Configuracion no abre nada. */
-  localHost.iniciar().catch(e => console.error('[LOCAL HOST] No se pudo iniciar:', e.message));
-
-  backup.startScheduler();
-  // Pasa el machine_id de licencia a la nube (para ligar licencias↔negocio en el admin)
-  if (!cachedMachineId) cachedMachineId = generarMachineId();
-  cloudSync.setLicenseMachineId(cachedMachineId);
-  /* La nube va por la Edge Function pos-sync (sin service role) y se pausa
-     en Venta Esencial: es un servicio conectado. */
-  cloudSync.configurar({
-    url: SUPABASE_URL, funciones: FUNCIONES_URL, anonKey: ANON_KEY,
-    licenciaPermite: () => { try { return licencia.evaluador().tiene('cloud_sync'); } catch { return true; } },
-    /* Fase 1: la base de SQL Server es la sucursal; solo la principal la da
-       de alta, sincroniza y manda hechos. */
-    esPrincipal: () => (loadInstallConfig()?.role ?? 'principal') === 'principal',
-    nombres: () => ({
-      negocio: businessConfig?.business_name || os.hostname() || 'Mi negocio',
-      sucursal: 'Matriz',
-      equipo: os.hostname() || 'Caja',
-    }),
-    version: app.getVersion(),
-  });
-  cloudSync.startScheduler();
+  mainWindow = createWindow();
+  await ciclo.iniciarTodo();
   ensureBusinessConfig().catch(err => console.error('businessConfig:', err));
+
+  /* Las OTRAS empresas del grupo se migran despues, sin hacer esperar a la
+     ventana: Mis empresas y el cambio de empresa no se encuentran una base
+     de una version anterior. */
+  empresas.locales.migrarLasDemas().catch(e => console.error('[EMPRESA] migrar las demas:', e.message));
 
   // Abre la pantalla de cliente si quedo habilitada en la configuracion.
   autoOpenCustomerDisplay();
@@ -576,6 +658,8 @@ async function abrirDemoEnWybix({ base, servidor, perfilId }) {
     mainWindow = null;
     demoAbierta = null;
     anterior.destroy();
+    /* Sus servicios tambien: es el mismo cambio de base que el de empresa. */
+    await ciclo.detenerTodo();
   }
 
   const r = await db.setConnectionConfig({ server: servidor, database: base, auth: 'windows' });
@@ -591,13 +675,13 @@ async function abrirDemoEnWybix({ base, servidor, perfilId }) {
     demo: perfilId || true,
   });
 
-  /* EL CACHE DE NEGOCIO ES DEL PROCESO, NO DE LA BASE.
+  /* LAS MEMORIAS SON DEL PROCESO, NO DE LA BASE.
      `ensureBusinessConfig` memoriza la primera respuesta y no vuelve a
-     preguntar. Como el gestor cambia de base sin reiniciar Electron, sin esta
-     linea la demo de Retail arrancaba con el nombre y el `business_profile`
-     que quedaron de la de Hospitality: la base era la correcta y la pantalla
-     era la de antes. */
-  businessConfig = null;
+     preguntar. Como el gestor cambia de base sin reiniciar Electron, sin esto
+     la demo de Retail arrancaba con el nombre y el `business_profile` que
+     quedaron de la de Hospitality: la base era la correcta y la pantalla era
+     la de antes. Se olvida TODO lo de la base anterior, no solo el negocio. */
+  ciclo.olvidarTodo();
 
   await bootMainApp();
   demoAbierta = base;
@@ -857,7 +941,7 @@ ipcMain.handle('import-database', sesion.proteger('import-database', async () =>
 }));
 
 function getDeviceConfigPath() {
-  return path.join(app.getPath('userData'), 'device-config.json');
+  return ambito.ruta('device-config.json');
 }
 
 /**
@@ -1197,7 +1281,7 @@ ipcMain.handle('customer:get-business', async () => {
 //  MODULOS OPCIONALES — Pago de servicios / recargas (TAECEL, etc.)
 // ============================================================
 function getServicesConfigPath() {
-  return path.join(app.getPath('userData'), 'services-config.json');
+  return ambito.ruta('services-config.json');
 }
 function loadServicesConfig() {
   try {
@@ -1461,6 +1545,7 @@ const AJUSTES_ADDON = (() => { try { return require('./addon.generated.json').aj
 const CLAVE_APROBACIONES = 'APROBACIONES';
 const TTL_APROBACIONES_MS = 5000;
 let politicaAprobaciones = { valor: null, leidoEn: 0, leyendo: null };
+ciclo.registrarMemoria('aprobaciones', () => { politicaAprobaciones = { valor: null, leidoEn: 0, leyendo: null }; });
 
 function aprobacionesPorOmision() { return AJUSTES_ADDON.aprobaciones !== false; }
 
@@ -1812,6 +1897,18 @@ function toDateOrNull(value, endOfDay = false) {
   return d;
 }
 
+/**
+ * Carga la interfaz desde su entrada. Se usa al abrir la ventana y al cambiar
+ * de empresa: el router de Angular usa rutas con path sobre `file://`, así
+ * que `reload()` pediría `.../browser/dashboard/inicio`, un archivo que no
+ * existe, y la ventana quedaría en blanco.
+ */
+function cargarInterfaz(contenido) {
+  const desdeBundle = !isDev || process.env.WYBIX_UI_DIST === '1';
+  if (desdeBundle) return contenido.loadFile(path.join(__dirname, '../dist/filtros_lubs_rios/browser/index.html'));
+  return contenido.loadURL('http://localhost:4200');
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1920,
@@ -1833,12 +1930,7 @@ function createWindow() {
      ellas anadiria un minuto largo a cada ejecucion y una fuente de fallos
      -el puerto ocupado, la recompilacion a medias- que no tiene nada que ver
      con lo que se esta probando. */
-  const desdeBundle = !isDev || process.env.WYBIX_UI_DIST === '1';
-  if (desdeBundle) {
-    win.loadFile(path.join(__dirname, '../dist/filtros_lubs_rios/browser/index.html'));
-  } else {
-    win.loadURL('http://localhost:4200');
-  }
+  cargarInterfaz(win.webContents);
 
   setupAutoUpdater(win);
   startSerialScanner(win, { path: 'COM3', baudRate: 9600 });
@@ -1965,7 +2057,7 @@ ipcMain.handle('update-business-config', sesion.proteger('update-business-config
 }));
 
 // Formas de pago (config local por caja)
-function paymentsConfigPath() { return path.join(app.getPath('userData'), 'payments-config.json'); }
+function paymentsConfigPath() { return ambito.ruta('payments-config.json'); }
 function defaultPayments() { return { efectivo: true, tarjeta: true, transferencia: true, credito: true, terminal_mp: true }; }
 function loadPaymentsConfig() {
   try {
@@ -2049,6 +2141,8 @@ async function comprobarModeloDeSeguridad() {
 
 ipcMain.handle('security:modelo', async () => comprobarModeloDeSeguridad());
 
+/* La revision de seguridad es de la base: otra empresa empieza a contar de cero. */
+ciclo.registrarMemoria('sesiones', () => sesion.invalidarRevision());
 sesion.configurar({
   leerRevision: async () => {
     const pool = await poolPromise;
@@ -2106,6 +2200,7 @@ app.on('web-contents-created', (_e, wc) => {
    Cache corta y comun. Se relee sola: no hace falta tiempo real para que una
    caja deje de permitir acciones de un modulo que se apago en otra. */
 let modulosCache = { valor: null, leidoEn: 0 };
+ciclo.registrarMemoria('modulos', () => { modulosCache = { valor: null, leidoEn: 0 }; });
 const TTL_MODULOS_MS = 5000;
 
 async function modulosActivos(forzar = false) {
@@ -4488,9 +4583,8 @@ function moneyTicket(value) {
  */
 function ticketLogoUrl() {
   try {
-    const base = app.getPath('userData');
     for (const nombre of ['ticket-logo.png', 'ticket-logo.jpg', 'ticket-logo.jpeg']) {
-      const p = path.join(base, nombre);
+      const p = ambito.ruta(nombre);
       if (fs.existsSync(p)) return 'file://' + p.split(path.sep).join('/');
     }
   } catch { /* sin carpeta de datos accesible */ }
@@ -4545,14 +4639,14 @@ ipcMain.handle('ticket:guardar-logo', sesion.proteger('ticket:guardar-logo', asy
       && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
     if (!esPng) return { success: false, error: 'El formato no es valido.' };
 
-    const base = app.getPath('userData');
     /* Los otros nombres se borran: si quedara un .jpg viejo, `ticketLogoUrl`
-       podria seguir sirviendolo segun el orden de la lista. */
+       podria seguir sirviendolo segun el orden de la lista. El logo es de la
+       EMPRESA activa (electron/empresas/ambito.js). */
     for (const n of LOGO_NOMBRES) {
-      const ruta = path.join(base, n);
+      const ruta = ambito.ruta(n);
       try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch { /* se sobrescribe */ }
     }
-    fs.writeFileSync(path.join(base, 'ticket-logo.png'), bytes);
+    fs.writeFileSync(ambito.ruta('ticket-logo.png'), bytes);
 
     return { success: true, logoUrl: ticketLogoUrl() };
   } catch (e) {
@@ -4563,9 +4657,8 @@ ipcMain.handle('ticket:guardar-logo', sesion.proteger('ticket:guardar-logo', asy
 
 ipcMain.handle('ticket:borrar-logo', sesion.proteger('ticket:borrar-logo', async () => {
   try {
-    const base = app.getPath('userData');
     for (const n of LOGO_NOMBRES) {
-      const ruta = path.join(base, n);
+      const ruta = ambito.ruta(n);
       try { if (fs.existsSync(ruta)) fs.unlinkSync(ruta); } catch { /* ya no estaba */ }
     }
     return { success: true };
@@ -4628,7 +4721,11 @@ cloudSync.alPedidosEnLinea((nuevos) => {
     log: (m) => console.warn('[whatsapp]', m),
   });
   require('./ipc/whatsapp').registrar({ ipcMain, avisos: avisosWhatsapp, nubeLista, abrirExterno: (u) => shell.openExternal(u) });
-  avisosWhatsapp.iniciar();
+  /* Barre los pedidos listos de la base ACTIVA: es un servicio de la empresa. */
+  ciclo.registrarServicio('avisos-whatsapp', {
+    iniciar: () => avisosWhatsapp.iniciar(),
+    detener: () => avisosWhatsapp.detener(),
+  });
 }
 /* 0064: puntos y sellos. */
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
@@ -4643,6 +4740,25 @@ require('./ipc/venta-suelta').registrar({ ipcMain, sql, poolPromise });
 /* 0079: Socios (reparto de ganancias entre duenos) y Propinas. */
 require('./ipc/socios').registrar({ ipcMain, sql, poolPromise,
   cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null });
+
+/* 0080: MultiEmpresa (docs/multiempresa.md). Las reglas viven en
+   electron/empresas/; aquí solo se le entrega lo que ya existe. */
+const empresas = require('./empresas').crearEmpresas({
+  sql, db, poolPromise, ciclo, sesion, permisos, ambito, setupServer, cloudSync,
+  servidorEsLocal: require('./lib/host').servidorEsLocal,
+  migrar: (pool) => runMigrations({ pool, sql, migrationsDir }),
+  prepararBase,
+  carpetaDeRespaldos: () => backup.loadBackupConfig().folder || 'C:\\POS_Backups',
+  recargarVentana: (id) => { const wc = webContents.fromId(id); if (wc && !wc.isDestroyed()) cargarInterfaz(wc); },
+});
+empresas.registrarIpc(ipcMain);
+/* Los respaldos y la cuenta de red de las secundarias cubren todas las
+   empresas de esta computadora, no solo la activa. */
+{
+  const basesDeEstaComputadora = async () => (await empresas.locales.listar()).map(e => e.base);
+  backup.configurar({ bases: basesDeEstaComputadora });
+  redMulticaja.configurar({ bases: basesDeEstaComputadora });
+}
 
 ipcMain.handle('print-sale-ticket', sesion.proteger('print-sale-ticket', async (_event, payload = {}) => {
   try {
@@ -5725,6 +5841,7 @@ const FISCAL_NUBE = {
   'fiscal:registrar-emisor': 'fiscal-register-issuer',
 };
 let historicoFiscalReclamado = null;
+ciclo.registrarMemoria('fiscal-historico', () => { historicoFiscalReclamado = null; });
 /* TRANSICION: el emisor y las facturas de antes de la Fase 1 se reclaman una
    vez para que la nube sepa de que empresa son (si otra empresa reclama lo
    mismo, queda en conflicto y lo revisa Wybix; no se inventa dueño). */

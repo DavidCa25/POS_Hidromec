@@ -49,6 +49,8 @@ export const PAQUETES = {
   ASISTENCIA_GESTIONAR: 'ASISTENCIA_GESTIONAR',
   // 0079: Socios (ver, liquidar, retiros y aportaciones).
   SOCIOS_GESTIONAR: 'SOCIOS_GESTIONAR',
+  // 0080: MultiEmpresa (cambiar a otra empresa del dueño, Mis empresas).
+  EMPRESAS_CAMBIAR: 'EMPRESAS_CAMBIAR',
   // 0077: permisos por persona (lo delicado y lo que se ve).
   DEVOLUCIONES: 'DEVOLUCIONES',
   RETIROS_EGRESOS: 'RETIROS_EGRESOS',

@@ -2,7 +2,7 @@ import { ClubWalletLectura } from '../core/club-wallet-lectura';
 import {FacturaNueva,ConceptoFactura} from '../app/factura-nueva/factura-nueva.component';
 import {ReceiptViewer} from '../app/receipt-viewer/receipt-viewer.component';
 import {ReceiptEmail} from '../app/receipt-email/receipt-email.component';
-import { validarPagos, type PagoAplicado } from '../../shared/pagos';
+import { distribuirPagoDividido, type PagoAplicado } from '../../shared/pagos';
 import {CommercialService} from '../core/commercial.service';
 import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.component';
 import { WxMascotaComponent, type EstadoMascota } from '../app/wx-mascota/wx-mascota.component';
@@ -20,7 +20,7 @@ import {
   MenuProduct, ModifierGroup, ModifierOption, PaymentMethod, SaleService,
   SelectedOption, ServiceMode, ShiftService,
   MesaService, MesaSalon,
-  CajonService,
+  CajonService, CreditoCliente,
 } from '../core';
 import { ClubService } from '../core/club.service';
 import { SalidaEfectivo } from '../venta/salida-efectivo/salida-efectivo.component';
@@ -391,41 +391,38 @@ export class TouchPos implements OnInit, OnDestroy {
      este pago» y «recibido» por separado.
      --------------------------------------------------------------------- */
   readonly pagoMixto = signal(false);
+  /**
+   * 0081 · El crédito del cliente de la cuenta, si una parte queda «A
+   * crédito» («trae $100 de $150»). Se consulta al elegir el método; la base
+   * lo vuelve a validar al cobrar.
+   */
+  readonly creditoCliente = signal<CreditoCliente | null>(null);
   readonly metodosMixtos = signal<PagoAplicado['method'][]>([]);
   readonly capturados = signal<Partial<Record<PagoAplicado['method'], number>>>({});
+  /** La distribución completa (regla compartida con Retail en shared/pagos). */
+  private readonly dividido = computed(() => distribuirPagoDividido(this.totales().total, this.metodosMixtos(), this.capturados()));
   /** Lo que muestra cada campo: tecleado o calculado. */
-  readonly montosMixtos = computed(() => {
-    const total = this.totales().total, ms = this.metodosMixtos(), cap = this.capturados();
-    const r2 = (n: number) => Math.round(n * 100) / 100;
-    const auto = [...ms].reverse().find(m => cap[m] === undefined);
-    const tecleado = ms.reduce((a, m) => a + (m !== auto ? (cap[m] ?? 0) : 0), 0);
-    const out: Partial<Record<PagoAplicado['method'], number>> = {};
-    for (const m of ms) out[m] = m === auto ? Math.max(0, r2(total - tecleado)) : (cap[m] ?? 0);
-    return { valores: out, auto };
-  });
+  readonly montosMixtos = computed(() => { const d = this.dividido(); return { valores: d.valores, auto: d.auto }; });
   /** Distribución que se registra: el efectivo aplica solo lo que falta. */
-  readonly pagos = computed<PagoAplicado[]>(() => {
-    const total = this.totales().total, { valores } = this.montosMixtos();
-    const r2 = (n: number) => Math.round(n * 100) / 100;
-    const otros = this.metodosMixtos().filter(m => m !== 'EFECTIVO').map(m => ({ method: m, amount: r2(valores[m] ?? 0) }));
-    const out: PagoAplicado[] = otros.filter(p => p.amount > 0);
-    if (this.metodosMixtos().includes('EFECTIVO')) {
-      const recibido = r2(valores.EFECTIVO ?? 0), falta = Math.max(0, r2(total - otros.reduce((a, p) => a + p.amount, 0)));
-      const aplicado = Math.min(recibido, falta);
-      if (aplicado > 0) out.unshift({ method: 'EFECTIVO', amount: aplicado, received: recibido });
-    }
-    return out;
-  });
-  readonly saldoPagos = computed(() => Math.round((this.totales().total-this.pagos().reduce((a,p)=>a+p.amount,0))*100)/100);
+  readonly pagos = computed<PagoAplicado[]>(() => this.dividido().pagos);
+  readonly saldoPagos = computed(() => this.dividido().saldo);
   /** 0079 · La propina elegida (no suma al total de la venta). */
   readonly propina = signal<PropinaElegida | null>(null);
   private readonly propinaEfectivo = computed(() => this.propina()?.metodo === 'EFECTIVO' ? this.propina()!.monto : 0);
-  readonly cambio = computed(() => { if (!this.pagoMixto()) return Math.max(0,this.recibidoNum()-this.totales().total-this.propinaEfectivo()); const c=this.pagos().find(p=>p.method==='EFECTIVO'); return c ? Math.max(0,Math.round(((c.received??c.amount)-c.amount)*100)/100) : 0; });
+  readonly cambio = computed(() => this.pagoMixto() ? this.dividido().cambio : Math.max(0,this.recibidoNum()-this.totales().total-this.propinaEfectivo()));
   alternarMixto(enabled:boolean) {
     if(this.cobrando())return;
-    this.pagoMixto.set(enabled); this.capturados.set({}); this.recibido.set('');
+    this.pagoMixto.set(enabled); this.capturados.set({}); this.recibido.set(''); this.creditoCliente.set(null);
     this.metodosMixtos.set(enabled ? ['EFECTIVO','TARJETA'] : []);
     this.metodo.set('EFECTIVO');
+  }
+  /** Cómo se llama cada método en el cobro (`recibido`: el campo de efectivo dice lo que dio). */
+  etiquetaPago(m: PagoAplicado['method'], recibido = false): string {
+    const e: Record<PagoAplicado['method'], string> = {
+      EFECTIVO: recibido ? 'Efectivo recibido' : 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia',
+      PLATAFORMA: 'Plataforma', CREDITO: 'A crédito',
+    };
+    return e[m];
   }
   /** Enfocar un método: el teclado escribe sobre él desde cero. */
   enfocarPago(m:PagoAplicado['method']) { if(this.cobrando())return; this.metodo.set(m); this.recibido.set(''); }
@@ -438,10 +435,11 @@ export class TouchPos implements OnInit, OnDestroy {
   }
   readonly errorPagos = computed(() => {
     if(!this.pagoMixto()) return '';
-    const total=this.totales().total, { valores }=this.montosMixtos();
-    const otros=this.metodosMixtos().filter(m=>m!=='EFECTIVO').reduce((a,m)=>a+(valores[m]??0),0);
-    if(Math.round(otros*100)>Math.round(total*100)) return 'Tarjeta, transferencia y plataforma suman más que el total.';
-    try{validarPagos(total,this.pagos());return '';}catch(e){return (e as Error).message;}
+    const aCredito = this.dividido().valores.CREDITO ?? 0;
+    const cr = this.creditoCliente();
+    if (this.metodosMixtos().includes('CREDITO') && cr && aCredito > cr.disponible + 0.001)
+      return `Lo que queda a crédito supera su disponible (${cr.disponible.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}).`;
+    return this.dividido().error;
   });
   readonly alcanza = computed(() => this.pagoMixto() ? !this.errorPagos() : this.metodo() !== 'EFECTIVO' || this.recibidoNum() >= this.totales().total + this.propinaEfectivo());
 
@@ -973,11 +971,16 @@ export class TouchPos implements OnInit, OnDestroy {
     if(this.cobrando())return;
     if(this.pagoMixto()) {
       const pm=m as PagoAplicado['method'];
-      if(!['EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA'].includes(pm))return;
+      if(!['EFECTIVO','TARJETA','TRANSFERENCIA','PLATAFORMA','CREDITO'].includes(pm))return;
       const ms=this.metodosMixtos();
-      if(!ms.includes(pm)) { if(ms.length>=4)return; this.metodosMixtos.set([...ms,pm]); this.enfocarPago(pm); return; }
+      if(!ms.includes(pm)) {
+        if(ms.length>=4)return;
+        if(pm==='CREDITO') { void this.agregarCredito(); return; }
+        this.metodosMixtos.set([...ms,pm]); this.enfocarPago(pm); return;
+      }
       // Tocar el método que ya se está editando lo quita (si queda al menos uno).
       if(this.metodo()===pm && ms.length>1) {
+        if(pm==='CREDITO') this.creditoCliente.set(null);
         this.metodosMixtos.set(ms.filter(x=>x!==pm));
         this.capturados.update(c=>{ const x={...c}; delete x[pm]; return x; });
         this.enfocarPago(this.metodosMixtos()[0]);
@@ -988,6 +991,22 @@ export class TouchPos implements OnInit, OnDestroy {
     }
     this.metodo.set(m);
     if(m!=='EFECTIVO')this.recibido.set('');
+  }
+
+  /**
+   * «A crédito» en el pago dividido: necesita al cliente de la cuenta y que
+   * se le pueda fiar. Sin cliente, se abre la hoja para elegirlo; sin
+   * crédito, se dice por qué y no se agrega.
+   */
+  private async agregarCredito() {
+    const cli = this.cliente();
+    if (!cli) { this.mostrar('Elige el cliente de la cuenta para dejar una parte a crédito'); void this.abrirClientes(); return; }
+    const r = await this.clientesSvc.creditoDe(cli.id);
+    if (!r.ok) { this.mostrar(r.error); return; }
+    if (r.datos.motivo) { this.mostrar(`${cli.name}: ${r.datos.motivo}`); return; }
+    this.creditoCliente.set(r.datos);
+    this.metodosMixtos.update(ms => [...ms, 'CREDITO']);
+    this.enfocarPago('CREDITO');
   }
 
   async confirmar() {
@@ -1008,6 +1027,8 @@ export class TouchPos implements OnInit, OnDestroy {
            hacia que `SaleService.validate` lo rechazara como «dinero recibido
            insuficiente», y Touch no podia cobrar mas que en efectivo. */
         received: this.metodo() === 'EFECTIVO' ? this.recibidoNum() : this.totales().total,
+        /* 0081: la parte a crédito es del cliente de la cuenta. */
+        creditCustomerId: this.pagoMixto() && this.pagos().some(p => p.method === 'CREDITO') ? (this.cliente()?.id ?? null) : null,
         tip: this.pagoMixto() ? null : this.propina(),
       }, {
         openDrawer: this.pagoMixto() ? this.pagos().some(p=>p.method==='EFECTIVO'&&p.amount>0) : this.metodo()==='EFECTIVO',

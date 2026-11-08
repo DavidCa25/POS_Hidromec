@@ -1,0 +1,79 @@
+<!-- La pastilla. Es un botón solo si hay a dónde ir; si no, se queda como
+     siempre: un dato, no un control que no lleva a ningún lado. -->
+<ng-container *ngIf="puede && (svc.hayOtras() || svc.estado()?.administra); else quieta">
+  <button type="button" class="wx-negocio wx-negocio--boton" [class.es-demo]="esDemo"
+          [attr.popovertarget]="idPanel" aria-haspopup="dialog" [style.anchor-name]="ancla"
+          [title]="'Empresa: ' + nombre + '. Cambiar de empresa'"
+          data-guide="empresa-selector">
+    <ng-container *ngTemplateOutlet="dentro"></ng-container>
+    <span class="wx-negocio__flecha" aria-hidden="true"><i class="ph ph-caret-up-down"></i></span>
+  </button>
+
+  <div [id]="idPanel" popover data-anclado class="wx-pop wx-empresa__panel" role="dialog" [style.--wx-anchor]="ancla"
+       aria-label="Empresas" data-guide="empresa-panel">
+    <div class="wx-pop__head">Empresas</div>
+    <div class="wx-pop__body">
+      <ul class="wx-pop__list" aria-label="En esta computadora">
+        <li *ngIf="svc.estado()?.activa as a">
+          <div class="wx-opt wx-empresa__actual" aria-current="true" data-guide="empresa-actual">
+            <i [class]="icono(a.giro)" aria-hidden="true"></i>
+            <span class="wx-opt__txt">{{ a.nombre }}</span>
+            <span class="wx-empresa__nota">aquí estás</span>
+            <i class="ph ph-check wx-empresa__check" aria-hidden="true"></i>
+          </div>
+        </li>
+        <li *ngFor="let e of svc.estado()?.locales ?? []; trackBy: trackLocal">
+          <button type="button" class="wx-opt" (click)="entrar(e)" [disabled]="!!svc.cambiando()"
+                  data-guide="empresa-local" [attr.data-guide-clave]="e.base">
+            <i [class]="icono(e.giro)" aria-hidden="true"></i>
+            <span class="wx-opt__txt">{{ e.nombre }}</span>
+            <span class="wx-empresa__nota" *ngIf="svc.cambiando() === e.base">abriendo…</span>
+            <span class="wx-empresa__nota" *ngIf="svc.cambiando() !== e.base">entrar</span>
+          </button>
+        </li>
+      </ul>
+
+      <ng-container *ngIf="svc.estado()?.remotas?.length">
+        <hr class="wx-pop__sep" />
+        <p class="wx-empresa__grupo">En otra computadora</p>
+        <ul class="wx-pop__list" aria-label="En otra computadora">
+          <li *ngFor="let r of svc.estado()?.remotas ?? []; trackBy: trackRemota">
+            <button type="button" class="wx-opt" (click)="ver(r)" data-guide="empresa-remota" [attr.data-guide-clave]="r.companyId">
+              <i class="ph ph-cloud" aria-hidden="true"></i>
+              <span class="wx-opt__txt">{{ r.nombre }}</span>
+              <span class="wx-empresa__nota">{{ hora(r.ultimaSync) }}</span>
+            </button>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p class="wx-empresa__error" *ngIf="error()" role="alert">{{ error() }}</p>
+    </div>
+    <div class="wx-pop__foot">
+      <button type="button" class="wx-empresa__link" (click)="ir('/dashboard/empresas')" data-guide="empresa-mis-empresas">
+        <i class="ph ph-buildings" aria-hidden="true"></i> Mis empresas
+      </button>
+      <button type="button" class="wx-empresa__link" *ngIf="svc.estado()?.administra"
+              (click)="ir('/dashboard/empresas', { agregar: '1' })" data-guide="empresa-agregar">
+        <i class="ph ph-plus" aria-hidden="true"></i> Agregar
+      </button>
+    </div>
+  </div>
+</ng-container>
+
+<ng-template #quieta>
+  <div class="wx-negocio" [class.es-demo]="esDemo">
+    <ng-container *ngTemplateOutlet="dentro"></ng-container>
+  </div>
+</ng-template>
+
+<ng-template #dentro>
+  <span class="wx-negocio__tile" aria-hidden="true">
+    <i [class]="icono(svc.estado()?.activa?.giro)"></i>
+  </span>
+  <span class="wx-negocio__nombre" [title]="nombre">{{ nombre }}</span>
+  <span class="wx-negocio__demo" *ngIf="esDemo"
+        title="Base de demostración: nada de lo que hagas aquí toca un negocio real.">
+    <i class="ph ph-flask" aria-hidden="true"></i>Demo
+  </span>
+</ng-template>

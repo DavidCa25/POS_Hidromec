@@ -1029,3 +1029,5 @@ button.tp-dinero__campo{border:0;text-align:left;color:var(--wx-text)}
 .club-cobro b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
 .club-cobro--touch { margin: 0 0 10px; font-size: var(--wx-text-base); }
 .club-cobro span { display: inline-flex; align-items: center; gap: 6px; }
+/* 0081: la parte a crédito, con el cliente y su disponible. Va en párrafo normal, no en fila de totales. */
+.tp-pagos>p.tp-pagos__credito{display:block;margin:8px 0 0;padding:10px 12px;border-radius:var(--wx-radius-sm);background:var(--wx-sunken);color:var(--wx-text-muted);font-size:var(--wx-text-sm);line-height:1.45}.tp-pagos__credito b{font-family:inherit;color:var(--wx-text)}

@@ -115,6 +115,13 @@ const BUNDLES = {
    * quien se le de (un socio que entra como Encargado).
    */
   SOCIOS_GESTIONAR: 'SOCIOS_GESTIONAR',
+  /**
+   * 0080 · MultiEmpresa: cambiar a otra empresa del grupo y ver Mis
+   * empresas. Solo Administrador; se puede OTORGAR a quien cobra para dos
+   * empresas en el mismo mostrador. Dar de alta o enlazar empresas sigue
+   * siendo CONFIGURACION_ADMINISTRAR.
+   */
+  EMPRESAS_CAMBIAR: 'EMPRESAS_CAMBIAR',
 
   /* ---------------------------------------------------------------------
    * PERMISOS POR PERSONA (0077). Lo delicado que se marca con una casilla
@@ -261,6 +268,7 @@ function permisosDeRol(rol) {
  */
 const ALTO_RIESGO = new Set([
   BUNDLES.SOCIOS_GESTIONAR,
+  BUNDLES.EMPRESAS_CAMBIAR,
   BUNDLES.VENTAS_SUPERVISAR,
   BUNDLES.CAJA_CORTES,
   BUNDLES.CONFIGURACION_EQUIPO,
@@ -302,6 +310,9 @@ const SOLO_ADMIN = new Set([
   // 0079: el dinero de los duenos. Se puede OTORGAR a un socio que entra con
   // otro rol, pero ningun rol lo trae.
   BUNDLES.SOCIOS_GESTIONAR,
+  // 0080: entrar a otra empresa del dueno. Se OTORGA a un cajero de dos
+  // empresas en el mismo mostrador; ningun rol lo trae.
+  BUNDLES.EMPRESAS_CAMBIAR,
 ]);
 
 /**
@@ -311,6 +322,7 @@ const SOLO_ADMIN = new Set([
  */
 const OTORGABLES = [
   BUNDLES.SOCIOS_GESTIONAR,
+  BUNDLES.EMPRESAS_CAMBIAR,
   BUNDLES.CAJA_CORTES,
   BUNDLES.CONFIGURACION_EQUIPO,
   BUNDLES.INVENTARIO_OPERAR,
@@ -366,6 +378,7 @@ const HACER = [
     [BUNDLES.CONFIGURACION_EQUIPO, 'Equipo de la caja', false],
     [BUNDLES.ASISTENCIA_GESTIONAR, 'Asistencia del equipo', false],
     [BUNDLES.SOCIOS_GESTIONAR, 'Socios: ver, liquidar y retiros', false],
+    [BUNDLES.EMPRESAS_CAMBIAR, 'Cambiar a otra empresa del dueño', false],
   ] },
 ].map(g => ({ ...g, permisos: g.permisos.map(([clave, nombre, pideAutorizacion]) => ({ clave, nombre, pideAutorizacion })) }));
 
@@ -415,6 +428,7 @@ const DESCRIPCIONES = {
   PRODUCCION_OPERAR: ['Producción', 'Planear tandas, empezarlas y registrar lo que salió, con su merma.'],
   ASISTENCIA_GESTIONAR: ['Asistencia', 'Ver las horas de todos, asignar horarios, corregir jornadas y exportar.'],
   SOCIOS_GESTIONAR: ['Socios', 'Ver lo de cada socio, liquidar y registrar retiros, pagos y aportaciones.'],
+  EMPRESAS_CAMBIAR: ['Otras empresas', 'Cambiar a otra empresa del mismo dueño y ver Mis empresas.'],
   DEVOLUCIONES: ['Devoluciones y cambios', 'Devolver o cambiar sin pedir autorización.'],
   RETIROS_EGRESOS: ['Retiros y egresos', 'Sacar dinero del cajón y registrar gastos sin pedir autorización.'],
   CAJON_SIN_VENTA: ['Abrir el cajón sin venta', 'Abrir el cajón sin un cobro, sin pedir autorización.'],

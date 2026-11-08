@@ -34,17 +34,11 @@
            la cola ambar del mismo pill: se ve siempre, pero como parte del
            negocio y no como una etiqueta suelta. El rol se fue al pill de la
            persona (es de quien entro, no del negocio) y la version al pie de
-           su menu (se consulta, no se vigila). -->
-      <div class="wx-negocio" [class.es-demo]="esDemo">
-        <span class="wx-negocio__tile" aria-hidden="true">
-          <i class="ph-fill ph-storefront"></i>
-        </span>
-        <span class="wx-negocio__nombre" [title]="nombreNegocio">{{ nombreNegocio }}</span>
-        <span class="wx-negocio__demo" *ngIf="esDemo"
-              title="Base de demostración: nada de lo que hagas aquí toca un negocio real.">
-          <i class="ph ph-flask" aria-hidden="true"></i>Demo
-        </span>
-      </div>
+           su menu (se consulta, no se vigila).
+
+           Con MultiEmpresa la misma pastilla es el selector de empresa
+           (docs/multiempresa.md). -->
+      <wx-empresa [nombre]="nombreNegocio" [esDemo]="esDemo"></wx-empresa>
 
       <div class="topbar-acciones d-flex align-items-center ms-auto">
         <!-- PILL NAV. Las tres acciones viven en una capsula, como el Pill Nav

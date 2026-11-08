@@ -687,42 +687,6 @@
   white-space: pre;
 }
 
-/* Hoja de opciones de Retail (dentro de SweetAlert).
-   Mismo contenido que la hoja de Touch, en el formato que encaja en un modal
-   de escritorio: una lista con casilla, precio y cantidad cuando procede. */
-.vo { text-align: left; max-height: 52vh; overflow-y: auto; padding: 2px 4px; }
-.vo-grupo { margin-bottom: 14px; }
-/* "obligatorio", "hasta 3": la regla del grupo, junto a su nombre y sin
-   competir con el. Quien configura tiene que saber el limite ANTES de
-   chocar con el. */
-.vo-regla {
-  margin-left: 8px; padding: 1px 7px; border-radius: 999px;
-  background: var(--wx-sunken); color: var(--wx-text-dim);
-  font-size: 11px; font-weight: 600; letter-spacing: .02em;
-}
-.vo-titulo__n { font-weight: 700; }
-.vo-fila input[type=radio] { width: 17px; height: 17px; flex: 0 0 auto; cursor: pointer; }
-.vo-titulo {
-  font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--wx-text-muted); margin-bottom: 6px;
-}
-.vo-fila {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 11px; margin-bottom: 5px;
-  border: 1px solid var(--wx-edge); border-radius: 10px;
-  font-size: 13.5px; cursor: pointer;
-  transition: background var(--wx-dur-micro) ease, border-color var(--wx-dur-micro) ease;
-}
-.vo-fila:hover { background: var(--wx-raised); border-color: var(--wx-edge-strong); }
-.vo-fila input[type=checkbox] { width: 17px; height: 17px; flex: 0 0 auto; cursor: pointer; }
-.vo-nombre { flex: 1; }
-.vo-precio { font-weight: 600; color: var(--wx-success); }
-.vo-cant {
-  width: 56px; text-align: center; padding: 5px 6px;
-  border: 1px solid var(--wx-edge-strong); border-radius: 8px;
-  font-size: 13px; background: var(--wx-surface); color: var(--wx-text);
-}
-
 /* ============================================================
    COBRANDO UNA ORDEN DE SERVICIO.
 
@@ -778,7 +742,35 @@
 }
 .venta-pedido small { font-size: var(--wx-text-xs); color: var(--wx-text-dim); }
 
-.mixed-payment{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--wx-edge)}.mixed-payment label{font-size:12px;color:var(--wx-text-muted)}
+/* Pago dividido, como en Touch: métodos que se encienden y un campo por
+   método. El que no se ha escrito muestra en gris lo que falta. */
+.mx { margin-top: 14px; }
+.mx-metodos { display: flex; flex-wrap: wrap; gap: 6px; }
+.mx-metodo {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 12px;
+  border: 1px solid var(--wx-edge); border-radius: 999px; background: var(--wx-surface);
+  color: var(--wx-text); font-size: 14px; font-weight: 600;
+  transition: background-color var(--wx-dur-micro, 120ms) ease, border-color var(--wx-dur-micro, 120ms) ease;
+}
+.mx-metodo i { font-size: 16px; color: var(--wx-text-dim); }
+.mx-metodo:hover { border-color: var(--wx-edge-strong); }
+.mx-metodo.on { background: var(--wx-accent); border-color: var(--wx-accent); color: var(--wx-accent-ink, #fff); }
+.mx-metodo.on i { color: inherit; }
+.mx-metodo:focus-visible { outline: 2px solid var(--wx-accent); outline-offset: 2px; }
+.mx-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.mx-campo { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.mx-campo > span { font-size: 13px; font-weight: 600; color: var(--wx-text-muted); }
+.mx-campo > span small { font-weight: 500; }
+.mx-campo input { font-family: var(--wx-font-mono); text-align: right; }
+.mx-campo.auto input::placeholder { color: var(--wx-text); opacity: .55; }
+.mx-cambio b {
+  display: flex; align-items: center; justify-content: flex-end; min-height: 48px; padding: 0 14px;
+  border-radius: var(--wx-radius-sm, 10px); background: var(--wx-sunken);
+  font-family: var(--wx-font-mono); font-size: 1.15rem; color: var(--wx-text-dim);
+}
+.mx-cambio.activo b { background: var(--wx-success-soft); color: var(--wx-success); }
+.mx-saldo { margin: 10px 0 0; color: var(--wx-warning, #b45309); font-weight: 600; }
+.mx-error { margin: 10px 0 0; color: var(--wx-danger, #b42318); font-weight: 600; }
 
 /* 0063 · Club: el beneficio aplicado, a la vista en el cobro. */
 .club-cobro { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 12px;

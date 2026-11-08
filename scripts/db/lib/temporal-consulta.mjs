@@ -74,7 +74,10 @@ function leerSalida(fOut) {
 }
 
 function comoError(e) {
-  const bruto = (e && e.stderr ? e.stderr.toString() : '') || (e && e.message) || String(e);
+  /* PowerShell a veces deja el error en stdout y nada en stderr: sin esto el
+     mensaje era solo «Command failed: powershell ...», sin la causa. */
+  const bruto = (e && e.stderr ? e.stderr.toString().trim() : '') || (e && e.stdout ? e.stdout.toString().trim() : '')
+    || (e && e.message) || String(e);
   return { ok: false, error: bruto.split(String.fromCharCode(10)).slice(0, 6).join(String.fromCharCode(10)), sets: [] };
 }
 

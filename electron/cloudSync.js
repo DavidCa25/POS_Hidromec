@@ -1,4 +1,5 @@
 const path = require('path');
+const ambito = require('./empresas/ambito');  // archivos de la empresa activa (docs/multiempresa.md)
 const fs = require('fs');
 const os = require('os');
 const { app, safeStorage } = require('electron');
@@ -9,6 +10,7 @@ const { crearEnvioHechos } = require('./nube/hechos');
 const { crearMultisucursal } = require('./nube/multisucursal');
 const { crearClub } = require('./nube/club');
 const { crearMenuEnLinea } = require('./nube/menu-en-linea');
+const { crearGrupoEmpresas } = require('./nube/grupo-empresas');
 const crypto = require('crypto');
 
 // ============================================================
@@ -61,7 +63,7 @@ function configurar({ url, funciones, anonKey, licenciaPermite, esPrincipal, nom
 // ---- Configuracion (cloud-config.json en userData) ----
 
 function getConfigPath() {
-  return path.join(app.getPath('userData'), 'cloud-config.json');
+  return ambito.ruta('cloud-config.json');
 }
 
 function loadConfig() {
@@ -275,6 +277,16 @@ const multi = crearMultisucursal({
   pool: () => poolPromise, sql,
   llamar: (action, cuerpo) => gateway(action, cuerpo),
   cfg: { leer: loadConfig, escribir: (parcial) => writeConfig({ ...loadConfig(), ...parcial }) },
+  log,
+});
+
+/* 0080 · Grupo de empresas: consultar a las del grupo en otra computadora y
+   atender lo que le piden a esta (ver nube/grupo-empresas.js). Solo la
+   principal: es la que tiene la credencial de la empresa. */
+const grupo = crearGrupoEmpresas({
+  pool: () => poolPromise, sql,
+  llamar: (action, cuerpo) => gateway(action, cuerpo),
+  disponible: async () => instalacion.esPrincipal() && !!loadConfig().enabled && permitido(),
   log,
 });
 
@@ -641,6 +653,8 @@ async function pushOnce() {
   try { await bandejaTransferencias(); } catch (e) { log('transferencias: ' + e.message); }
   // MultiSucursal: la matriz publica, las sucursales reciben, y los traspasos se ponen al día.
   try { await multi.sincronizar(); } catch (e) { log('multisucursal: ' + e.message); }
+  // Grupo de empresas: lo que otras empresas del dueño le pidieron a esta.
+  try { await grupo.atenderBandeja(); } catch (e) { log('grupo de empresas: ' + e.message); }
 
   const { daily, top, shifts } = await fetchSummaries();
   const sucursalId = cfg.sucursalId;
@@ -841,6 +855,7 @@ function stopScheduler() {
 
 module.exports = {
   multi,
+  grupo,
   club,
   menuEnLinea,
   /** Quién se entera de pedidos nuevos (la ventana principal, para avisar). */

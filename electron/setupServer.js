@@ -738,6 +738,9 @@ module.exports = {
   // reinstalar nada. Duplicar `ensureLogin` habria sido duplicar la regla de
   // que cuenta usan las cajas secundarias.
   resolvePaths, runElevated, ensureRole, ensureLogin, connectMaster, connectDb, sqlServerReachable,
+  // MultiEmpresa (electron/empresas/alta.js): una empresa nueva nace de la
+  // MISMA plantilla que una instalación nueva.
+  restoreTemplate,
   comprobarMotor, decidirSobreMotor, compararBuild, majorDe, ramaDe,
   leerServicing, buildDelMotor,
 };

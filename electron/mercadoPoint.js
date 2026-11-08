@@ -1,4 +1,5 @@
 const path = require('path');
+const ambito = require('./empresas/ambito');  // archivos de la empresa activa (docs/multiempresa.md)
 const fs = require('fs');
 const crypto = require('crypto');
 const { app } = require('electron');
@@ -6,7 +7,7 @@ const { app } = require('electron');
 const API_BASE = 'https://api.mercadopago.com';
 
 function getConfigPath() {
-  return path.join(app.getPath('userData'), 'mp-config.json');
+  return ambito.ruta('mp-config.json');
 }
 
 function loadConfig() {

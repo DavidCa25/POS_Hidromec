@@ -1,4 +1,13 @@
 import { validarPagos } from '../../shared/pagos';
+
+/**
+ * ¿Una parte (o todo) queda a crédito? 0081: además de la venta a crédito
+ * entera, un pago dividido puede llevar una parte CREDITO («trae $100 de $150»).
+ * Las dos son ventas a crédito: necesitan al cliente y su saldo se abona después.
+ */
+export function llevaCredito(payment: Payment): boolean {
+  return payment.method === 'CREDITO' || !!payment.payments?.some(p => p.method === 'CREDITO');
+}
 import {CommercialService} from './commercial.service';
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
@@ -52,7 +61,7 @@ export class SaleService {
 
   /** Carrito -> intencion de venta. Puro: no toca IPC. */
   buildIntent(cart: Cart, payment: Payment): SaleIntent {
-    const isCredit = payment.method === 'CREDITO';
+    const isCredit = llevaCredito(payment);
     const signature = JSON.stringify({lines:cart.lines.map(l=>[l.productId,l.qty,l.options,l.combo]),quote:cart.commercial?.quote?.total,customer:cart.customer?.id,payment});
     cart.meta ??= {};
     if(cart.meta['checkoutSignature']!==signature){ cart.meta['checkoutSignature']=signature;cart.meta['checkoutKey']=crypto.randomUUID(); }
@@ -86,7 +95,11 @@ export class SaleService {
        de producto gratis) dejó la cuenta en cero. SQL vuelve a validarlo. */
     const gratisPorBeneficio = t.total === 0 && Number((cart.commercial?.quote as any)?.discount ?? 0) > 0;
     if (t.total < 0 || (t.total === 0 && !gratisPorBeneficio)) return 'El total de la venta debe ser mayor a cero';
-    if (payment.payments || payment.method === 'MIXTO') { try { validarPagos(t.total,payment.payments!); return null; } catch(e){ return (e as Error).message; } }
+    if (payment.payments || payment.method === 'MIXTO') {
+      try { validarPagos(t.total, payment.payments!); } catch (e) { return (e as Error).message; }
+      if (llevaCredito(payment) && payment.creditCustomerId == null) return 'Selecciona el cliente para la parte a crédito.';
+      return null;
+    }
     if (payment.method === 'CREDITO') {
       if (payment.creditCustomerId == null) return 'Selecciona el cliente para la venta a crédito.';
       return null;
@@ -134,7 +147,7 @@ export class SaleService {
     const intent = this.buildIntent(cart, payment);
     intent.mpOrderId=opts.mpOrderId;
     const totals = CartService.totalsOf(cart);
-    const isCredit = payment.method === 'CREDITO';
+    const isCredit = llevaCredito(payment);
     const sold: SoldLine[] = intent.lines.map(l => {const src=cart.lines.find(x=>x.productId===l.productId)!;return {
       productId:l.productId, productName:src.productName,qty:l.qty,unitPrice:l.unitPrice,
       claveProdServ:src.claveProdServ,claveUnidad:src.claveUnidad,objetoImpuesto:src.objetoImpuesto,
@@ -162,8 +175,10 @@ export class SaleService {
       // --- Efectos posteriores al COMMIT ---
       let paid = totals.total;
       let change = 0;
-      if (!isCredit) {
-        if (payment.payments) { const distribution=validarPagos(totals.total,payment.payments);paid=totals.total+distribution.change;change=distribution.change; } else if (payment.method === 'TERMINAL_MP') {
+      /* 0081: con una parte a crédito, lo pagado es lo cobrado ahora. */
+      const cobradoAhora = payment.payments ? validarPagos(totals.total, payment.payments).cobrado : (isCredit ? 0 : totals.total);
+      if (!isCredit || cobradoAhora > 0) {
+        if (payment.payments) { const distribution=validarPagos(totals.total,payment.payments);paid=distribution.cobrado+distribution.change;change=distribution.change; } else if (payment.method === 'TERMINAL_MP') {
           paid = totals.total; change = 0;
         } else {
           paid = payment.received ?? totals.total;
@@ -178,14 +193,16 @@ export class SaleService {
 
       this.display.showCheckout({
         total: totals.total,
-        paid: isCredit ? null : paid,
-        change: isCredit ? null : change,
+        paid: isCredit && !cobradoAhora ? null : paid,
+        change: isCredit && !cobradoAhora ? null : change,
         method: payment.method,
         credito: isCredit,
         pedido: pedido && cuentaPedido?.id ? { numero: pedido, cuentaId: Number(cuentaPedido.id), cliente: customer?.name ?? null } : null,
       });
 
-      if (opts.autoPrint && saleId && !isCredit) {
+      /* Una venta a crédito entera no imprime al cobrar; una con una parte
+         pagada sí: el cliente se lleva lo que pagó y su saldo pendiente. */
+      if (opts.autoPrint && saleId && (!isCredit || cobradoAhora > 0)) {
         try {
           await this.printTicket(saleId, { pagado: paid, cambio: change, silent: true, paymentMethod: payment.method, pedido });
         } catch { /* la impresion nunca deshace una venta ya registrada */ }

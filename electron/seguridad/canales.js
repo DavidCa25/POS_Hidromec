@@ -29,7 +29,7 @@ const {
   REPORTES_VER, CONFIGURACION_ADMINISTRAR,
   CAJA_CORTES, CONFIGURACION_EQUIPO, COMERCIAL_ADMINISTRAR, CATALOGO_EDITAR,
   SERVICIOS_OPERAR, SERVICIOS_ADMINISTRAR, PRODUCCION_OPERAR, ASISTENCIA_GESTIONAR,
-  SOCIOS_GESTIONAR,
+  SOCIOS_GESTIONAR, EMPRESAS_CAMBIAR,
   // 0077: permisos por persona.
   DEVOLUCIONES, RETIROS_EGRESOS, CAJON_SIN_VENTA, MODIFICAR_VENTA, CREDITO_CUPONES,
   VER_NUMEROS_DIA, VER_COSTOS,
@@ -388,6 +388,23 @@ const EXIGE = {
   'propinas:config-guardar': CONFIGURACION_ADMINISTRAR,
   'propinas:repartir': CAJA_CORTES,
   'propinas:historial': CAJA_CORTES,
+  // 0080 · MultiEmpresa (docs/multiempresa.md). Entrar a otra empresa y ver
+  // Mis empresas: EMPRESAS_CAMBIAR. Dar de alta, enlazar y pedir cambios a
+  // otra empresa: configurar el negocio.
+  'empresas:listar': EMPRESAS_CAMBIAR,
+  'empresas:cambiar': EMPRESAS_CAMBIAR,
+  'empresas:resumen': EMPRESAS_CAMBIAR,
+  'empresas:crear': CONFIGURACION_ADMINISTRAR,
+  'empresas:desvincular': CONFIGURACION_ADMINISTRAR,
+  'empresas:enlace-codigo': CONFIGURACION_ADMINISTRAR,
+  'empresas:enlace-unir': CONFIGURACION_ADMINISTRAR,
+  'empresas:enlace-salir': CONFIGURACION_ADMINISTRAR,
+  'empresas:remota-catalogo': EMPRESAS_CAMBIAR,
+  // Cambiar el catálogo de OTRA empresa: solo quien administra el negocio,
+  // aunque a un cajero se le haya dado cambiar de empresa.
+  'empresas:remota-pedir': CONFIGURACION_ADMINISTRAR,
+  'empresas:remota-pedidos': EMPRESAS_CAMBIAR,
+  'empresas:recibidos': EMPRESAS_CAMBIAR,
   'multi:publicar': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones': CONFIGURACION_ADMINISTRAR,
   'multi:excepciones-guardar': CONFIGURACION_ADMINISTRAR,

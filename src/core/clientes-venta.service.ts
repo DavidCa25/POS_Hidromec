@@ -3,6 +3,22 @@ import { CartCustomer } from './models';
 
 type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string };
 
+/** El crédito de un cliente para cobrar: cuánto tiene y si se le puede fiar. */
+export interface CreditoCliente {
+  disponible: number;
+  limite: number;
+  plazoDias: number;
+  /** Por qué no se le puede fiar ahora (null = sí se puede). Lo decide la base. */
+  motivo: string | null;
+}
+
+/** Los motivos de `sp_get_customers_with_credit_available`, dichos para la caja. */
+export const MOTIVOS_SIN_CREDITO: Record<string, string> = {
+  RIESGO: 'Riesgo alto: crédito suspendido',
+  VENCIDAS: 'Tiene ventas vencidas',
+  SIN_DISPONIBLE: 'Sin crédito disponible',
+};
+
 /**
  * EL CLIENTE DE UNA VENTA: buscarlo, elegirlo y, si no existe, darlo de alta.
  *
@@ -34,6 +50,29 @@ export class ClientesVentaService {
       return { ok: true, datos };
     } catch {
       return { ok: false, error: 'No se pudieron cargar los clientes.' };
+    }
+  }
+
+  /**
+   * 0081 · El crédito de UN cliente, para dejar una parte a crédito. La lista
+   * es la misma de Venta (`getCreditCustomers`); un cliente que no aparece
+   * ahí no tiene crédito autorizado. La base vuelve a validarlo al cobrar.
+   */
+  async creditoDe(customerId: number): Promise<Resultado<CreditoCliente>> {
+    if (!this.api?.getCreditCustomers) return { ok: false, error: 'El crédito no está disponible en esta caja.' };
+    try {
+      const r = await this.api.getCreditCustomers();
+      if (!r?.success) return { ok: false, error: r?.error || 'No se pudo consultar el crédito del cliente.' };
+      const f = (r.data || []).find((x: any) => Number(x.id) === Number(customerId));
+      if (!f) return { ok: true, datos: { disponible: 0, limite: 0, plazoDias: 0, motivo: 'No tiene crédito autorizado' } };
+      return { ok: true, datos: {
+        disponible: Number(f.available_credit ?? 0),
+        limite: Number(f.credit_limit ?? 0),
+        plazoDias: Number(f.terms_days ?? 0),
+        motivo: f.credit_block ? (MOTIVOS_SIN_CREDITO[f.credit_block] ?? 'No se le puede fiar ahora') : null,
+      } };
+    } catch {
+      return { ok: false, error: 'No se pudo consultar el crédito del cliente.' };
     }
   }
 

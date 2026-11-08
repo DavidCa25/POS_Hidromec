@@ -158,8 +158,12 @@ test('Todos los permisos con Administrador, Encargado y Operador', async ({ app 
   const idDe = (u) => Number(usuarios.find((x) => x.usuario === u).id);
   await sql(app.base, `DELETE FROM dbo.user_permissions WHERE user_id IN (${usuarios.map((u) => u.id).join(',')});`);
   const [prod] = await sql(app.base, `
-    DECLARE @b INT = (SELECT TOP 1 id FROM dbo.CAT_brands ORDER BY id);
-    DECLARE @c INT = (SELECT TOP 1 id FROM dbo.CAT_categories ORDER BY id);
+    /* Marca y categoría propias: una base recién preparada no trae ninguna,
+       y sin ellas el producto no entra al catálogo de venta. */
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'E2E Marca') INSERT INTO dbo.CAT_brands (namee) VALUES (N'E2E Marca');
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'E2E Categoría') INSERT INTO dbo.CAT_categories (namee) VALUES (N'E2E Categoría');
+    DECLARE @b INT = (SELECT id FROM dbo.CAT_brands WHERE namee = N'E2E Marca');
+    DECLARE @c INT = (SELECT id FROM dbo.CAT_categories WHERE namee = N'E2E Categoría');
     INSERT INTO dbo.products (part_number, nombre, price, stock, active, category_id, brand_id, cost, bar_code)
     VALUES (N'PRM-${n}', N'Producto permisos ${n}', 80, 10, 1, @c, @b, 40, NULL);
     SELECT id, nombre, CAST(stock AS FLOAT) AS stock, part_number AS part FROM dbo.products WHERE part_number = N'PRM-${n}';`);
@@ -351,8 +355,12 @@ test('Cada ajuste por persona: darlo al Operador y quitarlo al Encargado', async
   const usuarios = await sql(app.base, `SELECT id, usuario FROM dbo.users WHERE usuario IN (N'e2e_admin', N'e2e_encargado', N'e2e_operador');`);
   const idDe = (u) => Number(usuarios.find((x) => x.usuario === u).id);
   const [prod] = await sql(app.base, `
-    DECLARE @b INT = (SELECT TOP 1 id FROM dbo.CAT_brands ORDER BY id);
-    DECLARE @c INT = (SELECT TOP 1 id FROM dbo.CAT_categories ORDER BY id);
+    /* Marca y categoría propias: una base recién preparada no trae ninguna,
+       y sin ellas el producto no entra al catálogo de venta. */
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'E2E Marca') INSERT INTO dbo.CAT_brands (namee) VALUES (N'E2E Marca');
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'E2E Categoría') INSERT INTO dbo.CAT_categories (namee) VALUES (N'E2E Categoría');
+    DECLARE @b INT = (SELECT id FROM dbo.CAT_brands WHERE namee = N'E2E Marca');
+    DECLARE @c INT = (SELECT id FROM dbo.CAT_categories WHERE namee = N'E2E Categoría');
     INSERT INTO dbo.products (part_number, nombre, price, stock, active, category_id, brand_id, cost, bar_code)
     VALUES (N'AJ-${n}', N'Producto ajustes ${n}', 50, 10, 1, @c, @b, 30, NULL);
     SELECT id, nombre, CAST(stock AS FLOAT) AS stock, part_number AS part FROM dbo.products WHERE part_number = N'AJ-${n}';`);

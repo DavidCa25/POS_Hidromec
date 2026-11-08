@@ -169,7 +169,12 @@ BEGIN
       (SELECT ISNULL(SUM(COALESCE(sp.amount,s.total)), 0) FROM dbo.sales s LEFT JOIN dbo.sale_payments sp ON sp.sale_id=s.id AND sp.payment_method='PLATAFORMA' WHERE (s.payment_method = 'PLATAFORMA' OR sp.id IS NOT NULL)   AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
           AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_plataforma,
-      (SELECT ISNULL(SUM(s.total), 0) FROM dbo.sales s WHERE s.payment_method = 'CREDITO'       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
+      /* 0081: lo FIADO. Si al vender se pago una parte, esa parte ya cuenta en
+         su forma de pago (sale_payments); aqui va solo lo que quedo a credito. */
+      (SELECT ISNULL(SUM(s.total - ISNULL(pagado.monto, 0)), 0)
+         FROM dbo.sales s
+         OUTER APPLY (SELECT SUM(x.amount) AS monto FROM dbo.sale_payments x WHERE x.sale_id = s.id) AS pagado
+        WHERE s.payment_method = 'CREDITO'       AND (@ventas_caja IS NULL OR s.register_id = @ventas_caja)
           AND ((@ventas_desde IS NOT NULL AND (s.closure_id=@closure_id OR (s.closure_id IS NULL AND s.datee >= @ventas_desde AND s.datee <= @ventas_hasta))) OR (@ventas_dia_desde IS NOT NULL AND CAST(s.datee AS DATE) BETWEEN @ventas_dia_desde AND @ventas_dia_hasta))
           AND (@user_id IS NULL OR @closure_id IS NOT NULL OR s.useer_id = @user_id)) AS ventas_credito,
       /* 0065: lo cobrado con un CAMBIO (el valor de lo que devolvió). No es efectivo. */

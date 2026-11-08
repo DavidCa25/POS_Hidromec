@@ -15,6 +15,7 @@ const sesion = require('../seguridad/sesion');
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const ambito = require('../empresas/ambito');  // archivos de la empresa activa (docs/multiempresa.md)
 
 /** Envoltorio uniforme: nunca lanza al renderer, siempre {success, ...}. */
 async function ejecutar(pool, nombre, construir) {
@@ -86,7 +87,7 @@ function bit(v, pordefecto = null) {
 
 /** Carpeta de miniaturas cacheadas de ESTA caja. */
 function dirThumbs() {
-  const d = path.join(app.getPath('userData'), 'thumbs');
+  const d = ambito.ruta('thumbs');
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   return d;
 }

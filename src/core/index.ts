@@ -34,3 +34,4 @@ export * from './egresos.service';
 export * from './cajon.service';
 export * from './club.service';
 export * from './devoluciones.service';
+export * from './empresas.service';
