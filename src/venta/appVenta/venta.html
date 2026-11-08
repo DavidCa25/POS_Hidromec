@@ -459,14 +459,32 @@
             </ng-container>
             <!-- 0079: la propina, con la aplicacion Propinas. No suma al total. -->
             <app-propina-cobro [total]="totalVenta" [metodo]="paymentMethod" (cambio)="alCambiarPropina($event)"></app-propina-cobro>
-            <section *ngIf="paymentMethod==='MIXTO'" class="mt-3">
-              <div *ngFor="let p of pagosMixtos;let i=index" class="mixed-payment">
-                <wx-select [opciones]="mixedMethods" [(ngModel)]="p.method" [disabled]="cobrando"></wx-select>
-                <label>Importe aplicado<input type="number" class="form-control" min="0.01" step="0.01" [(ngModel)]="p.amount" [disabled]="cobrando"></label>
-                <label *ngIf="p.method==='EFECTIVO'">Efectivo recibido<input type="number" class="form-control" min="0" step="0.01" [(ngModel)]="p.received" [disabled]="cobrando"></label>
-                <button type="button" class="btn btn-light" [disabled]="cobrando" (click)="pagosMixtos.splice(i,1)" aria-label="Quitar pago"><i class="ph ph-x"></i></button>
+            <!-- Pago dividido, como en Touch: se eligen los métodos y en cada uno se
+                 escribe cuánto lleva. El que falta por escribir se llena solo. -->
+            <section *ngIf="paymentMethod==='MIXTO'" class="mx" data-guide="venta-pago-mixto">
+              <div class="mx-metodos" role="group" aria-label="Métodos del pago dividido">
+                <button type="button" *ngFor="let m of mixedMethods" class="mx-metodo" [class.on]="metodosMixtos.includes(m.valor)"
+                        [attr.aria-pressed]="metodosMixtos.includes(m.valor)" [disabled]="cobrando" (click)="alternarMetodoMixto(m.valor)"
+                        data-guide="venta-pago-mixto-metodo" [attr.data-guide-clave]="m.valor">
+                  <i class="ph {{ m.icono }}" aria-hidden="true"></i>{{ m.etiqueta }}
+                </button>
               </div>
-              <button type="button" class="btn btn-outline-primary" [disabled]="cobrando||pagosMixtos.length>=4" (click)="agregarPago()">Agregar método</button><p role="alert" *ngIf="errorMixto" class="text-danger">{{errorMixto}}</p>
+              <div class="mx-campos">
+                <label *ngFor="let m of metodosMixtos" class="mx-campo" [class.auto]="dividido.auto === m">
+                  <span>{{ etiquetaMixto(m) }}<small *ngIf="dividido.auto === m"> · lo que falta</small></span>
+                  <input type="number" min="0" step="0.01" class="form-control form-control-lg" data-teclado="MONEY"
+                         [ngModel]="capturadosMixtos[m] ?? null" (ngModelChange)="capturarMixto(m, $event)"
+                         [placeholder]="(dividido.valores[m] ?? 0).toFixed(2)" [disabled]="cobrando"
+                         (focus)="$any($event.target).select()"
+                         data-guide="venta-pago-mixto-importe" [attr.data-guide-clave]="m">
+                </label>
+                <div class="mx-campo mx-cambio" *ngIf="metodosMixtos.includes('EFECTIVO')" [class.activo]="dividido.cambio > 0">
+                  <span>Cambio</span>
+                  <b>{{ dividido.cambio | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+                </div>
+              </div>
+              <p class="mx-saldo" *ngIf="dividido.saldo > 0">Por cubrir <b>{{ dividido.saldo | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></p>
+              <p role="alert" *ngIf="errorMixto && !dividido.saldo" class="mx-error">{{ errorMixto }}</p>
             </section>
             <ng-container *ngIf="paymentMethod==='PLATAFORMA'">
               <p class="text-muted mt-3">Confirma que el pedido está pagado en la plataforma. No entra efectivo al cajón.</p>
@@ -504,10 +522,12 @@
                 </button>
               </div>
             </div>
-            <ng-container *ngIf="paymentMethod === 'CREDITO'; else contadoInfo">
+            <!-- La venta a crédito entera, o una parte «A crédito» del pago dividido:
+                 las dos necesitan al cliente y su crédito disponible. -->
+            <ng-container *ngIf="usaCredito; else contadoInfo">
               <div class="mb-3">
                 <label class="form-label mb-1">Cliente con crédito</label>
-                <wx-select [(ngModel)]="customerId" name="customerId"
+                <wx-select [(ngModel)]="customerId" name="customerId" data-guide="venta-credito-cliente"
                            [opciones]="opcionesCredito"
                            [buscable]="creditCustomers.length > 6"
                            textoBusqueda="Buscar por nombre, teléfono o correo"
@@ -518,7 +538,7 @@
                   No hay clientes con crédito autorizado. Se da en Clientes, en su límite de crédito.
                 </small>
                 <small class="text-danger d-block mt-1" *ngIf="excedeCredito">
-                  La venta supera su crédito disponible
+                  {{ paymentMethod === 'CREDITO' ? 'La venta supera' : 'Lo que queda a crédito supera' }} su crédito disponible
                   ({{ clienteCredito?.availableCredit | currency:'MXN':'symbol-narrow':'1.2-2' }}).
                 </small>
               </div>
@@ -529,8 +549,13 @@
               <!-- El aviso vive junto a los campos que explica. Antes estaba en
                    la columna de resumen, separado de ellos, solo para equilibrar
                    las dos columnas. -->
-              <div class="alert cobro-alert mt-2">
+              <div class="alert cobro-alert mt-2" *ngIf="paymentMethod === 'CREDITO'">
                 Esta venta se registrará como <strong>crédito</strong>. El pago se capturará después en el módulo de abonos.
+              </div>
+              <div class="alert cobro-alert mt-2" *ngIf="paymentMethod === 'MIXTO'" data-guide="venta-credito-parcial">
+                Se cobran <strong>{{ cobradoAhora | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong> ahora y
+                <strong>{{ montoACredito | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong> quedan a crédito del cliente.
+                Ese saldo se abona después en el módulo de abonos.
               </div>
             </ng-container>
             <ng-template #contadoInfo>
@@ -624,6 +649,8 @@
 </div>
 
 <!-- ¿CUÁNTO? Granel: por peso o por dinero (venta/granel-cantidad). -->
+<app-opciones-producto *ngIf="opcionesAbiertas as o" [nombre]="o.nombre" [precioBase]="o.precio" [grupos]="o.grupos"
+                       (aceptar)="cerrarOpciones($event)" (cancelar)="cerrarOpciones(null)"></app-opciones-producto>
 <app-granel-cantidad *ngIf="granel as g" [nombre]="g.nombre" [precio]="g.precio" [uom]="g.uom" [cantidadInicial]="g.inicial"
                      (aceptar)="cerrarGranel($event)" (cancelar)="cerrarGranel(null)"></app-granel-cantidad>
 

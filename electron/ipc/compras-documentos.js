@@ -18,6 +18,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { app, nativeImage } = require('electron');
 const sesion = require('../seguridad/sesion');
+const ambito = require('../empresas/ambito');  // archivos de la empresa activa (docs/multiempresa.md)
 const ocr = require('../ocr/motor.cjs');
 const { interpretar } = require('../ocr/ticket.cjs');
 const { leerCfdi } = require('../ocr/cfdi.cjs');
@@ -76,7 +77,7 @@ function parecido(a, b) {
 
 function registrar({ ipcMain, sql, poolPromise }) {
   const carpeta = () => {
-    const d = path.join(app.getPath('userData'), 'compras-documentos');
+    const d = ambito.ruta('compras-documentos');
     fs.mkdirSync(d, { recursive: true });
     return d;
   };

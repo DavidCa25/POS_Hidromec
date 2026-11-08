@@ -1,0 +1,54 @@
+<!-- Opciones del producto: grupos a la izquierda, opciones a la derecha.
+     Ver opciones-producto.component.ts. -->
+<div class="wx-dialogo-velo op-velo" (click)="cancelar.emit()">
+  <section class="wx-dialogo op" role="dialog" aria-modal="true" aria-labelledby="op-t" tabindex="-1"
+           data-guide="venta-opciones" (click)="$event.stopPropagation()" (keydown)="teclado($event)">
+    <header class="op__cab">
+      <div>
+        <h3 id="op-t">{{ nombre }}</h3>
+        <small>Precio base {{ precioBase | currency:'MXN':'symbol-narrow':'1.2-2' }}</small>
+      </div>
+      <button type="button" class="op__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><i class="ph ph-x" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="op__cuerpo">
+      <nav class="op__grupos" aria-label="Grupos de opciones">
+        <button type="button" *ngFor="let g of grupos; let i = index" class="op__grupo"
+                [class.on]="i === activo" [class.falta]="!completo(g)"
+                (click)="abrir(i)" data-guide="venta-opciones-grupo" [attr.data-guide-clave]="g.name"
+                [attr.data-guide-estado]="completo(g) ? 'listo' : 'falta'" [attr.aria-current]="i === activo">
+          <span>{{ g.name }}</span>
+          <i *ngIf="completo(g) && !regla(g)" class="ph ph-check-circle op__ok" aria-label="Listo"></i>
+          <small *ngIf="regla(g)">{{ regla(g) }}</small>
+        </button>
+      </nav>
+
+      <div class="op__opciones" *ngIf="grupo as g" role="group" [attr.aria-label]="g.name">
+        <button type="button" *ngFor="let o of opciones(g)" class="op__opcion"
+                [class.on]="cantidadDe(g, o) > 0" [class.lleno]="!cantidadDe(g, o) && !esUnico(g) && !cabeOtra(g, o)"
+                [attr.aria-pressed]="cantidadDe(g, o) > 0" (click)="tocar(g, o)"
+                data-guide="venta-opcion" [attr.data-guide-clave]="o.name">
+          <span class="op__nombre">{{ o.name }}</span>
+          <span class="op__precio">{{ o.price_delta ? ('+' + (o.price_delta | currency:'MXN':'symbol-narrow':'1.0-2')) : 'Incluida' }}</span>
+          <span class="op__cant" *ngIf="conCantidad(g) && cantidadDe(g, o) > 0">
+            <span role="button" tabindex="0" class="op__paso" aria-label="Quitar uno" (click)="sumar(g, o, -1, $event)"
+                  (keydown.enter)="sumar(g, o, -1, $event)"><i class="ph ph-minus" aria-hidden="true"></i></span>
+            <b>{{ cantidadDe(g, o) }}</b>
+            <span role="button" tabindex="0" class="op__paso" aria-label="Agregar uno" (click)="sumar(g, o, 1, $event)"
+                  (keydown.enter)="sumar(g, o, 1, $event)"><i class="ph ph-plus" aria-hidden="true"></i></span>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <p class="op__aviso" *ngIf="aviso" role="alert">{{ aviso }}</p>
+
+    <footer class="op__pie">
+      <span class="op__resumen">{{ resumen || 'Sin opciones elegidas' }}</span>
+      <button type="button" class="btn btn-outline-secondary" (click)="cancelar.emit()">Cancelar</button>
+      <button type="button" class="btn btn-primary op__agregar" data-guide="venta-opciones-agregar" (click)="confirmar()">
+        Agregar · {{ total | currency:'MXN':'symbol-narrow':'1.2-2' }}
+      </button>
+    </footer>
+  </section>
+</div>

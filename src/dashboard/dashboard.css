@@ -90,72 +90,8 @@
 .dashboard-wrapper.es-sidebar .main-content { padding-bottom: 28px !important; }
 
 
-/* ==========================================================================
-   CONTEXTO DEL NEGOCIO
-   Un pill: icono, nombre y, si es demo, una cola ambar pegada al final. Antes
-   era el nombre con una fila de badges debajo (DEMO · rol · version); el rol
-   ya vive en el pill de la persona y la version en su menu.
-   ========================================================================== */
-.wx-negocio {
-  /* La demo se pinta con el ambar del sistema, con tinta oscura encima. En
-     claro se usa el 500: el 600 de advertencia no sostiene la tinta. */
-  --wx-demo-bg: var(--wx-amber-500);
-  --wx-demo-ink: #1A1203;
-
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  height: 44px;
-  border: 1px solid var(--wx-edge);
-  border-radius: 999px;
-  background: var(--wx-surface);
-  overflow: hidden;
-}
-:host-context(html.dark) .wx-negocio { --wx-demo-bg: var(--wx-warning); }
-
-.wx-negocio__tile {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  margin-left: 4px;
-  border-radius: 999px;
-  background: var(--wx-navy-800);
-  color: var(--wx-accent);
-  font-size: 17px;
-}
-:host-context(html.dark) .wx-negocio__tile { background: var(--wx-navy-900); }
-
-.wx-negocio__nombre {
-  align-self: center;
-  padding: 0 16px 0 10px;
-  font-size: var(--wx-text-base);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--wx-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 34ch;
-}
-
-.wx-negocio__demo {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  padding: 0 16px 0 13px;
-  background: var(--wx-demo-bg);
-  color: var(--wx-demo-ink);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: default;
-}
-.wx-negocio__demo i { font-size: 15px; }
+/* CONTEXTO DEL NEGOCIO: la pastilla y el cambio de empresa viven en
+   src/app/empresas/wx-empresa.component (docs/multiempresa.md). */
 
 @keyframes wx-fade { from { opacity: 0; } to { opacity: 1; } }
 

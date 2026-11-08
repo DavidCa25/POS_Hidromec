@@ -121,6 +121,8 @@ export class NavegacionService {
   get gestionarAsistencia() { return this.caps.asistencia && this.auth.puede(PAQUETES.ASISTENCIA_GESTIONAR); }
   /** 0079: lo de cada socio y su liquidacion, con la aplicacion Socios activada. */
   get gestionarSocios() { return this.caps.socios && this.auth.puede(PAQUETES.SOCIOS_GESTIONAR); }
+  /** 0080: las empresas del mismo dueno (MultiEmpresa). */
+  get cambiarEmpresa() { return this.auth.puede(PAQUETES.EMPRESAS_CAMBIAR); }
   /** 0079: repartir las propinas, con la aplicacion Propinas activada. */
   get repartirPropinas() { return this.caps.propinas && this.auth.puede(PAQUETES.CAJA_CORTES); }
 
@@ -268,6 +270,7 @@ export class NavegacionService {
       { texto: 'Asistencia', ruta: '/dashboard/asistencia', icono: 'ph-clock', grupo: 'negocio', visible: this.gestionarAsistencia },
       { texto: 'Socios', ruta: '/dashboard/socios', icono: 'ph-handshake', grupo: 'negocio', visible: this.gestionarSocios },
       { texto: 'Propinas', ruta: '/dashboard/propinas', icono: 'ph-hand-coins', grupo: 'negocio', visible: this.repartirPropinas },
+      { texto: 'Mis empresas', ruta: '/dashboard/empresas', icono: 'ph-buildings', grupo: 'negocio', visible: this.cambiarEmpresa },
       { texto: 'Facturación', ruta: '/dashboard/facturacion', icono: 'ph-seal-check', grupo: 'negocio', visible: this.operarVentas },
       /* Pago de servicios (TAECEL) vive en Aplicaciones como «no disponible»:
          sin contrato con el proveedor no se ofrece, aunque alguna vez se haya

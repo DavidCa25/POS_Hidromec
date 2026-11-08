@@ -1,0 +1,193 @@
+<div class="emp" data-guide="mis-empresas">
+  <header class="emp-cab">
+    <div>
+      <h1>Mis empresas</h1>
+      <p>Tus empresas lado a lado. Las de esta computadora se abren; las de otra se consultan por la nube.</p>
+    </div>
+  </header>
+
+  <nav class="emp-tabs" role="tablist" aria-label="Mis empresas">
+    <button type="button" role="tab" [class.on]="pestana() === 'resumen'" [attr.aria-selected]="pestana() === 'resumen'" (click)="cambiar('resumen')" data-guide="empresas-tab-resumen">Resumen</button>
+    <button type="button" role="tab" [class.on]="pestana() === 'pedidos'" [attr.aria-selected]="pestana() === 'pedidos'" (click)="cambiar('pedidos')" data-guide="empresas-tab-pedidos">Cambios que pedí</button>
+    <button type="button" role="tab" [class.on]="pestana() === 'recibidos'" [attr.aria-selected]="pestana() === 'recibidos'" (click)="cambiar('recibidos')" data-guide="empresas-tab-recibidos">Cambios recibidos</button>
+    <button type="button" role="tab" *ngIf="administra" [class.on]="pestana() === 'agregar'" [attr.aria-selected]="pestana() === 'agregar'" (click)="cambiar('agregar')" data-guide="empresas-tab-agregar">Agregar o enlazar</button>
+  </nav>
+
+  <p class="emp-error" *ngIf="error()" role="alert">{{ error() }}</p>
+
+  <!-- ============================================================ RESUMEN -->
+  <ng-container *ngIf="pestana() === 'resumen'">
+    <div class="emp-periodos" role="group" aria-label="Periodo">
+      <button type="button" *ngFor="let p of periodos" class="emp-chip" [class.on]="periodo() === p.id"
+              [attr.aria-pressed]="periodo() === p.id" (click)="elegirPeriodo(p.id)" [attr.data-guide]="'empresas-periodo-' + p.id">{{ p.etiqueta }}</button>
+    </div>
+
+    <p class="emp-vacio" *ngIf="cargando()">Cargando…</p>
+
+    <ng-container *ngIf="!cargando()">
+      <section class="emp-total" aria-label="Total del grupo" data-guide="empresas-total" *ngIf="todas().length > 1">
+        <div><span>Ventas del grupo</span><b class="emp-mono">{{ dinero(total().ventas) }}</b></div>
+        <div><span>Tickets</span><b class="emp-mono">{{ total().tickets }}</b></div>
+        <div><span>Efectivo en los cajones</span><b class="emp-mono">{{ dinero(total().efectivo) }}</b><small>{{ turnos(total().turnos) }}</small></div>
+        <div><span>Utilidad</span><b class="emp-mono">{{ dinero(total().utilidad) }}</b><small *ngIf="remotas().length">solo las de esta computadora</small></div>
+      </section>
+
+      <div class="emp-tarjetas" data-guide="empresas-tarjetas">
+        <article class="emp-tarjeta" *ngFor="let e of todas(); trackBy: trackResumen"
+                 [class.es-esta]="e.esEsta" [attr.data-guide-clave]="e.base ?? e.companyId">
+          <div class="emp-tarjeta__cab">
+            <span class="emp-tarjeta__icono" aria-hidden="true"><i [class]="icono(e)"></i></span>
+            <div class="emp-tarjeta__titulo">
+              <b>{{ e.nombre }}</b>
+              <small *ngIf="e.esEsta">Aquí estás</small>
+              <small *ngIf="esLocal(e) && !e.esEsta">En esta computadora</small>
+              <small *ngIf="!esLocal(e)">{{ datosDe(e.ultimaSync) }}</small>
+            </div>
+          </div>
+
+          <p class="emp-error" *ngIf="e.error">{{ e.error }}</p>
+          <ng-container *ngIf="!e.error">
+            <div class="emp-tarjeta__ventas emp-mono">{{ dinero(e.ventas) }}<small>{{ e.tickets }} tickets</small></div>
+            <dl class="emp-desglose">
+              <dt>Utilidad</dt>
+              <dd class="emp-mono" *ngIf="e.utilidad !== null">{{ dinero(e.utilidad) }}</dd>
+              <dd *ngIf="e.utilidad === null" class="emp-tenue">se ve dentro de la empresa</dd>
+              <dt>Efectivo en caja</dt><dd class="emp-mono">{{ dinero(e.efectivoEnCaja) }}</dd>
+              <dt>Turnos abiertos</dt><dd class="emp-mono">{{ e.turnosAbiertos }}</dd>
+              <dt>Última venta</dt><dd>{{ cuando(e.ultimaVenta) }}</dd>
+            </dl>
+          </ng-container>
+
+          <div class="emp-tarjeta__pie">
+            <button type="button" class="emp-sec" *ngIf="esLocal(e) && !e.esEsta" (click)="entrar(e)"
+                    [disabled]="!!svc.cambiando()" data-guide="empresas-entrar">
+              <i class="ph ph-sign-in"></i> {{ svc.cambiando() === e.base ? 'Abriendo…' : 'Entrar' }}
+            </button>
+            <button type="button" class="emp-sec" *ngIf="!esLocal(e)" (click)="ver(e)" data-guide="empresas-ver-remota">
+              <i class="ph ph-package"></i> Productos y cambios
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <p class="emp-ayuda" *ngIf="remotasError()">Empresas en otra computadora: {{ remotasError() }}</p>
+      <p class="emp-ayuda" *ngIf="todas().length <= 1 && administra">
+        Todavía no hay otras empresas. Agrega una en esta computadora o enlaza la de otra en «Agregar o enlazar».
+      </p>
+    </ng-container>
+  </ng-container>
+
+  <!-- ============================================================ PEDIDOS -->
+  <ng-container *ngIf="pestana() === 'pedidos'">
+    <p class="emp-ayuda">Lo que esta empresa pidió a las demás por la nube. Se aplica cuando la caja principal de la otra empresa se conecta.</p>
+    <p class="emp-vacio" *ngIf="cargando()">Cargando…</p>
+    <table class="castrol-table emp-tabla" *ngIf="!cargando() && pedidos().length" data-guide="empresas-pedidos">
+      <thead><tr><th>Empresa</th><th>Qué se pidió</th><th>Quién</th><th>Cuándo</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let p of pedidos()" [attr.data-guide-clave]="p.id" [attr.data-guide-estado]="p.estado">
+          <td>{{ p.empresa }}</td>
+          <td>{{ queSePidio(p) }}</td>
+          <td>{{ p.pidio || '—' }}</td>
+          <td>{{ cuando(p.creado) }}</td>
+          <td>
+            <span class="emp-estado" [attr.data-tono]="estados[p.estado].tono">{{ estados[p.estado].etiqueta }}</span>
+            <small class="emp-tenue emp-bloque" *ngIf="p.detalle">{{ p.detalle }}</small>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="emp-vacio" *ngIf="!cargando() && !pedidos().length">No has pedido cambios a otras empresas.</p>
+  </ng-container>
+
+  <!-- ========================================================== RECIBIDOS -->
+  <ng-container *ngIf="pestana() === 'recibidos'">
+    <p class="emp-ayuda">Lo que otras empresas del grupo cambiaron en esta. Cada cambio se aplicó con las reglas de esta empresa.</p>
+    <p class="emp-vacio" *ngIf="cargando()">Cargando…</p>
+    <table class="castrol-table emp-tabla" *ngIf="!cargando() && recibidos().length" data-guide="empresas-recibidos">
+      <thead><tr><th>Desde</th><th>Qué pidió</th><th>Quién</th><th>Cuándo</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let c of recibidos()" [attr.data-guide-clave]="c.comando_id" [attr.data-guide-estado]="c.resultado">
+          <td>{{ c.origen_empresa }}</td>
+          <td>{{ queSePidio(c) }}</td>
+          <td>{{ c.origen_usuario || '—' }}</td>
+          <td>{{ cuando(c.aplicado_en) }}</td>
+          <td>
+            <span class="emp-estado" [attr.data-tono]="c.resultado === 'APLICADO' ? 'bien' : 'mal'">{{ c.resultado === 'APLICADO' ? 'Aplicado' : 'No se aplicó' }}</span>
+            <small class="emp-tenue emp-bloque" *ngIf="c.detalle">{{ c.detalle }}</small>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="emp-vacio" *ngIf="!cargando() && !recibidos().length">Ninguna otra empresa ha cambiado nada aquí.</p>
+  </ng-container>
+
+  <!-- ============================================================ AGREGAR -->
+  <ng-container *ngIf="pestana() === 'agregar' && administra">
+    <p class="emp-error" *ngIf="avisoAgregar()" role="alert">{{ avisoAgregar() }}</p>
+    <div class="emp-agregar">
+      <section class="emp-panel" data-guide="empresas-alta">
+        <h2><i class="ph ph-desktop"></i> En esta computadora</h2>
+        <p class="emp-ayuda">Para dos empresas que venden en el mismo mostrador (como una tienda y la dulcería de al lado). Cada una lleva sus productos, su efectivo, sus cortes y su facturación; se cambia de una a otra desde la pastilla del negocio, sin Internet.</p>
+        <form class="emp-form" (ngSubmit)="crear()">
+          <label class="emp-campo"><span>Nombre de la empresa</span>
+            <input name="nombre" [(ngModel)]="nueva.nombre" maxlength="120" autocomplete="off" required data-guide="empresas-alta-nombre" />
+          </label>
+          <label class="emp-campo"><span>Giro</span>
+            <wx-select name="giro" [(ngModel)]="nueva.giro" [opciones]="giros" data-guide="empresas-alta-giro"></wx-select>
+          </label>
+          <label class="emp-campo"><span>RFC (opcional)</span>
+            <input name="rfc" [(ngModel)]="nueva.rfc" maxlength="13" autocomplete="off" data-guide="empresas-alta-rfc" />
+          </label>
+          <div class="emp-pie">
+            <button type="submit" class="emp-pri" [disabled]="creando()" data-guide="empresas-alta-crear">
+              <i class="ph ph-plus"></i> {{ creando() ? 'Creando…' : 'Dar de alta' }}
+            </button>
+          </div>
+        </form>
+
+        <ng-container *ngIf="svc.estado()?.locales?.length">
+          <h3>Empresas en esta computadora</h3>
+          <ul class="emp-lista">
+            <li *ngFor="let e of svc.estado()?.locales ?? []">
+              <span>{{ e.nombre }}</span>
+              <button type="button" class="emp-texto" (click)="desvincular(e.base, e.nombre)" [attr.data-guide-clave]="e.base" data-guide="empresas-desvincular">Sacar del grupo</button>
+            </li>
+          </ul>
+        </ng-container>
+      </section>
+
+      <section class="emp-panel" data-guide="empresas-enlace">
+        <h2><i class="ph ph-cloud"></i> En otra computadora</h2>
+        <p class="emp-ayuda">Para empresas en otra sucursal (como una donería y una birriería). Se ven por la nube con los datos de su última sincronización, y se les pueden pedir altas de productos y cambios de precio.</p>
+
+        <h3>Si la otra empresa ya tiene un código</h3>
+        <form class="emp-form emp-form--linea" (ngSubmit)="enlazar()">
+          <label class="emp-campo"><span>Código de enlace</span>
+            <input name="codigo" [(ngModel)]="codigoEscrito" placeholder="XXXX-XXXX-XXXX" maxlength="16" autocomplete="off"
+                   class="emp-mono emp-codigo" data-guide="empresas-enlace-codigo" />
+          </label>
+          <button type="submit" class="emp-pri" [disabled]="enlazando() || codigoEscrito.trim().length < 12" data-guide="empresas-enlace-unir">
+            {{ enlazando() ? 'Enlazando…' : 'Enlazar' }}
+          </button>
+        </form>
+
+        <h3>Para que otra empresa se enlace con esta</h3>
+        <button type="button" class="emp-sec" (click)="generarCodigo()" data-guide="empresas-enlace-generar">
+          <i class="ph ph-key"></i> Generar código
+        </button>
+        <div class="emp-codigo-generado" *ngIf="codigo() as c" data-guide="empresas-codigo-generado">
+          <b class="emp-mono">{{ c.codigo }}</b>
+          <small>Escríbelo en la caja principal de la otra empresa, en Mis empresas. Sirve una vez, hasta las {{ venceA(c.vence) }}.</small>
+        </div>
+
+        <ng-container *ngIf="svc.estado()?.remotas?.length">
+          <h3>Enlazadas</h3>
+          <ul class="emp-lista">
+            <li *ngFor="let r of svc.estado()?.remotas ?? []"><span>{{ r.nombre }}</span></li>
+          </ul>
+          <button type="button" class="emp-texto" (click)="salirDeLaNube()" data-guide="empresas-salir-nube">Sacar a esta empresa del grupo en la nube</button>
+        </ng-container>
+      </section>
+    </div>
+  </ng-container>
+</div>

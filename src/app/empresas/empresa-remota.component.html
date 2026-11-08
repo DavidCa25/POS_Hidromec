@@ -1,0 +1,99 @@
+<div class="emp" data-guide="empresa-remota">
+  <header class="emp-cab">
+    <div>
+      <button type="button" class="emp-texto emp-volver" (click)="router.navigate(['/dashboard/empresas'])" data-guide="empresa-remota-volver">
+        <i class="ph ph-arrow-left"></i> Mis empresas
+      </button>
+      <h1>{{ empresa()?.nombre }}</h1>
+      <p>En otra computadora · {{ datosDe(empresa()?.ultimaSync) }}</p>
+    </div>
+    <div class="emp-cab__acciones" *ngIf="puedePedir">
+      <button type="button" class="emp-pri" (click)="abrir('PRODUCTO_ALTA')" data-guide="empresa-remota-alta">
+        <i class="ph ph-plus"></i> Pedir alta de producto
+      </button>
+    </div>
+  </header>
+
+  <p class="emp-error" *ngIf="error()" role="alert">{{ error() }}</p>
+  <p class="emp-vacio" *ngIf="cargando()">Cargando…</p>
+
+  <ng-container *ngIf="!cargando()">
+    <section class="emp-total" *ngIf="resumen() as r" aria-label="Hoy" data-guide="empresa-remota-hoy">
+      <div><span>Ventas de hoy</span><b class="emp-mono">{{ dinero(r.ventas) }}</b><small>{{ r.tickets }} tickets</small></div>
+      <div><span>Efectivo en caja</span><b class="emp-mono">{{ dinero(r.efectivoEnCaja) }}</b><small>{{ r.turnosAbiertos === 1 ? '1 turno abierto' : r.turnosAbiertos + ' turnos abiertos' }}</small></div>
+      <div><span>Última venta</span><b>{{ cuando(r.ultimaVenta) }}</b></div>
+    </section>
+
+    <section class="emp-panel" data-guide="empresa-remota-pedidos" *ngIf="pedidos().length">
+      <h2>Cambios que le pediste</h2>
+      <table class="castrol-table emp-tabla">
+        <thead><tr><th>Qué se pidió</th><th>Cuándo</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let p of pedidos()" [attr.data-guide-clave]="p.id" [attr.data-guide-estado]="p.estado">
+            <td>{{ queSePidio(p) }}</td>
+            <td>{{ cuando(p.creado) }}</td>
+            <td>
+              <span class="emp-estado" [attr.data-tono]="estados[p.estado].tono">{{ estados[p.estado].etiqueta }}</span>
+              <small class="emp-tenue emp-bloque" *ngIf="p.detalle">{{ p.detalle }}</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="emp-panel" data-guide="empresa-remota-catalogo">
+      <div class="emp-panel__cab">
+        <h2>Productos</h2>
+        <small class="emp-tenue" *ngIf="publicado()">publicados el {{ cuando(publicado()) }}</small>
+        <input class="emp-buscar" type="search" placeholder="Buscar producto" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)"
+               aria-label="Buscar producto" data-guide="empresa-remota-buscar" />
+      </div>
+      <table class="castrol-table emp-tabla" *ngIf="visibles().length">
+        <thead><tr><th>Producto</th><th class="num">Precio</th><th *ngIf="puedePedir"></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let p of visibles(); trackBy: trackProducto" [attr.data-guide-clave]="p.uuid">
+            <td>{{ p.nombre }} <small class="emp-tenue" *ngIf="!p.vendible">· no se vende</small></td>
+            <td class="num emp-mono">{{ dinero(p.precio) }}</td>
+            <td *ngIf="puedePedir" class="num">
+              <button type="button" class="emp-texto" (click)="abrir('PRODUCTO_PRECIO', p)" data-guide="empresa-remota-precio">Cambiar precio</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="emp-vacio" *ngIf="!visibles().length">
+        {{ productos().length ? 'Ningún producto coincide.' : 'Esta empresa todavía no publica su catálogo: se publica solo cuando su caja principal sincroniza.' }}
+      </p>
+    </section>
+  </ng-container>
+
+  <dialog #dialogo class="wx-dialogo emp-dialogo" (cancel)="cerrar()" aria-labelledby="emp-dialogo-titulo" data-guide="empresa-remota-dialogo">
+    <form (ngSubmit)="enviar()" class="emp-form">
+      <h3 id="emp-dialogo-titulo">{{ form.tipo === 'PRODUCTO_PRECIO' ? 'Cambiar el precio en ' : 'Dar de alta en ' }}{{ empresa()?.nombre }}</h3>
+      <p class="emp-ayuda">El cambio se aplica cuando la caja principal de {{ empresa()?.nombre }} se conecta, con sus propias reglas. Lo verás en «Cambios que le pediste».</p>
+
+      <ng-container *ngIf="form.tipo === 'PRODUCTO_PRECIO'">
+        <p><b>{{ form.producto?.nombre }}</b> · hoy a {{ dinero(form.producto?.precio) }}</p>
+      </ng-container>
+      <ng-container *ngIf="form.tipo === 'PRODUCTO_ALTA'">
+        <label class="emp-campo"><span>Nombre</span>
+          <input name="nombre" [(ngModel)]="form.nombre" maxlength="100" autocomplete="off" data-guide="empresa-remota-nombre" />
+        </label>
+        <label class="emp-campo"><span>Categoría (opcional)</span>
+          <input name="categoria" [(ngModel)]="form.categoria" maxlength="100" autocomplete="off" />
+        </label>
+        <label class="emp-campo"><span>Código (opcional)</span>
+          <input name="codigo" [(ngModel)]="form.codigo" maxlength="100" autocomplete="off" />
+        </label>
+      </ng-container>
+      <label class="emp-campo"><span>{{ form.tipo === 'PRODUCTO_PRECIO' ? 'Precio nuevo' : 'Precio' }}</span>
+        <input name="precio" type="number" min="0" step="0.01" [(ngModel)]="form.precio" class="emp-mono" data-guide="empresa-remota-precio-nuevo" />
+      </label>
+      <p class="emp-error" *ngIf="avisoForm()" role="alert">{{ avisoForm() }}</p>
+      <div class="emp-pie">
+        <span class="emp-pie__esp"></span>
+        <button type="button" class="emp-sec" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="emp-pri" [disabled]="enviando()" data-guide="empresa-remota-enviar">{{ enviando() ? 'Enviando…' : 'Enviar' }}</button>
+      </div>
+    </form>
+  </dialog>
+</div>

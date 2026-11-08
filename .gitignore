@@ -112,3 +112,7 @@ Thumbs.db
 
 # Builds temporales de marketing (dist compilado con el addon de una marca para capturas)
 /dist.*-mkt/
+
+# Material de implementación de cada cliente (listas de productos, clientes,
+# recetas, cotizaciones). Son datos del cliente: no viajan en el repositorio.
+/docs/implementacion/

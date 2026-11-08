@@ -40,9 +40,26 @@ test('Usuarios y permisos: ajustar a una persona y que la caja lo respete', asyn
   const ids = await sql(app.base, `SELECT id, usuario FROM dbo.users WHERE usuario IN (N'e2e_operador', N'e2e_encargado');`);
   const id = (u) => ids.find((x) => x.usuario === u).id;
   await sql(app.base, `DELETE FROM dbo.user_permissions WHERE user_id IN (${id('e2e_operador')}, ${id('e2e_encargado')});`);
+  /* Un producto vendible propio, con costo, para ver quién recibe el costo.
+     Antes se daba por hecho que la base ya traía uno; una base recién
+     preparada no trae marcas ni productos y el catálogo llegaba vacío. */
+  await sql(app.base, `
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'E2E Marca') INSERT INTO dbo.CAT_brands (namee) VALUES (N'E2E Marca');
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'E2E Categoría') INSERT INTO dbo.CAT_categories (namee) VALUES (N'E2E Categoría');
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE part_number = N'E2E-PERSONA')
+      INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, category_id, brand_id, cost)
+      VALUES (N'E2E-PERSONA', N'Producto permisos por persona', 50, 10, 1, 1,
+              (SELECT id FROM dbo.CAT_categories WHERE namee = N'E2E Categoría'),
+              (SELECT id FROM dbo.CAT_brands WHERE namee = N'E2E Marca'), 20);`);
 
   // ------------------------------------------------------ 1. el Operador
   await entrar(app, CUENTAS.admin);
+  /* El Operador entra directo a Venta: sin turno abierto, el modal «Abrir
+     turno» taparía la pantalla. La prueba no depende de que otra lo haya
+     dejado abierto. */
+  const yo = (await app.invocar('sesion')).data.userId;
+  const turno = await app.invocar('openShift', { user_id: yo, opening_cash: 500, register_id: 1 });
+  expect(turno?.success || /ya existe un turno|ya hay un turno/i.test(String(turno?.error ?? '')), JSON.stringify(turno)).toBeTruthy();
   await irPorMas(p, 'Usuarios y permisos');
   await p.locator('[data-guide="usuarios-persona"]').filter({ hasText: 'e2e_operador' }).click();
   const ver = p.locator('[data-guide="usuarios-ver"]');

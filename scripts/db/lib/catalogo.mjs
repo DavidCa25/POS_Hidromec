@@ -158,6 +158,11 @@ asignar('propinas', [
   'sp_propinas_config_get', 'sp_propinas_config_guardar', 'sp_propina_registrar',
   'sp_propinas_repartir', 'sp_propinas_historial',
 ]);
+// 0080: MultiEmpresa, varias empresas del mismo dueño. docs/multiempresa.md.
+asignar('empresas', [
+  'sp_empresas_grupo', 'sp_empresas_grupo_fijar', 'sp_empresas_locales',
+  'sp_empresas_resumen', 'sp_empresas_comando_aplicar',
+]);
 
 // 0051: hechos hacia la nube. El capturador convierte cambios confirmados
 // (por rowversion) en eventos del outbox; el envio y su estado salen de ahi.

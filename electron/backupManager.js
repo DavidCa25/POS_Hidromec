@@ -19,6 +19,7 @@
 // administra su SQL Express local. Asi ninguna caja gana permisos nuevos.
 
 const path = require('path');
+const ambito = require('./empresas/ambito');  // archivos de la empresa activa (docs/multiempresa.md)
 const fs = require('fs');
 // El mismo driver que db.js y setupServer.js: msnodesqlv8 (ODBC nativo). Es el
 // unico que habla Windows Auth, que es como el host ordena el respaldo. Cargar
@@ -39,13 +40,23 @@ const DEFAULTS = {
 let timer = null;
 let running = false;
 
-function configPath() {
-  return path.join(app.getPath('userData'), 'backup-config.json');
+/* MULTIEMPRESA (docs/multiempresa.md): cada empresa tiene su respaldo, con su
+   propia configuración. Sin `base`, la empresa activa. El programador
+   respalda TODAS las de esta computadora, no solo la que está abierta: una
+   empresa en la que nadie entró hoy también se respalda. */
+let basesDeEstaComputadora = async () => [null];
+
+function configurar({ bases } = {}) {
+  if (typeof bases === 'function') basesDeEstaComputadora = bases;
 }
 
-function loadBackupConfig() {
+function configPath(base = null) {
+  return base ? ambito.rutaDe(base, 'backup-config.json') : ambito.ruta('backup-config.json');
+}
+
+function loadBackupConfig(base = null) {
   try {
-    const p = configPath();
+    const p = configPath(base);
     if (fs.existsSync(p)) {
       return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(p, 'utf8')) };
     }
@@ -55,9 +66,9 @@ function loadBackupConfig() {
   return { ...DEFAULTS };
 }
 
-function saveBackupConfig(partial = {}) {
-  const merged = { ...loadBackupConfig(), ...partial };
-  fs.writeFileSync(configPath(), JSON.stringify(merged, null, 2), 'utf8');
+function saveBackupConfig(partial = {}, base = null) {
+  const merged = { ...loadBackupConfig(base), ...partial };
+  fs.writeFileSync(configPath(base), JSON.stringify(merged, null, 2), 'utf8');
   return merged;
 }
 
@@ -146,20 +157,23 @@ function ensureFolder(folder) {
   if (folder && !fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
 }
 
-async function runBackup(reason = 'manual') {
+async function runBackup(reason = 'manual', base = null) {
   if (running) return { success: false, error: 'Ya hay un respaldo en curso.' };
   running = true;
 
-  const cfg = loadBackupConfig();
+  const cfg = loadBackupConfig(base);
+  const guardar = (parcial) => saveBackupConfig(parcial, base);
   let privilegiada = null;
   try {
-    const { server, database: dbName } = await conexionDeLaApp();
+    const conexion = await conexionDeLaApp();
+    const server = conexion.server;
+    const dbName = base || conexion.database;
 
     // Una caja secundaria no respalda la base de la sucursal.
     if (!servidorEsLocal(server)) {
       const aviso = `Esta caja se conecta al servidor ${server}: el respaldo lo hace la ` +
                     'computadora principal, la que tiene SQL Server.';
-      saveBackupConfig({ lastStatus: 'no-aplica', lastError: aviso, lastAttemptAt: new Date().toISOString() });
+      guardar({ lastStatus: 'no-aplica', lastError: aviso, lastAttemptAt: new Date().toISOString() });
       console.log(`[BACKUP] omitido: esta caja no es el host (${server})`);
       return { success: false, error: aviso, noAplica: true };
     }
@@ -171,7 +185,7 @@ async function runBackup(reason = 'manual') {
     // que ser suya. Y se ordena con la conexion de Windows, no con el login de
     // la aplicacion, que no puede ni debe respaldar.
     privilegiada = await conexionPrivilegiadaLocal(server);
-    const q = `BACKUP DATABASE [${dbName}] TO DISK = N'${escSql(file)}' WITH INIT, STATS = 5;`;
+    const q = `BACKUP DATABASE [${String(dbName).replace(/]/g, ']]')}] TO DISK = N'${escSql(file)}' WITH INIT, STATS = 5;`;
     await privilegiada.request().query(q);
 
     // Copia fuera de la maquina (carpeta sincronizada del cliente), si esta configurada
@@ -185,7 +199,7 @@ async function runBackup(reason = 'manual') {
     }
 
     const at = new Date().toISOString();
-    saveBackupConfig({ lastBackupAt: at, lastStatus: 'ok', lastError: null });
+    guardar({ lastBackupAt: at, lastStatus: 'ok', lastError: null });
     console.log(`[BACKUP] ok (${reason}): ${file}`);
 
     cleanupOldBackups(cfg.folder, cfg.retentionDays);
@@ -194,7 +208,7 @@ async function runBackup(reason = 'manual') {
     return { success: true, path: file, at };
   } catch (err) {
     const mensaje = explicar(err);
-    saveBackupConfig({ lastStatus: 'error', lastError: mensaje, lastAttemptAt: new Date().toISOString() });
+    guardar({ lastStatus: 'error', lastError: mensaje, lastAttemptAt: new Date().toISOString() });
     console.error('[BACKUP] error:', err);
     return { success: false, error: mensaje };
   } finally {
@@ -270,22 +284,27 @@ function backupDueNow(cfg) {
   return now >= scheduled;
 }
 
+/** Las empresas de esta computadora; si no se pueden leer, al menos la activa. */
+async function bases() {
+  try { const b = await basesDeEstaComputadora(); return b.length ? b : [null]; }
+  catch (e) { console.error('[BACKUP] no se pudieron leer las empresas:', e.message); return [null]; }
+}
+
 async function tick() {
-  if (backupDueNow(loadBackupConfig())) {
-    await runBackup('programado');
+  for (const base of await bases()) {
+    if (backupDueNow(loadBackupConfig(base))) await runBackup('programado', base);
   }
 }
 
 // Al abrir la app: si no hay respaldo de hoy, hazlo ya (cubre las noches cerrado)
 async function startupCatchUp() {
-  const cfg = loadBackupConfig();
-  if (!cfg.enabled) return;
   // En una caja secundaria no hay nada que programar.
   if (!(await esHost())) { console.log('[BACKUP] esta caja no es el host: no se programan respaldos'); return; }
-
-  const last = cfg.lastBackupAt ? new Date(cfg.lastBackupAt) : null;
-  if (!isSameDay(last, new Date())) {
-    await runBackup('arranque');
+  for (const base of await bases()) {
+    const cfg = loadBackupConfig(base);
+    if (!cfg.enabled) continue;
+    const last = cfg.lastBackupAt ? new Date(cfg.lastBackupAt) : null;
+    if (!isSameDay(last, new Date())) await runBackup('arranque', base);
   }
 }
 
@@ -305,6 +324,7 @@ function stopScheduler() {
 }
 
 module.exports = {
+  configurar,
   loadBackupConfig,
   saveBackupConfig,
   runBackup,

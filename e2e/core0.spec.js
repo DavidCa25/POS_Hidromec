@@ -13,6 +13,10 @@
  * la devolucion se hace. Aqui se invoca justamente asi, a proposito.
  */
 const { test, expect, CUENTAS } = require('./fixtures');
+/* Lo esperado sale del MISMO catálogo con el que autoriza el proceso
+   principal. Un número escrito aquí («siete paquetes») se quedó viejo con
+   cada permiso nuevo y la prueba fallaba sin que nada estuviera mal. */
+const { PERMISOS, permisosDeRol } = require('../electron/seguridad/permisos');
 
 /**
  * Entra por el formulario y espera a que la sesion este abierta.
@@ -56,11 +60,11 @@ test.describe('Sesion y permisos, con la aplicacion en marcha', () => {
     expect(String(intento.error)).toContain('Inicia sesión');
   });
 
-  test('el Administrador recibe los siete paquetes', async ({ app }) => {
+  test('el Administrador recibe todos los paquetes', async ({ app }) => {
     const acceso = await entrar(app, CUENTAS.admin);
     expect(acceso.rol).toBe('admin');
     expect(acceso.rolEtiqueta).toBe('Administrador');
-    expect(acceso.permisos).toHaveLength(7);
+    expect([...acceso.permisos].sort()).toEqual([...PERMISOS].sort());
     expect(acceso.permisos).toContain('CONFIGURACION_ADMINISTRAR');
   });
 
@@ -78,23 +82,43 @@ test.describe('Sesion y permisos, con la aplicacion en marcha', () => {
     expect(String(usuarios.error)).toContain('acceso');
   });
 
-  test('el Operador vende, y nada mas', async ({ app }) => {
+  test('el Operador recibe lo de su rol, y nada mas', async ({ app }) => {
     const acceso = await entrar(app, CUENTAS.operador);
     expect(acceso.rolEtiqueta).toBe('Operador');
-    expect(acceso.permisos.sort()).toEqual(['SERVICIOS_OPERAR', 'VENTAS_OPERAR']);
+    expect([...acceso.permisos].sort()).toEqual([...permisosDeRol('cajero')].sort());
+    /* Lo delicado no viene con el rol: devolver, abrir el cajón, dar de baja
+       y configurar se piden con autorización o se otorgan a la persona. */
+    for (const p of ['DEVOLUCIONES', 'CAJON_SIN_VENTA', 'INVENTARIO_OPERAR', 'CONFIGURACION_ADMINISTRAR']) {
+      expect(acceso.permisos, p).not.toContain(p);
+    }
 
     /* Invocado a mano, como lo haria alguien con la consola abierta. Las tres
-       operaciones contra las que nacio el blindaje anti robo hormiga. */
-    const devolver = await app.invocar('refundSale', { sale_id: 1, user_id: acceso.userId });
-    expect(devolver.success).toBeFalsy();
-    expect(devolver.motivo).toBe('SIN_PERMISO');
+       operaciones contra las que nacio el blindaje anti robo hormiga.
 
-    const cajon = await app.invocar('openCashDrawer', {});
-    expect(cajon.success ?? cajon.ok).toBeFalsy();
+       Desde Roles v2 (0077) devolver y abrir el cajon son APROBABLES: no se
+       niegan en seco, piden la autorizacion de un encargado. Lo que importa
+       es lo mismo de antes —sin autorizacion no se hace—, asi que se cancela
+       el dialogo y se comprueba que la operacion no ocurrio. */
+    const sinAutorizacionNoSeHace = async (metodo, ...args) => {
+      const llamada = app.invocar(metodo, ...args);
+      const dialogo = app.ventana.locator('.swal2-popup', { hasText: 'Necesita autorización' });
+      const primero = await Promise.race([
+        llamada.then((r) => ({ r })),
+        dialogo.waitFor({ state: 'visible', timeout: 30000 }).then(() => ({ dialogo: true })),
+      ]);
+      if (primero.dialogo) await app.ventana.locator('.swal2-cancel').click();
+      const r = primero.r ?? await llamada;
+      expect(r?.success ?? r?.ok, `${metodo} no se hace sin autorizacion`).toBeFalsy();
+      return r;
+    };
 
-    const producto = await app.invocar('darDeBajaProducto', 1);
-    expect(producto.success).toBeFalsy();
-    expect(producto.motivo).toBe('SIN_PERMISO');
+    const devolver = await sinAutorizacionNoSeHace('refundSale', { sale_id: 1, user_id: acceso.userId });
+    expect(devolver.cancelado || devolver.motivo === 'SIN_PERMISO', 'la devolucion pidio autorizacion o se nego').toBeTruthy();
+
+    await sinAutorizacionNoSeHace('openCashDrawer', {});
+
+    const producto = await sinAutorizacionNoSeHace('darDeBajaProducto', 1);
+    expect(producto.cancelado || producto.motivo === 'SIN_PERMISO').toBeTruthy();
 
     const config = await app.invocar('modulosSet', 'hospitality', true);
     expect(config.success).toBeFalsy();

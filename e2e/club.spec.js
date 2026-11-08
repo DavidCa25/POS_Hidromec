@@ -81,7 +81,7 @@ test('Club: plan, afiliar, café del día, ya usó, renovar vencida y administra
   /* Aplicaciones relee los módulos: así el menú ve Fidelización encendida. */
   /* Sin espera fija: el menu se entera del modulo cuando termina de releer
      (1,5 s no siempre alcanzaba y la prueba fallaba una de cada pocas). */
-  await p.evaluate(() => { location.hash = '#/dashboard/aplicaciones'; });
+  await irPorMas(p, 'Aplicaciones');   // abrir Aplicaciones relee los módulos (las rutas son por path, no por hash)
   await expect.poll(async () => {
     await p.keyboard.press('Escape').catch(() => {});
     await irPorMas(p, 'Fidelización');

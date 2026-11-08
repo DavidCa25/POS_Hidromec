@@ -50,6 +50,12 @@ const DB_NAME = 'Wybix_POS';
 
 function log(msg) { console.log(`[RED] ${msg}`); }
 
+/* MULTIEMPRESA (docs/multiempresa.md): la cuenta de red de las secundarias
+   necesita permiso en TODAS las empresas de esta computadora, no solo en la
+   de la instalación. Sin configurar, solo esa (lo de siempre). */
+let basesDeLaRed = async () => [DB_NAME];
+function configurar({ bases } = {}) { if (typeof bases === 'function') basesDeLaRed = bases; }
+
 // ===========================================================================
 //  ALMACEN DE LA CONTRASENA
 // ===========================================================================
@@ -361,8 +367,13 @@ async function preparar({ rotar = false } = {}) {
 
   // ------------------------------------------------ 2) la cuenta y sus permisos
   try {
-    await setupServer.ensureLogin(server, DB_NAME, USUARIO_RED, contrasena);
-    await setupServer.ensureSchemaPermissions(server, DB_NAME);
+    let bases = [DB_NAME];
+    try { bases = [...new Set([DB_NAME, ...(await basesDeLaRed())])]; }
+    catch (e) { log('No se pudieron leer las empresas de esta computadora: ' + e.message); }
+    for (const base of bases) {
+      await setupServer.ensureLogin(server, base, USUARIO_RED, contrasena);
+      await setupServer.ensureSchemaPermissions(server, base);
+    }
   } catch (e) {
     return { ok: false, error: `No se pudo crear la cuenta de red: ${e.message}`, pasos: red?.pasos ?? [], fase: 'cuenta' };
   }
@@ -410,6 +421,7 @@ function revelarContrasena() {
 }
 
 module.exports = {
+  configurar,
   USUARIO_RED,
   diagnosticar,
   preparar,

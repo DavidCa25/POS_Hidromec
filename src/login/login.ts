@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import Swal from 'sweetalert2';
   imports: [FormsModule, CommonModule],
   styleUrls: ['./login.css']
 })
-export class Login {
+export class Login implements OnInit {
   usuario = '';
   contrasena = '';
   mensaje = '';
@@ -31,6 +31,20 @@ export class Login {
     private authService: AuthService,
     private caps: CapabilityService,
   ) {}
+
+  /**
+   * LA VENTANA YA TIENE SESIÓN.
+   *
+   * La sesión vive en el proceso principal, atada a ESTA ventana. Si al cargar
+   * la pantalla ya hay una —la ventana se recargó: al cambiar de empresa
+   * (docs/multiempresa.md) o por un F5—, se continúa por el mismo camino que
+   * después de entrar, sin pedir otra vez la contraseña. Una ventana nueva o
+   * una sesión cerrada no tienen sesión: ahí se pide, como siempre.
+   */
+  async ngOnInit() {
+    const acceso = await this.authService.reconciliar();
+    if (acceso) await this.continuar();
+  }
 
   async onLogin(event: Event) {
     event.preventDefault();
@@ -62,61 +76,65 @@ export class Login {
            permisos aquí a partir del rol. */
         const acceso = (resultado.data as any).acceso ?? await this.authService.reconciliar();
         if (acceso) this.authService.entrar(acceso);
-
-        /* Un rol que este binario no conoce: entra, se identifica, y hasta ahí.
-           Decirlo es mejor que dejarle una pantalla donde nada funciona. */
-        if (this.authService.sinRol()) {
-          await Swal.fire({
-            icon: 'info',
-            title: 'Sin rol asignado',
-            text: 'Tu usuario no tiene un rol que esta versión reconozca. '
-                + 'Pide a un administrador que te lo asigne desde Configuración › Usuarios.',
-          });
-        }
-
-        const api = (window as any).electronAPI;
-
-        console.log('AutoUpdater bridge:', {
-          isPackaged: api?.isPackaged ?? '(no expuesto)',
-          hasOnUpdateStatus: typeof api?.onUpdateStatus === 'function',
-          hasCheckForUpdates: typeof api?.checkForUpdates === 'function',
-          hasDownloadUpdate: typeof api?.downloadUpdate === 'function',
-          hasInstallUpdate: typeof api?.installUpdate === 'function',
-        });
-
-        if (typeof api?.checkForUpdates === 'function') {
-          api.checkForUpdates()
-            .then((r: any) => console.log('checkForUpdates() ->', r))
-            .catch((err: any) => console.log('checkForUpdates() error ->', err));
-        }
-        // A donde entra depende del perfil de ESTE dispositivo, no solo del
-        // rol: una caja configurada como Touch abre Touch aunque entre un
-        // administrador. Si no hay perfil (instalaciones existentes) es
-        // RETAIL_POS y el comportamiento es el de siempre.
-        await this.caps.load(true);
-
-        /* Y del paquete, no del nombre del rol. Antes decía `rol == 'cajero'`,
-           que dejaba al Encargado en el panel de estadísticas aunque su trabajo
-           empiece en la caja igual que el del Operador. Lo que decide es si
-           esta persona puede ver los números del negocio: si no puede, la
-           pantalla de estadísticas sería una pantalla de errores. */
-        const verNumeros = this.authService.puede(PAQUETES.REPORTES_VER);
-        if (this.caps.deviceProfile() === 'TOUCH_POS' || !verNumeros) {
-          // Una sola definicion de donde vende esta caja, la misma que usa el
-          // guard de las rutas de venta. Antes esta era la UNICA linea que
-          // miraba el perfil, y por eso cambiarlo exigia volver a entrar.
-          this.router.navigate([this.caps.rutaDeVenta]);
-        } else {
-          /* Inicio y no Estadisticas: es la pantalla que dice que hay que
-             hacer hoy. Las estadisticas quedan a un toque en el dock. */
-          this.router.navigate(['/dashboard/inicio']);
-        }
+        await this.continuar();
       } else {
         this.mensaje = resultado?.message || 'Usuario o contraseña inválidos';
       }
     } catch (e: any) {
       console.error('❌ Error en login:', e);
       this.mensaje = e?.message || 'Ocurrió un error al iniciar sesión';
+    }
+  }
+
+  /** Lo que sigue a tener sesión: avisos, actualizaciones y a dónde entra. */
+  private async continuar() {
+    /* Un rol que este binario no conoce: entra, se identifica, y hasta ahí.
+       Decirlo es mejor que dejarle una pantalla donde nada funciona. */
+    if (this.authService.sinRol()) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Sin rol asignado',
+        text: 'Tu usuario no tiene un rol que esta versión reconozca. '
+            + 'Pide a un administrador que te lo asigne desde Configuración › Usuarios.',
+      });
+    }
+
+    const api = (window as any).electronAPI;
+
+    console.log('AutoUpdater bridge:', {
+      isPackaged: api?.isPackaged ?? '(no expuesto)',
+      hasOnUpdateStatus: typeof api?.onUpdateStatus === 'function',
+      hasCheckForUpdates: typeof api?.checkForUpdates === 'function',
+      hasDownloadUpdate: typeof api?.downloadUpdate === 'function',
+      hasInstallUpdate: typeof api?.installUpdate === 'function',
+    });
+
+    if (typeof api?.checkForUpdates === 'function') {
+      api.checkForUpdates()
+        .then((r: any) => console.log('checkForUpdates() ->', r))
+        .catch((err: any) => console.log('checkForUpdates() error ->', err));
+    }
+    // A donde entra depende del perfil de ESTE dispositivo, no solo del
+    // rol: una caja configurada como Touch abre Touch aunque entre un
+    // administrador. Si no hay perfil (instalaciones existentes) es
+    // RETAIL_POS y el comportamiento es el de siempre.
+    await this.caps.load(true);
+
+    /* Y del paquete, no del nombre del rol. Antes decía `rol == 'cajero'`,
+       que dejaba al Encargado en el panel de estadísticas aunque su trabajo
+       empiece en la caja igual que el del Operador. Lo que decide es si
+       esta persona puede ver los números del negocio: si no puede, la
+       pantalla de estadísticas sería una pantalla de errores. */
+    const verNumeros = this.authService.puede(PAQUETES.REPORTES_VER);
+    if (this.caps.deviceProfile() === 'TOUCH_POS' || !verNumeros) {
+      // Una sola definicion de donde vende esta caja, la misma que usa el
+      // guard de las rutas de venta. Antes esta era la UNICA linea que
+      // miraba el perfil, y por eso cambiarlo exigia volver a entrar.
+      this.router.navigate([this.caps.rutaDeVenta]);
+    } else {
+      /* Inicio y no Estadisticas: es la pantalla que dice que hay que
+         hacer hoy. Las estadisticas quedan a un toque en el dock. */
+      this.router.navigate(['/dashboard/inicio']);
     }
   }
 

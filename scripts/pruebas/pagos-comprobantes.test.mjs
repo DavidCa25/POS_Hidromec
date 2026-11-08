@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { validarPagos } from "../../shared/pagos.ts";
+import { validarPagos, distribuirPagoDividido } from "../../shared/pagos.ts";
 const require = createRequire(import.meta.url);
 const { perfil, venta, corte } = require("../../electron/lib/comprobante");
 const extras = {
@@ -15,8 +15,20 @@ test("un solo folio, porción de efectivo y cambio independiente de tarjeta", ()
       { method: "EFECTIVO", amount: 30, received: 50 },
       { method: "TARJETA", amount: 29 },
     ]),
-    { total: 59, cash: 30, received: 50, change: 20 },
+    { total: 59, cash: 30, received: 50, change: 20, credito: 0, cobrado: 59 },
   );
+});
+test("0081: una parte a crédito («trae $100 de $150»): se cobra lo demás, el crédito no es dinero", () => {
+  assert.deepEqual(
+    validarPagos(150, [
+      { method: "EFECTIVO", amount: 100, received: 200 },
+      { method: "CREDITO", amount: 50 },
+    ]),
+    { total: 150, cash: 100, received: 200, change: 100, credito: 50, cobrado: 100 },
+  );
+  assert.equal(validarPagos(150, [{ method: "CREDITO", amount: 150 }]).cobrado, 0, "todo a crédito: nada se cobra");
+  assert.throws(() => validarPagos(150, [{ method: "CREDITO", amount: 50 }, { method: "CREDITO", amount: 100 }]), /repetido/);
+  assert.throws(() => validarPagos(150, [{ method: "EFECTIVO", amount: 100 }, { method: "CREDITO", amount: 40 }]), /Falta cubrir/);
 });
 test("centavos exactos, faltantes, sobrantes, duplicados, negativo y precisión", () => {
   assert.equal(
@@ -112,4 +124,28 @@ test("corte simple por defecto, campos y orden configurables sin alterar total",
   );
   assert.ok(configured.includes("$5.00"));
   assert.ok(configured.includes("$29.00"));
+});
+
+test("pago dividido: el método sin escribir se llena con lo que falta (Touch y Retail)", () => {
+  // $100 de efectivo de $150: el crédito queda en $50 sin escribirlo.
+  let d = distribuirPagoDividido(150, ["EFECTIVO", "CREDITO"], { EFECTIVO: 100 });
+  assert.equal(d.auto, "CREDITO");
+  assert.equal(d.valores.CREDITO, 50);
+  assert.deepEqual(d.pagos, [
+    { method: "EFECTIVO", amount: 100, received: 100 },
+    { method: "CREDITO", amount: 50 },
+  ]);
+  assert.equal(d.error, "");
+  // Efectivo de más: aplica lo que falta y da cambio.
+  d = distribuirPagoDividido(420, ["EFECTIVO", "TARJETA"], { EFECTIVO: 250, TARJETA: 220 });
+  assert.equal(d.pagos[0].amount, 200);
+  assert.equal(d.cambio, 50);
+  assert.equal(d.error, "");
+  // Tarjeta de más: no se puede cobrar.
+  d = distribuirPagoDividido(100, ["EFECTIVO", "TARJETA"], { TARJETA: 120, EFECTIVO: 0 });
+  assert.match(d.error, /suman más que el total/);
+  // Falta: se dice cuánto.
+  d = distribuirPagoDividido(100, ["EFECTIVO", "TARJETA"], { EFECTIVO: 30, TARJETA: 20 });
+  assert.equal(d.saldo, 50);
+  assert.notEqual(d.error, "");
 });
