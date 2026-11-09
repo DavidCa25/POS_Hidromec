@@ -7,7 +7,7 @@ import {CommercialSaleComponent} from '../../app/commercial-sale/commercial-sale
 import { Component, HostListener, OnDestroy, OnInit, effect, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe, DatePipe, DecimalPipe, SlicePipe, NgStyle } from '@angular/common';
 import Swal from 'sweetalert2';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { SupervisorAuthService } from '../../services/supervisor.service';
@@ -36,6 +36,7 @@ import { ServiciosService } from '../../modulo-servicios/servicios.service';
 import { CuponVenta } from '../../loyalty/cupon-venta';
 import { ClubClienteComponent } from '../../app/club-cliente/club-cliente.component';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
+import { Memo } from '../../core/memo';
 import { SelectedOption } from '../../core/models';
 import {
   ResumenOpcion, gruposAConfigurar, resumenDeOpciones, seleccionAutomatica,
@@ -87,7 +88,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, OpcionesProductoComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, DecimalPipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, OpcionesProductoComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -96,7 +97,7 @@ export class Venta implements OnInit, OnDestroy {
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
 
   private readonly cart = inject(CartService);
-  private readonly catalog = inject(CatalogService);
+  protected readonly catalog = inject(CatalogService);
   private readonly shift = inject(ShiftService);
   private readonly cajon = inject(CajonService);
   readonly commercial=inject(CommercialService);
@@ -359,8 +360,11 @@ export class Venta implements OnInit, OnDestroy {
   readonly metodosDiferencia: WxOpcion[] = [
     { valor: 'EFECTIVO', etiqueta: 'Efectivo' }, { valor: 'TARJETA', etiqueta: 'Tarjeta' }, { valor: 'TRANSFERENCIA', etiqueta: 'Transferencia' },
   ];
+  private readonly memoCambio = new Memo<WxOpcion[]>();
   get opcionesCambio(): WxOpcion[] {
-    return this.catalog.vendibles().map(p => ({ valor: p.id, etiqueta: p.product_name, nota: '$' + Number(p.price).toFixed(2), busca: p.part_number ?? '' }));
+    const vendibles = this.catalog.vendibles();
+    return this.memoCambio.de([vendibles], () =>
+      vendibles.map(p => ({ valor: p.id, etiqueta: p.product_name, nota: '$' + Number(p.price).toFixed(2), busca: p.part_number ?? '' })));
   }
   get refundTotalLleva(): number { return this.devoluciones.totalLleva(this.refundLleva); }
   get refundDiferencia(): number { return Math.round((this.refundTotalLleva - this.refundTotalPreview) * 100) / 100; }
@@ -582,6 +586,15 @@ export class Venta implements OnInit, OnDestroy {
   get clienteSeleccionado(): CartCustomer | null { return this.cart.activeCart().customer; }
   /** Lo vendible, no todo el inventario: los ingredientes no se cobran. */
   get productos(): CatalogProduct[] { return this.catalog.vendibles(); }
+
+  /* El buscador pinta decenas, no miles: con 6,000 productos pintar todas las
+     tarjetas tardaba 3–4 s en abrir. Se memoriza por texto y catálogo. */
+  private readonly memoBusqueda = new Memo<{ items: CatalogProduct[]; total: number }>();
+  get busquedaProductos(): { items: CatalogProduct[]; total: number } {
+    return this.memoBusqueda.de([this.catalog.vendibles(), this.filtro], () => this.catalog.buscar(this.filtro, 120));
+  }
+  readonly esqueletoProductos = Array.from({ length: 6 });
+  trackProducto = (_: number, p: CatalogProduct) => p.id;
 
   /** Cliente de credito elegido en el cobro. */
   get customerId(): number | null { return this.cart.activeCart().creditCustomerId; }
@@ -1201,8 +1214,10 @@ export class Venta implements OnInit, OnDestroy {
     }
 
     this.filtro = '';
-    await this.cargarProductosActivos();
+    /* Se abre YA con lo que hay; el catálogo se refresca en segundo plano si
+       es viejo. La primera vez (sin nada en memoria) se ve el esqueleto. */
     this.showModalProductos = true;
+    await this.catalog.refrescarEnFondo();
   }
 
   cerrarModalProductos() { this.showModalProductos = false; }
@@ -1213,14 +1228,8 @@ export class Venta implements OnInit, OnDestroy {
    * para otro, ↓ baja a la lista y las flechas eligen.
    */
   async agregarPrimerProductoVisible() {
-    const t = (this.filtro || '').trim().toLowerCase();
-    if (!t) return;
-    const p = this.productos.find(x =>
-      (x.product_name || '').toLowerCase().includes(t) ||
-      (x.part_number || '').toLowerCase().includes(t) ||
-      (x.bar_code || '').toLowerCase().includes(t) ||
-      (x.brand_name || '').toLowerCase().includes(t) ||
-      (x.category_name || '').toLowerCase().includes(t));
+    if (!(this.filtro || '').trim()) return;
+    const p = this.busquedaProductos.items[0];
     if (p) await this.seleccionarProducto(p);
   }
 

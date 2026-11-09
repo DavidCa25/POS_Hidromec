@@ -135,6 +135,7 @@ test('MultiEmpresa: alta, cambio con la pastilla, Mis empresas y permisos', asyn
   await expect(fila).toBeVisible();
   await p.waitForTimeout(300);   // que termine de entrar el panel
   await p.screenshot({ path: path.join(SHOTS, '04-panel-dos.png') });
+  const t0Cambio = Date.now();
   await fila.click();
 
   /* La ventana se recarga sola con la otra empresa y la misma persona. */
@@ -142,6 +143,12 @@ test('MultiEmpresa: alta, cambio con la pastilla, Mis empresas y permisos', asyn
     try { return (await app.invocar('empresasListar'))?.data?.activa?.base; } catch { return null; }
   }, { timeout: 120000 }).toBe(SEGUNDA);
   await expect(p.locator('[data-guide="empresa-selector"]')).toContainText(NOMBRE, { timeout: 60000 });
+  /* Cuánto siente la persona: del clic a la otra empresa en pantalla. */
+  const msCambio = Date.now() - t0Cambio;
+  fs.writeFileSync(path.join(SHOTS, 'cambio.json'), JSON.stringify({ ms: msCambio }, null, 2));
+  console.log(`[E2E] cambio de empresa en ${msCambio} ms`);
+  for (const l of (app.registro || []).join('').split(String.fromCharCode(10)).filter(x => x.includes('[EMPRESA] cambio a'))) console.log(l.trim());
+  expect(msCambio, 'cambiar de empresa no tarda más de 8 s').toBeLessThan(8000);
   expect((await app.invocar('sesion'))?.data?.usuario).toBe(CUENTAS.admin.usuario);
   await p.screenshot({ path: path.join(SHOTS, '05-en-la-segunda.png') });
 

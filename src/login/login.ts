@@ -42,8 +42,11 @@ export class Login implements OnInit {
    * una sesión cerrada no tienen sesión: ahí se pide, como siempre.
    */
   async ngOnInit() {
+    /* Las capacidades del equipo no dependen de quién entra: se piden a la
+       vez que la sesión. Tras un cambio de empresa ahorra una ida y vuelta. */
+    const caps = this.caps.load(true);
     const acceso = await this.authService.reconciliar();
-    if (acceso) await this.continuar();
+    if (acceso) await this.continuar(caps);
   }
 
   async onLogin(event: Event) {
@@ -87,7 +90,7 @@ export class Login implements OnInit {
   }
 
   /** Lo que sigue a tener sesión: avisos, actualizaciones y a dónde entra. */
-  private async continuar() {
+  private async continuar(capsCargando: Promise<unknown> | null = null) {
     /* Un rol que este binario no conoce: entra, se identifica, y hasta ahí.
        Decirlo es mejor que dejarle una pantalla donde nada funciona. */
     if (this.authService.sinRol()) {
@@ -118,7 +121,7 @@ export class Login implements OnInit {
     // rol: una caja configurada como Touch abre Touch aunque entre un
     // administrador. Si no hay perfil (instalaciones existentes) es
     // RETAIL_POS y el comportamiento es el de siempre.
-    await this.caps.load(true);
+    await (capsCargando ?? this.caps.load(true));
 
     /* Y del paquete, no del nombre del rol. Antes decía `rol == 'cajero'`,
        que dejaba al Encargado en el panel de estadísticas aunque su trabajo

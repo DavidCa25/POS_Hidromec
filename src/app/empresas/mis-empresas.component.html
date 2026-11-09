@@ -128,6 +128,11 @@
       <section class="emp-panel" data-guide="empresas-alta">
         <h2><i class="ph ph-desktop"></i> En esta computadora</h2>
         <p class="emp-ayuda">Para dos empresas que venden en el mismo mostrador (como una tienda y la dulcería de al lado). Cada una lleva sus productos, su efectivo, sus cortes y su facturación; se cambia de una a otra desde la pastilla del negocio, sin Internet.</p>
+        <p class="emp-licencia" data-guide="empresas-alta-licencia">
+          <i class="ph ph-seal-check" aria-hidden="true"></i>
+          Cada empresa más en esta computadora es una <b>Empresa adicional</b>: $1,499 + IVA, con el primer año incluido.
+          La nueva empresa tiene 30 días de prueba; después queda en solo consulta hasta que la agregues a tu licencia.
+        </p>
         <form class="emp-form" (ngSubmit)="crear()">
           <label class="emp-campo"><span>Nombre de la empresa</span>
             <input name="nombre" [(ngModel)]="nueva.nombre" maxlength="120" autocomplete="off" required data-guide="empresas-alta-nombre" />
@@ -150,6 +155,9 @@
           <ul class="emp-lista">
             <li *ngFor="let e of svc.estado()?.locales ?? []">
               <span>{{ e.nombre }}</span>
+              <span class="emp-lic" *ngIf="e.licencia?.modo === 'PRUEBA'">Prueba · {{ e.licencia?.diasRestantes }} días</span>
+              <span class="emp-lic emp-lic--consulta" *ngIf="e.licencia?.modo === 'CONSULTA'">Solo consulta</span>
+              <span class="emp-lic emp-lic--ok" *ngIf="e.licencia?.modo === 'INCLUIDA'">Empresa adicional</span>
               <button type="button" class="emp-texto" (click)="desvincular(e.base, e.nombre)" [attr.data-guide-clave]="e.base" data-guide="empresas-desvincular">Sacar del grupo</button>
             </li>
           </ul>
@@ -158,7 +166,7 @@
 
       <section class="emp-panel" data-guide="empresas-enlace">
         <h2><i class="ph ph-cloud"></i> En otra computadora</h2>
-        <p class="emp-ayuda">Para empresas en otra sucursal (como una donería y una birriería). Se ven por la nube con los datos de su última sincronización, y se les pueden pedir altas de productos y cambios de precio.</p>
+        <p class="emp-ayuda">Para empresas en otra sucursal (como una donería y una birriería). Se ven por la nube con los datos de su última sincronización, y se les pueden pedir altas de productos y cambios de precio. Cada una usa la licencia de su propia computadora.</p>
 
         <h3>Si la otra empresa ya tiene un código</h3>
         <form class="emp-form emp-form--linea" (ngSubmit)="enlazar()">

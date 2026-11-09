@@ -234,6 +234,8 @@ async function comprobar(webContentsId, permiso, opciones = {}) {
   if (lic) {
     const r = lic.permiteCanal(opciones.canal, permiso, modulo);
     if (!r.ok) {
+      /* 0082: una empresa adicional sin licencia, después de su prueba. */
+      if (r.requiere === 'empresa') return { ok: false, motivo: 'EMPRESA_CONSULTA', requiere: r.requiere };
       return { ok: false, motivo: lic.ventaEsencial ? 'VENTA_ESENCIAL' : 'SIN_LICENCIA', requiere: r.requiere };
     }
   }
@@ -248,6 +250,7 @@ const MENSAJES = {
   MODULO_INDETERMINADO: 'No se pudo comprobar si la función está activada.',
   VENTA_ESENCIAL: 'Tu suscripción no está activa: Wybix sigue vendiendo, pero esta función vuelve al renovar.',
   SIN_LICENCIA: 'Tu plan no incluye esta función.',
+  EMPRESA_CONSULTA: 'Terminó la prueba de esta empresa: solo consulta. Agrega una Empresa adicional para operarla.',
 };
 
 /**

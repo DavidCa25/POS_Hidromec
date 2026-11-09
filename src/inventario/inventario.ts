@@ -10,6 +10,7 @@ import { ClaveSatPicker } from '../app/clave-sat-picker/clave-sat-picker.compone
 import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
 import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
+import { Memo } from '../core/memo';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { CapabilityService, HospitalityService, InventoryMode, SociosService, Uom } from '../core';
 import { AuthService, PAQUETES } from '../services/auth.service';
@@ -1194,7 +1195,17 @@ export class Inventario {
     }
   }
 
+  /* Con miles de productos, filtrar y aplanar en cada detección de cambios
+     congelaba la pantalla al teclear: se memoriza (core/memo.ts). */
+  private readonly memoFiltrado = new Memo<any[]>();
+  private readonly memoVisible = new Memo<any[]>();
+  private readonly memoItems = new Memo<WxItem[]>();
+
   get inventarioFiltrado(): any[] {
+    return this.memoFiltrado.de([this.inventario, this.filtro], () => this.filtrarInventario());
+  }
+
+  private filtrarInventario(): any[] {
     const f = (this.filtro || '').toLowerCase().trim();
     if (!f) return this.inventario;
 
@@ -1220,7 +1231,8 @@ export class Inventario {
 
   /** Lo que buscó el usuario, ya pasado por los filtros de la barra. */
   get inventarioVisible(): any[] {
-    return this.tabla.filtrar(this.inventarioFiltrado);
+    const filtrado = this.inventarioFiltrado;
+    return this.memoVisible.de([filtrado, this.tabla.version], () => this.tabla.filtrar(filtrado));
   }
 
   /**
@@ -1228,7 +1240,8 @@ export class Inventario {
    * las filas sueltas: asi agrupar no rompe la paginacion ni la busqueda.
    */
   get itemsTabla(): WxItem[] {
-    return this.tabla.aplanar(this.inventarioVisible);
+    const visible = this.inventarioVisible;
+    return this.memoItems.de([visible, this.tabla.version], () => this.tabla.aplanar(visible));
   }
 
   get totalItems(): number { return this.itemsTabla.length; }

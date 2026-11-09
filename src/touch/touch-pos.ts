@@ -314,11 +314,19 @@ export class TouchPos implements OnInit, OnDestroy {
   readonly errorCatalogo = this.menu.error;
   readonly categorias = this.menu.categories;
 
-  readonly productos = computed(() => {
+  /* Con miles de productos la cuadrícula pinta los primeros y dice cuántos
+     hay: pintar 6,000 tarjetas congelaba la pantalla al entrar. */
+  static readonly LIMITE_CUADRICULA = 120;
+  private readonly coincidencias = computed(() => {
     const t = this.termino().trim();
     if (t) return this.menu.search(t);
     return this.menu.productsOf(this.categoriaSel());
   });
+  readonly productos = computed(() => this.coincidencias().slice(0, TouchPos.LIMITE_CUADRICULA));
+  readonly productosTotal = computed(() => this.coincidencias().length);
+  readonly hayProductos = this.menu.hayProductos;
+  readonly esqueleto = Array.from({ length: 12 });
+  trackProducto = (_: number, p: { id: number }) => p.id;
 
   // ---------------------------------------------------------------- carrito
   readonly lineas = this.cart.lines;

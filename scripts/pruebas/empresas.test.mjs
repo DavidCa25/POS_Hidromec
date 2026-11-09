@@ -166,7 +166,10 @@ function escenarioCambio({ empresas, falla = {} } = {}) {
 test('cambio: entra a la otra empresa con su sesión, reinicia servicios y recarga', async () => {
   const { cambio, estado, diario } = escenarioCambio();
   const r = await cambio.cambiar({ webContentsId: 1, base: 'Wybix_POS_LosPachoncitos', usuario: 'david' });
-  assert.deepEqual(r, { cambiada: true, base: 'Wybix_POS_LosPachoncitos', nombre: 'Los Pachoncitos' });
+  const { ms, fases, ...resto } = r;
+  assert.deepEqual(resto, { cambiada: true, base: 'Wybix_POS_LosPachoncitos', nombre: 'Los Pachoncitos' });
+  assert.ok(Number.isFinite(ms), 'dice cuánto tardó');
+  assert.deepEqual(Object.keys(fases), ['validar', 'detener', 'conectar', 'preparar', 'sesion', 'iniciar', 'recargar'], 'y en qué fase');
   assert.equal(estado.base, 'Wybix_POS_LosPachoncitos');
   assert.deepEqual(estado.sesion, { base: 'Wybix_POS_LosPachoncitos', usuario: 'david' });
   assert.equal(estado.recargas, 1);

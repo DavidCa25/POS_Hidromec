@@ -606,16 +606,17 @@
       </div>
       
       <div class="listado prod-grid">
-        <button type="button" class="prod-item" *ngFor="let p of productos"
+        <!-- Esqueleto solo la PRIMERA vez (sin catálogo en memoria). Después
+             se muestra lo que ya hay y se refresca en segundo plano. -->
+        <ng-container *ngIf="catalog.loading() && !productos.length">
+          <div class="prod-item prod-item--esqueleto" *ngFor="let _ of esqueletoProductos" aria-hidden="true">
+            <div class="prod-item-main"><span class="wx-esqueleto" style="width:60%"></span><span class="wx-esqueleto" style="width:35%;height:10px"></span></div>
+            <span class="wx-esqueleto" style="width:64px"></span>
+          </div>
+        </ng-container>
+        <button type="button" class="prod-item" *ngFor="let p of busquedaProductos.items; trackBy: trackProducto"
                 data-guide="venta-producto" [attr.data-guide-clave]="p.part_number"
-                (click)="seleccionarProducto(p)"
-                [hidden]="filtro && !(
-                  (p.product_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                  (p.part_number || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                  (p.bar_code || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                  (p.brand_name || '').toLowerCase().includes(filtro.toLowerCase()) ||
-                  (p.category_name || '').toLowerCase().includes(filtro.toLowerCase())
-                )">
+                (click)="seleccionarProducto(p)">
           <div class="prod-item-main">
             <div class="prod-item-name">{{ p.product_name }}</div>
             <div class="prod-item-meta">
@@ -638,8 +639,12 @@
           </div>
           <i class="ph-fill ph-plus-circle pi-add"></i>
         </button>
-        <div *ngIf="productos.length === 0" class="text-center text-muted py-4">No hay productos activos.</div>
+        <div *ngIf="!catalog.loading() && productos.length === 0" class="text-center text-muted py-4">No hay productos activos.</div>
+        <div *ngIf="productos.length && !busquedaProductos.total" class="text-center text-muted py-4">Ningún producto coincide con «{{ filtro }}».</div>
       </div>
+      <p class="prod-mas" *ngIf="busquedaProductos.total > busquedaProductos.items.length" data-guide="venta-buscar-mas">
+        Mostrando {{ busquedaProductos.items.length }} de {{ busquedaProductos.total | number }}. Escribe para encontrar el resto.
+      </p>
         <div class="d-flex justify-content-end mt-2">
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cerrarModalProductos()">Cerrar</button>
         </div>

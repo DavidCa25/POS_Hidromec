@@ -64,7 +64,8 @@ async function arrancar(base, use, testInfo) {
      compartida). Las pruebas de la guia lo vuelven a encender. */
   await ventana.evaluate(() => { try { localStorage.setItem('wx-guide:auto', '0'); } catch { /* noop */ } });
 
-  await use({ app, ventana, perfil, base, invocar: (m, ...a) => invocar(ventana, m, ...a) });
+  /* `registro`: la salida del proceso principal, por si una prueba necesita leer un log (tiempos). */
+  await use({ app, ventana, perfil, base, registro, invocar: (m, ...a) => invocar(ventana, m, ...a) });
 
   if (testInfo.status !== testInfo.expectedStatus && registro.length) {
     await testInfo.attach('proceso-principal.log',

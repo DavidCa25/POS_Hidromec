@@ -1,0 +1,26 @@
+/* ==========================================================================
+   ESQUELETOS · lo que se ve mientras llega algo que todavía no está
+   --------------------------------------------------------------------------
+   Solo donde la primera carga se nota (el buscador de Venta con un catálogo
+   grande, Inventario). Si ya hay datos en memoria se muestran esos y se
+   refresca en segundo plano: un esqueleto encima de datos válidos es ruido.
+
+   Como `wx-cargando`, solo anima `opacity`: la GPU la compone sin repintar.
+   Nada de `background-position` en bucle, que repinta el área entera en cada
+   fotograma de una caja que está ocho horas encendida.
+   ========================================================================== */
+.wx-esqueleto {
+  display: block;
+  height: 14px;
+  margin: 3px 0;
+  border-radius: 6px;
+  background: var(--wx-sunken, rgba(15, 42, 63, .08));
+  animation: wx-esqueleto-pulso 1.2s ease-in-out infinite alternate;
+}
+@keyframes wx-esqueleto-pulso {
+  from { opacity: 1; }
+  to   { opacity: .45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-esqueleto { animation: none; }
+}

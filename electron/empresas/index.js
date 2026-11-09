@@ -26,6 +26,8 @@ const { crearRemotas } = require('./remotas');
  *   carpetaDeRespaldos()         donde SQL Server lee y escribe archivos
  *   cloudSync                    la nube de la empresa activa
  *   recargarVentana(wcId)
+ *   licenciaDe(base)             0082: PRINCIPAL | INCLUIDA | PRUEBA | CONSULTA
+ *   alDarDeAlta()                0082: recalcular la licencia de las empresas
  */
 function crearEmpresas(d) {
   const pool = () => d.poolPromise;
@@ -105,7 +107,8 @@ function crearEmpresas(d) {
   function registrarIpc(ipcMain) {
     require('../ipc/empresas').registrar({
       ipcMain, locales, cambio, alta, remotas, permisosEn,
-      alCrear: (base) => d.ambito.heredarEquipo(baseActiva(), base),
+      alCrear: async (base) => { d.ambito.heredarEquipo(baseActiva(), base); await d.alDarDeAlta?.(); },
+      licenciaDe: d.licenciaDe ?? (() => ({ modo: 'PRINCIPAL' })),
     });
   }
 

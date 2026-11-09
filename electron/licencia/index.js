@@ -51,7 +51,7 @@ function crearLicencia({ store, contexto, ahora = () => Date.now(), llaves = und
    * que se rechaza.
    */
   function sinCertificado(st) {
-    if (st.state === 'demo') return { modo: 'DEMO', state: 'demo', type: 'demo', plan: 'demo', entitlements: TODOS, verticals: Object.keys(GIROS), screens: { COMMERCE: null, HOSPITALITY: null, SERVICES: null }, registersMax: null };
+    if (st.state === 'demo') return { modo: 'DEMO', state: 'demo', type: 'demo', plan: 'demo', entitlements: TODOS, verticals: Object.keys(GIROS), screens: { COMMERCE: null, HOSPITALITY: null, SERVICES: null }, registersMax: null, companiesMax: 99 };
     if (st.state === 'tamper') return { modo: 'TAMPER', ...st };
     if (st.state === 'none') return { modo: 'NONE', state: 'none' };
     return { modo: 'TAMPER', state: 'tamper', motivo: 'sin-firma', type: st.type === 'trial' ? 'trial' : 'paid' };
@@ -100,6 +100,9 @@ function crearLicencia({ store, contexto, ahora = () => Date.now(), llaves = und
       screens: p.screens,
       entitlements: p.entitlements,
       addons: p.addons || [],
+      /* 0082: empresas que opera esta instalación (la suya + adicionales).
+         Un certificado anterior no lo trae: solo la suya. */
+      companiesMax: Math.max(1, Number(p.companies_max) || 1),
       origin: p.origin ?? null,
       firstActivatedAt: p.first_activated_at,
       paidUntil: p.paid_until,
@@ -155,6 +158,8 @@ function crearLicencia({ store, contexto, ahora = () => Date.now(), llaves = und
     store.saveLicense(ctx, {
       certificado: resp.certificate, machineId: v.payload.machine_id, lastSeen: previo.lastSeen,
       ventaEsencialDesde: previo.ventaEsencialDesde ?? null, revisionInventario: previo.revisionInventario ?? null,
+      // 0082: cuándo vio este equipo cada empresa adicional (su prueba y su lugar en el cupo).
+      empresasVistas: previo.empresasVistas ?? null,
       // El giro de prueba pendiente se conserva hasta que el servidor lo confirme.
       giroPruebaPendiente: v.payload.kind === 'TRIAL' && !(v.payload.verticals || []).includes(previo.giroPruebaPendiente)
         ? (previo.giroPruebaPendiente ?? null) : null,
@@ -219,12 +224,32 @@ function crearLicencia({ store, contexto, ahora = () => Date.now(), llaves = und
     return { ok: true };
   }
 
+  /**
+   * 0082 · Cuándo vio este equipo cada empresa adicional. Vive en el almacén
+   * blindado, junto a la licencia: borrar un archivo o atrasar el reloj no
+   * reinicia la prueba de una empresa. Solo se agregan fechas; nunca se borran.
+   */
+  let vistasEnMemoria = {};
+  function empresasVistas() {
+    try { return { ...vistasEnMemoria, ...(store.readLicense(contexto()).data?.empresasVistas || {}) }; }
+    catch { return { ...vistasEnMemoria }; }
+  }
+  function recordarEmpresas(mapa) {
+    const ctx = contexto();
+    const { data } = store.readLicense(ctx);
+    const previas = data?.empresasVistas || {};
+    const unidas = { ...mapa, ...previas };   // la fecha más vieja gana: nunca se reinicia
+    vistasEnMemoria = unidas;
+    if (data) store.saveLicense(ctx, { ...data, empresasVistas: unidas }, data.fp);
+    return { ok: true };
+  }
+
   function certificadoActual() {
     return store.readLicense(contexto()).data?.certificado ?? null;
   }
 
   return { estado, evaluador, aplicarRespuesta, importar, olvidar, descartarRevisionInventario, certificadoActual,
-           tipoGuardado, recordarGiroPrueba, giroPruebaPendiente };
+           tipoGuardado, recordarGiroPrueba, giroPruebaPendiente, empresasVistas, recordarEmpresas };
 }
 
 module.exports = { crearLicencia };

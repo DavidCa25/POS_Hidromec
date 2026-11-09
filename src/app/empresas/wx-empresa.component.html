@@ -18,6 +18,7 @@
           <div class="wx-opt wx-empresa__actual" aria-current="true" data-guide="empresa-actual">
             <i [class]="icono(a.giro)" aria-hidden="true"></i>
             <span class="wx-opt__txt">{{ a.nombre }}</span>
+            <span class="wx-empresa__lic" *ngIf="etiquetaLicencia(a) as t" [class.es-consulta]="a.licencia?.modo === 'CONSULTA'">{{ t }}</span>
             <span class="wx-empresa__nota">aquí estás</span>
             <i class="ph ph-check wx-empresa__check" aria-hidden="true"></i>
           </div>
@@ -27,6 +28,7 @@
                   data-guide="empresa-local" [attr.data-guide-clave]="e.base">
             <i [class]="icono(e.giro)" aria-hidden="true"></i>
             <span class="wx-opt__txt">{{ e.nombre }}</span>
+            <span class="wx-empresa__lic" *ngIf="etiquetaLicencia(e) as t" [class.es-consulta]="e.licencia?.modo === 'CONSULTA'">{{ t }}</span>
             <span class="wx-empresa__nota" *ngIf="svc.cambiando() === e.base">abriendo…</span>
             <span class="wx-empresa__nota" *ngIf="svc.cambiando() !== e.base">entrar</span>
           </button>
@@ -72,6 +74,11 @@
     <i [class]="icono(svc.estado()?.activa?.giro)"></i>
   </span>
   <span class="wx-negocio__nombre" [title]="nombre">{{ nombre }}</span>
+  <span class="wx-negocio__lic" *ngIf="svc.licenciaActiva() as l" [class.es-consulta]="l.modo === 'CONSULTA'"
+        data-guide="empresa-licencia" [attr.data-guide-estado]="l.modo"
+        [title]="l.modo === 'CONSULTA' ? 'Terminó la prueba de esta empresa: solo consulta. Agrega una Empresa adicional a tu licencia.' : 'Prueba de esta empresa'">
+    {{ l.modo === 'CONSULTA' ? 'Solo consulta' : 'Prueba · ' + l.diasRestantes + ' d' }}
+  </span>
   <span class="wx-negocio__demo" *ngIf="esDemo"
         title="Base de demostración: nada de lo que hagas aquí toca un negocio real.">
     <i class="ph ph-flask" aria-hidden="true"></i>Demo

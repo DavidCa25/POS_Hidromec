@@ -158,6 +158,58 @@ aplicaron o por qué no.
   empresa lo pidió.
 - Sin Internet en el destino, el cambio queda **pendiente** y se ve así en el origen.
 
+## Licencia por empresa (0082)
+
+Estudio de mercado del 2026-11-08: nadie regala la segunda empresa (CONTPAQi
+cobra +$1,200–2,100 por multi-RFC; Soft Restaurant, Shopify y Square cobran
+cada establecimiento). Wybix:
+
+| Empresa | Licencia |
+|---|---|
+| La de la instalación | la licencia del equipo |
+| Otra en la **misma** computadora | **Empresa adicional**: $1,499 + IVA, primer año incluido |
+| En **otra** computadora (grupo por la nube) | la suya, en su computadora; $0 extra |
+
+**Cómo se sabe.** El certificado firmado trae `companies_max` (1 + las
+adicionales compradas, `licenses.extra_companies` en la nube). El POS
+(`electron/empresas/licencia-empresa.js`) reparte ese cupo entre las bases
+locales en el orden en que este equipo las vio por primera vez:
+
+| Estado | Qué puede |
+|---|---|
+| `PRINCIPAL` / `INCLUIDA` | todo |
+| `PRUEBA` | todo, 30 días desde que se vio |
+| `CONSULTA` | reportes, Mis empresas, cambiar de empresa y respaldar; vender, cobrar o editar no (`EMPRESA_CONSULTA`) |
+
+La fecha en que se vio cada empresa vive en el almacén blindado de la
+licencia (cifrado, espejo, ancla de reloj): borrar un archivo o atrasar
+Windows no regala otra prueba. Los canales protegidos preguntan al evaluador
+de licencia por empresa, no al de la licencia a secas.
+
+**Nube.** `grupo_unir` exige licencia vigente o prueba a las dos empresas
+(`NO_LICENSE`). Migración `20261109120000_empresa_adicional.sql` (wybix-owner):
+`licenses.extra_companies`, `EXTRA_COMPANY` en el catálogo y `companies_max`
+en `license_runtime`.
+
+**Entregar una Empresa adicional** (el pedido llega por correo, como los timbres):
+
+```sql
+update public.licenses set extra_companies = extra_companies + 1
+ where license_key = 'WYBIX-XXXX-XXXX-XXXX';
+```
+
+El POS la recibe en su siguiente refresco del certificado.
+
+## Rendimiento al cambiar de empresa
+
+`cambio.js` registra cuánto tarda cada fase:
+
+    [EMPRESA] cambio a Wybix_POS_X en 1166 ms · validar 311 · detener 4 · conectar 106 · preparar 40 · sesion 14 · iniciar 222 · recargar 469
+
+Después de recargar, la ventana pide licencia, configuración, sesión y
+capacidades en paralelo. `npm run e2e:empresas` exige menos de 8 s del clic a
+la otra empresa en pantalla.
+
 ## Pruebas
 
 | Prueba | Qué asegura |

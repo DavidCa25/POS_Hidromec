@@ -57,6 +57,13 @@ const SIN_VALOR = '—';
 export class EstadoTabla {
   readonly columnas: WxColumna[];
   private readonly id: string;
+  /**
+   * Sube con cada cambio de filtros, agrupación, columnas o plegado. Las
+   * pantallas con miles de filas memorizan lo filtrado mientras no cambie
+   * (ver core/memo.ts): sin esto se volvía a filtrar en cada detección de
+   * cambios, es decir, en cada tecla y cada movimiento del ratón.
+   */
+  version = 0;
 
   /** Columnas escondidas por el usuario. */
   private ocultas = new Set<string>();
@@ -161,6 +168,7 @@ export class EstadoTabla {
   alternarGrupo(clave: string): void {
     if (this.plegados.has(clave)) this.plegados.delete(clave);
     else this.plegados.add(clave);
+    this.version++;
   }
 
   estaAbierto(clave: string): boolean { return !this.plegados.has(clave); }
@@ -247,6 +255,7 @@ export class EstadoTabla {
   private get llave(): string { return `wx-tabla:${this.id}`; }
 
   private guardar(): void {
+    this.version++;
     try {
       localStorage.setItem(this.llave, JSON.stringify({
         ocultas: [...this.ocultas],

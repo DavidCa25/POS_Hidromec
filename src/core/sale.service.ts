@@ -225,7 +225,8 @@ export class SaleService {
       const cupon = await this.canjearCupon(saleId, cuponAplicado);
 
       this.cart.completeActive();
-      this.catalog.invalidate();
+      // Viejo, no vacío: la siguiente pantalla lo refresca sin dejar de mostrarlo.
+      this.catalog.marcarViejo();
 
       return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios, cupon,
                propinaError: resp?.propina && !resp.propina.ok ? (resp.propina.error || 'No se pudo guardar la propina.') : null };

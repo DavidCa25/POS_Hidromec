@@ -140,12 +140,13 @@
     "e2e:whatsapp": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/whatsapp-avisos.spec.js",
     "e2e:1.5.0": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/asistencia.spec.js e2e/club.spec.js e2e/club-wallet.spec.js e2e/contrasena-olvidada.spec.js e2e/devoluciones.spec.js e2e/estado-resultados.spec.js e2e/menu-en-linea.spec.js e2e/paridad.spec.js e2e/puntos.spec.js e2e/usuario-5-dias.spec.js e2e/whatsapp-avisos.spec.js && npm run e2e:liquidaciones",
     "e2e:comercial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/operacion-ofertas.spec.js",
-    "test:empresas": "node --test scripts/pruebas/empresas.test.mjs",
+    "test:empresas": "node --test scripts/pruebas/empresas.test.mjs scripts/pruebas/licencia-empresa.test.mjs",
     "db:test-empresas": "node scripts/db/pruebas/empresas.mjs",
     "e2e:empresas": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/empresas.spec.js",
     "db:test-credito-parcial": "node scripts/db/pruebas/credito-parcial.mjs",
     "e2e:credito-parcial": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/credito-parcial.spec.js",
-    "e2e:opciones-retail": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/opciones-retail.spec.js"
+    "e2e:opciones-retail": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/opciones-retail.spec.js",
+    "e2e:rendimiento": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/rendimiento.spec.js"
   },
   "prettier": {
     "overrides": [

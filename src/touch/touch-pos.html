@@ -94,9 +94,14 @@
           [style.--tp-fondo-claro]="fondoClaro" [style.--tp-fondo-oscuro]="fondoOscuro"
           [style.--tp-fondo-tam]="marca?.fondoTouch?.tamano ?? null">
       <section class="tp-ofertas" *ngIf="ofertasAbiertas()"><button class="tp-iconbtn tp-iconbtn--claro" (click)="ofertasAbiertas.set(false)" aria-label="Cerrar ofertas"><i class="ph ph-x" aria-hidden="true"></i></button><app-commercial-sale [touch]="true" [offersOnly]="true"></app-commercial-sale></section>
-      <div class="tp-estado" *ngIf="cargando()">
-        <i class="ph ph-circle-notch spin" aria-hidden="true"></i>
-        <p>Cargando catálogo…</p>
+      <!-- Solo la PRIMERA carga: después se ven los productos que ya hay
+           mientras el catálogo se refresca en segundo plano. -->
+      <div class="tp-grid tp-grid--esqueleto" *ngIf="cargando() && !hayProductos()" aria-label="Cargando catálogo" role="status">
+        <span class="tp-card tp-card--esqueleto" *ngFor="let _ of esqueleto" aria-hidden="true">
+          <span class="wx-esqueleto" style="height:72px;border-radius:12px"></span>
+          <span class="wx-esqueleto" style="width:70%"></span>
+          <span class="wx-esqueleto" style="width:40%"></span>
+        </span>
       </div>
 
       <div class="tp-estado" *ngIf="!cargando() && errorCatalogo()">
@@ -112,8 +117,8 @@
         <p *ngIf="!termino()">Marca productos como vendibles en Inventario para que aparezcan aquí.</p>
       </div>
 
-      <div class="tp-grid" *ngIf="!cargando() && productos().length">
-        <button type="button" class="tp-card" *ngFor="let p of productos()" data-guide="touch-producto" [attr.data-guide-clave]="p.part_number"
+      <div class="tp-grid" *ngIf="productos().length">
+        <button type="button" class="tp-card" *ngFor="let p of productos(); trackBy: trackProducto" data-guide="touch-producto" [attr.data-guide-clave]="p.part_number"
                 [class.off]="agotado(p)" [disabled]="agotado(p)" (click)="tocar(p)">
 
           <span class="tp-card__media" [class.con-foto]="p.thumb">
@@ -142,6 +147,9 @@
           </span>
         </button>
       </div>
+      <p class="tp-mas" *ngIf="productosTotal() > productos().length" data-guide="touch-mas">
+        Mostrando {{ productos().length }} de {{ productosTotal() }}. Elige una categoría o busca para ver el resto.
+      </p>
     </main>
 
     <!-- ---------------------------------------------------------- CUENTA -->

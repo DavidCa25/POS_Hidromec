@@ -60,16 +60,25 @@ function crearCambio(deps) {
     if (String(anterior).toLowerCase() === String(base).toLowerCase()) {
       return { cambiada: false, base: anterior };
     }
+    /* Cuánto tarda cada fase: queda en el log y en la respuesta, para saber
+       qué pesa cuando un cambio se siente lento. */
+    const t = { inicio: Date.now() };
+    const marca = (k) => { t[k] = Date.now(); };
     const destino = await destinoValido(base, usuario);
+    marca('validar');
 
     log(`[EMPRESA] ${anterior} -> ${destino.base} (${usuario})`);
     await ciclo.detenerTodo();
+    marca('detener');
 
     try {
       await conectar(destino.base);
+      marca('conectar');
       await prepararBase();
+      marca('preparar');
       ciclo.olvidarTodo();
       await abrirSesion(webContentsId, destino.base, usuario);
+      marca('sesion');
     } catch (e) {
       logError(`[EMPRESA] no se pudo abrir ${destino.base}: ${e.message}. Se vuelve a ${anterior}.`);
       await volver(webContentsId, anterior, usuario);
@@ -77,8 +86,17 @@ function crearCambio(deps) {
     }
 
     await ciclo.iniciarTodo();
-    recargar(webContentsId);
-    return { cambiada: true, base: destino.base, nombre: destino.nombre };
+    marca('iniciar');
+    await recargar(webContentsId);
+    marca('recargar');
+    const fases = {};
+    let previo = t.inicio;
+    for (const k of ['validar', 'detener', 'conectar', 'preparar', 'sesion', 'iniciar', 'recargar']) {
+      if (t[k] != null) { fases[k] = t[k] - previo; previo = t[k]; }
+    }
+    const total = previo - t.inicio;
+    log(`[EMPRESA] cambio a ${destino.base} en ${total} ms · ${Object.entries(fases).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+    return { cambiada: true, base: destino.base, nombre: destino.nombre, ms: total, fases };
   }
 
   /** La vuelta atrás. Lo que falle aquí se registra: no hay a dónde más volver. */

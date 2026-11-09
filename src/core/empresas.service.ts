@@ -13,9 +13,15 @@ import { ElectronBridge } from './electron-bridge.service';
  * solo se habla con él y se guarda lo que la barra superior necesita pintar.
  */
 
+/**
+ * 0082 · La licencia de una empresa local (electron/empresas/licencia-empresa.js).
+ *   PRINCIPAL  la de la instalación      INCLUIDA  una «Empresa adicional» comprada
+ *   PRUEBA     30 días sin comprarla     CONSULTA  terminó la prueba: solo ver y respaldar
+ */
+export interface LicenciaEmpresa { modo: 'PRINCIPAL' | 'INCLUIDA' | 'PRUEBA' | 'CONSULTA'; diasRestantes?: number; hasta?: string; }
 export interface EmpresaLocal {
   base: string; nombre: string; giro: 'RETAIL' | 'HOSPITALITY' | string;
-  esEsta: boolean; puedeEntrar: boolean;
+  esEsta: boolean; puedeEntrar: boolean; licencia?: LicenciaEmpresa;
 }
 export interface EmpresaRemota {
   companyId: string; nombre: string; ultimaSync: string | null;
@@ -62,6 +68,11 @@ export class EmpresasService {
     return !!e && (e.locales.length > 0 || e.remotas.length > 0);
   });
   readonly cambiando = signal<string | null>(null);
+  /** La licencia de la empresa en la que se está (null: la principal o sin dato). */
+  readonly licenciaActiva = computed<LicenciaEmpresa | null>(() => {
+    const l = this.estado()?.activa?.licencia;
+    return l && (l.modo === 'PRUEBA' || l.modo === 'CONSULTA') ? l : null;
+  });
 
   private async llamar<T>(fn: string, p?: any): Promise<ResultadoEmpresas<T>> {
     const api = this.bridge.api;

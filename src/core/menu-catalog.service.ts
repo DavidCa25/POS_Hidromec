@@ -254,19 +254,29 @@ export class MenuCatalogService {
     return this.products().filter(p => p.category_id === categoryId);
   }
 
+  /* Con miles de productos: el texto de búsqueda en minúsculas y el índice
+     por código se arman una vez por lectura del catálogo, no por tecla. */
+  private readonly indice = computed(() => this.products().map(p => ({
+    p, texto: `${p.product_name}${p.part_number || ''}${p.bar_code || ''}`.toLowerCase(),
+  })));
+  private readonly porCodigo = computed(() => {
+    const m = new Map<string, MenuProduct>();
+    for (const p of this.products()) {
+      const k = (p.bar_code || '').trim().toLowerCase();
+      if (k && !m.has(k)) m.set(k, p);
+    }
+    return m;
+  });
+
   search(term: string): MenuProduct[] {
     const t = (term || '').trim().toLowerCase();
     if (!t) return this.products();
-    return this.products().filter(p =>
-      p.product_name.toLowerCase().includes(t) ||
-      (p.part_number || '').toLowerCase().includes(t) ||
-      (p.bar_code || '').toLowerCase().includes(t));
+    return this.indice().filter(x => x.texto.includes(t)).map(x => x.p);
   }
 
   findByBarcode(code: string): MenuProduct | undefined {
     const k = (code || '').trim().toLowerCase();
-    if (!k) return undefined;
-    return this.products().find(p => (p.bar_code || '').trim().toLowerCase() === k);
+    return k ? this.porCodigo().get(k) : undefined;
   }
 
   /**

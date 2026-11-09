@@ -185,7 +185,7 @@ const localHost = crearLocalHost({
   dominios: { hospitality: hospitalityDominio },
   /* La licencia firmada: qué pantallas incluye y cuántas por giro. `licencia`
      se crea más abajo; aquí solo se guarda cómo preguntarle. */
-  licencia: () => licencia.evaluador(),
+  licencia: () => licenciaEmpresas.evaluador(),
   alCambiarComandas: () => avisosWhatsapp?.pronto(),
 });
 localHost.registrarIpc(ipcMain);
@@ -586,6 +586,7 @@ async function bootMainApp(poolYaAbierto) {
 
   try {
     await prepararBase(pool);
+    void licenciaEmpresas.refrescar();
   } catch (e) {
     if (e.code !== 'MISSING_OBJECTS') throw e;
     dialog.showErrorBox(
@@ -2164,7 +2165,7 @@ sesion.configurar({
   /* La licencia firmada (electron/licencia): lo que el negocio tiene derecho
      a usar. Local y sin red; `licencia` se crea mas abajo, antes de que
      llegue cualquier canal. */
-  licencia: () => licencia.evaluador(),
+  licencia: () => licenciaEmpresas.evaluador(),
   aprobacionesActivas: () => aprobacionesActivas(),
   registrar: (e) => {
     console.warn(`[ACCESO] ${e.tipo ?? ''} ${e.motivo} · canal=${e.canal ?? '-'} · permiso=${e.permiso ?? '-'} · ventana=${e.webContentsId}`);
@@ -4749,7 +4750,14 @@ const empresas = require('./empresas').crearEmpresas({
   migrar: (pool) => runMigrations({ pool, sql, migrationsDir }),
   prepararBase,
   carpetaDeRespaldos: () => backup.loadBackupConfig().folder || 'C:\\POS_Backups',
-  recargarVentana: (id) => { const wc = webContents.fromId(id); if (wc && !wc.isDestroyed()) cargarInterfaz(wc); },
+  recargarVentana: (id) => {
+    /* La licencia de cada empresa local ya se calculó al arrancar; esto solo
+       la pone al día y no tiene por qué retrasar la ventana. */
+    void licenciaEmpresas.refrescar();
+    const wc = webContents.fromId(id); if (wc && !wc.isDestroyed()) cargarInterfaz(wc);
+  },
+  licenciaDe: (base) => licenciaEmpresas.estado(base),
+  alDarDeAlta: () => licenciaEmpresas.refrescar(),
 });
 empresas.registrarIpc(ipcMain);
 /* Los respaldos y la cuenta de red de las secundarias cubren todas las
@@ -6096,6 +6104,21 @@ const licencia = crearLicencia({
     extra: E2E && process.env.WYBIX_E2E_LLAVE_PUBLICA ? { 'e2e-1': process.env.WYBIX_E2E_LLAVE_PUBLICA } : null,
   }),
 });
+
+/* 0082 · LICENCIA POR EMPRESA (electron/empresas/licencia-empresa.js).
+   La base de la instalación la cubre la licencia del equipo; cada empresa
+   local adicional ocupa una «Empresa adicional» del certificado o tiene 30
+   días de prueba, y después queda en solo consulta. Los canales protegidos
+   preguntan a este evaluador, no al de la licencia a secas. */
+const licenciaEmpresas = require('./empresas/licencia-empresa').crearLicenciaEmpresas({
+  licencia,
+  basesLocales: async () => (await empresas.locales.listar()).map(e => e.base),
+  baseActiva: () => db.getConnectionConfig().database,
+  principal: () => loadInstallConfig()?.empresaPrincipal ?? null,
+  logError: console.error,
+});
+/* La prueba de una empresa vence con la app abierta: se recalcula seguido. */
+setInterval(() => { void licenciaEmpresas.refrescar(); }, 10 * 60_000).unref?.();
 
 // Solo pruebas E2E, y nunca en el instalador: el arnés firma un certificado
 // con SU clave efímera (arriba) para el machineId de este equipo y lo aplica

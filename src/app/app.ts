@@ -30,8 +30,9 @@ export class App implements OnInit {
   }
 
   async ngOnInit() {
-    await this.license.iniciar();
-    await this.refrescarSetup();
+    /* En paralelo: no dependen una de otra, y esta espera la sufre cada
+       arranque y cada cambio de empresa (la ventana se recarga). */
+    await Promise.all([this.license.iniciar(), this.refrescarSetup()]);
     this.listo = true;
 
     // Re-valida la prueba contra la nube en segundo plano (corrige ediciones locales).

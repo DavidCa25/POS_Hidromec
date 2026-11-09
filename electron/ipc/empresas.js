@@ -62,8 +62,10 @@ function manejar(fn) {
  *   remotas     crearRemotas() o null (sin nube)
  *   permisosEn(base, fila)   los permisos de esa persona en esa base
  *   alCrear(base)            después de un alta (heredar la config del equipo)
+ *   licenciaDe(base)         0082: { modo, diasRestantes?, hasta? } de esa empresa
  */
-function registrar({ ipcMain, locales, cambio, alta, remotas = null, permisosEn, alCrear = () => {} }) {
+function registrar({ ipcMain, locales, cambio, alta, remotas = null, permisosEn, alCrear = () => {},
+                     licenciaDe = () => ({ modo: 'PRINCIPAL' }) }) {
   /** Las locales donde esta persona existe y PUEDE cambiar (para no quedar atrapada). */
   async function localesPara(usuario) {
     const todas = await locales.listar(usuario);
@@ -71,7 +73,7 @@ function registrar({ ipcMain, locales, cambio, alta, remotas = null, permisosEn,
     for (const e of todas) {
       if (!e.user_id) continue;
       const permisos = await permisosEn(e.base, { id: e.user_id, rol: e.rol });
-      salida.push({ ...e, puedeEntrar: e.esEsta || permisos.has(BUNDLES.EMPRESAS_CAMBIAR) });
+      salida.push({ ...e, puedeEntrar: e.esEsta || permisos.has(BUNDLES.EMPRESAS_CAMBIAR), licencia: licenciaDe(e.base) });
     }
     return salida;
   }

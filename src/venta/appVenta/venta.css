@@ -797,3 +797,8 @@ tr.linea-activa > td {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--wx-accent) 35%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--wx-accent) 35%, transparent);
 }
 tr.linea-activa > td:first-child { box-shadow: inset 3px 0 0 var(--wx-accent); }
+
+/* Catálogos grandes: se pintan los primeros y se dice cuántos hay. */
+.prod-mas { margin: 8px 4px 0; font-size: 13px; color: var(--wx-text-muted); text-align: center; }
+.prod-item--esqueleto { cursor: default; pointer-events: none; }
+.prod-item--esqueleto .prod-item-main { flex: 1; }

@@ -47,6 +47,14 @@ export class WxEmpresaComponent implements OnInit {
     if (this.puede) void this.svc.cargar();
   }
 
+  /** 0082: «Prueba · 12 d» o «Solo consulta»; nada para la principal o una incluida. */
+  etiquetaLicencia(e: EmpresaLocal): string | null {
+    const l = e.licencia;
+    if (l?.modo === 'PRUEBA') return `Prueba · ${l.diasRestantes} d`;
+    if (l?.modo === 'CONSULTA') return 'Solo consulta';
+    return null;
+  }
+
   icono(giro: string | null | undefined): string {
     return giro === 'HOSPITALITY' ? 'ph-fill ph-fork-knife' : 'ph-fill ph-storefront';
   }

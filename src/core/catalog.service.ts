@@ -6,9 +6,20 @@ import { CatalogProduct, LineSource } from './models';
  * Catalogo de venta: productos, categorias, busqueda y cache.
  *
  * Una sola lectura de sp_get_active_products alimenta a Retail y a Touch. La
- * cache se refresca cuando la pantalla lo pide (abrir el buscador) y se
- * invalida al registrar una venta, para que el stock mostrado no se quede
- * viejo. La validacion de stock REAL siempre la hace SQL al vender.
+ * validacion de stock REAL siempre la hace SQL al vender.
+ *
+ * CATALOGOS GRANDES (5,000 productos o mas)
+ * ----------------------------------------
+ * Leer SQL tarda poco (~70 ms con 6,000); lo caro era la pantalla: el
+ * buscador pintaba todas las tarjetas y releia el catalogo ANTES de abrirse,
+ * cada vez. Ahora:
+ *   - lo que ya se leyo se muestra al instante y se refresca en segundo plano
+ *     (`refrescarEnFondo`), solo si tiene mas de `VIGENCIA_MS` o una venta lo
+ *     marco viejo (`marcarViejo`): el stock no se queda atras, pero nadie
+ *     espera por el;
+ *   - buscar usa un indice con el texto ya en minusculas (`buscar`), y
+ *     devuelve los primeros `limite` y cuantos hay en total: la pantalla pinta
+ *     decenas, no miles.
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
@@ -44,6 +55,36 @@ export class CatalogService {
 
   private inflight: Promise<CatalogProduct[]> | null = null;
 
+  /** Cuanto vale lo leido antes de refrescarlo en segundo plano. */
+  static readonly VIGENCIA_MS = 60_000;
+
+  /**
+   * El texto en que se busca, ya en minusculas: nombre, parte, codigo, marca y
+   * categoria. Se arma UNA vez por lectura del catalogo, no por tecla.
+   */
+  private readonly indice = computed(() => this.vendibles().map(p => ({
+    p,
+    texto: `${p.product_name || ''}${p.part_number || ''}${p.bar_code || ''}${p.brand_name || ''}${p.category_name || ''}`.toLowerCase(),
+  })));
+  /** Por codigo de barras y por numero de parte: el escaner no recorre 6,000. */
+  private readonly porCodigo = computed(() => {
+    const m = new Map<string, CatalogProduct>();
+    for (const p of this.vendibles()) {
+      const b = (p.bar_code || '').trim().toLowerCase();
+      if (b && !m.has(b)) m.set(b, p);
+    }
+    return m;
+  });
+  private readonly porParte = computed(() => {
+    const m = new Map<string, CatalogProduct>();
+    for (const p of this.vendibles()) {
+      const k = (p.part_number || '').toLowerCase();
+      if (k && !m.has(k)) m.set(k, p);
+    }
+    return m;
+  });
+  private readonly porId = computed(() => new Map(this.products().map(p => [p.id, p])));
+
   /** Carga (o reutiliza) el catalogo. `force` vuelve a leer de SQL. */
   async load(force = false): Promise<CatalogProduct[]> {
     if (!force && this.products().length) return this.products();
@@ -73,17 +114,33 @@ export class CatalogService {
     this.products.set([]);
   }
 
+  /**
+   * Lo leido ya no esta al dia (se vendio algo), pero se sigue mostrando: la
+   * siguiente pantalla que lo pida lo refresca en segundo plano en vez de
+   * esperar con la lista vacia.
+   */
+  marcarViejo(): void { this.loadedAt.set(0); }
+
+  /**
+   * Para pantallas que muestran el catalogo al abrirse: si no hay nada, espera
+   * la lectura; si ya hay, NO espera y solo relee en segundo plano cuando lo
+   * leido es viejo. Devuelve lo que hay para pintar ya.
+   */
+  async refrescarEnFondo(): Promise<CatalogProduct[]> {
+    if (!this.products().length) return this.load(true);
+    if (Date.now() - this.loadedAt() > CatalogService.VIGENCIA_MS) void this.load(true);
+    return this.products();
+  }
+
   /** Solo entre lo vendible: el escaner tampoco debe colar un ingrediente. */
   findByBarcode(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
-    if (!key) return undefined;
-    return this.vendibles().find(p => (p.bar_code || '').trim().toLowerCase() === key);
+    return key ? this.porCodigo().get(key) : undefined;
   }
 
   findByPartNumber(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
-    if (!key) return undefined;
-    return this.vendibles().find(p => (p.part_number || '').toLowerCase() === key);
+    return key ? this.porParte().get(key) : undefined;
   }
 
   /**
@@ -91,19 +148,45 @@ export class CatalogService {
    * un producto que hoy ya no se vende, y esa linea tiene que poder leerse.
    */
   findById(id: number): CatalogProduct | undefined {
-    return this.products().find(p => p.id === id);
+    return this.porId().get(id);
   }
 
   /** Filtro de texto sobre nombre, parte, codigo, marca y categoria. */
   search(term: string, list: CatalogProduct[] = this.vendibles()): CatalogProduct[] {
     const t = (term || '').trim().toLowerCase();
     if (!t) return list;
+    if (list === this.vendibles()) return this.indice().filter(x => x.texto.includes(t)).map(x => x.p);
     return list.filter(p =>
       (p.product_name || '').toLowerCase().includes(t) ||
       (p.part_number || '').toLowerCase().includes(t) ||
       (p.bar_code || '').toLowerCase().includes(t) ||
       (p.brand_name || '').toLowerCase().includes(t) ||
       (p.category_name || '').toLowerCase().includes(t));
+  }
+
+  /**
+   * Lo que pinta un buscador: los primeros `limite` que coinciden y cuantos
+   * hay en total. Sin texto y con un catalogo grande, primero lo ultimo que se
+   * dio de alta (lo que mas probablemente se busca recien capturado); con
+   * texto, en el orden del catalogo.
+   */
+  buscar(term: string, limite = 120): { items: CatalogProduct[]; total: number } {
+    const t = (term || '').trim().toLowerCase();
+    const idx = this.indice();
+    if (!t) {
+      if (idx.length <= limite) return { items: idx.map(x => x.p), total: idx.length };
+      const items: CatalogProduct[] = [];
+      for (let i = idx.length - 1; i >= 0 && items.length < limite; i--) items.push(idx[i].p);
+      return { items, total: idx.length };
+    }
+    const items: CatalogProduct[] = [];
+    let total = 0;
+    for (const x of idx) {
+      if (!x.texto.includes(t)) continue;
+      total++;
+      if (items.length < limite) items.push(x.p);
+    }
+    return { items, total };
   }
 
   /** Traduce un producto de catalogo a la fuente de una linea de carrito. */
