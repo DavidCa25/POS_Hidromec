@@ -283,6 +283,34 @@
         <div>
           <label>Precio</label>
           <input type="number" step="0.01" name="price" data-guide="producto-precio" data-teclado="MONEY" [(ngModel)]="form.price" required class="my-1 mr-sm-2" placeholder="0.00">
+          <small class="prod-precio-nota">Con IVA incluido</small>
+        </div>
+
+        <!-- Lo que hay detrás del precio: se recalcula al escribir y al cambiar el IVA. -->
+        <div class="grid-col-span-3 prod-desglose" *ngIf="desglosePrecio as d" data-guide="producto-desglose" aria-live="polite">
+          <div class="prod-desglose__dato prod-desglose__dato--final">
+            <span>Precio final</span><b>{{ d.final | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+          <div class="prod-desglose__dato">
+            <span>Antes de IVA</span><b>{{ d.base | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+          <div class="prod-desglose__dato">
+            <span>IVA {{ d.tasa * 100 | number:'1.0-0' }}%</span><b>{{ d.iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+          <ng-container *ngIf="veCostos">
+            <div class="prod-desglose__dato">
+              <span>Costo</span>
+              <b *ngIf="d.costo != null">{{ d.costo | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              <b *ngIf="d.costo == null" class="prod-desglose__tenue">Sin costo</b>
+            </div>
+            <div class="prod-desglose__dato" [class.es-perdida]="(d.ganancia ?? 0) < 0" [class.es-ganancia]="(d.ganancia ?? 0) > 0">
+              <span>Ganancia</span>
+              <b *ngIf="d.ganancia != null">{{ d.ganancia | currency:'MXN':'symbol-narrow':'1.2-2' }} <small>· {{ d.margen | number:'1.0-1' }}%</small></b>
+              <b *ngIf="d.ganancia == null" class="prod-desglose__tenue">—</b>
+            </div>
+          </ng-container>
+          <p class="prod-desglose__nota" *ngIf="veCostos && d.costo == null">El costo se toma de tu última compra de este producto.</p>
+          <p class="prod-desglose__nota" *ngIf="veCostos && d.costo != null && (d.ganancia ?? 0) < 0">Este precio no cubre el costo: vendes con pérdida.</p>
         </div>
 
         <!-- El stock fisico solo existe cuando el producto se cuenta. Una

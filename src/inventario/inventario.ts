@@ -2,7 +2,7 @@ import { InventoryTabsComponent } from '../app/inventory-tabs/inventory-tabs.com
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe } from '@angular/common';
+import { JsonPipe, NgFor, NgIf, NgStyle, CurrencyPipe, DecimalPipe } from '@angular/common';
 import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../services/report.service';
 import { CatalogoItem } from '../services/catalogos.service';
@@ -104,10 +104,34 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [InventoryTabsComponent, WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, ClaveSatPicker, WxSelectComponent],
+  imports: [InventoryTabsComponent, WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, DecimalPipe, ClaveSatPicker, WxSelectComponent],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
+  /** El costo del producto que se edita (de sus compras), o null si no hay o no se puede ver. */
+  costoProducto: number | null = null;
+  veCostos = false;
+
+  /**
+   * Lo que hay detrás del precio, mientras se escribe.
+   *
+   * El precio de Wybix INCLUYE el IVA (así lo cobra la caja y así lo desglosa
+   * el ticket). La ganancia se mide como en los reportes de utilidad
+   * (sp_get_profit_overview): precio SIN IVA menos el costo.
+   */
+  get desglosePrecio(): { final: number; base: number; iva: number; tasa: number; costo: number | null;
+                         ganancia: number | null; margen: number | null } | null {
+    const final = Number(this.form.price);
+    if (!Number.isFinite(final) || final <= 0) return null;
+    const tasa = this.form.objetoImpuesto === '02' ? Number(this.form.tasaIva) || 0 : 0;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const base = r2(final / (1 + tasa));
+    const costo = this.costoProducto;
+    const ganancia = costo != null ? r2(base - costo) : null;
+    return { final, base, iva: r2(final - base), tasa, costo, ganancia,
+             margen: ganancia != null && base > 0 ? Math.round((ganancia / base) * 1000) / 10 : null };
+  }
+
   form: ProductForm = {
     brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
     claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
@@ -962,6 +986,8 @@ export class Inventario {
 
   abrirProductoModal() {
     this.editingProductId = null;
+    this.costoProducto = null;
+    this.veCostos = this.inventario.some((p: any) => 'cost' in p);
     this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
       claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
       objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL };
@@ -983,6 +1009,10 @@ export class Inventario {
   abrirEditarProducto(item: ProductRow) {
     this.editingProductId = Number(item?.id ?? 0) || null;
     this.editingCorporativo = !!(item as any)?.corporate;
+    /* El costo llega solo a quien puede verlo (VER_COSTOS): sin la columna,
+       el desglose no enseña costo ni ganancia. */
+    this.costoProducto = item && 'cost' in item && item.cost != null ? Number((item as any).cost) : null;
+    this.veCostos = !!item && 'cost' in item;
     this.form = {
       brand: item?.brand_id ?? null,
       category: item?.category_id ?? null,
