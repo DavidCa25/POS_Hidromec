@@ -11,6 +11,7 @@ import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component'
 import { WxTablaBarraComponent } from '../app/wx-tabla/wx-tabla-barra.component';
 import { EstadoTabla, WxItem } from '../app/wx-tabla/tabla-estado';
 import { Memo } from '../core/memo';
+import { FechaSqlPipe } from '../core';
 import { WxSelectComponent, WxOpcion } from '../app/wx-select/wx-select.component';
 import { CapabilityService, HospitalityService, InventoryMode, SociosService, Uom } from '../core';
 import { AuthService, PAQUETES } from '../services/auth.service';
@@ -104,13 +105,15 @@ type ProductSupplierRow = {
   selector: 'app-inventario',
   templateUrl: './inventario.html',
   standalone: true,
-  imports: [InventoryTabsComponent, WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, DecimalPipe, ClaveSatPicker, WxSelectComponent],
+  imports: [InventoryTabsComponent, WxMenuComponent, WxTablaBarraComponent, RouterOutlet, FormsModule, JsonPipe, NgFor, NgStyle, NgIf, CurrencyPipe, DecimalPipe, FechaSqlPipe, ClaveSatPicker, WxSelectComponent],
   styleUrls: ['./inventario.css']
 })
 export class Inventario {
   /** El costo del producto que se edita (de sus compras), o null si no hay o no se puede ver. */
   costoProducto: number | null = null;
   veCostos = false;
+  /** La ganancia que se puso en la última compra de este producto (purchase_detail). */
+  ultimaCompra: { porcentaje: number; fecha: string | null } | null = null;
 
   /**
    * Lo que hay detrás del precio, mientras se escribe.
@@ -128,8 +131,10 @@ export class Inventario {
     const base = r2(final / (1 + tasa));
     const costo = this.costoProducto;
     const ganancia = costo != null ? r2(base - costo) : null;
+    /* El % como lo usa Compras: sobre el COSTO (precio = costo × IVA × (1 + %)).
+       Así el número coincide con el «% Ganancia» que se escribió al comprar. */
     return { final, base, iva: r2(final - base), tasa, costo, ganancia,
-             margen: ganancia != null && base > 0 ? Math.round((ganancia / base) * 1000) / 10 : null };
+             margen: ganancia != null && costo != null && costo > 0 ? Math.round((ganancia / costo) * 1000) / 10 : null };
   }
 
   form: ProductForm = {
@@ -984,9 +989,21 @@ export class Inventario {
   }
 
 
+  /** La ganancia de la última compra; sin compras (o sin permiso) no se muestra. */
+  private async cargarUltimaCompra(productId: number) {
+    try {
+      const r = await (window as any).electronAPI?.ultimaCompraProducto?.({ productId });
+      const d = r?.success ? r.data : null;
+      if (d && d.profit_percent != null && this.editingProductId === productId) {
+        this.ultimaCompra = { porcentaje: Number(d.profit_percent), fecha: d.datee ?? null };
+      }
+    } catch { /* el desglose sigue sin esta línea */ }
+  }
+
   abrirProductoModal() {
     this.editingProductId = null;
     this.costoProducto = null;
+    this.ultimaCompra = null;
     this.veCostos = this.inventario.some((p: any) => 'cost' in p);
     this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
       claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
@@ -1013,6 +1030,8 @@ export class Inventario {
        el desglose no enseña costo ni ganancia. */
     this.costoProducto = item && 'cost' in item && item.cost != null ? Number((item as any).cost) : null;
     this.veCostos = !!item && 'cost' in item;
+    this.ultimaCompra = null;
+    if (this.veCostos && item?.id) void this.cargarUltimaCompra(Number(item.id));
     this.form = {
       brand: item?.brand_id ?? null,
       category: item?.category_id ?? null,

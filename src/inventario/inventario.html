@@ -305,10 +305,16 @@
             </div>
             <div class="prod-desglose__dato" [class.es-perdida]="(d.ganancia ?? 0) < 0" [class.es-ganancia]="(d.ganancia ?? 0) > 0">
               <span>Ganancia</span>
-              <b *ngIf="d.ganancia != null">{{ d.ganancia | currency:'MXN':'symbol-narrow':'1.2-2' }} <small>· {{ d.margen | number:'1.0-1' }}%</small></b>
+              <b *ngIf="d.ganancia != null">{{ d.ganancia | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+              <small class="prod-desglose__pct" *ngIf="d.margen != null">{{ d.margen | number:'1.0-1' }}% sobre el costo</small>
               <b *ngIf="d.ganancia == null" class="prod-desglose__tenue">—</b>
             </div>
           </ng-container>
+          <p class="prod-desglose__nota" *ngIf="veCostos && ultimaCompra as u" data-guide="producto-ultima-compra">
+            <i class="ph ph-shopping-cart" aria-hidden="true"></i>
+            Última compra: <b>{{ u.porcentaje | number:'1.0-2' }}% de ganancia</b><ng-container *ngIf="u.fecha"> · {{ u.fecha | fechaSql:'d MMM yyyy':'es-MX' }}</ng-container>.
+            El % de ganancia es sobre el costo, igual que en Compras.
+          </p>
           <p class="prod-desglose__nota" *ngIf="veCostos && d.costo == null">El costo se toma de tu última compra de este producto.</p>
           <p class="prod-desglose__nota" *ngIf="veCostos && d.costo != null && (d.ganancia ?? 0) < 0">Este precio no cubre el costo: vendes con pérdida.</p>
         </div>

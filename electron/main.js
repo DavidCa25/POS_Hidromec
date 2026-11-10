@@ -3797,6 +3797,25 @@ ipcMain.handle('alerts:counts', async (_e, p = {}) => {
  * fecha, su responsable y su numero de carga es un dato que existe y que
  * nadie puede ver, y lo que no se puede ver no se puede auditar.
  */
+/* 1.5.8 · La ganancia que se puso en la última compra del producto (y su
+   costo), para el desglose de Editar producto. Es costo: pide VER_COSTOS. */
+ipcMain.handle('inventory:ultima-compra', sesion.proteger('inventory:ultima-compra', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('product_id', sql.Int, Number(p.productId) || 0)
+      .query(`SELECT TOP 1 d.profit_percent, d.unitary_price, d.factor_to_base, c.datee
+                FROM dbo.purchase_detail d
+                JOIN dbo.purchase c ON c.id = d.puchase_id
+               WHERE d.product_id = @product_id AND d.unitary_price > 0
+               ORDER BY c.datee DESC, d.id DESC`);
+    return { success: true, data: r.recordset?.[0] ?? null };
+  } catch (e) {
+    console.error('inventory:ultima-compra:', e.message);
+    return { success: false, error: e.message };
+  }
+}));
+
 ipcMain.handle('inventory:movements', sesion.proteger('inventory:movements', async (_e, p = {}) => {
   try {
     const pool = await poolPromise;

@@ -318,6 +318,8 @@ const EXIGE = {
   'quickstart:descartar': CONFIGURACION_ADMINISTRAR,
   'quickstart:guardar-perfil': CONFIGURACION_ADMINISTRAR,
   'inventory:movements': INVENTARIO_OPERAR,
+  /* 1.5.8: la ganancia y el costo de la última compra de un producto. */
+  'inventory:ultima-compra': VER_COSTOS,
   'quickstart:leer-hoja': CONFIGURACION_ADMINISTRAR,
   'quickstart:plantilla': CONFIGURACION_ADMINISTRAR,
   'negocio:giro-guardar': CONFIGURACION_ADMINISTRAR,

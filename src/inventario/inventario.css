@@ -1042,7 +1042,9 @@
 .prod-desglose__dato { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--wx-surface); }
 .prod-desglose__dato span { font-size: 12px; font-weight: 600; color: var(--wx-text-muted); }
 .prod-desglose__dato b { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; font-size: 15px; color: var(--wx-text); }
-.prod-desglose__dato b small { font-family: inherit; font-size: 12px; font-weight: 600; }
+.prod-desglose__pct { font-size: 12px; font-weight: 600; color: inherit; }
+.prod-desglose__dato.es-ganancia .prod-desglose__pct { color: var(--wx-success); }
+.prod-desglose__dato.es-perdida .prod-desglose__pct { color: var(--wx-danger, #b42318); }
 .prod-desglose__dato--final b { font-size: 17px; }
 .prod-desglose__dato.es-ganancia b { color: var(--wx-success); }
 .prod-desglose__dato.es-perdida { background: var(--wx-danger-soft, rgba(220, 38, 38, .1)); }

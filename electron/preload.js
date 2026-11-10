@@ -196,6 +196,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     alertsLowStock: (p) => invoke('alerts:low-stock', p),
     alertsCounts: (p) => invoke('alerts:counts', p),
     inventoryMovements: (p) => invoke('inventory:movements', p),
+    ultimaCompraProducto: (p) => invoke('inventory:ultima-compra', p),
     inventoryApplyCount: (p) => invoke('inventory:apply-count', p),
     usersList: () => invoke('users:list'),
     usersCreate: (p) => invoke('users:create', p),
