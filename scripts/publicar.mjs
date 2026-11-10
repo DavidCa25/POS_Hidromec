@@ -156,7 +156,10 @@ async function ponerNotas(token, notas) {
   const lista = await github('/releases?per_page=30', token);
   const rel = lista.find(x => x.tag_name === `v${VERSION}` || x.name === VERSION);
   if (!rel) throw new Error(`No encuentro el release v${VERSION} en ${DUENO}/${REPO}.`);
-  await github(`/releases/${rel.id}`, token, { method: 'PATCH', body: JSON.stringify({ body: notas }) });
+  /* Con la etiqueta SIEMPRE. Editar un borrador sin `tag_name` hace que GitHub
+     se la cambie por «untagged-…»; publicado así, el release queda con esa
+     etiqueta en vez de v<version> (pasó con 1.5.6, 1.5.7 y 1.5.8). */
+  await github(`/releases/${rel.id}`, token, { method: 'PATCH', body: JSON.stringify({ body: notas, tag_name: `v${VERSION}` }) });
   console.log(`\nNotas de la v${VERSION} puestas en GitHub.`);
   if (rel.draft) {
     console.log('El release sigue como BORRADOR: la web y el boton de descarga lo ignoran hasta'
