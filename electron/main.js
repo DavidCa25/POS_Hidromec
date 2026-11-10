@@ -158,7 +158,9 @@ ipcServicios.registrar({ ipcMain, sql, poolPromise,
    efectivo es la de ESTE equipo; SQL valida que lo sea en MultiCaja. */
 ipcEgresos.registrar({ ipcMain, sql, poolPromise,
   cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null,
-  identidad: () => cajaArrendada.identidad() });
+  identidad: () => cajaArrendada.identidad(),
+  /* Un gasto pagado en efectivo desde la caja abre el cajón (ver abrirCajonPorEfectivo). */
+  alSacarEfectivo: (motivo) => abrirCajonPorEfectivo(motivo) });
 
 /* IPC de QuickStart: la carga inicial del catalogo.
    Leer, mapear, validar y planificar corren AQUI y no en el renderer: diez
@@ -3287,40 +3289,14 @@ if([WybixRaw]::Send('${pName}', $src)){ 'OK' } else { throw 'WritePrinter fallo'
   });
 }
 
-ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_event, payload = {}, ses) => {
-  try {
-    const dcfg = loadDeviceConfig();
+/**
+ * EL PULSO AL CAJÓN, sin decidir si se puede: eso lo decide quien llama.
+ * `open-cash-drawer` (con su autorización) y las operaciones de efectivo que
+ * ya pasaron la suya (entrada, retiro, pago a proveedor, gasto).
+ */
+async function patearCajon(payload = {}, dcfg = loadDeviceConfig()) {
     const d = (dcfg && dcfg.drawer) || {};
     const conexion = String(payload?.conexion || d.conexion || 'usb');
-
-    // Disparo automatico al cobrar: respetar "Habilitar" y "Abrir al cobrar".
-    if (payload?.reason === 'payment' && (!d.enabled || !d.openOnPayment)) {
-      return { success: true, skipped: true };
-    }
-    /* Guardar el voucher de una venta con tarjeta: lo PIDE quien cobra, así
-       que no depende de «Abrir al cobrar»; solo de que haya cajón. */
-    if (payload?.reason === 'voucher' && !d.enabled) {
-      return { success: true, skipped: true };
-    }
-
-    /* ROLES V2. Abrir al COBRAR es de quien vende -antes un Operador no podia,
-       y el cajon no se abria tras su cobro-, pero solo si en esta caja acaba de
-       haber un cobro. Abrir SIN venta (o "al cobrar" sin cobro) es el gesto del
-       robo hormiga: lo autoriza un Encargado o el dueno, y queda en bitacora. */
-    /* El voucher cuenta como apertura «al cobrar»: es de la venta que se acaba
-       de registrar en esta caja, no una apertura sin venta. */
-    const trasCobro = (payload?.reason === 'payment' || payload?.reason === 'voucher')
-      && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
-    if (trasCobro) ultimoCobro.delete(_event.sender.id);
-    else {
-      const propio = ses.permisos.has(permisos.BUNDLES.CAJON_SIN_VENTA) || !aprobacionesActivas();
-      const c = propio ? null : autorizacionEnCanal(_event, ses, payload, 'open-cash-drawer');
-      if (!propio && !c) return pideAutorizacion('open-cash-drawer', 'Abrir el cajón sin una venta tiene que autorizarlo un encargado.');
-      registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c ? (c.via === 'APP' ? null : Number(c.autorizadorId) || null) : ses.userId,
-        tipo: 'DRAWER_NO_SALE', detalle: c ? (c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario}` : `autorizó ${c.autorizadorUsuario}`) : 'apertura manual',
-      }).catch(() => {});
-    }
-
     const pulseMs  = Number(payload?.pulseMs || d.pulseMs || 120);
     const pin      = Number(payload?.pin ?? d.pin ?? 0); // 0 default, 1 alternativo
     const cmd = buildDrawerKickCmd({ pulseMs, pin });
@@ -3373,6 +3349,63 @@ ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_e
       return { success: false, error: result.error || 'No se pudo abrir el cajon.' };
     }
     return { success: true };
+}
+
+/**
+ * Entra o sale efectivo del cajón (entrada, retiro, pago a proveedor o gasto
+ * en efectivo): se abre solo, como al cobrar. La operación ya pasó su propio
+ * permiso y queda en el corte con su concepto, así que no es una «apertura sin
+ * venta» ni pide otra autorización. Sin cajón habilitado no hace nada; si el
+ * cajón falla, el movimiento ya quedó registrado y solo se avisa en el log.
+ */
+async function abrirCajonPorEfectivo(motivo) {
+  const d = loadDeviceConfig()?.drawer || {};
+  if (!d.enabled) return { abierto: false, motivo: 'sin-cajon' };
+  try {
+    const r = await patearCajon({});
+    if (!r.success) console.warn(`[CAJON] ${motivo}: ${r.error}`);
+    return { abierto: !!r.success, error: r.success ? null : r.error };
+  } catch (e) {
+    console.warn(`[CAJON] ${motivo}: ${e.message}`);
+    return { abierto: false, error: e.message };
+  }
+}
+
+ipcMain.handle('open-cash-drawer', sesion.proteger('open-cash-drawer', async (_event, payload = {}, ses) => {
+  try {
+    const dcfg = loadDeviceConfig();
+    const d = (dcfg && dcfg.drawer) || {};
+    const conexion = String(payload?.conexion || d.conexion || 'usb');
+
+    // Disparo automatico al cobrar: respetar "Habilitar" y "Abrir al cobrar".
+    if (payload?.reason === 'payment' && (!d.enabled || !d.openOnPayment)) {
+      return { success: true, skipped: true };
+    }
+    /* Guardar el voucher de una venta con tarjeta: lo PIDE quien cobra, así
+       que no depende de «Abrir al cobrar»; solo de que haya cajón. */
+    if (payload?.reason === 'voucher' && !d.enabled) {
+      return { success: true, skipped: true };
+    }
+
+    /* ROLES V2. Abrir al COBRAR es de quien vende -antes un Operador no podia,
+       y el cajon no se abria tras su cobro-, pero solo si en esta caja acaba de
+       haber un cobro. Abrir SIN venta (o "al cobrar" sin cobro) es el gesto del
+       robo hormiga: lo autoriza un Encargado o el dueno, y queda en bitacora. */
+    /* El voucher cuenta como apertura «al cobrar»: es de la venta que se acaba
+       de registrar en esta caja, no una apertura sin venta. */
+    const trasCobro = (payload?.reason === 'payment' || payload?.reason === 'voucher')
+      && (Date.now() - (ultimoCobro.get(_event.sender.id) || 0)) < 120000;
+    if (trasCobro) ultimoCobro.delete(_event.sender.id);
+    else {
+      const propio = ses.permisos.has(permisos.BUNDLES.CAJON_SIN_VENTA) || !aprobacionesActivas();
+      const c = propio ? null : autorizacionEnCanal(_event, ses, payload, 'open-cash-drawer');
+      if (!propio && !c) return pideAutorizacion('open-cash-drawer', 'Abrir el cajón sin una venta tiene que autorizarlo un encargado.');
+      registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c ? (c.via === 'APP' ? null : Number(c.autorizadorId) || null) : ses.userId,
+        tipo: 'DRAWER_NO_SALE', detalle: c ? (c.via === 'APP' ? `aprobado desde la app por ${c.autorizadorUsuario}` : `autorizó ${c.autorizadorUsuario}`) : 'apertura manual',
+      }).catch(() => {});
+    }
+
+    return await patearCajon(payload, dcfg);
   } catch (err) {
     console.error('open-cash-drawer:', err);
     return { success: false, error: err?.message || String(err) };
@@ -4054,7 +4087,10 @@ ipcMain.handle('sp-register-supplier-payment', sesion.proteger('sp-register-supp
       .input('machine_name',   sql.NVarChar(120),op.machineName)
       .execute('sp_register_supplier_payment');
 
-    return { success: true, data: result.recordset[0] ?? null };
+    /* Solo si sale del cajón: una transferencia al proveedor no lo abre. */
+    const cajon = String(payload.payment_method || '').toUpperCase() === 'EFECTIVO'
+      ? await abrirCajonPorEfectivo('pago a proveedor') : null;
+    return { success: true, data: result.recordset[0] ?? null, cajon };
   } catch (err) {
     console.error('sp_register_supplier_payment:', err);
     return { success: false, error: err.message };
@@ -4078,7 +4114,8 @@ ipcMain.handle('sp-register-cash-out', sesion.proteger('sp-register-cash-out', a
       .input('machine_name', sql.NVarChar(120), op.machineName)
       .execute('sp_register_cash_out');
 
-    return { success: true, data: result.recordset?.[0] ?? null };
+    const cajon = await abrirCajonPorEfectivo('retiro');
+    return { success: true, data: result.recordset?.[0] ?? null, cajon };
   } catch (err) {
     console.error('sp_register_cash_out:', err);
     return { success: false, error: err.message };
@@ -4103,7 +4140,8 @@ ipcMain.handle('sp-register-cash-in', sesion.proteger('sp-register-cash-in', asy
       .input('machine_name', sql.NVarChar(120), op.machineName)
       .execute('sp_register_cash_in');
 
-    return { success: true, data: result.recordset?.[0] ?? null };
+    const cajon = await abrirCajonPorEfectivo('entrada de efectivo');
+    return { success: true, data: result.recordset?.[0] ?? null, cajon };
   } catch (err) {
     console.error('sp_register_cash_in:', err);
     return { success: false, error: err.message };

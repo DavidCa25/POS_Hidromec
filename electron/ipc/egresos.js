@@ -40,7 +40,7 @@ async function ejecutar(pool, nombre, construir) {
  * @param {() => number|null} deps.cajaDeEsteEquipo   caja del device-config
  * @param {() => {machineId: string, machineName: string}} deps.identidad
  */
-function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad }) {
+function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad, alSacarEfectivo = async () => null }) {
   const txt = (v, n = 255) => (v == null || String(v).trim() === '' ? null : String(v).trim().slice(0, n));
   const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
   const fecha = (v) => (v ? String(v).slice(0, 10) : null);   // 'AAAA-MM-DD'; SQL la toma como DATE
@@ -97,6 +97,10 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad }) {
        aparte y se corrige desde Socios. */
     if (r.success && p?.socios) {
       r.socios = await require('./socios').despuesDeGasto(await poolPromise, sql, r.data?.[0]?.expense_id, p.socios);
+    }
+    /* Pagado en efectivo: sp_register_expense lo saca hoy del cajón, así que se abre. */
+    if (r.success && String(p?.payment_method || '').toUpperCase() === 'EFECTIVO') {
+      r.cajon = await alSacarEfectivo('gasto en efectivo');
     }
     return r;
   }));
