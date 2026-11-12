@@ -59,7 +59,7 @@
   <ng-container *ngIf="policy as p">
     <ng-container *ngIf="view === 'offers'">
       <div *ngIf="hasVolume || offers.length>6" class="filter-pills offer-types" aria-label="Tipos de oferta">
-        <button *ngFor="let f of [['all','Todas'],['promotion','Promociones'],['combo','Combos'],['volume','Mayoreo por cantidad']]" [class.on]="offerKind === f[0]" [attr.aria-pressed]="offerKind === f[0]" (click)="offerKind = f[0]">{{f[1]}}</button>
+        <button *ngFor="let f of [['all','Todas'],['promotion','Promociones'],['combo','Combos'],['volume','Precio por cantidad']]" [class.on]="offerKind === f[0]" [attr.aria-pressed]="offerKind === f[0]" (click)="offerKind = f[0]">{{f[1]}}</button>
       </div>
       <div
         class="offers-tools"
@@ -502,7 +502,7 @@
           ></label>
           <div
             class="buy-pay"
-            *ngIf="d.item.kind === 'BUY_PAY'; else valueField"
+            *ngIf="d.item.kind === 'BUY_PAY'; else (d.item.tiers ? sinImporte : valueField)"
           >
             <label
               >Compra<input
@@ -520,10 +520,11 @@
                 (ngModelChange)="makePreview(draft)" /></label
             ><strong>{{ d.item.buy }}×{{ d.item.pay }}</strong>
           </div>
+          <ng-template #sinImporte></ng-template>
           <ng-template #valueField
             ><label
               >{{
-                d.item.kind === "PERCENT" ? "Porcentaje" : "Importe por unidad"
+                d.item.kind === "PERCENT" ? "Porcentaje" : d.item.kind === "VOLUME" ? "Precio por pieza" : "Importe por unidad"
               }}
               <div class="currency-field">
                 <span>{{ d.item.kind === "PERCENT" ? "%" : "$" }}</span
@@ -547,9 +548,25 @@
             /></label>
           </div>
           <div *ngIf="d.item.kind === 'VOLUME'" class="field-grid">
-            <label>Cantidad mínima<input class="field" aria-label="Cantidad mínima de mayoreo" type="number" min="2" max="500" step="1" [(ngModel)]="d.item.minimumQty" (ngModelChange)="makePreview(draft)"></label>
-            <label class="switch"><input type="checkbox" [(ngModel)]="d.item.mixProducts" (ngModelChange)="preview()"><span></span>Sumar productos y sabores elegibles</label>
-            <p class="muted">Desde el mínimo se aplica a las piezas elegibles. Al quitar piezas vuelve el precio normal. Los componentes de combos no cuentan.</p>
+            <div class="cp-modo" role="radiogroup" aria-label="Cómo se cobra por cantidad" data-guide="ofertas-modo-cantidad">
+              <button type="button" role="radio" [attr.aria-checked]="!!d.item.tiers" [class.on]="!!d.item.tiers" (click)="modoCantidad(d.item, true)">Paquetes</button>
+              <button type="button" role="radio" [attr.aria-checked]="!d.item.tiers" [class.on]="!d.item.tiers" (click)="modoCantidad(d.item, false)">Precio por pieza desde un mínimo</button>
+            </div>
+            <ng-container *ngIf="d.item.tiers; else desdeMinimo">
+              <div class="cp-paquete" *ngFor="let t of d.item.tiers; let i = index">
+                <label>Piezas<input class="field" [attr.aria-label]="'Piezas del paquete ' + (i + 1)" type="number" min="2" max="500" step="1" [(ngModel)]="t.qty" (ngModelChange)="makePreview(draft)"></label>
+                <label>Precio del paquete<div class="currency-field"><span>$</span><input [attr.aria-label]="'Precio del paquete ' + (i + 1)" type="number" min="0" step="0.01" [ngModel]="number(t.price)" (ngModelChange)="t.price = amount($event); preview()"></div></label>
+                <button type="button" class="cp-quitar" *ngIf="d.item.tiers.length > 1" (click)="d.item.tiers.splice(i, 1); makePreview(draft)" [attr.aria-label]="'Quitar paquete ' + (i + 1)"><i class="ph ph-x" aria-hidden="true"></i></button>
+              </div>
+              <button type="button" class="cp-agregar" *ngIf="d.item.tiers.length < 5" (click)="d.item.tiers.push({ qty: 6, price: '0.00' }); makePreview(draft)"><i class="ph ph-plus" aria-hidden="true"></i>Agregar paquete</button>
+              <label class="switch cp-ancho"><input type="checkbox" [(ngModel)]="d.item.mixProducts" (ngModelChange)="preview()"><span></span>Se pueden mezclar productos y sabores</label>
+              <p class="muted cp-ancho">Ejemplo: 12 por $225 y 6 por $123. Al vender, Wybix arma sola la combinación más barata (13 piezas = 1 docena + 1 suelta) y lo que sobra se cobra a su precio. Las piezas siguen siendo los productos reales: se descuentan del inventario y de la producción.</p>
+            </ng-container>
+            <ng-template #desdeMinimo>
+              <label>Cantidad mínima<input class="field" aria-label="Cantidad mínima" type="number" min="2" max="500" step="1" [(ngModel)]="d.item.minimumQty" (ngModelChange)="makePreview(draft)"></label>
+              <label class="switch"><input type="checkbox" [(ngModel)]="d.item.mixProducts" (ngModelChange)="preview()"><span></span>Sumar productos y sabores elegibles</label>
+              <p class="muted">Desde el mínimo, cada pieza elegible cuesta el precio por pieza. Al quitar piezas vuelve el precio normal. Los componentes de combos no cuentan.</p>
+            </ng-template>
           </div>
           <details class="advanced">
             <summary>Prioridad y condiciones de descuento</summary>
@@ -613,6 +630,10 @@
           ></label>
           <p class="muted">
             El precio agrupa los componentes. Los extras se cobran aparte.
+          </p>
+          <label class="switch" data-guide="ofertas-combo-auto"><input type="checkbox" aria-label="Aplicar el combo solo" [(ngModel)]="d.item.auto" (ngModelChange)="preview()" /><span></span>Aplicar solo cuando la cuenta tenga las piezas</label>
+          <p class="muted">
+            Si la cajera agrega un café y una dona, el precio cambia solo al del combo. Se arma únicamente si le conviene al cliente; también se puede armar a mano.
           </p></ng-template
         >
       </section>

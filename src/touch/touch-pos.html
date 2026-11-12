@@ -93,7 +93,11 @@
     <main class="tp-main" [class.tp-main--marca]="!!fondoClaro"
           [style.--tp-fondo-claro]="fondoClaro" [style.--tp-fondo-oscuro]="fondoOscuro"
           [style.--tp-fondo-tam]="marca?.fondoTouch?.tamano ?? null">
-      <section class="tp-ofertas" *ngIf="ofertasAbiertas()"><button class="tp-iconbtn tp-iconbtn--claro" (click)="ofertasAbiertas.set(false)" aria-label="Cerrar ofertas"><i class="ph ph-x" aria-hidden="true"></i></button><app-commercial-sale [touch]="true" [offersOnly]="true"></app-commercial-sale></section>
+      <section class="tp-ofertas" *ngIf="ofertasAbiertas()"><button class="tp-iconbtn tp-iconbtn--claro" (click)="ofertasAbiertas.set(false)" aria-label="Cerrar ofertas"><i class="ph ph-x" aria-hidden="true"></i></button><app-commercial-sale [touch]="true" [offersOnly]="true" (ver)="verOferta($event)"></app-commercial-sale></section>
+      <div class="tp-oferta-filtro" *ngIf="ofertaSel() as o" role="status">
+        <i class="ph ph-tag" aria-hidden="true"></i><span>Productos de <strong>{{ o.nombre }}</strong></span>
+        <button type="button" class="tp-iconbtn tp-iconbtn--claro" (click)="ofertaSel.set(null)" aria-label="Ver todos los productos"><i class="ph ph-x" aria-hidden="true"></i></button>
+      </div>
       <!-- Solo la PRIMERA carga: después se ven los productos que ya hay
            mientras el catálogo se refresca en segundo plano. -->
       <div class="tp-grid tp-grid--esqueleto" *ngIf="cargando() && !hayProductos()" aria-label="Cargando catálogo" role="status">

@@ -89,3 +89,35 @@ test('cancelar una estación disuelve solo ese combo y el remanente se cobra ind
  assert.equal(cotizar(policy,products,result.lines,ctx).total,'94.00');
  assert.equal(separarCombosCancelados([a,b],[]).changed,false);
 });
+test('precio por cantidad en paquetes: arma la combinación más barata y el resto va suelto',()=>{
+ const glaze=[{id:'glaze',price:'29.00',category:'donas'},{id:'cob',price:'32.00',category:'donas'},{id:'cafe',price:'35.00',category:'bebidas'}];
+ const p=config({id:'paq',name:'Docena y media',active:true,priority:1,kind:'VOLUME',selector:{categories:['donas']},tiers:[{qty:12,price:'225.00'},{qty:6,price:'123.00'}]});
+ assert.equal(cotizar(p,glaze,[line('glaze','5')],ctx).total,'145.00','5 sueltas');
+ assert.equal(cotizar(p,glaze,[line('glaze','6')],ctx).total,'123.00','media docena');
+ assert.equal(cotizar(p,glaze,[line('glaze','7')],ctx).total,'152.00','media docena + 1 suelta');
+ assert.equal(cotizar(p,glaze,[line('glaze','12')],ctx).total,'225.00','docena, no dos medias');
+ assert.equal(cotizar(p,glaze,[line('glaze','18')],ctx).total,'348.00','docena + media');
+ // Mezcla: las caras entran al paquete y la barata queda suelta.
+ assert.equal(cotizar(p,glaze,[line('glaze','1'),line('cob','6')],ctx).total,'152.00');
+ const q=cotizar(p,glaze,[line('glaze','6'),line('cafe','1')],ctx);
+ assert.equal(q.total,'158.00','el café no entra');
+ assert.equal(q.lines.filter(l=>l.rule==='paq').reduce((a,l)=>a+Number(l.unitPrice),0).toFixed(2),'123.00','el paquete se reparte entre sus piezas');
+ assert.throws(()=>cotizar(config({...p.promotions[0],tiers:[{qty:6,price:'1'},{qty:6,price:'2'}]}),glaze,[line('glaze')],ctx),/sin repetir/);
+ assert.throws(()=>cotizar(config({...p.promotions[0],minimumQty:6}),glaze,[line('glaze')],ctx),/Paquetes inválidos/);
+});
+test('combo automático: se arma solo con las piezas, solo si ahorra, y también a mano',()=>{
+ const combo={id:'cd',name:'Café + dona',active:true,price:'58.00',auto:true,groups:[{id:'c',name:'Café',quantity:1,selector:{products:['cafe']}},{id:'d',name:'Dona',quantity:1,selector:{categories:['donas']}}]};
+ const p={...politicaVacia(),combos:[combo]};
+ const q=cotizar(p,products,[line('cafe'),line('dona')],ctx);
+ assert.equal(q.total,'58.00');assert.ok(q.lines.every(l=>l.rule==='cd'&&l.combo==='auto-cd-1'));
+ assert.equal(cotizar(p,products,[line('cafe','2'),line('dona','3')],ctx).total,'141.00','dos combos + una dona suelta');
+ assert.equal(cotizar(p,products,[line('dona','2')],ctx).total,'50.00','sin café no hay combo');
+ assert.equal(cotizar({...p,combos:[{...combo,auto:false}]},products,[line('cafe'),line('dona')],ctx).total,'60.00','sin «aplicar solo» se cobra suelto');
+ assert.equal(cotizar({...p,combos:[{...combo,price:'60.00'}]},products,[line('cafe'),line('dona')],ctx).lines[0].rule,null,'no se arma si no ahorra');
+ // Gana lo más barato para el cliente: la dona a $19 del día + café suelto ($54) contra el combo ($58).
+ const dia={...p,promotions:[{id:'dia',name:'Dona del día',active:true,priority:1,kind:'PRICE',selector:{products:['dona']},value:'19.00'}]};
+ assert.equal(cotizar(dia,products,[line('cafe'),line('dona')],ctx).total,'54.00');
+ // A mano sigue funcionando y no se duplica.
+ const mano=[{key:'a',product:'cafe',quantity:'1',extras:'0',combo:{id:'cd',instance:'x',group:'c'}},{key:'b',product:'dona',quantity:'1',extras:'0',combo:{id:'cd',instance:'x',group:'d'}}];
+ assert.equal(cotizar(p,products,mano,ctx).total,'58.00');
+});

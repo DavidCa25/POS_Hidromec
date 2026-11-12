@@ -119,7 +119,7 @@ test("Touch: mayoreo, quitar una pieza, pago dividido y acciones posventa reales
   await card.click();
   await card.click();
   await expect(p.locator(".tp-cart__total")).toContainText("$60.00");
-  await expect(p.locator(".cs-volume")).toContainText("Mayoreo aplicado");
+  await expect(p.locator(".cs-volume")).toContainText("Precio por cantidad aplicado");
   await p
     .getByRole("button", {
       name: "Quitar uno de Dona comercial " + n,
@@ -131,10 +131,13 @@ test("Touch: mayoreo, quitar una pieza, pago dividido y acciones posventa reales
   await expect(p.locator(".tp-cart__total")).toContainText("$60.00");
   await p.getByRole("button", { name: "Ofertas de hoy y mayoreo" }).click();
   await expect(p.locator(".tp-ofertas")).toContainText("Mayoreo QA");
-  await p
-    .locator(".tp-ofertas")
-    .getByRole("button", { name: "Cerrar ofertas" })
-    .click();
+  // La oferta es tocable: cierra el panel y deja en la cuadrícula solo sus productos.
+  await p.locator(".tp-ofertas [data-guide=oferta-hoy]").filter({ hasText: "Mayoreo QA" }).click();
+  await expect(p.locator(".tp-ofertas")).toHaveCount(0);
+  await expect(p.locator(".tp-oferta-filtro")).toContainText("Mayoreo QA");
+  await expect(card).toBeVisible();
+  await p.getByRole("button", { name: "Ver todos los productos" }).click();
+  await expect(p.locator(".tp-oferta-filtro")).toHaveCount(0);
   await p.locator("[data-guide=touch-cobrar]").click();
   await p.getByRole("button", { name: "Dividir pago", exact: true }).click();
   const key = async (v) => {
@@ -274,4 +277,69 @@ test("Editor de ticket: campos, papel de 70 mm, visor antes/después de guardar 
       ),
     ).toBe(true);
   }
+});
+
+test("Touch: precio por cantidad en paquetes y combo que se aplica solo", async ({ app }) => {
+  test.setTimeout(180000);
+  await login(app, CUENTAS.admin);
+  const { data, dona, cafe, n } = await seed(app),
+    p = app.ventana;
+  data.policy.promotions = [
+    { id: "PAQ_QA", name: "Paquete QA", kind: "VOLUME", active: true, priority: 1, mixProducts: true,
+      tiers: [{ qty: 3, price: "60.00" }], selector: { products: [dona.uuid] }, channels: ["LOCAL"] },
+  ];
+  data.policy.combos = [
+    { id: "CD_QA", name: "Café y dona QA", active: true, auto: true, price: "50.00", channels: ["LOCAL"],
+      groups: [{ id: "c", name: "Café", quantity: 1, selector: { products: [cafe.uuid] } }, { id: "d", name: "Dona", quantity: 1, selector: { products: [dona.uuid] } }] },
+  ];
+  expect((await app.invocar("commercialSave", { version: data.policy.version, policy: data.policy })).success).toBe(true);
+  await app.invocar("setDeviceConfig", { deviceProfile: "TOUCH_POS", printer: { ticketPrinterName: "WYBIX IMPRESORA QA INEXISTENTE" } });
+  await p.locator(".wx-yo__btn").click();
+  await p.locator(".wx-yo__fila").filter({ hasText: "Cerrar sesión" }).click();
+  await p.waitForSelector("#username");
+  await login(app, CUENTAS.admin);
+  await p.setViewportSize({ width: 1280, height: 800 });
+  await p.waitForSelector("app-touch-pos .tp-card");
+  const turn = p.getByRole("dialog").filter({ has: p.getByRole("heading", { name: "Abrir turno", exact: true }) });
+  if (await turn.count()) await turn.getByRole("button", { name: "Abrir turno", exact: true }).click();
+  const donaCard = p.locator(".tp-card").filter({ hasText: "Dona comercial " + n });
+  const cafeCard = p.locator(".tp-card").filter({ hasText: "Café comercial " + n });
+  // Sin pedir nada: el café y la dona sueltos se cobran como combo.
+  await cafeCard.click();
+  await donaCard.click();
+  await expect(p.locator(".tp-cart__total")).toContainText("$50.00");
+  // 1 café + 3 donas: combo ($50) + 2 donas ($50) = $100 contra paquete de 3 ($60) + café ($35) = $95. Gana lo barato.
+  await donaCard.click();
+  await donaCard.click();
+  await expect(p.locator(".tp-cart__total")).toContainText("$95.00");
+  // 1 café + 4 donas: combo ($50) + paquete de 3 ($60) = $110.
+  await donaCard.click();
+  await expect(p.locator(".tp-cart__total")).toContainText("$110.00");
+  // «Ofertas de hoy»: el combo se arma tocándolo; la cuenta se limpia antes.
+  await p.getByRole("button", { name: "Ofertas de hoy y mayoreo" }).click();
+  await expect(p.locator(".tp-ofertas")).toContainText("Precio por cantidad · 3 por");
+  await p.locator(".tp-ofertas [data-guide=oferta-hoy]").filter({ hasText: "Café y dona QA" }).click();
+  await expect(p.getByRole("dialog", { name: "Elegir combo" })).toBeVisible();
+  await p.screenshot({ path: "test-results/ofertas-combo-desde-oferta.png" });
+});
+
+test("Editor: precio por cantidad con paquetes y combo que se aplica solo", async ({ app }) => {
+  test.setTimeout(120000);
+  await login(app, CUENTAS.admin);
+  const p = app.ventana;
+  await irPorDock(p, "Inventario", "Promociones y combos");
+  await p.getByRole("button", { name: "Nueva oferta" }).click();
+  await p.getByRole("menuitem", { name: /Crear precio por cantidad/ }).click();
+  const modo = p.locator("[data-guide=ofertas-modo-cantidad]");
+  await expect(modo).toBeVisible();
+  await modo.getByRole("radio", { name: "Paquetes" }).click();
+  await expect(p.getByLabel("Piezas del paquete 1")).toHaveValue("12");
+  await expect(p.getByLabel("Piezas del paquete 2")).toHaveValue("6");
+  await p.getByLabel("Precio del paquete 1").fill("225");
+  await p.getByLabel("Precio del paquete 2").fill("123");
+  await expect(p.getByLabel("Importe de la oferta")).toHaveCount(0);
+  await p.screenshot({ path: "test-results/ofertas-editor-paquetes.png" });
+  await modo.getByRole("radio", { name: /Precio por pieza/ }).click();
+  await expect(p.getByLabel("Cantidad mínima")).toBeVisible();
+  await expect(p.getByLabel("Importe de la oferta")).toBeVisible();
 });
