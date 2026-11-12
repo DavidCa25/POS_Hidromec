@@ -1035,3 +1035,4 @@ button.tp-dinero__campo{border:0;text-align:left;color:var(--wx-text)}
 /* Catálogos grandes: la cuadrícula pinta los primeros y dice cuántos hay. */
 .tp-mas { margin: 4px 16px 16px; font-size: 13px; color: var(--wx-text-muted); text-align: center; }
 .tp-card--esqueleto { display: flex; flex-direction: column; gap: 6px; padding: 10px; pointer-events: none; }
+.tp-oferta-filtro{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 8px 8px 16px;border-radius:var(--wx-radius-lg);background:var(--wx-accent-soft);color:var(--wx-accent-text);font-size:var(--wx-text-sm)}.tp-oferta-filtro span{flex:1}.tp-oferta-filtro strong{font-weight:650}

@@ -951,3 +951,12 @@ dialog::backdrop {
   --wx-menu-alto: 30px;
   --wx-menu-radio: 8px;
 }
+
+/* Precio por cantidad: modo (paquetes / desde un mínimo) y filas de paquete. */
+.cp-modo { grid-column: 1 / -1; display: flex; gap: 4px; padding: 4px; border-radius: var(--wx-radius-md, 12px); background: var(--wx-sunken); }
+.cp-modo button { flex: 1; min-height: 40px; border: 0; border-radius: var(--wx-radius-sm, 9px); background: transparent; color: var(--wx-text-muted); font: inherit; font-weight: 600; cursor: pointer; }
+.cp-modo button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: 0 1px 2px rgb(15 24 38 / .08); }
+.cp-paquete { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 12px; align-items: end; }
+.cp-quitar { width: 44px; height: 44px; border: 0; border-radius: var(--wx-radius-sm, 9px); background: var(--wx-sunken); color: var(--wx-text-muted); cursor: pointer; }
+.cp-agregar { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px dashed var(--wx-edge-strong); border-radius: var(--wx-radius-sm, 9px); background: transparent; color: var(--wx-accent-text); font: inherit; font-weight: 600; cursor: pointer; }
+.cp-ancho { grid-column: 1 / -1; }

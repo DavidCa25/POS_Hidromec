@@ -74,7 +74,7 @@ export class CommercialPanelComponent implements OnDestroy {
   readonly days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   readonly weekdayOrder = [1, 2, 3, 4, 5, 6, 0];
   readonly typeOptions: WxOpcion[] = [
-    { valor: 'VOLUME', etiqueta: 'Mayoreo por cantidad', nota: 'Precio desde un mínimo de piezas' },
+    { valor: 'VOLUME', etiqueta: 'Precio por cantidad', nota: 'Paquetes (docena, media docena) o precio desde un mínimo' },
     {
       valor: 'PRICE',
       etiqueta: 'Precio especial',
@@ -104,7 +104,7 @@ export class CommercialPanelComponent implements OnDestroy {
   readonly createOptions: WxMenuOpcion[] = [
     { valor: 'promotion', etiqueta: 'Crear promoción', icono: 'ph ph-tag' },
     { valor: 'combo', etiqueta: 'Crear combo', icono: 'ph ph-stack' },
-    { valor: 'volume', etiqueta: 'Crear mayoreo', icono: 'ph ph-package' },
+    { valor: 'volume', etiqueta: 'Crear precio por cantidad', icono: 'ph ph-package' },
   ];
   constructor() {
     this.subscription = this.route.queryParamMap.subscribe(
@@ -249,6 +249,8 @@ export class CommercialPanelComponent implements OnDestroy {
     if (o.type === 'combo') return this.compactMoney(r.price);
     if (r.kind === 'BUY_PAY') return r.buy + '×' + r.pay;
     if (r.kind === 'PERCENT') return Number(r.value) + '%';
+    // Paquetes: el más chico, p. ej. «6×$123».
+    if (r.tiers?.length) { const t = [...r.tiers].sort((x: any, y: any) => x.qty - y.qty)[0]; return t.qty + '×' + this.compactMoney(t.price); }
     return (
       (r.kind === 'AMOUNT' ? '−' : r.kind === 'ADDON' ? '+' : '') +
       this.compactMoney(r.value)
@@ -261,7 +263,7 @@ export class CommercialPanelComponent implements OnDestroy {
       : null;
   }
   kindLabel(o: Offer) {
-    if(o.item.kind === 'VOLUME') return 'Desde ' + o.item.minimumQty + ' piezas';
+    if(o.item.kind === 'VOLUME') return o.item.tiers ? 'Paquetes' : 'Desde ' + o.item.minimumQty + ' piezas';
     return o.type === 'combo'
       ? 'Combo'
       : o.item.kind === 'ADDON'
@@ -276,7 +278,7 @@ export class CommercialPanelComponent implements OnDestroy {
     const r = o.item;
     if (o.type === 'combo')
       return r.groups.map((g: any) => g.quantity + ' ' + g.name).join(' + ');
-    if (r.kind === 'VOLUME') return 'Mayoreo desde ' + r.minimumQty + ' piezas' + (r.mixProducts !== false ? ' · Puedes mezclar productos elegibles.' : ' del mismo producto y tamaño.');
+    if (r.kind === 'VOLUME') return (r.tiers ? [...r.tiers].sort((a: any, b: any) => b.qty - a.qty).map((t: any) => t.qty + ' por ' + Number(t.price).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })).join(' · ') : 'Desde ' + r.minimumQty + ' piezas') + (r.mixProducts !== false ? ' · Puedes mezclar productos elegibles.' : ' del mismo producto y tamaño.');
     if (r.kind === 'BUY_PAY')
       return 'Lleva ' + r.buy + ' y paga ' + r.pay + '.';
     if (r.kind === 'ADDON')
@@ -438,7 +440,7 @@ export class CommercialPanelComponent implements OnDestroy {
     if (o.type === 'combo')
       for (const g of o.item.groups) add(g.selector, g.quantity, g.id);
     else {
-      add(o.item.selector, o.item.kind === 'BUY_PAY' ? o.item.buy : o.item.kind === 'VOLUME' ? o.item.minimumQty : 1);
+      add(o.item.selector, o.item.kind === 'BUY_PAY' ? o.item.buy : o.item.kind === 'VOLUME' ? (o.item.tiers ? Math.min(...o.item.tiers.map((t: any) => t.qty)) : o.item.minimumQty) : 1);
       if (o.item.kind === 'ADDON') add(o.item.trigger, o.item.triggerQty);
     }
     this.preview();
@@ -539,7 +541,7 @@ export class CommercialPanelComponent implements OnDestroy {
             }
           : {
               id,
-              name: requested === 'volume' ? 'Nuevo mayoreo' : 'Nueva promoción',
+              name: requested === 'volume' ? 'Nuevo precio por cantidad' : 'Nueva promoción',
               active: false,
               priority: 10,
               kind: requested === 'volume' ? 'VOLUME' : 'PRICE',
@@ -578,8 +580,22 @@ export class CommercialPanelComponent implements OnDestroy {
   cancelDialog(event: Event) {
     if (this.busy) event.preventDefault();
   }
+  /** Precio por cantidad: paquetes (12 por $X, 6 por $Y) o un precio por pieza desde un mínimo. */
+  modoCantidad(r: any, paquetes: boolean) {
+    if (paquetes) {
+      r.tiers ??= [{ qty: 12, price: '0.00' }, { qty: 6, price: '0.00' }];
+      delete r.minimumQty;
+      delete r.value;
+    } else {
+      delete r.tiers;
+      r.minimumQty ??= 6;
+      r.value ??= '0.00';
+    }
+    this.makePreview(this.draft);
+  }
   changeKind(r: any) {
-    if (r.kind === 'VOLUME') { r.minimumQty ??= 6; r.mixProducts ??= true; delete r.maxApplications; }
+    if (r.kind !== 'VOLUME') delete r.tiers;
+    if (r.kind === 'VOLUME') { if (!r.tiers) r.minimumQty ??= 6; r.mixProducts ??= true; delete r.maxApplications; }
     if (r.kind === 'BUY_PAY') {
       r.buy = 2;
       r.pay = 1;

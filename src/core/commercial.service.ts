@@ -41,8 +41,10 @@ export class CommercialService {
           const quantity = quoted?.length ? quoted.filter(q => !q.audit?.rule || q.audit.rule === r.id).reduce((a,q) => a+Number(q.qty),0) : l.qty;
           const key = r.mixProducts === false ? JSON.stringify([uuid,size]) : '*'; groups.set(key,(groups.get(key)??0)+quantity);
         }
-        const count = Math.max(0,...groups.values()), remaining = Math.max(0,(r.minimumQty??2)-count);
-        return { id:r.id, name:r.name, applied, text: applied ? 'Mayoreo aplicado' : remaining ? 'Faltan '+remaining+' piezas para mayoreo' : 'Se comprueba al cotizar; respeta la prioridad de ofertas' };
+        // Con paquetes, la pista cuenta hacia el paquete más chico (p. ej. media docena).
+        const minimo = r.tiers ? Math.min(...r.tiers.map(t => t.qty)) : (r.minimumQty??2);
+        const count = Math.max(0,...groups.values()), remaining = Math.max(0,minimo-count);
+        return { id:r.id, name:r.name, applied, text: applied ? (r.tiers ? 'Paquete aplicado' : 'Precio por cantidad aplicado') : remaining ? 'Faltan '+remaining+' piezas para '+(r.tiers ? 'el paquete de '+minimo : 'el precio por cantidad') : 'Se comprueba al cotizar; respeta la prioridad de ofertas' };
       });
     }
     private register = inject(RegisterService);

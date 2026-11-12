@@ -87,6 +87,14 @@ export class TouchPos implements OnInit, OnDestroy {
     this.relojMascota = setTimeout(() => this.estadoMascota.set('idle'), ms);
   }
   readonly ofertasAbiertas = signal(false);
+  /** Promoción tocada en «Ofertas de hoy»: la cuadrícula muestra solo sus productos. */
+  readonly ofertaSel = signal<{ nombre: string; ids: number[] } | null>(null);
+  verOferta(o: { nombre: string; ids: number[] }) {
+    this.ofertaSel.set(o);
+    this.termino.set('');
+    this.buscando.set(false);
+    this.ofertasAbiertas.set(false);
+  }
   priced(line:CartLine){return CartService.displayOf(this.cart.activeCart(),line);}
   /** Roles v2: lo que ahorra el cliente con las promociones de esta cuenta (0 mientras se calcula). */
   ahorro(): number { const c = this.cart.activeCart().commercial; return c?.pending ? 0 : Number(c?.quote?.discount ?? 0); }
@@ -320,6 +328,8 @@ export class TouchPos implements OnInit, OnDestroy {
   private readonly coincidencias = computed(() => {
     const t = this.termino().trim();
     if (t) return this.menu.search(t);
+    const o = this.ofertaSel();
+    if (o) return this.menu.products().filter(p => o.ids.includes(p.id));
     return this.menu.productsOf(this.categoriaSel());
   });
   readonly productos = computed(() => this.coincidencias().slice(0, TouchPos.LIMITE_CUADRICULA));
@@ -537,6 +547,7 @@ export class TouchPos implements OnInit, OnDestroy {
   // ============================================================ CATALOGO
 
   elegirCategoria(id: number | null) {
+    this.ofertaSel.set(null);
     this.categoriaSel.set(id);
     this.termino.set('');
     this.buscando.set(false);

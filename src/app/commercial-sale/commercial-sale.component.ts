@@ -1,12 +1,6 @@
 import {vigente} from '../../../shared/comercial';
 import { AuthService } from '../../services/auth.service';
-import {
-  Component,
-  Input,
-  inject,
-  ElementRef,
-  HostListener,
-} from '@angular/core';
+import { Component, Input, inject, ElementRef, HostListener, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CommercialService } from '../../core/commercial.service';
@@ -106,13 +100,16 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
       </ng-template>
     </section>
     <section *ngIf="offersOnly || showToday" class="cs-offers" aria-label="Ofertas y mayoreo disponibles">
-      <h3>Ofertas de hoy</h3><p>Se aplican automáticamente al cumplir las condiciones. Una pieza no acumula descuentos.</p>
-      <article *ngFor="let r of service.offersNow">
+      <h3>Ofertas de hoy</h3><p>{{ ver.observed ? 'Toca una oferta para ver sus productos o armar el combo.' : 'Se aplican automáticamente al cumplir las condiciones.' }} Una pieza no acumula descuentos.</p>
+      <!-- La tarjeta entera es el botón: un combo se arma; una promoción muestra sus productos en la cuadrícula. -->
+      <button *ngFor="let r of service.offersNow" type="button" class="cs-offer" data-guide="oferta-hoy" [attr.data-guide-clave]="r.id"
+              (click)="isCombo(r) ? chooseCombo(r.id,$event) : verProductos(r)" [disabled]="!isCombo(r) && !ver.observed">
         <strong>{{r.name}}</strong>
         <span>{{offerText(r)}}</span>
-        <button *ngIf="isCombo(r)" type="button" (click)="chooseCombo(r.id,$event)">Armar combo</button>
+        <em *ngIf="isCombo(r)">{{ $any(r).auto ? 'Se aplica solo al tener las piezas · toca para armarlo' : 'Toca para armar el combo' }}</em>
+        <em *ngIf="!isCombo(r) && ver.observed">Ver productos</em>
         <small *ngIf="$any(r).audience">Requiere confirmar {{$any(r).audience}}</small>
-      </article>
+      </button>
       <p *ngIf="!service.offersNow.length">No hay ofertas vigentes en este canal y horario.</p>
     </section>
     <div *ngIf="!offersOnly" class="cs-volume" aria-live="polite"><span *ngFor="let h of service.volumeHints().slice(0,1)"><strong>{{h.name}}</strong> · {{h.text}}</span></div>
@@ -171,8 +168,12 @@ import { WxMultiSelectComponent } from '../wx-multi-select/wx-multi-select.compo
       .cs-offers { padding:16px; color:var(--wx-text); }
       .cs-offers h3 { font-size:var(--wx-text-lg); margin:0 0 10px; }
       .cs-offers p,.cs-offers small { color:var(--wx-text-muted); font-size:var(--wx-text-sm); }
-      .cs-offers article { display:flex;flex-direction:column;gap:8px;padding:16px;margin:10px 0;background:var(--wx-surface);border-radius:var(--wx-radius-lg);box-shadow:var(--wx-shadow-card); }
-      .cs-offers article button { min-height:44px;background:var(--wx-accent-soft);border:0;border-radius:var(--wx-radius-sm);color:var(--wx-accent-text); }
+      .cs-offer { display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;padding:16px;margin:10px 0;background:var(--wx-surface);border:1px solid transparent;border-radius:var(--wx-radius-lg);box-shadow:var(--wx-shadow-card);color:var(--wx-text);font:inherit;text-align:left;cursor:pointer;transition:transform var(--wx-dur-press,120ms) ease-out,border-color 150ms ease; }
+      .cs-offer:not(:disabled):hover { border-color:var(--wx-accent); }
+      .cs-offer:not(:disabled):active { transform:scale(.98); }
+      .cs-offer:disabled { cursor:default; }
+      .cs-offer em { font-style:normal;font-size:var(--wx-text-sm);font-weight:600;color:var(--wx-accent-text); }
+      @media (prefers-reduced-motion: reduce) { .cs-offer { transition:none; } .cs-offer:active { transform:none; } }
       .cs-volume { display:flex;flex-direction:column;gap:4px;padding:0 16px;color:var(--wx-accent-text);font-size:var(--wx-text-xs); }
       .cs {
         display: flex;
@@ -306,7 +307,16 @@ export class CommercialSaleComponent {
   showToday=false;
   @Input() offersOnly = false;
   isCombo(r:any) { return Array.isArray(r.groups); }
-  offerText(r:any) { return this.isCombo(r) ? 'Combo · '+Number(r.price).toLocaleString('es-MX',{style:'currency',currency:'MXN'}) : r.kind === 'VOLUME' ? 'Mayoreo desde '+r.minimumQty+' piezas · '+Number(r.value).toLocaleString('es-MX',{style:'currency',currency:'MXN'})+' por pieza' : r.kind === 'BUY_PAY' ? 'Lleva '+r.buy+' y paga '+r.pay : r.kind === 'PERCENT' ? r.value+'% de descuento' : r.kind === 'ADDON' ? 'Precio adicional al comprar '+r.triggerQty+' piezas elegibles' : 'Precio especial · '+r.value; }
+  /** Quien muestra la cuadrícula (caja táctil) recibe los productos de la promoción tocada. */
+  @Output() ver = new EventEmitter<{ nombre: string; ids: number[] }>();
+  verProductos(r: any) {
+    const data = this.service.data();
+    const ids = this.eligibleProducts(r.selector ?? {})
+      .map((p: any) => data?.ids.find((x: any) => x.uuid === p.uuid)?.id)
+      .filter((id: any): id is number => id != null);
+    this.ver.emit({ nombre: r.name, ids });
+  }
+  offerText(r:any) { const m=(v:any)=>Number(v).toLocaleString('es-MX',{style:'currency',currency:'MXN'}); return this.isCombo(r) ? 'Combo · '+m(r.price) : r.kind === 'VOLUME' && r.tiers ? 'Precio por cantidad · '+[...r.tiers].sort((a:any,b:any)=>a.qty-b.qty).map((t:any)=>t.qty+' por '+m(t.price)).join(' · ') : r.kind === 'VOLUME' ? 'Precio por cantidad desde '+r.minimumQty+' piezas · '+m(r.value)+' por pieza' : r.kind === 'BUY_PAY' ? 'Lleva '+r.buy+' y paga '+r.pay : r.kind === 'PERCENT' ? r.value+'% de descuento' : r.kind === 'ADDON' ? 'Precio adicional al comprar '+r.triggerQty+' piezas elegibles' : 'Precio especial · '+r.value; }
   chooseCombo(id:string,event:Event) { this.comboId=id; this.showCombo(event); }
   get channelLocked() {
     return this.cart.activeCart().lines.some((l) => l.enviada != null);
