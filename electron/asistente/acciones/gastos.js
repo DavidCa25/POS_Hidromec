@@ -38,4 +38,53 @@ module.exports = (h) => ({
     return h.msg(`${r.nombre} llevas ${h.dinero(total)} de gastos. Lo que más pesa: ${filas[0].concepto}.`, {
       datos: filas.slice(0, 10).map((f) => ({ etiqueta: f.concepto, valor: `${h.dinero(f.total)} · ${Math.round(Number(f.total) / total * 100)}%` })) });
   },
+
+  /* «Cancela el gasto 12, era de otra sucursal». sp_void_expense pide el
+     motivo y no deja cancelar uno de un corte ya entregado. */
+  async 'gasto.cancelar'(it) {
+    const g = await h.uno(`SELECT e.id, e.amount, e.payment_method, e.expense_date, e.voided_at, c.name AS concepto
+                             FROM dbo.expenses e LEFT JOIN dbo.expense_categories c ON c.id = e.category_id WHERE e.id = @id;`, [h.id(h.v(it, 'folio'))]);
+    if (!g) return h.msg(`No encuentro el gasto ${h.v(it, 'folio')}.`);
+    if (g.voided_at) return h.msg(`El gasto ${g.id} ya estaba cancelado.`);
+    const motivo = h.v(it, 'motivo');
+    if (!motivo) return h.msg('¿Por qué se cancela?', { esperando: { intent: it.intent, slots: it.slots, falta: 'motivo' } });
+    return h.msg('Este gasto voy a cancelar:', { plan: h.plan('gasto.cancelar', {
+      titulo: `Cancelar el gasto ${g.id} · ${h.dinero(g.amount)}`,
+      vista: [{ etiqueta: 'Gasto', valor: `${g.id}${g.concepto ? ' · ' + g.concepto : ''}` }, { etiqueta: 'Monto', valor: h.dinero(g.amount) },
+              { etiqueta: 'Día', valor: h.diaTexto(g.expense_date) }, { etiqueta: 'Motivo', valor: motivo }],
+      avisos: g.payment_method === 'EFECTIVO' ? ['Salió del cajón: el efectivo vuelve al turno (si ese corte ya se entregó, no se puede).'] : [],
+      ejecutar: { api: 'electronAPI.egresosCancelar', payload: { expense_id: Number(g.id), reason: motivo } }, permiso: 'RETIROS_EGRESOS',
+    }) });
+  },
+
+  /* Conceptos de gasto: crear, renombrar, activar o desactivar. */
+  async 'gasto.concepto'(it) {
+    const accion = h.v(it, 'accion');
+    const nombre = String(h.v(it, 'nombre') || '').trim();
+    if (accion === 'crear') {
+      if (!nombre) return h.msg('¿Cómo se va a llamar el concepto?');
+      if (nombre.length > 60) return h.msg('Ese nombre es muy largo (60 letras máximo).');
+      const ya = await h.uno('SELECT TOP 1 name, active FROM dbo.expense_categories WHERE name = @n;', [['n', h.sql.NVarChar(60), nombre]]);
+      if (ya) return h.msg(ya.active ? `Ya existe el concepto «${ya.name}».` : `El concepto «${ya.name}» existe pero está desactivado: dime «activa el concepto ${ya.name}».`);
+      return h.msg('Este concepto voy a crear:', { plan: h.plan('gasto.concepto', {
+        titulo: `Concepto de gasto nuevo · ${nombre}`, vista: [{ etiqueta: 'Concepto', valor: nombre }],
+        ejecutar: { api: 'electronAPI.egresosConceptoGuardar', payload: { id: null, name: nombre, active: true, sort_order: null } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    }
+    const c = await h.uno('SELECT id, name, active, sort_order, is_system FROM dbo.expense_categories WHERE id = @id;', [h.id(h.v(it, 'concepto'))]);
+    if (!c) return h.msg(`No encuentro el concepto «${it.slots.concepto?.texto || ''}».`);
+    if (c.is_system) return h.msg(`«${c.name}» es un concepto del sistema: no se cambia.`);
+    const cambios = accion === 'renombrar' ? { name: nombre } : { active: accion === 'activar' };
+    if (accion === 'renombrar' && (!nombre || nombre.length > 60)) return h.msg('Dime el nombre nuevo (60 letras máximo).');
+    if (accion !== 'renombrar' && !!c.active === cambios.active) return h.msg(`«${c.name}» ya está ${c.active ? 'activo' : 'desactivado'}.`);
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('gasto.concepto', {
+      titulo: `Concepto «${c.name}»`,
+      vista: [accion === 'renombrar' ? { etiqueta: 'Nombre', valor: `«${c.name}» → «${nombre}»` }
+                                     : { etiqueta: 'Estado', valor: `${c.active ? 'activo' : 'desactivado'} → ${cambios.active ? 'activo' : 'desactivado'}` }],
+      avisos: accion === 'desactivar' ? ['Los gastos ya registrados con él se quedan; solo deja de ofrecerse.'] : [],
+      ejecutar: { api: 'electronAPI.egresosConceptoGuardar', payload: { id: Number(c.id), name: cambios.name ?? c.name, active: cambios.active ?? !!c.active, sort_order: c.sort_order } },
+      permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
 });

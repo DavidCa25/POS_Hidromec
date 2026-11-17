@@ -31,6 +31,8 @@ const ref = require('./referencias');
 const { edicion, edicionPersona, valorDeCampo, valorPersona } = require('./edicion');
 const EDITAR_PERSONA = { cliente: 'cliente.editar', proveedor: 'proveedor.editar' };
 const { catalogo: reglaCatalogo } = require('./catalogo');
+const { socios: reglaSocios } = require('./socios');
+const { gastos: reglaGastos } = require('./gastos');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -313,7 +315,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
    *            esperando: { intent, slots, falta }  (lo que Wybix preguntó antes)
    *            contexto:  { intent, slots }          (lo último que se entendió, para «¿y ayer?») }
    */
-  function interpretar(texto, { catalogo = [], personas = [], categorias = [], conceptos = [], usuarios = [], modulos = null, ahora = new Date(),
+  function interpretar(texto, { catalogo = [], personas = [], categorias = [], conceptos = [], usuarios = [], socios = [], modulos = null, ahora = new Date(),
                                 esperando = null, contexto = null } = {}) {
     const a = analizar(texto, catalogo, { personas });
     const datos = { catalogo, personas, categorias, conceptos, usuarios, ahora };
@@ -383,6 +385,42 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (ep.valor != null) slots.valor = { valor: ep.valor, texto: ep.valorTexto, confianza: 'exacto' };
         return cerrar(EDITAR_PERSONA[tipo], slots, 0.95, []);
       }
+    }
+    /* Socios y propinas: «Juan retiró 500», «liquida a los socios»,
+       «reparte las propinas». El socio tiene que existir (y estar activo). */
+    const rs = !esperando && reglaSocios(texto);
+    if (rs && disponible(rs.intent, modulos)) {
+      if (rs.intent === 'propinas.repartir' || rs.intent === 'socio.liquidar') {
+        return cerrar(rs.intent, rs.hasta ? { hasta: { valor: rs.hasta, texto: rs.hasta, confianza: 'exacto' } } : {}, 0.95, []);
+      }
+      const llanoS = (x) => normalizar(x).texto;
+      const dicho = llanoS(rs.socio);
+      const s = socios.find((x) => llanoS(x.nombre) === dicho)
+        || socios.find((x) => dicho && (llanoS(x.nombre).split(' ').includes(dicho) || llanoS(x.nombre).startsWith(dicho)));
+      if (s) {
+        const slots = { socio: { valor: s.id, texto: s.nombre, confianza: 'exacto' } };
+        if (rs.tipo) slots.tipo = { valor: rs.tipo, texto: rs.tipo, confianza: 'exacto' };
+        if (rs.monto != null) slots.monto = { valor: rs.monto, texto: '$' + rs.monto, confianza: 'exacto' };
+        if (rs.metodo) slots.metodo = { valor: rs.metodo, texto: rs.metodo, confianza: 'exacto' };
+        if (rs.folio) slots.folio = { valor: rs.folio, texto: String(rs.folio), confianza: 'exacto' };
+        if (rs.pago != null) slots.pago = { valor: rs.pago, texto: rs.pago ? 'lo pagó' : 'a su cargo', confianza: 'exacto' };
+        return cerrar(rs.intent, slots, 0.95, []);
+      }
+    }
+    /* «Cancela el gasto 12», «crea el concepto de gasto Gasolina». Si Wybix
+       preguntó por qué se cancela, la respuesta entera es el motivo. */
+    if (esperando?.intent === 'gasto.cancelar' && esperando.falta === 'motivo') {
+      return cerrar('gasto.cancelar', { ...esperando.slots, motivo: { valor: String(texto).trim().slice(0, 200), texto: String(texto).trim(), confianza: 'exacto' } }, 1, []);
+    }
+    const rg = !esperando && reglaGastos(texto);
+    if (rg && disponible(rg.intent, modulos)) {
+      const slots = {};
+      for (const k of ['folio', 'motivo', 'accion', 'nombre', 'concepto']) if (rg[k] != null) slots[k] = { valor: rg[k], texto: String(rg[k]), confianza: 'exacto' };
+      if (rg.concepto) {
+        const c = ex.conceptoGasto(normalizar(rg.concepto).texto, conceptos, normalizar);
+        if (c?.valor != null) slots.concepto = c;
+      }
+      return cerrar(rg.intent, slots, 0.95, []);
     }
     /* «Crea la categoría Lácteos», «Bimbo me surte las conchas». */
     const rc = !esperando && reglaCatalogo(texto);

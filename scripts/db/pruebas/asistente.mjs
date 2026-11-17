@@ -400,6 +400,69 @@ try {
   const rSinSurtir = await pedirC('producto.proveedor', { proveedor: ex(bimbo), producto: ex(concha), accion: ex('quitar') });
   check(rSinSurtir.plan?.ejecutar.api === 'electronAPI.removeProductSupplier' && rSinSurtir.plan.ejecutar.args[1] === bimbo && rSinSurtir.plan.avisos.length === 1,
     'quitar: por el canal de la ficha, avisando que era el principal');
+
+  /* 11. Producción, socios, propinas y gastos. */
+  seccion('11. Tandas, socios, propinas y gastos');
+  /* Una fórmula mínima: el café sale de la concha (1 pieza por pieza). */
+  await q(`UPDATE dbo.products SET stock = 100, inventory_mode = 'DIRECT' WHERE id = ${concha};`);
+  {
+    const tvpF = new sql.Table('dbo.RecipeLineType');
+    tvpF.columns.add('ingredient_product_id', sql.Int, { nullable: false }); tvpF.columns.add('input_qty', sql.Decimal(12, 3), { nullable: false });
+    tvpF.columns.add('input_uom', sql.NVarChar(10), { nullable: false }); tvpF.columns.add('waste_pct', sql.Decimal(5, 2), { nullable: true });
+    tvpF.columns.add('sort_order', sql.Int, { nullable: true });
+    tvpF.rows.add(concha, 1, 'pza', 0, 1);
+    try {
+      await pool.request().input('product_id', sql.Int, cafe).input('yield_qty', sql.Decimal(12, 2), 1).input('notes', sql.NVarChar(300), null)
+        .input('user_id', sql.Int, 1).input('Lines', tvpF).execute('sp_production_formula_save');
+    } catch (e) { console.log('   (fórmula de prueba: ' + e.message + ')'); }
+  }
+  const conFormula = Number(await escalar(`SELECT TOP 1 product_id FROM dbo.production_formulas`)) || null;
+  if (conFormula) {
+    await q(`INSERT INTO dbo.production_batches (product_id, production_date, planned_qty, created_by) VALUES (${conFormula}, CAST(GETDATE() AS DATE), 10, 1);`);
+    const rEmp = await pedirC('produccion.empezar', { producto: ex(conFormula) });
+    check(rEmp.plan?.ejecutar.api === 'wybix.produccion.empezar' && rEmp.plan.ejecutar.payload.batchId > 0, 'tanda: empezar la planeada de hoy');
+    await pool.request().input('user_id', sql.Int, 1).input('batch_id', sql.Int, rEmp.plan.ejecutar.payload.batchId).input('machine_name', sql.NVarChar(120), 'QA').execute('sp_production_start');
+    const rSinMot = await pedirC('produccion.terminar', { producto: ex(conFormula), cantidad: ex(8) });
+    check(!rSinMot.plan && rSinMot.esperando?.falta === 'motivo', 'salieron 8 de 10: pregunta qué pasó con las 2');
+    const rTer = await pedirC('produccion.terminar', { producto: ex(conFormula), cantidad: ex(8), motivo: ex('SE_CAYO') });
+    await pool.request().input('user_id', sql.Int, 1).input('batch_id', sql.Int, rTer.plan.ejecutar.payload.batchId).input('good_qty', sql.Decimal(12, 2), 8)
+      .input('waste_reason', sql.NVarChar(40), rTer.plan.ejecutar.payload.motivo).execute('sp_production_finish');
+    check(await escalar(`SELECT status FROM dbo.production_batches WHERE id = ${rTer.plan.ejecutar.payload.batchId}`) === 'DONE', 'el SP cierra la tanda con 8 buenas y 2 de merma');
+  } else check(true, 'tandas: la plantilla no trae fórmulas de producción (se prueba en E2E)');
+
+  const rG = await q(`INSERT INTO dbo.expenses (category_id, amount, payment_method, expense_date, user_id, register_id)
+                      OUTPUT inserted.id VALUES ((SELECT MIN(id) FROM dbo.expense_categories), 120, 'TRANSFERENCIA', CAST(GETDATE() AS DATE), 1, ${caja});`).catch((e) => ({ error: e.message }));
+  if (Array.isArray(rG) && rG[0]) {
+    const gid = rG[0].id;
+    const rSinMot2 = await pedirC('gasto.cancelar', { folio: ex(gid) });
+    check(!rSinMot2.plan && rSinMot2.esperando?.falta === 'motivo', 'cancelar un gasto sin motivo lo pregunta');
+    const rCan = await pedirC('gasto.cancelar', { folio: ex(gid), motivo: ex('capturado dos veces') });
+    await pool.request().input('expense_id', sql.Int, rCan.plan.ejecutar.payload.expense_id).input('user_id', sql.Int, 1)
+      .input('reason', sql.NVarChar(200), rCan.plan.ejecutar.payload.reason).execute('sp_void_expense');
+    check(await escalar(`SELECT CASE WHEN voided_at IS NULL THEN 0 ELSE 1 END FROM dbo.expenses WHERE id = ${gid}`) === 1, 'el SP cancela el gasto con el motivo');
+    const rYa2 = await pedirC('gasto.cancelar', { folio: ex(gid), motivo: ex('x') });
+    check(!rYa2.plan && /ya estaba cancelado/.test(rYa2.texto), 'uno cancelado no se ofrece otra vez');
+  } else check(false, 'no pude sembrar un gasto', JSON.stringify(rG));
+  const rCon = await pedirC('gasto.concepto', { accion: ex('crear'), nombre: ex('QA Papelería') });
+  check(rCon.plan?.ejecutar.api === 'electronAPI.egresosConceptoGuardar' && rCon.plan.ejecutar.payload.name === 'QA Papelería', 'concepto nuevo por egresos:concepto-guardar');
+
+  /* Socios: el módulo encendido en la base temporal y un socio. */
+  await q(`IF EXISTS (SELECT 1 FROM dbo.business_modules WHERE module_key = N'socios') UPDATE dbo.business_modules SET enabled = 1 WHERE module_key = N'socios'
+           ELSE INSERT INTO dbo.business_modules (module_key, enabled) VALUES (N'socios', 1);
+           INSERT INTO dbo.socios (nombre) VALUES (N'QA Juan');`).catch((e) => console.log('   (socios: ' + e.message + ')'));
+  const juan = Number(await escalar("SELECT id FROM dbo.socios WHERE nombre = N'QA Juan'"));
+  const rMov = await pedirC('socio.movimiento', { socio: ex(juan), tipo: ex('PAGO'), monto: ex(1000), metodo: ex('TRANSFERENCIA') });
+  const pm = rMov.plan?.ejecutar.payload;
+  check(rMov.plan?.ejecutar.api === 'electronAPI.sociosMovimiento' && pm.tipo === 'PAGO' && pm.monto === 1000, 'socio: pago de $1,000 por transferencia');
+  try {
+    await pool.request().input('socio_id', sql.Int, pm.socioId).input('tipo', sql.VarChar(12), pm.tipo).input('monto', sql.Decimal(12, 2), pm.monto)
+      .input('metodo', sql.VarChar(20), pm.metodo).input('register_id', sql.Int, pm.registerId).input('nota', sql.NVarChar(255), pm.nota)
+      .input('user_id', sql.Int, 1).execute('sp_socios_movimiento');
+    check(Number(await escalar(`SELECT COUNT(*) FROM dbo.socios_movimientos WHERE socio_id = ${juan}`)) === 1, 'el SP registra el movimiento del socio');
+  } catch (e) { check(false, 'el SP registra el movimiento del socio', e.message); }
+
+  const rProp = await pedirC('propinas.repartir', {});
+  check(!rProp.plan && /propinas|activad/i.test(rProp.texto), 'propinas sin activar o sin pendientes: no hay tarjeta', rProp.texto);
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

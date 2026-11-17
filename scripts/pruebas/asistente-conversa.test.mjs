@@ -284,3 +284,41 @@ test('clientes, proveedores, compras y catálogo hablando', () => {
   assert.equal(l('cuál es el teléfono de doña mary').intent, 'cliente.info');
   assert.equal(l('cambia el teléfono de doña mary').falta, 'valor');
 });
+
+test('socios, propinas, gastos y producción hablando', () => {
+  const socios = [{ id: 1, nombre: 'Juan Pérez' }, { id: 2, nombre: 'Ana' }];
+  const conceptos = [{ id: 1, nombre: 'Luz' }, { id: 2, nombre: 'Gasolina' }];
+  const cat = prepararCatalogo([{ id: 6, nombre: 'Concha' }]);
+  const l = (texto, modulos = new Set(['socios', 'propinas', 'hospitality'])) =>
+    interprete.interpretar(texto, { catalogo: cat, personas: [], socios, conceptos, categorias: CATEGORIAS, modulos, ahora: HOY });
+  const casos = [
+    ['Juan retiró 500 de la caja', 'socio.movimiento', { socio: 1, tipo: 'RETIRO', monto: 500, metodo: 'EFECTIVO' }],
+    ['Ana aportó 2,000', 'socio.movimiento', { socio: 2, tipo: 'APORTACION', monto: 2000 }],
+    ['le pagué 1,000 a Juan por transferencia', 'socio.movimiento', { socio: 1, tipo: 'PAGO', monto: 1000, metodo: 'TRANSFERENCIA' }],
+    ['la compra 45 la pagó Juan', 'socio.compra', { socio: 1, folio: 45 }],
+    ['el gasto 12 es de Ana', 'socio.gasto', { socio: 2, folio: 12, pago: false }],
+    ['liquida a los socios', 'socio.liquidar', {}],
+    ['reparte las propinas', 'propinas.repartir', {}],
+    ['cancela el gasto 12, era de otra sucursal', 'gasto.cancelar', { folio: 12 }],
+    ['crea el concepto de gasto Papelería', 'gasto.concepto', { accion: 'crear', nombre: 'Papelería' }],
+    ['desactiva el concepto gasolina', 'gasto.concepto', { accion: 'desactivar', concepto: 2 }],
+    ['empieza la tanda de conchas', 'produccion.empezar', { producto: 6 }],
+    ['salieron 48 conchas', 'produccion.terminar', { producto: 6, cantidad: 48 }],
+    ['cancela la tanda de conchas', 'produccion.cancelar', { producto: 6 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  /* Quien no es socio no es un movimiento de socio; sin la aplicación, tampoco. */
+  assert.notEqual(l('el cajero sacó 300').intent, 'socio.movimiento');
+  assert.equal(l('saqué 300 del cajón').intent, 'caja.salida');
+  assert.notEqual(l('Juan retiró 500', new Set()).intent, 'socio.movimiento');
+  assert.equal(l('pagué 300 de luz').intent, 'gasto.registrar');
+  /* Cancelar sin motivo: lo pregunta y la respuesta entera es el motivo. */
+  const sin = l('cancela el gasto 12');
+  const resp = interprete.interpretar('lo capturé dos veces', { catalogo: cat, personas: [], socios, conceptos, modulos: new Set(), ahora: HOY,
+    esperando: { intent: sin.intent, slots: sin.slots, falta: 'motivo' } });
+  assert.equal(resp.intent, 'gasto.cancelar'); assert.equal(resp.slots.motivo.valor, 'lo capturé dos veces');
+});

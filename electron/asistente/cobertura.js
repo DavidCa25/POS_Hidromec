@@ -112,6 +112,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'egresos:concepto-mover': 'Sube o baja un concepto en la lista: es acomodo visual, se hace arrastrando en la pantalla, no es una operación del negocio.',
   'cloud-delete-account': 'Borra la cuenta de la nube: irreversible, solo desde Configuración.',
   'cloud-ensure-provisioned': 'Alta en la nube: la hace la configuración inicial.',
   'cloud-push-now': 'Sincronización interna con la nube.',
@@ -197,7 +198,6 @@ const PENDIENTE = {
   'commercial': ['commercial:save'],
   'cuentas': ['cuentas:abrir', 'cuentas:cliente', 'cuentas:cobrada', 'cuentas:enviar', 'cuentas:estado', 'cuentas:liberar'],
   'ventas': ['devoluciones:cambio', 'servicios:orden-enlazar-venta', 'sp-update-sale', 'venta-suelta:guardar'],
-  'egresos': ['egresos:cancelar', 'egresos:concepto-guardar', 'egresos:concepto-mover'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
   'estaciones': ['estaciones:guardar'],
   'catalogo': ['estaciones:producto-asignar', 'estaciones:productos', 'inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno'],
@@ -209,11 +209,11 @@ const PENDIENTE = {
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'plataformas': ['plataformas:canal-guardar', 'plataformas:cancelar', 'plataformas:confirmar', 'plataformas:deposito', 'plataformas:emparejar', 'plataformas:guardar', 'plataformas:ver'],
   'produccion': ['produccion:formula-guardar', 'produccion:formula-quitar'],
-  'propinas': ['propinas:activar', 'propinas:config-guardar', 'propinas:repartir'],
+  'propinas': ['propinas:activar', 'propinas:config-guardar'],
   'salon': ['salon:area-guardar', 'salon:mesa-guardar'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
   'servicios': ['servicios:activar-activo', 'servicios:activar-profesional', 'servicios:activar-servicio', 'servicios:asignar-profesionales', 'servicios:borrar-ausencia', 'servicios:cita-a-orden', 'servicios:elegir-giro', 'servicios:guardar-activo', 'servicios:guardar-ausencia', 'servicios:guardar-horario', 'servicios:guardar-profesional', 'servicios:guardar-servicio', 'servicios:linea-actualizar', 'servicios:linea-agregar', 'servicios:orden-actualizar', 'servicios:orden-autorizar', 'servicios:orden-cancelar', 'servicios:orden-crear', 'servicios:orden-estado'],
-  'socios': ['socios:activar', 'socios:compra', 'socios:config-guardar', 'socios:gasto', 'socios:liquidar', 'socios:movimiento'],
+  'socios': ['socios:activar', 'socios:config-guardar'],
   'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],
   'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],
   'whatsapp': ['whatsapp:config-guardar'],

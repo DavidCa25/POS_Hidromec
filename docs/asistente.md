@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 32 de 183 acciones (17 %)».
+Además imprime el avance, por ejemplo «asistente: 42 de 181 acciones (23 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -275,6 +275,22 @@ producto con opciones (tamaño, sabor) también se cobra en Venta.
 cubierto: el alta rápida de proveedor de Inventario (`sp-add-supplier`) es la
 misma alta que `sp-supplier-save`. La prueba exige que el de la derecha esté
 cubierto.
+
+### Producción, socios, propinas y gastos
+
+| Frase | Qué hace |
+|---|---|
+| «empieza la tanda de conchas», «salieron 48 conchas», «cancela la tanda de conchas» | Tandas (`wybix.produccion.empezar / terminar / cancelar`). Se empieza una planeada (salen los ingredientes), se termina una en proceso y lo que falta es merma: pregunta el motivo. Solo se cancela una planeada. |
+| «Juan retiró 500 de la caja», «Ana aportó 2,000», «le pagué 1,000 a Juan por transferencia» | Movimiento de socio (`socios:movimiento`). Un retiro sin decir cómo sale del cajón. |
+| «la compra 45 la pagó Juan», «el gasto 12 es de Ana», «el gasto 12 lo pagó Juan» | `socios:compra`, `socios:gasto`. Un gasto en efectivo lo pagó el negocio. |
+| «liquida a los socios» | `socios:liquidar` hasta ayer. La tarjeta trae el saldo de cada uno (`sp_socios_resumen`). |
+| «reparte las propinas» | La tarjeta trae el cálculo de `sp_propinas_repartir` sin confirmar; al confirmar, el mismo procedimiento paga y cierra. |
+| «cancela el gasto 12, era de otra sucursal», «crea el concepto de gasto Papelería», «renombra el concepto Luz a Luz y agua», «desactiva el concepto Gasolina» | `egresos:cancelar` (pide el motivo) y `egresos:concepto-guardar`. |
+
+Los socios no están en el catálogo de personas: el intérprete recibe la lista de
+socios activos y la regla (`lenguaje/socios.js`) solo entra si el nombre
+dicho es de uno. «El cajero sacó 300» no es un socio. Sin la aplicación de
+Socios o Propinas encendida, esas frases no se entienden como suyas.
 
 ## El loop de entrenamiento
 
