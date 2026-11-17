@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 106 de 171 acciones (62 %)».
+Además imprime el avance, por ejemplo «asistente: 117 de 167 acciones (70 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -390,6 +390,19 @@ existir; sin unidad dicha, se usa la unidad base del ingrediente.
 | «crea el grupo Tamaño con chico, mediano +5 y grande +10», «el latte lleva el grupo Tamaño», «quítale el grupo Tamaño al latte», «borra el grupo Tamaño» | `modifiers:save` (Tamaño: una, obligatoria; los demás: opcionales), `modifiers:set-product-groups` con la lista completa, `modifiers:delete`. |
 | «las conchas son de Juan», «… de Juan y Ana» | `socios:producto-dueno` (a partes iguales). |
 | «aplica el conteo de la coca», «descarta el reporte de la coca», «ya revisé el inventario» | `inventario:reporte-resolver` (lo que reportó un dispositivo), `license:inventory-review-dismiss`. |
+
+### Menú en línea y plataformas de reparto
+
+Reglas en `lenguaje/menu.js`. Cada cambio manda la configuración completa con
+solo lo dicho cambiado (el procedimiento escribe todo lo que recibe).
+
+| Frase | Qué hace |
+|---|---|
+| «acepta el pedido en línea 12», «acepta el pedido de Juan», «rechaza el pedido 12, no hay gas» | `menu-linea:aceptar` (abre la cuenta y lo manda a preparación), `menu-linea:rechazar` (pide el motivo: el cliente lo ve). |
+| «activa el menú en línea», «ya no recibas pedidos en línea», «el tiempo de entrega es de 30 minutos», «el mensaje del menú es …» | `menu-linea:guardar`. |
+| «la frase / el horario / la dirección del menú es …», «el color del menú es #aa3300» | `menu-linea:diseno-guardar`. |
+| «oculta la concha del menú», «destaca el latte en el menú», «la descripción del latte en el menú es …», «quita la foto de la concha del menú» | `menu-linea:producto-guardar`, `menu-linea:imagen-borrar`. |
+| «confirma la liquidación de Rappi», «cancela la liquidación de Rappi, venía mal», «llegó el depósito de Rappi por 4,500», «el pedido A123 de Rappi es la venta 456», «el canal didi-1 es de DiDi Food» | `plataformas:confirmar`, `cancelar`, `deposito`, `emparejar`, `canal-guardar`. Capturar una liquidación es con el archivo de la plataforma. |
 
 ## El loop de entrenamiento
 

@@ -620,6 +620,21 @@ try {
   const rGr = await pedirC('opciones.crear', { nombre: ex('QA Tamaño'), opciones: ex([{ nombre: 'chico', precio: 0 }, { nombre: 'grande', precio: 10 }]), rol: ex('SIZE') });
   const gr = rGr.plan?.ejecutar.payload;
   check(rGr.plan?.ejecutar.api === 'wybix.modifiers.save' && gr.required === true && gr.maxSelect === 1 && gr.options[1].priceDelta === 10, 'grupo de tamaño: uno obligatorio, grande +$10');
+
+  /* 17. Menú en línea y plataformas. */
+  seccion('17. Menú en línea y plataformas');
+  const rMp = await pedirC('menu.producto', { producto: ex(cafe), campo: ex('destacado'), valor: ex(true) });
+  const mp = rMp.plan?.ejecutar.payload;
+  try {
+    await pool.request().input('product_id', sql.Int, mp.productId).input('descripcion', sql.NVarChar(400), mp.descripcion).input('etiquetas', sql.NVarChar(200), mp.etiquetas)
+      .input('destacado', sql.Bit, mp.destacado ? 1 : 0).input('oculto', sql.Bit, mp.oculto ? 1 : 0).execute('sp_menu_en_linea_producto_guardar');
+    const rMp2 = await pedirC('menu.producto', { producto: ex(cafe), campo: ex('destacado'), valor: ex(true) });
+    check(!rMp2.plan && /ya está así/.test(rMp2.texto), 'destacar en el menú se guarda y no se repite');
+    const rMp3 = await pedirC('menu.producto', { producto: ex(cafe), campo: ex('oculto'), valor: ex(true) });
+    check(rMp3.plan.ejecutar.payload.destacado === true && rMp3.plan.ejecutar.payload.oculto === true, 'ocultarlo conserva que está destacado');
+  } catch (e) { check(false, 'el SP guarda el producto del menú', e.message); }
+  const rLq = await pedirC('plataforma.confirmar', { plataforma: ex('RAPPI') });
+  check(!rLq.plan && /No hay liquidación/.test(rLq.texto), 'sin liquidación de Rappi no hay qué confirmar');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

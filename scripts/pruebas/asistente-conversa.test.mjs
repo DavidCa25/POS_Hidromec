@@ -487,3 +487,33 @@ test('recetas, fórmulas, presentaciones, grupos de opciones, dueño y reportes 
   /* «La concha es de chocolate» no es de un socio. */
   assert.notEqual(l('la concha es de chocolate').intent, 'producto.dueno');
 });
+
+test('menú en línea y plataformas hablados', () => {
+  const cat = prepararCatalogo([{ id: 44, nombre: 'Concha' }, { id: 48, nombre: 'Latte' }]);
+  const l = (texto, modulos = new Set(['hospitality'])) => interprete.interpretar(texto, { catalogo: cat, personas: [], modulos, ahora: HOY });
+  const casos = [
+    ['acepta el pedido en línea 12', 'pedido.aceptar', { pedido: 12 }],
+    ['acepta el pedido de Juan', 'pedido.aceptar', { clienteTexto: 'juan' }],
+    ['rechaza el pedido 12, no hay gas', 'pedido.rechazar', { pedido: 12, motivo: 'no hay gas' }],
+    ['activa el menú en línea', 'menu.config', { campo: 'activo', valor: true }],
+    ['ya no recibas pedidos en línea', 'menu.config', { campo: 'recibePedidos', valor: false }],
+    ['el tiempo de entrega es de 30 minutos', 'menu.config', { campo: 'minutos', valor: 30 }],
+    ['la frase del menú es El mejor pan del barrio', 'menu.diseno', { campo: 'frase', valor: 'El mejor pan del barrio' }],
+    ['oculta la concha del menú en línea', 'menu.producto', { producto: 44, campo: 'oculto', valor: true }],
+    ['destaca el latte en el menú', 'menu.producto', { producto: 48, campo: 'destacado', valor: true }],
+    ['la descripción del latte en el menú es Café con leche espumosa', 'menu.producto', { producto: 48, campo: 'descripcion', valor: 'Café con leche espumosa' }],
+    ['quita la foto de la concha del menú', 'menu.foto_quitar', { producto: 44 }],
+    ['confirma la liquidación de Rappi', 'plataforma.confirmar', { plataforma: 'RAPPI' }],
+    ['cancela la liquidación de Rappi, venía mal', 'plataforma.cancelar', { plataforma: 'RAPPI', motivo: 'venía mal' }],
+    ['llegó el depósito de Rappi por 4,500', 'plataforma.deposito', { plataforma: 'RAPPI', importe: 4500 }],
+    ['el pedido A123x de Rappi es la venta 456', 'plataforma.emparejar', { plataforma: 'RAPPI', pedido: 'A123x', venta: 456 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  assert.notEqual(l('oculta la concha del menú en línea', new Set()).intent, 'menu.producto');
+  /* Un color que no es #rrggbb no se manda. */
+  assert.notEqual(l('el color del menú es rojo').intent, 'menu.diseno');
+});

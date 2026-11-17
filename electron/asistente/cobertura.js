@@ -20,6 +20,9 @@
 'use strict';
 
 const LECTURA = [
+  'menu-linea:diseno',
+  'menu-linea:imagen-ver',
+  'plataformas:ver',
   'estaciones:productos',
   'produccion:formula',
   'corte:correo-lista',
@@ -113,6 +116,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'plataformas:guardar': 'Una liquidación se captura con el archivo que descarga la plataforma (miles de pedidos): se sube en su pantalla.',
   'users:create': 'Crear un usuario pide su contraseña o PIN: lo escribe la persona en su pantalla; el asistente no maneja contraseñas.',
   'export-database': 'Saca un archivo de la base a una carpeta que se elige en el diálogo del sistema.',
   'socios:activar': 'Socios se enciende con un asistente de varias preguntas (quiénes son, de quién es cada categoría y producto, cómo se reparte): se contesta en su pantalla.',
@@ -206,13 +210,10 @@ const PENDIENTE = {
   'commercial': ['commercial:save'],
   'ventas': ['devoluciones:cambio', 'sp-update-sale', 'venta-suelta:guardar'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
-  'catalogo': ['menu-linea:producto-guardar'],
   'fiscal': ['fiscal-cancel-invoice', 'fiscal-save-invoice', 'fiscal:cancelar', 'fiscal:timbrar'],
   'impuestos': ['impuestos:guardar'],
   'localhost': ['localhost:activar', 'localhost:cambiar-funcion', 'localhost:renombrar', 'localhost:revocar', 'localhost:trabajador-revocar'],
-  'menu': ['menu-linea:aceptar', 'menu-linea:diseno', 'menu-linea:diseno-guardar', 'menu-linea:guardar', 'menu-linea:imagen-borrar', 'menu-linea:imagen-ver', 'menu-linea:rechazar'],
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
-  'plataformas': ['plataformas:canal-guardar', 'plataformas:cancelar', 'plataformas:confirmar', 'plataformas:deposito', 'plataformas:emparejar', 'plataformas:guardar', 'plataformas:ver'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
   'servicios': ['servicios:activar-activo'],
   'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],

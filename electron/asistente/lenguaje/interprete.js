@@ -38,6 +38,7 @@ const { fidelizacion: reglaFidelizacion } = require('./fidelizacion');
 const { mesas: reglaMesas } = require('./mesas');
 const { config: reglaConfig } = require('./config');
 const { recetas: reglaRecetas } = require('./recetas');
+const { menu: reglaMenu } = require('./menu');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -447,6 +448,18 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Menú en línea y plataformas de reparto (lenguaje/menu.js). */
+    const rmn = !esperando && reglaMenu(texto);
+    if (rmn && disponible(rmn.intent, modulos)) {
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rmn)) if (k !== 'intent' && k !== 'textoProducto' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      if (rmn.textoProducto) {
+        const ap = analizar(rmn.textoProducto, catalogo, { personas: [] });
+        if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false;
+      }
+      if (ok) return cerrar(rmn.intent, slots, 0.95, []);
     }
     /* Recetas, fórmulas, presentaciones, grupos de opciones, dueño y
        reportes de conteo (lenguaje/recetas.js). Producto, ingredientes y

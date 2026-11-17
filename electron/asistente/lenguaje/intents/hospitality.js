@@ -140,4 +140,49 @@ module.exports = [
     id: 'estacion.producto', etiqueta: 'Dónde se prepara un producto', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { producto: { requerido: true }, estacion: { requerido: true } }, claves: [], ejemplos: [],
   },
+  /* Reglas de lenguaje/menu.js, no clasificador. */
+  {
+    id: 'pedido.aceptar', etiqueta: 'Aceptar un pedido en línea', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { pedido: {}, clienteTexto: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'pedido.rechazar', etiqueta: 'Rechazar un pedido en línea', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { pedido: {}, clienteTexto: {}, motivo: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'menu.config', etiqueta: 'Configurar el menú en línea', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { campo: { requerido: true }, valor: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'menu.diseno', etiqueta: 'Diseño del menú en línea', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { campo: { requerido: true }, valor: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'menu.producto', etiqueta: 'Un producto en el menú en línea', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true }, campo: { requerido: true }, valor: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'menu.foto_quitar', etiqueta: 'Quitar la foto de un producto del menú', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'plataforma.confirmar', etiqueta: 'Confirmar una liquidación de plataforma', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { plataforma: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'plataforma.cancelar', etiqueta: 'Cancelar una liquidación de plataforma', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { plataforma: { requerido: true }, motivo: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'plataforma.deposito', etiqueta: 'Depósito de una plataforma', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { plataforma: { requerido: true }, importe: { requerido: true }, dia: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'plataforma.emparejar', etiqueta: 'Emparejar un pedido de plataforma con su venta', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { plataforma: { requerido: true }, pedido: { requerido: true }, venta: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'plataforma.canal', etiqueta: 'Canal de una plataforma', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { plataforma: { requerido: true }, canal: { requerido: true } }, claves: [], ejemplos: [],
+  },
 ];

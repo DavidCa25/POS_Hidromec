@@ -3,6 +3,35 @@
 const crypto = require('crypto');
 
 module.exports = (h) => {
+  /* ---------------------------------------- menú en línea y plataformas */
+  const PLATAFORMA = { RAPPI: 'Rappi', DIDI_FOOD: 'DiDi Food', UBER_EATS: 'Uber Eats' };
+  const configMenu = () => h.uno('SELECT TOP 1 activo, recibe_pedidos, slug, minutos_estimados, mensaje, color, acento, frase, direccion, horario FROM dbo.menu_en_linea_config;').catch(() => null);
+  async function pedidoEnLinea(it) {
+    const n = h.v(it, 'pedido'), quien = h.v(it, 'clienteTexto');
+    const ps = await h.q(`SELECT id, cliente_nombre, total_cliente, estado, recibido_en FROM dbo.pedidos_en_linea WHERE estado = 'PENDIENTE' ORDER BY id;`).catch(() => []);
+    if (n != null) return ps.find((p) => Number(p.id) === Number(n)) || null;
+    const d = h.llano(quien);
+    const xs = ps.filter((p) => h.llano(p.cliente_nombre).includes(d));
+    return xs.length === 1 ? xs[0] : xs.length ? { varios: xs } : null;
+  }
+  const liquidacion = (plataforma, estados) => h.uno(`SELECT TOP 1 id, period_from, period_to, status, deposit_expected, deposit_real, gross_sales FROM dbo.platform_settlements
+      WHERE platform = @p AND status IN (${estados.map((e) => `'${e}'`).join(',')}) ORDER BY period_to DESC, id DESC;`, [['p', h.sql.VarChar(12), plataforma]]).catch(() => null);
+  const periodo = (l) => `${h.diaTexto(l.period_from)} – ${h.diaTexto(l.period_to)}`;
+  async function decidirPedido(it, acepta) {
+    const p = await pedidoEnLinea(it);
+    if (!p) return h.msg('No encuentro ese pedido en línea pendiente.');
+    if (p.varios) return h.msg(`Hay ${p.varios.length} pedidos pendientes de ese nombre: ${p.varios.map((x) => `${x.id} (${h.dinero(x.total_cliente)})`).join(', ')}. ¿Cuál?`);
+    const motivo = h.v(it, 'motivo');
+    if (!acepta && !motivo) return h.msg('¿Por qué lo rechazas? El cliente lo ve.');
+    return h.msg(acepta ? 'Este pedido voy a aceptar:' : 'Este pedido voy a rechazar:', { plan: h.plan(acepta ? 'pedido.aceptar' : 'pedido.rechazar', {
+      titulo: `${acepta ? 'Aceptar' : 'Rechazar'} pedido ${p.id} · ${p.cliente_nombre || 'en línea'}`,
+      vista: [{ etiqueta: 'Cliente', valor: p.cliente_nombre || '—' }, { etiqueta: 'Total', valor: h.dinero(p.total_cliente) }, ...(motivo ? [{ etiqueta: 'Motivo', valor: motivo }] : [])],
+      avisos: acepta ? ['Se abre su cuenta y sale a preparación, igual que al aceptarlo en la pantalla.'] : ['El cliente ve que se rechazó y por qué.'],
+      ejecutar: acepta ? { api: 'electronAPI.menuLineaAceptar', payload: { id: Number(p.id) } } : { api: 'electronAPI.menuLineaRechazar', payload: { id: Number(p.id), motivo } },
+      permiso: 'VENTAS_OPERAR',
+    }) });
+  }
+
   /* ------------------------------------------- mesas, cuentas y comandas */
   /** «4», «mesa 4», «terraza 2»: la mesa activa con ese nombre (o ese número). */
   async function mesaDe(dicho) {
@@ -411,6 +440,132 @@ module.exports = (h) => {
       return h.msg('Esto voy a cambiar:', { plan: h.plan('estacion.producto', {
         titulo: `${p.nombre} · se prepara en ${e.nombre}`, vista: [{ etiqueta: 'Estación', valor: `${actual?.nombre || 'ninguna'} → ${e.nombre}` }],
         ejecutar: { api: 'wybix.estaciones.asignar', payload: { productId: p.id, stationId: e.id } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    /* ==================================================== MENÚ EN LÍNEA */
+    async 'pedido.aceptar'(it) { return decidirPedido(it, true); },
+    async 'pedido.rechazar'(it) { return decidirPedido(it, false); },
+
+    /* Activar, recibir pedidos, minutos y mensaje: la configuración completa con ese cambio. */
+    async 'menu.config'(it) {
+      const c = await configMenu();
+      if (!c) return h.msg('El menú en línea todavía no está configurado: hazlo en Menú en línea.');
+      const campo = h.v(it, 'campo'), valor = h.v(it, 'valor');
+      const nuevo = { activo: !!c.activo, recibePedidos: !!c.recibe_pedidos, slug: c.slug, minutos: c.minutos_estimados, mensaje: c.mensaje };
+      if (campo === 'activo' && valor && !c.slug) return h.msg('Primero elige la dirección del menú (en Menú en línea) y luego lo publico.');
+      if (campo === 'minutos' && !(valor >= 1 && valor <= 240)) return h.msg('El tiempo va de 1 a 240 minutos.');
+      const antes = nuevo[campo];
+      if (String(antes ?? '') === String(valor ?? '')) return h.msg('Ya está así.');
+      nuevo[campo] = valor;
+      const N = { activo: 'Menú publicado', recibePedidos: 'Recibe pedidos', minutos: 'Tiempo estimado', mensaje: 'Mensaje' };
+      const ver = (v) => (typeof v === 'boolean' ? (v ? 'sí' : 'no') : campo === 'minutos' ? `${v} min` : (v || '—'));
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('menu.config', {
+        titulo: 'Menú en línea', vista: [{ etiqueta: N[campo], valor: `${ver(antes)} → ${ver(valor)}` }],
+        ejecutar: { api: 'electronAPI.menuLineaGuardar', payload: nuevo }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'menu.diseno'(it) {
+      const c = await configMenu();
+      if (!c) return h.msg('El menú en línea todavía no está configurado: hazlo en Menú en línea.');
+      const campo = h.v(it, 'campo'), valor = h.v(it, 'valor');
+      const nuevo = { color: c.color, acento: c.acento, frase: c.frase, direccion: c.direccion, horario: c.horario, [campo]: valor };
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('menu.diseno', {
+        titulo: 'Diseño del menú en línea', vista: [{ etiqueta: { frase: 'Frase', horario: 'Horario', direccion: 'Dirección', color: 'Color', acento: 'Acento' }[campo], valor: `${c[campo] || '—'} → ${valor}` }],
+        ejecutar: { api: 'electronAPI.menuLineaDisenoGuardar', payload: nuevo }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'menu.producto'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto.');
+      const m = await h.uno('SELECT descripcion, etiquetas, destacado, oculto FROM dbo.menu_en_linea_productos WHERE product_id = @p;', [['p', h.sql.Int, p.id]]).catch(() => null)
+        || { descripcion: null, etiquetas: null, destacado: false, oculto: false };
+      const campo = h.v(it, 'campo'), valor = h.v(it, 'valor');
+      const nuevo = { productId: p.id, descripcion: m.descripcion, etiquetas: m.etiquetas, destacado: !!m.destacado, oculto: !!m.oculto, [campo]: valor };
+      if (String(m[campo] ?? '') === String(valor ?? '') || (typeof valor === 'boolean' && !!m[campo] === valor)) return h.msg(`${p.nombre} ya está así en el menú.`);
+      const N = { oculto: ['Se ve en el menú', (v) => (v ? 'no' : 'sí')], destacado: ['Destacado', (v) => (v ? 'sí' : 'no')], descripcion: ['Descripción', (v) => v || '—'] }[campo];
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('menu.producto', {
+        titulo: `${p.nombre} en el menú en línea`, vista: [{ etiqueta: N[0], valor: `${N[1](m[campo])} → ${N[1](valor)}` }],
+        ejecutar: { api: 'electronAPI.menuLineaProductoGuardar', payload: nuevo }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'menu.foto_quitar'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      const f = p && await h.uno("SELECT TOP 1 id FROM dbo.menu_en_linea_imagenes WHERE product_id = @p AND tipo = 'PRODUCTO' ORDER BY id DESC;", [['p', h.sql.Int, p.id]]).catch(() => null);
+      if (!f) return h.msg(`${p?.nombre || 'Ese producto'} no tiene foto en el menú.`);
+      return h.msg('Esta foto voy a quitar:', { plan: h.plan('menu.foto_quitar', {
+        titulo: `Quitar la foto de ${p.nombre}`, vista: [{ etiqueta: 'Producto', valor: p.nombre }],
+        ejecutar: { api: 'electronAPI.menuLineaImagenBorrar', payload: { id: Number(f.id) } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    /* ================================================== PLATAFORMAS */
+    async 'plataforma.confirmar'(it) {
+      const pl = h.v(it, 'plataforma');
+      const l = await liquidacion(pl, ['BORRADOR']);
+      if (!l) return h.msg(`No hay liquidación de ${PLATAFORMA[pl]} por confirmar.`);
+      return h.msg('Esta liquidación voy a confirmar:', { plan: h.plan('plataforma.confirmar', {
+        titulo: `Confirmar liquidación de ${PLATAFORMA[pl]}`,
+        vista: [{ etiqueta: 'Periodo', valor: periodo(l) }, { etiqueta: 'Ventas', valor: h.dinero(l.gross_sales) }, { etiqueta: 'Depósito esperado', valor: h.dinero(l.deposit_expected) }],
+        avisos: ['Registra comisiones y retenciones como gasto y deja el depósito por cobrar.'],
+        ejecutar: { api: 'electronAPI.plataformasConfirmar', payload: { id: Number(l.id) } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'plataforma.cancelar'(it) {
+      const pl = h.v(it, 'plataforma');
+      const l = await liquidacion(pl, ['BORRADOR', 'CONFIRMADA']);
+      if (!l) return h.msg(`No hay liquidación de ${PLATAFORMA[pl]} que cancelar.`);
+      const motivo = h.v(it, 'motivo');
+      if (!motivo) return h.msg('¿Por qué se cancela?');
+      return h.msg('Esta liquidación voy a cancelar:', { plan: h.plan('plataforma.cancelar', {
+        titulo: `Cancelar liquidación de ${PLATAFORMA[pl]}`, vista: [{ etiqueta: 'Periodo', valor: periodo(l) }, { etiqueta: 'Motivo', valor: motivo }],
+        avisos: l.status !== 'BORRADOR' ? ['Ya estaba confirmada: se deshace su gasto.'] : [],
+        ejecutar: { api: 'electronAPI.plataformasCancelar', payload: { id: Number(l.id), motivo } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'plataforma.deposito'(it) {
+      const pl = h.v(it, 'plataforma');
+      const l = await liquidacion(pl, ['CONFIRMADA']);
+      if (!l) return h.msg(`No hay liquidación confirmada de ${PLATAFORMA[pl]} esperando depósito.`);
+      const importe = Number(h.v(it, 'importe'));
+      const d = new Date(); const dia = h.v(it, 'dia'); if (dia === 'ayer') d.setDate(d.getDate() - 1); if (dia === 'antier') d.setDate(d.getDate() - 2);
+      const fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dif = h.r2(importe - Number(l.deposit_expected || 0));
+      return h.msg('Este depósito voy a registrar:', { plan: h.plan('plataforma.deposito', {
+        titulo: `Depósito de ${PLATAFORMA[pl]} · ${h.dinero(importe)}`,
+        vista: [{ etiqueta: 'Periodo', valor: periodo(l) }, { etiqueta: 'Esperado', valor: h.dinero(l.deposit_expected) }, { etiqueta: 'Llegó', valor: h.dinero(importe) },
+                { etiqueta: 'Diferencia', valor: Math.abs(dif) < 0.5 ? 'cuadra' : h.dinero(dif) }, { etiqueta: 'Fecha', valor: h.diaTexto(d) }],
+        ejecutar: { api: 'electronAPI.plataformasDeposito', payload: { id: Number(l.id), importe, fecha } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'plataforma.emparejar'(it) {
+      const pl = h.v(it, 'plataforma');
+      const o = await h.uno(`SELECT TOP 1 o.id, o.settlement_id, o.platform_order_id, o.sales_total, o.sale_id FROM dbo.platform_settlement_orders o
+                              JOIN dbo.platform_settlements s ON s.id = o.settlement_id WHERE s.platform = @p AND o.platform_order_id = @o AND s.status <> 'CANCELADA' ORDER BY o.id DESC;`,
+        [['p', h.sql.VarChar(12), pl], ['o', h.sql.NVarChar(100), String(h.v(it, 'pedido'))]]).catch(() => null);
+      if (!o) return h.msg(`No encuentro el pedido ${h.v(it, 'pedido')} en las liquidaciones de ${PLATAFORMA[pl]}.`);
+      const v = await h.uno('SELECT id, total, datee FROM dbo.sales WHERE id = @id;', [h.id(h.v(it, 'venta'))]);
+      if (!v) return h.msg(`No encuentro la venta ${h.v(it, 'venta')}.`);
+      return h.msg('Esto voy a emparejar:', { plan: h.plan('plataforma.emparejar', {
+        titulo: `Pedido ${o.platform_order_id} = venta ${v.id}`,
+        vista: [{ etiqueta: `Pedido ${PLATAFORMA[pl]}`, valor: `${o.platform_order_id} · ${h.dinero(o.sales_total)}` }, { etiqueta: 'Venta', valor: `${v.id} · ${h.dinero(v.total)}` }],
+        avisos: Math.abs(Number(o.sales_total) - Number(v.total)) > 0.5 ? ['Los importes no coinciden: revisa que sea esa venta.'] : [],
+        ejecutar: { api: 'electronAPI.plataformasEmparejar', payload: { id: Number(o.settlement_id), pedido: Number(o.id), venta: Number(v.id) } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'plataforma.canal'(it) {
+      const pl = h.v(it, 'plataforma'), canal = String(h.v(it, 'canal'));
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('plataforma.canal', {
+        titulo: `Canal ${canal} · ${PLATAFORMA[pl]}`, vista: [{ etiqueta: 'Canal', valor: canal }, { etiqueta: 'Plataforma', valor: PLATAFORMA[pl] }],
+        avisos: ['Las ventas de ese canal cuentan para las liquidaciones de esa plataforma.'],
+        ejecutar: { api: 'electronAPI.plataformasCanalGuardar', payload: { channel_id: canal, plataforma: pl } }, permiso: 'CONFIGURACION_ADMINISTRAR',
       }) });
     },
   };
