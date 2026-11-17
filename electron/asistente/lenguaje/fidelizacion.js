@@ -20,14 +20,14 @@ function fidelizacion(texto) {
 
   let m = t.match(/^(?:ponle|ponerle|dale|darle|agrega|agregale|abona|abonale|regala|regalale|suma|sumale)\s+(\d+)\s+puntos\s+(?:a|al|para)\s+(.+?)(?:\s*[,;]?\s+(?:porque|por que|por)\s+(.+))?$/);
   if (m) return { intent: 'puntos.ajustar', cantidad: Number(m[1]), textoCliente: m[2], nota: m[3] ? limpio(raw.slice(t.length - m[3].length)) : null };
-  m = t.match(/^(?:quitale|quita|quitar|resta|restale|descuenta|descuentale)\s+(\d+)\s+puntos\s+(?:a|al|de|del)\s+(.+?)(?:\s*[,;]?\s+(?:porque|por que|por)\s+(.+))?$/);
+  m = t.match(/^(?:quitale|quita|quitar|resta|restale|descuenta|descuentale|saca|sacale)\s+(\d+)\s+puntos\s+(?:a|al|de|del)\s+(.+?)(?:\s*[,;]?\s+(?:porque|por que|por)\s+(.+))?$/);
   if (m) return { intent: 'puntos.ajustar', cantidad: -Number(m[1]), textoCliente: m[2], nota: m[3] ? limpio(raw.slice(t.length - m[3].length)) : null };
 
-  m = t.match(/^(?:cancela|cancelar|cancelale|da de baja)\s+(?:la\s+|su\s+)?(?:membresia|suscripcion|club)\s+(?:de|del|a)\s+(.+?)(?:\s*[,;]\s*|\s+(?:porque|por que)\s+)(.+)$/)
-    || t.match(/^(?:cancela|cancelar|cancelale|da de baja)\s+(?:la\s+|su\s+)?(?:membresia|suscripcion|club)\s+(?:de|del|a)\s+(.+)$/);
+  m = t.match(/^(?:cancela|cancelar|cancelale|da de baja)\s+(?:la\s+|el\s+|su\s+)?(?:membresia|suscripcion|club)\s+(?:de|del|a)\s+(.+?)(?:\s*[,;]\s*|\s+(?:porque|por que)\s+)(.+)$/)
+    || t.match(/^(?:cancela|cancelar|cancelale|da de baja)\s+(?:la\s+|el\s+|su\s+)?(?:membresia|suscripcion|club)\s+(?:de|del|a)\s+(.+)$/);
   if (m) return { intent: 'club.cancelar', textoCliente: m[1], nota: m[2] ? limpio(raw.slice(t.length - m[2].length)) : null };
 
-  m = t.match(/^(?:cierra|cerrar|cierrale)\s+(?:la\s+)?(?:rifa|sorteo)\s+(?:de\s+|del\s+)?(.+)$/);
+  m = t.match(/^(?:cierra|cerrar|cierrale)\s+(?:la\s+|el\s+)?(?:rifa|sorteo)\s+(?:de\s+|del\s+)?(.+)$/);
   if (m) return { intent: 'rifa.cerrar', textoRifa: m[1] };
   m = t.match(/^(?:sortea|sortear|haz el sorteo de|rifa)\s+(?:la\s+|el\s+)?(?:rifa|sorteo)?\s*(?:de\s+|del\s+)?(.+?)(?:\s+con\s+(\d+)\s+ganador(?:es)?)?(?:\s+y\s+(\d+)\s+suplentes?)?$/);
   if (m && m[1]) return { intent: 'rifa.sortear', textoRifa: m[1], ganadores: m[2] ? Number(m[2]) : null, suplentes: m[3] ? Number(m[3]) : 0 };
@@ -66,7 +66,7 @@ function fidelizacion(texto) {
   m = t.match(/^(?:crea|da de alta|nueva)\s+(?:la\s+|una\s+)?tarjeta\s+de\s+sellos\s+(?:del?|de la|de los|de las)\s+(.+?)\s*[:,]?\s+(\d+)\s+sellos?(?:\s+y\s+(?:el|la)\s+\d+\s+(?:gratis|de regalo))?$/);
   if (m) return { intent: 'sellos.crear', textoProducto: m[1], sellos: Number(m[2]) };
   /* «Crea el plan Café diario: 1 café al día por 300 al mes». */
-  m = t.match(/^(?:crea|da de alta|nuevo)\s+(?:el\s+|un\s+)?plan\s+(?:del club\s+)?(.+?)\s*:\s*(\d+)\s+(.+?)\s+al\s+dia\s+por\s+\$?(\d+(?:\.\d+)?)\s+(?:al|por|cada)\s+(mes|semana|ano|quincena)$/);
+  m = t.match(/^(?:crea|da de alta|nuevo)\s+(?:el\s+|un\s+)?plan\s+(?:del club\s+)?(.+?)\s*:\s*(\d+)\s+(.+?)\s+al\s+dia\s+por\s+\$?(\d+(?:\.\d+)?)\s+(?:al|por|cada|a la)\s+(mes|semana|ano|quincena)$/);
   if (m) {
     const orig = raw.slice(t.indexOf(m[1]), t.indexOf(m[1]) + m[1].length).trim();
     return { intent: 'club.plan', nombre: orig, limite: Number(m[2]), textoProducto: m[3], precio: Number(m[4]), dias: { mes: 30, semana: 7, ano: 365, quincena: 15 }[m[5]] };

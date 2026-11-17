@@ -125,3 +125,13 @@ test('cobertura: cada plan llama a una función que existe en preload y está pr
     assert.match(servicio, new RegExp(`\\b${fn}\\s*:\\s*\\(`), `AsistenteService no atiende pantalla.${fn}`);
   }
 });
+
+/* Las acciones por REGLA no pasan por el clasificador: su banco de variantes
+   (electron/asistente/lenguaje/frases-reglas.txt) se mide aquí. */
+test('las reglas entienden sus variantes (banco frases-reglas.txt)', async () => {
+  const { medir, META } = await import('../asistente/medir-reglas.mjs');
+  const r = medir();
+  const fallas = r.porIntent.flatMap((g) => g.fallas.map((x) => `${g.intent} ← «${x.frase}» (dio ${x.dio})`));
+  assert.ok(r.pct >= META, `reglas: ${r.bien}/${r.total}\n${fallas.join('\n')}`);
+  for (const g of r.porIntent) assert.ok(g.frases >= 3, `${g.intent}: menos de 3 variantes en el banco`);
+});

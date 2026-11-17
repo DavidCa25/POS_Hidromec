@@ -163,7 +163,7 @@ electron/ipc/asistente.js           canales asistente:* (incluye alias y voz)
 src/core/asistente.service.ts       la pantalla; ejecuta los planes confirmados y carga el carrito
 src/core/dictado.service.ts         el dictado sin internet (Vosk)
 src/app/wx-guia/wx-wybix-chat.*     el chat (pestaña «Chat» del panel de Wybix)
-scripts/asistente/                  entrenar.mjs (loop) · giros.mjs (catálogos de prueba) · casos.mjs · humo-sql.mjs
+scripts/asistente/                  entrenar.mjs (loop) · medir-reglas.mjs (acciones por regla) · giros.mjs (catálogos de prueba) · casos.mjs · humo-sql.mjs
 ```
 
 ## Agregar algo que Wybix entienda
@@ -492,6 +492,28 @@ Estado al 2026-11-15: **3,114 frases completas** (retail 2,730 · hospitality
 En cada caja, el intérprete además se reentrena solo con las frases que la
 gente de ese negocio confirmó (`asistente_frases`), y entiende sus apodos
 (`asistente_alias`).
+
+### Las acciones por regla
+
+Las 132 acciones marcadas `soloRegla` no pasan por el clasificador: las
+entiende una regla de `lenguaje/`. El loop de arriba no las mide, así que
+tienen su propio banco: `electron/asistente/lenguaje/frases-reglas.txt`
+(«@ intent» y una forma distinta de decirlo por renglón: cortesías, otro
+orden, sinónimos, sin acentos, «la 4» por «la mesa 4»).
+
+```
+node scripts/asistente/medir-reglas.mjs     cuántas entiende y cuáles no
+```
+
+Usa el intérprete real con un negocio de prueba (21 productos, clientes,
+proveedores, una profesional, usuarios, socios, estaciones) y todos los
+módulos encendidos. `npm run test:asistente` falla si baja de 90 % o si una
+acción tiene menos de 3 variantes. Cuando una variante falla, se amplía la
+regla (no se borra la variante).
+
+Estado al 2026-11-17: **533/533 variantes (100 %), 132/132 acciones**. La
+primera medida dio 386/405 y, con el banco ampliado, 503/533; las fallas se
+cerraron ampliando las reglas.
 
 ## Dictado (opcional)
 

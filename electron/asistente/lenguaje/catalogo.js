@@ -27,7 +27,7 @@ function catalogo(texto) {
   const t = llano(raw);
   if (!t) return null;
 
-  const alta = t.match(ALTA);
+  const alta = t.match(ALTA) || t.match(/^(?:una\s+)?(?:nueva|nuevo)\s+(categoria|marca)\s+(?:llamada\s+|que se llame\s+)?(.+)$/);
   if (alta) {
     const nombre = capital(limpio(raw.slice(t.length - alta[2].length)));
     if (nombre) return { intent: alta[1] === 'categoria' ? 'categoria.alta' : 'marca.alta', nombre };
@@ -45,6 +45,10 @@ function catalogo(texto) {
     const [prod, prov] = /^el\s+proveedor|^proveedor/.test(t) ? [m[1], m[2]] : [m[2], m[1]];
     return { intent: 'producto.proveedor', accion: 'principal', textoProveedor: prov, textoProducto: prod };
   }
+
+  /* «Las conchas me las surte Bimbo»: el producto primero. */
+  m = t.match(/^(?:el|la|los|las)?\s*(.+?)\s+(?:me|nos)\s+(?:la|lo|las|los)\s+(?:surte|trae|vende|provee)\s+(.+)$/);
+  if (m && !/^(?:quien|que|cual|cuanto|cuantos|donde|a como|en cuanto)\b/.test(m[1])) return { intent: 'producto.proveedor', accion: 'agregar', textoProveedor: m[2], textoProducto: m[1] };
 
   /* «Bimbo me surte las conchas», «agrega a Bimbo como proveedor de la concha». */
   m = t.match(/^(.+?)\s+(?:tambien\s+)?(?:me |nos )?(?:surte|provee)\s+(?:de\s+)?(.+)$/)

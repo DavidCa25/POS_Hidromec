@@ -43,7 +43,8 @@ function recetas(texto) {
   if (!t || /^(?:cuanto|cuantos|que|cual|como|dime|de que)\b/.test(t)) return null;
 
   /* ---------------------------------------------------------- fórmulas */
-  let m = t.match(/^(?:borra|elimina|quita)\s+(?:la\s+)?formula\s+(?:de\s+produccion\s+)?(?:de|del|de la|de las|de los)\s+(.+)$/);
+  let m = t.match(/^(?:borra|elimina|quita)\s+(?:la\s+)?formula\s+(?:de\s+produccion\s+)?(?:de|del|de la|de las|de los)\s+(.+)$/)
+    || t.match(/^(?:el|la|los|las)?\s*(.+?)\s+ya\s+no\s+(?:tiene|tienen|lleva|llevan|usa|usan)\s+formula$/);
   if (m) return { intent: 'formula.quitar', textoProducto: m[1] };
   m = t.match(/^(?:la\s+)?formula\s+(?:de\s+produccion\s+)?(?:de|del|de la|de las|de los)\s+(.+?)\s*(?::|es|lleva|son)\s+(.+?)(?:\s*[,;]?\s+(?:y\s+)?rinde\s+(\d+(?:\.\d+)?))?$/);
   if (m) {
@@ -52,7 +53,8 @@ function recetas(texto) {
   }
 
   /* ----------------------------------------------------------- recetas */
-  m = t.match(/^(?:borra|elimina)\s+(?:la\s+)?receta\s+(?:de|del|de la|de las|de los)\s+(.+)$/);
+  m = t.match(/^(?:borra|elimina|quita)\s+(?:la\s+)?receta\s+(?:de|del|de la|de las|de los)\s+(.+)$/)
+    || t.match(/^(?:el|la|los|las)?\s*(.+?)\s+ya\s+no\s+(?:tiene|tienen|lleva|llevan)\s+receta$/);
   if (m) return { intent: 'receta.borrar', textoProducto: m[1] };
   m = t.match(/^(?:quitale|quita|saca|sacale)\s+(?:el|la|los|las)?\s*(.+?)\s+a\s+(?:la\s+)?receta\s+(?:de|del|de la|de las|de los)\s+(.+)$/);
   if (m) return { intent: 'receta.guardar', textoProducto: m[2], quitarTexto: m[1] };
@@ -65,6 +67,9 @@ function recetas(texto) {
   /* ----------------------------------------------------- presentaciones */
   m = t.match(/^(?:borra|elimina|quita)\s+(?:la\s+)?presentacion\s+(.+)\s+(?:de|del|de la|de las|de los)\s+(.+)$/);
   if (m) return { intent: 'presentacion.borrar', presentacion: m[1], textoProducto: m[2] };
+  /* «La coca ya no se vende en caja de 24». */
+  m = t.match(/^(?:el|la|los|las)?\s*(.+?)\s+ya\s+no\s+(?:se vende|se venden|se compra|se compran|viene|vienen)\s+(?:en|por)\s+(.+)$/);
+  if (m) return { intent: 'presentacion.borrar', presentacion: m[2], textoProducto: m[1] };
   m = t.match(/^(?:el|la|los|las)?\s*(.+?)\s+(?:tambien\s+)?(?:se vende|se venden|se compra|se compran|viene|vienen)\s+(?:tambien\s+)?(?:en|por)\s+(caja|paquete|six|bulto|costal|charola|display|tira|docena|media docena|six pack|reja|bolsa)\s*(?:de\s+)?(\d+)?(?:\s+piezas?)?$/);
   if (m) {
     const factor = m[3] ? Number(m[3]) : m[2] === 'docena' ? 12 : m[2] === 'media docena' ? 6 : m[2] === 'six' || m[2] === 'six pack' ? 6 : null;
@@ -72,7 +77,8 @@ function recetas(texto) {
   }
 
   /* --------------------------------------------------- grupos de opciones */
-  m = t.match(/^(?:borra|elimina)\s+(?:el\s+)?grupo\s+(?:de\s+opciones\s+)?(.+)$/);
+  m = t.match(/^(?:borra|elimina|quita)\s+(?:el\s+)?grupo\s+(?:de\s+opciones\s+)?(.+)$/)
+    || t.match(/^ya\s+no\s+(?:uses|usamos|manejes|manejamos)\s+(?:el\s+)?grupo\s+(?:de\s+opciones\s+)?(.+)$/);
   if (m) return { intent: 'opciones.borrar', grupo: m[1] };
   m = t.match(/^(?:crea|agrega|nuevo)\s+(?:el\s+|un\s+)?grupo\s+(?:de\s+opciones\s+)?(.+?)\s+con\s+(.+)$/);
   if (m) {
@@ -99,7 +105,7 @@ function recetas(texto) {
   /* ------------------------------------------- reportes de inventario */
   m = t.match(/^(aplica|aplicar|acepta|descarta|descartar|ignora)\s+(?:el\s+)?(?:conteo|reporte|faltante)\s+(?:de|del|de la)\s+(.+)$/);
   if (m) return { intent: 'inventario.reporte', accion: /^(aplica|aplicar|acepta)$/.test(m[1]) ? 'APLICAR' : 'DESCARTAR', textoProducto: m[2] };
-  if (/^(?:ya\s+)?revise\s+(?:el\s+)?inventario$|^(?:quita|descarta)\s+(?:el\s+)?aviso\s+de\s+(?:revisar\s+(?:el\s+)?)?inventario$/.test(t)) return { intent: 'inventario.revisado' };
+  if (/^(?:ya\s+)?revise\s+(?:el\s+)?inventario$|^(?:el\s+)?inventario\s+ya\s+(?:esta|quedo)\s+revisado$|^(?:quita|descarta)\s+(?:el\s+)?aviso\s+de\s+(?:revisar\s+(?:el\s+)?)?inventario$/.test(t)) return { intent: 'inventario.revisado' };
   return null;
 }
 

@@ -33,7 +33,7 @@ const CAMPOS = [
   { campo: 'precio', re: /\b(?:precio de venta|precio)\b/ },
 ];
 
-const BAJA = /\b(?:(?:da|dar|dale|doy|darle|damos) de baja|desactiva|desactivar|desactivalo|desactivala|ya no (?:lo |la )?(?:vendo|vendemos|manejo|manejamos))\b|\b(?:elimina|eliminar|borra|borrar)\s+(?:el |la |los |las )?(?:producto|articulo)\b/;
+const BAJA = /\b(?:(?:da|dar|dale|doy|darle|damos) de baja|desactiva|desactivar|desactivalo|desactivala|ya no (?:lo |la )?(?:vendo|vendemos|manejo|manejamos))\b|\b(?:quita|quitar|saca|sacar)\b(?=.*\bdel catalogo$)|\b(?:elimina|eliminar|borra|borrar)\s+(?:el |la |los |las )?(?:producto|articulo)\b/;
 /** Una baja de otra cosa no es de un producto. */
 const OTRA_COSA = /\b(?:cliente|proveedor|usuario|cajero|empleado|cita|gasto|venta|factura|ticket|orden|cupon|socio|profesional|servicio|mesa|caja)\b/;
 
@@ -98,6 +98,13 @@ function edicion(texto) {
                textoProducto: afirma[2].replace(/\b(?:el|la|los|las|de|del|producto)\b/g, ' ').replace(/\s+/g, ' ').trim() };
     }
   }
+
+  /* «La concha me cuesta 8 (ahora)». */
+  const cuesta = !/^(?:cual|cuanto|cuanta|que|como)\b/.test(t) && t.match(/^(?:el |la |los |las )?(.+?)\s+(?:me|nos)\s+(?:cuesta|cuestan|sale|salen)\s+(?:en\s+)?\$?\s*(\d+(?:[.,]\d+)?)(?:\s+pesos)?(?:\s+ahora)?$/);
+  if (cuesta) return { intent: 'producto.editar', campo: 'costo', valor: numero(cuesta[2]), valorTexto: cuesta[2], textoProducto: cuesta[1].trim() };
+  /* «Las sabritas llevan IEPS 8 %», «las sabritas ya no llevan IEPS». */
+  const lleva = t.match(/^(?:el |la |los |las )?(.+?)\s+(ya no\s+)?(?:llevan?|tienen?|pagan?|causan?)\s+((?:el\s+)?(?:ieps|impuesto|hospedaje)\b.*)$/);
+  if (lleva) return { intent: 'producto.impuesto', campo: 'impuesto', quitar: !!lleva[2], valor: lleva[3].replace(/^el\s+/, '').trim(), valorTexto: lleva[3].trim(), textoProducto: lleva[1].trim() };
 
   if (!VERBO.test(t) && !/\b(?:con (?:el )?(?:codigo|sku)|que se llame)\b/.test(t)) return null;
   let hit = null;

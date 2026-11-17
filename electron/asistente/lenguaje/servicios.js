@@ -129,7 +129,7 @@ function servicios(texto, ahora = new Date()) {
       return { intent: 'orden.linea', folio: Number(folio), textoProducto: resto };
     }
     /* «el cambio de aceite de la orden 12 ya está hecho / a 350». */
-    m = t.match(/^(?:el|la|los|las)?\s*(.+?)\s+de\s+la\s+orden\s+\S+\s+(?:ya\s+)?(?:esta|quedo|queda|va)?\s*(hech[oa]|list[oa]|en proceso|cancelad[oa]|a\s+\$?\d+(?:\.\d+)?(?:\s*pesos)?)\s*$/);
+    m = t.match(/^(?:el|la|los|las)?\s*(.+?)\s+de\s+la\s+orden\s+\S+\s+(?:ya\s+)?(?:esta|estan|quedo|quedaron|queda|va)?\s*(hech[oa]s?|list[oa]s?|en proceso|cancelad[oa]s?|a\s+\$?\d+(?:\.\d+)?(?:\s*pesos)?)\s*$/);
     if (m) {
       const precio = m[2].match(/^a\s+\$?(\d+(?:\.\d+)?)/);
       const estado = precio ? null : /hech|list/.test(m[2]) ? 'HECHA' : /proceso/.test(m[2]) ? 'EN_PROCESO' : 'CANCELADA';
@@ -172,7 +172,7 @@ function servicios(texto, ahora = new Date()) {
   }
 
   /* ------------------------------------------------------- profesionales */
-  m = t.match(new RegExp(`^(?:da de alta|dar de alta|agrega|registra|contrata|contrate|entro)\\s+(?:a\\s+)?(?:la\\s+|el\\s+|una\\s+|un\\s+)?(?:nueva\\s+|nuevo\\s+)?${PROF}\\s+(.+)$`));
+  m = t.match(new RegExp(`^(?:da de alta|dar de alta|agrega|registra|contrata|contrate|entro)\\s+(?:a\\s+)?(?:al\\s+|la\\s+|el\\s+|una\\s+|un\\s+)?(?:nueva\\s+|nuevo\\s+)?${PROF}\\s+(.+)$`));
   if (m) {
     const puesto = (t.match(new RegExp(PROF)) || [])[0];
     return { intent: 'profesional.alta', nombre: capital(limpio(original(raw, t, m[1]))), puesto: puesto && puesto !== 'profesional' ? capital(puesto) : null };

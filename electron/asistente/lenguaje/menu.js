@@ -58,14 +58,16 @@ function menu(texto) {
   if (m) return { intent: 'menu.producto', textoProducto: m[1], campo: 'descripcion', valor: desdeRaw(raw, t, m[2]) };
   m = t.match(new RegExp(`^(?:quita|borra|elimina)\\s+(?:la\\s+)?(?:foto|imagen)\\s+(?:del?|de la|de los|de las)\\s+(.+?)\\s+(?:del|en el)\\s+${MENU}$`));
   if (m) return { intent: 'menu.foto_quitar', textoProducto: m[1] };
+  m = t.match(new RegExp(`^(?:quitale|borrale)\\s+(?:la\\s+)?(?:foto|imagen)\\s+(?:a|al)\\s+(?:la\\s+|el\\s+|los\\s+|las\\s+)?(.+?)\\s+(?:del|en el)\\s+${MENU}$`));
+  if (m) return { intent: 'menu.foto_quitar', textoProducto: m[1] };
 
   /* ---------------------------------------------------------- plataformas */
   const p = PLAT(t);
   if (p) {
-    m = t.match(/^(?:confirma|confirmar|cierra)\s+(?:la\s+)?liquidacion\s+(?:de|del)\s+\w+(?:\s+\w+)?$/);
+    m = t.match(/^(?:confirma|confirmar|cierra)\s+(?:la\s+)?liquidacion\s+(?:de|del)\s+\w+(?:\s+(?:food|eats))?(?:\s+de\s+(?:esta|la)\s+semana|\s+de\s+(?:hoy|ayer))?$/);
     if (m) return { intent: 'plataforma.confirmar', plataforma: p };
-    m = t.match(/^(?:cancela|cancelar|anula)\s+(?:la\s+)?liquidacion\s+(?:de|del)\s+\w+(?:\s+food|\s+eats)?(?:\s*[,;:]\s*|\s+(?:porque|por que)\s+)(.+)$/);
-    if (m) return { intent: 'plataforma.cancelar', plataforma: p, motivo: desdeRaw(raw, t, m[1]) };
+    m = t.match(/^(?:cancela|cancelar|anula)\s+(?:la\s+)?liquidacion\s+(?:de|del)\s+\w+(?:\s+food|\s+eats)?(?:(?:\s*[,;:]\s*|\s+(?:porque|por que)\s+)(.+))?$/);
+    if (m) return { intent: 'plataforma.cancelar', plataforma: p, motivo: m[1] ? desdeRaw(raw, t, m[1]) : null };
     m = t.match(/^(?:ya\s+)?(?:llego|cayo|entro|depositaron)\s+(?:el\s+)?(?:deposito|pago|dinero)\s+de\s+\w+(?:\s+food|\s+eats)?\s+(?:por|de)\s+\$?([\d.,]+)(?:\s+pesos)?(?:\s+(hoy|ayer|antier))?$/);
     if (m) return { intent: 'plataforma.deposito', plataforma: p, importe: Number(m[1].replace(/,/g, '')), dia: m[2] || 'hoy' };
     m = t.match(/^(?:el\s+)?pedido\s+(\S+)\s+de\s+\w+(?:\s+food|\s+eats)?\s+es\s+(?:la\s+)?venta\s+(\d+)$/);

@@ -29,7 +29,7 @@ const GIROS = [['abarrotes', 'abarrotes'], ['tienda', 'abarrotes'], ['ferreteria
 function config(texto, { usuarios = [] } = {}) {
   const raw = String(texto || '').trim().replace(/[¿?¡!]+/g, '');
   const t = llano(raw);
-  if (!t || /^(?:cuanto|cuantos|que(?!\s+(?:no\s+)?(?:tengan|deban))|cual|como|dime|quien)\b/.test(t)) return null;
+  if (!t || /^(?:cuanto|cuantos|que(?!\s+(?:no\s+)?(?:tengan|deban)|\s+las\s+propinas)|cual|como|dime|quien)\b/.test(t)) return null;
   const usuario = (s) => { const x = llano(s).replace(/^(?:al?\s+)?(?:usuario|usuaria|cajero|cajera|encargado|encargada)\s+/, '').trim(); return usuarios.find((u) => llano(u.nombre) === x) || null; };
 
   /* ---------------------------------------------------------- asistencia */
@@ -46,7 +46,7 @@ function config(texto, { usuarios = [] } = {}) {
   }
 
   /* «Las propinas se reparten por horas». */
-  m = t.match(/^(?:las\s+)?propinas\s+(?:se\s+)?(?:reparten|repartan|van)\s+(parejo|parejas|por horas|a quien atendio|al que atendio|por quien atendio)$/);
+  m = t.match(/^(?:que\s+)?(?:las\s+)?propinas\s+(?:se\s+)?(?:reparten|repartan|van)\s+(parejo|parejas|por partes iguales|a partes iguales|por horas(?: trabajadas)?|a quien atendio|al que atendio|por quien atendio)$/);
   if (m) return { intent: 'propinas.config', reparto: /horas/.test(m[1]) ? 'HORAS' : /atendio/.test(m[1]) ? 'ATENDIO' : 'PAREJO' };
   /* Reglas de asistencia. */
   m = t.match(/^(no\s+)?(?:marques|marca|marcar)\s+(?:los\s+)?retardos$/);
@@ -72,10 +72,13 @@ function config(texto, { usuarios = [] } = {}) {
   /* «Haz encargado a Pedro»: el puesto antes del nombre. */
   m = t.match(/^(?:haz|hazme|pon|nombra)\s+(?:como\s+)?(administrador|admin|encargad[oa]|supervisor[a]?|gerente|cajer[oa]|vendedor[a]?|mesero|mesera)\s+a\s+(.+)$/);
   if (m) { const u = usuario(m[2]); const r = ROL.find(([re]) => re.test(m[1])); if (u && r) return { intent: 'usuario.rol', usuario: u.id, usuarioNombre: u.nombre, rol: r[1] }; }
-  m = t.match(/^(?:dale|darle|da)\s+(?:a\s+)?(.+?)\s+(?:el\s+)?permiso\s+(?:de|para)\s+(.+)$/) || t.match(/^(?:quitale|quita|quitar)\s+(?:a\s+)?(.+?)\s+(?:el\s+)?permiso\s+(?:de|para)\s+(.+)$/);
+  m = t.match(/^(?:dale|darle|da)\s+(?:a\s+)?(.+?)\s+(?:el\s+)?permiso\s+(?:de|para)\s+(.+)$/)
+    || t.match(/^(?:dale|darle|da)\s+permiso\s+a\s+(.+?)\s+(?:de|para)\s+(.+)$/) || t.match(/^(?:quitale|quita|quitar)\s+(?:a\s+)?(.+?)\s+(?:el\s+)?permiso\s+(?:de|para)\s+(.+)$/);
   if (m) { const u = usuario(m[1]); if (u) return { intent: 'usuario.permiso', usuario: u.id, usuarioNombre: u.nombre, permisoTexto: m[2], quitar: /^quit/.test(t) }; }
 
   /* -------------------------------------------------------------- cajas */
+  /* «Agrega una caja»: sin nombre, Wybix lo pregunta. */
+  if (/^(?:agrega|agregame|crea|da de alta)\s+(?:una\s+)?(?:nueva\s+)?caja(?:\s+nueva|\s+mas)?$/.test(t)) return { intent: 'caja.alta' };
   m = t.match(/^(?:agrega|crea|nueva|da de alta)\s+(?:la\s+|una\s+)?caja\s+(?:llamada\s+)?(.+)$/);
   if (m) { const nombre = raw.slice(t.length - m[1].length).trim(); return { intent: 'caja.alta', nombre: /^\d+$/.test(nombre) ? `Caja ${nombre}` : nombre.charAt(0).toUpperCase() + nombre.slice(1) }; }
   m = t.match(/^(desactiva|desactivar|apaga|activa|activar|reactiva)\s+(?:la\s+)?caja\s+(.+)$/);

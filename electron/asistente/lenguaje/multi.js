@@ -16,8 +16,8 @@ function multi(texto, { usuarios = [] } = {}) {
   const t = llano(raw);
   if (!t || /^(?:cuanto|cuantos|que(?!\s+las sucursales)|cual|como|dime)\b/.test(t)) return null;
 
-  if (/^(?:publica|manda|sube)\s+(?:el\s+)?catalogo\s+(?:a\s+las\s+sucursales|a todas)$/.test(t)) return { intent: 'multi.publicar' };
-  if (/^(?:trae|baja|recibe|actualiza)\s+(?:el\s+)?catalogo\s+(?:de\s+la\s+matriz|de la principal)$/.test(t)) return { intent: 'multi.recibir' };
+  if (/^(?:publica|manda|sube)\s+(?:el\s+)?catalogo(?:\s+(?:a|en)\s+(?:las\s+sucursales|todas))?$/.test(t)) return { intent: 'multi.publicar' };
+  if (/^(?:trae|baja|recibe|actualiza)\s+(?:el\s+)?catalogo\s+(?:de|desde)\s+la\s+(?:matriz|principal)$|^(?:trae|baja|recibe)\s+(?:el\s+)?catalogo$/.test(t)) return { intent: 'multi.recibir' };
 
   let m = t.match(/^que\s+las\s+sucursales\s+(no\s+)?(?:puedan|pueden)\s+(cambiar sus precios|poner sus precios|tener productos propios|dar de alta productos)$/)
     || t.match(/^que\s+las\s+sucursales\s+(no\s+)?(?:tengan|puedan tener)\s+(productos propios)$/);
@@ -25,7 +25,7 @@ function multi(texto, { usuarios = [] } = {}) {
 
   m = t.match(/^en\s+(?:la\s+)?sucursal\s+(.+?)\s+(?:el|la|los|las)?\s*(.+?)\s+(?:cuesta|cuestan|vale|valen|se vende a|sale a|a)\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos)?$/);
   if (m) return { intent: 'multi.excepcion', sucursalTexto: m[1], textoProducto: m[2], precio: Number(m[3]) };
-  m = t.match(/^en\s+(?:la\s+)?sucursal\s+(.+?)\s+(no\s+)?se\s+vende\s+(?:el|la|los|las)?\s*(.+)$/);
+  m = t.match(/^en\s+(?:la\s+)?sucursal\s+(.+?)\s+(no\s+)?se\s+venden?\s+(?:el|la|los|las)?\s*(.+)$/);
   if (m) return { intent: 'multi.excepcion', sucursalTexto: m[1], textoProducto: m[3], disponible: !m[2] };
 
   m = t.match(/^(?:manda|mandale|envia|lleva|llevate)\s+(.+?)\s+(?:al|a la|para el|para la)\s+(?:evento|feria|expo)\s+(?:de\s+)?(.+)$/);
@@ -33,7 +33,7 @@ function multi(texto, { usuarios = [] } = {}) {
   m = t.match(/^(?:manda|mandale|envia|traspasa|pasa)\s+(.+?)\s+a\s+(?:la\s+)?sucursal\s+(.+)$/);
   if (m) return { intent: 'multi.traspaso', textoPedido: m[1], sucursalTexto: m[2] };
   if (/^(?:recibe|recibir|recibi|ya llego)\s+(?:el\s+)?traspaso(?:\s+de\s+.+)?$/.test(t)) return { intent: 'multi.recibir_traspaso', sucursalTexto: (t.match(/traspaso\s+de\s+(?:la\s+)?(?:sucursal\s+)?(.+)$/) || [])[1] || null };
-  m = t.match(/^(?:cancela|cancelar)\s+(?:el\s+)?traspaso\s+(?:a|para)\s+(?:la\s+)?(?:sucursal\s+)?(.+)$/);
+  m = t.match(/^(?:cancela|cancelar)\s+(?:el\s+)?(?:ultimo\s+)?traspaso\s+(?:a|para)\s+(?:la\s+)?(?:sucursal\s+)?(.+)$/);
   if (m) return { intent: 'multi.cancelar_traspaso', sucursalTexto: m[1] };
 
   m = t.match(/^(.+?)\s+puede\s+entrar\s+a\s+todas\s+las\s+sucursales$/);

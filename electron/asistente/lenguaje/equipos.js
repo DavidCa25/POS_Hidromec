@@ -30,8 +30,9 @@ function equipos(texto, ahora = new Date()) {
     const g = m[2] ? GIROS.find(([k]) => m[2].includes(k)) : null;
     return { intent: 'empresa.crear', nombre: original(raw, t, m[1]), giro: g ? g[1] : null, rfc: m[3] ? m[3].toUpperCase() : null };
   }
-  if (/^(?:sal|salte|salir|sacame)\s+del\s+grupo\s+de\s+empresas$|^desvincula\s+esta\s+computadora\s+del\s+grupo$/.test(t)) return { intent: 'empresa.salir_grupo' };
-  m = t.match(/^(?:desvincula|saca|quita)\s+(?:a\s+)?(?:la\s+)?empresa\s+(.+?)(?:\s+del\s+grupo)?$/);
+  if (/^(?:sal|salte|salir|sacame|deja|dejar)\s+(?:del|el)\s+grupo(?:\s+de\s+empresas)?$|^desvincula\s+esta\s+computadora\s+del\s+grupo$/.test(t)) return { intent: 'empresa.salir_grupo' };
+  m = t.match(/^(?:desvincula|saca|quita)\s+(?:a\s+)?(?:la\s+)?empresa\s+(.+?)(?:\s+del\s+grupo)?$/)
+    || t.match(/^desvincula\s+(?:a\s+)?(.+?)(?:\s+del\s+grupo)?$/) || t.match(/^(?:saca|quita)\s+(?:a\s+)?(.+?)\s+del\s+grupo(?:\s+de\s+empresas)?$/);
   if (m) return { intent: 'empresa.desvincular', empresaTexto: m[1] };
   m = t.match(/^(?:pidele|pide|solicita)\s+a\s+(.+?)\s+que\s+(?:ponga|deje|cambie)\s+(?:el|la|los|las)?\s*(.+?)\s+a\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos)?$/);
   if (m) return { intent: 'empresa.pedir', empresaTexto: m[1], tipo: 'PRODUCTO_PRECIO', productoTexto: m[2], precio: Number(m[3]) };
@@ -54,7 +55,8 @@ function equipos(texto, ahora = new Date()) {
   if (m) return { intent: 'localhost.revocar', dispositivo: m[1] };
   m = t.match(new RegExp(`^(?:la\\s+|el\\s+)?${DISP}\\s+(.+?)\\s+(?:ahora\\s+)?(?:es|sera|va a ser|queda)\\s+(?:de|para|como)\\s+(.+)$`));
   if (m) { const f = FUNCION.find(([re]) => re.test(m[2])); if (f) return { intent: 'localhost.funcion', dispositivo: m[1], superficie: f[1], estacionTexto: f[1] === 'PREPARATION' ? m[2] : null }; }
-  m = t.match(/^(?:quitale|quita|revoca)\s+(?:el\s+)?acceso\s+(?:a\s+)?(.+?)\s+(?:en|a)\s+las\s+(?:tablets|pantallas)$/);
+  m = t.match(/^(?:quitale|quita|revoca)\s+(?:el\s+)?acceso\s+(?:a|de)\s+(.+?)\s+(?:en|a)\s+las\s+(?:tablets|pantallas)$/)
+    || t.match(/^(?:quitale|quita|revocale)\s+a\s+(.+?)\s+el\s+acceso\s+(?:a|en)\s+las\s+(?:tablets|pantallas)$/);
   if (m) return { intent: 'localhost.acceso_revocar', personaTexto: m[1] };
   return null;
 }

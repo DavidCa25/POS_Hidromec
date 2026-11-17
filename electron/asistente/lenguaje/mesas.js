@@ -24,10 +24,14 @@ function mesas(texto, { estaciones = [] } = {}) {
   /* ------------------------------------------------------------ cuentas */
   let m = t.match(/^(?:abre|abrir|abreme|sienta|sientame|siento|ocupa)\s+(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)(?:\s+(?:para|con|de)\s+(\d+)(?:\s+personas?)?)?$/);
   if (m) return { intent: 'cuenta.abrir', mesa: m[1], personas: m[2] ? Number(m[2]) : null };
+  /* «Sienta 3 en la mesa 4». */
+  m = t.match(/^(?:sienta|sientame|siento)\s+(?:a\s+)?(\d+)\s+(?:personas?\s+)?en\s+(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)$/);
+  if (m) return { intent: 'cuenta.abrir', mesa: m[2], personas: Number(m[1]) };
   m = t.match(/^(?:abre|abrir|abreme)\s+(?:una\s+)?cuenta\s+(?:para llevar\s+|sin mesa\s+)?(?:a nombre de|de|para)\s+(.+)$/);
   if (m) return { intent: 'cuenta.abrir', etiqueta: capital(limpio(desdeRaw(raw, t, m[1]))) };
 
-  m = t.match(/^(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)\s+(?:ya\s+)?(?:pide|pidio|quiere|esta pidiendo)\s+(?:la\s+)?cuenta$/);
+  /* «La 4 pide la cuenta»: «la» + número es una mesa. */
+  m = t.match(/^(?:(?:la\s+)?mesa\s+|la\s+(?=\d))(\S+(?:\s+\d+)?)\s+(?:ya\s+)?(?:pide|pidio|quiere|esta pidiendo)\s+(?:la\s+)?cuenta$/);
   if (m) return { intent: 'cuenta.estado', mesa: m[1], estado: 'POR_COBRAR' };
   m = t.match(/^(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)\s+(?:siempre no|todavia no|aun no)\s+(?:quiere\s+)?(?:la\s+)?cuenta|^(?:reabre|vuelve a abrir)\s+(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)$/);
   if (m) return { intent: 'cuenta.estado', mesa: m[1] || m[2], estado: 'ABIERTA' };
@@ -35,10 +39,10 @@ function mesas(texto, { estaciones = [] } = {}) {
   if (m) return { intent: 'cuenta.cliente', mesa: m[1], textoCliente: m[2] };
   m = t.match(/^(?:libera|liberar|desocupa|desocupar|limpia)\s+(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)$/);
   if (m) return { intent: 'cuenta.liberar', mesa: m[1] };
-  m = t.match(/^(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)\s+(?:pide|quiere|ordena|va a querer|agrega|ademas quiere)\s+(.+)$/)
+  m = t.match(/^(?:(?:la\s+)?mesa\s+|la\s+(?=\d))(\S+(?:\s+\d+)?)\s+(?:pide|quiere|ordena|va a querer|agrega|ademas quiere)\s+(.+)$/)
     || t.match(/^(?:manda|mandale|envia|enviale|pide|pidele|marcha|comanda|agrega|agregale)\s+(.+?)\s+(?:a|para|en)\s+(?:la\s+)?mesa\s+(\S+(?:\s+\d+)?)$/);
   if (m) {
-    const [mesa, pedido] = /^(?:la\s+)?mesa\b/.test(t) ? [m[1], m[2]] : [m[2], m[1]];
+    const [mesa, pedido] = /^(?:la\s+)?mesa\b|^la\s+\d/.test(t) ? [m[1], m[2]] : [m[2], m[1]];
     return { intent: 'cuenta.enviar', mesa, textoPedido: pedido };
   }
 

@@ -1,0 +1,801 @@
+# Variantes de las acciones por REGLA (no las usa el clasificador).
+# scripts/asistente/medir-reglas.mjs mide cuántas entiende cada regla, con el
+# catálogo de prueba de ese script. Cada línea es una forma distinta de decir lo
+# mismo: cortesías, otro orden, sinónimos, sin acentos, de mostrador.
+
+@ producto.editar
+cambia el costo de la concha a 8
+el costo de la concha es 8
+oye ponle costo de 8 a la concha
+la concha me cuesta 8 ahora
+actualiza el costo de la concha a 8 pesos
+cambiale el codigo de barras a la concha a 7501234567890
+ponle el código 7501234567890 a la concha
+renombra la concha a Concha de vainilla
+cambia el nombre de la concha a Concha de vainilla
+la coca va sin IVA
+ponle iva de 16 a la coca
+por favor cambia el sku de la concha a PAN-001
+
+@ producto.impuesto
+ponle IEPS 8% a las sabritas
+agrégale el IEPS de 8 por ciento a las sabritas
+las sabritas llevan IEPS 8%
+quítale el IEPS a las sabritas
+quita el ieps de las sabritas
+las sabritas ya no llevan IEPS
+
+@ producto.baja
+da de baja la concha
+ya no vendo la concha
+desactiva la concha
+elimina el producto concha
+quita la concha del catálogo
+ya no manejamos la concha
+
+@ cliente.editar
+cambia el teléfono de doña mary a 55 1234 5678
+el telefono de doña mary es 5512345678
+el celular de doña mary ahora es 5512345678
+ponle el correo mary@correo.com a doña mary
+el correo de doña mary es mary@correo.com
+ponle límite de crédito de 2000 a doña mary
+dale 30 días de crédito a doña mary
+súbele el límite a doña mary a 5000
+cambia el rfc de doña mary a GODE561231GR8
+
+@ proveedor.editar
+el correo de bimbo es ventas@bimbo.mx
+cambia el teléfono de bimbo a 5598765432
+el número de bimbo es 5598765432
+actualiza el rfc de bimbo a BIM011108DJ5
+
+@ categoria.alta
+crea la categoría Lácteos
+agrega la categoría Lácteos
+nueva categoría Lácteos
+da de alta la categoría Lácteos
+haz una categoría que se llame Lácteos
+
+@ marca.alta
+agrega la marca Lala
+crea la marca Lala
+nueva marca Lala
+da de alta la marca Lala
+
+@ producto.proveedor
+Bimbo me surte las conchas
+las conchas me las surte bimbo
+bimbo también me surte las conchas
+el proveedor principal de la concha es Bimbo
+el proveedor de las conchas es bimbo
+bimbo ya no me surte las conchas
+agrega a bimbo como proveedor de la concha
+quita a bimbo como proveedor de la concha
+
+@ receta.guardar
+la hamburguesa sencilla lleva 150 gramos de carne molida, 1 pan de hamburguesa y 2 rebanadas de queso amarillo
+la hamburguesa sencilla se hace con 150 gramos de carne molida y 1 pan de hamburguesa
+la receta de la hamburguesa sencilla lleva 150 g de carne molida
+quítale el queso amarillo a la receta de la hamburguesa sencilla
+la hamburguesa sencilla también lleva 2 rebanadas de queso amarillo
+
+@ receta.borrar
+quita la receta de la hamburguesa sencilla
+la hamburguesa sencilla ya no tiene receta
+borra la receta de la hamburguesa sencilla
+elimina la receta de la hamburguesa sencilla
+
+@ formula.guardar
+la fórmula de las conchas: 1 kilo de harina y 200 gramos de azúcar, rinde 20
+la formula de la concha es 1 kilo de harina y 200 gramos de azucar y rinde 20
+la fórmula de las conchas lleva 1 kg de harina, rinde 20
+
+@ formula.quitar
+quita la fórmula de las conchas
+las conchas ya no tienen fórmula
+borra la fórmula de las conchas
+elimina la formula de la concha
+
+@ presentacion.guardar
+la coca también se vende en caja de 24
+la coca viene en caja de 24
+la coca se compra por paquete de 12
+las sabritas vienen en bolsa de 6
+
+@ presentacion.borrar
+elimina la presentación caja de 24 de la coca
+la coca ya no se vende en caja de 24
+borra la presentación caja de 24 de la coca
+quita la presentacion caja de 24 de la coca
+
+@ opciones.crear
+crea el grupo Tamaño con chico, mediano +5 y grande +10
+agrega el grupo Extras con queso +10 y tocino +15
+crea un grupo de opciones Leche con entera, deslactosada +3 y almendra +8
+
+@ opciones.producto
+el latte lleva el grupo tamaño
+ponle el grupo tamaño al latte
+el latte tiene el grupo leche
+quítale el grupo tamaño al latte
+
+@ opciones.borrar
+quita el grupo extras
+ya no uses el grupo tamaño
+borra el grupo tamaño
+elimina el grupo de opciones extras
+
+@ producto.dueno
+las conchas son de luis
+la concha es del socio luis
+las conchas son de luis y marta
+
+@ inventario.reporte
+aplica el conteo de la coca
+acepta el conteo de la coca
+descarta el reporte de la coca
+ignora el faltante de la coca
+
+@ inventario.revisado
+ya revise el inventario
+el inventario ya está revisado
+ya revisé el inventario
+quita el aviso de revisar inventario
+
+@ venta.cambio
+cambia la coca del ticket 120 por una pepsi
+cambiale la coca del ticket 120 por una pepsi
+cambia la coca de la venta 120 por una pepsi porque se equivocó
+
+@ venta.corregir
+corrige la venta 120: eran 3 conchas
+en la venta 120 eran 2 cocas, no 3
+corrige el ticket 120, eran 3 conchas
+arregla la venta 120 eran 3 conchas
+
+@ venta.suelta
+los cigarros sueltos salen de la cajetilla de cigarros de 20
+el cigarro suelto se vende suelto de la cajetilla de cigarros de 20
+el cigarro suelto sale de la cajetilla de cigarros de 20
+el cigarro suelto se saca de la cajetilla de cigarros de 20
+
+@ ticket.correo
+manda el ticket 120 a juan@correo.com
+envia el ticket 120 al correo juan@correo.com
+mándale el ticket 120 a juan@correo.com
+
+@ ticket.imprimir
+imprime el corte
+reimprime el último corte
+imprime la devolución 5
+vuelve a imprimir el corte
+
+@ ticket.logo_quitar
+quítale el logo al ticket
+ya no pongas el logo en el ticket
+quita el logo del ticket
+borra el logo de los tickets
+
+@ activo.baja
+quita el carro de doña mary
+da de baja la moto de juan pérez
+da de baja el carro de doña mary
+desactiva el perro de doña mary
+
+@ whatsapp.config
+avisa por WhatsApp cuando el pedido esté listo
+ya no avises por whatsapp de las membresías
+avisa 3 días antes de que venza la membresía
+avisa por whats cuando el pedido este listo
+
+@ aprobaciones.politica
+apaga las aprobaciones
+enciende las aprobaciones
+desactiva las autorizaciones desde la app
+
+@ impuesto.crear
+crea el impuesto Hospedaje 3%
+crea el impuesto IEPS bebidas 8%
+crea el impuesto IEPS por cuota de 1.64 por litro
+da de alta el impuesto Hospedaje de 3%
+
+@ servicios_pago.desconectar
+apaga el pago de servicios
+desconecta las recargas
+desconecta el pago de servicios
+quita las recargas
+
+@ promo.crear
+pon la coca a 15 los martes
+la coca a 15 de 5 a 7
+oferta: concha a 8 hoy
+10% de descuento en panadería los fines de semana
+descuento de 20% en el latte
+2x1 en conchas los miércoles
+lleva 3 paga 2 de conchas
+pon las sabritas a 12 en promoción
+los martes la coca a 15
+
+@ promo.quitar
+quita la promoción de la coca
+apaga la promoción de la coca
+termina la oferta de las conchas
+
+@ puntos.ajustar
+ponle 100 puntos a doña mary porque se le cobró doble
+dale 100 puntos a doña mary
+regálale 50 puntos a doña mary
+quítale 50 puntos a doña mary
+sácale 50 puntos a doña mary
+descuéntale 50 puntos a doña mary
+abónale 100 puntos a doña mary
+
+@ club.cancelar
+cancela la membresía de doña mary
+da de baja la membresía de doña mary
+cancela el club de doña mary
+
+@ rifa.cerrar
+ciérrale la rifa de navidad
+cierra la rifa navidad
+cierra la rifa de navidad
+cierra el sorteo de navidad
+
+@ rifa.sortear
+sortea la rifa de navidad
+sortea la rifa de navidad con 3 ganadores
+haz el sorteo de navidad
+
+@ cupon.emitir
+dale a doña mary un cupón de 10%
+genera 20 cupones de 2x1
+regálale a doña mary un cupón de 10%
+emite 5 cupones de 10%
+
+@ puntos.config
+da 1 punto por cada 10 pesos
+los puntos caducan a los 12 meses
+apaga los puntos
+activa los puntos
+los puntos ya no caducan
+da 5 puntos por visita
+
+@ cupon.definir
+crea el cupón 10% de descuento, vale 30 días
+crea el cupón $50 de descuento
+crea el cupón café americano gratis
+nuevo cupón de 15% de descuento
+
+@ rifa.crear
+crea la rifa Navidad, premio una canasta, cierra el 24 de diciembre, 2 ganadores
+crea la rifa Navidad con premio una canasta
+organiza una rifa Navidad, premio una bicicleta
+
+@ rifa.abrir
+abre la rifa de navidad
+empieza la rifa navidad
+abre la rifa navidad
+activa la rifa navidad
+
+@ sellos.crear
+nueva tarjeta de sellos del latte: 8 sellos y el 9 gratis
+da de alta una tarjeta de sellos del café americano de 9 sellos
+crea la tarjeta de sellos del café americano: 9 sellos y el 10 gratis
+crea una tarjeta de sellos del latte de 10 sellos
+
+@ club.plan
+crea el plan Pan diario: 2 conchas al día por 200 al mes
+nuevo plan Café: 1 café americano al día por 250 por mes
+crea el plan Café diario: 1 café americano al día por 300 al mes
+crea el plan Latte semanal: 1 latte al día por 100 a la semana
+
+@ campana.crear
+cada compra de más de 200 da un cupón de 10%
+por cada 100 pesos un boleto de la rifa navidad
+por cada 100 pesos de compra da un boleto de la rifa navidad
+
+@ ruleta.casilla
+agrega a la ruleta la casilla café gratis con peso 2
+pon en la ruleta sigue participando con peso 5
+quita de la ruleta la casilla café gratis
+
+@ gasto.cancelar
+cancela el gasto 12
+cancela el gasto 12, era de otra sucursal
+borra el gasto 12
+anula el gasto 12 porque se capturó dos veces
+
+@ gasto.concepto
+crea el concepto de gasto Papelería
+agrega el concepto Papelería
+renombra el concepto Luz a Luz y agua
+desactiva el concepto gasolina
+activa el concepto gasolina
+
+@ socio.movimiento
+luis retiró 500 de la caja
+luis sacó 500
+marta aportó 2,000
+le pagué 1,000 a luis por transferencia
+retiro del socio luis de 500
+marta puso 1000
+
+@ socio.liquidar
+liquida a los socios
+cierra el periodo de socios
+liquídame a los socios
+
+@ socio.compra
+la compra 45 la pago marta
+la compra 45 la puso luis
+la compra 45 la pagó luis
+la compra 45 la puso marta
+
+@ socio.gasto
+el gasto 12 es de marta
+el gasto 12 lo pagó luis
+el gasto 12 va a cargo de marta
+
+@ propinas.repartir
+reparte las propinas
+repartir propinas
+paga las propinas
+
+@ cuenta.abrir
+abre la mesa 4 para 3
+abre la mesa 4
+sienta 3 en la mesa 4
+abre una cuenta para llevar a nombre de Juan
+abre una cuenta a nombre de Juan
+
+@ cuenta.enviar
+la mesa 4 pide 2 tacos al pastor y una coca
+manda 3 aguas de jamaica a la mesa 4
+la mesa 4 quiere 2 tacos al pastor
+pide 2 tacos al pastor para la mesa 4
+la 4 pide 2 tacos al pastor
+
+@ cuenta.estado
+la mesa 4 pidió la cuenta
+la mesa 4 ya pide la cuenta
+la mesa 4 quiere la cuenta
+
+@ cuenta.cliente
+la mesa 4 es para doña mary
+la mesa 2 es de juan pérez
+la mesa 4 es de doña mary
+la cuenta de la mesa 4 es de doña mary
+
+@ cuenta.liberar
+limpia la mesa 4
+libera la mesa 12
+libera la mesa 4
+desocupa la mesa 4
+
+@ comanda.estado
+la comanda 12 ya está lista
+ya salió la comanda 12
+la comanda 12 ya se entregó
+la comanda 12 esta en preparacion
+
+@ comanda.cancelar
+cancela la comanda 12 porque el cliente se fue
+cancela la comanda 7
+cancela la comanda 12, se quemó
+cancela la comanda 12
+
+@ comanda.reimprimir
+reimprime la comanda 7
+vuelve a imprimir la comanda 3
+reimprime la comanda 12
+vuelve a imprimir la comanda 12
+
+@ salon.area
+crea el área Terraza
+agrega el area Terraza
+nueva área Terraza
+
+@ salon.mesa
+agrega la mesa 10 en la terraza para 4
+crea la mesa 10 en la terraza
+pon una mesa 11 en la terraza para 6
+
+@ estacion.crear
+crea la estación Parrilla
+nueva estación Bebidas frías
+crea la estación Postres
+agrega la estacion Postres con impresora
+
+@ estacion.producto
+el agua de jamaica va a la barra
+las aguas de jamaica se preparan en la barra
+el taco al pastor sale en la cocina
+
+@ pedido.aceptar
+acepta el pedido en línea 12
+acepta el pedido de Juan
+acepta el pedido 12
+
+@ pedido.rechazar
+rechaza el pedido 15
+rechaza el pedido 12 porque no hay repartidor
+rechaza el pedido 12, no hay gas
+rechaza el pedido de Juan porque ya cerramos
+
+@ menu.config
+activa el menú en línea
+apaga el menu en linea
+ya no recibas pedidos en línea
+recibe pedidos en línea
+el tiempo de entrega es de 30 minutos
+el mensaje del menú es: Hoy tamales
+
+@ menu.diseno
+la frase del menú es El mejor pan del barrio
+el horario del menu es de 8 a 10
+el color del menú es #aa3300
+
+@ menu.producto
+oculta la concha del menú en línea
+muestra la concha en el menú
+destaca el latte en el menú
+la descripción del latte en el menú es Café con leche espumosa
+
+@ menu.foto_quitar
+quita la foto del latte del menú
+quítale la foto a la concha en el menú
+quita la foto de la concha del menú
+borra la imagen de la concha del menu
+
+@ plataforma.confirmar
+confirma la liquidación de uber eats
+confirma la liquidación de rappi de esta semana
+confirma la liquidación de Rappi
+confirma la liquidacion de didi
+
+@ plataforma.cancelar
+cancela la liquidación de didi
+cancela la liquidacion de uber eats porque estaba mal
+cancela la liquidación de rappi
+cancela la liquidación de Rappi, venía mal
+
+@ plataforma.deposito
+llegó el depósito de Rappi por 4,500
+ya cayó el depósito de uber eats por 3200
+llego el pago de didi por 2800 ayer
+
+@ plataforma.emparejar
+el pedido B77 de didi es la venta 120
+el pedido 9981 de uber eats es la venta 300
+el pedido XZ1 de rappi es la venta 45
+el pedido A123x de Rappi es la venta 456
+
+@ plataforma.canal
+el canal rappi-2 es de Rappi
+el canal ue-centro es de Uber Eats
+el canal didi-2 es de didi food
+el canal didi-1 es de DiDi Food
+
+@ orden.crear
+abre una orden para doña mary: no prende la licuadora
+abre una orden de servicio para doña mary, trae la licuadora que no prende
+nueva orden para doña mary
+registra una orden para doña mary que no enciende la tele
+
+@ orden.estado
+la orden 12 ya está lista
+la orden 12 ya quedó
+entrega la orden 12
+la orden 12 está en proceso
+ya entregué la orden 12
+
+@ orden.autorizar
+el cliente autorizó la orden 12 por teléfono
+doña mary aprobó la orden 12
+la orden 12 está autorizada
+
+@ orden.cancelar
+cancela la orden 7
+cancela la orden 12, el cliente ya no regresó
+cancela la orden 12, ya no lo quiso
+cancela la orden 12 porque no quiso
+
+@ orden.diagnostico
+el diagnóstico de la orden 7 es cambiar balatas
+el diagnostico de la orden 3: no tiene arreglo
+el diagnóstico de la orden 12 es: falla el motor
+el diagnostico de la orden 12 fue falla el motor
+
+@ orden.linea
+agrégale a la orden 12 un cambio de aceite
+ponle 2 balatas delanteras a la orden 12
+agrega un cambio de aceite a la orden 12
+
+@ orden.linea_cambiar
+las balatas delanteras de la orden 12 ya están hechas
+el cambio de aceite de la orden 7 a 400
+el cambio de aceite de la orden 12 ya está hecho
+el cambio de aceite de la orden 12 a 350
+
+@ cita.orden
+llegó doña mary a su cita
+ya llegó doña mary para su cita
+convierte la cita de doña mary en orden
+
+@ servicio.crear
+crea el servicio Corte de dama a 250 de 45 minutos
+agrega el servicio Corte de dama a 250
+nuevo servicio Manicure de 30 minutos
+
+@ servicio.activar
+desactiva el servicio tinte
+ya no doy el servicio de tinte
+activa el servicio tinte
+
+@ servicio.giro
+mi negocio es una barbería
+somos un taller mecánico
+el negocio es una estetica
+
+@ activo.crear
+registra la moto de juan pérez: Italika 2022
+agrega el gato de doña mary: Michi
+registra el carro de doña mary: Nissan Versa 2018 placas ABC1234
+agrega el perro de doña mary: Firulais
+
+@ profesional.alta
+da de alta a la estilista Paola Ruiz
+agrega a la barbera Paola Ruiz
+contraté a la estilista Paola Ruiz
+registra al mecánico Pedro Luna
+
+@ profesional.activar
+desactiva a laura
+activa a laura
+da de baja a la estilista laura
+
+@ profesional.servicio
+laura hace cortes de cabello
+laura también hace tinte
+laura ya no hace tintes
+
+@ profesional.horario
+laura trabaja de lunes a viernes de 9 a 6
+laura trabaja los sábados de 10 a 2
+laura entra de lunes a viernes de 9 a 6
+
+@ profesional.ausencia
+laura no viene el viernes
+laura falta del 20 al 22
+laura sale de vacaciones del 1 al 15 de diciembre
+laura no va a venir mañana
+
+@ profesional.ausencia_borrar
+siempre si viene laura mañana
+siempre sí trabaja laura el viernes
+siempre sí viene laura el viernes
+si viene laura mañana
+
+@ usuario.activar
+desactiva al usuario pedro
+activa a pedro
+bloquea a pedro
+da de baja al usuario pedro
+
+@ usuario.rol
+haz encargado a pedro
+pedro ahora es cajero
+pon a pedro como administrador
+pedro va a ser encargado
+
+@ usuario.permiso
+dale a pedro permiso de devoluciones
+quítale a pedro el permiso de ver costos
+dale permiso a pedro de devoluciones
+
+@ caja.alta
+agrega una caja
+crea la caja 4
+agrega la caja 3
+crea una caja nueva llamada Barra
+
+@ caja.activar
+desactiva la caja 3
+activa la caja 4
+desactiva la caja 2
+activa la caja 2
+
+@ modulo.activar
+enciende servicios
+apaga la venta suelta
+activa propinas repartidas por horas
+prende fidelización
+activa la aplicación de servicios
+
+@ negocio.giro
+cambia el giro a panadería
+el giro del negocio es abarrotes
+el giro es panadería
+cambia el giro a cafetería
+
+@ negocio.datos
+el teléfono del negocio es 55 1234 5678
+el pie del ticket dice: Gracias por su compra
+la dirección del negocio es Calle 5 #20
+el nombre del negocio es Panadería Lupita
+
+@ respaldo.ahora
+haz un respaldo ahora
+respalda la base
+saca un respaldo
+
+@ respaldo.config
+respalda todos los días a las 11 de la noche
+guarda 30 días de respaldos
+apaga los respaldos automáticos
+
+@ asistencia.marcar
+checa mi entrada
+ya llegué
+salgo a comer
+ya regresé
+checa mi salida
+ya me voy
+
+@ asistencia.horario
+el horario de ana es de lunes a sábado de 8 a 4
+el horario de pedro es de martes a domingo de 10 a 7
+el horario de pedro es de lunes a viernes de 9 a 6
+el horario de pedro es de lunes a viernes de 9 a 6 con 30 minutos de comida
+
+@ asistencia.corregir
+corrige la entrada de ana de hoy a las 8
+corrige la salida de pedro de ayer a las 7
+corrige la entrada de pedro de ayer a las 9
+corrige la salida de pedro del lunes a las 6 porque se le olvidó checar
+
+@ asistencia.reglas
+no marques los retardos
+marca los retardos
+que tengan que checar antes de vender
+
+@ propinas.config
+las propinas se reparten por partes iguales
+que las propinas se repartan por horas
+las propinas se reparten por horas
+las propinas se reparten parejo
+
+@ empresa.crear
+crea la empresa Cafetería Norte
+crea la empresa Taller Sur, giro taller
+crea la empresa Panadería Centro, giro panadería
+da de alta la empresa Panadería Centro
+
+@ empresa.salir_grupo
+salte del grupo de empresas
+sal del grupo
+deja el grupo de empresas
+sal del grupo de empresas
+
+@ empresa.desvincular
+desvincula Panadería Norte
+saca a Panadería Norte del grupo
+desvincula la empresa Panadería Norte
+saca la empresa Panadería Norte del grupo
+
+@ empresa.pedir
+pídele a Panadería Norte que ponga la coca a 18
+pidele a Panaderia Norte que de de alta las Galletas de nuez a 30
+pídele a Panadería Norte que ponga la concha a 12
+pídele a Panadería Norte que dé de alta el Pay de queso a 45
+
+@ sucursal.crear
+crea la sucursal Centro
+crea el evento Feria de mayo del 1 al 5 de mayo
+nueva sucursal Norte
+
+@ evento.enviar
+manda 10 conchas al evento Feria de mayo
+lleva 5 cafés americanos al evento Feria de mayo
+manda 20 cocas al evento Feria de mayo
+lleva 20 cocas a la feria de mayo
+
+@ localhost.activar
+apaga Wybix Local Host
+enciende las pantallas
+enciende Wybix Local Host
+apaga las pantallas
+
+@ localhost.renombrar
+renombra la tablet Cocina a Cocina 2
+renombra la pantalla Barra a Barra principal
+renombra la tablet Mesa 1 a Terraza
+cambia el nombre de la tablet Mesa 1 a Terraza
+
+@ localhost.revocar
+desconecta la pantalla Cocina
+quita la tablet Barra
+desconecta la tablet Terraza
+quita la pantalla Terraza
+
+@ localhost.funcion
+la tablet Terraza ahora es de mesero
+la tablet Cocina ahora es de cocina
+la pantalla Terraza va a ser de inventario
+
+@ localhost.acceso_revocar
+quítale el acceso a ana en las tablets
+quita el acceso de pedro a las pantallas
+quítale a pedro el acceso a las tablets
+quítale el acceso a pedro en las tablets
+
+@ multi.publicar
+publica el catálogo
+manda el catálogo a las sucursales
+publica el catalogo en las sucursales
+publica el catálogo a las sucursales
+
+@ multi.recibir
+recibe el catálogo de la matriz
+trae el catalogo
+actualiza el catálogo desde la matriz
+trae el catálogo de la matriz
+
+@ multi.reglas
+que las sucursales no puedan cambiar sus precios
+que las sucursales tengan productos propios
+que las sucursales puedan cambiar sus precios
+que las sucursales no tengan productos propios
+
+@ multi.excepcion
+en la sucursal Centro el latte cuesta 50
+en la sucursal Centro no se venden conchas
+en la sucursal Centro la coca cuesta 18
+en la sucursal Centro no se vende la coca
+
+@ multi.traspaso
+manda 10 conchas a la sucursal Centro
+traspasa 5 sabritas a la sucursal Centro
+manda 20 cocas a la sucursal Centro
+traspasa 20 cocas a la sucursal Centro
+
+@ multi.recibir_traspaso
+recibe el traspaso
+ya llego el traspaso de la matriz
+recibe el traspaso de la matriz
+ya llegó el traspaso
+
+@ multi.cancelar_traspaso
+cancela el traspaso a la sucursal Centro
+cancela el traspaso a Centro porque no hay camioneta
+cancela el último traspaso a Centro
+cancela el traspaso a Centro
+
+@ multi.alcance
+ana puede entrar a todas las sucursales
+ana solo puede entrar a la sucursal Centro
+pedro puede entrar a todas las sucursales
+pedro solo entra a la sucursal Centro
+
+@ sistema.alias
+a la coca de 600 dile la roja
+a la coca cola 600 ml dile la roja
+cuando diga la roja es la coca de 600
+
+@ sistema.alias_olvidar
+olvida el apodo la roja
+ya no le digas la roja a nada
+olvida la roja
+ya no le digas la roja
+
+@ sistema.preferencia
+llámame Jesús
+sin gráficas
+léeme las respuestas
+
+@ analisis.libre
+qué categoría deja más ganancia los domingos
+a qué hora vendo menos
+top 3 clientes del mes
+qué día de la semana vendo más
