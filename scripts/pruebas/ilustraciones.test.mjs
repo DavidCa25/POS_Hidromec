@@ -193,3 +193,15 @@ test('rápido: 2,000 productos en menos de un segundo', () => {
   const ms = performance.now() - t0;
   assert.ok(ms < 1000, `${ms.toFixed(0)} ms`);
 });
+
+/* Frutería (casi todo verdulería): ningún producto cae en la caja genérica y
+   los que tienen forma propia la reciben. Catálogo en scripts/giros/fruteria.mjs. */
+test('frutería: cada producto tiene su dibujo', async () => {
+  const { FRUTERIA } = await import('../giros/fruteria.mjs');
+  const mal = [];
+  for (const [nombre, categoria, , , esperada] of FRUTERIA) {
+    const f = formaDe({ nombre, categoria, giro: 'RETAIL', inventario: 'DIRECT' });
+    if (f === 'caja_generica' || (esperada && f !== esperada)) mal.push(`${nombre}: ${f}${esperada ? ` (esperaba ${esperada})` : ''}`);
+  }
+  assert.deepEqual(mal, []);
+});

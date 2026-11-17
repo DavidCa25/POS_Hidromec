@@ -250,7 +250,8 @@
 .tp-card.off { background: transparent; box-shadow: inset 0 0 0 1px var(--wx-edge); }
 .tp-card.off .tp-card__media { opacity: 0.45; }
 .tp-card.off .tp-card__nombre { color: var(--wx-text-muted); }
-.tp-card.off .tp-card__precio { color: var(--wx-text-dim); }
+.tp-card.off .tp-card__uom { font-size: .72em; font-weight: 500; color: var(--wx-text-dim); }
+.tp-card__precio { color: var(--wx-text-dim); }
 
 .tp-card__media {
   position: relative;

@@ -486,22 +486,24 @@ const CATALOGO_COMIDA: Forma[] = [];
   /* --- frutas --- */
   FR('manzana', 'manzana|manzana roja|manzanas|manzana red', () => [...redonda(ROJO, { r: 40 }), C(118, 106, 40, ROJO)], 0);
   FR('manzana_verde', 'manzana verde|manzana golden|manzana amarilla', () => [...redonda(VERDE_CLARO, { r: 40 }), C(118, 106, 40, VERDE_CLARO)], 90);
-  FR('platano', 'platano|platanos|banana|platano tabasco|platano macho|guineo', () => [P('M40 80q20 80 112 52-8-12-20-10-62 6-80-46z', AMARILLO), P('M40 80q4-10 12-4 12 40 64 50', 'none'), L('M44 76l-4-10', CAFE, 5), L('M54 90q20 40 80 40', 'hsl(46 80% 48%)', 3)], 50);
+  FR('platano', 'platano|platanos|banana|platano tabasco|platano dominico|guineo', () => [P('M40 80q20 80 112 52-8-12-20-10-62 6-80-46z', AMARILLO), P('M40 80q4-10 12-4 12 40 64 50', 'none'), L('M44 76l-4-10', CAFE, 5), L('M54 90q20 40 80 40', 'hsl(46 80% 48%)', 3)], 50);
   FR('naranja', 'naranja|naranjas|naranja valencia|naranja para jugo', () => [...redonda(NARANJA, { r: 44 }), ...puntos('hsl(26 80% 48%)', [[80, 100], [110, 96], [98, 122], [118, 118]], 1.5)], 30);
   FR('mandarina', 'mandarina|mandarinas|clementina', () => redonda('hsl(28 95% 58%)', { r: 38, y: 112 }), 28);
   FR('limon', 'limon|limones|lima|limon verde|limon con semilla|limon sin semilla', () => [E(96, 104, 46, 34, VERDE_CLARO), E(52, 104, 6, 6, VERDE), E(140, 104, 6, 6, VERDE), E(80, 92, 10, 6, 'rgba(255,255,255,.35)', 0.3)], 90);
   FR('limon_amarillo', 'limon amarillo|limon real|limon eureka', () => [E(96, 104, 46, 34, AMARILLO), E(52, 104, 6, 6, 'hsl(48 90% 45%)'), E(140, 104, 6, 6, 'hsl(48 90% 45%)')], 52);
   FR('toronja', 'toronja|toronjas|pomelo|toronja rosa', () => [...mitad('hsl(30 80% 60%)', ROSA, null), ...[0, 60, 120, 180, 240, 300].map(a => L(`M96 104l${Math.round(Math.cos(a * Math.PI / 180) * 36)} ${Math.round(Math.sin(a * Math.PI / 180) * 36)}`, 'hsl(350 60% 85%)', 2))], 350);
   FR('fresa', 'fresa|fresas|frutilla|fresa fresca', () => [P('M60 74q36-20 72 0 4 40-36 82-40-42-36-82z', ROJO), P('M70 72l12-14 8 10 6-14 6 14 8-10 12 14z', VERDE), ...puntos(AMARILLO_CLARO, [[80, 92], [96, 88], [112, 92], [88, 108], [104, 108], [96, 124]])], 355);
-  FR('uvas', 'uva|uvas|uva verde|uva roja|uva sin semilla|racimo', () => [tallo(96, 36, VERDE_OSCURO), hoja(112, 44, -0.4), ...[[84, 66], [108, 66], [72, 88], [96, 88], [120, 88], [84, 110], [108, 110], [96, 132]].map(([x, y]) => C(x, y, 14, MORADO)), C(78, 84, 4, 'rgba(255,255,255,.4)')], 280);
+  FR('platano_macho', 'platano macho|platanos machos|platano verde|platano para freir', () => [P('M34 84q22 86 122 54-8-14-22-12-66 8-84-50z', 'hsl(80 55% 48%)'), L('M38 80l-6-12', CAFE, 6), L('M50 96q22 42 86 42', 'hsl(80 45% 36%)', 3), C(152, 136, 5, CAFE)], 80);
+  FR('uva_verde', 'uva verde|uvas verdes|uva verde sin semilla|uva blanca|uva thompson', () => [tallo(96, 36, VERDE_OSCURO), hoja(112, 44, -0.4), ...[[84, 66], [108, 66], [72, 88], [96, 88], [120, 88], [84, 110], [108, 110], [96, 132]].map(([x, y]) => C(x, y, 14, 'hsl(80 55% 58%)')), C(78, 84, 4, 'rgba(255,255,255,.5)')], 80);
+  FR('uvas', 'uva|uvas|uva roja|uva sin semilla|racimo', () => [tallo(96, 36, VERDE_OSCURO), hoja(112, 44, -0.4), ...[[84, 66], [108, 66], [72, 88], [96, 88], [120, 88], [84, 110], [108, 110], [96, 132]].map(([x, y]) => C(x, y, 14, MORADO)), C(78, 84, 4, 'rgba(255,255,255,.4)')], 280);
   FR('sandia', 'sandia|sandias|rebanada de sandia|patilla', () => [P('M36 100h120a60 60 0 0 1-120 0z', VERDE), P('M44 100h104a52 52 0 0 1-104 0z', ROSA_FUERTE), ...puntos(NEGRO, [[72, 112], [96, 120], [120, 112], [84, 132], [108, 132]], 3)], 350);
   FR('melon', 'melon|melones|melon chino|cantaloupe|melon valenciano', () => [P('M36 100h120a60 60 0 0 1-120 0z', 'hsl(80 30% 70%)'), P('M44 100h104a52 52 0 0 1-104 0z', 'hsl(28 90% 66%)'), E(96, 104, 30, 8, 'hsl(36 70% 82%)')], 30);
   FR('pina', 'pina|pinas|anana|pina miel', () => [P('M96 22l-10 26-14-12 8 26-16-4 16 18h32l16-18-16 4 8-26-14 12z', VERDE), E(96, 112, 36, 48, AMARILLO), L('M70 92l52 52M70 124l40-40M80 148l40-40M70 108l48 48', 'hsl(40 80% 45%)', 3)], 48);
   FR('mango', 'mango|mangos|mango ataulfo|mango manila|mango petacon', () => [P('M60 80q30-40 70 0 20 40-10 70-50 10-60-30-6-30 0-40z', 'hsl(40 95% 55%)'), P('M120 70q10 20 0 50', 'none'), E(118, 92, 14, 26, 'hsl(10 80% 58%)', 0.4), tallo(92, 50, VERDE_OSCURO)], 40);
   FR('papaya', 'papaya|papayas|lechosa', () => [E(96, 104, 36, 56, VERDE_CLARO), E(96, 104, 30, 50, NARANJA), E(96, 108, 12, 28, 'hsl(20 70% 40%)'), ...puntos(NEGRO, [[92, 96], [100, 104], [94, 114], [100, 122]], 2)], 26);
-  FR('pera', 'pera|peras|pera de agua|pera bosc', () => [C(96, 124, 36, 'hsl(70 60% 58%)'), C(96, 82, 22, 'hsl(70 60% 58%)'), tallo(96, 48), hoja(110, 54)], 70);
+  FR('pera', 'pera|peras|pera de agua|pera bosc|pera mantequilla|pera asiatica|pera anjou|pera de leche', () => [C(96, 124, 36, 'hsl(70 60% 58%)'), C(96, 82, 22, 'hsl(70 60% 58%)'), tallo(96, 48), hoja(110, 54)], 70);
   FR('durazno', 'durazno|duraznos|melocoton|chabacano|nectarina', () => [C(96, 108, 42, 'hsl(22 90% 68%)'), E(110, 112, 22, 30, 'hsl(10 80% 62%)'), L('M96 68q-10 40 0 80', 'hsl(14 70% 58%)', 3), hoja(112, 62)], 22);
-  FR('ciruela', 'ciruela|ciruelas|ciruela pasa', () => redonda('hsl(300 40% 38%)', { r: 38, y: 110 }), 300);
+  FR('ciruela', 'ciruela|ciruelas|ciruela roja|ciruela criolla', () => redonda('hsl(300 40% 38%)', { r: 38, y: 110 }), 300);
   FR('cereza', 'cereza|cerezas|guinda', () => [L('M72 120q10-60 30-80M120 116q-6-50-18-76', VERDE_OSCURO, 4), hoja(110, 40), C(72, 128, 22, ROJO_OSCURO), C(120, 124, 22, ROJO_OSCURO), C(66, 120, 5, 'rgba(255,255,255,.4)')], 350);
   FR('kiwi', 'kiwi|kiwis', () => [...mitad('hsl(36 40% 40%)', 'hsl(90 60% 50%)', 'hsl(70 60% 85%)'), ...puntos(NEGRO, [[96, 76], [118, 90], [122, 116], [96, 132], [72, 116], [72, 90]], 2)], 90);
   FR('coco', 'coco|cocos|agua de coco natural|coco partido', () => [C(96, 106, 48, 'hsl(25 45% 35%)'), C(96, 106, 40, BLANCO), C(96, 106, 30, 'hsl(200 40% 92%)')], 30);
@@ -511,35 +513,69 @@ const CATALOGO_COMIDA: Forma[] = [];
   FR('frambuesa', 'frambuesa|frambuesas|zarzamora|zarzamoras|mora|moras|frutos rojos|frutos del bosque', () => [...[[84, 90], [100, 86], [116, 92], [78, 108], [94, 104], [110, 106], [124, 110], [88, 122], [104, 124], [96, 138]].map(([x, y]) => C(x, y, 11, 'hsl(345 70% 48%)')), hoja(100, 70)], 345);
   FR('arandano', 'arandano|arandanos|blueberry|blueberries|mora azul', () => [...[[72, 100], [104, 92], [88, 124], [122, 120]].map(([x, y]) => C(x, y, 20, 'hsl(235 45% 45%)')), ...[[72, 92], [104, 84], [88, 116], [122, 112]].map(([x, y]) => C(x, y, 4, 'hsl(235 35% 30%)'))], 235);
   FR('higo', 'higo|higos|breva', () => [P('M96 50q40 40 34 72-8 34-34 34t-34-34q-6-32 34-72z', 'hsl(290 35% 38%)'), E(96, 118, 22, 26, 'hsl(350 60% 60%)')], 300);
-  FR('tuna', 'tuna|tunas|xoconostle|pitahaya|pitaya|fruta del dragon', () => [E(96, 106, 36, 46, ROSA_FUERTE), E(96, 106, 28, 38, 'hsl(330 50% 95%)'), ...puntos(NEGRO, SEMILLAS, 1.8)], 330);
+  FR('pitahaya', 'pitahaya|pitaya|pitahayas|fruta del dragon', () => [E(96, 106, 36, 46, ROSA_FUERTE), E(96, 106, 28, 38, 'hsl(330 50% 95%)'), ...puntos(NEGRO, SEMILLAS, 1.8)], 330);
+  FR('tuna', 'tuna|tunas|tuna blanca|tuna verde|tuna amarilla', () => [E(96, 108, 32, 46, 'hsl(80 50% 55%)'), ...puntos('hsl(45 70% 80%)', [[80, 84], [104, 78], [116, 104], [78, 110], [100, 116], [88, 138], [112, 134]], 2.5), E(84, 92, 6, 12, 'rgba(255,255,255,.3)', 0.4)], 80);
+  FR('tuna_roja', 'tuna roja|tunas rojas|tuna cardona|xoconostle|xoconostles', () => [E(96, 108, 32, 46, 'hsl(340 65% 42%)'), ...puntos('hsl(45 70% 80%)', [[80, 84], [104, 78], [116, 104], [78, 110], [100, 116], [88, 138], [112, 134]], 2.5), E(84, 92, 6, 12, 'rgba(255,255,255,.3)', 0.4)], 340);
   FR('mamey', 'mamey|zapote|zapote negro|chicozapote', () => [P('M96 44q40 20 40 62t-40 52q-40-10-40-52t40-62z', 'hsl(24 40% 40%)'), P('M96 54q30 18 30 54t-30 42q-30-8-30-42t30-54z', 'hsl(16 85% 60%)'), E(96, 106, 10, 22, 'hsl(24 40% 25%)')], 16);
   FR('maracuya', 'maracuya|fruta de la pasion|granadilla', () => [...mitad('hsl(280 40% 40%)', AMARILLO, null), ...puntos(NEGRO, SEMILLAS, 3)], 50);
-  FR('fruta_picada', 'fruta picada|coctel de frutas|fruta con chile|vaso de fruta|ensalada de frutas|fruta preparada|fruta de temporada|fruta', k => vaso(k, { capas: [ROJO, AMARILLO, 'hsl(100 55% 62%)', NARANJA], popote: null, chispas: null, crema: null }), 20);
+  /* Frutería: frutas de temporada y de mercado. */
+  FR('guanabana', 'guanabana|guanabanas|anona', () => [E(96, 108, 40, 52, 'hsl(95 45% 40%)'), ...puntos('hsl(95 40% 26%)', [[80, 80], [104, 76], [118, 98], [76, 108], [100, 104], [86, 132], [112, 128], [96, 150]], 2.5), tallo(96, 42)], 95);
+  FR('lichi', 'lichi|lichis|litchi|lychee|rambutan', () => [C(76, 116, 22, 'hsl(355 65% 50%)'), C(116, 116, 22, 'hsl(355 65% 50%)'), C(116, 116, 14, 'hsl(40 40% 95%)'), C(96, 84, 22, 'hsl(355 65% 56%)'), L('M96 62q0-14 12-22', CAFE, 3)], 355);
+  FR('carambola', 'carambola|carambolas|fruta estrella', () => [P('M96 40l14 40 42 2-34 26 12 42-34-24-34 24 12-42-34-26 42-2z', 'hsl(50 90% 58%)'), P('M96 64l7 22 22 1-18 14 6 22-17-13-17 13 6-22-18-14 22-1z', 'hsl(56 95% 76%)')], 50);
+  FR('tejocote', 'tejocote|tejocotes', () => [C(76, 118, 18, 'hsl(28 90% 55%)'), C(114, 118, 18, 'hsl(28 90% 55%)'), C(95, 90, 18, 'hsl(32 92% 58%)'), C(96, 140, 16, 'hsl(26 88% 52%)'), ...puntos(CAFE, [[76, 102], [114, 102], [95, 74]], 2)], 28);
+  FR('membrillo', 'membrillo|membrillos', () => [C(96, 122, 38, 'hsl(52 80% 58%)'), C(98, 84, 24, 'hsl(52 80% 58%)'), E(82, 114, 8, 14, 'rgba(255,255,255,.3)', 0.4), tallo(98, 50), hoja(112, 56)], 52);
+  FR('nanche', 'nanche|nanches|nance', () => [[72, 112], [96, 104], [120, 112], [84, 134], [108, 134], [96, 82]].map(([x, y]) => C(x, y, 13, 'hsl(46 90% 58%)')), 46);
+  FR('chirimoya', 'chirimoya|chirimoyas|anona blanca', () => [P('M96 154q-46-30-40-70 6-32 40-30 34-2 40 30 6 40-40 70z', 'hsl(100 35% 55%)'), L('M70 92q8 6 16 0t16 0 16 0M64 114q8 6 16 0t16 0 16 0 16 0M76 136q8 6 16 0t16 0 16 0', 'hsl(100 30% 38%)', 3), tallo(96, 40)], 100);
+  FR('cana', 'cana de azucar|canas de azucar|cana pelada|cana en trozo', () => [R(62, 40, 14, 120, 'hsl(70 50% 55%)', 6), R(88, 36, 14, 124, 'hsl(60 55% 60%)', 6), R(114, 44, 14, 116, 'hsl(70 50% 55%)', 6), L('M62 80h14M62 120h14M88 76h14M88 116h14M114 84h14M114 124h14', 'hsl(80 40% 35%)', 3)], 70);
+  FR('tamarindo_vaina', 'tamarindo natural|tamarindo con cascara|tamarindo pelado|pulpa de tamarindo|vaina de tamarindo|tamarindo en vaina', () => [P('M44 118q34-54 104-44l-2 16q-62-8-90 36z', 'hsl(28 45% 42%)'), P('M50 146q40-40 100-26l-2 14q-56-10-88 22z', 'hsl(25 40% 35%)'), C(146, 82, 6, 'hsl(28 45% 42%)')], 28);
+  FR('jamaica_seca', 'flor de jamaica|jamaica seca|jamaica a granel|jamaica deshidratada', k => bolsa(k, { c: 'hsl(345 60% 35%)', ventana: [C(86, 110, 9, 'hsl(345 70% 45%)'), C(106, 104, 9, ROJO_OSCURO), C(100, 122, 8, 'hsl(345 70% 45%)')] }), 345);
+  FR('vaso_fruta', 'fruta picada|coctel de frutas|coctel de fruta|fruta con chile|vaso de fruta|ensalada de frutas|fruta preparada', k => vaso(k, { capas: [ROJO, AMARILLO, 'hsl(100 55% 62%)', NARANJA], popote: null, chispas: null, crema: null }), 20);
+  FR('fruta_picada', 'fruta de temporada|fruta', k => vaso(k, { capas: [ROJO, AMARILLO, 'hsl(100 55% 62%)', NARANJA], popote: null, chispas: null, crema: null }), 20);
 
   /* --- verduras --- */
   FR('jitomate', 'jitomate|tomate|jitomates|tomate saladet|tomate bola|tomate cherry', () => [C(96, 112, 44, ROJO), P('M96 68l-14-12 8 16-18 2 18 6-4 14 10-12 10 12-4-14 18-6-18-2 8-16z', VERDE), E(78, 100, 8, 14, 'rgba(255,255,255,.3)', 0.4)], 4);
   FR('tomate_verde', 'tomate verde|tomatillo|tomates verdes', () => [C(96, 112, 40, VERDE_CLARO), P('M60 92q36-60 72 0', 'hsl(60 40% 82%)'), E(80, 104, 7, 12, 'rgba(255,255,255,.3)', 0.4)], 90);
-  FR('cebolla', 'cebolla|cebollas|cebolla blanca|cebolla morada|cebollin|cebolla cambray', () => [P('M96 40q50 40 40 80t-40 30q-30 10-40-30T96 40z', 'hsl(40 30% 92%)'), L('M96 44q-20 50 0 104M96 44q20 50 0 104', 'hsl(40 20% 80%)', 2), L('M96 40l-4-14M96 40l6-12', VERDE, 4)], 40);
+  FR('cebolla', 'cebolla|cebollas|cebolla blanca', () => [P('M96 40q50 40 40 80t-40 30q-30 10-40-30T96 40z', 'hsl(40 30% 92%)'), L('M96 44q-20 50 0 104M96 44q20 50 0 104', 'hsl(40 20% 80%)', 2), L('M96 40l-4-14M96 40l6-12', VERDE, 4)], 40);
   FR('ajo', 'ajo|ajos|cabeza de ajo|diente de ajo', () => [P('M96 48q44 44 36 82-6 24-36 24t-36-24q-8-38 36-82z', 'hsl(40 30% 94%)'), L('M80 70q-10 50 4 80M112 70q10 50-4 80M96 50v100', 'hsl(40 15% 80%)', 2)], 40);
   FR('zanahoria', 'zanahoria|zanahorias|zanahoria rallada', () => [P('M70 64q10-8 20 0l52 88q-4 6-10 2z', NARANJA), L('M78 80l10-4M90 100l10-4M104 122l10-4', 'hsl(24 80% 45%)', 3), P('M68 62l-14-26 18 18-2-30 12 30 10-26-2 30z', VERDE)], 26);
   FR('papa', 'papa|papas blancas|papa blanca|papa alpha|camote|papa cambray|batata|yuca', () => [E(96, 108, 52, 38, 'hsl(36 45% 62%)', 0.2), ...puntos('hsl(30 35% 45%)', [[72, 98], [104, 92], [118, 116], [90, 122]], 2)], 36);
-  FR('chile', 'chile|chiles|chile jalapeno|jalapeno|chile serrano|serrano|chile poblano|chile habanero|chile de arbol|chile verde', () => [P('M60 70q10-14 22-6 60 40 70 92-4 6-10 2-40-30-82-88z', VERDE), P('M58 70q-6-14-16-16', 'none'), L('M62 66q-8-14-20-18', VERDE_OSCURO, 5)], 110);
-  FR('pimiento', 'pimiento|pimientos|morron|pimiento morron|pimiento rojo|pimiento verde|pimiento amarillo', () => [P('M60 80q36-20 72 0 6 50-10 72-26 12-52 0-16-22-10-72z', ROJO), L('M96 58v-18', VERDE_OSCURO, 6), L('M96 82v76', 'hsl(4 60% 42%)', 2)], 4);
-  FR('lechuga', 'lechuga|lechugas|lechuga romana|lechuga orejona|espinaca|espinacas|acelga|arugula|kale|col rizada', () => [C(96, 110, 46, VERDE_CLARO), C(76, 96, 24, VERDE), C(116, 96, 24, VERDE), C(96, 84, 22, VERDE_CLARO), L('M96 84v62', 'hsl(90 50% 80%)', 3)], 100);
-  FR('brocoli', 'brocoli|brocolis|coliflor|romanesco', () => [R(88, 108, 16, 48, 'hsl(100 45% 55%)', 6), C(72, 92, 22, VERDE_OSCURO), C(96, 78, 24, VERDE), C(120, 92, 22, VERDE_OSCURO), C(96, 100, 20, VERDE)], 110);
-  FR('elote_crudo', 'elote crudo|mazorca|maiz|elotes|maiz pozolero', () => [E(96, 104, 22, 54, AMARILLO), ...puntos('hsl(46 80% 48%)', [[90, 68], [102, 68], [90, 84], [102, 84], [90, 100], [102, 100], [90, 116], [102, 116], [90, 132], [102, 132]], 3), P('M74 150q-10-60 20-100 -6 50 2 104z', VERDE), P('M118 150q10-60-20-100 6 50-2 104z', VERDE_CLARO)], 48);
+  FR('cebolla_morada', 'cebolla morada|cebollas moradas|cebolla roja', () => [P('M96 40q50 40 40 80t-40 30q-30 10-40-30T96 40z', 'hsl(310 40% 45%)'), L('M96 44q-20 50 0 104M96 44q20 50 0 104', 'hsl(310 35% 62%)', 2), L('M96 40l-4-14M96 40l6-12', VERDE, 4)], 310);
+  FR('cebollin', 'cebollin|cebollines|cebolla cambray|cebolla de rabo|cebollita cambray|cebollitas', () => [L('M84 120l-10-84M96 120V30M108 120l12-84', VERDE, 6), C(84, 132, 14, 'hsl(40 30% 94%)'), C(108, 132, 14, 'hsl(40 30% 94%)'), C(96, 140, 15, 'hsl(40 30% 96%)'), L('M90 156v8M102 156v8', 'hsl(40 20% 75%)', 2)], 100);
+  /* Chiles de mercado: secos (rojo oscuro, arrugados), habanero y manzano (naranja), güero (amarillo). */
+  FR('chile_seco', 'chile seco|chiles secos|chile guajillo|guajillo|chile ancho|chile pasilla|pasilla|chile chipotle seco|chipotle seco|chile morita|chile mulato|chile puya|chile de arbol seco|chile cascabel|chile mora|chile pasilla oaxaca', () => [P('M60 70q10-14 22-6 60 40 70 92-4 6-10 2-40-30-82-88z', 'hsl(352 55% 26%)'), L('M72 74q20 14 34 40M78 92q18 10 28 30', 'hsl(352 45% 40%)', 3), L('M62 66q-8-14-20-18', 'hsl(40 40% 55%)', 5)], 352);
+  FR('chile_habanero', 'chile habanero|habanero|chiles habaneros|chile manzano|chiles manzanos', () => [P('M70 84q26-30 52 0 10 36-26 64-36-28-26-64z', NARANJA), L('M96 74q-2-18 12-26', VERDE_OSCURO, 5), E(82, 96, 6, 12, 'rgba(255,255,255,.3)', 0.4)], 26);
+  FR('chile_guero', 'chile guero|chiles gueros|chile caribe|chile xcatic|chile carricillo', () => [P('M60 70q10-14 22-6 60 40 70 92-4 6-10 2-40-30-82-88z', 'hsl(50 85% 62%)'), L('M62 66q-8-14-20-18', VERDE_OSCURO, 5)], 50);
+  FR('chile', 'chile|chiles|chile jalapeno|jalapeno|chile serrano|serrano|chile poblano|chile de arbol|chile verde', () => [P('M60 70q10-14 22-6 60 40 70 92-4 6-10 2-40-30-82-88z', VERDE), P('M58 70q-6-14-16-16', 'none'), L('M62 66q-8-14-20-18', VERDE_OSCURO, 5)], 110);
+  FR('pimiento', 'pimiento|pimientos|morron|pimiento morron|pimiento rojo|pimiento morron rojo', () => [P('M60 80q36-20 72 0 6 50-10 72-26 12-52 0-16-22-10-72z', ROJO), L('M96 58v-18', VERDE_OSCURO, 6), L('M96 82v76', 'hsl(4 60% 42%)', 2)], 4);
+  FR('lechuga', 'lechuga|lechugas|lechuga romana|lechuga orejona|espinaca|espinacas|acelga|arugula|kale|col rizada|quelite|quelites|verdolaga|verdolagas|berro|berros', () => [C(96, 110, 46, VERDE_CLARO), C(76, 96, 24, VERDE), C(116, 96, 24, VERDE), C(96, 84, 22, VERDE_CLARO), L('M96 84v62', 'hsl(90 50% 80%)', 3)], 100);
+  FR('pimiento_verde', 'pimiento verde|morron verde|pimiento morron verde', () => [P('M60 80q36-20 72 0 6 50-10 72-26 12-52 0-16-22-10-72z', VERDE), L('M96 58v-18', VERDE_OSCURO, 6), L('M96 82v76', VERDE_OSCURO, 2)], 120);
+  FR('pimiento_amarillo', 'pimiento amarillo|morron amarillo|pimiento naranja|morron naranja', () => [P('M60 80q36-20 72 0 6 50-10 72-26 12-52 0-16-22-10-72z', AMARILLO), L('M96 58v-18', VERDE_OSCURO, 6), L('M96 82v76', 'hsl(40 80% 45%)', 2)], 46);
+  FR('coliflor', 'coliflor|coliflores', () => [P('M48 108q0-40 48-48 48 8 48 48z', VERDE), C(72, 96, 18, 'hsl(45 45% 92%)'), C(96, 84, 20, 'hsl(45 50% 94%)'), C(120, 96, 18, 'hsl(45 45% 92%)'), C(84, 108, 16, 'hsl(45 45% 90%)'), C(108, 108, 16, 'hsl(45 45% 90%)'), P('M52 108q20 40 44 44 24-4 44-44z', VERDE_OSCURO)], 45);
+  FR('brocoli', 'brocoli|brocolis|romanesco', () => [R(88, 108, 16, 48, 'hsl(100 45% 55%)', 6), C(72, 92, 22, VERDE_OSCURO), C(96, 78, 24, VERDE), C(120, 92, 22, VERDE_OSCURO), C(96, 100, 20, VERDE)], 110);
+  FR('elote_crudo', 'elote crudo|mazorca|maiz|elotes|maiz pozolero|elote blanco|elote amarillo|elote tierno|elote criollo|elote por pieza', () => [E(96, 104, 22, 54, AMARILLO), ...puntos('hsl(46 80% 48%)', [[90, 68], [102, 68], [90, 84], [102, 84], [90, 100], [102, 100], [90, 116], [102, 116], [90, 132], [102, 132]], 3), P('M74 150q-10-60 20-100 -6 50 2 104z', VERDE), P('M118 150q10-60-20-100 6 50-2 104z', VERDE_CLARO)], 48);
   FR('pepino', 'pepino|pepinos|pepino persa', () => [E(96, 104, 22, 58, VERDE_OSCURO, 0.6), E(96, 104, 16, 50, 'hsl(120 40% 40%)', 0.6), ...puntos(VERDE_CLARO, [[84, 84], [100, 100], [112, 120]], 2)], 120);
-  FR('calabacita', 'calabacita|calabacitas|calabaza|zucchini|calabaza italiana|chayote', () => [E(96, 104, 20, 58, 'hsl(100 40% 45%)', -0.6), L('M70 70q20 30 50 70', VERDE_CLARO, 3), R(60, 48, 8, 16, VERDE_OSCURO, 2)], 100);
+  FR('calabacita', 'calabacita|calabacitas|zucchini|calabaza italiana|calabacita italiana|calabacita criolla', () => [E(96, 104, 20, 58, 'hsl(100 40% 45%)', -0.6), L('M70 70q20 30 50 70', VERDE_CLARO, 3), R(60, 48, 8, 16, VERDE_OSCURO, 2)], 100);
   FR('berenjena', 'berenjena|berenjenas', () => [P('M70 70q30-20 50 20 20 50-10 66-40 10-50-30-6-40 10-56z', MORADO), P('M64 66l-10-16 18 8 6-14 6 18z', VERDE)], 280);
   FR('champinon', 'champinon|champinones|hongo|hongos|setas|portobello|huitlacoche', () => [P('M44 100q4-46 52-46t52 46z', 'hsl(30 25% 80%)'), R(80, 98, 32, 52, 'hsl(36 30% 92%)', 10), E(76, 80, 8, 5, 'hsl(30 20% 70%)'), E(114, 86, 6, 4, 'hsl(30 20% 70%)')], 30);
-  FR('cilantro', 'cilantro|perejil|hierbabuena|epazote|albahaca|hierbas|manojo|romero|menta', () => [L('M96 160V80M96 120l-24-24M96 104l22-26M96 140l26-18', VERDE_OSCURO, 3), ...[[72, 92], [118, 74], [122, 118], [96, 70], [76, 70], [110, 96]].map(([x, y]) => C(x, y, 12, VERDE))], 110);
-  FR('nopal', 'nopal|nopales|nopalitos', () => [E(96, 104, 36, 56, VERDE, 0.1), ...puntos('hsl(90 50% 75%)', [[84, 80], [104, 76], [96, 100], [80, 116], [110, 118], [96, 136]], 2)], 110);
-  FR('rabano', 'rabano|rabanos|betabel|remolacha|nabo', () => [C(96, 112, 32, ROSA_FUERTE), L('M96 144v16', ROSA_FUERTE, 3), P('M96 80l-20-36 16 14 4-24 4 24 16-14z', VERDE)], 340);
+  FR('cilantro', 'cilantro|perejil|hierbabuena|epazote|albahaca|hierbas|romero|menta|tomillo|romeritos|huauzontle|huauzontles|hierbas de olor', () => [L('M96 160V80M96 120l-24-24M96 104l22-26M96 140l26-18', VERDE_OSCURO, 3), ...[[72, 92], [118, 74], [122, 118], [96, 70], [76, 70], [110, 96]].map(([x, y]) => C(x, y, 12, VERDE))], 110);
+  FR('nopal', 'nopal|nopales|nopalitos|ensalada de nopales|nopales en salsa', () => [E(96, 104, 36, 56, VERDE, 0.1), ...puntos('hsl(90 50% 75%)', [[84, 80], [104, 76], [96, 100], [80, 116], [110, 118], [96, 136]], 2)], 110);
+  FR('betabel', 'betabel|betabeles|remolacha', () => [C(96, 114, 34, 'hsl(340 55% 30%)'), L('M96 148v14', 'hsl(340 55% 30%)', 3), P('M96 80l-22-38 18 14 4-26 4 26 18-14z', 'hsl(340 40% 40%)'), E(84, 102, 6, 12, 'rgba(255,255,255,.2)', 0.4)], 340);
+  FR('rabano', 'rabano|rabanos|nabo', () => [C(96, 112, 32, ROSA_FUERTE), L('M96 144v16', ROSA_FUERTE, 3), P('M96 80l-20-36 16 14 4-24 4 24 16-14z', VERDE)], 340);
   FR('apio', 'apio|apios|poro|puerro|esparrago|esparragos', () => [R(80, 70, 10, 90, 'hsl(90 50% 62%)', 5), R(92, 64, 10, 96, 'hsl(90 50% 55%)', 5), R(104, 72, 10, 88, 'hsl(90 50% 62%)', 5), C(86, 64, 10, VERDE), C(100, 56, 12, VERDE), C(112, 66, 10, VERDE)], 90);
   FR('ejote', 'ejote|ejotes|chicharo|chicharos|habas|haba|edamame', () => [P('M48 120q40-60 96-60-30 30-96 60z', VERDE), ...[[76, 100], [96, 88], [116, 76]].map(([x, y]) => C(x, y, 7, VERDE_CLARO))], 110);
   FR('jengibre', 'jengibre|curcuma|raiz', () => [P('M50 110q10-30 40-20 10-24 30-10 30 0 20 30-20 30-60 20-70 0z', 'hsl(36 50% 62%)'), L('M70 104l6-8M104 96l8-6', 'hsl(36 40% 45%)', 3)], 36);
-  FR('col', 'col|repollo|col morada|repollo morado', () => [C(96, 108, 46, 'hsl(120 35% 70%)'), L('M96 66q-30 40 0 84M96 66q30 40 0 84M60 100q36-10 72 0', 'hsl(120 30% 55%)', 3)], 120);
-  FR('verdura_picada', 'verdura|verduras|verdura picada|pico de gallo|ensalada de verduras|verduras mixtas', k => plato([C(80, 112, 10, ROJO), C(104, 108, 10, VERDE), C(92, 124, 9, 'hsl(40 30% 92%)'), C(116, 122, 8, VERDE_CLARO), C(74, 128, 7, ROJO)], {}), 100);
+  FR('col_morada', 'col morada|repollo morado|col roja', () => [C(96, 108, 46, 'hsl(290 35% 42%)'), L('M96 66q-30 40 0 84M96 66q30 40 0 84M60 100q36-10 72 0', 'hsl(290 30% 62%)', 3)], 290);
+  FR('col', 'col|repollo|col blanca|repollo blanco', () => [C(96, 108, 46, 'hsl(120 35% 70%)'), L('M96 66q-30 40 0 84M96 66q30 40 0 84M60 100q36-10 72 0', 'hsl(120 30% 55%)', 3)], 120);
+  /* Frutería: lo que el mercado vende y no estaba. */
+  FR('chayote', 'chayote|chayotes|chayote con espina|chayote sin espina', () => [P('M96 44q30 4 38 50 8 56-38 62-46-6-38-62 8-46 38-50z', 'hsl(85 45% 62%)'), L('M96 52v100M80 60q-10 40 0 86M112 60q10 40 0 86', 'hsl(90 40% 45%)', 3)], 85);
+  FR('calabaza_castilla', 'calabaza|calabazas|calabaza de castilla|calabaza criolla|calabaza de casco|calabaza mantequilla|zapallo|calabaza en tacha', () => [E(66, 112, 26, 40, 'hsl(28 80% 55%)'), E(126, 112, 26, 40, 'hsl(28 80% 55%)'), E(96, 112, 30, 44, 'hsl(30 85% 60%)'), R(90, 56, 12, 18, 'hsl(90 40% 35%)', 3)], 30);
+  FR('flor_calabaza', 'flor de calabaza|flores de calabaza', () => [R(93, 120, 6, 40, VERDE, 3), E(96, 78, 14, 30, 'hsl(38 95% 58%)'), E(72, 94, 14, 30, 'hsl(32 95% 55%)', -1.1), E(120, 94, 14, 30, 'hsl(32 95% 55%)', 1.1), E(82, 116, 14, 26, 'hsl(36 95% 60%)', -0.5), E(110, 116, 14, 26, 'hsl(36 95% 60%)', 0.5), C(96, 100, 10, 'hsl(28 90% 45%)')], 36);
+  FR('jicama', 'jicama|jicamas', () => [P('M96 52q46 4 48 52 2 52-48 54-50-2-48-54 2-48 48-52z', 'hsl(30 45% 55%)'), P('M96 106l42-8q2 32-16 44z', 'hsl(45 40% 94%)'), tallo(96, 34)], 32);
+  FR('germen', 'germen|germen de soya|germinado|germinados|alfalfa|brotes|brotes de soya', () => [L('M70 152q6-40 2-80M86 152q4-50 10-86M104 152q-4-46 4-84M120 152q-6-40 2-76', 'hsl(50 40% 92%)', 5), E(72, 70, 7, 5, 'hsl(70 70% 58%)'), E(96, 64, 7, 5, 'hsl(70 70% 58%)'), E(108, 66, 7, 5, 'hsl(70 70% 58%)'), E(122, 74, 7, 5, 'hsl(70 70% 58%)')], 70);
+  FR('pico_gallo', 'pico de gallo|salsa mexicana|verdura picada|verduras picadas|verdura picada para caldo|picadillo de verdura', () => plato([C(80, 104, 9, ROJO), C(100, 100, 9, 'hsl(40 30% 94%)'), C(114, 110, 8, VERDE), C(90, 118, 9, ROJO), C(108, 122, 8, 'hsl(40 30% 94%)'), C(74, 120, 7, VERDE), C(122, 96, 7, ROJO)], { honda: true }), 4);
+  FR('hoja_platano', 'hoja de platano|hojas de platano|hoja de platano para tamal', () => [P('M96 160q-60-40-50-120 40 30 50 120z', VERDE), P('M96 160q60-40 50-120-40 30-50 120z', VERDE_CLARO), L('M96 160V44', VERDE_OSCURO, 3)], 120);
+  FR('piloncillo', 'piloncillo|piloncillos|panela|piloncillo cono', () => [P('M96 44l38 104H58z', 'hsl(26 60% 38%)'), P('M96 44l12 104H58z', 'hsl(26 55% 46%)'), L('M74 104h44M66 126h60', 'hsl(26 50% 30%)', 2)], 26);
+  FR('verdura_picada', 'verdura|verduras|ensalada de verduras|verduras mixtas', k => plato([C(80, 112, 10, ROJO), C(104, 108, 10, VERDE), C(92, 124, 9, 'hsl(40 30% 92%)'), C(116, 122, 8, VERDE_CLARO), C(74, 128, 7, ROJO)], {}), 100);
 
   /* --- panadería --- */
   const concha = (cubierta: string) => () => [P('M40 124q0-62 56-62t56 62z', cubierta), P('M40 124h112q0 12-12 12H52q-12 0-12-12z', DORADO), L('M60 104q36-30 72 0M70 86q26-16 52 0M54 118q42-22 84 0', 'rgba(255,255,255,.5)', 5)];
@@ -610,7 +646,7 @@ const CATALOGO_COMIDA: Forma[] = [];
   F('burrito', 'burrito|burritos|burrito percheron|chimichanga|wrap mexicano', () => [R(40, 84, 112, 44, 'hsl(44 60% 80%)', 22), E(146, 106, 12, 22, 'hsl(44 50% 70%)'), C(150, 100, 5, 'hsl(20 40% 32%)'), C(146, 112, 5, ROJO), C(152, 108, 4, VERDE)], { tono: 44 });
   F('enchiladas_verdes', 'enchiladas|enchiladas verdes|entomatadas|enchiladas suizas|enchiladas de pollo', () => plato([R(52, 100, 88, 16, 'hsl(48 70% 72%)', 8), R(52, 118, 88, 16, 'hsl(48 70% 72%)', 8), P('M50 100q46-16 92 0v34q-46 10-92 0z', 'hsl(100 50% 48%)'), L('M60 108q36 8 72 0', BLANCO, 5), C(78, 98, 5, 'hsl(320 40% 70%)')]), { tono: 100 });
   F('enchiladas_rojas', 'enchiladas rojas|enchiladas potosinas|enfrijoladas|enmoladas|papadzules', () => plato([R(52, 100, 88, 16, 'hsl(48 70% 72%)', 8), R(52, 118, 88, 16, 'hsl(48 70% 72%)', 8), P('M50 100q46-16 92 0v34q-46 10-92 0z', ROJO), L('M60 108q36 8 72 0', BLANCO, 5)]), { tono: 4 });
-  F('mole', 'mole|mole poblano|mole negro|pollo en mole|mole rojo|pipian|mole verde', () => plato([E(96, 116, 40, 18, 'hsl(10 50% 28%)'), E(90, 112, 18, 10, 'hsl(36 50% 70%)'), ...puntos(CREMA, [[80, 106], [104, 110], [96, 120], [114, 118]], 2)]), { tono: 12 });
+  F('mole', 'mole|mole en pasta|mole poblano|mole negro|pollo en mole|mole rojo|pipian|mole verde', () => plato([E(96, 116, 40, 18, 'hsl(10 50% 28%)'), E(90, 112, 18, 10, 'hsl(36 50% 70%)'), ...puntos(CREMA, [[80, 106], [104, 110], [96, 120], [114, 118]], 2)]), { tono: 12 });
   F('chilaquiles_verdes', 'chilaquiles|chilaquiles verdes|chilaquiles con pollo|chilaquiles con huevo', () => plato([...[[70, 112], [90, 104], [112, 110], [80, 124], [104, 124], [122, 120]].map(([x, y]) => P(`M${x - 12} ${y + 6}l12-18 12 18z`, DORADO)), E(96, 116, 44, 10, 'hsl(100 50% 48%)'), L('M70 110q26 8 52 0', BLANCO, 4), C(88, 104, 4, 'hsl(320 40% 70%)')]), { tono: 100 });
   F('chilaquiles_rojos', 'chilaquiles rojos|chilaquiles divorciados|chilaquiles con chorizo', () => plato([...[[70, 112], [90, 104], [112, 110], [80, 124], [104, 124], [122, 120]].map(([x, y]) => P(`M${x - 12} ${y + 6}l12-18 12 18z`, DORADO)), E(96, 116, 44, 10, ROJO), L('M70 110q26 8 52 0', BLANCO, 4)]), { tono: 4 });
   F('pozole', 'pozole|pozole rojo|pozole blanco|pozole verde|menudo|pancita|mondongo', () => plato([E(96, 96, 50, 11, ROJO), ...puntos(BLANCO, [[76, 94], [92, 98], [108, 94], [118, 98], [84, 100]], 3), E(110, 92, 8, 4, VERDE_CLARO)], { honda: true }), { tono: 0 });
@@ -679,7 +715,7 @@ const CATALOGO_COMERCIO: Forma[] = [];
   /* --- abarrotes --- */
   A('arroz_costal', 'arroz blanco 1 kg|arroz super extra|arroz morelos|arroz integral|arroz 1 kg|arroz de grano largo', k => costal(k, { c: 'hsl(210 60% 55%)', grano: BLANCO }), 210);
   A('frijol', 'frijol|frijol negro|frijol pinto|frijol bayo|frijol peruano|frijol flor de mayo|frijol 1 kg', k => costal(k, { c: 'hsl(20 40% 40%)', grano: 'hsl(20 40% 25%)' }), 20);
-  A('azucar', 'azucar|azucar estandar|azucar refinada|azucar morena|azucar mascabado|piloncillo|endulzante', k => costal(k, { c: 'hsl(200 70% 60%)', grano: 'hsl(200 30% 92%)' }), 200);
+  A('azucar', 'azucar|azucar estandar|azucar refinada|azucar morena|azucar mascabado|endulzante', k => costal(k, { c: 'hsl(200 70% 60%)', grano: 'hsl(200 30% 92%)' }), 200);
   A('sal', 'sal|sal de mesa|sal de grano|sal refinada|sal yodada|sal con ajo', k => [R(70, 48, 52, 112, 'hsl(210 60% 52%)', 8), E(96, 48, 26, 7, METAL), R(84, 38, 24, 12, BLANCO, 3), ...etiqueta(74, 92, 44, 40, BLANCO, 'hsl(210 50% 82%)')], 210);
   A('harina', 'harina|harina de trigo|harina de maiz|masa de maiz|harina para tortillas|maseca|fecula de maiz|maicena|harina preparada', k => costal(k, { c: 'hsl(40 40% 92%)', grano: null as unknown as string }), 40);
   A('avena', 'avena|avena en hojuelas|avena instantanea|granola|amaranto|cereal de avena|salvado', k => costal(k, { c: 'hsl(36 60% 58%)', grano: 'hsl(40 50% 82%)' }), 36);
@@ -726,7 +762,7 @@ const CATALOGO_COMERCIO: Forma[] = [];
   A('yogur', 'yogur|yoghurt|yogurt|yogur natural|yogur griego|yogurt de fresa|petit suisse|danonino|vaso de yogurt', k => [P('M60 70h72l-8 86H68z', 'hsl(330 60% 90%)'), R(56, 62, 80, 14, 'hsl(330 60% 70%)', 5), C(96, 112, 14, ROSA_FUERTE), C(90, 108, 4, 'rgba(255,255,255,.5)')], 330);
   A('pure_tomate', 'pure de tomate|salsa para pasta|salsa de tomate en caja|tomate rojo en cubos|salsa para espagueti|pasta de tomate', k => [R(64, 46, 64, 112, ROJO, 6), R(64, 46, 64, 12, 'hsl(4 60% 40%)', 6), C(96, 104, 18, 'hsl(4 80% 60%)'), P('M90 86l6-6 6 6z', VERDE)], 4);
   A('pan_caja_bolsa', 'pan de caja bolsa|bolsa de pan|pan rebanado|pan para sandwich|bollos para hamburguesa|medias noches|pan para hot dog', k => [R(44, 66, 104, 90, 'hsl(0 0% 100% / .7)', 26), R(52, 74, 88, 76, DORADO, 22), R(58, 82, 76, 62, CREMA, 16), R(44, 130, 104, 12, ROJO)], 36);
-  A('semillas_bolsa', 'cacahuates|cacahuate|cacahuate salado|cacahuates japoneses|pepitas|semillas de girasol|nueces|nuez|almendras|pistaches|mix de nueces|arandanos secos|pasas|frutos secos', k => bolsa(k, { c: 'hsl(30 60% 50%)', ventana: [E(84, 104, 10, 14, 'hsl(32 60% 70%)', 0.4), E(104, 100, 10, 14, 'hsl(32 60% 70%)', -0.4), E(96, 116, 10, 14, 'hsl(32 60% 70%)', 0.2)] }), 30);
+  A('semillas_bolsa', 'ciruela pasa|ciruelas pasas|arandano deshidratado|arandanos deshidratados|cacahuates|cacahuate|cacahuate salado|cacahuates japoneses|cacahuate japones|pepitas|pepita|pepita de calabaza|almendra|pasitas|semillas de girasol|nueces|nuez|almendras|pistaches|mix de nueces|arandanos secos|pasas|frutos secos', k => bolsa(k, { c: 'hsl(30 60% 50%)', ventana: [E(84, 104, 10, 14, 'hsl(32 60% 70%)', 0.4), E(104, 100, 10, 14, 'hsl(32 60% 70%)', -0.4), E(96, 116, 10, 14, 'hsl(32 60% 70%)', 0.2)] }), 30);
 
   /* --- dulces y botanas --- */
   D('papas_bolsa', 'papas fritas|papitas|papas de bolsa|papas sabritas|papas sal|papas adobadas|papas con chile|papas fuego|chips|papas onduladas', k => bolsa(k, { c: k.f }));
@@ -1041,7 +1077,7 @@ function variantes(texto: string): string[] {
  * comparten esa misma clave («celular», «pintura», «chapa»), decide el
  * contexto: en un negocio de servicios gana el servicio; si no, el producto.
  */
-function buscar(texto: string, prefiereServicio: boolean): Forma | null {
+function buscar(texto: string, prefiereServicio: boolean, solo?: (f: Forma) => boolean): Forma | null {
   if (texto.trim() === '') return null;
   const vs = variantes(texto);
   let empatadas: Forma[] = [];
@@ -1049,7 +1085,7 @@ function buscar(texto: string, prefiereServicio: boolean): Forma | null {
   for (const generica of [false, true]) {
     let largo = -1;
     for (const { c, f } of CLAVES) {
-      if (!!f.generica !== generica) continue;
+      if (!!f.generica !== generica || (solo && !solo(f))) continue;
       if (largo >= 0 && c.length < largo) break;
       if (vs.some(v => v.includes(c))) { largo = c.length; if (!empatadas.includes(f)) empatadas.push(f); }
     }
@@ -1060,9 +1096,20 @@ function buscar(texto: string, prefiereServicio: boolean): Forma | null {
   return empatadas.find(f => deServicio(f) === prefiereServicio) ?? empatadas[0];
 }
 
+/** Una categoría de mercado: frutas, verduras, hortalizas, legumbres. */
+const PRODUCE = /\b(?:frutas?|verduras?|hortalizas?|legumbres?|fruteria|verduleria|recaud[oe]s?)\b/;
+
 /** La forma que le toca a un producto (id del catálogo). */
 export function formaDe(p: DatosProducto): string {
   const prefiereServicio = p.giro === 'SERVICES' || p.inventario === 'NONE';
+  /* En una categoría de frutas o verduras, «Elote» es la mazorca y no el elote
+     preparado del puesto: primero se busca entre frutas y verduras (también
+     en plural, «elote» → «elotes»). */
+  if (PRODUCE.test(normalizar(p.categoria))) {
+    const n = normalizar(p.nombre), deMercado = (f: Forma) => f.familia === 'frutas y verduras' && !f.generica;
+    const f = buscar(n, false, deMercado) ?? buscar(n.replace(/\b([a-z]{3,}[aeiou])\b/g, '$1s'), false, deMercado);
+    if (f) return f.id;
+  }
   for (const fuente of [p.nombre, p.categoria]) {
     const texto = normalizar(fuente);
     const f = buscar(texto, prefiereServicio);

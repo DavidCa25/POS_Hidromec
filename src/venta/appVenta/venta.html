@@ -278,6 +278,7 @@
                            [(ngModel)]="it.qty" name="qty-{{i}}" [disabled]="!!it.combo" (ngModelChange)="onQtyChange(i)"/>
                   </ng-container>
                   <ng-template #qtyLocked><div class="locked-cell">{{ it.qty }}</div></ng-template>
+                  <small class="venta-uom" *ngIf="it.decimal">{{ uomDe(it) }}</small>
                 </td>
                 <td>
                   <div *ngIf="priced(it).applied" class="locked-cell">{{priced(it).unit|currency:'MXN':'symbol-narrow':'1.2-2'}}<small *ngIf="it.qty>1"> / unidad (promedio)</small></div>
@@ -617,6 +618,13 @@
         <button type="button" class="prod-item" *ngFor="let p of busquedaProductos.items; trackBy: trackProducto"
                 data-guide="venta-producto" [attr.data-guide-clave]="p.part_number"
                 (click)="seleccionarProducto(p)">
+          <!-- Foto o dibujo: en una frutería casi nada trae código de barras y
+               el producto se busca por nombre; verlo ayuda a no equivocarse. -->
+          <span class="prod-item-media" aria-hidden="true">
+            <img *ngIf="p.thumb" [src]="p.thumb" alt="" loading="lazy">
+            <wx-ilustracion *ngIf="!p.thumb" [nombre]="p.product_name" [categoria]="p.category_name"
+                            [productoId]="p.id" [giro]="caps.businessProfile()" [inventario]="p.inventory_mode" />
+          </span>
           <div class="prod-item-main">
             <div class="prod-item-name">{{ p.product_name }}</div>
             <div class="prod-item-meta">
@@ -626,7 +634,7 @@
             </div>
           </div>
           <div class="prod-item-right">
-            <div class="pi-price">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}</div>
+            <div class="pi-price">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}<small class="pi-uom" *ngIf="esGranel(p) && commercial.catalogPrice(p.id,p.price)!==null"> / {{ p.base_uom || 'kg' }}</small></div>
             <!-- Disponibilidad real. Una receta tiene stock 0 por diseno; lo
                  que importa es cuantas se pueden preparar. -->
             <!-- NONE no lleva existencia: su disponibilidad es el centinela

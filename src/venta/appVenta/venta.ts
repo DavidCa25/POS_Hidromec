@@ -15,6 +15,7 @@ import { ConceptoFactura, FacturaNueva } from '../../app/factura-nueva/factura-n
 import { WxSelectComponent, WxOpcion } from '../../app/wx-select/wx-select.component';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
+import { WxIlustracionComponent } from '../../app/wx-ilustracion/wx-ilustracion.component';
 import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
 import { GranelCantidadComponent } from '../granel-cantidad/granel-cantidad.component';
 import { OpcionesProductoComponent } from '../opciones-producto/opciones-producto.component';
@@ -88,7 +89,7 @@ interface RefundLine {
 @Component({
   selector: 'app-venta',
   templateUrl: './venta.html',
-  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, DecimalPipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxFlechasDirective, GranelCantidadComponent, OpcionesProductoComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
+  imports: [FechaSqlPipe, AsistenciaChecarComponent, PropinaCobroComponent, DevolucionTouch, ReceiptEmail,CommercialSaleComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, DecimalPipe, SlicePipe, NgStyle, FacturaNueva, WxDateComponent, WxSelectComponent, PremiosVenta, CuponVenta, WxMascotaComponent, WxIlustracionComponent, WxFlechasDirective, GranelCantidadComponent, OpcionesProductoComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, ReceiptViewer],
   styleUrls: ['./venta.css']
 })
 export class Venta implements OnInit, OnDestroy {
@@ -120,6 +121,10 @@ export class Venta implements OnInit, OnDestroy {
   private readonly licencia = inject(LicenseService);
   /* 0071: Checar (Asistencia), solo si el negocio activo la aplicacion. */
   readonly caps = inject(CapabilityService);
+  /** ¿Se vende por peso o medida? El precio se lee «$28 / kg». */
+  readonly esGranel = CatalogService.esGranel;
+  /** Unidad de un renglón a granel (kg, L…), para que «0.5» se lea «0.5 kg». */
+  uomDe(it: { productId: number }): string { return this.catalog.findById(it.productId)?.base_uom || 'kg'; }
   private readonly cajaActual = inject(RegisterService);
   showChecar = false;
   /* 0065: devolucion directa, la misma que Touch. */

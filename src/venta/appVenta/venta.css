@@ -314,6 +314,10 @@
   cursor: pointer; position: relative; transition: border-color var(--wx-dur-press) ease, box-shadow var(--wx-dur-press) ease, transform var(--wx-dur-press) ease;
 }
 .prod-item:hover { border-color: #4F9BB8; box-shadow: var(--wx-shadow-raised);  }
+.prod-item-media { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; display: block; }
+.prod-item-media img, .prod-item-media wx-ilustracion { width: 100%; height: 100%; display: block; object-fit: cover; }
+.pi-uom { font-weight: 500; color: var(--wx-text-dim); font-size: .8rem; }
+.venta-uom { display: block; color: var(--wx-text-dim); font-size: .72rem; margin-top: 2px; text-align: center; }
 .prod-item:active { transform: translateY(0); background: #f6fbfd; }
 .prod-item-main { flex: 1; min-width: 0; }
 .prod-item-name {

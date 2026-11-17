@@ -106,6 +106,8 @@ export class TouchPos implements OnInit, OnDestroy {
   readonly caps = inject(CapabilityService);
 
   private readonly menu = inject(MenuCatalogService);
+  /** ¿Se vende por peso o medida? El precio se lee «$28 / kg». */
+  readonly esGranel = CatalogService.esGranel;
   private readonly cart = inject(CartService);
   private readonly sale = inject(SaleService);
   private readonly shift = inject(ShiftService);
