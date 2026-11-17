@@ -20,6 +20,7 @@
 'use strict';
 
 const LECTURA = [
+  'produccion:formula',
   'corte:correo-lista',
   'alerts:refunds-by-cashier',
   'aprobaciones:disponible',
@@ -207,7 +208,7 @@ const PENDIENTE = {
   'menu': ['menu-linea:aceptar', 'menu-linea:diseno', 'menu-linea:diseno-guardar', 'menu-linea:guardar', 'menu-linea:imagen-borrar', 'menu-linea:imagen-ver', 'menu-linea:rechazar'],
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'plataformas': ['plataformas:canal-guardar', 'plataformas:cancelar', 'plataformas:confirmar', 'plataformas:deposito', 'plataformas:emparejar', 'plataformas:guardar', 'plataformas:ver'],
-  'produccion': ['produccion:cancelar', 'produccion:empezar', 'produccion:formula', 'produccion:formula-guardar', 'produccion:formula-quitar', 'produccion:terminar'],
+  'produccion': ['produccion:formula-guardar', 'produccion:formula-quitar'],
   'propinas': ['propinas:activar', 'propinas:config-guardar', 'propinas:repartir'],
   'salon': ['salon:area-guardar', 'salon:mesa-guardar'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],

@@ -22,6 +22,29 @@ module.exports = [
     ],
   },
   {
+    /* Las tandas planeadas: empezar (salen los ingredientes), terminar (con
+       las piezas buenas; la diferencia es merma con motivo) y cancelar. */
+    id: 'produccion.empezar', etiqueta: 'Empezar una tanda', tipo: 'accion', modulo: 'hospitality', permiso: 'PRODUCCION_OPERAR',
+    slots: { producto: { requerido: true } },
+    claves: ['empieza', 'empece', 'arranca', 'arranque', 'empezar', 'inicia', 'comence', 'comienza'],
+    ejemplos: ['empieza la tanda de {prod}', 'ya empece las {prod}', 'arranca la produccion de {prod}', 'inicia la tanda de {prod}',
+               'ya estoy haciendo las {prod}', 'comence con las {prod}', 'empezamos las {prod}'],
+  },
+  {
+    id: 'produccion.terminar', etiqueta: 'Terminar una tanda', tipo: 'accion', modulo: 'hospitality', permiso: 'PRODUCCION_OPERAR',
+    slots: { producto: { requerido: true }, cantidad: { requerido: true }, motivo: {} },
+    claves: ['salieron', 'salio', 'termina', 'termine', 'terminamos', 'buenas', 'listas', 'quedaron'],
+    ejemplos: ['salieron {n} {prod}', 'ya salieron las {prod} {n} buenas', 'termina la tanda de {prod} con {n}', 'quedaron {n} {prod} buenas',
+               'terminé las {prod} salieron {n}', 'de la tanda de {prod} salieron {n}', 'ya estan listas {n} {prod}'],
+  },
+  {
+    id: 'produccion.cancelar', etiqueta: 'Cancelar una tanda', tipo: 'accion', modulo: 'hospitality', permiso: 'PRODUCCION_OPERAR',
+    slots: { producto: { requerido: true } },
+    claves: ['cancela', 'cancelar', 'cancelo', 'quita', 'hagas'],
+    ejemplos: ['cancela la tanda de {prod}', 'ya no hagas las {prod}', 'cancela la produccion de {prod}', 'quita la tanda de {prod}',
+               'siempre no hagas {prod}', 'cancelo las {prod} de hoy'],
+  },
+  {
     id: 'produccion.hoy', etiqueta: 'Producción del día', tipo: 'consulta', modulo: 'hospitality',
     slots: { fecha: {} },
     claves: ['produccion', 'producido', 'hornearon', 'tandas', 'hicieron'],

@@ -24,24 +24,36 @@ const raiz = join(import.meta.dirname, '..', '..');
 const { EXIGE } = require(join(raiz, 'electron/seguridad/canales.js'));
 const { LECTURA, MANUAL, PENDIENTE, PANTALLA, EQUIVALE = {} } = require(join(raiz, 'electron/asistente/cobertura.js'));
 
-/** Función de preload → canal que invoca («actualizarProducto» → «sp-update-product»). */
+/**
+ * Ruta completa de cada función de preload → canal que invoca:
+ * «electronAPI.actualizarProducto» → «sp-update-product»,
+ * «wybix.produccion.cancelar» → «produccion:cancelar». Con la ruta completa,
+ * dos funciones que se llaman igual en áreas distintas no se confunden.
+ */
 function funcionesDePreload() {
   const t = readFileSync(join(raiz, 'electron/preload.js'), 'utf8');
   const out = new Map();
+  const inicioWybix = t.indexOf("exposeInMainWorld('wybix'");
+  /* Las áreas de window.wybix: «    produccion: {» (cuatro espacios). */
+  const areas = [...t.matchAll(/^ {4}(\w+): \{\s*$/gm)].filter((m) => m.index > inicioWybix).map((m) => ({ i: m.index, area: m[1] }));
   /* «x: (p) => invoke('canal')» y también «x: p => invoke('canal')». */
   const re = /(\w+)\s*:\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>\s*(?:\{\s*(?:return\s+)?)?invoke\(\s*'([^']+)'/g;
   let m;
-  while ((m = re.exec(t))) out.set(m[1], m[2]);
+  while ((m = re.exec(t))) {
+    if (inicioWybix < 0 || m.index < inicioWybix) { out.set(`electronAPI.${m[1]}`, m[2]); continue; }
+    const area = areas.filter((a) => a.i < m.index).pop()?.area;
+    out.set(area ? `wybix.${area}.${m[1]}` : `wybix.${m[1]}`, m[2]);
+  }
   return out;
 }
 
-/** Lo que llaman los planes: «electronAPI.x» o «wybix.area.x» (la última parte es la función). */
+/** Lo que llaman los planes, con su ruta: «electronAPI.x» o «wybix.area.x». */
 function apisDeLosPlanes() {
   const dir = join(raiz, 'electron/asistente/acciones');
   const usadas = new Set();
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.js'))) {
     const t = readFileSync(join(dir, f), 'utf8');
-    for (const m of t.matchAll(/['"`](?:electronAPI|wybix)\.([\w.]+)['"`]/g)) usadas.add(m[1].split('.').pop());
+    for (const m of t.matchAll(/['"`]((?:electronAPI|wybix)\.[\w.]+)['"`]/g)) usadas.add(m[1]);
   }
   return usadas;
 }
@@ -102,7 +114,7 @@ test('cobertura: cada plan llama a una función que existe en preload y está pr
   const preload = funcionesDePreload();
   const sinCanal = [...apisDeLosPlanes()].filter((fn) => !preload.has(fn));
   /* Funciones del asistente mismo (apodos, preferencias) no son canales del negocio. */
-  const propias = new Set(['asistenteAlias', 'asistenteAliasOlvidar']);
+  const propias = new Set(['electronAPI.asistenteAlias', 'electronAPI.asistenteAliasOlvidar']);
   assert.deepEqual(sinCanal.filter((fn) => !propias.has(fn)), [], 'un plan llama a algo que preload no expone');
 
   /* «pantalla.x»: declarado en PANTALLA y atendido por AsistenteService. */

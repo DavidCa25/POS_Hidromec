@@ -3,6 +3,59 @@
 const crypto = require('crypto');
 
 module.exports = (h) => {
+  /**
+   * Empezar, terminar o cancelar la tanda de un producto. Mismas reglas que
+   * sp_production_*: se empieza una PLANEADA (salen los ingredientes), se
+   * termina una EN PROCESO (piezas buenas; lo que falta es merma con motivo),
+   * se cancela solo una PLANEADA.
+   */
+  async function tanda(it, que) {
+    const p = await h.producto(h.v(it, 'producto'));
+    if (!p) return h.msg('No encontré ese producto.');
+    const estado = { empezar: ['PLANNED'], terminar: ['IN_PROGRESS', 'PLANNED'], cancelar: ['PLANNED', 'IN_PROGRESS'] }[que];
+    const b = await h.uno(`
+      SELECT TOP 1 id, status, planned_qty, production_date FROM dbo.production_batches
+       WHERE product_id = @p AND status IN (${estado.map((x) => `'${x}'`).join(',')})
+       ORDER BY CASE WHEN production_date = CAST(GETDATE() AS DATE) THEN 0 ELSE 1 END, CASE status WHEN '${estado[0]}' THEN 0 ELSE 1 END, production_date DESC, id DESC;`,
+      [['p', h.sql.Int, p.id]]);
+    if (!b) {
+      return h.msg(`No hay tanda de ${p.nombre} ${que === 'empezar' ? 'planeada' : 'abierta'}.`, {
+        opciones: [{ etiqueta: `Planear ${p.nombre}`, texto: `planea una tanda de ${p.nombre.toLowerCase()}` }] });
+    }
+    const cuando = String(b.production_date).slice(0, 10) === h.hoyIso() ? 'hoy' : h.diaTexto(b.production_date);
+    const vista = [{ etiqueta: 'Producto', valor: p.nombre }, { etiqueta: 'Planeadas', valor: h.num(b.planned_qty) }, { etiqueta: 'Día', valor: cuando }];
+    if (que === 'empezar') {
+      return h.msg('Esta tanda voy a empezar:', { plan: h.plan('produccion.empezar', {
+        titulo: `Empezar ${h.num(b.planned_qty)} ${p.nombre}`, vista,
+        avisos: ['Al empezar salen del inventario los ingredientes de la fórmula.'],
+        ejecutar: { api: 'wybix.produccion.empezar', payload: { batchId: Number(b.id) } }, permiso: 'PRODUCCION_OPERAR',
+      }) });
+    }
+    if (que === 'cancelar') {
+      if (b.status === 'IN_PROGRESS') return h.msg(`La tanda de ${p.nombre} ya empezó: no se cancela. Si no salió nada, dime «salieron 0 ${p.nombre.toLowerCase()}».`);
+      return h.msg('Esta tanda voy a cancelar:', { plan: h.plan('produccion.cancelar', {
+        titulo: `Cancelar ${h.num(b.planned_qty)} ${p.nombre}`, vista,
+        ejecutar: { api: 'wybix.produccion.cancelar', payload: { batchId: Number(b.id) } }, permiso: 'PRODUCCION_OPERAR',
+      }) });
+    }
+    if (b.status === 'PLANNED') return h.msg(`La tanda de ${p.nombre} no ha empezado: primero dime «empieza la tanda de ${p.nombre.toLowerCase()}» para que salgan sus ingredientes.`);
+    const buenas = Number(h.v(it, 'cantidad'));
+    if (!(buenas >= 0)) return h.msg('¿Cuántas salieron buenas?');
+    const merma = Math.max(0, Number(b.planned_qty) - buenas);
+    const motivo = h.v(it, 'motivo');
+    if (merma > 0 && !motivo) return h.msg(`Faltan ${h.num(merma)} de las ${h.num(b.planned_qty)}. ¿Qué pasó con ellas?`, {
+      opciones: h.MOTIVOS.map((m) => ({ etiqueta: m.etiqueta, texto: m.etiqueta })),
+      esperando: { intent: it.intent, slots: it.slots, falta: 'motivo' } });
+    vista.push({ etiqueta: 'Buenas', valor: h.num(buenas) });
+    if (merma > 0) vista.push({ etiqueta: 'Merma', valor: `${h.num(merma)} · ${(h.MOTIVOS.find((m) => m.valor === motivo) || {}).etiqueta || motivo}` });
+    return h.msg('Esta tanda voy a registrar:', { plan: h.plan('produccion.terminar', {
+      titulo: `Salieron ${h.num(buenas)} ${p.nombre}`, vista,
+      avisos: ['Las piezas buenas entran al inventario con el costo de la tanda.'],
+      ejecutar: { api: 'wybix.produccion.terminar', payload: { batchId: Number(b.id), buenas, motivo: merma > 0 ? motivo : null } },
+      permiso: 'PRODUCCION_OPERAR',
+    }) });
+  }
+
   /** Ingredientes de una fórmula para N piezas, contra la existencia. */
   async function faltantes(productId, n) {
     const p = await h.producto(productId);
@@ -57,6 +110,12 @@ module.exports = (h) => {
         permiso: 'PRODUCCION_OPERAR',
       }) });
     },
+
+    /* La tanda del producto en el estado que la acción necesita: la de hoy
+       primero, luego la más reciente. */
+    async 'produccion.empezar'(it) { return tanda(it, 'empezar'); },
+    async 'produccion.terminar'(it) { return tanda(it, 'terminar'); },
+    async 'produccion.cancelar'(it) { return tanda(it, 'cancelar'); },
 
     async 'produccion.hoy'(it) {
       const fecha = h.v(it, 'fecha') || h.hoyIso();

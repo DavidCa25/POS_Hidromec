@@ -219,3 +219,37 @@ propinas de ayer
 cuanto le toca a cada mesero de propina
 total de propinas
 se juntaron muchas propinas
+
+@ produccion.empezar
+empieza la tanda de [conchas]
+ya empece las [conchas]
+arranca la produccion de [donas glaseadas]
+inicia la tanda de [bolillos]
+ya estoy haciendo las [conchas]
+comence con las [donas glaseadas]
+empezamos las [conchas]
+ya meti a hornear las [conchas] que estaban planeadas
+empieza la produccion de [pan de muerto]
+arrancamos con los [bolillos]
+
+@ produccion.terminar
+salieron 48 [conchas]
+ya salieron las [conchas] 45 buenas
+termina la tanda de [donas glaseadas] con 30
+quedaron 40 [bolillos] buenos
+termine las [conchas] salieron 46
+de la tanda de [pan de muerto] salieron 20
+ya estan listas 36 [donas glaseadas]
+salieron 50 [bolillos] de la tanda
+terminamos las [conchas] con 44 buenas
+se hicieron 30 [conchas] buenas
+
+@ produccion.cancelar
+cancela la tanda de [conchas]
+ya no hagas las [conchas]
+cancela la produccion de [donas glaseadas]
+quita la tanda de [bolillos]
+siempre no hagas [pan de muerto]
+cancelo las [conchas] de hoy
+ya no vamos a hacer [bolillos]
+cancela lo planeado de [conchas]
