@@ -121,3 +121,23 @@ test('combo automático: se arma solo con las piezas, solo si ahorra, y también
  const mano=[{key:'a',product:'cafe',quantity:'1',extras:'0',combo:{id:'cd',instance:'x',group:'c'}},{key:'b',product:'dona',quantity:'1',extras:'0',combo:{id:'cd',instance:'x',group:'d'}}];
  assert.equal(cotizar(p,products,mano,ctx).total,'58.00');
 });
+
+/* Granel: el importe se cobra redondo a medio peso (ver precioGranel). */
+test('granel: el importe se redondea a medio peso y la cantidad no cambia', async () => {
+  const { redondearGranelCentavos: r, precioGranel: g } = await import('../../shared/comercial.ts');
+  assert.deepEqual([1500, 1518, 1534, 1535, 1560, 1574, 1575, 1599].map(r), [1500, 1500, 1500, 1550, 1550, 1550, 1600, 1600]);
+  const importe = (q, p) => Math.round(q * g(q, p) * 100) / 100;
+  assert.equal(importe(0.08, 189), 15, '$15 de jamón a $189: 0.08 kg, se cobran $15.00 y no $15.12');
+  assert.equal(importe(0.36, 138), 49.5, '$50 a $138: 0.36 kg = $49.68 -> $49.50');
+  assert.equal(importe(0.33, 138), 45.5, '45.54 -> 45.50');
+  assert.equal(importe(0.25, 138), 34.5, 'un cuarto exacto se queda');
+  assert.equal(importe(0.11, 138), 15, '15.18 -> 15.00');
+  assert.equal(importe(1.5, 99.9), 150, '149.85 -> 150.00');
+  assert.equal(g(0.01, 20), 20, 'lo que redondearía a $0 se cobra como es');
+  /* Hasta 1 kg, exacto al centavo para cualquier cantidad y precio. */
+  for (let q = 1; q <= 100; q++) for (const p of [19.9, 89, 138, 189, 245.5]) {
+    const cobro = Math.round(q * Math.round(g(q / 100, p) * 100) / 100) / 100;
+    const esperado = r(Math.round(q * Math.round(p * 100) / 100)) / 100;
+    if (esperado > 0) assert.equal(cobro, esperado, `${q / 100} kg a $${p}`);
+  }
+});

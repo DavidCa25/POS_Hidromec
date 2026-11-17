@@ -1,6 +1,7 @@
 import type {Cotizacion} from './commercial.service';
 import { Injectable, computed, signal } from '@angular/core';
 import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon } from './models';
+import { precioGranel } from '../../shared/comercial';
 
 /**
  * Linea de carrito. Clase (no interfaz) para que `subtotal` sea un getter y
@@ -59,9 +60,16 @@ export class CartLine {
     this.catalogPrice = src.catalogPrice != null && Number.isFinite(Number(src.catalogPrice)) ? Number(src.catalogPrice) : null;
   }
 
-  /** Precio unitario efectivo: base + deltas de opciones. */
+  /**
+   * Precio unitario efectivo: base + deltas de opciones.
+   *
+   * A granel (sin opciones ni precio a mano) el importe del renglón se cobra
+   * redondo a medio peso: «$15 de jamón» son 0.08 kg y se cobran $15.00, no
+   * $15.12. Ver `precioGranel` en shared/comercial.ts.
+   */
   get effectiveUnitPrice(): number {
     const delta = this.options.reduce((a, o) => a + Number(o.priceDelta || 0) * Number(o.quantity || 1), 0);
+    if (this.decimal && !this.manualPrice && !this.options.length) return precioGranel(this.qty, this.unitPrice);
     return this.unitPrice + delta;
   }
 

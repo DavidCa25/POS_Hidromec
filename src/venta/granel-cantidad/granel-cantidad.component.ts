@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
+import { precioGranel } from '../../../shared/comercial';
 
 /**
  * ¿CUÁNTO? — la cantidad de un producto a granel.
@@ -12,9 +13,9 @@ import { WxFlechasDirective } from '../../app/wx-flechas/wx-flechas.directive';
  * sobre su renglón para corregirlo.
  *
  *   - Cantidad e Importe están ligados: se escribe uno y se calcula el otro.
- *   - La base guarda 2 decimales: «$50 de jamón a $138» son 0.36 kg y se
- *     cobran $49.68. Se enseña lo que DE VERDAD se cobra, nunca un importe que
- *     no corresponde a la cantidad.
+ *   - La base guarda 2 decimales: «$50 de jamón a $138» son 0.36 kg, que
+ *     darían $49.68; el importe se cobra redondo a medio peso ($49.50, ver
+ *     `precioGranel`). Se enseña lo que DE VERDAD se cobra.
  *   - «250 g», «250g» o «.250» se entienden como 0.25 kg.
  *   - Todo con teclado: el foco empieza en Cantidad, Enter agrega, Esc cancela
  *     y las flechas llegan a los botones.
@@ -75,7 +76,7 @@ export class GranelCantidadComponent implements OnInit {
 
   get importe(): number | null {
     const q = this.cantidad;
-    return q == null ? null : Math.round(q * this.precio * 100) / 100;
+    return q == null ? null : Math.round(q * precioGranel(q, this.precio) * 100) / 100;
   }
 
   /** Por dinero, lo pedido y lo cobrado pueden diferir unos centavos. */

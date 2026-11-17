@@ -1,5 +1,5 @@
 const { randomUUID } = require('node:crypto');
-const { cotizar, validarPolitica, centavos } = require('./motor.cjs');
+const { cotizar, validarPolitica, centavos, precioGranel } = require('./motor.cjs');
 async function catalogo(pool) {
     const p = await pool.request().query('SELECT version,payload FROM dbo.commercial_policy WHERE id=1');
     const c = await pool.request().execute('sp_catalog_publication');
@@ -187,6 +187,34 @@ async function cotizacion(pool, p, actor) {
     if (membership) {
         const club = result.lines.filter(l => l.rule === 'membership');
         membership = club.length ? { ...membership, units: club.reduce((a, l) => a + Number(l.quantity), 0), amountApplied: club.reduce((a, l) => a + Number(l.discount), 0).toFixed(2) } : null;
+    }
+    /* GRANEL: el importe del renglón se cobra redondo a medio peso, igual que
+       sin motor comercial (precioGranel en shared/comercial.ts). Se ajusta el
+       precio por unidad de ese renglón y el redondeo cuenta como precio, no
+       como descuento: gross y total se mueven lo mismo. Un renglón con opciones
+       no se redondea. */
+    {
+        const fuente = (l) => p.lines[input.findIndex(x => x.key === l.source)];
+        const idsGranel = [...new Set(result.lines.map(l => Number(fuente(l)?.productId)).filter(Number.isInteger))];
+        if (idsGranel.length) {
+            const sql = require('mssql/msnodesqlv8');
+            const g = (await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(idsGranel))
+                .query("SELECT id FROM dbo.products WHERE id IN (SELECT CAST([value] AS INT) FROM OPENJSON(@ids)) AND ISNULL(inventory_mode,'DIRECT')='DIRECT' AND (allow_decimal_qty=1 OR (base_uom IS NOT NULL AND base_uom<>'pza'))")).recordset.map(r => Number(r.id));
+            const c = (x) => Math.round(Number(x) * 100);
+            let ajuste = 0;
+            for (const l of result.lines) {
+                const s = fuente(l);
+                if (!s || !g.includes(Number(s.productId)) || (s.options ?? []).length) continue;
+                const antes = Math.round(c(l.quantity) * c(l.unitPrice) / 100);
+                const u = precioGranel(Number(l.quantity), Number(l.unitPrice));
+                l.unitPrice = u.toFixed(2);
+                ajuste += Math.round(c(l.quantity) * c(u) / 100) - antes;
+            }
+            if (ajuste) {
+                result.total = ((c(result.total) + ajuste) / 100).toFixed(2);
+                result.gross = ((c(result.gross) + ajuste) / 100).toFixed(2);
+            }
+        }
     }
     const lines = result.lines.map((l, i) => { const source = p.lines[input.findIndex(x => x.key === l.source)]; return { line_no: i + 1, productId: Number(source.productId), qty: Number(l.quantity), unitPrice: Number(l.unitPrice), note: source.note ?? null, options: (source.options ?? []).map(o => ({ optionId: Number(o.optionId), quantity: Number(o.quantity ?? 1) })), audit: l }; });
     const id = randomUUID(), payload = { ...result, orderReference: p.orderReference ? String(p.orderReference).trim().slice(0, 100) : null, coupon, membership, points, stamps, loyaltyCustomerId: points || stamps ? Number(p.customerId) : null, lines, optionPrices: options.filter(o => p.lines.some(l => l.options?.some(x => Number(x.optionId) === o.id))).map(o => ({ id: o.id, price: Number(o.price_delta) })), catalog: p.lines.map(l => ({ id: Number(l.productId), price: Number(products.find(x => x.uuid === ids.find(y => y.id === Number(l.productId))?.uuid).price) })) };

@@ -3,6 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.politicaVacia = void 0;
 exports.centavos = centavos;
+exports.redondearGranelCentavos = redondearGranelCentavos;
+exports.precioGranel = precioGranel;
 exports.validarPolitica = validarPolitica;
 exports.vigente = vigente;
 exports.cotizar = cotizar;
@@ -13,6 +15,37 @@ function centavos(s) {
         throw new Error('Importe inválido: usa hasta dos decimales.');
     const [a, b = ''] = String(s).split('.');
     return BigInt(a) * 100n + BigInt(b.padEnd(2, '0'));
+}
+/**
+ * GRANEL: EL IMPORTE SE REDONDEA A MEDIO PESO.
+ *
+ * El jamón, el queso o el frijol se piden por peso o por dinero, y la base
+ * guarda la cantidad con 2 decimales: «$15 de jamón a $189» son 0.08 kg, que
+ * dan $15.12. En el mostrador se cobra redondo:
+ *
+ *   - menos de 35 centavos: baja al peso      (15.18 -> 15.00)
+ *   - de 35 a 74 centavos:  queda en 50       (15.35 -> 15.50, 15.60 -> 15.50)
+ *   - desde 75 centavos:    sube al peso      (15.75 -> 16.00)
+ *
+ * La cantidad no se toca (es lo que salió del almacén); lo que se ajusta es
+ * el precio por unidad de ESE renglón, con 2 decimales, para que cantidad ×
+ * precio dé el importe redondo. Hasta 1 kg el resultado es exacto al
+ * centavo; con más de 1 kg puede quedar a un centavo.
+ */
+function redondearGranelCentavos(c) {
+    const pesos = Math.floor(c / 100), resto = c - pesos * 100;
+    return pesos * 100 + (resto < 35 ? 0 : resto < 75 ? 50 : 100);
+}
+/** Precio por unidad de un renglón a granel para que cantidad × precio quede redondo. */
+function precioGranel(qty, precio) {
+    const q = Math.round(Number(qty) * 100), p = Math.round(Number(precio) * 100);
+    if (!(q > 0) || !(p > 0))
+        return Number(precio);
+    const objetivo = redondearGranelCentavos(Math.round(q * p / 100));
+    /* Tan poquito que redondea a $0: no se regala, se cobra lo que es. */
+    if (objetivo <= 0)
+        return Number(precio);
+    return Math.round(objetivo * 100 / q) / 100;
 }
 const signedCentavos = (s) => s.startsWith('-') ? -centavos(s.slice(1)) : centavos(s);
 const dinero = (n) => n < 0n ? '-' + dinero(-n) : `${n / 100n}.${String(n % 100n).padStart(2, '0')}`;

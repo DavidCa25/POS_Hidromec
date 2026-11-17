@@ -1300,7 +1300,8 @@ export class Venta implements OnInit, OnDestroy {
     const l = this.items[i];
     if (!l?.decimal || l.enviada != null) return;
     const uom = this.catalog.findById(l.productId)?.base_uom ?? 'kg';
-    const q = await this.preguntarCantidad(l.productName, l.effectiveUnitPrice, uom, l.qty);
+    /* El precio por kilo, no el del renglón ya redondeado a medio peso. */
+    const q = await this.preguntarCantidad(l.productName, l.options.length ? l.effectiveUnitPrice : l.unitPrice, uom, l.qty);
     if (q != null) this.cart.setQty(l, q);
   }
 
