@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 42 de 181 acciones (23 %)».
+Además imprime el avance, por ejemplo «asistente: 60 de 180 acciones (33 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -291,6 +291,33 @@ Los socios no están en el catálogo de personas: el intérprete recibe la lista
 socios activos y la regla (`lenguaje/socios.js`) solo entra si el nombre
 dicho es de uno. «El cajero sacó 300» no es un socio. Sin la aplicación de
 Socios o Propinas encendida, esas frases no se entienden como suyas.
+
+### Servicios
+
+Reglas en `lenguaje/servicios.js`. Solo con Servicios encendido, y solo si la
+persona (cliente o profesional) o el servicio existen: si no, la frase sigue
+su camino («Pedro trabaja de 9 a 6» no es un horario si Pedro no es
+profesional).
+
+| Frase | Qué hace |
+|---|---|
+| «abre una orden para doña Mary: no prende la licuadora» | `servicios:orden-crear` (abierta, en esta caja). |
+| «la orden 12 ya está lista», «la orden 12 está en proceso», «entrega la orden 12» | `servicios:orden-estado`. Entregar pide que esté cobrada. |
+| «el cliente autorizó la orden 12 por teléfono» | `servicios:orden-autorizar` (mostrador, teléfono o WhatsApp). |
+| «cancela la orden 12, ya no lo quiso» | `servicios:orden-cancelar`; sin motivo, lo pregunta. |
+| «el diagnóstico de la orden 12 es: falla el motor» | `servicios:orden-actualizar` con el resto de la orden igual. |
+| «ponle 2 balatas a la orden 12», «el cambio de aceite de la orden 12 ya está hecho / a 350» | `servicios:linea-agregar`, `servicios:linea-actualizar`. |
+| «llegó doña Mary a su cita» | `servicios:cita-a-orden` con su cita de hoy. |
+| «crea el servicio Corte de dama a 250 de 45 minutos», «desactiva el servicio Tinte» | `servicios:guardar-servicio`, `servicios:activar-servicio`. |
+| «mi negocio es una barbería» | `servicios:elegir-giro`. |
+| «registra el carro de doña Mary: Nissan Versa 2018 placas ABC1234» | `servicios:guardar-activo` (vehículo, mascota, equipo o inmueble). |
+| «da de alta a la estilista Paola Ruiz», «desactiva a Laura» | `servicios:guardar-profesional`, `servicios:activar-profesional`. |
+| «Laura hace cortes», «Laura ya no hace tintes» | `servicios:asignar-profesionales` con la lista completa del servicio. |
+| «Laura trabaja de lunes a viernes de 9 a 6», «… los sábados de 10 a 2» | `servicios:guardar-horario`: esos días se reemplazan, los demás se quedan. |
+| «Laura no viene el viernes», «Laura sale de vacaciones del 1 al 15 de diciembre», «siempre sí viene Laura el viernes» | `servicios:guardar-ausencia`, `servicios:borrar-ausencia`. Avisa de sus citas esos días. |
+
+Los cambios a una orden llevan su testigo de versión (`rowver`): si alguien la
+cambió entre la tarjeta y el «Confirmar», el canal lo rechaza.
 
 ## El loop de entrenamiento
 

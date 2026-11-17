@@ -463,6 +463,61 @@ try {
 
   const rProp = await pedirC('propinas.repartir', {});
   check(!rProp.plan && /propinas|activad/i.test(rProp.texto), 'propinas sin activar o sin pendientes: no hay tarjeta', rProp.texto);
+
+  /* 12. Servicios: el mismo procedimiento con el payload de cada tarjeta. */
+  seccion('12. Servicios: servicio, profesional, horario, ausencia, orden y renglón');
+  const rSv = await pedirC('servicio.crear', { nombre: ex('QA Corte de dama'), precio: ex(250), duracion: ex(45) });
+  const sv = rSv.plan?.ejecutar.payload;
+  const rsv = await pool.request().input('product_id', sql.Int, null).input('nombre', sql.NVarChar(100), sv.nombre).input('price', sql.Decimal(10, 2), sv.precio)
+    .input('part_number', sql.NVarChar(100), null).input('category_id', sql.Int, null).input('clave_prod_serv', sql.NVarChar(8), null).input('clave_unidad', sql.NVarChar(5), null)
+    .input('tasa_iva', sql.Decimal(5, 4), null).input('duration_minutes', sql.Int, sv.duracionMinutos).input('requires_professional', sql.Bit, 1)
+    .input('default_commission_pct', sql.Decimal(5, 2), null).input('schedulable', sql.Bit, 1).input('notes', sql.NVarChar(400), null).execute('sp_service_save').catch((e) => ({ error: e.message }));
+  const corte = Number(await escalar("SELECT p.id FROM dbo.services s JOIN dbo.products p ON p.id = s.product_id WHERE p.nombre = N'QA Corte de dama'"));
+  check(rSv.plan?.ejecutar.api === 'electronAPI.serviciosGuardarServicio' && corte > 0, 'servicio nuevo con precio y duración', rsv.error || '');
+
+  const rPa = await pedirC('profesional.alta', { nombre: ex('QA Laura'), puesto: ex('Estilista') });
+  const pa2 = rPa.plan?.ejecutar.payload;
+  await pool.request().input('id', sql.Int, null).input('full_name', sql.NVarChar(120), pa2.nombre).input('title', sql.NVarChar(60), pa2.puesto).input('phone', sql.NVarChar(30), null)
+    .input('email', sql.NVarChar(120), null).input('user_id', sql.Int, null).input('default_commission_pct', sql.Decimal(5, 2), pa2.comisionPct ?? 0).input('color', sql.NVarChar(9), null).execute('sp_professional_save');
+  const laura = Number(await escalar("SELECT id FROM dbo.professionals WHERE full_name = N'QA Laura'"));
+  check(laura > 0, 'profesional nueva por el canal de Servicios');
+
+  const rAs = await pedirC('profesional.servicio', { profesional: ex(laura), producto: ex(corte), quitar: ex(false) });
+  await pool.request().input('service_product_id', sql.Int, corte).input('asignaciones_json', sql.NVarChar(sql.MAX), JSON.stringify(rAs.plan.ejecutar.payload.asignaciones)).execute('sp_set_service_professionals');
+  check(Number(await escalar(`SELECT COUNT(*) FROM dbo.service_professionals WHERE service_product_id = ${corte} AND professional_id = ${laura}`)) === 1, 'Laura hace cortes (la lista conserva a los demás)');
+
+  const rHo = await pedirC('profesional.horario', { profesional: ex(laura), dias: ex([2, 3, 4, 5, 6]), desde: ex('09:00'), hasta: ex('18:00') });
+  await pool.request().input('professional_id', sql.Int, laura).input('franjas_json', sql.NVarChar(sql.MAX), JSON.stringify(rHo.plan.ejecutar.payload.franjas)).execute('sp_set_professional_schedule');
+  const rHo2 = await pedirC('profesional.horario', { profesional: ex(laura), dias: ex([7]), desde: ex('10:00'), hasta: ex('14:00') });
+  check(rHo2.plan.ejecutar.payload.franjas.length === 6, 'el sábado se agrega y lunes a viernes se quedan', JSON.stringify(rHo2.plan.vista));
+
+  const rAu = await pedirC('profesional.ausencia', { profesional: ex(laura), fechas: ex({ desde: '2030-01-10', hasta: '2030-01-12' }), motivo: ex('Vacaciones') });
+  const au = rAu.plan.ejecutar.payload;
+  await pool.request().input('id', sql.Int, null).input('professional_id', sql.Int, laura).input('starts_at', sql.DateTime, new Date(au.desde)).input('ends_at', sql.DateTime, new Date(au.hasta))
+    .input('reason', sql.NVarChar(200), au.motivo).execute('sp_professional_time_off_save');
+  const rBo = await pedirC('profesional.ausencia_borrar', { profesional: ex(laura), fechas: ex({ desde: '2030-01-11', hasta: '2030-01-11' }) });
+  check(rBo.plan?.ejecutar.api === 'electronAPI.serviciosBorrarAusencia', 'la ausencia se guarda y «siempre sí viene» la encuentra');
+
+  const rOr = await pedirC('orden.crear', { cliente: ex(mary), reportado: ex('No prende la licuadora') });
+  const po = rOr.plan.ejecutar.payload;
+  const oc = await pool.request().input('customer_id', sql.Int, po.clienteId).input('customer_asset_id', sql.Int, null).input('reported_issue', sql.NVarChar(1000), po.reportado)
+    .input('promised_at', sql.DateTime, null).input('notes', sql.NVarChar(1000), null).input('user_id', sql.Int, 1).input('register_id', sql.Int, po.cajaId)
+    .input('status', sql.NVarChar(20), po.estado).execute('sp_service_order_create');
+  const ordenId = Number(oc.recordset?.[0]?.id ?? await escalar('SELECT MAX(id) FROM dbo.service_orders'));
+  check(ordenId > 0 && await escalar(`SELECT status FROM dbo.service_orders WHERE id = ${ordenId}`) === 'ABIERTA', 'orden abierta para la clienta con lo que reporta');
+  const rLi = await pedirC('orden.linea', { folio: ex(ordenId), producto: ex(corte), cantidad: ex(1) });
+  const li = rLi.plan.ejecutar.payload;
+  await pool.request().input('order_id', sql.Int, li.ordenId).input('product_id', sql.Int, li.productoId).input('quantity', sql.Decimal(12, 2), li.cantidad)
+    .input('professional_id', sql.Int, null).input('unit_price', sql.Decimal(12, 2), li.precio).input('commission_pct', sql.Decimal(5, 2), null)
+    .input('notes', sql.NVarChar(400), null).input('user_id', sql.Int, 1).execute('sp_service_order_add_line');
+  check(Number(await escalar(`SELECT COUNT(*) FROM dbo.service_order_lines WHERE order_id = ${ordenId}`)) === 1, 'el renglón entra a la orden');
+  const rCa = await pedirC('orden.cancelar', { folio: ex(ordenId), motivo: ex('Ya no lo quiso') });
+  const ca = rCa.plan.ejecutar.payload;
+  await pool.request().input('id', sql.Int, ca.id).input('reason', sql.NVarChar(400), ca.motivo).input('user_id', sql.Int, 1)
+    .input('rowver', sql.Binary(8), Buffer.from(String(ca.rowver).replace(/^0x/i, ''), 'hex')).execute('sp_service_order_cancel');
+  check(await escalar(`SELECT status FROM dbo.service_orders WHERE id = ${ordenId}`) === 'CANCELADA', 'cancelar con el testigo de versión de la tarjeta');
+  const rCa2 = await pedirC('orden.cancelar', { folio: ex(ordenId), motivo: ex('x') });
+  check(!rCa2.plan && /ya estaba cancelada/.test(rCa2.texto), 'una orden cancelada no se ofrece otra vez');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

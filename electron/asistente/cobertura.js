@@ -112,6 +112,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'servicios:orden-enlazar-venta': 'Lo hace Venta sola al cobrar una orden (liga la venta con la orden en el mismo cobro); no es un paso aparte que alguien haga a mano.',
   'egresos:concepto-mover': 'Sube o baja un concepto en la lista: es acomodo visual, se hace arrastrando en la pantalla, no es una operación del negocio.',
   'cloud-delete-account': 'Borra la cuenta de la nube: irreversible, solo desde Configuración.',
   'cloud-ensure-provisioned': 'Alta en la nube: la hace la configuración inicial.',
@@ -197,7 +198,7 @@ const PENDIENTE = {
   'comandas': ['comandas:cancelar', 'comandas:reimprimir'],
   'commercial': ['commercial:save'],
   'cuentas': ['cuentas:abrir', 'cuentas:cliente', 'cuentas:cobrada', 'cuentas:enviar', 'cuentas:estado', 'cuentas:liberar'],
-  'ventas': ['devoluciones:cambio', 'servicios:orden-enlazar-venta', 'sp-update-sale', 'venta-suelta:guardar'],
+  'ventas': ['devoluciones:cambio', 'sp-update-sale', 'venta-suelta:guardar'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
   'estaciones': ['estaciones:guardar'],
   'catalogo': ['estaciones:producto-asignar', 'estaciones:productos', 'inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno'],
@@ -212,7 +213,7 @@ const PENDIENTE = {
   'propinas': ['propinas:activar', 'propinas:config-guardar'],
   'salon': ['salon:area-guardar', 'salon:mesa-guardar'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
-  'servicios': ['servicios:activar-activo', 'servicios:activar-profesional', 'servicios:activar-servicio', 'servicios:asignar-profesionales', 'servicios:borrar-ausencia', 'servicios:cita-a-orden', 'servicios:elegir-giro', 'servicios:guardar-activo', 'servicios:guardar-ausencia', 'servicios:guardar-horario', 'servicios:guardar-profesional', 'servicios:guardar-servicio', 'servicios:linea-actualizar', 'servicios:linea-agregar', 'servicios:orden-actualizar', 'servicios:orden-autorizar', 'servicios:orden-cancelar', 'servicios:orden-crear', 'servicios:orden-estado'],
+  'servicios': ['servicios:activar-activo'],
   'socios': ['socios:activar', 'socios:config-guardar'],
   'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],
   'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],

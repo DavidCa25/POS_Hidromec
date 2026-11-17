@@ -322,3 +322,42 @@ test('socios, propinas, gastos y producción hablando', () => {
     esperando: { intent: sin.intent, slots: sin.slots, falta: 'motivo' } });
   assert.equal(resp.intent, 'gasto.cancelar'); assert.equal(resp.slots.motivo.valor, 'lo capturé dos veces');
 });
+
+test('servicios hablando: órdenes, profesionales, horario, ausencias, catálogo, activos y giro', () => {
+  const personas = prepararCatalogo([{ id: 1, nombre: 'Doña Mary', tipo: 'cliente' }, { id: 4, nombre: 'Laura López', tipo: 'profesional' }]);
+  const cat = prepararCatalogo([{ id: 20, nombre: 'Cambio de aceite' }, { id: 21, nombre: 'Corte de cabello' }, { id: 22, nombre: 'Tinte' }, { id: 23, nombre: 'Balatas delanteras' }]);
+  const ahora = new Date(2026, 10, 17, 10);
+  const l = (texto, modulos = new Set(['servicios'])) => interprete.interpretar(texto, { catalogo: cat, personas, modulos, ahora });
+  const casos = [
+    ['abre una orden para doña mary: no prende la licuadora', 'orden.crear', { cliente: 1, reportado: 'No prende la licuadora' }],
+    ['la orden 12 ya está lista', 'orden.estado', { folio: 12, estado: 'TERMINADA' }],
+    ['entrega la orden 12', 'orden.estado', { folio: 12, estado: 'ENTREGADA' }],
+    ['el cliente autorizó la orden 12 por teléfono', 'orden.autorizar', { folio: 12, via: 'TELEFONO' }],
+    ['cancela la orden 12, ya no lo quiso', 'orden.cancelar', { folio: 12, motivo: 'Ya no lo quiso' }],
+    ['el diagnóstico de la orden 12 es: falla el motor', 'orden.diagnostico', { folio: 12, diagnostico: 'Falla el motor' }],
+    ['ponle 2 balatas delanteras a la orden 12', 'orden.linea', { folio: 12, producto: 23, cantidad: 2 }],
+    ['el cambio de aceite de la orden 12 ya está hecho', 'orden.linea_cambiar', { folio: 12, producto: 20, estado: 'HECHA' }],
+    ['el cambio de aceite de la orden 12 a 350', 'orden.linea_cambiar', { folio: 12, producto: 20, precio: 350 }],
+    ['llegó doña mary a su cita', 'cita.orden', { cliente: 1 }],
+    ['crea el servicio Corte de dama a 250 de 45 minutos', 'servicio.crear', { nombre: 'Corte de dama', precio: 250, duracion: 45 }],
+    ['desactiva el servicio tinte', 'servicio.activar', { producto: 22, activo: false }],
+    ['mi negocio es una barbería', 'servicio.giro', { preset: 'BELLEZA' }],
+    ['registra el carro de doña mary: Nissan Versa 2018 placas ABC1234', 'activo.crear', { cliente: 1, clase: 'VEHICULO', identificador: 'ABC1234' }],
+    ['da de alta a la estilista Paola Ruiz', 'profesional.alta', { nombre: 'Paola Ruiz', puesto: 'Estilista' }],
+    ['desactiva a laura', 'profesional.activar', { profesional: 4, activo: false }],
+    ['laura hace cortes de cabello', 'profesional.servicio', { profesional: 4, producto: 21, quitar: false }],
+    ['laura ya no hace tintes', 'profesional.servicio', { profesional: 4, producto: 22, quitar: true }],
+    ['laura trabaja de lunes a viernes de 9 a 6', 'profesional.horario', { profesional: 4, desde: '09:00', hasta: '18:00' }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  assert.deepEqual(l('laura trabaja de lunes a viernes de 9 a 6').slots.dias.valor, [2, 3, 4, 5, 6]);
+  assert.deepEqual(l('laura sale de vacaciones del 1 al 15 de diciembre').slots.fechas.valor, { desde: '2026-12-01', hasta: '2026-12-15' });
+  assert.deepEqual(l('laura no viene el viernes').slots.fechas.valor, { desde: '2026-11-20', hasta: '2026-11-20' });
+  /* Sin Servicios encendido, nada de esto; quien no es profesional, tampoco. */
+  assert.notEqual(l('la orden 12 ya está lista', new Set()).intent, 'orden.estado');
+  assert.notEqual(l('pedro trabaja de lunes a viernes de 9 a 6').intent, 'profesional.horario');
+});

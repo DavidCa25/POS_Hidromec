@@ -33,6 +33,7 @@ const EDITAR_PERSONA = { cliente: 'cliente.editar', proveedor: 'proveedor.editar
 const { catalogo: reglaCatalogo } = require('./catalogo');
 const { socios: reglaSocios } = require('./socios');
 const { gastos: reglaGastos } = require('./gastos');
+const { servicios: reglaServicios } = require('./servicios');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -385,6 +386,38 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (ep.valor != null) slots.valor = { valor: ep.valor, texto: ep.valorTexto, confianza: 'exacto' };
         return cerrar(EDITAR_PERSONA[tipo], slots, 0.95, []);
       }
+    }
+    /* Servicios: órdenes, profesionales, catálogo de servicios, activos del
+       cliente y giro (lenguaje/servicios.js). Una persona o producto que no
+       existe no cuenta: la frase sigue su camino. */
+    if (esperando?.intent === 'orden.cancelar' && esperando.falta === 'motivo') {
+      return cerrar('orden.cancelar', { ...esperando.slots, motivo: { valor: String(texto).trim().slice(0, 200), texto: String(texto).trim(), confianza: 'exacto' } }, 1, []);
+    }
+    const rv = !esperando && reglaServicios(texto, ahora);
+    if (rv && disponible(rv.intent, modulos)) {
+      const ex1 = (v, t = String(v)) => ({ valor: v, texto: t, confianza: 'exacto' });
+      const persona = (txt, tipo) => {
+        const lista = personas.filter((x) => x.tipo === tipo);
+        const r = lista.length && txt ? ex.producto(normalizar(txt).tokens, lista, { excluir: new Set() }) : null;
+        return r && (r.valor != null || r.opciones?.length) ? { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones } : null;
+      };
+      const producto = (txt) => {
+        const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null;
+        return ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? { prod: ap.prod, cant: ap.cants?.[0]?.valor ?? null } : null;
+      };
+      const slots = {};
+      for (const k of ['folio', 'reportado', 'motivo', 'diagnostico', 'via', 'autoriza', 'estado', 'precio', 'nombre', 'duracion', 'activo', 'preset',
+                       'clase', 'etiqueta', 'identificador', 'anio', 'puesto', 'quitar', 'dias', 'desde', 'hasta', 'fechas']) {
+        if (rv[k] != null) slots[k] = ex1(rv[k], typeof rv[k] === 'object' ? JSON.stringify(rv[k]) : String(rv[k]));
+      }
+      let ok = true;
+      if (rv.textoCliente != null) { const c = persona(rv.textoCliente, 'cliente'); if (c) slots.cliente = c; else ok = false; }
+      if (rv.textoProfesional != null) { const p = persona(rv.textoProfesional, 'profesional'); if (p) slots.profesional = p; else ok = false; }
+      if (rv.textoProducto != null) {
+        const p = producto(rv.textoProducto);
+        if (p) { slots.producto = p.prod; if (p.cant != null && rv.intent === 'orden.linea') slots.cantidad = ex1(p.cant); } else ok = false;
+      }
+      if (ok) return cerrar(rv.intent, slots, 0.95, []);
     }
     /* Socios y propinas: «Juan retiró 500», «liquida a los socios»,
        «reparte las propinas». El socio tiene que existir (y estar activo). */

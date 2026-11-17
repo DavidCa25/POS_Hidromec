@@ -57,4 +57,77 @@ module.exports = [
     ejemplos: ['que ordenes estan abiertas', 'ordenes pendientes', 'que equipos faltan por entregar', 'como va el taller',
                'ordenes por autorizar', 'que reparaciones hay'],
   },
+  /* Reglas de lenguaje/servicios.js, no clasificador. */
+  {
+    id: 'orden.crear', etiqueta: 'Abrir una orden de servicio', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, reportado: {} }, claves: ['orden'], ejemplos: [],
+  },
+  {
+    id: 'orden.estado', etiqueta: 'Cambiar el estado de una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, estado: { requerido: true } }, claves: ['orden'], ejemplos: [],
+  },
+  {
+    id: 'orden.autorizar', etiqueta: 'El cliente autorizó una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, via: {}, autoriza: {} }, claves: ['autorizo'], ejemplos: [],
+  },
+  {
+    id: 'orden.cancelar', etiqueta: 'Cancelar una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, motivo: {} }, claves: ['cancela'], ejemplos: [],
+  },
+  {
+    id: 'orden.diagnostico', etiqueta: 'Diagnóstico de una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, diagnostico: { requerido: true } }, claves: ['diagnostico'], ejemplos: [],
+  },
+  {
+    id: 'orden.linea', etiqueta: 'Agregar a una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, producto: { requerido: true }, cantidad: {} }, claves: ['agrega'], ejemplos: [],
+  },
+  {
+    id: 'orden.linea_cambiar', etiqueta: 'Cambiar un renglón de una orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, producto: { requerido: true }, estado: {}, precio: {} }, claves: ['orden'], ejemplos: [],
+  },
+  {
+    id: 'cita.orden', etiqueta: 'Pasar una cita a orden', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true } }, claves: ['cita'], ejemplos: [],
+  },
+  {
+    id: 'servicio.crear', etiqueta: 'Crear un servicio', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, precio: {}, duracion: {} }, claves: ['servicio'], ejemplos: [],
+  },
+  {
+    id: 'servicio.activar', etiqueta: 'Activar o desactivar un servicio', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true }, activo: {} }, claves: ['servicio'], ejemplos: [],
+  },
+  {
+    id: 'servicio.giro', etiqueta: 'Elegir el giro de servicios', tipo: 'accion', modulo: 'servicios', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { preset: { requerido: true } }, claves: ['negocio'], ejemplos: [],
+  },
+  {
+    id: 'activo.crear', etiqueta: 'Registrar un activo del cliente', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, clase: {}, etiqueta: {}, identificador: {}, anio: {} }, claves: ['registra'], ejemplos: [],
+  },
+  {
+    id: 'profesional.alta', etiqueta: 'Dar de alta un profesional', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, puesto: {} }, claves: ['profesional'], ejemplos: [],
+  },
+  {
+    id: 'profesional.activar', etiqueta: 'Activar o desactivar un profesional', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { profesional: { requerido: true }, activo: {} }, claves: ['desactiva'], ejemplos: [],
+  },
+  {
+    id: 'profesional.servicio', etiqueta: 'Qué servicios hace un profesional', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { profesional: { requerido: true }, producto: { requerido: true }, quitar: {} }, claves: ['hace'], ejemplos: [],
+  },
+  {
+    id: 'profesional.horario', etiqueta: 'Horario de un profesional', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { profesional: { requerido: true }, dias: { requerido: true }, desde: { requerido: true }, hasta: { requerido: true } }, claves: ['trabaja'], ejemplos: [],
+  },
+  {
+    id: 'profesional.ausencia', etiqueta: 'Ausencia de un profesional', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { profesional: { requerido: true }, fechas: { requerido: true }, motivo: {} }, claves: ['falta'], ejemplos: [],
+  },
+  {
+    id: 'profesional.ausencia_borrar', etiqueta: 'Quitar una ausencia', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_ADMINISTRAR', soloRegla: true,
+    slots: { profesional: { requerido: true }, fechas: { requerido: true } }, claves: ['viene'], ejemplos: [],
+  },
 ];
