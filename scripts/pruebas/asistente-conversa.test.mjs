@@ -361,3 +361,27 @@ test('servicios hablando: órdenes, profesionales, horario, ausencias, catálogo
   assert.notEqual(l('la orden 12 ya está lista', new Set()).intent, 'orden.estado');
   assert.notEqual(l('pedro trabaja de lunes a viernes de 9 a 6').intent, 'profesional.horario');
 });
+
+test('fidelización hablada: puntos, membresía, rifas, cupones y configuración', () => {
+  const personas = prepararCatalogo([{ id: 1, nombre: 'Doña Mary', tipo: 'cliente' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: [], personas, modulos: new Set(), ahora: HOY });
+  const casos = [
+    ['ponle 100 puntos a doña mary porque se le cobró doble', 'puntos.ajustar', { cliente: 1, cantidad: 100, nota: 'se le cobró doble' }],
+    ['quítale 50 puntos a doña mary', 'puntos.ajustar', { cliente: 1, cantidad: -50 }],
+    ['cancela la membresía de doña mary', 'club.cancelar', { cliente: 1 }],
+    ['cierra la rifa de navidad', 'rifa.cerrar', { textoRifa: 'navidad' }],
+    ['sortea la rifa de navidad con 3 ganadores', 'rifa.sortear', { textoRifa: 'navidad', ganadores: 3 }],
+    ['dale a doña mary un cupón de 10%', 'cupon.emitir', { cliente: 1, textoCupon: '10%', cantidad: 1 }],
+    ['genera 20 cupones de 2x1', 'cupon.emitir', { textoCupon: '2x1', cantidad: 20 }],
+    ['da 1 punto por cada 10 pesos', 'puntos.config', { puntos: 1, cadaMonto: 10 }],
+    ['los puntos caducan a los 12 meses', 'puntos.config', { caducaMeses: 12 }],
+    ['apaga los puntos', 'puntos.config', { activo: false }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  /* Un cliente que no existe no es un ajuste de puntos. */
+  assert.notEqual(l('ponle 100 puntos a perenganito').intent, 'puntos.ajustar');
+});

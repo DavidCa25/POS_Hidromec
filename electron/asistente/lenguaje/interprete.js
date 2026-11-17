@@ -34,6 +34,7 @@ const { catalogo: reglaCatalogo } = require('./catalogo');
 const { socios: reglaSocios } = require('./socios');
 const { gastos: reglaGastos } = require('./gastos');
 const { servicios: reglaServicios } = require('./servicios');
+const { fidelizacion: reglaFidelizacion } = require('./fidelizacion');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -418,6 +419,22 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (p) { slots.producto = p.prod; if (p.cant != null && rv.intent === 'orden.linea') slots.cantidad = ex1(p.cant); } else ok = false;
       }
       if (ok) return cerrar(rv.intent, slots, 0.95, []);
+    }
+    /* Puntos, membresías, rifas y cupones (lenguaje/fidelizacion.js). */
+    const rf = !esperando && reglaFidelizacion(texto);
+    if (rf && disponible(rf.intent, modulos)) {
+      const slots = {};
+      for (const k of ['cantidad', 'nota', 'textoRifa', 'ganadores', 'suplentes', 'textoCupon', 'puntos', 'cadaMonto', 'caducaMeses', 'porVisita', 'activo']) {
+        if (rf[k] != null) slots[k] = { valor: rf[k], texto: String(rf[k]), confianza: 'exacto' };
+      }
+      let ok = true;
+      if (rf.textoCliente) {
+        const lista = personas.filter((x) => x.tipo === 'cliente');
+        const r = lista.length ? ex.producto(normalizar(rf.textoCliente).tokens, lista, { excluir: new Set() }) : null;
+        if (r && (r.valor != null || r.opciones?.length)) slots.cliente = { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones };
+        else ok = false;
+      }
+      if (ok) return cerrar(rf.intent, slots, 0.95, []);
     }
     /* Socios y propinas: «Juan retiró 500», «liquida a los socios»,
        «reparte las propinas». El socio tiene que existir (y estar activo). */

@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 60 de 180 acciones (33 %)».
+Además imprime el avance, por ejemplo «asistente: 66 de 177 acciones (37 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -318,6 +318,21 @@ profesional).
 
 Los cambios a una orden llevan su testigo de versión (`rowver`): si alguien la
 cambió entre la tarjeta y el «Confirmar», el canal lo rechaza.
+
+### Fidelización
+
+Reglas en `lenguaje/fidelizacion.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «ponle 100 puntos a doña Mary porque se le cobró doble», «quítale 50 puntos a doña Mary» | `puntos:ajustar`, con el saldo antes → después. No deja saldo negativo. |
+| «cancela la membresía de doña Mary» | `club:gestionar` (CANCELAR) sobre su membresía activa. |
+| «cierra la rifa de Navidad», «sortea la rifa de Navidad con 3 ganadores» | `raffles:close`, `raffles:draw`. Sortear pide que esté cerrada y es irreversible. |
+| «dale a doña Mary un cupón de 10%», «genera 20 cupones de 2x1» | `coupons:issue` con la definición que coincide por nombre, % o monto. |
+| «da 1 punto por cada 10 pesos», «los puntos caducan a los 12 meses», «apaga los puntos» | `puntos:config-guardar` con la configuración completa y solo ese cambio. |
+
+A propósito manuales: el canje del cupón (lo hace el cobro), escanear el pase
+de la cartera y girar la ruleta (lo hace el cliente).
 
 ## El loop de entrenamiento
 

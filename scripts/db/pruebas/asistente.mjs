@@ -518,6 +518,24 @@ try {
   check(await escalar(`SELECT status FROM dbo.service_orders WHERE id = ${ordenId}`) === 'CANCELADA', 'cancelar con el testigo de versión de la tarjeta');
   const rCa2 = await pedirC('orden.cancelar', { folio: ex(ordenId), motivo: ex('x') });
   check(!rCa2.plan && /ya estaba cancelada/.test(rCa2.texto), 'una orden cancelada no se ofrece otra vez');
+
+  /* 13. Fidelización. */
+  seccion('13. Puntos, cupones y rifas');
+  const rPc = await pedirC('puntos.config', { puntos: ex(1), cadaMonto: ex(10) });
+  const pc2 = rPc.plan?.ejecutar.payload;
+  check(rPc.plan?.ejecutar.api === 'electronAPI.puntosConfigGuardar' && pc2.activo === true && pc2.puntos === 1 && pc2.cadaMonto === 10, 'puntos: 1 por cada $10, encendidos', JSON.stringify(rPc.plan?.vista));
+  try {
+    await pool.request().input('enabled', sql.Bit, 1).input('per_amount', sql.Decimal(12, 2), pc2.cadaMonto).input('points_per', sql.Int, pc2.puntos)
+      .input('visit_points', sql.Int, pc2.porVisita || 0).input('expiry_months', sql.Int, pc2.caducaMeses).execute('sp_loyalty_points_config_save');
+    const rPc2 = await pedirC('puntos.config', { caducaMeses: ex(12) });
+    check(rPc2.plan.ejecutar.payload.cadaMonto === 10 && rPc2.plan.ejecutar.payload.caducaMeses === 12, 'cambiar la caducidad conserva la regla guardada');
+  } catch (e) { check(false, 'el SP guarda la configuración de puntos', e.message); }
+  const rAj = await pedirC('puntos.ajustar', { cliente: ex(mary), cantidad: ex(100), nota: ex('se le cobró doble') });
+  check(rAj.plan?.ejecutar.api === 'electronAPI.puntosAjustar' && rAj.plan.ejecutar.payload.cantidad === 100, 'ajuste de 100 puntos con motivo');
+  const rCup = await pedirC('cupon.emitir', { textoCupon: ex('qa inexistente'), cantidad: ex(1) });
+  check(!rCup.plan, 'un cupón que no existe no se emite', rCup.texto);
+  const rRifa = await pedirC('rifa.sortear', { textoRifa: ex('navidad') });
+  check(!rRifa.plan, 'sin rifas abiertas no hay sorteo', rRifa.texto);
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

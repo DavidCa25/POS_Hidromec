@@ -57,4 +57,29 @@ module.exports = [
     claves: ['telefono', 'correo', 'limite', 'rfc'],
     ejemplos: [],
   },
+  /* Fidelización: reglas de lenguaje/fidelizacion.js, no clasificador. */
+  {
+    id: 'puntos.ajustar', etiqueta: 'Ajustar puntos de un cliente', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, cantidad: { requerido: true }, nota: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'club.cancelar', etiqueta: 'Cancelar una membresía', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, nota: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.cerrar', etiqueta: 'Cerrar una rifa', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.sortear', etiqueta: 'Sortear una rifa', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true }, ganadores: {}, suplentes: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cupon.emitir', etiqueta: 'Emitir cupones', tipo: 'accion', permiso: 'CREDITO_CUPONES', soloRegla: true,
+    slots: { textoCupon: { requerido: true }, cantidad: {}, cliente: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'puntos.config', etiqueta: 'Configurar los puntos', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { puntos: {}, cadaMonto: {}, caducaMeses: {}, porVisita: {}, activo: {} }, claves: [], ejemplos: [],
+  },
 ];

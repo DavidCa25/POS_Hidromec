@@ -154,6 +154,8 @@ function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async (
     equipo: () => { try { return equipo() || {}; } catch { return {}; } },
     cajaEquipo: () => { try { return Number(equipo()?.register?.id) || null; } catch { return null; } },
     cotizarCuenta: (lineas) => cotizarCuenta(lineas),
+    /** Sin acentos, minúsculas y espacios simples: para comparar nombres dichos. */
+    llano: (s) => require('../lenguaje/edicion').llano(String(s || '')).replace(/\s+/g, ' ').trim(),
   };
 
   /**

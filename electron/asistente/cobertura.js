@@ -112,6 +112,9 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'coupons:redeem': 'El cupón se consume solo al cobrar la venta que lo trae (SaleService.checkout); no es un paso aparte.',
+  'club:wallet-resolver': 'Se dispara al escanear el pase de la cartera del cliente en la caja: es lectura de un código, no una orden hablada.',
+  'dynamics:play': 'La ruleta la gira el cliente en la pantalla de cliente después de pagar; el resultado lo decide SQL, no quien opera.',
   'servicios:orden-enlazar-venta': 'Lo hace Venta sola al cobrar una orden (liga la venta con la orden en el mismo cobro); no es un paso aparte que alguien haga a mano.',
   'egresos:concepto-mover': 'Sube o baja un concepto en la lista: es acomodo visual, se hace arrastrando en la pantalla, no es una operación del negocio.',
   'cloud-delete-account': 'Borra la cuenta de la nube: irreversible, solo desde Configuración.',
@@ -194,7 +197,7 @@ const PENDIENTE = {
   'asistencia': ['asistencia:activar', 'asistencia:corregir', 'asistencia:horario-guardar', 'asistencia:marcar', 'asistencia:reglas-guardar'],
   'configuracion': ['backup-run-now', 'backup-set-config', 'export-database', 'modules:set', 'negocio:giro-guardar', 'registers-add', 'registers-set-active', 'update-business-config', 'users:create', 'users:set-active', 'users:set-permissions', 'users:update-role'],
   'cloud': ['cloud:crear-sucursal'],
-  'fidelizacion': ['club:gestionar', 'club:plan-guardar', 'club:wallet-emitir', 'club:wallet-resolver', 'coupons:issue', 'coupons:redeem', 'dynamics:play', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:ajustar', 'puntos:config-guardar', 'puntos:tarjeta-guardar', 'raffles:close', 'raffles:draw', 'raffles:save'],
+  'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
   'comandas': ['comandas:cancelar', 'comandas:reimprimir'],
   'commercial': ['commercial:save'],
   'cuentas': ['cuentas:abrir', 'cuentas:cliente', 'cuentas:cobrada', 'cuentas:enviar', 'cuentas:estado', 'cuentas:liberar'],
