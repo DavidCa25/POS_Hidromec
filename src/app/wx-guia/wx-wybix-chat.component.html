@@ -1,0 +1,119 @@
+<!-- EL CHAT DE WYBIX. Ver wx-wybix-chat.component.ts -->
+<section class="wch" data-guide="wybix-chat" aria-label="Conversación con Wybix">
+  <ol class="wch__lista" #lista aria-live="polite">
+    <li *ngFor="let m of asistente.mensajes(); trackBy: porId" class="wch__fila" [class.es-persona]="m.autor === 'persona'"
+        [attr.data-guide]="m.autor === 'wybix' ? 'wybix-mensaje' : 'persona-mensaje'">
+
+      <span class="wch__cara" *ngIf="m.autor === 'wybix'" aria-hidden="true">
+        <wx-mascota [estado]="m.tono === 'atencion' ? 'atencion' : m.tono === 'exito' ? 'exito' : m.tono === 'error' ? 'error' : 'idle'"
+                    [variante]="guia.variante()" [size]="26"></wx-mascota>
+      </span>
+
+      <div class="wch__globo" [ngClass]="'es-' + (m.tono || 'normal')">
+        <p class="wch__texto">{{ m.texto }}</p>
+        <!-- Leer en voz alta (VozRespuestaService): con la voz de Wybix (Piper) o una de Windows en español;
+             si no hay ninguna, la bocina ofrece bajar la de Wybix. -->
+        <button type="button" class="wch__leer" *ngIf="m.autor === 'wybix' && (voz.disponible() || voz.descargable())" (click)="leer(m)"
+                [attr.aria-label]="'Leer en voz alta'" data-guide="wybix-leer"><i class="ph ph-speaker-high" aria-hidden="true"></i></button>
+
+        <wx-grafica-chat *ngIf="m.grafica" [grafica]="m.grafica"></wx-grafica-chat>
+
+        <dl class="wch__datos" *ngIf="m.datos?.length">
+          <div *ngFor="let d of m.datos"><dt>{{ d.etiqueta }}</dt><dd>{{ d.valor }}</dd></div>
+        </dl>
+
+        <!-- La tarjeta de Confirmar: lo que va a pasar, ANTES de que pase. -->
+        <div class="wch__plan" *ngIf="m.plan as p" data-guide="wybix-plan" [attr.data-guide-estado]="m.planEstado">
+          <b class="wch__plantit">{{ p.titulo }}</b>
+          <dl class="wch__vista">
+            <div *ngFor="let d of p.vista"><dt>{{ d.etiqueta }}</dt><dd>{{ d.valor }}</dd></div>
+          </dl>
+          <p class="wch__aviso" *ngFor="let a of p.avisos"><i class="ph ph-warning" aria-hidden="true"></i> {{ a }}</p>
+          <p class="wch__nota" *ngIf="p.nivel === 'autorizar' && m.planEstado === 'listo'">Lo autoriza un encargado.</p>
+          <div class="wch__btns" *ngIf="m.planEstado === 'listo'">
+            <button type="button" class="wch__btn es-principal" data-guide="wybix-confirmar" (click)="asistente.confirmar(m)">Confirmar</button>
+            <button type="button" class="wch__btn" data-guide="wybix-cancelar" (click)="asistente.cancelar(m)">Cancelar</button>
+          </div>
+          <p class="wch__estado" *ngIf="m.planEstado === 'ejecutando'"><i class="ph ph-circle-notch wch__gira" aria-hidden="true"></i> Registrando…</p>
+          <p class="wch__estado es-ok" *ngIf="m.planEstado === 'hecho'"><i class="ph ph-check-circle" aria-hidden="true"></i> Hecho</p>
+          <p class="wch__estado es-mal" *ngIf="m.planEstado === 'fallido'"><i class="ph ph-x-circle" aria-hidden="true"></i> No se pudo</p>
+          <p class="wch__estado" *ngIf="m.planEstado === 'cancelado'">Cancelado</p>
+        </div>
+
+        <div class="wch__btns" *ngIf="m.opciones?.length && m.autor === 'wybix' && esUltimo(m)">
+          <button type="button" class="wch__btn" *ngFor="let o of m.opciones; let i = index" [class.es-principal]="i === 0 && !!m.hallazgo"
+                  data-guide="wybix-opcion" [attr.data-guide-clave]="o.etiqueta" (click)="opcion(o)">{{ o.etiqueta }}</button>
+        </div>
+      </div>
+    </li>
+
+    <li class="wch__fila" *ngIf="asistente.enviando()">
+      <span class="wch__cara" aria-hidden="true"><wx-mascota estado="idle" [variante]="guia.variante()" [size]="26"></wx-mascota></span>
+      <div class="wch__globo wch__pensando" aria-label="Wybix está pensando"><i></i><i></i><i></i></div>
+    </li>
+  </ol>
+
+  <div class="wch__atajos" *ngIf="!texto">
+    <button type="button" class="wch__chip" *ngFor="let a of atajos" (click)="asistente.enviar(a.texto)" data-guide="wybix-atajo">{{ a.etiqueta }}</button>
+  </div>
+
+  <!-- Lo que va entendiendo, antes de enviar: nada se adivina. -->
+  <div class="wch__entiende" *ngIf="texto && asistente.entendido() as e" data-guide="wybix-entiende">
+    <span class="wch__chip es-intent">{{ e.etiqueta }}</span>
+    <span class="wch__chip" *ngFor="let d of e.datos" [class.es-dudoso]="d.dudoso">{{ d.dudoso ? '¿' + (d.texto || d.clave) + '?' : d.texto }}</span>
+  </div>
+
+  <!-- La voz en español no viene en el instalador: se baja aquí, una vez, cuando alguien quiere dictar. -->
+  <div class="wch__voz" *ngIf="dictado.ofrecer()" data-guide="wybix-voz" [attr.data-guide-estado]="dictado.descargando() ? 'bajando' : dictado.error() ? 'error' : 'ofrece'">
+    <ng-container *ngIf="dictado.descargando(); else wchVozPregunta">
+      <p class="wch__voz-texto" role="status" aria-live="polite">
+        {{ dictado.etapa() === 'bajando' ? 'Bajando la voz en español…' : 'Preparándola…' }} {{ dictado.avance() }}%
+      </p>
+      <div class="wch__voz-barra" role="progressbar" aria-label="Descarga de la voz" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="dictado.avance()">
+        <span [style.width.%]="dictado.avance()"></span>
+      </div>
+    </ng-container>
+    <ng-template #wchVozPregunta>
+      <p class="wch__voz-texto" *ngIf="!dictado.error()">Para dictar, Wybix necesita la voz en español (40 MB). Se baja una sola vez; después funciona sin internet.</p>
+      <p class="wch__voz-texto es-error" *ngIf="dictado.error()" role="alert">{{ dictado.error() }}</p>
+      <div class="wch__voz-botones">
+        <button type="button" class="wch__chip es-intent" (click)="dictado.descargar()" data-guide="wybix-voz-descargar">{{ dictado.error() ? 'Reintentar' : 'Bajar la voz' }}</button>
+        <button type="button" class="wch__chip" (click)="dictado.ofrecer.set(false)" data-guide="wybix-voz-cerrar">Ahora no</button>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- La voz de Wybix no viene en el instalador: se baja aquí, una vez, cuando alguien quiere oírla. -->
+  <div class="wch__voz" *ngIf="voz.ofrecer()" data-guide="wybix-habla" [attr.data-guide-estado]="voz.descargando() ? 'bajando' : voz.error() ? 'error' : 'ofrece'">
+    <ng-container *ngIf="voz.descargando(); else wchHablaPregunta">
+      <p class="wch__voz-texto" role="status" aria-live="polite">Bajando la voz de Wybix… {{ voz.avance() }}%</p>
+      <div class="wch__voz-barra" role="progressbar" aria-label="Descarga de la voz de Wybix" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="voz.avance()">
+        <span [style.width.%]="voz.avance()"></span>
+      </div>
+    </ng-container>
+    <ng-template #wchHablaPregunta>
+      <p class="wch__voz-texto" *ngIf="!voz.error()">Para leerte las respuestas, Wybix necesita su voz ({{ voz.mb() }} MB). Se baja una sola vez; después habla sin internet.</p>
+      <p class="wch__voz-texto es-error" *ngIf="voz.error()" role="alert">{{ voz.error() }}</p>
+      <div class="wch__voz-botones">
+        <button type="button" class="wch__chip es-intent" (click)="bajarVoz()" data-guide="wybix-habla-descargar">{{ voz.error() ? 'Reintentar' : 'Bajar la voz' }}</button>
+        <button type="button" class="wch__chip" (click)="voz.ofrecer.set(false)" data-guide="wybix-habla-cerrar">Ahora no</button>
+      </div>
+    </ng-template>
+  </div>
+
+  <form class="wch__campo" (ngSubmit)="enviar()">
+    <input #campo type="text" name="texto" autocomplete="off" maxlength="400" data-teclado="TEXT"
+           [placeholder]="dictado.escuchando() ? (dictado.parcial() || 'Te escucho…') : 'Escríbele a Wybix… «registra merma de 6 donas»'"
+           [ngModel]="texto" (ngModelChange)="alEscribir($event)"
+           [disabled]="asistente.enviando()" data-guide="wybix-campo" aria-label="Escríbele a Wybix">
+    <!-- Dictado sin internet (DictadoService): sin el modelo de voz, el micrófono ofrece bajarlo. -->
+    <button type="button" class="wch__mic" *ngIf="dictado.hayMotor()" [class.es-escuchando]="dictado.escuchando()" (click)="microfono()"
+            [disabled]="asistente.enviando() || dictado.cargando()" [attr.aria-pressed]="dictado.escuchando()"
+            [attr.aria-label]="dictado.escuchando() ? 'Terminar de dictar' : 'Dictar'" data-guide="wybix-microfono">
+      <i class="ph" [class.ph-microphone]="!dictado.escuchando()" [class.ph-stop]="dictado.escuchando()" aria-hidden="true"></i>
+    </button>
+    <button type="submit" class="wch__enviar" [disabled]="!texto.trim() || asistente.enviando()" aria-label="Enviar" data-guide="wybix-enviar">
+      <i class="ph ph-arrow-up" aria-hidden="true"></i>
+    </button>
+  </form>
+</section>

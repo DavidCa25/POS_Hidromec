@@ -77,6 +77,17 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
                 color: 'orange',
                 size: '1x1',
                 load: () => import('../conceptos-egreso-panel/conceptos-egreso.component').then(m => m.ConceptosEgresoPanelComponent)
+            },
+            {
+                /* 0083: IEPS e impuestos locales además del IVA. Cambiar una
+                   tasa cambia lo que cobran todas las cajas: administrador. */
+                id: 'impuestos',
+                title: 'Impuestos',
+                desc: 'IEPS por tasa o por cuota, impuestos locales',
+                icon: 'percent',
+                color: 'purple',
+                size: '1x1',
+                load: () => import('../impuestos-panel/impuestos-panel.component').then(m => m.ImpuestosPanelComponent)
             }
         ]
     },

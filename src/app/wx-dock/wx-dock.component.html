@@ -25,7 +25,8 @@
             [attr.aria-label]="estadoWybix() === 'atencion' ? 'Wybix: hay cosas pendientes' : 'Wybix: todo en orden'"
             [attr.title]="estadoWybix() === 'atencion' ? 'Hay cosas pendientes' : 'Todo en orden'">
       <wx-mascota [estado]="estadoWybix()" [variante]="guia.variante()" [size]="32"></wx-mascota>
-      <span *ngIf="estadoWybix() === 'atencion'" class="wxdock__pulsopunto" aria-hidden="true"></span>
+      <span *ngIf="pendientesWybix() > 0; else soloPunto" class="wxdock__cuenta" data-guide="wybix-pendientes" aria-hidden="true">{{ pendientesWybix() > 9 ? '9+' : pendientesWybix() }}</span>
+      <ng-template #soloPunto><span *ngIf="estadoWybix() === 'atencion'" class="wxdock__pulsopunto" aria-hidden="true"></span></ng-template>
     </button>
 
     <!--

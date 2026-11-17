@@ -1,0 +1,319 @@
+# Frases completas: ventas. [producto] {persona}.
+
+@ consulta.hoy
+como voy hoy
+como vamos hoy
+cuanto he vendido
+cuanto llevo vendido
+cuanto vendi hoy
+cuanto vendimos hoy
+cuanto se ha vendido hoy
+ventas de hoy
+ventas del dia
+como van las ventas
+cuanto llevamos
+como va el dia
+como va la venta
+que tal vamos hoy
+que tal va el dia
+resumen del dia
+dame el resumen de hoy
+cuantos tickets llevo
+cuantas ventas llevo
+cuantas ventas van
+cuanto entro hoy
+cuanto dinero ha entrado
+cuanto ha entrado hoy
+dime cuanto llevo
+cuanto llevo de venta
+cuanto vendimos ayer
+cuanto vendi ayer
+como cerramos ayer
+como estuvo ayer
+como nos fue ayer
+ventas de ayer
+cuanto se vendio ayer
+ventas de la semana
+como voy esta semana
+cuanto llevo en la semana
+cuanto vendi esta semana
+como nos fue esta semana
+cuanto he vendido este mes
+ventas del mes
+cuanto llevo en el mes
+como va el mes
+cuanto vendi el mes pasado
+como nos fue el mes pasado
+cuanto vendi la semana pasada
+ventas de la semana pasada
+cuanto he vendido en el año
+ventas del año
+cuanto es la venta de hoy
+total de ventas
+total vendido hoy
+cuanto se ha cobrado hoy
+cuanto he cobrado
+que tal la venta
+cuanto lleva la caja de venta
+ya cuanto llevamos
+y como vamos
+como andamos de ventas
+como andamos hoy
+estamos vendiendo bien hoy
+cuanto es lo que llevo
+ticket promedio de hoy
+cuanto gasta cada cliente en promedio
+cuantos clientes han venido hoy
+cuantos clientes atendimos
+cuanta gente ha comprado hoy
+venta del dia de hoy
+cuanto vendio la tienda hoy
+como estuvo la venta en la mañana
+cuanto llevamos desde que abrimos
+resumen de ventas de la semana
+dame los numeros de hoy
+numeros del dia
+
+@ venta.top
+que es lo que mas se vende
+lo mas vendido
+lo mas vendido de hoy
+lo mas vendido de la semana
+lo mas vendido del mes
+que se vendio mas hoy
+que se vendio mas esta semana
+que se vende mas
+que vendo mas
+cual es mi producto estrella
+cual es el producto que mas sale
+que sale mas
+que es lo que mas sale
+los 10 mas vendidos
+top 10 de productos
+top de productos
+top de ventas
+productos mas vendidos
+que me compran mas
+que es lo que mas me compran
+que es lo que mas pide la gente
+que piden mas
+que se vuela mas rapido
+que es lo que mas jala
+que producto me deja mas venta
+que producto vende mas dinero
+cuales son mis productos estrella
+que bebida se vende mas
+que pan se vende mas
+que platillo sale mas
+que servicio se vende mas
+que fue lo mas vendido ayer
+que fue lo que mas se vendio el mes pasado
+ranking de productos
+dime los mas vendidos
+cuales son los que mas se venden
+lo que mas vendi la semana pasada
+que es lo mas pedido
+cual es el mas popular
+
+@ venta.por_pago
+cuanto vendi en efectivo
+cuanto vendi en efectivo hoy
+cuanto entro con tarjeta
+cuanto fue de tarjeta
+cuanto fue de tarjeta hoy
+cuanto me pagaron con tarjeta
+cuanto me pagaron con transferencia
+cuanto entro por transferencia
+cuanto se cobro en la terminal
+cuanto paso por la terminal
+ventas por forma de pago
+desglose por forma de pago
+cuanto fue efectivo y cuanto tarjeta
+cuanto es efectivo y cuanto tarjeta
+cuanto se vendio con tarjeta esta semana
+cuanto de transferencias llevo
+cuanto me depositaron hoy
+cuanto cobre en efectivo esta semana
+cuanto de tarjeta llevo en el mes
+cuanto voy a recibir de la terminal
+forma de pago de las ventas de hoy
+como me pagaron hoy
+cuanto fue a credito
+cuanto se vendio fiado hoy
+cuanto se vendio en vales
+cuanto pagaron con tarjeta ayer
+cuanto pagaron en efectivo ayer
+cuantas ventas fueron con tarjeta
+porcentaje de tarjeta
+cuanto cobro el banco de la terminal
+
+@ venta.horas
+a que hora vendo mas
+cual es mi hora pico
+cual es la hora pico
+que horario se vende mas
+a que hora se llena
+a que hora hay mas gente
+horas de mas venta
+cuando vendo mas en el dia
+en que horario hay mas clientes
+a que hora entra mas gente
+cual es la hora mas floja
+a que hora vendo menos
+que dia de la semana vendo mas
+que dia vendo menos
+que dia se vende mas
+a que hora me conviene abrir
+a que hora conviene cerrar
+cuando necesito mas gente en caja
+en que horas se junta la gente
+ventas por hora
+ventas por hora de hoy
+como se reparte la venta en el dia
+a que hora empieza a vender
+a que hora es la hora muerta
+cuando esta mas tranquilo
+que dia es el mas fuerte
+cual es el mejor dia de venta
+
+@ venta.comparar
+por que bajaron las ventas
+por que vendi menos hoy
+por que vendi menos esta semana
+compara esta semana con la pasada
+compara las ventas con la semana pasada
+compara este mes con el pasado
+vendi mas o menos que la semana pasada
+vendi mas o menos que ayer
+como voy contra el mes pasado
+como voy contra la semana pasada
+que diferencia hay con la semana pasada
+estoy vendiendo mas o menos
+voy mejor o peor que el mes pasado
+subieron o bajaron las ventas
+bajaron las ventas
+por que no estoy vendiendo
+por que esta floja la venta
+que paso con las ventas
+que me esta bajando la venta
+que producto dejo de venderse
+que se esta vendiendo menos que antes
+que producto bajo su venta
+estoy creciendo
+estoy creciendo o no
+como voy comparado con antes
+cuanto creci este mes
+cuanto baje esta semana
+en que porcentaje subi
+estoy mejor que el año pasado
+por que el mes pasado vendi mas
+
+@ venta.buscar
+busca la venta 1234
+busca el ticket 552
+ticket 889
+que tenia el ticket 452
+muestrame la venta 3021
+folio 7781
+busca el folio 1203
+quien vendio el ticket 330
+de cuanto fue la venta 1550
+que se vendio en el ticket 98
+detalles del ticket 4410
+la venta numero 2210
+encuentra la venta 845
+abre el ticket 6002
+dime que llevaba el folio 315
+cuando fue la venta 1904
+como pagaron el ticket 77
+el ticket 1500 se pago con tarjeta
+quien cobro la venta 2019
+revisa el ticket 640
+busca la nota 233
+venta folio 1102
+
+@ venta.cotizar
+cuanto es 3 [cocas] y 2 [sabritas]
+cuanto son 3 [cocas de 600]
+cuanto le cobro por 2 [conchas]
+cuanto le cobro por 5 [donas glaseadas] y 2 [lattes chicos]
+suma 2 [tortas de milanesa] y 3 [aguas de jamaica]
+cuanto sale una [coca] con unas [sabritas]
+cuanto seria 4 [panes de muerto]
+total de 6 [conchas] y un [americano]
+cuanto es una docena de [donas de chocolate]
+cuanto es media docena de [conchas]
+cuanto me sale 3 [atunes] y 2 [maruchan]
+cuanto le cobro a la señora por 2 [leches lala] y un [pan bimbo]
+cuanto son 10 [cervezas]
+cuanto cuestan 3 [cervezas corona]
+cuanto es un [corte de cabello] y una [barba]
+cuanto le cobro por un [tinte] y un [planchado]
+cuanto es 2 [chilaquiles verdes] y 2 [aguas de jamaica]
+haz la cuenta de 3 [tacos al pastor] y una [limonada]
+cuanto seria 5 [cuernitos] y 5 [bisquets]
+sumame 2 [garrafones] y un [hielo]
+cuanto es 1 [huevo] y 2 [tortillas]
+cuanto sale el kilo de [tortillas] y medio de [queso oaxaca]
+cuanto son 4 [frappes de moka]
+cuanto le cobro por 3 [lattes grandes] y 3 [croissants]
+cuanto pagan por 2 [manicure] y un [pedicure]
+dime cuanto es 2 [sabritas] 2 [doritos] y 4 [cocas]
+cuanto me da 6 [refrescos de naranja]
+cuanto es en total 2 [jabon zote] y 1 [cloro]
+cuanto sale el paquete de 2 [papel higienico] y 1 [detergente]
+cuanto vale todo 3 [molletes] y 3 [cafes americanos]
+
+@ venta.devolucion
+quiero hacer una devolucion
+hacer una devolucion
+devolucion del ticket 1234
+devolucion de la venta 880
+el cliente quiere devolver una [coca]
+el señor quiere devolver las [sabritas]
+reembolsa la venta 455
+regresar dinero de la venta 302
+devuelve el ticket 120
+cambio de producto
+el cliente quiere cambiar un producto
+me regresaron un producto
+me devolvieron una [leche lala] echada a perder
+devolverle el dinero a un cliente
+cancelar una venta
+cancela la venta 554
+se cobro de mas hay que regresar
+le cobre doble a un cliente
+regresale su dinero
+quiere su dinero de vuelta
+reembolso de tarjeta
+cambio por otro producto
+el producto salio malo y lo quiere devolver
+hay que cancelar el ticket 712
+regresa la venta 99
+
+@ venta.cobrar
+cobrale 2 [cocas]
+cobrale 3 [conchas] y un [latte chico]
+vendele 2 [sabritas] y 2 [cocas]
+cobra 5 [donas glaseadas]
+quiero cobrar 2 [tortas de milanesa]
+hazme una venta de 3 [garrafones]
+despacha 2 [cervezas corona]
+cobrame una [coca de 600]
+cobrale al señor 2 [maruchan] y un [atun]
+vende 1 [pan bimbo] y 2 [leches lala]
+cobra un [corte de cabello]
+cobrale el [tinte] a la señora
+cobrale 2 [chilaquiles verdes]
+cobrale a la mesa 2 [limonadas]
+vendele un [frappe de moka]
+cobra 6 [conchas] para llevar
+pasale 3 [cuernitos] a cobrar
+marcame 2 [aguas] y unos [doritos]
+cobrame 4 [panes de muerto]
+quiero venderle 2 [cervezas] y [hielo]
+cobra un [americano] y un [croissant]
+cobrale un [manicure]
+cobra 10 [tortillas]
+haz el cobro de 2 [huevos] y 1 [aceite]
+cobrame todo 3 [cocas] y 3 [sabritas]

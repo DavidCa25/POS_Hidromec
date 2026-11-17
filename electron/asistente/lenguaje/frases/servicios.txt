@@ -1,0 +1,184 @@
+# Frases completas: salón, barbería, spa, consultorio y taller. [producto] {persona}.
+
+@ cita.lista
+que citas tengo hoy
+que citas hay hoy
+citas de mañana
+citas de hoy
+agenda de {pedro}
+agenda de {karla} para mañana
+quien viene mañana
+quien viene hoy
+cuantas citas hay mañana
+cuantas citas hay hoy
+a quien le toca ahorita
+quien sigue
+que tiene {luis} hoy
+que tiene {sofia} mañana
+como esta la agenda de hoy
+como viene la agenda de mañana
+cuantas citas tiene {daniela}
+quien tiene cita en la tarde
+que citas hay el sabado
+citas del viernes
+citas de la semana
+cuantos clientes vienen hoy
+quien es la siguiente cita
+a que hora es la siguiente cita
+que citas faltan hoy
+a que hora viene {laura gomez}
+cuando tiene cita {doña mary}
+tiene cita {carlos ruiz}
+que dia viene {ana torres}
+agenda del dia
+citas pendientes de hoy
+que citas confirmadas hay
+quien no ha confirmado su cita
+cuantas citas tiene {pedro} esta semana
+que citas tiene {karla} el sabado
+
+@ cita.agendar
+agenda a {laura gomez} mañana a las 5
+cita para {doña mary} el viernes a las 4
+apartale a {ana torres} un [corte de cabello] mañana a las 11
+reserva un [tinte] para {rosa martinez} el sabado
+anota a {carlos ruiz} para [corte de barba] a las 6
+agendar cita
+quiero agendar una cita
+agenda a {fer sanchez} para un [manicure] mañana a las 10 de la mañana
+agendale a {lupita hernandez} [pedicure] el jueves a las 3
+cita de {toño} para [corte de cabello] hoy a las 7 con {pedro}
+pon a {juan perez} mañana a las 12 con {luis}
+agenda un [masaje relajante] para {ana torres} el sabado a las 9
+apartale lugar a {chela} a las 5 y media
+mete a {mario diaz} a las 4 con {karla}
+nueva cita para {laura gomez} [mechas] el viernes a las 10
+agenda [uñas acrilicas] para {rosa martinez} mañana a las 2
+reservale a {doña mary} un [peinado] el sabado a las 8 de la mañana
+cita con {sofia} para {carlos ruiz} mañana a las 6 pm
+{fer sanchez} quiere cita para [tratamiento capilar] el lunes a las 11
+agenda a {toño} para [depilacion de ceja] hoy a las 5
+programa una cita para {juan perez} pasado mañana a las 4
+agenda a {lupita hernandez} con {daniela} el martes a las 10
+apunta a {ana torres} para un [planchado] a las 3
+haz una cita para {mario diaz} el sabado
+agendame a {chela} para mañana
+quiere cita {laura gomez} el viernes en la tarde
+dale cita a {rosa martinez} mañana a las 1
+reserva a {don pepe} un [corte de barba] a las 6
+
+@ cita.cancelar
+cancela la cita de {laura gomez}
+{doña mary} cancelo su cita
+quita la cita de {carlos ruiz}
+{ana torres} ya no viene
+cancelar cita
+cancela la cita de {fer sanchez} de mañana
+borra la cita de {toño}
+{lupita hernandez} no va a poder venir
+cancela lo de {juan perez} de hoy
+{rosa martinez} cancelo
+quiero cancelar una cita
+anula la cita de {mario diaz}
+{chela} hablo para cancelar
+se cancela la cita de {don pepe}
+quita a {laura gomez} de la agenda
+{carlos ruiz} no viene hoy cancelala
+cancela la de las 5 de {ana torres}
+elimina la cita de {fer sanchez}
+
+@ cita.mover
+mueve la cita de {laura gomez} a las 6
+cambia a {doña mary} para mañana
+recorre la cita de {carlos ruiz} a las 5
+pasa a {ana torres} al viernes
+reprograma a {fer sanchez}
+cambia la cita de {toño} para el sabado a las 11
+{lupita hernandez} quiere cambiar su cita a mañana
+mueve a {juan perez} a las 4 y media
+pasa la cita de {rosa martinez} para la tarde
+cambia la hora de {mario diaz} a las 7
+recorre a {chela} una hora
+{don pepe} viene mas tarde muevelo a las 6
+cambia a {laura gomez} con {karla}
+pasale la cita de {ana torres} a {pedro}
+cambiar una cita
+quiero mover una cita
+reprogramar cita
+mueve la cita de {carlos ruiz} al lunes a las 10
+
+@ cita.libre
+hay espacio mañana a las 5
+esta libre {pedro} a las 4
+a que hora hay lugar mañana
+tengo hueco hoy
+cuando esta disponible {karla}
+cabe alguien a las 6
+hay lugar el sabado
+que horarios tengo libres mañana
+a que hora puede {luis}
+tiene espacio {sofia} hoy
+hay disponibilidad el viernes en la tarde
+me cabe una cita a las 12
+esta ocupado {pedro} a las 5
+que espacios hay hoy
+a que hora hay huecos el sabado
+puede {daniela} a las 3
+hay espacio para un [tinte] mañana
+cuando hay lugar para un [masaje relajante]
+que dia tiene libre {karla}
+hay chance a las 7
+
+@ servicios.profesional
+cuanto ha generado {pedro}
+comisiones de {karla} esta semana
+cuantos servicios hizo {luis}
+a cuantos atendio {sofia}
+quien atendio mas esta semana
+comisiones de la semana
+cuanto le toca de comision a {daniela}
+cuanto vendio {pedro} este mes
+cuantos cortes hizo {luis} hoy
+que profesional genera mas
+cuanto se le paga a {karla}
+comisiones del mes
+cuantos clientes atendio {sofia} ayer
+quien es el estilista que mas vende
+cuanto llevo de comisiones por pagar
+cuanto ha producido {daniela}
+ranking de profesionales
+cuanto genero cada barbero
+
+@ membresia.vencer
+que membresias se vencen
+membresias vencidas
+quien tiene que renovar
+mensualidades por vencer
+a quien se le vence la membresia esta semana
+membresias que vencen hoy
+quien no ha pagado su mensualidad
+socios con pago vencido
+que membresias vencen este mes
+cuantas membresias activas tengo
+a quien le cobro la mensualidad
+quien debe la mensualidad
+renovaciones pendientes
+quien esta por vencer
+
+@ orden.pendientes
+que ordenes estan abiertas
+ordenes pendientes
+que equipos faltan por entregar
+como va el taller
+ordenes por autorizar
+que reparaciones hay
+cuantas ordenes de servicio hay
+que trabajos estan pendientes
+que equipos estan listos
+que ordenes estan atrasadas
+que ordenes prometi para hoy
+que carros estan en el taller
+que falta por entregar hoy
+ordenes en proceso
+que ordenes esperan refaccion
+cuantos trabajos tengo abiertos

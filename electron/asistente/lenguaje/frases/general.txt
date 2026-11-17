@@ -1,0 +1,280 @@
+# Frases completas: conversación, ayuda, navegación, pendientes y sistema.
+# [producto] {persona}. Una frase por línea, como la escribe la gente.
+
+@ saludo
+hola
+hola wybix
+holaa
+hola buenos dias
+buenos dias wybix
+buen dia
+buenas tardes
+buenas noches
+buenas
+que onda
+que onda wybix
+que tal
+que hubo
+quiubo
+hey
+ey wybix
+gracias
+muchas gracias
+mil gracias
+gracias wybix
+ok gracias
+okey gracias
+perfecto gracias
+listo gracias
+va gracias
+sale gracias
+gracias amigo
+te pasaste gracias
+eres un crack
+adios
+bye
+nos vemos
+hasta mañana
+me voy
+ya me voy
+luego te hablo
+que tal tu dia
+como estas
+como andas
+todo bien
+genial
+excelente
+chido gracias
+orale gracias
+
+@ ayuda
+ayuda
+ayudame
+necesito ayuda
+que puedes hacer
+que sabes hacer
+para que sirves
+como te uso
+como funcionas
+que te puedo preguntar
+que te puedo pedir
+en que me puedes ayudar
+que cosas haces
+que mas haces
+dime que sabes hacer
+que comandos tienes
+no se que hacer
+no se como usarte
+explicame que haces
+que puedo escribir aqui
+que haces wybix
+eres un robot
+que tipo de cosas entiendes
+me ayudas
+puedes ayudarme con mi negocio
+como me ayudas con la tienda
+que tanto sabes del negocio
+que preguntas te puedo hacer
+dame ejemplos de lo que puedo pedir
+ensename que puedes hacer
+que opciones tengo contigo
+
+@ ayuda.como
+como hago una devolucion
+como registro una compra
+como se registra una compra
+donde veo los cortes
+como doy de alta un producto
+como agrego un producto nuevo
+como le hago para facturar
+como facturo una venta
+como se hace una factura
+enseñame a cobrar
+como cobro con tarjeta
+donde se cambian los precios
+donde cambio un precio
+como agrego un cliente
+como doy de alta un cliente
+como le doy credito a un cliente
+pasos para hacer el corte
+como se hace el corte de caja
+donde estan los reportes
+donde veo las ventas del mes
+como se usa el inventario
+como hago un conteo de inventario
+como hago un traspaso
+como registro un gasto
+como saco dinero de la caja
+como meto cambio a la caja
+como agrego un proveedor
+como le pago a un proveedor
+como registro un abono
+donde veo quien me debe
+como cancelo una venta
+como reimprimo un ticket
+como cambio la impresora
+como configuro el cajon
+como agrego un usuario
+como le quito permisos a un cajero
+como hago una receta
+donde se ponen los ingredientes
+como agendo una cita
+como cambio una cita
+donde veo la agenda
+como abro una mesa
+como mando una comanda a cocina
+como divido la cuenta
+como hago una oferta
+como pongo un descuento
+como importo mis productos de excel
+como respaldo la informacion
+donde veo las propinas
+como se usan los puntos
+como activo la facturacion
+
+@ ir_a
+abre inventario
+abre el inventario
+llevame a compras
+ir a ventas
+abre la venta
+quiero ver clientes
+muestrame produccion
+ve a configuracion
+abrir recetas
+ir al corte
+entra a reportes
+abre alertas
+llevame a proveedores
+abre gastos
+ir a inicio
+muestrame el inventario
+abre el cierre del dia
+pasame a inventario
+pasame a compras
+mandame a clientes
+llevame al inventario
+vamos a produccion
+abre la agenda
+llevame a la agenda
+abre mesas
+abre la cocina
+quiero ver la cocina
+abre facturacion
+llevame a facturas
+abre el estado de resultados
+ve a estadisticas
+abre las estadisticas
+quiero ver las graficas
+abre usuarios
+llevame a los usuarios
+abre el historial de ventas
+abre el historial de compras
+abre la pantalla de precios
+llevame a ofertas
+abre traspasos
+abre el conteo de inventario
+quiero hacer conteo fisico
+abre propinas
+abre asistencia
+ve a la pantalla de servicios
+abre profesionales
+abre las comisiones
+abre fidelizacion
+llevame a puntos
+abre pedidos en linea
+abre liquidaciones
+abre socios
+abre el importador
+abre empresas
+quiero ir a configuracion de impresora
+regresame al inicio
+ve al punto de venta
+pantalla de cobro
+llevame a cobrar
+abre el modulo de clientes
+entra a proveedores
+abreme gastos porfa
+inventario
+compras
+clientes
+proveedores
+gastos
+agenda
+recetas
+configuracion
+
+@ consulta.pendientes
+que pendientes tengo
+que tengo que revisar
+que problemas hay
+hay algo mal
+que me recomiendas
+como esta mi negocio
+algo que deba saber
+avisos
+que esta mal
+revisa mi negocio
+que hay pendiente
+que necesita mi atencion
+dame los pendientes
+que me falta revisar
+como ves el negocio
+que mejorarias
+que debo atender
+que tengo que atender
+que necesito atender
+que esta pendiente
+hay algo urgente
+que es lo mas urgente
+que alertas tengo
+tienes avisos para mi
+algo raro en el negocio
+que deberia revisar hoy
+que me sugieres hoy
+dime que esta fallando en la tienda
+que esta saliendo mal
+en que estoy perdiendo dinero
+que me recomiendas mejorar
+hay focos rojos
+que se te hace raro
+cual es el problema mas grande
+que deberia arreglar primero
+algun pendiente importante
+que hay de nuevo
+novedades
+que me tienes
+revisame todo
+dame un diagnostico del negocio
+como vamos en general
+
+@ sistema.estado
+como esta el sistema
+se hizo el respaldo
+ya se respaldo la informacion
+cuando fue el ultimo respaldo
+esta sincronizando la nube
+esta funcionando la nube
+se esta subiendo la informacion a la nube
+cuando vence la licencia
+cuantos dias me quedan de licencia
+la impresora esta bien
+esta conectada la impresora
+por que no imprime
+todo funciona bien
+hay algun problema con el sistema
+esta conectado a internet
+hay internet
+tengo espacio en el disco
+se esta llenando el disco
+esta bien la hora de la computadora
+la caja esta bien configurada
+revisa el sistema
+diagnostico del sistema
+como esta la computadora
+falla algo del sistema
+esta todo en orden con wybix
+el respaldo automatico esta prendido
+esta activa mi licencia
+se vencio mi licencia
+mi sistema esta actualizado

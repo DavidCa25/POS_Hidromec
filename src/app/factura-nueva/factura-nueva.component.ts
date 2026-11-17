@@ -12,6 +12,43 @@ export interface ConceptoFactura {
   claveUnidad?: string | null;
   taxObject?: string | null;
   taxRate?: number | null;
+  /**
+   * IEPS e impuestos locales de la venta (0083/0085), por PIEZA. Solo se usa
+   * si el concepto no se editó (precio y cantidad como se vendieron).
+   */
+  desglose?: DesgloseConcepto | null;
+}
+
+export interface DesgloseConcepto {
+  precioOriginal: number;
+  cantidadOriginal: number;
+  /** Precio sin IVA y sin IEPS (para desglosar el IEPS). */
+  sinIeps: number;
+  /** Precio sin IVA y sin el impuesto local, con el IEPS dentro (la forma de siempre). */
+  sinLocal: number;
+  ieps: { taxCode: '003'; taxTypeCode: 'Tasa' | 'Cuota'; taxRate: number; importe: number }[];
+  locales: { taxName: string; taxRate: number; taxAmount: number }[];
+}
+
+/** El desglose de un renglón vendido (sp_get_sale_by_folio: base_neta, impuestos_json). */
+export function desgloseDeVenta(d: any): DesgloseConcepto | null {
+  const imps: any[] = typeof d?.impuestos_json === 'string' ? JSON.parse(d.impuestos_json || '[]') : (d?.impuestos_json || []);
+  const q = Number(d?.quantity) || 0;
+  const precio = Number(d?.unitary_price) || 0;
+  if (!imps.length || d?.base_neta == null || !(q > 0)) return null;
+  const total = Number(d.line_total ?? q * precio);
+  const v = (d.objeto_impuesto ?? '02') === '02' ? Number(d.tasa_iva ?? 0.16) : 0;
+  const local = imps.filter((x) => x.clase === 'LOCAL').reduce((a, x) => a + Number(x.importe || 0), 0);
+  const b = Number(d.base_neta);
+  return {
+    precioOriginal: precio, cantidadOriginal: q,
+    sinIeps: b / q,
+    sinLocal: (total - local) / (1 + v) / q,
+    ieps: imps.filter((x) => x.clase === 'IEPS').map((x) => ({ taxCode: '003' as const, taxTypeCode: x.factor === 'Cuota' ? 'Cuota' as const : 'Tasa' as const,
+      taxRate: x.factor === 'Cuota' ? Number(x.importe) / q : Number(x.tasa), importe: Number(x.importe) })),
+    locales: imps.filter((x) => x.clase === 'LOCAL').map((x) => ({ taxName: String(x.nombre || 'Impuesto local').slice(0, 60),
+      taxRate: x.tasa != null ? Number(x.tasa) : (b > 0 ? Number(x.importe) / b : 0), taxAmount: Number(x.importe) })),
+  };
 }
 
 interface Receptor {
@@ -82,6 +119,31 @@ export class FacturaNueva implements OnInit {
   async ngOnInit() {
     await this.cargarConfigEmisor();
     await this.cargarCatalogos();
+    await this.desgloseDeLaVenta();
+  }
+
+  /**
+   * Venta y la caja táctil pasan sus propios conceptos (del carrito). Si esa
+   * venta llevó IEPS o impuestos locales (0083), los conceptos se toman de la
+   * venta guardada, que trae su desglose. Si no, no se toca nada.
+   */
+  private async desgloseDeLaVenta() {
+    if (this.saleId == null || !this.api?.getSaleByFolio) return;
+    try {
+      const resp = await this.api.getSaleByFolio(Number(this.saleId));
+      const details: any[] = resp?.success ? (resp.data?.details ?? resp.data?.detail ?? resp.data?.rows ?? []) : [];
+      if (!details.some((d) => desgloseDeVenta(d))) return;
+      this.conceptos = details.map((d: any) => ({
+        description: String(d.product_name ?? d.productName ?? d.nombre ?? d.name ?? `Producto #${d.product_id}`),
+        quantity: Number(d.quantity ?? 1),
+        unitPrice: Number(d.unitary_price ?? 0),
+        claveProdServ: d.clave_prod_serv ?? null,
+        claveUnidad: d.clave_unidad ?? null,
+        taxObject: d.objeto_impuesto ?? '02',
+        taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16,
+        desglose: desgloseDeVenta(d),
+      }));
+    } catch { /* sin la venta: los conceptos que llegaron */ }
   }
 
   private async cargarConfigEmisor() {
@@ -164,13 +226,14 @@ export class FacturaNueva implements OnInit {
       if (!details.length) throw new Error('La venta no tiene partidas.');
 
       this.conceptos = details.map((d: any) => ({
-        description: String(d.product_name ?? d.productName ?? d.name ?? `Producto #${d.product_id}`),
+        description: String(d.product_name ?? d.productName ?? d.nombre ?? d.name ?? `Producto #${d.product_id}`),
         quantity: Number(d.quantity ?? 1),
         unitPrice: Number(d.unitary_price ?? 0),
         claveProdServ: d.clave_prod_serv ?? null,
         claveUnidad: d.clave_unidad ?? null,
         taxObject: d.objeto_impuesto ?? '02',
-        taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16
+        taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16,
+        desglose: desgloseDeVenta(d),
       }));
 
       this.saleId = folio;
@@ -197,6 +260,26 @@ export class FacturaNueva implements OnInit {
     const t = this.tasaConcepto(c);
     const precio = Number(c.unitPrice || 0);
     return t > 0 ? precio / (1 + t) : precio;
+  }
+
+  // ---------- IEPS e impuestos locales (0083/0085) ----------
+  /* El IEPS va DENTRO del precio de cada concepto, como pide la ley cuando no
+     se traslada expresamente (público en general y clientes que no lo
+     acreditan). Si el cliente lo acredita, se puede desglosar: la nube lo
+     timbra desglosado solo si Fiscalapi calcula exactamente lo cobrado. */
+  desglosarIeps = false;
+
+  /** El desglose de un concepto, si sigue como se vendió. */
+  private desgloseVigente(c: ConceptoFactura): DesgloseConcepto | null {
+    const d = c.desglose;
+    if (!d) return null;
+    return Math.abs(Number(c.unitPrice) - d.precioOriginal) < 0.005 && Math.abs(Number(c.quantity) - d.cantidadOriginal) < 0.0001 ? d : null;
+  }
+  get iepsIncluido(): number {
+    return this.conceptos.reduce((a, c) => a + (this.desgloseVigente(c)?.ieps.reduce((s, x) => s + x.importe, 0) || 0), 0);
+  }
+  get localIncluido(): number {
+    return this.conceptos.reduce((a, c) => a + (this.desgloseVigente(c)?.locales.reduce((s, x) => s + x.taxAmount, 0) || 0), 0);
   }
 
   // ---------- Totales ----------
@@ -275,18 +358,38 @@ export class FacturaNueva implements OnInit {
         },
         formaPago: this.formaPago,
         metodoPago: this.metodoPago,
-        items: this.conceptos.map(c => ({
-          description: c.description,
-          quantity: Number(c.quantity),
-          // Base sin IVA: el PAC vuelve a sumar el IVA sobre esta base,
-          // de modo que el total coincide con el precio con IVA del ticket.
-          unitPrice: Number(this.baseUnitaria(c).toFixed(6)),
-          claveProdServ: c.claveProdServ || null,
-          claveUnidad: c.claveUnidad || null,
-          taxObject: c.taxObject || '02',
-          taxRate: this.tasaConcepto(c),
-          discount: 0
-        }))
+        items: this.conceptos.map(c => {
+          /* IEPS desglosado (si se pidió) o impuesto local fuera del precio: va
+             APARTE. Una nube que no lo conoce lo ignora y timbra como siempre. */
+          const d = this.desgloseVigente(c);
+          const conIeps = this.desglosarIeps && !!d?.ieps.length;
+          const desglose = d && (conIeps || d.locales.length)
+            ? { unitPrice: Number((conIeps ? d.sinIeps : d.sinLocal).toFixed(6)),
+                extraTaxes: conIeps ? d.ieps.map((x) => ({ taxCode: x.taxCode, taxTypeCode: x.taxTypeCode, taxRate: Number(x.taxRate.toFixed(6)) })) : [] }
+            : undefined;
+          return {
+            description: c.description,
+            quantity: Number(c.quantity),
+            // Base sin IVA: el PAC vuelve a sumar el IVA sobre esta base,
+            // de modo que el total coincide con el precio con IVA del ticket.
+            unitPrice: Number(this.baseUnitaria(c).toFixed(6)),
+            claveProdServ: c.claveProdServ || null,
+            claveUnidad: c.claveUnidad || null,
+            taxObject: c.taxObject || '02',
+            taxRate: this.tasaConcepto(c),
+            discount: 0,
+            ...(desglose ? { desglose } : {}),
+          };
+        }),
+        /* Impuestos locales (hospedaje): complemento de la factura. */
+        localTaxes: this.conceptos.flatMap((c) => this.desgloseVigente(c)?.locales || [])
+          .reduce((acc: { taxName: string; taxRate: number; taxAmount: number }[], x) => {
+            const y = acc.find((a) => a.taxName === x.taxName && Math.abs(a.taxRate - x.taxRate) < 1e-9);
+            if (y) y.taxAmount = Math.round((y.taxAmount + x.taxAmount) * 100) / 100; else acc.push({ ...x, taxAmount: Math.round(x.taxAmount * 100) / 100 });
+            return acc;
+          }, []),
+        /* Lo que cobró la caja: la nube solo desglosa si Fiscalapi calcula esto. */
+        totalEsperado: Math.round(this.total * 100) / 100,
       });
       if (!out?.success) throw new Error(out?.error || 'No se pudo timbrar la factura.');
 
@@ -313,7 +416,12 @@ export class FacturaNueva implements OnInit {
       });
 
       
-      await Swal.fire({ icon: 'success', title: 'Factura timbrada', html: `Folio fiscal:<br><b>${out.uuid || 'N/D'}</b>`, confirmButtonText: 'Listo' });
+      /* Se pidió desglosar y no se pudo: se timbró como siempre (mismo total), y se dice. */
+      const pidio = (this.desglosarIeps && this.iepsIncluido > 0) || this.localIncluido > 0;
+      const nota = pidio && out.desglose !== true
+        ? '<br><br><small>Se timbró con el IEPS / impuesto local dentro del precio (mismo total)' + (out.motivoSinDesglose ? `: ${String(out.motivoSinDesglose).replace(/[<>&]/g, '')}` : '.') + '</small>'
+        : '';
+      await Swal.fire({ icon: 'success', title: 'Factura timbrada', html: `Folio fiscal:<br><b>${out.uuid || 'N/D'}</b>${nota}`, confirmButtonText: 'Listo' });
       this.timbrada.emit(out);
       this.cerrar.emit();
     } catch (e: any) {

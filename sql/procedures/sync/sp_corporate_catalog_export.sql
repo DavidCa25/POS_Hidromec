@@ -1,5 +1,6 @@
 /* sp_corporate_catalog_export
- * Definicion canonica. No editar en SSMS: modificar este archivo y crear una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -81,6 +82,25 @@ BEGIN
                   JOIN dbo.modifier_groups g ON g.id = pmg.group_id
                  ORDER BY p.id, pmg.sort_order, g.id
                    FOR JSON PATH), '[]')) AS product_modifier_groups,
+            /* 0083: el catálogo de impuestos además del IVA y cuáles lleva cada
+               producto. Viajan por clave (los sembrados son iguales en todas
+               las bases; los propios llevan la de la matriz). */
+            JSON_QUERY(ISNULL((
+                SELECT i.clave, i.nombre, i.clase, i.factor,
+                       CONVERT(VARCHAR(20), i.tasa) AS tasa, CONVERT(VARCHAR(20), i.cuota) AS cuota,
+                       i.unidad, CAST(i.en_base_iva AS BIT) AS en_base_iva, i.nota,
+                       CAST(i.activo AS BIT) AS activo, CAST(i.sistema AS BIT) AS sistema
+                  FROM dbo.CAT_impuestos i
+                 ORDER BY i.id
+                   FOR JSON PATH, INCLUDE_NULL_VALUES), '[]')) AS taxes,
+            JSON_QUERY(ISNULL((
+                SELECT LOWER(CONVERT(VARCHAR(36), p.uuid)) AS product_uuid, i.clave AS tax_clave,
+                       CONVERT(VARCHAR(20), x.cantidad) AS cantidad
+                  FROM dbo.product_impuestos x
+                  JOIN dbo.products p ON p.id = x.product_id
+                  JOIN dbo.CAT_impuestos i ON i.id = x.impuesto_id
+                 ORDER BY p.id, i.id
+                   FOR JSON PATH, INCLUDE_NULL_VALUES), '[]')) AS product_taxes,
             JSON_QUERY(ISNULL((
                 SELECT LOWER(CONVERT(VARCHAR(36), r.uuid)) AS uuid,
                        LOWER(CONVERT(VARCHAR(36), pr.uuid)) AS product_uuid,

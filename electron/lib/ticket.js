@@ -19,6 +19,12 @@
  * exento, el ticket declaraba un impuesto que nadie cobro. Cuando la linea no
  * trae su tasa -tickets de un origen viejo- se cae a la tasa general, que es
  * lo que se hacia antes: nada empeora.
+ *
+ * IEPS Y LOCALES (0083): si el renglon trae su foto de impuestos
+ * (`base_neta` y `impuestos_json`, de sp_venta_impuestos), el desglose sale
+ * de ella: base sin ningun impuesto, cada impuesto con su importe y el IVA el
+ * resto. Se agrupan por etiqueta corta («IEPS 8%», «Imp. local 3%»): en 58 mm
+ * no cabe el nombre completo del catalogo.
  */
 
 const IVA_GENERAL = 0.16;
@@ -49,19 +55,39 @@ function tasaDeLinea(l) {
  * Desglose de la venta. Los precios de venta llevan el impuesto incluido, asi
  * que se separa hacia atras: base = importe / (1 + tasa).
  */
+/** «IEPS 8%», «IEPS cuota», «Imp. local 3%». */
+function etiquetaImpuesto(x) {
+  const pct = x.tasa != null ? ` ${Math.round(Number(x.tasa) * 10000) / 100}%` : ' cuota';
+  return `${x.clase === 'LOCAL' ? 'Imp. local' : 'IEPS'}${x.factor === 'Cuota' ? ' cuota' : pct}`;
+}
+
 function desglosar(lineas) {
   let total = 0, base = 0, impuesto = 0;
+  const otros = new Map();
   for (const l of lineas || []) {
     const qty = Number(l.quantity ?? l.qty ?? 0);
     const unit = Number(l.unitary_price ?? l.price ?? 0);
     const importe = Number(l.line_total ?? l.subtotal ?? (qty * unit)) || 0;
+    total += importe;
+    const foto = l.base_neta != null ? (typeof l.impuestos_json === 'string' ? JSON.parse(l.impuestos_json || '[]') : (l.impuestos_json || [])) : null;
+    if (foto && foto.length) {
+      const b = Number(l.base_neta) || 0;
+      let suma = 0;
+      for (const x of foto) {
+        const k = etiquetaImpuesto(x);
+        otros.set(k, (otros.get(k) || 0) + Number(x.importe || 0));
+        suma += Number(x.importe || 0);
+      }
+      base += b;
+      impuesto += importe - b - suma;
+      continue;
+    }
     const tasa = tasaDeLinea(l);
     const b = importe / (1 + tasa);
-    total += importe;
     base += b;
     impuesto += importe - b;
   }
-  return { total, base, impuesto };
+  return { total, base, impuesto, otros: [...otros].map(([etiqueta, importe]) => ({ etiqueta, importe })) };
 }
 
 /** Una fila de producto. En 58 mm el nombre necesita su propia linea. */
@@ -112,7 +138,7 @@ function construirTicketHtml(header, lineas, extras = {}) {
   const ancho = Number(extras.paperWidthMm) > 0 ? Number(extras.paperWidthMm) : 58;
   const negocio = extras.negocio || {};
 
-  const { total, base, impuesto } = desglosar(lineas);
+  const { total, base, impuesto, otros } = desglosar(lineas);
 
   const pagado = extras.pagado != null ? Number(extras.pagado)
                : (header?.paid_amount != null ? Number(header.paid_amount) : total);
@@ -147,6 +173,10 @@ function construirTicketHtml(header, lineas, extras = {}) {
   if(visible('discount') && Number(header?.commercial_discount)>0.004)totales.push(`<div><span>Ahorro en esta compra</span><span class="num">$${dinero(header.commercial_discount)}</span></div>`);
   totales.push(`<div><span>Subtotal</span><span class="num">$${dinero(base)}</span></div>`);
   // Un negocio que no cobra impuesto no necesita una linea de impuesto en 0.
+  /* IEPS y locales (0083): cada uno con su importe, antes del IVA. */
+  if (visible('tax')) {
+    for (const o of otros) if (o.importe > 0.004) totales.push(`<div><span>${esc(o.etiqueta)} incluido</span><span class="num">$${dinero(o.importe)}</span></div>`);
+  }
   if (visible('tax') && impuesto > 0.004) {
     totales.push(`<div><span>IVA incluido</span><span class="num">$${dinero(impuesto)}</span></div>`);
   }

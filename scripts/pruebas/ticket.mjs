@@ -159,6 +159,28 @@ check(!sinLogo.includes('class="pedido"') && !construirTicketHtml({ id: 9 }, mix
   'sin numero (o con uno invalido) no se imprime el bloque');
 check(!sinLogo.includes('{{PEDIDO_BLOCK}}'), 'y la marca desaparece aunque no haya numero');
 
+// ---------------------------------------------------------- 0083
+// IEPS y locales con la foto de la venta (sp_venta_impuestos): papas $58 con
+// IEPS 8%, dos refrescos $40 con cuota $1.80, noche $1,190 con hospedaje 3%.
+const conIeps = [
+  { quantity: 1, unitary_price: 58, line_total: 58, objeto_impuesto: '02', tasa_iva: 0.16, base_neta: 46.2963,
+    impuestos_json: JSON.stringify([{ clase: 'IEPS', factor: 'Tasa', tasa: 0.08, importe: 3.7037 }]) },
+  { quantity: 2, unitary_price: 20, line_total: 40, objeto_impuesto: '02', tasa_iva: 0.16, base_neta: 32.6828,
+    impuestos_json: [{ clase: 'IEPS', factor: 'Cuota', tasa: null, importe: 1.8 }] },
+  { quantity: 1, unitary_price: 1190, line_total: 1190, objeto_impuesto: '02', tasa_iva: 0.16, base_neta: 1000,
+    impuestos_json: JSON.stringify([{ clase: 'LOCAL', factor: 'Tasa', tasa: 0.03, importe: 30 }]) },
+  { quantity: 1, unitary_price: 116, line_total: 116, objeto_impuesto: '02', tasa_iva: 0.16, base_neta: null, impuestos_json: null },
+];
+const di = desglosar(conIeps);
+check(cerca(di.total, 1404), 'IEPS: total $1,404', di.total.toFixed(2));
+check(cerca(di.base, 46.2963 + 32.6828 + 1000 + 100), 'IEPS: subtotal = bases sin ningun impuesto', di.base.toFixed(2));
+const iepsTasa = di.otros.find((o) => o.etiqueta === 'IEPS 8%'), iepsCuota = di.otros.find((o) => o.etiqueta === 'IEPS cuota'), local = di.otros.find((o) => o.etiqueta === 'Imp. local 3%');
+check(iepsTasa && cerca(iepsTasa.importe, 3.70) && iepsCuota && cerca(iepsCuota.importe, 1.80) && local && cerca(local.importe, 30), 'IEPS 8% $3.70, IEPS cuota $1.80, Imp. local 3% $30', JSON.stringify(di.otros));
+check(cerca(di.impuesto, 8 + 5.5172 + 160 + 16), 'IVA: el resto, sin contar IEPS ni el local', di.impuesto.toFixed(2));
+check(cerca(di.base + di.impuesto + di.otros.reduce((a, o) => a + o.importe, 0), di.total), 'subtotal + impuestos = total exacto');
+const htmlIeps = construirTicketHtml({ payment_method: 'EFECTIVO' }, conIeps, { plantilla: PLANTILLA, negocio, paperWidthMm: 58 });
+check(htmlIeps.includes('IEPS 8% incluido') && htmlIeps.includes('$3.70') && htmlIeps.includes('Imp. local 3% incluido'), 'el ticket dice IEPS y el local antes del IVA');
+
 console.log(fallos ? `\nRESULTADO: ${fallos} fallas de ${pasos}` : `\nRESULTADO: ${pasos} ok · 0 fallas`);
 console.log('El ticket es lo unico que el cliente se lleva.');
 process.exit(fallos ? 1 : 0);

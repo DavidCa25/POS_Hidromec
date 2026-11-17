@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService, PAQUETES } from '../../services/auth.service';
@@ -6,6 +6,7 @@ import { CapabilityService, GiroServiciosService } from '../../core';
 import { WxAvatarComponent } from '../../app/wx-avatar/wx-avatar.component';
 import { EstadoMascota, WxMascotaComponent } from '../../app/wx-mascota/wx-mascota.component';
 import { GuiaService } from '../../app/wx-guia/guia.service';
+import { AsistenteService } from '../../core/asistente.service';
 
 /**
  * INICIO — la pantalla con la que empieza el dia.
@@ -218,7 +219,8 @@ export class Inicio implements OnInit {
    * pantalla decia "3 cosas necesitan tu atencion". Son el mismo negocio, asi
    * que ahora son el mismo calculo, en `GuiaService`.
    */
-  readonly estadoGuia = computed<EstadoMascota>(() => this.guia.estado());
+  readonly estadoGuia = computed<EstadoMascota>(() =>
+    ['critico', 'importante'].includes(this.asistente.resumen()?.masUrgente?.severidad ?? '') ? 'atencion' : this.guia.estado());
 
   /**
    * Lo que dice, y solo una linea.
@@ -227,7 +229,18 @@ export class Inicio implements OnInit {
    * segundos despues se corrige a "tres cosas pendientes" es peor que el
    * silencio.
    */
-  readonly frase = computed<string>(() => this.guia.frase());
+  readonly frase = computed<string>(() => this.urgente()?.titulo ?? this.guia.frase());
+
+  /* Wybix, el asistente: lo más urgente que encontró es lo primero que dice. */
+  readonly asistente = inject(AsistenteService);
+  readonly urgente = computed(() => this.asistente.resumen()?.masUrgente ?? null);
+  /** Tocar la frase abre el chat sobre ese hallazgo. */
+  async verUrgente() {
+    const h = this.urgente();
+    if (!h) return;
+    this.guia.abrir();
+    await this.asistente.accion({ intent: 'hallazgo.ver', params: { id: h.id }, etiqueta: h.titulo });
+  }
 
   get ticketPromedio(): number | null {
     const v = this.vendidoHoy(); const t = this.tickets();

@@ -18,6 +18,7 @@
               type="button"
               class="cs-tile"
               [ngClass]="'t-' + tile.size"
+              data-guide="config-mosaico" [attr.data-guide-clave]="tile.id"
               (click)="abrir(tile)">
 
         <span class="cs-tile-chip" [attr.data-c]="tile.color">

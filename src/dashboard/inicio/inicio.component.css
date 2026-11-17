@@ -231,3 +231,10 @@
 
 /* 0060 · Producción: el pie avisa si algo no alcanza. */
 .ini__accpie--falta { color: var(--wx-warning-ink); font-weight: 600; }
+
+/* Lo más urgente que encontró Wybix: se toca y abre su chat. */
+.ini__urgente { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left;
+  display: inline-flex; gap: 6px; align-items: center; text-decoration: underline; text-decoration-color: var(--wx-edge-strong);
+  text-underline-offset: 4px; }
+.ini__urgente:hover { text-decoration-color: currentColor; }
+.ini__urgente:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); border-radius: 6px; }

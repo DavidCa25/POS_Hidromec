@@ -106,7 +106,12 @@ USING (VALUES
     ('REFUND',           N'Devolucion en efectivo',        'DEVOLUCIONES', 60),
     ('WITHDRAW',         N'Retiro de caja',                'RETIROS',      70),
     ('SUPPLIER_PAYMENT', N'Pago a proveedor en efectivo',  'PROVEEDORES',  80),
-    ('EXPENSE',          N'Egreso en efectivo',            'EGRESOS',      90)
+    ('EXPENSE',          N'Egreso en efectivo',            'EGRESOS',      90),
+    /* 0079 socios y propinas */
+    ('PARTNER_OUT',      N'Retiro de socio',               'RETIROS',      72),
+    ('PARTNER_IN',       N'Aportacion de socio',           'ENTRADAS',     52),
+    ('TIP',              N'Propina en efectivo',           'ENTRADAS',     54),
+    ('TIP_PAYOUT',       N'Pago de propinas',              'RETIROS',      74)
 ) AS s (code, label, grupo, sort_order)
 ON t.code = s.code
 WHEN NOT MATCHED THEN
@@ -152,4 +157,30 @@ GO
 IF OBJECT_ID(N'dbo.menu_en_linea_config', 'U') IS NOT NULL
    AND NOT EXISTS (SELECT 1 FROM dbo.menu_en_linea_config WHERE id = 1)
     INSERT INTO dbo.menu_en_linea_config (id) VALUES (1);
+GO
+
+/* Catalogo de impuestos ademas del IVA (0083). Mismo MERGE que la migracion:
+ * las tasas conocidas encendidas; las cuotas y el hospedaje, apagados y sin
+ * valor (los captura el negocio). Sin esto, una instalacion nueva tendria la
+ * 0083 registrada y el catalogo vacio. */
+IF OBJECT_ID(N'dbo.CAT_impuestos', 'U') IS NOT NULL
+MERGE dbo.CAT_impuestos AS t
+USING (VALUES
+  ('IEPS_ALIMENTOS',        N'IEPS alimentos no básicos (alta densidad calórica)', 'IEPS',  'Tasa',  0.080000, NULL, NULL,        1, N'Botanas, dulces, chocolates, galletas, pan dulce empacado… con 275 kcal o más por cada 100 g.', 1),
+  ('IEPS_ALCOHOL_14',       N'IEPS bebidas alcohólicas y cerveza hasta 14°',       'IEPS',  'Tasa',  0.265000, NULL, NULL,        1, N'Cerveza, vino de mesa, sidra y bebidas con hasta 14° G.L.', 1),
+  ('IEPS_ALCOHOL_20',       N'IEPS bebidas alcohólicas de más de 14° hasta 20°',   'IEPS',  'Tasa',  0.300000, NULL, NULL,        1, N'Vinos generosos, licores suaves.', 1),
+  ('IEPS_ALCOHOL_MAS_20',   N'IEPS bebidas alcohólicas de más de 20°',             'IEPS',  'Tasa',  0.530000, NULL, NULL,        1, N'Tequila, mezcal, whisky, ron, vodka…', 1),
+  ('IEPS_ENERGIZANTES',     N'IEPS bebidas energizantes',                          'IEPS',  'Tasa',  0.250000, NULL, NULL,        1, NULL, 1),
+  ('IEPS_PLAGUICIDAS_1_2',  N'IEPS plaguicidas categorías 1 y 2',                  'IEPS',  'Tasa',  0.090000, NULL, NULL,        1, N'Según la categoría de toxicidad de la etiqueta.', 1),
+  ('IEPS_PLAGUICIDAS_3',    N'IEPS plaguicidas categoría 3',                       'IEPS',  'Tasa',  0.070000, NULL, NULL,        1, NULL, 1),
+  ('IEPS_PLAGUICIDAS_4',    N'IEPS plaguicidas categoría 4',                       'IEPS',  'Tasa',  0.060000, NULL, NULL,        1, NULL, 1),
+  ('IEPS_BEBIDAS_AZUCAR',   N'IEPS bebidas saborizadas con azúcar',                'IEPS',  'Cuota', NULL,     NULL, N'litro',    0, N'Refrescos, jugos y aguas con azúcar añadida. Pesos por litro: captura la cuota vigente del año.', 1),
+  ('IEPS_TABACO',           N'IEPS tabacos labrados (tasa)',                       'IEPS',  'Tasa',  NULL,     NULL, NULL,        0, N'Además lleva una cuota por cigarro: créala aparte. Captura la tasa vigente del año.', 1),
+  ('IEPS_TABACO_CUOTA',     N'IEPS cigarros (cuota por cigarro)',                  'IEPS',  'Cuota', NULL,     NULL, N'cigarro',  0, N'Pesos por cigarro: captura la cuota vigente del año.', 1),
+  ('LOCAL_HOSPEDAJE',       N'Impuesto sobre hospedaje (estatal)',                 'LOCAL', 'Tasa',  NULL,     NULL, NULL,        0, N'Entre 2% y 5% según el estado. No forma parte de la base del IVA.', 1)
+) AS s (clave, nombre, clase, factor, tasa, cuota, unidad, activo, nota, sistema)
+   ON t.clave = s.clave
+WHEN NOT MATCHED THEN
+  INSERT (clave, nombre, clase, factor, tasa, cuota, unidad, en_base_iva, nota, activo, sistema)
+  VALUES (s.clave, s.nombre, s.clase, s.factor, s.tasa, s.cuota, s.unidad, CASE WHEN s.clase = 'LOCAL' THEN 0 ELSE 1 END, s.nota, s.activo, s.sistema);
 GO

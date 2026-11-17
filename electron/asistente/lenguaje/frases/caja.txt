@@ -1,0 +1,170 @@
+# Frases completas: caja. [producto] {persona}.
+
+@ caja.efectivo
+cuanto hay en caja
+cuanto hay en la caja
+cuanto efectivo tengo
+cuanto efectivo hay
+cuanto dinero hay en el cajon
+cuanto deberia haber en caja
+cuanto deberia de haber en el cajon
+cuanta feria hay
+cuanta feria hay en la caja
+cuanto tengo en efectivo ahorita
+cuanto hay en el cajon
+cuanto traigo en caja
+cuanto efectivo debe haber
+cuanto hay de efectivo
+cuanto dinero tengo en la caja
+cuanto hay en billetes
+hay suficiente cambio
+tengo cambio en la caja
+cuanto hay para dar cambio
+cuanto efectivo se ha juntado
+cuanto efectivo llevo hoy
+cuanto hay en caja ahorita
+cuanto dinero hay fisico
+cuanto deberia tener en la caja al cerrar
+cuanto tiene la caja 1
+cuanto hay en la caja de enfrente
+cuanto es lo que hay en el cajon
+dime cuanto efectivo hay
+cuanto hay en caja para el corte
+cuanto saco si hago el corte ahorita
+
+@ caja.entrada
+entrada de efectivo de 500
+mete 200 a la caja
+mete $500 de cambio
+registra una entrada de 1000
+registra una entrada de efectivo de 300 pesos
+ingresa 500 de cambio
+ingresa $200 al cajon
+deposito de 1000 a caja
+agrega 300 al cajon
+meti 500 de feria
+meti 200 pesos de cambio
+entrada de dinero 1500
+pon 500 en la caja de cambio
+entraron 300 de cambio del banco
+traje 1000 de cambio
+el dueño metio 2000
+el patron dejo 500 en la caja
+anota una entrada de 400
+se metio dinero a la caja 250
+agrega fondo de 500
+aumenta el fondo con 300
+meter dinero a la caja
+quiero meter dinero
+registrar entrada de efectivo
+entrada de 100 en monedas
+mete 800 que traje del banco
+mete 1000 de un prestamo
+dejaron 300 para cambio
+pon 200 de morralla
+entrada a caja por 600
+
+@ caja.salida
+salida de efectivo de 500
+saca 200 de la caja
+saca $1000 para el banco
+registra un retiro de 2000
+retira 500
+retira $1500 de la caja
+saque 300 del cajon
+retiro de 1000 para el banco
+salida de dinero 800
+quita 500 de la caja
+me lleve 1000 de la caja
+el patron se llevo 2000
+se sacaron 400 de la caja
+saca 3000 que voy a depositar
+retiro parcial de 2000
+hay mucho dinero en caja saca 5000
+anota que saque 500
+salida de 200 para cambio de la otra caja
+retira 1000 para guardarlo
+sacar dinero de la caja
+quiero hacer un retiro
+registrar salida de efectivo
+saque 150 para el garrafon
+salida de 300 de caja
+retiro de efectivo de 700
+el dueño saco 1500
+lleva 2000 a la caja fuerte
+saca el exceso de efectivo
+saca 400 para pagar el gas
+
+@ caja.cortes
+como salieron los cortes
+como salio el corte de ayer
+hubo faltantes en el corte
+hubo faltante ayer
+como cuadro la caja ayer
+cuadro la caja
+diferencias en los cortes
+cortes de la semana
+cortes del mes
+sobro o falto dinero
+el ultimo corte cuadro
+cuanto falto en el corte
+cuanto sobro en el corte
+quien tuvo faltante
+que cajero tiene faltantes
+hay descuadres
+cuantos descuadres ha habido
+como han salido los cortes esta semana
+el corte de ayer salio bien
+cuanto entrego el cajero ayer
+muestrame los ultimos cortes
+dime como van los cortes
+se ha perdido dinero en caja
+falta dinero en la caja
+cuanto ha faltado este mes
+cuantos cortes con faltante
+revisa los cortes
+el corte de la noche cuadro
+
+@ caja.turno
+quien abrio la caja
+hay turno abierto
+hay caja abierta
+desde que hora esta abierta la caja
+quien esta en caja
+quien esta cobrando
+esta abierta la caja
+con cuanto abrieron la caja
+con cuanto se abrio hoy
+quien abrio hoy
+a que hora se abrio la caja
+cuanto fondo dejaron
+que cajero esta en turno
+quien tiene la caja
+cuantas cajas estan abiertas
+la caja 2 esta abierta
+ya abrieron caja
+falta abrir la caja
+esta cerrada la caja
+quien abrio el turno de la tarde
+
+@ caja.corte
+quiero hacer el corte
+hacer corte de caja
+haz el corte
+hagamos el corte
+cierra la caja
+vamos a cortar
+corte del dia
+cerrar turno
+cierra mi turno
+ya quiero cerrar
+ya voy a cerrar
+quiero cerrar la caja
+hacer el cierre de caja
+corte de caja por favor
+haz el corte de la tarde
+ya termino mi turno
+hacer arqueo
+voy a entregar caja
+entregar la caja
+cierre de turno

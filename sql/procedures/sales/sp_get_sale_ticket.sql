@@ -60,6 +60,10 @@ BEGIN
            todo lleva IVA general, y con un producto exento miente. */
         COALESCE(d.tax_object,p.objeto_impuesto) objeto_impuesto,
         COALESCE(d.tax_rate,p.tasa_iva) tasa_iva,
+        /* 0083: la foto de IEPS y locales del renglón (NULL: solo IVA). */
+        d.base_neta,
+        (SELECT x.clase, x.factor, x.tasa, x.importe FROM dbo.sale_detail_impuestos x
+          WHERE x.sale_detail_id = d.id FOR JSON PATH) AS impuestos_json,
         p.base_uom,
         mods.modifiers,
         JSON_VALUE(d.commercial_snapshot,'$.ruleName') AS commercial_offer

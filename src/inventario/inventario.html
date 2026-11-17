@@ -283,7 +283,7 @@
         <div>
           <label>Precio</label>
           <input type="number" step="0.01" name="price" data-guide="producto-precio" data-teclado="MONEY" [(ngModel)]="form.price" required class="my-1 mr-sm-2" placeholder="0.00">
-          <small class="prod-precio-nota">Con IVA incluido</small>
+          <small class="prod-precio-nota">{{ impuestosProducto.length ? 'Con IVA y demás impuestos incluidos' : 'Con IVA incluido' }}</small>
         </div>
 
         <!-- Lo que hay detrás del precio: se recalcula al escribir y al cambiar el IVA. -->
@@ -292,17 +292,21 @@
             <span>Precio final</span><b>{{ d.final | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
           </div>
           <div class="prod-desglose__dato">
-            <span>Antes de IVA</span><b>{{ d.base | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+            <span>{{ d.otros.length ? 'Sin impuestos' : 'Antes de IVA' }}</span><b>{{ d.base | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
+          </div>
+          <div class="prod-desglose__dato" *ngFor="let o of d.otros" data-guide="producto-desglose-impuesto">
+            <span>{{ o.nombre }}</span><b>{{ o.importe | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
           </div>
           <div class="prod-desglose__dato">
             <span>IVA {{ d.tasa * 100 | number:'1.0-0' }}%</span><b>{{ d.iva | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
           </div>
           <ng-container *ngIf="veCostos">
-            <div class="prod-desglose__dato">
-              <span>Costo</span>
-              <b *ngIf="d.costo != null">{{ d.costo | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
-              <b *ngIf="d.costo == null" class="prod-desglose__tenue">Sin costo</b>
-            </div>
+            <!-- El costo se puede corregir aquí (sin IVA); la próxima compra lo vuelve a poner. -->
+            <label class="prod-desglose__dato prod-desglose__costo">
+              <span>Costo sin IVA</span>
+              <input type="number" step="0.01" min="0" name="costoCaptura" data-guide="producto-costo" data-teclado="MONEY"
+                     [(ngModel)]="costoCaptura" placeholder="Sin costo" aria-label="Costo sin IVA">
+            </label>
             <div class="prod-desglose__dato" [class.es-perdida]="(d.ganancia ?? 0) < 0" [class.es-ganancia]="(d.ganancia ?? 0) > 0">
               <span>Ganancia</span>
               <b *ngIf="d.ganancia != null">{{ d.ganancia | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
@@ -315,7 +319,7 @@
             Última compra: <b>{{ u.porcentaje | number:'1.0-2' }}% de ganancia</b><ng-container *ngIf="u.fecha"> · {{ u.fecha | fechaSql:'d MMM yyyy':'es-MX' }}</ng-container>.
             El % de ganancia es sobre el costo, igual que en Compras.
           </p>
-          <p class="prod-desglose__nota" *ngIf="veCostos && d.costo == null">El costo se toma de tu última compra de este producto.</p>
+          <p class="prod-desglose__nota" *ngIf="veCostos && d.costo == null">Escribe el costo, o se toma de tu próxima compra de este producto.</p>
           <p class="prod-desglose__nota" *ngIf="veCostos && d.costo != null && (d.ganancia ?? 0) < 0">Este precio no cubre el costo: vendes con pérdida.</p>
         </div>
 
@@ -578,6 +582,29 @@
           </div>
         
         </ng-container>
+
+          <!-- 0083: otros impuestos del catálogo (IEPS, locales). Fuera de Facturación: cuentan para la ganancia aunque no se facture. Se encienden y se corrigen en Configuración → Impuestos. -->
+          <div class="grid-col-span-3 sat-field prod-impuestos" *ngIf="impuestosCatalogo.length" data-guide="producto-impuestos">
+            <label>Otros impuestos</label>
+            <small class="prod-precio-nota" *ngIf="editingCorporativo">Los administra la matriz y llegan solos.</small>
+            <div class="prod-impuestos__lista">
+              <div class="prod-impuestos__fila" *ngFor="let i of impuestosCatalogo" [attr.data-guide-clave]="i.id"
+                   [attr.data-guide-estado]="tieneImpuesto(i.id) ? 'marcado' : 'libre'">
+                <button type="button" class="prod-impuestos__chip" [class.es-marcado]="tieneImpuesto(i.id)" [attr.aria-pressed]="tieneImpuesto(i.id)"
+                        (click)="alternarImpuesto(i)" data-guide="producto-impuesto" [disabled]="editingCorporativo || (!i.activo && !tieneImpuesto(i.id))"
+                        [attr.title]="i.nota || null">
+                  <i class="ph" [class.ph-check-square]="tieneImpuesto(i.id)" [class.ph-square]="!tieneImpuesto(i.id)" aria-hidden="true"></i>
+                  <span>{{ i.nombre }}</span>
+                  <small>{{ i.activo ? valorImpuesto(i) : 'apagado: no se cobra' }}</small>
+                </button>
+                <label class="prod-impuestos__cantidad" *ngIf="i.factor === 'Cuota' && tieneImpuesto(i.id)">
+                  <input type="number" step="0.001" min="0" [name]="'impCant' + i.id" [ngModel]="cantidadImpuesto(i.id)"
+                         (ngModelChange)="fijarCantidadImpuesto(i.id, $event)" data-guide="producto-impuesto-cantidad" aria-label="Cuánto trae una pieza">
+                  <span>{{ i.unidad || 'unidades' }} por pieza</span>
+                </label>
+              </div>
+            </div>
+          </div>
       </div>
 
       <div class="producto-modal-actions">

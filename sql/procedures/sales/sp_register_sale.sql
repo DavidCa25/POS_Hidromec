@@ -815,6 +815,8 @@ BEGIN
                     s.recipe_id, s.variant_option_id)
         OUTPUT inserted.id, s.line_no INTO #map (sale_detail_id, line_no);
         UPDATE d SET tax_rate=p.tasa_iva,tax_object=p.objeto_impuesto FROM dbo.sale_detail d JOIN dbo.products p ON p.id=d.product_id WHERE d.sale_id=@sale_id;
+        /* 0083: IEPS y demás impuestos del renglón, con su valor de hoy. */
+        EXEC dbo.sp_venta_impuestos @sale_id = @sale_id;
 
         IF @cq IS NOT NULL UPDATE d SET commercial_snapshot=c.audit
           FROM dbo.sale_detail d JOIN #map m ON m.sale_detail_id=d.id

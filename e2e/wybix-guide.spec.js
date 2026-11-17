@@ -59,7 +59,7 @@ test.describe('Wybix Guide', () => {
   test('el tablero: se abre desde Wybix, lista lo que existe en este negocio, y se cierra', async ({ app }) => {
     const { ventana } = app;
     await entrar(app, CUENTAS.admin);
-    await ventana.click('.wxdock__pulso');
+    await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
     const hub = ventana.locator('.wxg');
     await expect(hub, 'se abre').toBeVisible();
     await expect(hub.locator('h2')).toHaveText('Wybix Guide');
@@ -82,7 +82,7 @@ test.describe('Wybix Guide', () => {
 
     await ventana.keyboard.press('Escape');
     await expect(hub, 'Escape lo cierra').toHaveCount(0);
-    await ventana.click('.wxdock__pulso');
+    await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
     await expect(hub).toBeVisible();
     await ventana.mouse.click(20, 400);
     await expect(hub, 'un toque fuera lo cierra').toHaveCount(0);
@@ -93,6 +93,7 @@ test.describe('Wybix Guide', () => {
     /* El cajero aterriza en Venta, que le pide abrir turno con un modal; el
        tablero se abre igual desde Wybix. */
     await ventana.locator('.wxdock__pulso').dispatchEvent('click');
+    await ventana.locator('[data-guide=wybix-pestana-recorridos]').dispatchEvent('click');
     await expect(ventana.locator('.wxg [data-escenario="core.venta"]'), 'el cajero aprende a vender').toBeVisible();
     const inventario = await app.invocar('sesion').then(r => (r?.data?.paquetes || []).includes('INVENTARIO_OPERAR'));
     if (!inventario) {
@@ -179,7 +180,7 @@ test.describe('Wybix Guide', () => {
     await expect(franja(ventana)).toHaveCount(0);
     await expect(ventana.locator('.driver-active-element'), 'y el foco se apaga').toHaveCount(0);
 
-    await ventana.click('.wxdock__pulso');
+    await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
     await expect(ventana.locator('.wxg [data-escenario="core.first_run"]'), 'queda hecho').toContainText('Hecho');
     await expect(ventana.locator('.wxg__avance')).toHaveText(/1 de \d+ recorridos/);
     await ventana.keyboard.press('Escape');
@@ -191,7 +192,7 @@ test.describe('Wybix Guide', () => {
     await expect(franja(ventana), 'terminado, no se vuelve a ofrecer solo').toHaveCount(0);
 
     /* Reiniciar recorridos lo deja como el primer dia. */
-    await ventana.click('.wxdock__pulso');
+    await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
     await ventana.locator('.wxg__reiniciar').click();
     await expect(ventana.locator('.wxg__avance')).toHaveText(/0 de \d+ recorridos/);
   });
@@ -205,7 +206,7 @@ test.describe('Wybix Guide', () => {
     await app.invocar('createBrand', { nombre: 'Guía' });
     const antes = await contarProductos(app);
 
-    await ventana.click('.wxdock__pulso');
+    await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
     await ventana.locator('.wxg [data-escenario="core.producto"]').click();
 
     /* Esta en Inicio: el recorrido navega solo a Inventario con el router. */
@@ -256,6 +257,7 @@ test.describe('Wybix Guide', () => {
 
     await ventana.emulateMedia({ reducedMotion: 'reduce' });
     await ventana.click('.wxside__pulso');
+    await ventana.click('[data-guide=wybix-pestana-recorridos]');
     await ventana.locator('.wxg [data-escenario="core.first_run"]').click();
     /* Movimiento reducido: la frase sale entera, sin cursor. */
     await expect(texto(ventana)).toContainText('Tú decides el ritmo.');

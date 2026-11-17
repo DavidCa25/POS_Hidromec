@@ -107,6 +107,8 @@ asignar('inventory', [
 asignar('cash', [
   'sp_cash_closure_ticket',
   'sp_open_shift', 'sp_close_shift', 'sp_get_open_shift', 'sp_register_cash_out',
+  // 0076: entrada de efectivo (cambio del banco, dinero del dueño), espejo de cash_out.
+  'sp_register_cash_in',
   'sp_cash_summary', 'sp_get_cash_closures', 'sp_get_cash_movements',
   // 0049: la unica respuesta a "de que caja es este dinero".
   'sp_resolve_cash_register',
@@ -143,6 +145,9 @@ asignar('asistencia', [
 // 0073: Venta suelta (el cigarro de la cajetilla). Una aplicacion: solo para
 // el negocio que la activa. El descuento vive en sp_register_sale (paso 3c).
 asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar']);
+// 0083: impuestos además del IVA (IEPS, locales): catálogo, por producto y la foto de la venta.
+asignar('impuestos', ['sp_venta_impuestos', 'sp_impuestos_listar', 'sp_impuesto_guardar',
+  'sp_producto_impuestos_get', 'sp_producto_impuestos_guardar']);
 
 // 0079: Socios (de quien es cada producto, reparto de cada venta, gastos,
 // anticipos, liquidacion) y Propinas (cobro y reparto al personal). Dos

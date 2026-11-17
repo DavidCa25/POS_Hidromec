@@ -21,6 +21,8 @@ CREATE TABLE dbo.sale_detail (
     commercial_snapshot NVARCHAR(MAX) COLLATE Modern_Spanish_CI_AS NULL,
     tax_rate DECIMAL(9, 6) NULL,
     tax_object NVARCHAR(2) COLLATE Modern_Spanish_CI_AS NULL,
+    base_neta DECIMAL(14, 4) NULL,
+    otros_impuestos DECIMAL(14, 4) NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

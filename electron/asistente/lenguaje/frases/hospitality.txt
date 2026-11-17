@@ -1,0 +1,218 @@
+# Frases completas: restaurante, café y panadería. [producto] {persona}.
+
+@ produccion.faltantes
+que me falta para producir 100 [conchas]
+que me falta comprar para hacer 50 [donas glaseadas] mañana
+alcanza para 80 [conchas]
+me alcanza para hacer 200 [donas de chocolate]
+que necesito para producir 60 [croissants]
+tengo suficiente para 40 [panes de muerto]
+ingredientes para 120 [conchas]
+cuanto necesito para 30 [pasteles de chocolate]
+que hace falta para 90 [cuernitos] el sabado
+que me falta para hacer 150 [donas glaseadas] el viernes
+me alcanzan los ingredientes para 70 [bisquets]
+para 50 [croissants] que me falta
+que necesito comprar para 100 [donas rellenas]
+puedo hacer 300 [conchas]
+si quiero hacer 80 [galletas de avena] que me falta
+ingredientes que faltan para 60 [conchas] mañana
+cuanta harina necesito para 200 [conchas]
+cuanta mantequilla ocupo para 50 [croissants]
+cuanto azucar necesito para 100 [donas glaseadas]
+me da para 40 [panes de muerto]
+tengo lo necesario para 25 [pasteles de chocolate]
+alcanza la harina para 150 [bisquets]
+cuantos huevos necesito para 60 [conchas]
+que me falta para 30 litros de [chocolate caliente]
+que necesito para 40 ordenes de [chilaquiles verdes]
+alcanza el pollo para 25 [enchiladas suizas]
+tengo carne para 50 [tacos al pastor]
+que me falta para 20 [hamburguesas]
+me alcanza el pan para 40 [tortas de milanesa]
+cuanto necesito para 30 litros de [agua de jamaica]
+que ingredientes me faltan para 80 [molletes]
+que necesito para preparar 15 ollas de [pozole]
+si mañana hago 100 [conchas] me alcanza
+necesito saber si tengo para 70 [cuernitos]
+revisa si alcanza para 200 [donas de chocolate]
+
+@ produccion.planear
+planea 100 [conchas] para mañana
+programa 50 [donas glaseadas] el viernes
+vamos a producir 80 [croissants] mañana
+producir 60 [panes de muerto]
+hornear 120 [conchas] hoy
+haz una tanda de 40 [donas de chocolate]
+quiero producir 200 [donas glaseadas] el sabado
+anota produccion de 70 [bisquets]
+planear tanda de 50 [cuernitos]
+programa una tanda de 30 [pasteles de chocolate] para el domingo
+mañana vamos a hacer 90 [conchas]
+pon a producir 100 [galletas de avena]
+plan de produccion 60 [croissants] pasado mañana
+hay que hornear 150 [conchas] mañana
+mete al horno 48 [donas rellenas]
+nueva tanda 36 [bisquets]
+agenda produccion de 80 [panes de muerto] el viernes
+mañana hacemos 120 [donas glaseadas]
+programa 20 litros de [agua de jamaica]
+prepara 30 ordenes de [chilaquiles verdes] para mañana
+vamos a preparar 15 ollas de [pozole] el domingo
+haz 40 [tortas de milanesa] para el evento
+el sabado se hornean 200 [conchas]
+quiero dejar listas 60 [donas de chocolate] para mañana
+programa la produccion de 100 [cuernitos]
+apunta una tanda de 50 [croissants] para hoy
+que se hagan 80 [conchas] mañana temprano
+produce 24 [pasteles de chocolate]
+hay que hacer 90 [donas glaseadas] hoy
+manda a producir 70 [bisquets]
+
+@ produccion.hoy
+que se produjo hoy
+que hay que producir mañana
+que hay que producir hoy
+tandas de hoy
+como va la produccion
+que se horneo hoy
+que esta en produccion
+cuanto hicieron hoy
+que tandas hay para mañana
+que se tiene que hornear
+que falta de producir
+que tandas estan pendientes
+cuantas [conchas] se hicieron hoy
+que se preparo hoy
+produccion del dia
+como van en el horno
+ya salio la produccion
+que tenemos programado para mañana
+cuantas tandas van
+que se cocino hoy
+cuanto se produjo esta semana
+que se va a producir el fin de semana
+merma de produccion de hoy
+que hay en el horno
+
+@ hosp.mesas
+cuantas mesas hay ocupadas
+que mesas estan abiertas
+hay mesas libres
+cuentas abiertas
+como esta el salon
+cuanta gente hay
+cuantas mesas tengo abiertas
+hay lugar
+cuantas personas hay en el salon
+que mesas faltan por cobrar
+cuantas cuentas siguen abiertas
+mesas ocupadas
+cuanto llevan todas las mesas
+que mesas llevan mas tiempo
+cuantos comensales hay
+esta lleno el restaurante
+cuantas mesas libres hay
+que mesas no han pedido la cuenta
+cuantas mesas se han atendido hoy
+como va el salon
+
+@ hosp.cuenta
+cuanto lleva la mesa 4
+cuenta de la mesa 7
+que pidio la mesa 2
+la mesa 5 pide la cuenta
+consumo de la mesa 12
+cuanto debe la 3
+cuanto va la mesa 9
+dame la cuenta de la mesa 1
+que lleva la mesa 6
+cuanto es de la mesa 8
+la 4 quiere su cuenta
+cuanto consumio la mesa 10
+que ordeno la mesa 11
+total de la mesa 3
+cuanto es lo de la mesa 15
+ya pidio la cuenta la mesa 2
+que falta de servir a la mesa 4
+la cuenta de la 7
+
+@ hosp.cocina
+que hay pendiente en cocina
+cuantas comandas hay
+que se esta tardando
+comandas atrasadas
+como va la cocina
+que esta preparando la barra
+cuantas ordenes hay en cocina
+que comandas faltan
+que ya esta listo
+que ordenes estan listas para servir
+que se esta atrasando
+cuanto se tardan en cocina
+hay pedidos atorados
+como va la barra
+que falta de sacar
+cuantos platillos faltan
+que comandas llevan mas de 15 minutos
+que tiene la cocina
+la cocina esta saturada
+que lleva mas tiempo en cocina
+
+@ hosp.receta
+que lleva el [latte grande]
+receta de la [concha]
+ingredientes del [frappe de moka]
+como se prepara el [capuchino]
+que contiene el [croissant]
+cuanto lleva de cafe el [americano]
+receta del [pastel de chocolate]
+que ingredientes tiene la [dona glaseada]
+de que esta hecho el [chocolate caliente]
+que lleva la [torta de milanesa]
+receta de los [chilaquiles verdes]
+que lleva el [pozole]
+cuanta leche lleva el [latte chico]
+cuanto azucar lleva la [dona de chocolate]
+ingredientes de las [enchiladas suizas]
+que lleva el [agua de jamaica]
+con que se hacen los [molletes]
+formula de las [conchas]
+receta del [te chai]
+que lleva la [hamburguesa sencilla]
+cuanta harina lleva el [bisquet]
+como se hace la [galleta de avena]
+que lleva el [cuernito]
+dame la receta del [frappe de moka]
+
+@ hosp.pedidos
+hay pedidos en linea
+pedidos pendientes
+llegaron pedidos
+pedidos de whatsapp
+cuantos pedidos hay sin aceptar
+hay pedidos nuevos
+pedidos de internet
+que pedidos faltan por aceptar
+llego algun pedido
+pedidos para llevar pendientes
+hay pedidos del menu en linea
+cuantos pedidos llegaron hoy
+pedidos por entregar
+hay algun pedido esperando
+
+@ hosp.propinas
+cuanto se junto de propinas
+propinas de hoy
+cuanta propina hay
+propinas de la semana
+cuanto toca de propina
+cuanto dejaron de propina hoy
+propinas del mes
+cuanto se reparte de propina
+cuanta propina llevamos
+cuanto de propina con tarjeta
+propinas de ayer
+cuanto le toca a cada mesero de propina
+total de propinas
+se juntaron muchas propinas

@@ -1,0 +1,82 @@
+/* ==========================================================================
+   EL CHAT DE WYBIX
+   Lo de Wybix a la izquierda con su cara; lo de la persona a la derecha en
+   oscuro. Tarjetas (datos y Confirmar) dentro del globo, nunca sueltas.
+   ========================================================================== */
+:host { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.wch { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+
+.wch__lista { list-style: none; margin: 0; padding: 8px 16px 10px; display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; flex: 1; min-height: 240px; overscroll-behavior: contain; }
+.wch__fila { display: flex; gap: 8px; align-items: flex-end; max-width: 92%; }
+.wch__fila.es-persona { align-self: flex-end; flex-direction: row-reverse; }
+.wch__cara { flex: none; width: 28px; display: grid; place-items: center; }
+
+.wch__globo { background: var(--wx-raised); border: 1px solid var(--wx-edge); border-radius: 16px 16px 16px 6px;
+  padding: 9px 12px; min-width: 0; font-size: 14px; line-height: 1.45; }
+.es-persona .wch__globo { background: var(--wx-rail, #0F1B2D); color: var(--wx-rail-ink, #fff); border-color: transparent; border-radius: 16px 16px 6px 16px; }
+.wch__globo.es-atencion { border-color: var(--wx-warning-line, rgba(217, 119, 6, .35)); }
+.wch__globo.es-error { border-color: var(--wx-danger-line, rgba(220, 38, 38, .35)); }
+.wch__texto { margin: 0; white-space: pre-line; }
+
+.wch__datos, .wch__vista { margin: 8px 0 0; display: grid; gap: 4px; }
+.wch__datos > div, .wch__vista > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.wch__datos dt, .wch__vista dt { color: var(--wx-text-muted); font-weight: 500; }
+.wch__datos dd, .wch__vista dd { margin: 0; font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+
+.wch__plan { margin-top: 8px; padding: 10px; border-radius: 12px; background: var(--wx-surface); border: 1px solid var(--wx-edge-strong); }
+.wch__plantit { display: block; font-size: 14px; }
+.wch__vista dd { font-weight: 700; color: var(--wx-text); }
+.wch__aviso { margin: 8px 0 0; font-size: 12.5px; color: var(--wx-warning-ink, #92400e); }
+.wch__nota { margin: 8px 0 0; font-size: 12.5px; color: var(--wx-text-muted); }
+.wch__estado { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--wx-text-muted); display: flex; gap: 6px; align-items: center; }
+.wch__estado.es-ok { color: var(--wx-success-ink, var(--wx-success)); }
+.wch__estado.es-mal { color: var(--wx-danger, #b42318); }
+.wch__gira { animation: wch-gira 900ms linear infinite; }
+@keyframes wch-gira { to { transform: rotate(360deg); } }
+
+.wch__btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.wch__btn { min-height: 34px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--wx-edge-strong);
+  background: var(--wx-surface); color: var(--wx-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+.wch__btn:hover { background: var(--wx-raised); }
+.wch__btn.es-principal { background: var(--wx-accent); border-color: var(--wx-accent); color: var(--wx-accent-ink); }
+.wch__btn:focus-visible, .wch__chip:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
+
+.wch__pensando { display: flex; gap: 4px; padding: 12px 14px; }
+.wch__pensando i { width: 6px; height: 6px; border-radius: 50%; background: var(--wx-text-dim); animation: wch-punto 1s ease-in-out infinite; }
+.wch__pensando i:nth-child(2) { animation-delay: .15s; }
+.wch__pensando i:nth-child(3) { animation-delay: .3s; }
+@keyframes wch-punto { 50% { opacity: .3; } }
+
+.wch__atajos, .wch__entiende { display: flex; gap: 6px; padding: 6px 16px; overflow-x: auto; scrollbar-width: none; }
+.wch__chip { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--wx-edge); background: var(--wx-surface);
+  color: var(--wx-text); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.wch__chip.es-intent { background: var(--wx-rail, #0F1B2D); color: var(--wx-rail-ink, #fff); border-color: transparent; }
+.wch__chip.es-dudoso { background: var(--wx-warning-soft, rgba(245, 158, 11, .14)); color: var(--wx-warning-ink, #92400e); border-color: transparent; }
+.wch__entiende .wch__chip { cursor: default; }
+
+.wch__campo { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--wx-edge); }
+.wch__campo input { flex: 1; min-width: 0; height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--wx-edge-strong);
+  background: var(--wx-surface); color: var(--wx-text); font: inherit; font-size: 14px; }
+.wch__campo input:focus { outline: none; box-shadow: var(--wx-focus-ring); }
+.wch__enviar { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 0; background: var(--wx-accent); color: var(--wx-accent-ink);
+  display: grid; place-items: center; font-size: 18px; cursor: pointer; }
+.wch__enviar:disabled { opacity: .45; cursor: default; }
+.wch__mic { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface);
+  color: var(--wx-text); display: grid; place-items: center; font-size: 18px; cursor: pointer; }
+.wch__mic.es-escuchando { background: var(--wx-danger, #d64545); border-color: transparent; color: #fff; animation: wch-escucha 1.4s ease-in-out infinite; }
+.wch__mic:disabled { opacity: .45; cursor: default; }
+.wch__voz { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--wx-edge-strong); border-radius: 12px; background: var(--wx-surface); }
+.wch__voz-texto { margin: 0; font-size: 13px; color: var(--wx-text); }
+.wch__voz-texto.es-error { color: var(--wx-danger, #d64545); }
+.wch__voz-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.wch__voz-barra { height: 6px; border-radius: 3px; background: var(--wx-edge-strong); overflow: hidden; }
+.wch__voz-barra span { display: block; height: 100%; background: var(--wx-accent, var(--wx-text)); transition: width .2s linear; }
+.wch__leer { float: right; margin: -2px -4px 0 6px; border: 0; background: transparent; color: var(--wx-text-muted); cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.wch__leer:hover, .wch__leer:focus-visible { color: var(--wx-text); }
+@keyframes wch-escucha { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--wx-danger, #d64545) 25%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wch__gira, .wch__pensando i, .wch__mic.es-escuchando { animation: none; }
+  .wch__voz-barra span { transition: none; }
+}
