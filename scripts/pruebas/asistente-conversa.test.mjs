@@ -416,3 +416,38 @@ test('mesas, comandas, salón y estaciones hablando', () => {
   assert.notEqual(l('el agua de jamaica va a subir').intent, 'estacion.producto');
   assert.notEqual(l('abre la mesa 4', new Set()).intent, 'cuenta.abrir');
 });
+
+test('configuración hablada: usuarios, cajas, aplicaciones, giro, respaldos, asistencia y propinas', () => {
+  const usuarios = [{ id: 2, nombre: 'pedro' }, { id: 3, nombre: 'ana' }];
+  const l = (texto, modulos = new Set(['asistencia', 'propinas'])) => interprete.interpretar(texto, { catalogo: [], personas: [], usuarios, modulos, ahora: HOY });
+  const casos = [
+    ['desactiva al usuario pedro', 'usuario.activar', { usuario: 2, activo: false }],
+    ['haz encargado a pedro', 'usuario.rol', { usuario: 2, rol: 'supervisor' }],
+    ['pedro ahora es cajero', 'usuario.rol', { usuario: 2, rol: 'cajero' }],
+    ['dale a pedro permiso de devoluciones', 'usuario.permiso', { usuario: 2, permisoTexto: 'devoluciones', quitar: false }],
+    ['quítale a pedro el permiso de ver costos', 'usuario.permiso', { usuario: 2, quitar: true }],
+    ['agrega la caja 3', 'caja.alta', { nombre: 'Caja 3' }],
+    ['desactiva la caja 2', 'caja.activar', { cajaTexto: '2', activo: false }],
+    ['enciende servicios', 'modulo.activar', { modulo: 'servicios', activo: true }],
+    ['activa propinas repartidas por horas', 'modulo.activar', { modulo: 'propinas', reparto: 'HORAS' }],
+    ['el giro es panadería', 'negocio.giro', { giro: 'panaderia' }],
+    ['haz un respaldo ahora', 'respaldo.ahora', {}],
+    ['respalda todos los días a las 11 de la noche', 'respaldo.config', { hora: '23:00', activo: true }],
+    ['checa mi entrada', 'asistencia.marcar', { tipo: 'ENTRADA' }],
+    ['salgo a comer', 'asistencia.marcar', { tipo: 'INICIO_DESCANSO' }],
+    ['checa mi salida', 'asistencia.marcar', { tipo: 'SALIDA' }],
+    ['el horario de pedro es de lunes a viernes de 9 a 6 con 30 minutos de comida', 'asistencia.horario', { usuario: 2, desde: '09:00', hasta: '18:00', descanso: 30 }],
+    ['corrige la entrada de pedro de ayer a las 9', 'asistencia.corregir', { usuario: 2, cual: 'entrada', dia: 'ayer', hora: '09:00' }],
+    ['no marques los retardos', 'asistencia.reglas', { regla: 'marcaRetardos', valor: false }],
+    ['que tengan que checar antes de vender', 'asistencia.reglas', { regla: 'entradaParaVender', valor: true }],
+    ['las propinas se reparten por horas', 'propinas.config', { reparto: 'HORAS' }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  /* Quien no es usuario no se desactiva; sin Asistencia, no se checa. */
+  assert.notEqual(l('desactiva a juan').intent, 'usuario.activar');
+  assert.notEqual(l('checa mi entrada', new Set()).intent, 'asistencia.marcar');
+});

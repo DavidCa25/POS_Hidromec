@@ -36,6 +36,7 @@ const { gastos: reglaGastos } = require('./gastos');
 const { servicios: reglaServicios } = require('./servicios');
 const { fidelizacion: reglaFidelizacion } = require('./fidelizacion');
 const { mesas: reglaMesas } = require('./mesas');
+const { config: reglaConfig } = require('./config');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -445,6 +446,14 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Usuarios, cajas, aplicaciones, giro, respaldos y asistencia
+       (lenguaje/config.js). Un usuario que no existe no cuenta. */
+    const rc2 = !esperando && reglaConfig(texto, { usuarios });
+    if (rc2 && disponible(rc2.intent, modulos)) {
+      const slots = {};
+      for (const [k, v] of Object.entries(rc2)) if (k !== 'intent' && v != null) slots[k] = { valor: v, texto: typeof v === 'object' ? JSON.stringify(v) : String(v), confianza: 'exacto' };
+      return cerrar(rc2.intent, slots, 0.95, []);
     }
     /* Puntos, membresías, rifas y cupones (lenguaje/fidelizacion.js). */
     const rf = !esperando && reglaFidelizacion(texto);

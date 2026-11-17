@@ -560,6 +560,31 @@ try {
     await pool.request().input('cuenta_id', sql.Int, rLib.plan.ejecutar.payload.cuentaId).input('user_id', sql.Int, 1).execute('sp_hosp_cuenta_liberar');
     check(!(await q(`SELECT 1 FROM dbo.hosp_cuentas WHERE mesa_id = ${ab.mesaId} AND estado IN ('ABIERTA','POR_COBRAR')`)).length, 'pidió la cuenta y, sin consumo, se libera');
   } catch (e) { check(false, 'cuenta de mesa por los SP de Hospitality', e.message); }
+
+  /* 15. Configuración: las tarjetas y sus candados. */
+  seccion('15. Usuarios, cajas, aplicaciones y asistencia');
+  const admins = await q("SELECT id FROM dbo.users WHERE rol = 'admin' AND active = 1");
+  if (admins.length === 1) {
+    const rUlt = await pedirC('usuario.activar', { usuario: ex(admins[0].id), activo: ex(false) }, { ...ctxTodo, userId: ana });
+    check(!rUlt.plan && /al menos un administrador/.test(rUlt.texto), 'no se desactiva al último administrador', rUlt.texto);
+  }
+  const rPropio = await pedirC('usuario.activar', { usuario: ex(ana), activo: ex(false) }, { ...ctxTodo, userId: ana });
+  check(!rPropio.plan && /tu propio usuario/.test(rPropio.texto), 'nadie se desactiva a sí mismo');
+  const rPer = await pedirC('usuario.permiso', { usuario: ex(ana), permisoTexto: ex('devoluciones'), quitar: ex(false) });
+  check(rPer.plan?.ejecutar.api === 'electronAPI.usersSetPermissions' && rPer.plan.ejecutar.payload.tiene.includes('DEVOLUCIONES'), 'permiso de devoluciones: la lista ajustable lo incluye', JSON.stringify(rPer.plan?.ejecutar.payload));
+  const rSinCosto = await pedirC('usuario.permiso', { usuario: ex(ana), permisoTexto: ex('ver costos'), quitar: ex(true) });
+  check(!rSinCosto.plan || !rSinCosto.plan.ejecutar.payload.tiene.includes('VER_COSTOS'), 'quitar «ver costos» lo saca de la lista', rSinCosto.texto);
+  const rRol = await pedirC('usuario.rol', { usuario: ex(ana), rol: ex('supervisor') });
+  check(rRol.plan?.ejecutar.api === 'electronAPI.usersUpdateRole' && rRol.plan.ejecutar.payload.rol === 'supervisor', 'puesto: cajero → encargado');
+  const rCaj = await pedirC('caja.alta', { nombre: ex('Caja 9') });
+  check(rCaj.plan?.ejecutar.payload.code === 'CAJA9', 'caja nueva con su clave', JSON.stringify(rCaj.plan?.ejecutar.payload));
+  const rMod = await pedirC('modulo.activar', { modulo: ex('servicios'), activo: ex(true) });
+  check(rMod.plan?.ejecutar.api === 'electronAPI.modulosSet' && rMod.plan.ejecutar.args[0] === 'servicios' && rMod.plan.ejecutar.args[1] === true, 'encender Servicios por modules:set');
+  await q("UPDATE dbo.business_modules SET enabled = 0 WHERE module_key = N'socios';");
+  const rSoc = await pedirC('modulo.activar', { modulo: ex('socios'), activo: ex(true) });
+  check(!rSoc.plan && rSoc.ruta === '/dashboard/aplicaciones', 'Socios se enciende con sus preguntas, en su pantalla');
+  const rHor = await pedirC('asistencia.horario', { usuario: ex(ana), dias: ex([2, 3, 4, 5, 6]), desde: ex('09:00'), hasta: ex('18:00'), descanso: ex(30) });
+  check(rHor.plan?.ejecutar.payload.dias.length === 5 && rHor.plan.ejecutar.payload.dias[0].descansoMin === 30, 'horario de lunes a viernes con 30 min de descanso');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

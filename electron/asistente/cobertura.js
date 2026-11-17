@@ -113,6 +113,10 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'users:create': 'Crear un usuario pide su contraseña o PIN: lo escribe la persona en su pantalla; el asistente no maneja contraseñas.',
+  'export-database': 'Saca un archivo de la base a una carpeta que se elige en el diálogo del sistema.',
+  'socios:activar': 'Socios se enciende con un asistente de varias preguntas (quiénes son, de quién es cada categoría y producto, cómo se reparte): se contesta en su pantalla.',
+  'socios:config-guardar': 'Cambiar esas mismas respuestas de Socios (dueños de cada categoría y reglas de reparto) es el mismo asistente de varias preguntas.',
   'cuentas:cobrada': 'Lo hace Venta sola al cobrar la cuenta de la mesa (cierra la cuenta con la venta en el mismo cobro); no es un paso aparte.',
   'coupons:redeem': 'El cupón se consume solo al cobrar la venta que lo trae (SaleService.checkout); no es un paso aparte.',
   'club:wallet-resolver': 'Se dispara al escanear el pase de la cartera del cliente en la caja: es lectura de un código, no una orden hablada.',
@@ -196,8 +200,7 @@ const MANUAL = {
 
 const PENDIENTE = {
   'aprobaciones': ['aprobaciones:cancelar', 'aprobaciones:politica-cambiar', 'aprobaciones:solicitar'],
-  'asistencia': ['asistencia:activar', 'asistencia:corregir', 'asistencia:horario-guardar', 'asistencia:marcar', 'asistencia:reglas-guardar'],
-  'configuracion': ['backup-run-now', 'backup-set-config', 'export-database', 'modules:set', 'negocio:giro-guardar', 'registers-add', 'registers-set-active', 'update-business-config', 'users:create', 'users:set-active', 'users:set-permissions', 'users:update-role'],
+  'configuracion': ['update-business-config'],
   'cloud': ['cloud:crear-sucursal'],
   'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
   'commercial': ['commercial:save'],
@@ -211,10 +214,8 @@ const PENDIENTE = {
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'plataformas': ['plataformas:canal-guardar', 'plataformas:cancelar', 'plataformas:confirmar', 'plataformas:deposito', 'plataformas:emparejar', 'plataformas:guardar', 'plataformas:ver'],
   'produccion': ['produccion:formula-guardar', 'produccion:formula-quitar'],
-  'propinas': ['propinas:activar', 'propinas:config-guardar'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
   'servicios': ['servicios:activar-activo'],
-  'socios': ['socios:activar', 'socios:config-guardar'],
   'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],
   'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],
   'whatsapp': ['whatsapp:config-guardar'],

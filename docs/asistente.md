@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 78 de 175 acciones (45 %)».
+Además imprime el avance, por ejemplo «asistente: 94 de 171 acciones (55 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -349,6 +349,33 @@ por su nombre o su número («4», «mesa 4», «terraza 2»).
 | «crea la estación Postres», «el agua de jamaica va a la barra» | `estaciones:guardar`, `estaciones:producto-asignar`. La estación tiene que existir. |
 
 Cerrar la cuenta con la venta (`cuentas:cobrada`) lo hace Venta al cobrar.
+
+### Configuración, asistencia y propinas
+
+Reglas en `lenguaje/config.js`. El usuario tiene que existir.
+
+| Frase | Qué hace |
+|---|---|
+| «desactiva al usuario Pedro», «activa a Pedro» | `users:set-active`. Nadie se desactiva a sí mismo y siempre queda un administrador. |
+| «haz encargado a Pedro», «Pedro ahora es cajero» | `users:update-role`. |
+| «dale a Pedro permiso de devoluciones», «quítale a Pedro el permiso de ver costos» | `users:set-permissions` con la lista ajustable completa (`seguridad/permisos.js`). |
+| «agrega la caja 3», «desactiva la caja 2» | `registers-add`, `registers-set-active` (no con turno abierto). |
+| «enciende Servicios», «apaga la venta suelta», «activa propinas repartidas por horas», «activa asistencia» | `modules:set`; Propinas y Asistencia con su propio canal de activación y valores de inicio. Socios se enciende en su pantalla. |
+| «el giro es panadería» | `negocio:giro-guardar`. |
+| «haz un respaldo ahora», «respalda todos los días a las 11 de la noche», «guarda 30 días de respaldos» | `backup-run-now`, `backup-set-config`. |
+| «checa mi entrada», «salgo a comer», «ya regresé», «checa mi salida» | `asistencia:marcar` del usuario de la sesión. |
+| «el horario de Pedro es de lunes a viernes de 9 a 6 con 30 minutos de comida» | `asistencia:horario-guardar` (esos días se reemplazan). |
+| «corrige la entrada de Pedro de ayer a las 9», «no marques los retardos», «que tengan que checar antes de vender» | `asistencia:corregir`, `asistencia:reglas-guardar`. |
+| «las propinas se reparten por horas» | `propinas:config-guardar` con lo demás igual. |
+
+A propósito manuales: crear un usuario (su contraseña la escribe la persona),
+exportar la base (archivo) y el asistente de Socios.
+
+**Pendiente con razón:** `update-business-config` (nombre, teléfono, RFC y
+pie del ticket del negocio). El canal solo manda esos campos y
+`sp_update_business_config` escribe también los fiscales: los deja en nulo y
+apaga la facturación. Pasa igual desde la pantalla. El asistente no lo usa
+hasta que el canal conserve lo que no se manda.
 
 ## El loop de entrenamiento
 
