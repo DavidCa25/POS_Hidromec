@@ -3,6 +3,32 @@
 const crypto = require('crypto');
 
 module.exports = (h) => {
+  /* ------------------------------------------- mesas, cuentas y comandas */
+  /** «4», «mesa 4», «terraza 2»: la mesa activa con ese nombre (o ese número). */
+  async function mesaDe(dicho) {
+    const t = h.llano(dicho).replace(/^mesa\s+/, '');
+    const mesas = await h.q(`SELECT m.id, m.nombre, a.nombre AS area FROM dbo.salon_mesas m LEFT JOIN dbo.salon_areas a ON a.id = m.area_id WHERE m.activa = 1;`).catch(() => []);
+    const num = (x) => (String(x).match(/\d+/) || [])[0];
+    return mesas.find((m) => h.llano(m.nombre) === t || h.llano(m.nombre).replace(/^mesa\s+/, '') === t)
+      || (num(t) && mesas.filter((m) => num(m.nombre) === num(t)).length === 1 ? mesas.find((m) => num(m.nombre) === num(t)) : null);
+  }
+  const cuentaDe = (mesaId) => h.uno(`SELECT TOP 1 c.id, c.estado, c.personas, c.customer_id, cu.customerName AS cliente,
+      (SELECT COUNT(*) FROM dbo.hosp_orden_lineas l JOIN dbo.hosp_ordenes o ON o.id = l.orden_id WHERE o.cuenta_id = c.id) AS renglones
+      FROM dbo.hosp_cuentas c LEFT JOIN dbo.customers cu ON cu.id = c.customer_id
+     WHERE c.mesa_id = @m AND c.estado IN ('ABIERTA', 'POR_COBRAR') ORDER BY c.id DESC;`, [['m', h.sql.Int, mesaId]]).catch(() => null);
+  const nombreMesa = (m) => (/^\d+$/.test(String(m.nombre)) ? `Mesa ${m.nombre}` : m.nombre);
+  async function mesaYCuenta(it) {
+    const m = await mesaDe(h.v(it, 'mesa'));
+    if (!m) return { error: h.msg(`No encuentro la mesa «${h.v(it, 'mesa')}».`) };
+    const c = await cuentaDe(m.id);
+    if (!c) return { error: h.msg(`${nombreMesa(m)} no tiene cuenta abierta.`, { opciones: [{ etiqueta: `Abrir ${nombreMesa(m)}`, texto: `abre la mesa ${m.nombre}` }] }) };
+    return { m, c };
+  }
+  const comandaDe = (id) => h.uno(`SELECT c.id, c.estado, c.cuenta_id, s.nombre AS estacion, s.salida, m.nombre AS mesa
+      FROM dbo.comandas c LEFT JOIN dbo.prep_stations s ON s.id = c.station_id LEFT JOIN dbo.hosp_cuentas hc ON hc.id = c.cuenta_id
+      LEFT JOIN dbo.salon_mesas m ON m.id = hc.mesa_id WHERE c.id = @id;`, [h.id(id)]);
+  const ESTADO_COMANDA = { NUEVA: 'nueva', PREPARANDO: 'preparando', LISTA: 'lista', ENTREGADA: 'entregada', CANCELADA: 'cancelada' };
+
   /**
    * Empezar, terminar o cancelar la tanda de un producto. Mismas reglas que
    * sp_production_*: se empieza una PLANEADA (salen los ingredientes), se
@@ -216,6 +242,176 @@ module.exports = (h) => {
       return h.msg(`${r.nombre} se juntaron ${h.dinero(total)} de propinas${pend > 0 ? ` (${h.dinero(pend)} sin repartir)` : ''}.`, {
         datos: filas.map((f) => ({ etiqueta: f.metodo.toLowerCase(), valor: h.dinero(f.total) })),
         opciones: pend > 0 ? [{ etiqueta: 'Repartir propinas', intent: 'ir_a', params: { ruta: '/dashboard/propinas', etiqueta: 'Propinas' } }] : [] });
+    },
+
+    /* ================================================= MESAS Y CUENTAS */
+    async 'cuenta.abrir'(it) {
+      const etiqueta = h.v(it, 'etiqueta');
+      if (etiqueta) {
+        return h.msg('Esta cuenta voy a abrir:', { plan: h.plan('cuenta.abrir', {
+          titulo: `Cuenta sin mesa · ${etiqueta}`, vista: [{ etiqueta: 'A nombre de', valor: etiqueta }],
+          ejecutar: { api: 'wybix.cuentas.abrir', payload: { mesaId: null, etiqueta, personas: null, registerId: h.cajaEquipo(), customerId: null } },
+          permiso: 'VENTAS_OPERAR',
+        }) });
+      }
+      const m = await mesaDe(h.v(it, 'mesa'));
+      if (!m) return h.msg(`No encuentro la mesa «${h.v(it, 'mesa')}».`);
+      const ya = await cuentaDe(m.id);
+      if (ya) return h.msg(`${nombreMesa(m)} ya está abierta${ya.cliente ? ' (' + ya.cliente + ')' : ''}.`);
+      const personas = h.v(it, 'personas');
+      return h.msg('Esta mesa voy a abrir:', { plan: h.plan('cuenta.abrir', {
+        titulo: `Abrir ${nombreMesa(m)}`,
+        vista: [{ etiqueta: 'Mesa', valor: `${nombreMesa(m)}${m.area ? ' · ' + m.area : ''}` }, ...(personas ? [{ etiqueta: 'Personas', valor: String(personas) }] : [])],
+        ejecutar: { api: 'wybix.cuentas.abrir', payload: { mesaId: m.id, etiqueta: null, personas: personas ?? null, registerId: h.cajaEquipo(), customerId: null } },
+        permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    /* «La mesa 4 pide 2 tacos y una coca»: a preparación por el mismo envío que la caja. */
+    async 'cuenta.enviar'(it) {
+      const r = await mesaYCuenta(it);
+      if (r.error) return r.error;
+      const rs = h.v(it, 'renglones') || [];
+      const lineas = [];
+      for (const x of rs) {
+        const p = await h.producto(x.productId);
+        if (!p) continue;
+        const op = await h.uno('SELECT TOP 1 1 AS x FROM dbo.product_modifier_groups pmg JOIN dbo.modifier_groups g ON g.id = pmg.group_id AND g.active = 1 WHERE pmg.product_id = @p;', [['p', h.sql.Int, p.id]]);
+        if (op) return h.msg(`${p.nombre} lleva opciones (tamaño, término, sabor): mándalo desde la mesa en la caja.`);
+        lineas.push({ p, cantidad: Number(x.cantidad) });
+      }
+      if (!lineas.length) return h.msg('¿Qué pide la mesa?');
+      return h.msg('Este pedido voy a mandar:', { plan: h.plan('cuenta.enviar', {
+        titulo: `${nombreMesa(r.m)} · pedido`,
+        vista: [...lineas.map((l) => ({ etiqueta: `${h.num(l.cantidad)} × ${l.p.nombre}`, valor: h.dinero(Number(l.p.price) * l.cantidad) })),
+                { etiqueta: 'Suma a la cuenta', valor: h.dinero(lineas.reduce((a, l) => a + Number(l.p.price) * l.cantidad, 0)) }],
+        avisos: ['Sale la comanda a cada estación (pantalla o impresora), igual que al enviar desde la caja.'],
+        ejecutar: { api: 'wybix.cuentas.enviar', payload: { cuentaId: Number(r.c.id), lineas: lineas.map((l) => ({ productId: l.p.id, cantidad: l.cantidad, nota: null, origen: crypto.randomUUID(), opciones: [] })) } },
+        permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'cuenta.estado'(it) {
+      const r = await mesaYCuenta(it);
+      if (r.error) return r.error;
+      const estado = h.v(it, 'estado');
+      if (r.c.estado === estado) return h.msg(`${nombreMesa(r.m)} ya está ${estado === 'POR_COBRAR' ? 'por cobrar' : 'abierta'}.`);
+      return h.msg('Esto voy a marcar:', { plan: h.plan('cuenta.estado', {
+        titulo: `${nombreMesa(r.m)} · ${estado === 'POR_COBRAR' ? 'pidió la cuenta' : 'sigue abierta'}`,
+        vista: [{ etiqueta: 'Mesa', valor: `${r.c.estado === 'POR_COBRAR' ? 'por cobrar' : 'abierta'} → ${estado === 'POR_COBRAR' ? 'por cobrar' : 'abierta'}` }],
+        ejecutar: { api: 'wybix.cuentas.estado', payload: { cuentaId: Number(r.c.id), estado } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'cuenta.cliente'(it) {
+      const r = await mesaYCuenta(it);
+      if (r.error) return r.error;
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('cuenta.cliente', {
+        titulo: `${nombreMesa(r.m)} · ${c.nombre}`, vista: [{ etiqueta: 'Cliente', valor: `${r.c.cliente || 'sin cliente'} → ${c.nombre}` }],
+        ejecutar: { api: 'wybix.cuentas.cliente', payload: { cuentaId: Number(r.c.id), customerId: c.id } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'cuenta.liberar'(it) {
+      const r = await mesaYCuenta(it);
+      if (r.error) return r.error;
+      if (Number(r.c.renglones) > 0) return h.msg(`${nombreMesa(r.m)} tiene consumo: cóbrala, o que un encargado cancele lo pedido.`);
+      return h.msg('Esta mesa voy a liberar:', { plan: h.plan('cuenta.liberar', {
+        titulo: `Liberar ${nombreMesa(r.m)}`, vista: [{ etiqueta: 'Mesa', valor: `${nombreMesa(r.m)} → libre` }],
+        ejecutar: { api: 'wybix.cuentas.liberar', payload: { cuentaId: Number(r.c.id) } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    /* ======================================================== COMANDAS */
+    async 'comanda.estado'(it) {
+      const c = await comandaDe(h.v(it, 'comanda'));
+      if (!c) return h.msg(`No encuentro la comanda ${h.v(it, 'comanda')}.`);
+      const estado = h.v(it, 'estado');
+      const orden = ['NUEVA', 'PREPARANDO', 'LISTA', 'ENTREGADA'];
+      if (c.estado === 'CANCELADA') return h.msg(`La comanda ${c.id} se canceló.`);
+      if (orden.indexOf(estado) <= orden.indexOf(c.estado)) return h.msg(`La comanda ${c.id} ya está ${ESTADO_COMANDA[c.estado]}.`);
+      return h.msg('Esto voy a marcar:', { plan: h.plan('comanda.estado', {
+        titulo: `Comanda ${c.id} · ${ESTADO_COMANDA[estado]}`,
+        vista: [{ etiqueta: 'Comanda', valor: `${c.id}${c.mesa ? ' · mesa ' + c.mesa : ''}${c.estacion ? ' · ' + c.estacion : ''}` }, { etiqueta: 'Estado', valor: `${ESTADO_COMANDA[c.estado]} → ${ESTADO_COMANDA[estado]}` }],
+        ejecutar: { api: 'wybix.kds.estado', payload: { comandaId: Number(c.id), estado } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'comanda.cancelar'(it) {
+      const c = await comandaDe(h.v(it, 'comanda'));
+      if (!c) return h.msg(`No encuentro la comanda ${h.v(it, 'comanda')}.`);
+      if (c.estado === 'CANCELADA' || c.estado === 'ENTREGADA') return h.msg(`La comanda ${c.id} ya está ${ESTADO_COMANDA[c.estado]}.`);
+      const motivo = h.v(it, 'motivo');
+      return h.msg('Esta comanda voy a cancelar:', { plan: h.plan('comanda.cancelar', {
+        titulo: `Cancelar la comanda ${c.id}`,
+        vista: [{ etiqueta: 'Comanda', valor: `${c.id}${c.mesa ? ' · mesa ' + c.mesa : ''}${c.estacion ? ' · ' + c.estacion : ''}` }, ...(motivo ? [{ etiqueta: 'Motivo', valor: motivo }] : [])],
+        avisos: ['Sale de la pantalla de cocina. Lo pedido sigue en la cuenta hasta que se cancele ahí.'],
+        ejecutar: { api: 'wybix.kds.cancelar', payload: { comandaId: Number(c.id), motivo: motivo || null } }, permiso: 'MODIFICAR_VENTA',
+      }) });
+    },
+
+    async 'comanda.reimprimir'(it) {
+      const c = await comandaDe(h.v(it, 'comanda'));
+      if (!c) return h.msg(`No encuentro la comanda ${h.v(it, 'comanda')}.`);
+      if (c.salida === 'PANTALLA') return h.msg(`La estación ${c.estacion} no tiene impresora: la comanda está en su pantalla.`);
+      return h.msg('Esta comanda voy a reimprimir:', { plan: h.plan('comanda.reimprimir', {
+        titulo: `Reimprimir la comanda ${c.id}`, vista: [{ etiqueta: 'Estación', valor: c.estacion || '—' }, ...(c.mesa ? [{ etiqueta: 'Mesa', valor: c.mesa }] : [])],
+        ejecutar: { api: 'wybix.kds.reimprimir', payload: { comandaId: Number(c.id) } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    /* =================================================== SALÓN Y ESTACIONES */
+    async 'salon.area'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 60);
+      const ya = await h.uno('SELECT TOP 1 nombre FROM dbo.salon_areas WHERE nombre = @n AND activa = 1;', [['n', h.sql.NVarChar(60), nombre]]).catch(() => null);
+      if (ya) return h.msg(`Ya existe el área «${ya.nombre}».`);
+      return h.msg('Esta área voy a crear:', { plan: h.plan('salon.area', {
+        titulo: `Área nueva · ${nombre}`, vista: [{ etiqueta: 'Área', valor: nombre }],
+        ejecutar: { api: 'wybix.salon.guardarArea', payload: { id: null, nombre, orden: 0, activa: true } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'salon.mesa'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 40);
+      const areas = await h.q('SELECT id, nombre FROM dbo.salon_areas WHERE activa = 1 ORDER BY orden, id;').catch(() => []);
+      if (!areas.length) return h.msg('Primero crea un área: «crea el área Salón».');
+      const dicha = h.v(it, 'textoArea');
+      const area = dicha ? areas.find((a) => h.llano(a.nombre) === h.llano(dicha) || h.llano(a.nombre).includes(h.llano(dicha))) : areas.length === 1 ? areas[0] : null;
+      if (!area) return h.msg(dicha ? `No encuentro el área «${dicha}». Hay: ${areas.map((a) => a.nombre).join(', ')}.` : `¿En qué área? ${areas.map((a) => a.nombre).join(', ')}.`);
+      if (await mesaDe(nombre)) return h.msg(`Ya existe la mesa «${nombre}».`);
+      const cap = h.v(it, 'capacidad');
+      return h.msg('Esta mesa voy a agregar:', { plan: h.plan('salon.mesa', {
+        titulo: `Mesa nueva · ${nombre}`, vista: [{ etiqueta: 'Mesa', valor: nombre }, { etiqueta: 'Área', valor: area.nombre }, ...(cap ? [{ etiqueta: 'Lugares', valor: String(cap) }] : [])],
+        ejecutar: { api: 'wybix.salon.guardarMesa', payload: { id: null, areaId: area.id, nombre, capacidad: cap ?? null, orden: 0, activa: true } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'estacion.crear'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 40);
+      const ya = await h.uno('SELECT TOP 1 nombre FROM dbo.prep_stations WHERE nombre = @n AND activa = 1;', [['n', h.sql.NVarChar(40), nombre]]).catch(() => null);
+      if (ya) return h.msg(`Ya existe la estación «${ya.nombre}».`);
+      const impresora = !!h.v(it, 'impresora');
+      return h.msg('Esta estación voy a crear:', { plan: h.plan('estacion.crear', {
+        titulo: `Estación nueva · ${nombre}`, vista: [{ etiqueta: 'Estación', valor: nombre }, { etiqueta: 'Comandas', valor: impresora ? 'pantalla e impresora' : 'en pantalla' }],
+        avisos: impresora ? ['La impresora se elige en Configuración → Estaciones.'] : [],
+        ejecutar: { api: 'wybix.estaciones.guardar', payload: { id: null, nombre, salida: impresora ? 'AMBOS' : 'PANTALLA', impresora: null, anchoMm: null, orden: 0, activa: true } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'estacion.producto'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      const e = await h.uno('SELECT id, nombre FROM dbo.prep_stations WHERE id = @id;', [h.id(h.v(it, 'estacion'))]);
+      if (!p || !e) return h.msg('No encontré ese producto o esa estación.');
+      const actual = await h.uno('SELECT s.nombre FROM dbo.product_prep_station ps JOIN dbo.prep_stations s ON s.id = ps.station_id WHERE ps.product_id = @p;', [['p', h.sql.Int, p.id]]).catch(() => null);
+      if (actual?.nombre === e.nombre) return h.msg(`${p.nombre} ya se prepara en ${e.nombre}.`);
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('estacion.producto', {
+        titulo: `${p.nombre} · se prepara en ${e.nombre}`, vista: [{ etiqueta: 'Estación', valor: `${actual?.nombre || 'ninguna'} → ${e.nombre}` }],
+        ejecutar: { api: 'wybix.estaciones.asignar', payload: { productId: p.id, stationId: e.id } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
     },
   };
 };

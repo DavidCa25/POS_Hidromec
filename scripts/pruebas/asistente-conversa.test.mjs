@@ -385,3 +385,34 @@ test('fidelización hablada: puntos, membresía, rifas, cupones y configuración
   /* Un cliente que no existe no es un ajuste de puntos. */
   assert.notEqual(l('ponle 100 puntos a perenganito').intent, 'puntos.ajustar');
 });
+
+test('mesas, comandas, salón y estaciones hablando', () => {
+  const personas = prepararCatalogo([{ id: 1, nombre: 'Doña Mary', tipo: 'cliente' }]);
+  const cat = prepararCatalogo([{ id: 30, nombre: 'Taco al pastor' }, { id: 31, nombre: 'Coca Cola 600 ml' }, { id: 32, nombre: 'Agua de jamaica' }]);
+  const estaciones = [{ id: 1, nombre: 'Barra' }, { id: 2, nombre: 'Cocina' }];
+  const l = (texto, modulos = new Set(['hospitality'])) => interprete.interpretar(texto, { catalogo: cat, personas, estaciones, modulos, ahora: HOY });
+  const casos = [
+    ['abre la mesa 4 para 3', 'cuenta.abrir', { mesa: '4', personas: 3 }],
+    ['abre una cuenta para llevar a nombre de Juan', 'cuenta.abrir', { etiqueta: 'Juan' }],
+    ['la mesa 4 pidió la cuenta', 'cuenta.estado', { mesa: '4', estado: 'POR_COBRAR' }],
+    ['la mesa 4 es de doña mary', 'cuenta.cliente', { mesa: '4', cliente: 1 }],
+    ['libera la mesa 4', 'cuenta.liberar', { mesa: '4' }],
+    ['la comanda 12 ya está lista', 'comanda.estado', { comanda: 12, estado: 'LISTA' }],
+    ['cancela la comanda 12, se quemó', 'comanda.cancelar', { comanda: 12, motivo: 'Se quemó' }],
+    ['reimprime la comanda 12', 'comanda.reimprimir', { comanda: 12 }],
+    ['crea el área Terraza', 'salon.area', { nombre: 'Terraza' }],
+    ['agrega la mesa 10 en la terraza para 4', 'salon.mesa', { nombre: '10', textoArea: 'terraza', capacidad: 4 }],
+    ['crea la estación Postres', 'estacion.crear', { nombre: 'Postres' }],
+    ['el agua de jamaica va a la barra', 'estacion.producto', { producto: 32, estacion: 1 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  assert.deepEqual(l('la mesa 4 pide 2 tacos al pastor y una coca').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[30, 2], [31, 1]]);
+  assert.deepEqual(l('manda 3 aguas de jamaica a la mesa 4').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[32, 3]]);
+  /* «La concha va a subir» no es una estación; sin Hospitality, no hay mesas. */
+  assert.notEqual(l('el agua de jamaica va a subir').intent, 'estacion.producto');
+  assert.notEqual(l('abre la mesa 4', new Set()).intent, 'cuenta.abrir');
+});

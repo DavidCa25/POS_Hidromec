@@ -91,4 +91,53 @@ module.exports = [
     claves: ['propinas', 'propina', 'tips'],
     ejemplos: ['cuanto se junto de propinas', 'propinas de hoy', 'cuanta propina hay', 'propinas de la semana', 'cuanto toca de propina'],
   },
+  /* Reglas de lenguaje/mesas.js, no clasificador. */
+  {
+    id: 'cuenta.abrir', etiqueta: 'Abrir una mesa o cuenta', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { mesa: {}, personas: {}, etiqueta: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cuenta.enviar', etiqueta: 'Mandar un pedido a preparación', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { mesa: { requerido: true }, renglones: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cuenta.estado', etiqueta: 'La mesa pidió la cuenta', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { mesa: { requerido: true }, estado: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cuenta.cliente', etiqueta: 'Cliente de una mesa', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { mesa: { requerido: true }, cliente: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cuenta.liberar', etiqueta: 'Liberar una mesa', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { mesa: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'comanda.estado', etiqueta: 'Avance de una comanda', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { comanda: { requerido: true }, estado: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'comanda.cancelar', etiqueta: 'Cancelar una comanda', tipo: 'accion', modulo: 'hospitality', permiso: 'MODIFICAR_VENTA', soloRegla: true,
+    slots: { comanda: { requerido: true }, motivo: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'comanda.reimprimir', etiqueta: 'Reimprimir una comanda', tipo: 'accion', modulo: 'hospitality', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { comanda: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'salon.area', etiqueta: 'Crear un área del salón', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'salon.mesa', etiqueta: 'Agregar una mesa', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, textoArea: {}, capacidad: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'estacion.crear', etiqueta: 'Crear una estación de preparación', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, impresora: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'estacion.producto', etiqueta: 'Dónde se prepara un producto', tipo: 'accion', modulo: 'hospitality', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true }, estacion: { requerido: true } }, claves: [], ejemplos: [],
+  },
 ];

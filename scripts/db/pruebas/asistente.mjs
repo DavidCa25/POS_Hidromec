@@ -536,6 +536,30 @@ try {
   check(!rCup.plan, 'un cupón que no existe no se emite', rCup.texto);
   const rRifa = await pedirC('rifa.sortear', { textoRifa: ex('navidad') });
   check(!rRifa.plan, 'sin rifas abiertas no hay sorteo', rRifa.texto);
+
+  /* 14. Hospitality: salón, mesa y cuenta. */
+  seccion('14. Salón, mesa y cuenta');
+  const rAr = await pedirC('salon.area', { nombre: ex('QA Terraza') });
+  await pool.request().input('id', sql.Int, null).input('nombre', sql.NVarChar(60), rAr.plan.ejecutar.payload.nombre).input('orden', sql.Int, 0).input('activa', sql.Bit, 1).execute('sp_salon_area_save');
+  const rMe = await pedirC('salon.mesa', { nombre: ex('QA 10'), textoArea: ex('qa terraza'), capacidad: ex(4) });
+  const me = rMe.plan?.ejecutar.payload;
+  check(rMe.plan?.ejecutar.api === 'wybix.salon.guardarMesa' && me.areaId > 0 && me.capacidad === 4, 'mesa nueva en el área dicha', rMe.texto);
+  await pool.request().input('id', sql.Int, null).input('area_id', sql.Int, me.areaId).input('nombre', sql.NVarChar(40), me.nombre).input('capacidad', sql.Int, me.capacidad)
+    .input('orden', sql.Int, 0).input('activa', sql.Bit, 1).execute('sp_salon_mesa_save');
+  const rAb = await pedirC('cuenta.abrir', { mesa: ex('qa 10'), personas: ex(3) });
+  const ab = rAb.plan?.ejecutar.payload;
+  check(rAb.plan?.ejecutar.api === 'wybix.cuentas.abrir' && ab.mesaId > 0, 'abrir la mesa por su nombre', rAb.texto);
+  try {
+    await pool.request().input('mesa_id', sql.Int, ab.mesaId).input('etiqueta', sql.NVarChar(60), null).input('personas', sql.Int, 3).input('user_id', sql.Int, 1)
+      .input('register_id', sql.Int, caja).input('customer_id', sql.Int, null).execute('sp_hosp_cuenta_abrir');
+    const rAb2 = await pedirC('cuenta.abrir', { mesa: ex('qa 10') });
+    check(!rAb2.plan && /ya está abierta/.test(rAb2.texto), 'una mesa abierta no se abre otra vez', rAb2.texto);
+    const rEs = await pedirC('cuenta.estado', { mesa: ex('qa 10'), estado: ex('POR_COBRAR') });
+    await pool.request().input('cuenta_id', sql.Int, rEs.plan.ejecutar.payload.cuentaId).input('estado', sql.NVarChar(12), 'POR_COBRAR').input('user_id', sql.Int, 1).execute('sp_hosp_cuenta_estado');
+    const rLib = await pedirC('cuenta.liberar', { mesa: ex('qa 10') });
+    await pool.request().input('cuenta_id', sql.Int, rLib.plan.ejecutar.payload.cuentaId).input('user_id', sql.Int, 1).execute('sp_hosp_cuenta_liberar');
+    check(!(await q(`SELECT 1 FROM dbo.hosp_cuentas WHERE mesa_id = ${ab.mesaId} AND estado IN ('ABIERTA','POR_COBRAR')`)).length, 'pidió la cuenta y, sin consumo, se libera');
+  } catch (e) { check(false, 'cuenta de mesa por los SP de Hospitality', e.message); }
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

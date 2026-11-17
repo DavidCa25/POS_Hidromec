@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 66 de 177 acciones (37 %)».
+Además imprime el avance, por ejemplo «asistente: 78 de 175 acciones (45 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -333,6 +333,22 @@ Reglas en `lenguaje/fidelizacion.js`.
 
 A propósito manuales: el canje del cupón (lo hace el cobro), escanear el pase
 de la cartera y girar la ruleta (lo hace el cliente).
+
+### Mesas, comandas, salón y estaciones (Hospitality)
+
+Reglas en `lenguaje/mesas.js`, solo con Hospitality encendido. La mesa se busca
+por su nombre o su número («4», «mesa 4», «terraza 2»).
+
+| Frase | Qué hace |
+|---|---|
+| «abre la mesa 4 para 3», «abre una cuenta para llevar a nombre de Juan» | `cuentas:abrir`. Una mesa abierta no se abre otra vez. |
+| «la mesa 4 pide 2 tacos y una coca», «manda 3 aguas a la mesa 4» | `cuentas:enviar`: el mismo envío que la caja (comanda por estación, impresión). Un producto con opciones se manda desde la caja. |
+| «la mesa 4 pidió la cuenta», «la mesa 4 es de doña Mary», «libera la mesa 4» | `cuentas:estado`, `cuentas:cliente`, `cuentas:liberar` (solo sin consumo). |
+| «la comanda 12 ya está lista», «cancela la comanda 12, se quemó», «reimprime la comanda 12» | `kds:estado` (solo hacia adelante), `comandas:cancelar`, `comandas:reimprimir`. |
+| «crea el área Terraza», «agrega la mesa 10 en la terraza para 4» | `salon:area-guardar`, `salon:mesa-guardar`. |
+| «crea la estación Postres», «el agua de jamaica va a la barra» | `estaciones:guardar`, `estaciones:producto-asignar`. La estación tiene que existir. |
+
+Cerrar la cuenta con la venta (`cuentas:cobrada`) lo hace Venta al cobrar.
 
 ## El loop de entrenamiento
 

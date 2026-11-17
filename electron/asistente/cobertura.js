@@ -20,6 +20,7 @@
 'use strict';
 
 const LECTURA = [
+  'estaciones:productos',
   'produccion:formula',
   'corte:correo-lista',
   'alerts:refunds-by-cashier',
@@ -112,6 +113,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'cuentas:cobrada': 'Lo hace Venta sola al cobrar la cuenta de la mesa (cierra la cuenta con la venta en el mismo cobro); no es un paso aparte.',
   'coupons:redeem': 'El cupón se consume solo al cobrar la venta que lo trae (SaleService.checkout); no es un paso aparte.',
   'club:wallet-resolver': 'Se dispara al escanear el pase de la cartera del cliente en la caja: es lectura de un código, no una orden hablada.',
   'dynamics:play': 'La ruleta la gira el cliente en la pantalla de cliente después de pagar; el resultado lo decide SQL, no quien opera.',
@@ -198,23 +200,18 @@ const PENDIENTE = {
   'configuracion': ['backup-run-now', 'backup-set-config', 'export-database', 'modules:set', 'negocio:giro-guardar', 'registers-add', 'registers-set-active', 'update-business-config', 'users:create', 'users:set-active', 'users:set-permissions', 'users:update-role'],
   'cloud': ['cloud:crear-sucursal'],
   'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
-  'comandas': ['comandas:cancelar', 'comandas:reimprimir'],
   'commercial': ['commercial:save'],
-  'cuentas': ['cuentas:abrir', 'cuentas:cliente', 'cuentas:cobrada', 'cuentas:enviar', 'cuentas:estado', 'cuentas:liberar'],
   'ventas': ['devoluciones:cambio', 'sp-update-sale', 'venta-suelta:guardar'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
-  'estaciones': ['estaciones:guardar'],
-  'catalogo': ['estaciones:producto-asignar', 'estaciones:productos', 'inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno'],
+  'catalogo': ['inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno'],
   'fiscal': ['fiscal-cancel-invoice', 'fiscal-save-invoice', 'fiscal:cancelar', 'fiscal:timbrar'],
   'impuestos': ['impuestos:guardar'],
-  'kds': ['kds:estado'],
   'localhost': ['localhost:activar', 'localhost:cambiar-funcion', 'localhost:renombrar', 'localhost:revocar', 'localhost:trabajador-revocar'],
   'menu': ['menu-linea:aceptar', 'menu-linea:diseno', 'menu-linea:diseno-guardar', 'menu-linea:guardar', 'menu-linea:imagen-borrar', 'menu-linea:imagen-ver', 'menu-linea:rechazar'],
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'plataformas': ['plataformas:canal-guardar', 'plataformas:cancelar', 'plataformas:confirmar', 'plataformas:deposito', 'plataformas:emparejar', 'plataformas:guardar', 'plataformas:ver'],
   'produccion': ['produccion:formula-guardar', 'produccion:formula-quitar'],
   'propinas': ['propinas:activar', 'propinas:config-guardar'],
-  'salon': ['salon:area-guardar', 'salon:mesa-guardar'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
   'servicios': ['servicios:activar-activo'],
   'socios': ['socios:activar', 'socios:config-guardar'],

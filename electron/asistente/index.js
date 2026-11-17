@@ -92,7 +92,7 @@ function crearAsistente(d) {
     if (!forzar && Date.now() - cat.en < 2 * 60_000) return cat;
     const db = await pool();
     const leer = async (texto) => { try { return (await db.request().query(texto)).recordset || []; } catch { return []; } };
-    const [productos, categorias, clientes, proveedores, profesionales, conceptos, usuarios, apodos, socios] = await Promise.all([
+    const [productos, categorias, clientes, proveedores, profesionales, conceptos, usuarios, apodos, socios, estaciones] = await Promise.all([
       leer(`SELECT id, nombre, stock, inventory_mode, bar_code, part_number FROM dbo.products WHERE active = 1;`),
       leer(`SELECT id, namee AS nombre FROM dbo.CAT_categories ORDER BY namee;`),
       leer(`SELECT id, customerName AS nombre FROM dbo.customers WHERE active = 1;`),
@@ -103,6 +103,8 @@ function crearAsistente(d) {
       store.apodos(),
       /* Socios (0079): solo los activos; sin la tabla, ninguno. */
       leer(`SELECT id, nombre FROM dbo.socios WHERE activo = 1;`),
+      /* Estaciones de preparación (Hospitality): «las bebidas van a la barra». */
+      leer(`SELECT id, nombre FROM dbo.prep_stations WHERE activa = 1;`),
     ]);
     /* Un apodo es otro nombre del mismo producto o persona: entra al catálogo
        con las palabras del apodo y el nombre real (así se contesta con él). */
@@ -123,6 +125,7 @@ function crearAsistente(d) {
       conceptos,
       usuarios,
       socios,
+      estaciones,
       apodos: apodos.map((a) => ({ ...a, nombre: nombreDe[a.tipo]?.get(a.refId) || null })),
     };
     return cat;
