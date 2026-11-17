@@ -54,17 +54,32 @@ module.exports = [
                'cuanto sale {n} {prod} con {n} {prod}', 'cuanto seria {n} {prod}', 'total de {n} {prod} y {n} {prod}'],
   },
   {
-    id: 'venta.devolucion', etiqueta: 'Hacer una devolución', tipo: 'pantalla', permiso: 'DEVOLUCIONES',
-    slots: { folio: {} },
-    claves: ['devolucion', 'devolver', 'regresar', 'reembolso', 'cambio', 'devuelve'],
+    /* Con folio arma la devolución (todo el ticket, o lo que se diga de él) y
+       la registra por sp-refund-sale con el motivo; sin folio, lo pregunta. */
+    id: 'venta.devolucion', etiqueta: 'Hacer una devolución', tipo: 'accion', permiso: 'DEVOLUCIONES',
+    slots: { folio: {}, renglones: {}, razon: { requerido: true } },
+    claves: ['devolucion', 'devolver', 'regresar', 'reembolso', 'cambio', 'devuelve', 'reembolsa'],
     ejemplos: ['quiero hacer una devolucion', 'devolucion del ticket {folio}', 'el cliente quiere devolver {prod}', 'reembolsa la venta {folio}',
-               'cambio de producto', 'regresar dinero de la venta {folio}', 'devuelve el ticket {folio}'],
+               'regresar dinero de la venta {folio}', 'devuelve el ticket {folio}', 'devuelve {n} {prod} del ticket {folio}',
+               'devolucion de {n} {prod} de la venta {folio}', 'el ticket {folio} viene en mal estado devuelvelo'],
   },
   {
-    id: 'venta.cobrar', etiqueta: 'Cobrar una venta', tipo: 'pantalla', permiso: 'VENTAS_OPERAR',
-    slots: { renglones: {} },
+    /* Con forma de pago («cóbrale 2 cocas en efectivo») cobra desde el chat
+       con el mismo SaleService.checkout de Venta; sin ella, deja la cuenta
+       cargada en Venta para elegirla ahí. */
+    id: 'venta.cobrar', etiqueta: 'Cobrar una venta', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { renglones: {}, metodo: {}, monto: {} },
     claves: ['cobra', 'cobrale', 'vende', 'vendele', 'cobrar', 'cobrame', 'despacha'],
     ejemplos: ['cobrale {n} {prod}', 'vendele {n} {prod} y {n} {prod}', 'cobra {n} {prod}', 'quiero cobrar {n} {prod}',
-               'hazme una venta de {n} {prod}', 'despacha {n} {prod}', 'cobrame {n} {prod} y {n} {prod}'],
+               'hazme una venta de {n} {prod}', 'despacha {n} {prod}', 'cobrame {n} {prod} y {n} {prod}',
+               'cobrale {n} {prod} en efectivo', 'cobra {n} {prod} con tarjeta', 'vendele {n} {prod} pago con transferencia'],
+  },
+  {
+    id: 'venta.reimprimir', etiqueta: 'Reimprimir un ticket', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { folio: {} },
+    claves: ['reimprime', 'reimprimir', 'imprime', 'imprimir', 'reimpresion', 'otra', 'vez', 'copia'],
+    ejemplos: ['reimprime el ticket {folio}', 'imprime otra vez el ticket {folio}', 'vuelve a imprimir el ultimo ticket',
+               'reimprime el ultimo ticket', 'imprime el ticket {folio}', 'sacame una copia del ticket {folio}',
+               'reimpresion del ticket {folio}', 'imprime el ultimo ticket otra vez'],
   },
 ];

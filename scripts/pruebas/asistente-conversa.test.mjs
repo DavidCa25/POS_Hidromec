@@ -213,3 +213,39 @@ test('editar la ficha hablando: costo, código, SKU, nombre, IVA, impuestos y ba
   const rd = interprete.interpretar('cambia el costo del 7855745585855 a 5', { catalogo: dup, categorias: [], modulos: new Set(), ahora: HOY });
   assert.equal(rd.falta, 'producto'); assert.equal(rd.slots.producto.opciones.length, 2);
 });
+
+test('ventas y caja hablando: abrir, corte con lo contado, cajón, correo, reimprimir, devolución y cobro', () => {
+  const cat = prepararCatalogo([{ id: 1, nombre: 'Concha' }, { id: 3, nombre: 'Coca Cola 600 ml', bar_code: '7501055300846' }]);
+  const l = (texto, esperando) => interprete.interpretar(texto, { catalogo: cat, categorias: CATEGORIAS, modulos: new Set(), ahora: HOY, esperando });
+  const casos = [
+    ['abre la caja con 500', 'caja.abrir', { monto: 500 }],
+    ['abrir turno con $1,000 de fondo', 'caja.abrir', { monto: 1000 }],
+    ['haz el corte, conté 3250', 'caja.corte', { monto: 3250 }],
+    ['cierra la caja, hay $2,800', 'caja.corte', { monto: 2800 }],
+    ['abre el cajón', 'caja.cajon', {}],
+    ['manda el corte por correo', 'caja.corte_correo', {}],
+    ['reimprime el ticket 1234', 'venta.reimprimir', { folio: 1234 }],
+    ['vuelve a imprimir el último ticket', 'venta.reimprimir', { folio: 'ultimo' }],
+    ['devuelve el ticket 120, venía en mal estado', 'venta.devolucion', { folio: 120, razon: 'Mal estado' }],
+    ['cóbrale 2 cocas en efectivo', 'venta.cobrar', { metodo: 'EFECTIVO' }],
+    ['cobra 3 conchas con tarjeta', 'venta.cobrar', { metodo: 'TARJETA' }],
+    /* En un cobro el número de piezas no es dinero; lo recibido se dice aparte. */
+    ['cóbrale 2 cocas en efectivo, me dio 50', 'venta.cobrar', { metodo: 'EFECTIVO', monto: 50 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  /* El cobro lleva sus renglones; cuánto hay en caja sigue siendo consulta. */
+  assert.deepEqual(l('cóbrale 2 cocas en efectivo').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[3, 2]]);
+  assert.equal(l('cuánto hay en el cajón').intent, 'caja.efectivo');
+  assert.equal(l('quién abrió la caja').intent, 'caja.turno');
+  /* Devolución sin motivo: lo pregunta, y la respuesta con un botón lo llena. */
+  const sinMotivo = l('devuelve el ticket 120');
+  assert.equal(sinMotivo.falta, 'razon');
+  const resp = l('No lo quiso', { intent: sinMotivo.intent, slots: sinMotivo.slots, falta: 'razon' });
+  assert.equal(resp.slots.razon.valor, 'No lo quiso'); assert.equal(resp.falta, null);
+  /* Corte sin lo contado: lo pregunta. */
+  assert.equal(l('haz el corte').falta, 'monto');
+});

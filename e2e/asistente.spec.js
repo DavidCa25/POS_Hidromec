@@ -430,3 +430,75 @@ test('Wybix: editar la ficha hablando (costo, código de barras, nombre, IEPS) y
   await expect.poll(async () => (await sql(app.base, `SELECT active FROM dbo.products WHERE id = ${ids.turron}`))[0].active).toBe(false);
   await p.screenshot({ path: path.join(SHOTS, 'ficha-chat.png') });
 });
+
+test('Wybix: caja y ventas hablando (abrir, cobrar en efectivo, devolver y corte), con tarjeta y en la base', async ({ app }) => {
+  test.setTimeout(300000);
+  fs.mkdirSync(SHOTS, { recursive: true });
+  const p = app.ventana;
+  await p.setViewportSize?.({ width: 1440, height: 900 });
+  const [ids] = await sql(app.base, `
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'E2E Caja') INSERT INTO dbo.CAT_categories (namee) VALUES (N'E2E Caja');
+    DECLARE @c INT = (SELECT id FROM dbo.CAT_categories WHERE namee = N'E2E Caja');
+    DELETE FROM dbo.asistente_mensajes;
+    UPDATE dbo.cash_closures SET closed_at = GETDATE(), cash_delivered = ISNULL(cash_delivered, 0) WHERE closed_at IS NULL;
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE part_number = N'WYB-COCADA')
+      INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, inventory_mode, category_id, cost, objeto_impuesto, tasa_iva, registrated_date)
+      VALUES (N'WYB-COCADA', N'Cocada morena', 12, 50, 1, 1, 'DIRECT', @c, 5, '02', 0.16, GETDATE());
+    /* Venta solo lista productos con marca y categoría (sp_get_active_products). */
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands) INSERT INTO dbo.CAT_brands (namee) VALUES (N'E2E Marca');
+    UPDATE dbo.products SET price = 12, stock = 50, active = 1, brand_id = (SELECT MIN(id) FROM dbo.CAT_brands) WHERE part_number = N'WYB-COCADA';
+    SELECT (SELECT id FROM dbo.products WHERE part_number = N'WYB-COCADA') AS cocada, (SELECT MIN(id) FROM dbo.registers) AS caja,
+           (SELECT ISNULL(MAX(id), 0) FROM dbo.sales) AS ultimaVenta;`);
+
+  await p.fill('#username', CUENTAS.admin.usuario);
+  await p.fill('#password', CUENTAS.admin.password);
+  await p.click('#btnLogin');
+  await expect.poll(async () => { try { return (await app.invocar('sesion'))?.data?.usuario; } catch { return null; } }, { timeout: 60000 })
+    .toBe(CUENTAS.admin.usuario);
+  /* La caja de ESTE equipo: la misma que eligen Venta y Corte. */
+  await app.invocar('setDeviceConfig', { register: { id: ids.caja, name: 'Caja 1' } });
+  await p.click('[data-guide=wybix-guide]');
+  await expect(p.locator('[data-guide=wybix-chat]')).toBeVisible();
+  const campo = p.locator('[data-guide=wybix-campo]');
+  const decir = async (t) => { await campo.fill(t); await campo.press('Enter'); };
+  const confirmarUltimo = async (texto) => {
+    const plan = p.locator('[data-guide=wybix-plan]').last();
+    await expect(plan).toContainText(texto, { timeout: 20000 });
+    await plan.locator('[data-guide=wybix-confirmar]').click();
+    await expect(plan).toHaveAttribute('data-guide-estado', /hecho|fallido/, { timeout: 30000 });
+    /* Si falló, el chat dice por qué: que la prueba lo diga también. */
+    if (await plan.getAttribute('data-guide-estado') === 'fallido') {
+      await p.waitForTimeout(1500);
+      throw new Error('La tarjeta falló: ' + (await p.locator('[data-guide=wybix-mensaje]').last().innerText()));
+    }
+    return plan;
+  };
+  const turno = async () => (await sql(app.base, `SELECT TOP 1 id, opening_cash, closed_at, cash_expected, cash_delivered FROM dbo.cash_closures WHERE register_id = ${ids.caja} ORDER BY id DESC`))[0];
+
+  await decir('abre la caja con 500');
+  await confirmarUltimo('$500.00');
+  await expect.poll(async () => { const t = await turno(); return t && !t.closed_at ? Number(t.opening_cash) : null; }).toBe(500);
+
+  /* Cobrar desde el chat: el mismo checkout que Venta, en una cuenta aparte. */
+  await decir('cóbrale 2 cocadas morenas en efectivo, me dio 50');
+  const cobro = await confirmarUltimo('Cobrar $24.00 en efectivo');
+  await cobro.screenshot({ path: path.join(SHOTS, 'caja-cobro.png') });
+  const venta = async () => (await sql(app.base, `SELECT TOP 1 s.id, s.total, s.payment_method, d.quantity FROM dbo.sales s JOIN dbo.sale_detail d ON d.sale_id = s.id
+                                                  WHERE s.id > ${ids.ultimaVenta} AND d.product_id = ${ids.cocada} ORDER BY s.id DESC`))[0];
+  await expect.poll(async () => Number((await venta())?.total || 0)).toBe(24);
+  const v = await venta();
+  expect(v.payment_method).toBe('EFECTIVO');
+  expect(Number(v.quantity)).toBe(2);
+
+  await decir(`devuelve el ticket ${v.id}, no lo quiso`);
+  await confirmarUltimo(`Devolución del ticket ${v.id}`);
+  await expect.poll(async () => Number((await sql(app.base, `SELECT COUNT(*) AS n FROM dbo.sale_refunds WHERE sale_id = ${v.id}`))[0].n)).toBe(1);
+
+  /* Fondo 500 + venta 24 − devolución 24: cuadra con 500. */
+  await decir('haz el corte, conté 500');
+  const corte = await confirmarUltimo('cuadra');
+  await corte.screenshot({ path: path.join(SHOTS, 'caja-corte.png') });
+  await expect.poll(async () => { const t = await turno(); return t?.closed_at ? Number(t.cash_delivered) : null; }).toBe(500);
+  expect(Number((await turno()).cash_expected)).toBe(500);
+  await p.screenshot({ path: path.join(SHOTS, 'caja-chat.png') });
+});

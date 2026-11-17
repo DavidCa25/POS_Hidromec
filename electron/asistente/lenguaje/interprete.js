@@ -649,7 +649,13 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
       if (/^\d+(\.\d+)?$/.test(ult) && Number(ult) > 0) s.precio = { valor: Number(ult), texto: ult, confianza: 'exacto' };
     }
   }
-  if (quiere('monto')) {
+  if (quiere('monto') && intent === 'venta.cobrar') {
+    /* En un cobro los números son cantidades; lo recibido se dice aparte:
+       «me dio 100», «paga con 200», «con un billete de 500». */
+    const m = a.norm.match(/\bbillete de\s+\$?(\d+(?:\.\d+)?)\b/)
+      || a.norm.match(/\b(?:me dio|me dieron|me paga|me pago|paga con|pago con|pagan con|recibi)\s+\$?(\d+(?:\.\d+)?)\b(?!\s*(?:billete|billetes)\b)/);
+    if (m) s.monto = { valor: Number(m[1]), texto: `$${m[1]}`, confianza: 'exacto' };
+  } else if (quiere('monto')) {
     if (a.din) s.monto = { valor: a.din.valor, texto: `$${a.din.valor}`, confianza: 'exacto' };
     else {
       /* «doña Mary abonó 200»: el número que no es teléfono, hora ni folio. */
@@ -668,6 +674,12 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     const f = ex.folio(a.norm) || (respuestaA === 'folio' && a.cants[0] ? { valor: a.cants[0].valor, texto: String(a.cants[0].valor), confianza: 'exacto' } : null)
       || (a.cants.length === 1 && !a.prodIdx.size ? { valor: a.cants[0].valor, texto: String(a.cants[0].valor), confianza: 'exacto' } : null);
     if (f) s.folio = f;
+    /* «reimprime el último ticket», «devuelve la última venta». */
+    else if (/\bultim[oa]s?\b/.test(a.norm)) s.folio = { valor: 'ultimo', texto: 'el último', confianza: 'exacto' };
+  }
+  if (quiere('razon')) {
+    const r = ex.motivoDevolucion(a.norm) || (respuestaA === 'razon' ? ex.MOTIVOS_DEVOLUCION.find((m) => normalizar(m).texto === a.norm) || (a.norm.length > 2 ? 'Otro' : null) : null);
+    if (r) s.razon = { valor: r, texto: r, confianza: 'exacto' };
   }
   if (quiere('mesa')) {
     const m = ex.mesa(a.norm) || (a.cants.length === 1 ? { valor: a.cants[0].valor, texto: `mesa ${a.cants[0].valor}`, confianza: 'exacto' } : null);

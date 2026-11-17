@@ -22,13 +22,14 @@ import { join } from 'node:path';
 const require = createRequire(import.meta.url);
 const raiz = join(import.meta.dirname, '..', '..');
 const { EXIGE } = require(join(raiz, 'electron/seguridad/canales.js'));
-const { LECTURA, MANUAL, PENDIENTE } = require(join(raiz, 'electron/asistente/cobertura.js'));
+const { LECTURA, MANUAL, PENDIENTE, PANTALLA } = require(join(raiz, 'electron/asistente/cobertura.js'));
 
 /** Función de preload → canal que invoca («actualizarProducto» → «sp-update-product»). */
 function funcionesDePreload() {
   const t = readFileSync(join(raiz, 'electron/preload.js'), 'utf8');
   const out = new Map();
-  const re = /(\w+)\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*(?:return\s+)?)?invoke\(\s*'([^']+)'/g;
+  /* «x: (p) => invoke('canal')» y también «x: p => invoke('canal')». */
+  const re = /(\w+)\s*:\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>\s*(?:\{\s*(?:return\s+)?)?invoke\(\s*'([^']+)'/g;
   let m;
   while ((m = re.exec(t))) out.set(m[1], m[2]);
   return out;
@@ -45,10 +46,21 @@ function apisDeLosPlanes() {
   return usadas;
 }
 
+/** «pantalla.cobrar»: planes que ejecuta AsistenteService con un servicio de la pantalla. */
+function pantallaDeLosPlanes() {
+  const dir = join(raiz, 'electron/asistente/acciones');
+  const usadas = new Set();
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+    for (const m of readFileSync(join(dir, f), 'utf8').matchAll(/['"`]pantalla\.(\w+)['"`]/g)) usadas.add(m[1]);
+  }
+  return usadas;
+}
+
 function calcular() {
   const preload = funcionesDePreload();
   const cubiertos = new Set();
   for (const fn of apisDeLosPlanes()) { const c = preload.get(fn); if (c && EXIGE[c]) cubiertos.add(c); }
+  for (const fn of pantallaDeLosPlanes()) { const c = PANTALLA[fn]; if (c && EXIGE[c]) cubiertos.add(c); }
   const pendientes = Object.values(PENDIENTE).flat();
   return { cubiertos, pendientes };
 }
@@ -87,4 +99,12 @@ test('cobertura: cada plan llama a una función que existe en preload y está pr
   /* Funciones del asistente mismo (apodos, preferencias) no son canales del negocio. */
   const propias = new Set(['asistenteAlias', 'asistenteAliasOlvidar']);
   assert.deepEqual(sinCanal.filter((fn) => !propias.has(fn)), [], 'un plan llama a algo que preload no expone');
+
+  /* «pantalla.x»: declarado en PANTALLA y atendido por AsistenteService. */
+  const servicio = readFileSync(join(raiz, 'src/core/asistente.service.ts'), 'utf8');
+  for (const fn of pantallaDeLosPlanes()) {
+    assert.ok(PANTALLA[fn], `pantalla.${fn} no está en PANTALLA (cobertura.js)`);
+    assert.ok(EXIGE[PANTALLA[fn]], `pantalla.${fn} apunta a un canal sin protección`);
+    assert.match(servicio, new RegExp(`\\b${fn}\\s*:\\s*\\(`), `AsistenteService no atiende pantalla.${fn}`);
+  }
 });

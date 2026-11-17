@@ -255,5 +255,16 @@ function motivoMerma(texto) {
   return null;
 }
 
+/** Motivo de una devolución, con las mismas etiquetas que la pantalla
+    (devoluciones.service.ts: MOTIVOS_DEVOLUCION). */
+const MOTIVOS_DEVOLUCION = ['Mal estado', 'Se equivocó de producto', 'No lo quiso', 'Error al cobrar', 'Otro'];
+function motivoDevolucion(texto) {
+  if (/\b(mal estado|caduc|venci|echad|rot[oa]s?\b|defect|no sirv|no funcion|danad|podrid)/.test(texto)) return 'Mal estado';
+  if (/\b(se equivoc|equivocad|otro producto|no era (el|la|lo)\b|era otr|confundi)/.test(texto)) return 'Se equivocó de producto';
+  if (/\b(no lo quis|no la quis|no los quis|ya no lo quier|ya no la quier|ya no quier|se arrepint|no le gust)/.test(texto)) return 'No lo quiso';
+  if (/\b(error al cobrar|cobre mal|cobro mal|cobramos mal|mal cobrad|cobre de mas|doble cobro|se cobro dos veces)/.test(texto)) return 'Error al cobrar';
+  return null;
+}
+
 module.exports = { dinero, cantidades, fecha, periodo, diceperiodo, hora, folio, mesa, metodoPago, telefono, conceptoGasto, renglones,
-                   producto, motivoMerma, unidadDe, RUIDO };
+                   producto, motivoMerma, motivoDevolucion, MOTIVOS_DEVOLUCION, unidadDe, RUIDO };

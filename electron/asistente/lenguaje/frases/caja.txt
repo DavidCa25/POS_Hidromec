@@ -64,6 +64,10 @@ dejaron 300 para cambio
 pon 200 de morralla
 entrada a caja por 600
 
+pon 500 de fondo extra
+mete mas fondo al cajon
+agrega 200 de fondo
+
 @ caja.salida
 salida de efectivo de 500
 saca 200 de la caja
@@ -168,3 +172,60 @@ hacer arqueo
 voy a entregar caja
 entregar la caja
 cierre de turno
+haz el corte conte 3250
+cierra la caja hay $2,800
+corte con 1500 contados
+cierra el turno con $4,100
+conte 2300 haz el corte
+ya conte la caja son 1800 cierra el turno
+haz el corte de caja con 950
+hacer el corte de caja con 2000
+corte de caja hay 1700
+hacer el corte del turno
+hacer el corte de la semana
+hacer el corte del mes
+
+@ caja.abrir
+abre la caja con 500
+abre la caja con $1,000
+abrir turno con 500 de fondo
+abre el turno
+abre turno
+inicia el turno con 800
+empieza la caja con 300
+quiero abrir caja
+quiero abrir la caja
+apertura de caja con 500
+abro con 1000 de fondo
+abre turno con $700
+vamos a abrir la caja
+abreme la caja con 500 de fondo
+abrir la caja
+inicia turno
+empezar turno con 600
+
+@ caja.cajon
+abre el cajon
+abreme el cajon
+abrir cajon
+abrir el cajon
+necesito abrir el cajon
+abre la gaveta
+abre el cajon del dinero
+puedes abrir el cajon
+abreme la gaveta
+avienta el cajon
+abre el cajon por favor
+necesito cambio abre el cajon
+
+@ caja.corte_correo
+manda el corte por correo
+envia el ultimo corte por correo
+mandame el corte al correo
+manda por mail el corte
+envia el corte al email
+manda el corte de hoy por correo
+mandame por correo el corte
+envia por correo el ultimo corte
+reenvia el corte por correo
+manda el corte al correo del dueño

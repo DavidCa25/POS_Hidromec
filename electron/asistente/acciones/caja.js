@@ -1,7 +1,22 @@
 'use strict';
 /* CAJA: el efectivo, las entradas y salidas, los cortes y el turno. */
 
-module.exports = (h) => ({
+/** El turno abierto de la caja, con lo que suman sus movimientos (misma regla que sp_close_shift). */
+function turnoAbiertoDe(h, caja) {
+  return h.uno(`
+    SELECT TOP 1 c.id, c.opened_at, c.opening_cash, ISNULL(c.opening_user_id, c.userId) AS abrio, u.usuario,
+           ISNULL(r.name, CONCAT('Caja ', c.register_id)) AS caja,
+           (SELECT ISNULL(SUM(CASE WHEN m.typee = 'OPENING' THEN 0 ELSE m.amount END), 0) FROM dbo.cash_movements m
+             WHERE m.closure_id = c.id OR (m.closure_id IS NULL AND m.register_id = c.register_id AND m.datee >= c.opened_at)) AS movimientos
+      FROM dbo.cash_closures c LEFT JOIN dbo.registers r ON r.id = c.register_id
+      LEFT JOIN dbo.users u ON u.id = ISNULL(c.opening_user_id, c.userId)
+     WHERE c.closed_at IS NULL AND c.register_id = @caja ORDER BY c.opened_at DESC;`, [['caja', h.sql.Int, caja]]);
+}
+
+module.exports = (h) => {
+  const turnoAbierto = (caja) => turnoAbiertoDe(h, caja);
+  const nombreCaja = async (caja) => (await h.uno('SELECT name FROM dbo.registers WHERE id = @caja;', [['caja', h.sql.Int, caja]]))?.name || `Caja ${caja}`;
+  return {
   async 'caja.efectivo'() {
     /* Lo que hay en cada cajón desde su último corte: todos los movimientos
        sin corte (fondo, ventas en efectivo, entradas, retiros, gastos). */
@@ -89,7 +104,93 @@ module.exports = (h) => ({
       datos: t.length > 1 ? t.map((x) => ({ etiqueta: x.caja, valor: `desde ${h.horaTexto(x.opened_at)} · ${x.usuario || '—'} · fondo ${h.dinero(x.opening_cash)}` })) : [] });
   },
 
-  async 'caja.corte'() {
-    return h.ir('El corte se hace en su pantalla: cuentas el efectivo y Wybix lo compara con lo esperado. Te llevo.', '/dashboard/corte-dia');
+  /* CORTE: el efectivo contado contra lo esperado, con la misma suma que
+     sp_close_shift (fondo + movimientos del turno). Cierra por el canal de
+     siempre (sp-close-shift): el procedimiento vuelve a calcular, congela el
+     ticket del corte y lo deja en bitácora. */
+  async 'caja.corte'(it, ctx) {
+    const caja = h.cajaEquipo();
+    if (!caja) return h.ir('Este equipo todavía no tiene caja asignada. Te llevo a Corte para elegirla.', '/dashboard/corte-dia');
+    const t = await turnoAbierto(caja);
+    if (!t) return h.msg(`${await nombreCaja(caja)} no tiene turno abierto: no hay corte que hacer.`, {
+      opciones: [{ etiqueta: 'Abrir la caja', intent: 'caja.abrir' }] });
+    /* El turno de otra persona lo cierra un encargado con su PIN, en Corte. */
+    if (Number(t.abrio) !== Number(ctx.userId)) {
+      return h.ir(`Ese turno lo abrió ${t.usuario || 'otra persona'}: cerrarlo pide la autorización de un encargado. Te llevo a Corte.`, '/dashboard/corte-dia');
+    }
+    const contado = h.r2(h.v(it, 'monto'));
+    if (!(contado >= 0)) return h.msg('Dime cuánto efectivo contaste en el cajón.');
+    const esperado = h.r2(Number(t.opening_cash) + Number(t.movimientos));
+    const diferencia = h.r2(contado - esperado);
+    /* Corte ciego: quien no es encargado no ve lo esperado antes de cerrar
+       (misma regla que la pantalla de Corte). */
+    const ciego = !ctx.puede('VENTAS_SUPERVISAR') && !ctx.puede('CAJA_CORTES');
+    const avisos = ['Un corte cerrado ya no se corrige. Lo contado incluye el fondo.'];
+    const fondo = Number(t.opening_cash) || 0;
+    if (fondo > 0 && Math.abs(contado + fondo - esperado) < 1) avisos.unshift(`¿Contaste también el fondo de ${h.dinero(fondo)}? Tiene que ir en lo contado.`);
+    const vista = [{ etiqueta: 'Caja', valor: t.caja }, { etiqueta: 'Turno', valor: `desde ${h.horaTexto(t.opened_at)}` },
+                   { etiqueta: 'Efectivo contado', valor: h.dinero(contado) }];
+    if (!ciego) {
+      vista.push({ etiqueta: 'Esperado', valor: h.dinero(esperado) },
+                 { etiqueta: 'Diferencia', valor: Math.abs(diferencia) < 0.5 ? 'cuadra' : `${diferencia > 0 ? 'sobran' : 'faltan'} ${h.dinero(Math.abs(diferencia))}` });
+    }
+    return h.msg('Este corte voy a cerrar:', { plan: h.plan('caja.corte', {
+      titulo: `Corte de ${t.caja} · ${h.dinero(contado)} contados`, vista, avisos,
+      ejecutar: { api: 'electronAPI.closeShift', payload: { closure_id: Number(t.id), register_id: caja, cash_delivered: contado,
+                                                             cash_left: null, note: 'Corte desde Wybix', blind: ciego } },
+      permiso: 'VENTAS_OPERAR',
+    }) });
   },
-});
+
+  async 'caja.abrir'(it) {
+    const caja = h.cajaEquipo();
+    if (!caja) return h.ir('Este equipo todavía no tiene caja asignada. Te llevo a Venta para elegirla y abrir el turno.', '/dashboard/venta');
+    const t = await turnoAbierto(caja);
+    if (t) return h.msg(`${t.caja} ya está abierta desde las ${h.horaTexto(t.opened_at)}${t.usuario ? `, la abrió ${t.usuario}` : ''}.`);
+    const fondo = h.r2(h.v(it, 'monto'));
+    if (!(fondo >= 0)) return h.msg('El fondo no puede ser negativo.');
+    const nombre = await nombreCaja(caja);
+    return h.msg('Así voy a abrir la caja:', { plan: h.plan('caja.abrir', {
+      titulo: `Abrir ${nombre} · fondo ${h.dinero(fondo)}`,
+      vista: [{ etiqueta: 'Caja', valor: nombre }, { etiqueta: 'Fondo inicial', valor: h.dinero(fondo) }],
+      avisos: ['El fondo cuenta en el corte: al cerrar, lo contado lo incluye.'],
+      ejecutar: { api: 'electronAPI.openShift', payload: { opening_cash: fondo, opening_note: 'Abierta desde Wybix', register_id: caja } },
+      permiso: 'VENTAS_OPERAR',
+    }) });
+  },
+
+  /* Abrir el cajón sin venta: lo autoriza un encargado (con aprobaciones
+     activas) y queda en bitácora; el canal se encarga de las dos cosas. */
+  async 'caja.cajon'(it, ctx) {
+    const cajon = h.equipo().drawer;
+    if (cajon && cajon.enabled === false) return h.msg('Este equipo no tiene cajón activado. Se activa en Configuración → Dispositivos.');
+    return h.msg('Voy a abrir el cajón:', { plan: h.plan('caja.cajon', {
+      titulo: 'Abrir el cajón',
+      vista: [{ etiqueta: 'Motivo', valor: 'Apertura sin venta' }],
+      avisos: ['Queda en la bitácora como apertura sin venta.'],
+      nivel: ctx.puede('CAJON_SIN_VENTA') ? 'confirmar' : 'autorizar',
+      ejecutar: { api: 'electronAPI.openCashDrawer', payload: { reason: 'manual' } },
+      permiso: 'VENTAS_OPERAR',
+    }) });
+  },
+
+  async 'caja.corte_correo'() {
+    const caja = h.cajaEquipo();
+    const c = await h.uno(`
+      SELECT TOP 1 c.id, c.closed_at, c.cash_delivered, c.difference, ISNULL(r.name, CONCAT('Caja ', c.register_id)) AS caja
+        FROM dbo.cash_closures c LEFT JOIN dbo.registers r ON r.id = c.register_id
+       WHERE c.closed_at IS NOT NULL AND (@caja IS NULL OR c.register_id = @caja)
+       ORDER BY c.closed_at DESC;`, [['caja', h.sql.Int, caja]]);
+    if (!c) return h.msg('Todavía no hay cortes cerrados que mandar.');
+    return h.msg('Este corte voy a mandar por correo:', { plan: h.plan('caja.corte_correo', {
+      titulo: `Mandar por correo el corte de ${c.caja}`,
+      vista: [{ etiqueta: 'Corte', valor: `${h.diaTexto(c.closed_at)} ${h.horaTexto(c.closed_at)}` }, { etiqueta: 'Caja', valor: c.caja },
+              { etiqueta: 'Contado', valor: h.dinero(c.cash_delivered) },
+              { etiqueta: 'Diferencia', valor: Math.abs(Number(c.difference)) < 0.5 ? 'cuadró' : h.dinero(c.difference) }],
+      avisos: ['Va a los correos configurados en Corte → Correo. La caja tiene que estar vinculada con la nube.'],
+      ejecutar: { api: 'electronAPI.corteCorreoEnviar', payload: { closureId: Number(c.id) } },
+      permiso: 'CAJA_CORTES',
+    }) });
+  },
+  };
+};

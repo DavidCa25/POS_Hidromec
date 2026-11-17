@@ -82,6 +82,9 @@ que tandas hay para mañana
 que se tiene que hornear
 que falta de producir
 que tandas estan pendientes
+que tandas hay para hoy
+que tandas tocan mañana
+cuantas tandas hay para mañana
 cuantas [conchas] se hicieron hoy
 que se preparo hoy
 produccion del dia

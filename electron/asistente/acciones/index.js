@@ -20,6 +20,7 @@ const { crearAnalitica } = require('../analitica');
 const { hayFiltros } = require('../lenguaje/filtros');
 const voz = require('./voz');
 
+const { MOTIVOS_DEVOLUCION } = require('../lenguaje/extractores');
 const MOTIVOS = [
   { etiqueta: 'Caducó', valor: 'CADUCADO' }, { etiqueta: 'Se cayó', valor: 'SE_CAYO' },
   { etiqueta: 'Salió mal', valor: 'MAL_HECHO' }, { etiqueta: 'Degustación', valor: 'DEGUSTACION' },
@@ -33,6 +34,7 @@ const PREGUNTAS = {
   metodo: '¿Cómo se pagó?', concepto: '¿De qué fue el gasto?', cliente: '¿Qué cliente?', proveedor: '¿Qué proveedor?',
   profesional: '¿Con quién?', servicio: '¿Qué servicio?', fecha: '¿Qué día?', hora: '¿A qué hora?', folio: '¿Qué folio?',
   mesa: '¿Qué mesa?', renglones: '¿Qué productos y cuántos?', impuesto: '¿Qué impuesto?',
+  razon: '¿Por qué lo devuelve?',
   costo: '¿Cuánto te cuesta cada uno, sin IVA? Si todavía no sabes, dime «no sé».',
   existencia: '¿Cuántos tienes ahorita? Si todavía ninguno, dime «ninguno».',
 };
@@ -78,7 +80,7 @@ const AREAS = ['general', 'venta', 'caja', 'inventario', 'compras', 'proveedores
 /**
  * @param d { sql, pool, sensores, listarHallazgos, sistema(), apodos: { listar() }, preferencias: { guardar, olvidar } }
  */
-function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async () => ({}), apodos = { listar: async () => [] }, preferencias = null }) {
+function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async () => ({}), apodos = { listar: async () => [] }, preferencias = null, equipo = () => null }) {
   const q = async (texto, entradas = []) => {
     const req = (await pool()).request();
     for (const [n, t, v] of entradas) req.input(n, t, v);
@@ -98,6 +100,7 @@ function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async (
     const s = interp.slots[interp.falta];
     let opciones = (s?.opciones || []).map((o) => ({ etiqueta: o.nota ? `${o.etiqueta} · ${o.nota}` : o.etiqueta, texto: o.etiqueta }));
     if (interp.falta === 'motivo') opciones = MOTIVOS.map((m) => ({ etiqueta: m.etiqueta, texto: m.etiqueta }));
+    if (interp.falta === 'razon') opciones = MOTIVOS_DEVOLUCION.map((m) => ({ etiqueta: m, texto: m }));
     if (interp.falta === 'metodo') opciones = METODOS.map((m) => ({ etiqueta: m.etiqueta, texto: m.etiqueta }));
     if (interp.falta === 'fecha') opciones = ['Hoy', 'Mañana', 'Pasado mañana'].map((x) => ({ etiqueta: x, texto: x }));
     if (interp.falta === 'costo') opciones = [{ etiqueta: 'No sé', texto: 'no sé' }];
@@ -138,7 +141,55 @@ function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async (
     cliente: async (cid) => uno(`SELECT id, customerName AS nombre, phone, mobile, email, credit_limit, birthdate FROM dbo.customers WHERE id = @id;`, [id(cid)]),
     proveedor: async (pid) => uno(`SELECT id, nombre, telefono, correo, contacto, rfc FROM dbo.CAT_suppliers WHERE id = @id;`, [id(pid)]),
     ir: (texto, ruta, extra = {}) => msg(texto, { ruta, ...extra }),
+    pool,
+    /** Un procedimiento con sus varios resultados (cabecera + renglones). */
+    sp: async (nombre, entradas = []) => {
+      const req = (await pool()).request();
+      for (const [n, t, v] of entradas) req.input(n, t, v);
+      return (await req.execute(nombre)).recordsets || [];
+    },
+    /** La configuración de ESTE equipo (device-config) y su caja: la misma que usan Venta y Corte. */
+    equipo: () => { try { return equipo() || {}; } catch { return {}; } },
+    cajaEquipo: () => { try { return Number(equipo()?.register?.id) || null; } catch { return null; } },
+    cotizarCuenta: (lineas) => cotizarCuenta(lineas),
   };
+
+  /**
+   * El precio que cobraría Venta por esta cuenta: el mismo motor comercial
+   * que `commercial:quote` (lista por canal, promociones, combos), sin cupón
+   * ni club y sin guardar una cotización. Sin política activa, precio de lista.
+   */
+  async function cotizarCuenta(lineas) {
+    const deLista = async () => {
+      const filas = await q(`SELECT id, price FROM dbo.products WHERE id IN (${lineas.map((l) => Number(l.productId) || 0).join(',') || 0});`);
+      const ls = lineas.map((l) => ({ unitPrice: Number(filas.find((f) => f.id === Number(l.productId))?.price || 0), oferta: null }));
+      return { total: Math.round(ls.reduce((a, x, i) => a + x.unitPrice * Number(lineas[i].cantidad), 0) * 100) / 100, lineas: ls };
+    };
+    try {
+      const servicio = require('../../comercial/servicio.cjs');
+      const { cotizar } = require('../../comercial/motor.cjs');
+      const p = await pool();
+      const { policy, catalog, ids } = await servicio.catalogo(p);
+      const activa = (policy.prices || []).some((x) => x.channel === 'LOCAL') || (policy.promotions || []).some((x) => x.active);
+      if (!activa) return deLista();
+      const products = catalog.products.filter((x) => x.sellable && x.active);
+      const reloj = (await p.request().query("SELECT CONVERT(VARCHAR(10),GETDATE(),23) date,CONVERT(VARCHAR(5),GETDATE(),108) time,DATEDIFF(day,'19000107',CONVERT(date,GETDATE()))%7 weekday")).recordset[0];
+      const input = lineas.map((l, i) => ({ key: String(i + 1), product: ids.find((x) => x.id === Number(l.productId))?.uuid,
+                                            quantity: Number(l.cantidad).toFixed(2), extras: '0.00' }));
+      if (input.some((x) => !x.product || !products.some((y) => y.uuid === x.product))) return deLista();
+      const r = cotizar(policy, products.map((x) => ({ id: x.uuid, price: x.price, category: x.category_uuid })), input,
+                        { ...reloj, channel: 'LOCAL', audiences: [] });
+      const ls = input.map((x, i) => {
+        const partes = r.lines.filter((l) => l.source === x.key);
+        const importe = partes.reduce((a, l) => a + Number(l.unitPrice) * Number(l.quantity), 0);
+        return { unitPrice: Number(lineas[i].cantidad) > 0 ? importe / Number(lineas[i].cantidad) : 0,
+                 oferta: partes.find((l) => Number(l.discount) > 0)?.ruleName || null };
+      });
+      return { total: Math.round(ls.reduce((a, x, i) => a + x.unitPrice * Number(lineas[i].cantidad), 0) * 100) / 100, lineas: ls };
+    } catch {
+      return deLista();
+    }
+  }
 
   h.resumen = require('./resumen')(h);
   const RESPONDER = {};

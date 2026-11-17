@@ -130,28 +130,147 @@ module.exports = (h) => {
         opciones: [{ etiqueta: 'Cobrarlo en Venta', intent: 'ir_a', params: { ruta: '/dashboard/venta', etiqueta: 'Venta' } }] });
     },
 
+    /**
+     * Con forma de pago, cobra desde el chat: la tarjeta muestra el total con
+     * las mismas ofertas que cobraría Venta (motor comercial) y, al confirmar,
+     * la pantalla registra la venta con SaleService.checkout en una cuenta
+     * aparte (ticket, cajón, premios y cupones incluidos). Sin forma de pago,
+     * o con un producto que lleva opciones, deja la cuenta en Venta.
+     */
     async 'venta.cobrar'(it) {
       const rs = h.v(it, 'renglones') || [];
-      let total = 0;
-      const datos = [];
+      /* El slot completo: valor (EFECTIVO…) y cómo se dijo. */
+      const metodo = it.slots.metodo?.valor ? it.slots.metodo : null;
+      const lineas = [];
       for (const r of rs) {
         const p = await h.producto(r.productId);
-        if (!p) continue;
-        total += Number(p.price) * r.cantidad;
-        datos.push({ etiqueta: `${h.num(r.cantidad)} × ${p.nombre}`, valor: h.dinero(Number(p.price) * r.cantidad) });
+        if (p) lineas.push({ p, cantidad: Number(r.cantidad) });
       }
-      /* Cobrar es de la pantalla de Venta: ahí se elige la forma de pago, se
-         imprime y se abre el cajón. Wybix deja la cuenta hecha. */
-      return h.ir(rs.length ? `Son ${h.dinero(total)}. Te llevo a Venta para cobrarlo.` : 'Te llevo a Venta para cobrar.', '/dashboard/venta', {
-        datos, carrito: rs.map((r) => ({ productId: r.productId, cantidad: r.cantidad })) });
+      const lista = h.r2(lineas.reduce((a, l) => a + Number(l.p.price) * l.cantidad, 0));
+      const carrito = lineas.map((l) => ({ productId: l.p.id, cantidad: l.cantidad }));
+      const llevar = (texto) => h.ir(texto, '/dashboard/venta', {
+        datos: lineas.map((l) => ({ etiqueta: `${h.num(l.cantidad)} × ${l.p.nombre}`, valor: h.dinero(Number(l.p.price) * l.cantidad) })), carrito });
+      if (!lineas.length) return h.ir('Te llevo a Venta para cobrar.', '/dashboard/venta');
+      if (!metodo) return llevar(`Son ${h.dinero(lista)}. Te llevo a Venta para cobrarlo, o dime «en efectivo» o «con tarjeta» y lo cobro aquí.`);
+      const conOpciones = await h.q(`SELECT DISTINCT p.nombre FROM dbo.product_modifier_groups pmg JOIN dbo.modifier_groups g ON g.id = pmg.group_id AND g.active = 1
+                                       JOIN dbo.products p ON p.id = pmg.product_id WHERE pmg.product_id IN (${carrito.map((c) => Number(c.productId)).join(',')});`);
+      if (conOpciones.length) return llevar(`${conOpciones.map((x) => x.nombre).join(', ')} lleva opciones (tamaño, sabor…): se eligen en Venta. Te dejo la cuenta ahí.`);
+      const precio = await h.cotizarCuenta(carrito);
+      const total = precio.total;
+      const recibido = h.v(it, 'monto') != null ? h.r2(h.v(it, 'monto')) : null;
+      if (metodo.valor === 'EFECTIVO' && recibido != null && recibido < total) {
+        return h.msg(`Son ${h.dinero(total)} y me dices que te dieron ${h.dinero(recibido)}: no alcanza.`);
+      }
+      const nombre = { EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia' }[metodo.valor] || metodo.texto;
+      const vista = lineas.map((l, i) => {
+        const q = precio.lineas[i];
+        const unit = q ? q.unitPrice : Number(l.p.price);
+        return { etiqueta: `${h.num(l.cantidad)} × ${l.p.nombre}`, valor: `${h.dinero(unit * l.cantidad)}${q?.oferta ? ` · ${q.oferta}` : ''}` };
+      });
+      vista.push({ etiqueta: 'Total', valor: h.dinero(total) }, { etiqueta: 'Forma de pago', valor: nombre });
+      if (metodo.valor === 'EFECTIVO' && recibido != null) vista.push({ etiqueta: 'Recibido', valor: h.dinero(recibido) }, { etiqueta: 'Cambio', valor: h.dinero(recibido - total) });
+      const avisos = [];
+      if (total < lista - 0.004) avisos.push(`Con las ofertas de hoy: ${h.dinero(lista - total)} menos que el precio de lista.`);
+      avisos.push(metodo.valor === 'EFECTIVO' ? 'Se registra la venta, se imprime el ticket y se abre el cajón, igual que en Venta.'
+        : 'Se registra la venta y se imprime el ticket. Cóbrala en la terminal antes de confirmar.');
+      return h.msg('Esta venta voy a cobrar:', { plan: h.plan('venta.cobrar', {
+        titulo: `Cobrar ${h.dinero(total)} en ${nombre.toLowerCase()}`, vista, avisos,
+        ejecutar: { api: 'pantalla.cobrar', payload: { lineas: carrito, metodo: metodo.valor, recibido, total } },
+        permiso: 'VENTAS_OPERAR',
+      }) });
     },
 
-    async 'venta.devolucion'(it) {
+    /** «Reimprime el ticket 123» / «el último»: el mismo canal que el botón de Historial. */
+    async 'venta.reimprimir'(it) {
+      const s = await ventaDe(h.v(it, 'folio'));
+      if (!s) return h.msg(h.v(it, 'folio') && h.v(it, 'folio') !== 'ultimo' ? `No encuentro la venta ${h.v(it, 'folio')}.` : 'Todavía no hay ventas que reimprimir.');
+      return h.msg('Este ticket voy a imprimir:', { plan: h.plan('venta.reimprimir', {
+        titulo: `Reimprimir ticket ${s.id}`,
+        vista: [{ etiqueta: 'Venta', valor: `${s.id} · ${h.diaTexto(s.datee)} ${h.horaTexto(s.datee)}` }, { etiqueta: 'Total', valor: h.dinero(s.total) },
+                { etiqueta: 'Pago', valor: s.payment_method || '—' }],
+        ejecutar: { api: 'electronAPI.printSaleTicket', payload: { saleId: Number(s.id), paymentMethod: s.payment_method || null } },
+        permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    /**
+     * Devolución por sp-refund-sale, con lo que todavía se puede devolver de
+     * cada renglón (sp_get_sale_by_folio) y el motivo. El dinero regresa con
+     * la regla del procedimiento; la tarjeta lo anticipa como la pantalla.
+     */
+    async 'venta.devolucion'(it, ctx) {
       const folio = h.v(it, 'folio');
-      return h.ir(folio
-        ? `La devolución del ticket ${folio} se hace en Venta → «Devolución»: ahí eliges qué regresa y cómo se devuelve el dinero.`
-        : 'Las devoluciones se hacen en Venta → «Devolución»: buscas el ticket por folio y eliges qué regresa.', '/dashboard/venta',
-      { folio: folio ?? null });
+      /* Sin folio no se adivina: se pregunta, y la respuesta vuelve a este intent. */
+      if (folio == null) return h.msg('¿De qué ticket? Dime el folio o «el último».', { esperando: { intent: it.intent, slots: it.slots, falta: 'folio' } });
+      const base = await ventaDe(folio);
+      if (!base) return h.msg(folio === 'ultimo' ? 'Todavía no hay ventas.' : `No encuentro la venta ${folio}.`);
+      const [[cab] = [], detalle = []] = await h.sp('sp_get_sale_by_folio', [['sale_id', h.sql.Int, Number(base.id)]]);
+      if (!cab) return h.msg(`No encuentro la venta ${base.id}.`);
+      const quedan = detalle.filter((d) => Number(d.remaining_qty ?? 0) > 0).map((d) => ({
+        productId: Number(d.product_id), nombre: String(d.product_name ?? d.nombre ?? `Producto ${d.product_id}`),
+        precio: Number(d.unitary_price ?? 0), maximo: Number(d.remaining_qty ?? 0) }));
+      if (!quedan.length) return h.msg(`El ticket ${base.id} ya se devolvió completo.`);
+      const pedidos = h.v(it, 'renglones');
+      let items;
+      if (pedidos?.length) {
+        items = [];
+        for (const r of pedidos) {
+          const d = quedan.find((x) => x.productId === Number(r.productId));
+          if (!d) return h.msg(`En el ticket ${base.id} no hay ${r.nombre} por devolver.`);
+          if (Number(r.cantidad) > d.maximo) return h.msg(`Del ticket ${base.id} solo se pueden devolver ${h.num(d.maximo)} de ${d.nombre}.`);
+          items.push({ ...d, cantidad: Number(r.cantidad) });
+        }
+      } else items = quedan.map((d) => ({ ...d, cantidad: d.maximo }));
+      const total = h.r2(items.reduce((a, l) => a + l.cantidad * l.precio, 0));
+      const motivo = h.v(it, 'razon');
+      const metodo = String(cab.payment_method ?? '');
+      let pagos = [];
+      try { pagos = JSON.parse(cab.payments_json || '[]').map((x) => ({ metodo: String(x.payment_method), monto: Number(x.amount) })); } catch { pagos = []; }
+      const regresa = comoRegresa({ metodo, pagos, balance: Number(cab.balance ?? 0), devuelto: Number(cab.refund_total ?? 0) }, total);
+      return h.msg('Esta devolución voy a registrar:', { plan: h.plan('venta.devolucion', {
+        titulo: `Devolución del ticket ${base.id} · ${h.dinero(total)}`,
+        vista: [...items.map((l) => ({ etiqueta: `${h.num(l.cantidad)} × ${l.nombre}`, valor: h.dinero(l.cantidad * l.precio) })),
+                { etiqueta: 'Motivo', valor: motivo },
+                ...regresa.map((r) => ({ etiqueta: r.texto, valor: h.dinero(r.monto) }))],
+        avisos: ['Lo devuelto regresa al inventario y el corte lo descuenta.'],
+        nivel: ctx.puede('DEVOLUCIONES') ? 'confirmar' : 'autorizar',
+        ejecutar: { api: 'electronAPI.refundSale', payload: {
+          sale_id: Number(base.id), payment_method: metodo === 'CREDITO' ? 'EFECTIVO' : (metodo || 'EFECTIVO'),
+          items: items.map((l) => ({ productId: l.productId, qty: l.cantidad, unitPrice: l.precio })),
+          motivo, note: 'Desde Wybix', apply_net_update: 0, amount: total, reason: `Devolución · ${motivo} · folio #${base.id}` } },
+        permiso: 'DEVOLUCIONES',
+      }) });
     },
   };
+
+  /** La venta por folio, o la última de esta caja («el último ticket»). */
+  async function ventaDe(folio) {
+    if (folio != null && folio !== 'ultimo') return h.uno('SELECT id, datee, total, payment_method FROM dbo.sales WHERE id = @id;', [h.id(folio)]);
+    return h.uno(`SELECT TOP 1 id, datee, total, payment_method FROM dbo.sales WHERE (@caja IS NULL OR register_id = @caja) ORDER BY id DESC;`,
+      [['caja', h.sql.Int, h.cajaEquipo()]]);
+  }
 };
+
+const ETIQUETA_REGRESO = { EFECTIVO: 'Se regresa en efectivo', TARJETA: 'Se regresa a la tarjeta', TRANSFERENCIA: 'Se regresa por transferencia',
+                           CREDITO: 'Baja lo que debe (crédito)' };
+/** Por dónde regresa el dinero: la misma regla que devoluciones.service.ts (comoRegresa) y sp_refund_sale. */
+function comoRegresa(v, monto) {
+  const partes = [];
+  const poner = (metodo, m) => { if (m > 0.004) partes.push({ metodo, monto: Math.round(m * 100) / 100, texto: ETIQUETA_REGRESO[metodo] || `Se regresa por ${metodo.toLowerCase()}` }); };
+  if (!v.pagos.length) {
+    if (v.metodo === 'CREDITO') { const deuda = Math.min(Math.max(v.balance, 0), monto); poner('CREDITO', deuda); poner('EFECTIVO', monto - deuda); }
+    else poner(v.metodo || 'EFECTIVO', monto);
+    return partes;
+  }
+  const orden = [...v.pagos].sort((a, b) => (a.metodo === 'EFECTIVO' ? 0 : 1) - (b.metodo === 'EFECTIVO' ? 0 : 1));
+  let previo = v.devuelto, resta = monto;
+  for (const p of orden) {
+    let disponible = p.monto;
+    const usado = Math.min(previo, disponible);
+    previo -= usado; disponible -= usado;
+    const parte = Math.min(disponible, resta);
+    poner(p.metodo, parte);
+    resta -= parte;
+  }
+  return partes;
+}

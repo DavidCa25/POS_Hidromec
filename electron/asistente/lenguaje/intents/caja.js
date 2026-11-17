@@ -37,10 +37,36 @@ module.exports = [
                'esta abierta la caja', 'con cuanto abrieron la caja'],
   },
   {
-    id: 'caja.corte', etiqueta: 'Hacer el corte', tipo: 'pantalla', permiso: 'CAJA_CORTES',
-    slots: {},
-    claves: ['corte', 'cerrar', 'cierra', 'cierre', 'cortar'],
+    /* Con lo contado («haz el corte, conté 3,250») arma la tarjeta y cierra
+       el turno por sp-close-shift; sin monto, lo pregunta. Cerrar el propio
+       turno es venta diaria, igual que en la pantalla de Corte. */
+    id: 'caja.corte', etiqueta: 'Hacer el corte', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { monto: { requerido: true } },
+    claves: ['corte', 'cerrar', 'cierra', 'cierre', 'cortar', 'conte', 'contado'],
     ejemplos: ['quiero hacer el corte', 'hacer corte de caja', 'cierra la caja', 'vamos a cortar', 'corte del dia',
-               'cerrar turno', 'ya quiero cerrar'],
+               'cerrar turno', 'ya quiero cerrar', 'haz el corte conte {monto}', 'cierra la caja hay {monto}',
+               'corte con {monto} contados', 'cierra el turno con {monto}', 'conte {monto} haz el corte'],
+  },
+  {
+    id: 'caja.abrir', etiqueta: 'Abrir la caja (turno)', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { monto: { requerido: true } },
+    claves: ['abre', 'abrir', 'abro', 'inicia', 'iniciar', 'empieza', 'turno', 'apertura'],
+    ejemplos: ['abre la caja con {monto}', 'abrir turno con {monto} de fondo', 'abre el turno', 'inicia el turno con {monto}',
+               'empieza la caja con {monto}', 'quiero abrir caja', 'apertura de caja con {monto}', 'abro con {monto} de fondo',
+               'abre turno con {monto}'],
+  },
+  {
+    id: 'caja.cajon', etiqueta: 'Abrir el cajón', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: {},
+    claves: ['cajon', 'gaveta', 'abre', 'abreme', 'abrir'],
+    ejemplos: ['abre el cajon', 'abreme el cajon', 'abrir cajon', 'necesito abrir el cajon', 'abre la gaveta',
+               'abre el cajon del dinero', 'puedes abrir el cajon'],
+  },
+  {
+    id: 'caja.corte_correo', etiqueta: 'Mandar el corte por correo', tipo: 'accion', permiso: 'CAJA_CORTES',
+    slots: {},
+    claves: ['correo', 'mail', 'email', 'manda', 'envia', 'mandame', 'enviame', 'corte'],
+    ejemplos: ['manda el corte por correo', 'envia el ultimo corte por correo', 'mandame el corte al correo',
+               'manda por mail el corte', 'envia el corte al email', 'manda el corte de hoy por correo'],
   },
 ];

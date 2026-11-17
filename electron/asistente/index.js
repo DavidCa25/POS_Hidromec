@@ -209,7 +209,7 @@ function crearAsistente(d) {
     detener() { clearTimeout(arranque); clearInterval(timer); clearTimeout(prontoT); timer = arranque = null; },
   };
 
-  const acciones = crearAcciones({ sql, pool, sensores, listarHallazgos, sistema: () => leerSistema(),
+  const acciones = crearAcciones({ sql, pool, sensores, listarHallazgos, sistema: () => leerSistema(), equipo: () => d.equipo?.() || null,
                                    apodos: { listar: async () => (await cargarCatalogo()).apodos },
                                    preferencias: { guardar: (u, c) => store.guardarPreferencias(u, c), olvidar: (u) => store.olvidarPreferencias(u) } });
 

@@ -205,11 +205,17 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 17 de 184 acciones (9 %)».
+Además imprime el avance, por ejemplo «asistente: 24 de 183 acciones (13 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
 autorizaciones, candados de sucursal, bitácora, nube e impresión.
+
+Cuando la operación tiene efectos que viven en la pantalla, el plan dice
+`pantalla.<método>` y lo atiende `AsistenteService`. Cada uno se declara en
+`PANTALLA` (`cobertura.js`) con el canal que termina invocando. La prueba
+comprueba que el método exista. Hoy solo hay uno: `pantalla.cobrar` →
+`sp-register-sale`.
 
 ### Editar una ficha hablando
 
@@ -237,6 +243,24 @@ con una cantidad. Si el código lo tienen dos productos, pregunta cuál.
 
 Si falta el valor («cambia el costo de la concha»), pregunta nombrando el
 campo («¿A qué costo, sin IVA?»).
+
+### Caja y ventas hablando
+
+La caja es la de **este equipo** (`device-config` → `register`), la misma que
+usan Venta y Corte. El asistente la recibe como `equipo` en `crearAsistente`.
+
+| Frase | Qué hace |
+|---|---|
+| «abre la caja con 500» | Abre el turno (`sp-open-shift`). Si ya está abierta, lo dice. |
+| «haz el corte, conté 3,250» | Cierra el turno propio (`sp-close-shift`). La tarjeta muestra lo esperado con la misma suma que `sp_close_shift` (fondo + movimientos). Corte ciego para quien no es encargado: no ve lo esperado. El turno de otra persona se cierra en Corte, con PIN. Avisa si parece que no contó el fondo. |
+| «abre el cajón» | Apertura sin venta (`open-cash-drawer`). La autoriza un encargado y queda en bitácora. |
+| «manda el corte por correo» | El último corte de esta caja (`corte:correo-enviar`). |
+| «reimprime el ticket 1234», «… el último ticket» | `print-sale-ticket`. «El último» es la última venta de esta caja. |
+| «devuelve el ticket 120, venía en mal estado», «devuelve 2 cocas del ticket 120» | `sp-refund-sale` con lo que todavía se puede devolver y el motivo, con las mismas etiquetas que la pantalla. La tarjeta anticipa por dónde regresa el dinero. Sin folio o sin motivo, los pregunta. |
+| «cóbrale 2 cocas en efectivo, me dio 100», «cobra 3 conchas con tarjeta» | Cobra desde el chat. La tarjeta trae el total **con las ofertas de hoy** (el mismo motor comercial) y el cambio. Al confirmar, `AsistenteService.cobrar` hace la venta con `SaleService.checkout` en una cuenta aparte: turno, ticket, cajón, premios y cupones, igual que el botón Cobrar. La cuenta abierta en la caja no se toca. Si el total ya no es el de la tarjeta, no cobra. |
+
+Sin forma de pago, «cóbrale 2 cocas» deja la cuenta cargada en Venta. Un
+producto con opciones (tamaño, sabor) también se cobra en Venta.
 
 ## El loop de entrenamiento
 

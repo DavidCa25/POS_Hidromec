@@ -262,6 +262,75 @@ try {
 
   const rBaja = await pedir('producto.baja', { producto: ex(cafe) });
   check(rBaja.plan?.ejecutar?.api === 'electronAPI.darDeBajaProducto' && rBaja.plan.ejecutar.args[0] === cafe, 'baja: por el canal de la ficha con el id');
+
+  /* 9. Ventas y caja hablando. Igual que la 8: la tarjeta trae el payload del
+     canal de la pantalla y aquí se corre el mismo procedimiento con él. */
+  seccion('9. Caja y ventas: abrir, corte, correo, reimprimir, devolución y cobro');
+  const caja = Number(await escalar('SELECT MIN(id) FROM dbo.registers'));
+  const accCaja = crearAcciones({ sql, pool: async () => pool, sensores: {}, listarHallazgos: async () => [],
+                                  equipo: () => ({ register: { id: caja }, drawer: { enabled: true } }) });
+  const pedirC = (intent, slots, ctx = ctxTodo) => accCaja.responder({ intent, puntaje: 1, alternativas: [], slots, falta: null, texto: '' }, ctx);
+  const maquina = (r) => r.input('machine_id', sql.NVarChar(64), 'QA-ASISTENTE').input('machine_name', sql.NVarChar(120), 'QA');
+  await q('UPDATE dbo.cash_closures SET closed_at = GETDATE() WHERE closed_at IS NULL;');
+
+  const rAbre = await pedirC('caja.abrir', { monto: ex(500) });
+  const pa = rAbre.plan?.ejecutar;
+  check(pa?.api === 'electronAPI.openShift' && pa.payload.opening_cash === 500 && pa.payload.register_id === caja, 'abrir: tarjeta con fondo $500 y la caja del equipo', JSON.stringify(pa));
+  await maquina(pool.request().input('user_id', sql.Int, 1).input('opening_cash', sql.Decimal(12, 2), pa.payload.opening_cash)
+    .input('opening_note', sql.NVarChar(255), pa.payload.opening_note).input('opening_user_id', sql.Int, 1).input('register_id', sql.Int, pa.payload.register_id)).execute('sp_open_shift');
+  const turno = await q(`SELECT id, opening_cash FROM dbo.cash_closures WHERE closed_at IS NULL AND register_id = ${caja}`);
+  check(turno.length === 1 && Number(turno[0].opening_cash) === 500, 'el SP abrió el turno con ese fondo');
+  const rAbre2 = await pedirC('caja.abrir', { monto: ex(300) });
+  check(!rAbre2.plan && /ya está abierta/.test(rAbre2.texto), 'con la caja abierta no ofrece abrirla otra vez', rAbre2.texto);
+
+  const rCorte = await pedirC('caja.corte', { monto: ex(480) });
+  const pk = rCorte.plan?.ejecutar;
+  const esperadoTarjeta = rCorte.plan?.vista.find((v) => v.etiqueta === 'Esperado')?.valor;
+  check(pk?.api === 'electronAPI.closeShift' && pk.payload.closure_id === Number(turno[0].id) && pk.payload.cash_delivered === 480,
+    'corte: tarjeta con el turno abierto y lo contado', JSON.stringify(rCorte.plan?.vista));
+  const rCiego = await pedirC('caja.corte', { monto: ex(480) }, { ...ctxTodo, puede: (x) => x !== 'VENTAS_SUPERVISAR' && x !== 'CAJA_CORTES' });
+  check(!rCiego.plan?.vista.some((v) => v.etiqueta === 'Esperado') && rCiego.plan?.ejecutar.payload.blind === true, 'corte ciego: sin «esperado» para quien no es encargado');
+  const rAjeno = await pedirC('caja.corte', { monto: ex(480) }, { ...ctxTodo, userId: 999 });
+  check(!rAjeno.plan && rAjeno.ruta === '/dashboard/corte-dia', 'el turno de otra persona se cierra en Corte (pide PIN)', rAjeno.texto);
+  await maquina(pool.request().input('user_id', sql.Int, 1).input('cash_delivered', sql.Decimal(12, 2), pk.payload.cash_delivered)
+    .input('register_id', sql.Int, pk.payload.register_id).input('closure_id', sql.Int, pk.payload.closure_id)
+    .input('authorized_by', sql.Int, null).input('blind_count', sql.Bit, pk.payload.blind ? 1 : 0)).execute('sp_close_shift');
+  const cerrado = (await q(`SELECT closed_at, cash_expected, cash_delivered FROM dbo.cash_closures WHERE id = ${pk.payload.closure_id}`))[0];
+  check(cerrado?.closed_at && Number(cerrado.cash_delivered) === 480 && esperadoTarjeta === `$${Number(cerrado.cash_expected).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+    'el SP cerró el turno; su esperado es el de la tarjeta', `${esperadoTarjeta} · SP ${cerrado?.cash_expected}`);
+
+  const rCorreo = await pedirC('caja.corte_correo', {});
+  check(rCorreo.plan?.ejecutar.api === 'electronAPI.corteCorreoEnviar' && rCorreo.plan.ejecutar.payload.closureId === pk.payload.closure_id, 'correo: el último corte cerrado');
+  const rCajon = await pedirC('caja.cajon', {}, { ...ctxTodo, puede: (x) => x !== 'CAJON_SIN_VENTA' });
+  check(rCajon.plan?.ejecutar.api === 'electronAPI.openCashDrawer' && rCajon.plan.nivel === 'autorizar', 'cajón sin venta: lo autoriza un encargado');
+
+  const ultima = Number(await escalar(`SELECT MAX(id) FROM dbo.sales WHERE register_id = ${caja}`));
+  const rRe = await pedirC('venta.reimprimir', { folio: ex('ultimo') });
+  check(rRe.plan?.ejecutar.api === 'electronAPI.printSaleTicket' && rRe.plan.ejecutar.payload.saleId === ultima, `reimprimir «el último»: ticket ${ultima}`);
+
+  /* Devolución: con turno abierto (el efectivo sale de esta caja). */
+  await maquina(pool.request().input('user_id', sql.Int, 1).input('opening_cash', sql.Decimal(12, 2), 1000).input('opening_user_id', sql.Int, 1).input('register_id', sql.Int, caja)).execute('sp_open_shift');
+  const rDev = await pedirC('venta.devolucion', { folio: ex(ultima), razon: ex('Mal estado') });
+  const pd = rDev.plan?.ejecutar;
+  check(pd?.api === 'electronAPI.refundSale' && pd.payload.motivo === 'Mal estado' && pd.payload.items.length > 0, 'devolución: todo lo que queda del ticket, con motivo', JSON.stringify(rDev.plan?.vista));
+  const tvp = new sql.Table('dbo.SaleDetailType');
+  tvp.columns.add('product_id', sql.Int, { nullable: false }); tvp.columns.add('quantity', sql.Decimal(12, 2), { nullable: false }); tvp.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+  for (const it of pd.payload.items) tvp.rows.add(it.productId, it.qty, it.unitPrice);
+  await maquina(pool.request().input('sale_id', sql.Int, pd.payload.sale_id).input('user_id', sql.Int, 1).input('payment_method', sql.NVarChar(50), pd.payload.payment_method)
+    .input('RefundDetails', tvp).input('note', sql.NVarChar(400), pd.payload.note).input('apply_net_update', sql.Bit, 0).input('register_id', sql.Int, caja)
+    .input('reason', sql.NVarChar(40), pd.payload.motivo)).execute('sp_refund_sale');
+  check(Number(await escalar(`SELECT COUNT(*) FROM dbo.sale_refunds WHERE sale_id = ${ultima}`)) === 1, 'el SP registró la devolución');
+  const rDev2 = await pedirC('venta.devolucion', { folio: ex(ultima), razon: ex('Mal estado') });
+  check(!rDev2.plan && /ya se devolvió completo/.test(rDev2.texto), 'un ticket ya devuelto no se ofrece otra vez', rDev2.texto);
+  const rDevSin = await pedirC('venta.devolucion', { razon: ex('Mal estado') });
+  check(!rDevSin.plan && rDevSin.esperando?.falta === 'folio', 'sin folio lo pregunta');
+
+  const rCobro = await pedirC('venta.cobrar', { renglones: ex([{ productId: concha, cantidad: 2, nombre: 'concha' }]), metodo: ex('EFECTIVO', 'efectivo'), monto: ex(50) });
+  const precioConcha = Number(await escalar(`SELECT price FROM dbo.products WHERE id = ${concha}`));
+  check(rCobro.plan?.ejecutar.api === 'pantalla.cobrar' && cerca(rCobro.plan.ejecutar.payload.total, precioConcha * 2) && rCobro.plan.vista.some((v) => v.etiqueta === 'Cambio'),
+    `cobrar 2 conchas en efectivo: $${precioConcha * 2}, recibe $50 y da cambio`, JSON.stringify(rCobro.plan?.vista));
+  const rCobroSin = await pedirC('venta.cobrar', { renglones: ex([{ productId: concha, cantidad: 2, nombre: 'concha' }]) });
+  check(!rCobroSin.plan && rCobroSin.ruta === '/dashboard/venta' && rCobroSin.carrito?.length === 1, 'sin forma de pago deja la cuenta en Venta');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

@@ -20,6 +20,7 @@
 'use strict';
 
 const LECTURA = [
+  'corte:correo-lista',
   'alerts:refunds-by-cashier',
   'aprobaciones:disponible',
   'aprobaciones:estado',
@@ -193,9 +194,8 @@ const PENDIENTE = {
   'fidelizacion': ['club:gestionar', 'club:plan-guardar', 'club:wallet-emitir', 'club:wallet-resolver', 'coupons:issue', 'coupons:redeem', 'dynamics:play', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:ajustar', 'puntos:config-guardar', 'puntos:tarjeta-guardar', 'raffles:close', 'raffles:draw', 'raffles:save'],
   'comandas': ['comandas:cancelar', 'comandas:reimprimir'],
   'commercial': ['commercial:save'],
-  'caja': ['corte:correo-enviar', 'corte:correo-lista', 'open-cash-drawer', 'sp-close-shift', 'sp-open-shift'],
   'cuentas': ['cuentas:abrir', 'cuentas:cliente', 'cuentas:cobrada', 'cuentas:enviar', 'cuentas:estado', 'cuentas:liberar'],
-  'ventas': ['devoluciones:cambio', 'print-sale-ticket', 'servicios:orden-enlazar-venta', 'sp-refund-sale', 'sp-register-sale', 'sp-update-sale', 'venta-suelta:guardar'],
+  'ventas': ['devoluciones:cambio', 'servicios:orden-enlazar-venta', 'sp-update-sale', 'venta-suelta:guardar'],
   'egresos': ['egresos:cancelar', 'egresos:concepto-guardar', 'egresos:concepto-mover'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
   'estaciones': ['estaciones:guardar'],
@@ -220,4 +220,14 @@ const PENDIENTE = {
   'whatsapp': ['whatsapp:config-guardar'],
 };
 
-module.exports = { LECTURA, MANUAL, PENDIENTE };
+/**
+ * Planes que ejecuta la PANTALLA y no una función de preload, porque la
+ * operación tiene efectos que viven en ella. Cobrar es SaleService.checkout:
+ * cotización con ofertas, ticket, cajón, premios y cupones, en el mismo
+ * orden que el botón Cobrar. Método de AsistenteService → canal que invoca.
+ */
+const PANTALLA = {
+  cobrar: 'sp-register-sale',
+};
+
+module.exports = { LECTURA, MANUAL, PENDIENTE, PANTALLA };

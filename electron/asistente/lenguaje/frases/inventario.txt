@@ -328,6 +328,8 @@ dar de alta un producto
 nuevo producto
 agrega frappe de moka al catalogo a 60
 crear producto pan de muerto con precio 35
+crear agua de limon a $20
+crear pay de queso a $45
 da de alta empanadas que cuestan 18
 crea gelatina a 15
 agrega el producto paleta de hielo a 12

@@ -290,6 +290,10 @@ cambio por otro producto
 el producto salio malo y lo quiere devolver
 hay que cancelar el ticket 712
 regresa la venta 99
+devuelve 2 [cocas] del ticket 1234
+devolucion de 1 [concha] de la venta 880 venia en mal estado
+el ticket 455 lo quiere devolver porque no lo quiso
+devuelve el ultimo ticket se equivoco de producto
 
 @ venta.cobrar
 cobrale 2 [cocas]
@@ -317,3 +321,22 @@ cobrale un [manicure]
 cobra 10 [tortillas]
 haz el cobro de 2 [huevos] y 1 [aceite]
 cobrame todo 3 [cocas] y 3 [sabritas]
+cobrale 2 [cocas] en efectivo
+cobra 3 [conchas] con tarjeta
+vendele 2 [sabritas] pago con transferencia
+cobrale 2 [cocas] en efectivo me dio 100
+cobrame un [latte chico] con tarjeta
+
+@ venta.reimprimir
+reimprime el ticket 1234
+imprime otra vez el ticket 880
+vuelve a imprimir el ultimo ticket
+reimprime el ultimo ticket
+imprime el ticket 455
+sacame una copia del ticket 302
+reimpresion del ticket 120
+imprime el ultimo ticket otra vez
+reimprime la venta 99
+dame otra copia del ticket
+vuelve a sacar el ticket 712
+no salio el ticket imprimelo otra vez
