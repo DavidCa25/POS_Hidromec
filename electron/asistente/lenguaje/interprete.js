@@ -40,6 +40,7 @@ const { config: reglaConfig } = require('./config');
 const { recetas: reglaRecetas } = require('./recetas');
 const { menu: reglaMenu } = require('./menu');
 const { varios: reglaVarios } = require('./varios');
+const { equipos: reglaEquipos } = require('./equipos');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -449,6 +450,18 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Empresas, sucursales y pantallas de Local Host (lenguaje/equipos.js). */
+    const req2 = !esperando && reglaEquipos(texto, ahora);
+    if (req2 && disponible(req2.intent, modulos)) {
+      const slots = {};
+      for (const [k, v] of Object.entries(req2)) if (k !== 'intent' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      let ok = true;
+      if (req2.personaTexto) {
+        const u = usuarios.find((x) => normalizar(x.nombre).texto === normalizar(req2.personaTexto).texto);
+        if (u) slots.usuario = { valor: u.id, texto: u.nombre, confianza: 'exacto' }; else ok = false;
+      }
+      if (ok) return cerrar(req2.intent, slots, 0.95, []);
     }
     /* Cambio de producto, corregir venta, venta suelta, tickets, activos,
        WhatsApp, aprobaciones e impuestos (lenguaje/varios.js). */

@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 127 de 165 acciones (77 %)».
+Además imprime el avance, por ejemplo «asistente: 135 de 158 acciones (85 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -421,6 +421,22 @@ Reglas en `lenguaje/varios.js`.
 
 Pedir y cancelar una aprobación a distancia lo hace la operación misma
 (manuales a propósito).
+
+### Empresas, sucursales y pantallas
+
+Reglas en `lenguaje/equipos.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «crea la empresa Panadería Centro, giro panadería», «sal del grupo de empresas» | `empresas:crear` (otra base en esta computadora), `empresas:enlace-salir`. |
+| «crea la sucursal Centro», «crea el evento Feria de mayo del 1 al 5 de mayo» | `cloud:crear-sucursal`. |
+| «enciende Wybix Local Host», «renombra la tablet Mesa 1 a Terraza», «desconecta la tablet Terraza», «la tablet Terraza ahora es de mesero», «quítale el acceso a Pedro en las tablets» | `localhost:activar`, `renombrar`, `revocar`, `cambiar-funcion`, `trabajador-revocar`. |
+
+**Facturar y cancelar CFDI quedan manuales a propósito.** Son irreversibles
+ante el SAT y la pantalla revisa receptor, uso, forma de pago y conceptos antes
+de timbrar. «Factura la venta 120» lleva a Facturar con la venta cargada.
+Cambiar de empresa recarga toda la ventana con otra base: se hace con la
+pastilla de empresa.
 
 ## El loop de entrenamiento
 

@@ -30,7 +30,17 @@ const COMO = [
   [/reporte|venta.* mes|estadistic/, '/dashboard/estadisticas', 'En Estadísticas ves las ventas por día, por producto y por forma de pago. O pregúntame: «¿cómo voy este mes?».'],
 ];
 
-module.exports = (h) => ({
+/** La pantalla conectada por su nombre (sin las desconectadas). */
+async function dispositivoDe(h, dicho) {
+  const ds = await h.q('SELECT CONVERT(VARCHAR(36), id) AS id, nombre, superficie, config FROM dbo.dispositivos_locales WHERE revocado_en IS NULL;').catch(() => []);
+  const d = h.llano(dicho);
+  const x = ds.find((y) => h.llano(y.nombre) === d) || ds.find((y) => h.llano(y.nombre).includes(d));
+  return x || { error: h.msg(ds.length ? `No encuentro la pantalla «${dicho}». Conectadas: ${ds.map((y) => y.nombre).join(', ')}.` : 'No hay pantallas conectadas.') };
+}
+
+module.exports = (h) => {
+  const dispositivo = (dicho) => dispositivoDe(h, dicho);
+  return {
   /* El saludo es el resumen del día (acciones/resumen.js): al abrir el chat
      la primera vez del día, y cada vez que lo saludan. */
   async saludo(_it, ctx) {
@@ -295,4 +305,97 @@ module.exports = (h) => ({
       permiso: 'CONFIGURACION_ADMINISTRAR',
     }) });
   },
-});
+
+  /* ============================================ EMPRESAS Y SUCURSALES */
+  async 'empresa.crear'(it) {
+    const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 120);
+    if (!nombre) return h.msg('¿Cómo se llama la empresa?');
+    const giro = h.v(it, 'giro'), rfc = h.v(it, 'rfc');
+    return h.msg('Esta empresa voy a crear:', { plan: h.plan('empresa.crear', {
+      titulo: `Empresa nueva · ${nombre}`,
+      vista: [{ etiqueta: 'Empresa', valor: nombre }, { etiqueta: 'Giro', valor: giro || 'lo eliges al entrar' }, ...(rfc ? [{ etiqueta: 'RFC', valor: rfc }] : [])],
+      avisos: ['Es otra base de datos en esta computadora, con su propio catálogo, ventas y usuarios. Tarda un poco.'],
+      ejecutar: { api: 'electronAPI.empresasCrear', payload: { nombre, giro, rfc } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'empresa.salir_grupo'() {
+    return h.msg('Esto voy a hacer:', { plan: h.plan('empresa.salir_grupo', {
+      titulo: 'Salir del grupo de empresas', vista: [{ etiqueta: 'Esta computadora', valor: 'deja de ver las empresas de otras computadoras' }],
+      avisos: ['Para volver a entrar se necesita un código nuevo del grupo.'],
+      ejecutar: { api: 'electronAPI.empresasEnlaceSalir', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'sucursal.crear'(it) {
+    const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 80);
+    const tipo = h.v(it, 'tipo') || 'BRANCH', desde = h.v(it, 'desde'), hasta = h.v(it, 'hasta');
+    if (tipo === 'EVENT' && !desde) return h.msg('¿De qué día a qué día es el evento? Dímelo con «del 1 al 5 de mayo».');
+    return h.msg(tipo === 'EVENT' ? 'Este evento voy a crear:' : 'Esta sucursal voy a crear:', { plan: h.plan('sucursal.crear', {
+      titulo: `${tipo === 'EVENT' ? 'Evento' : 'Sucursal'} nueva · ${nombre}`,
+      vista: [{ etiqueta: tipo === 'EVENT' ? 'Evento' : 'Sucursal', valor: nombre }, ...(desde ? [{ etiqueta: 'Fechas', valor: `${h.diaTexto(h.cuando(desde))} – ${h.diaTexto(h.cuando(hasta || desde))}` }] : [])],
+      avisos: [tipo === 'EVENT' ? 'Después le mandas mercancía con un traspaso y al terminar recibes lo que sobró.' : 'Se une con el código que te da la nube en la otra computadora.'],
+      ejecutar: { api: 'electronAPI.cloudCrearSucursal', payload: { nombre, tipo, starts_at: desde, ends_at: hasta || desde } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  /* ======================================== PANTALLAS (Wybix Local Host) */
+  async 'localhost.activar'(it) {
+    const activo = !!h.v(it, 'activo');
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('localhost.activar', {
+      titulo: `${activo ? 'Encender' : 'Apagar'} Wybix Local Host`, vista: [{ etiqueta: 'Pantallas y tablets', valor: activo ? 'se pueden conectar' : 'se desconectan' }],
+      ejecutar: { api: 'wybix.localHost.activar', payload: { activo } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'localhost.renombrar'(it) {
+    const d = await dispositivo(h.v(it, 'dispositivo'));
+    if (d.error) return d.error;
+    const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 60);
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('localhost.renombrar', {
+      titulo: `Renombrar «${d.nombre}»`, vista: [{ etiqueta: 'Nombre', valor: `«${d.nombre}» → «${nombre}»` }],
+      ejecutar: { api: 'wybix.localHost.renombrar', payload: { id: d.id, nombre } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'localhost.revocar'(it) {
+    const d = await dispositivo(h.v(it, 'dispositivo'));
+    if (d.error) return d.error;
+    return h.msg('Esta pantalla voy a desconectar:', { plan: h.plan('localhost.revocar', {
+      titulo: `Desconectar «${d.nombre}»`, vista: [{ etiqueta: 'Pantalla', valor: d.nombre }],
+      avisos: ['Para volver a usarla hay que emparejarla otra vez con su código.'],
+      ejecutar: { api: 'wybix.localHost.revocar', payload: { id: d.id } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'localhost.funcion'(it) {
+    const d = await dispositivo(h.v(it, 'dispositivo'));
+    if (d.error) return d.error;
+    const superficie = h.v(it, 'superficie');
+    const N = { WAITER: 'Mesero', PREPARATION: 'Preparación', INVENTORY_FLOOR: 'Inventario', TECHNICIAN: 'Técnico', CUSTOMER_STATUS: 'Estado de pedidos', STAFF_DAY: 'Mi jornada' };
+    let stationId = null, todas = false;
+    if (superficie === 'PREPARATION') {
+      const dicha = h.llano(h.v(it, 'estacionTexto') || '');
+      const ests = await h.q('SELECT id, nombre FROM dbo.prep_stations WHERE activa = 1;').catch(() => []);
+      const e = ests.find((x) => dicha.includes(h.llano(x.nombre)));
+      if (e) stationId = e.id; else if (ests.length === 1) stationId = ests[0].id; else todas = true;
+    }
+    if (d.superficie === superficie && !stationId) return h.msg(`«${d.nombre}» ya es de ${N[superficie].toLowerCase()}.`);
+    let config = null; try { config = d.config ? JSON.parse(d.config) : null; } catch { config = null; }
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('localhost.funcion', {
+      titulo: `«${d.nombre}» · ${N[superficie]}`, vista: [{ etiqueta: 'Función', valor: `${N[d.superficie] || d.superficie} → ${N[superficie]}${todas ? ' (todas las estaciones)' : ''}` }],
+      ejecutar: { api: 'wybix.localHost.cambiarFuncion', payload: { id: d.id, superficie, stationId, todas, config } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'localhost.acceso_revocar'(it) {
+    const u = await h.uno('SELECT id, usuario FROM dbo.users WHERE id = @id;', [h.id(h.v(it, 'usuario'))]);
+    const a = u && await h.uno('SELECT TOP 1 id FROM dbo.trabajadores_acceso WHERE user_id = @u AND revocado_en IS NULL ORDER BY id DESC;', [['u', h.sql.Int, u.id]]).catch(() => null);
+    if (!a) return h.msg(`${u?.usuario || 'Esa persona'} no tiene acceso a las pantallas.`);
+    return h.msg('Este acceso voy a quitar:', { plan: h.plan('localhost.acceso_revocar', {
+      titulo: `Quitar a ${u.usuario} de las pantallas`, vista: [{ etiqueta: 'Acceso', valor: 'QR y PIN dejan de servir' }],
+      ejecutar: { api: 'wybix.localHost.revocarTrabajador', payload: { accesoId: Number(a.id) } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+  };
+};

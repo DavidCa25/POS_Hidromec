@@ -20,6 +20,7 @@
 'use strict';
 
 const LECTURA = [
+  'empresas:remota-catalogo',
   'menu-linea:diseno',
   'menu-linea:imagen-ver',
   'plataformas:ver',
@@ -116,6 +117,12 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'empresas:cambiar': 'Cambia toda la ventana a otra base y vuelve a pedir sesión: se hace con la pastilla de empresa, no dentro de una conversación.',
+  'transferencias:recibir-retorno': 'Se recibe escaneando el comprobante QR que trae la tablet del evento.',
+  'fiscal:timbrar': 'Timbrar un CFDI es irreversible ante el SAT: se revisa receptor, uso, forma de pago y conceptos en Facturar. El asistente lleva ahí con la venta cargada.',
+  'fiscal-save-invoice': 'Guarda el XML que devolvió el timbrado, en el mismo paso de Facturar; no existe sin timbrar.',
+  'fiscal:cancelar': 'Cancelar un CFDI ante el SAT (motivo y folio que sustituye) es irreversible: se hace en Cancelar factura.',
+  'fiscal-cancel-invoice': 'Marca cancelada la factura local después de que el SAT acepta la cancelación, en el mismo paso.',
   'aprobaciones:solicitar': 'La pide sola la operación que necesita autorización (el canal la dispara al confirmar una tarjeta de nivel «autorizar»); no es un paso que alguien pida aparte.',
   'aprobaciones:cancelar': 'Cancela la solicitud que esa misma pantalla está esperando (solo la ventana que la pidió puede cancelarla).',
   'plataformas:guardar': 'Una liquidación se captura con el archivo que descarga la plataforma (miles de pedidos): se sube en su pantalla.',
@@ -206,15 +213,12 @@ const MANUAL = {
 
 const PENDIENTE = {
   'configuracion': ['update-business-config'],
-  'cloud': ['cloud:crear-sucursal'],
   'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
   'commercial': ['commercial:save'],
-  'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
-  'fiscal': ['fiscal-cancel-invoice', 'fiscal-save-invoice', 'fiscal:cancelar', 'fiscal:timbrar'],
-  'localhost': ['localhost:activar', 'localhost:cambiar-funcion', 'localhost:renombrar', 'localhost:revocar', 'localhost:trabajador-revocar'],
+  'empresas': ['empresas:desvincular', 'empresas:remota-pedir'],
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
-  'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],
+  'transferencias': ['transferencias:enviar'],
 };
 
 /**

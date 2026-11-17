@@ -545,3 +545,24 @@ test('cambio de producto, corregir venta, venta suelta, tickets, activos, WhatsA
   const c = l('corrige la venta 120: eran 3 conchas');
   assert.equal(c.intent, 'venta.corregir'); assert.deepEqual(c.slots.renglon.valor, { productId: 6, cantidad: 3 });
 });
+
+test('empresas, sucursales y pantallas de Local Host', () => {
+  const usuarios = [{ id: 2, nombre: 'pedro' }];
+  const l = (texto) => interprete.interpretar(texto, { catalogo: [], personas: [], usuarios, modulos: new Set(), ahora: new Date(2026, 10, 17) });
+  const casos = [
+    ['crea la empresa Panadería Centro, giro panadería', 'empresa.crear', { nombre: 'Panadería Centro', giro: 'panaderia' }],
+    ['sal del grupo de empresas', 'empresa.salir_grupo', {}],
+    ['crea la sucursal Centro', 'sucursal.crear', { nombre: 'Centro', tipo: 'BRANCH' }],
+    ['crea el evento Feria de mayo del 1 al 5 de mayo', 'sucursal.crear', { nombre: 'Feria de mayo', tipo: 'EVENT', desde: '2027-05-01', hasta: '2027-05-05' }],
+    ['enciende Wybix Local Host', 'localhost.activar', { activo: true }],
+    ['renombra la tablet Mesa 1 a Terraza', 'localhost.renombrar', { dispositivo: 'mesa 1', nombre: 'Terraza' }],
+    ['desconecta la tablet Terraza', 'localhost.revocar', { dispositivo: 'terraza' }],
+    ['la tablet Terraza ahora es de mesero', 'localhost.funcion', { dispositivo: 'terraza', superficie: 'WAITER' }],
+    ['quítale el acceso a Pedro en las tablets', 'localhost.acceso_revocar', { usuario: 2 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+});

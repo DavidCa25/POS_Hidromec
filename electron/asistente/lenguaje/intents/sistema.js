@@ -87,4 +87,37 @@ module.exports = [
     id: 'asistencia.horario', etiqueta: 'Horario de trabajo', tipo: 'accion', modulo: 'asistencia', permiso: 'ASISTENCIA_GESTIONAR', soloRegla: true,
     slots: { usuario: { requerido: true }, dias: { requerido: true }, desde: {}, hasta: {}, descanso: {} }, claves: [], ejemplos: [],
   },
+  /* Reglas de lenguaje/equipos.js, no clasificador. */
+  {
+    id: 'empresa.crear', etiqueta: 'Crear una empresa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, giro: {}, rfc: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'empresa.salir_grupo', etiqueta: 'Salir del grupo de empresas', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'sucursal.crear', etiqueta: 'Crear una sucursal o evento', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, tipo: {}, desde: {}, hasta: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'localhost.activar', etiqueta: 'Encender o apagar Local Host', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { activo: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'localhost.renombrar', etiqueta: 'Renombrar una pantalla', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { dispositivo: { requerido: true }, nombre: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'localhost.revocar', etiqueta: 'Desconectar una pantalla', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { dispositivo: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'localhost.funcion', etiqueta: 'Función de una pantalla', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { dispositivo: { requerido: true }, superficie: { requerido: true }, estacionTexto: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'localhost.acceso_revocar', etiqueta: 'Quitar el acceso de alguien a las pantallas', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { usuario: { requerido: true } }, claves: [], ejemplos: [],
+  },
 ];
