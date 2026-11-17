@@ -127,4 +127,12 @@ module.exports = [
     id: 'servicios_pago.desconectar', etiqueta: 'Desconectar el pago de servicios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: {}, claves: [], ejemplos: [],
   },
+  {
+    id: 'promo.crear', etiqueta: 'Crear una promoción', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { tipo: { requerido: true }, valor: {}, buy: {}, pay: {}, cuando: {}, producto: {}, categoria: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'promo.quitar', etiqueta: 'Quitar una promoción', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { texto: { requerido: true }, producto: {}, categoria: {} }, claves: [], ejemplos: [],
+  },
 ];

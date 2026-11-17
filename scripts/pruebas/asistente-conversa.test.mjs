@@ -621,3 +621,18 @@ test('fidelización: crear cupones, rifas, tarjetas de sellos, planes del Club y
     for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
   }
 });
+
+test('promociones habladas, sin confundirlas con cambiar el precio', () => {
+  const cat = prepararCatalogo([{ id: 3, nombre: 'Coca Cola 600 ml' }, { id: 6, nombre: 'Concha' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas: [], categorias: [{ id: 11, nombre: 'Panadería' }], modulos: new Set(), ahora: HOY });
+  const a = l('pon la coca a 15 los martes');
+  assert.equal(a.intent, 'promo.crear'); assert.equal(a.slots.tipo.valor, 'PRICE'); assert.equal(a.slots.producto.valor, 3); assert.deepEqual(a.slots.cuando.valor, { weekdays: [2] });
+  const b = l('10% de descuento en panadería los fines de semana');
+  assert.equal(b.intent, 'promo.crear'); assert.equal(b.slots.categoria.valor, 11); assert.deepEqual(b.slots.cuando.valor, { weekdays: [6, 0] });
+  const c = l('2x1 en conchas los miércoles');
+  assert.equal(c.slots.tipo.valor, 'BUY_PAY'); assert.equal(c.slots.buy.valor, 2); assert.equal(c.slots.pay.valor, 1);
+  assert.deepEqual(l('la coca a 15 de 5 a 7').slots.cuando.valor, { windows: [{ from: '17:00', to: '19:00' }] });
+  assert.equal(l('quita la promoción de la coca').intent, 'promo.quitar');
+  /* Sin «cuándo», es cambiar el precio. */
+  assert.notEqual(l('pon la coca a 15').intent, 'promo.crear');
+});

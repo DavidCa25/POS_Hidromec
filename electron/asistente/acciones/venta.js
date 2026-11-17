@@ -341,6 +341,59 @@ module.exports = (h) => {
         ejecutar: { api: 'electronAPI.ticketBorrarLogo', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
       }) });
     },
+
+    /* «Pon la coca a 15 los martes», «10% en panadería los fines de semana», «2x1 en conchas»:
+       la política comercial completa con una promoción más, por commercial:save (que
+       pide autorización si pasa del límite de un operador y lo deja en bitácora). */
+    async 'promo.crear'(it) {
+      const servicio = require('../../comercial/servicio.cjs');
+      let pol;
+      try { ({ policy: pol } = await servicio.catalogo(await h.pool())); } catch (e) { return h.msg(`No pude leer las promociones: ${e.message}`); }
+      const tipo = h.v(it, 'tipo'), c = h.v(it, 'cuando') || {};
+      let selector, que;
+      if (h.v(it, 'categoria') != null) {
+        const k = await h.uno('SELECT namee, LOWER(CONVERT(VARCHAR(36), uuid)) AS uuid FROM dbo.CAT_categories WHERE id = @id;', [h.id(h.v(it, 'categoria'))]);
+        if (!k) return h.msg('No encontré esa categoría.');
+        selector = { categories: [k.uuid] }; que = k.namee;
+      } else {
+        const p = await h.uno('SELECT nombre, price, cost, LOWER(CONVERT(VARCHAR(36), uuid)) AS uuid FROM dbo.products WHERE id = @id;', [h.id(h.v(it, 'producto'))]);
+        if (!p) return h.msg('No encontré ese producto.');
+        selector = { products: [p.uuid] }; que = p.nombre;
+        if (tipo === 'PRICE' && Number(h.v(it, 'valor')) >= Number(p.price)) return h.msg(`${p.nombre} ya cuesta ${h.dinero(p.price)}: una oferta tiene que ser más barata.`);
+        if (tipo === 'PRICE' && Number(p.cost) > 0 && Number(h.v(it, 'valor')) < Number(p.cost)) it.slots._bajoCosto = { valor: true };
+      }
+      const DIA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+      const nombre = (tipo === 'PRICE' ? `${que} a ${h.dinero(h.v(it, 'valor'))}` : tipo === 'PERCENT' ? `${h.v(it, 'valor')}% en ${que}` : `${h.v(it, 'buy')}x${h.v(it, 'pay')} en ${que}`).slice(0, 100);
+      const promo = { id: `wybix-${Date.now().toString(36)}`, name: nombre, active: true, priority: 100, kind: tipo, selector,
+        ...(tipo === 'BUY_PAY' ? { buy: Number(h.v(it, 'buy')), pay: Number(h.v(it, 'pay')) } : { value: Number(h.v(it, 'valor')).toFixed(2) }),
+        ...(c.weekdays ? { weekdays: c.weekdays } : {}), ...(c.windows ? { windows: c.windows } : {}), ...(c.starts ? { starts: c.starts, ends: c.ends } : {}) };
+      const vigencia = [c.weekdays ? c.weekdays.map((d) => DIA[d]).join(', ') : null, c.windows ? `de ${c.windows[0].from} a ${c.windows[0].to}` : null,
+                        c.starts ? (c.starts === c.ends ? `solo el ${h.diaTexto(h.cuando(c.starts))}` : `del ${h.diaTexto(h.cuando(c.starts))} al ${h.diaTexto(h.cuando(c.ends))}`) : null].filter(Boolean).join(' · ') || 'siempre';
+      return h.msg('Esta promoción voy a crear:', { plan: h.plan('promo.crear', {
+        titulo: `Promoción · ${nombre}`, vista: [{ etiqueta: 'Promoción', valor: nombre }, { etiqueta: 'Cuándo', valor: vigencia }],
+        avisos: [...(it.slots._bajoCosto ? ['Ese precio queda abajo del costo.'] : []), 'Se aplica sola al cobrar, en todas las cajas. Si pasa del límite de un operador, la autoriza un encargado.'],
+        ejecutar: { api: 'electronAPI.commercialSave', payload: { version: pol.version, policy: { ...pol, promotions: [...(pol.promotions || []), promo] } } },
+        permiso: 'COMERCIAL_ADMINISTRAR',
+      }) });
+    },
+
+    async 'promo.quitar'(it) {
+      const servicio = require('../../comercial/servicio.cjs');
+      let pol;
+      try { ({ policy: pol } = await servicio.catalogo(await h.pool())); } catch (e) { return h.msg(`No pude leer las promociones: ${e.message}`); }
+      const activas = (pol.promotions || []).filter((p) => p.active);
+      let uuid = null;
+      if (h.v(it, 'producto') != null) uuid = (await h.uno('SELECT LOWER(CONVERT(VARCHAR(36), uuid)) AS u FROM dbo.products WHERE id = @id;', [h.id(h.v(it, 'producto'))]))?.u;
+      const dicho = h.llano(h.v(it, 'texto'));
+      const xs = activas.filter((p) => (uuid && (p.selector?.products || []).includes(uuid)) || h.llano(p.name).includes(dicho));
+      if (!xs.length) return h.msg(activas.length ? `No encuentro esa promoción. Activas: ${activas.map((p) => p.name).join(', ')}.` : 'No hay promociones activas.');
+      if (xs.length > 1) return h.msg(`Hay ${xs.length} que coinciden: ${xs.map((p) => p.name).join(', ')}. Dime cuál.`);
+      const nueva = (pol.promotions || []).map((p) => (p.id === xs[0].id ? { ...p, active: false } : p));
+      return h.msg('Esta promoción voy a apagar:', { plan: h.plan('promo.quitar', {
+        titulo: `Apagar «${xs[0].name}»`, vista: [{ etiqueta: 'Promoción', valor: `${xs[0].name} → apagada` }],
+        ejecutar: { api: 'electronAPI.commercialSave', payload: { version: pol.version, policy: { ...pol, promotions: nueva } } }, permiso: 'COMERCIAL_ADMINISTRAR',
+      }) });
+    },
   };
 
   /** Lo que todavía se puede devolver de una venta (sp_get_sale_by_folio). */

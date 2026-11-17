@@ -42,6 +42,7 @@ const { menu: reglaMenu } = require('./menu');
 const { varios: reglaVarios } = require('./varios');
 const { equipos: reglaEquipos } = require('./equipos');
 const { multi: reglaMulti } = require('./multi');
+const { promos: reglaPromos } = require('./promos');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -451,6 +452,20 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Promociones (lenguaje/promos.js): producto o categoría que existan. */
+    const rpr = !esperando && reglaPromos(texto, ahora);
+    if (rpr && disponible(rpr.intent, modulos)) {
+      const slots = {};
+      for (const k of ['tipo', 'valor', 'buy', 'pay', 'cuando', 'texto']) if (rpr[k] != null) slots[k] = { valor: rpr[k], texto: typeof rpr[k] === 'object' ? JSON.stringify(rpr[k]) : String(rpr[k]), confianza: 'exacto' };
+      let ok = rpr.intent === 'promo.quitar';
+      if (rpr.objetivo) {
+        const cat = categorias.find((x) => normalizar(x.nombre).texto === normalizar(rpr.objetivo).texto);
+        const ap = cat ? null : analizar(rpr.objetivo, catalogo, { personas: [] });
+        if (cat) { slots.categoria = { valor: cat.id, texto: cat.nombre, confianza: 'exacto' }; ok = true; }
+        else if (ap?.prod?.valor != null) { slots.producto = ap.prod; ok = true; }
+      }
+      if (ok) return cerrar(rpr.intent, slots, 0.95, []);
     }
     /* Multisucursal (lenguaje/multi.js). */
     const rmu = !esperando && reglaMulti(texto, { usuarios });

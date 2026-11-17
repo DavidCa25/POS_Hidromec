@@ -216,7 +216,6 @@ const MANUAL = {
 
 const PENDIENTE = {
   'fidelizacion': ['dynamics:save-segment'],
-  'commercial': ['commercial:save'],
   'empresas': ['empresas:desvincular', 'empresas:remota-pedir'],
   'transferencias': ['transferencias:enviar'],
 };

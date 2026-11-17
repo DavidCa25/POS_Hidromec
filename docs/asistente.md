@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 150 de 155 acciones (97 %)».
+Además imprime el avance, por ejemplo «asistente: 151 de 155 acciones (97 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -427,6 +427,7 @@ Reglas en `lenguaje/varios.js`.
 | «avisa por WhatsApp cuando el pedido esté listo», «ya no avises de las membresías», «avisa 3 días antes de que venza la membresía» | `whatsapp:config-guardar` con lo demás igual (la configuración se lee de la nube). |
 | «apaga las aprobaciones», «enciende las aprobaciones» | `aprobaciones:politica-cambiar`. |
 | «crea el impuesto Hospedaje 3%», «crea el impuesto IEPS por cuota de 1.64 por litro» | `impuestos:guardar`. |
+| «pon la coca a 15 los martes», «la coca a 15 de 5 a 7», «10% de descuento en panadería los fines de semana», «2x1 en conchas los miércoles», «quita la promoción de la coca» | Promociones (`commercial:save` con la política completa y una promoción más o apagada; reglas en `lenguaje/promos.js`). Sin día, horario, «hoy» u «oferta», «pon la coca a 15» sigue siendo cambiar el precio. Lo que pase del límite de un operador lo autoriza un encargado. |
 
 Pedir y cancelar una aprobación a distancia lo hace la operación misma
 (manuales a propósito).

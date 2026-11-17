@@ -656,6 +656,22 @@ try {
       .input('received', sql.Decimal(12, 2), cm.received).input('register_id', sql.Int, caja)).execute('sp_exchange_sale');
     check(Number(await escalar(`SELECT COUNT(*) FROM dbo.sale_refunds WHERE sale_id = ${vc}`)) === 1, 'el SP registra el cambio');
   } catch (e) { check(false, 'el SP registra el cambio', e.message); }
+
+  /* 19. Promociones: la política que arma la tarjeta pasa la validación del motor y se guarda. */
+  seccion('19. Promociones');
+  const motorC = require('../../../electron/comercial/motor.cjs');
+  const rPr = await pedirC('promo.crear', { tipo: ex('PRICE'), valor: ex(8), cuando: ex({ weekdays: [2] }), producto: ex(cafe) });
+  const pp2 = rPr.plan?.ejecutar.payload;
+  let valida = true;
+  try { motorC.validarPolitica(pp2.policy); } catch (e) { valida = e.message; }
+  check(rPr.plan?.ejecutar.api === 'electronAPI.commercialSave' && valida === true, 'la promoción del café a $8 los martes es válida para el motor', String(valida));
+  try {
+    await pool.request().input('actor_id', sql.Int, 1).input('expected_version', sql.Int, pp2.version).input('payload', sql.NVarChar(sql.MAX), JSON.stringify(pp2.policy)).execute('sp_commercial_policy_save');
+    const rQ = await pedirC('promo.quitar', { texto: ex('cafe'), producto: ex(cafe) });
+    check(rQ.plan && rQ.plan.ejecutar.payload.policy.promotions.some((p) => p.active === false), 'guardada; «quita la promoción del café» la apaga');
+  } catch (e) { check(false, 'el SP guarda la política con la promoción', e.message); }
+  const rCaro = await pedirC('promo.crear', { tipo: ex('PRICE'), valor: ex(500), cuando: ex({ weekdays: [2] }), producto: ex(cafe) });
+  check(!rCaro.plan && /más barata/.test(rCaro.texto), 'una «oferta» más cara que el precio se rechaza');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);
