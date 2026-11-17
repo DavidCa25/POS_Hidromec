@@ -76,6 +76,17 @@ export class MenuCatalogService {
     return (window as any).wybix ?? null;
   }
 
+  constructor() {
+    /* Un producto cambió en esta computadora (precio, nombre, alta, baja):
+       si Touch ya tenía su menú, lo relee en segundo plano. */
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    this.bridge.api?.onCatalogoCambio?.(() => {
+      if (!this.products().length) return;
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => { espera = null; void this.load(true); }, 150);
+    });
+  }
+
   /** ¿Esta instalacion tiene el IPC de Hospitality? */
   get disponible(): boolean {
     return !!this.api?.catalog?.menu;

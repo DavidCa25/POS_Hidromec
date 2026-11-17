@@ -77,6 +77,9 @@ export class SaleService {
         // El precio que viaja es el efectivo (base + opciones): SQL guarda lo
         // que se cobro por unidad de esa linea.
         unitPrice: l.effectiveUnitPrice,
+        /* Precio a mano o línea ya enviada a cocina: su precio quedó fijado y
+           no se compara contra el catálogo. */
+        catalogPrice: l.manualPrice || l.enviada != null ? null : l.catalogPrice,
         options: l.options,
         note: l.note ?? null,
       })),
@@ -168,6 +171,13 @@ export class SaleService {
       const tip = !isCredit && payment.tip && payment.tip.monto > 0 ? payment.tip : null;
       const resp = await this.registerIntent(intent, tip);
       if (!resp?.success) {
+        /* El precio cambió en la base desde que esta caja leyó su catálogo: la
+           cuenta toma el precio nuevo y quien cobra revisa el total antes de
+           volver a cobrar. Nunca se cobra el precio viejo. */
+        if (resp?.motivo === 'PRECIO_CAMBIO') {
+          for (const c of resp.cambios ?? []) this.cart.repreciar(Number(c.productId), Number(c.ahora));
+          void this.catalog.load(true);
+        }
         return { ok: false, error: resp?.error || 'No se pudo registrar la venta.', motivo: resp?.motivo };
       }
       const saleId: number | null = resp.saleId ?? resp.id ?? resp.folio ?? null;
@@ -259,6 +269,7 @@ export class SaleService {
           productId: l.productId,
           qty: l.qty,
           unitPrice: l.unitPrice,
+          catalogPrice: l.catalogPrice ?? null,
           note: l.note ?? null,
           options: l.options.map(o => ({ optionId: o.optionId, quantity: o.quantity })),
         })),

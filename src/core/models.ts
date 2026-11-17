@@ -95,6 +95,14 @@ export interface LineSource {
    * cantidades con decimales y MENORES a 1, como 0.25 kg.
    */
   decimal?: boolean;
+  /**
+   * El precio del catálogo con que se armó la línea (products.price). Al
+   * cobrar viaja a la base: si el precio cambió desde que la caja leyó su
+   * catálogo, el cobro se detiene en vez de cobrar el precio viejo. Solo lo
+   * llevan las líneas que salen del catálogo; una línea de cuenta u orden ya
+   * guardada no.
+   */
+  catalogPrice?: number | null;
 }
 
 /** Cabecera de una venta cargada por folio. */
@@ -157,6 +165,8 @@ export interface SaleIntentLine {
   unitPrice: number;
   options: SelectedOption[];
   note?: string | null;
+  /** Ver `LineSource.catalogPrice`. null si el cajero cambió el precio a mano. */
+  catalogPrice?: number | null;
 }
 
 export interface SaleIntent {

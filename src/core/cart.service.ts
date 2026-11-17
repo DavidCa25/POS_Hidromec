@@ -38,6 +38,10 @@ export class CartLine {
   origen: string | null = null;
   /** Lo que dice la cocina de esta linea ya enviada: su estacion y el estado de su comanda. */
   prep: { estacion: string | null; estado: string | null } | null = null;
+  /** Ver `LineSource.catalogPrice`. */
+  catalogPrice: number | null;
+  /** El cajero puso el precio a mano: ese manda, aunque el catálogo cambie. */
+  manualPrice = false;
 
   constructor(lineId: number, src: LineSource, qty: number, options: SelectedOption[] = []) {
     this.lineId = lineId;
@@ -52,6 +56,7 @@ export class CartLine {
     this.tasaIva = src.tasaIva ?? null;
     this.inventoryMode = src.inventoryMode;
     this.decimal = !!src.decimal;
+    this.catalogPrice = src.catalogPrice != null && Number.isFinite(Number(src.catalogPrice)) ? Number(src.catalogPrice) : null;
   }
 
   /** Precio unitario efectivo: base + deltas de opciones. */
@@ -365,7 +370,25 @@ export class CartService {
     if (line.enviada != null) return;
     const p = Number(price);
     line.unitPrice = Number.isFinite(p) && p >= 0 ? p : 0;
+    line.manualPrice = true;
     this.touch();
+  }
+
+  /**
+   * El precio de un producto cambió en la base mientras estaba en la cuenta.
+   * Las líneas sin precio a mano toman el nuevo; las enviadas a cocina y las
+   * de precio a mano se quedan como están. Devuelve cuántas cambió.
+   */
+  repreciar(productId: number, precio: number): number {
+    let n = 0;
+    for (const l of this.activeCart().lines) {
+      if (l.productId !== productId || l.enviada != null || l.manualPrice || l.catalogPrice == null) continue;
+      l.unitPrice = precio;
+      l.catalogPrice = precio;
+      n++;
+    }
+    if (n) this.touch();
+    return n;
   }
 
   removeLine(line: CartLine): void {

@@ -1070,6 +1070,12 @@ export class Venta implements OnInit, OnDestroy {
       /* 0071: la regla «checar entrada antes de cobrar». Se abre Checar en
          lugar de un error: la persona resuelve ahi mismo y vuelve a cobrar. */
       if (res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
+      /* El precio cambió desde que esta caja leyó el catálogo: la cuenta ya
+         tiene el nuevo; no es un error, es revisar el total y cobrar otra vez. */
+      if (res.motivo === 'PRECIO_CAMBIO') {
+        await Swal.fire({ icon: 'info', title: 'Cambió el precio', text: res.error || 'Revisa el total y cobra de nuevo.' });
+        return;
+      }
       await Swal.fire({ icon: 'error', title: 'Error al registrar venta', text: res.error || 'No se pudo registrar la venta.' });
       return;
     }
@@ -2157,7 +2163,9 @@ export class Venta implements OnInit, OnDestroy {
     const key = (code || '').trim().toLowerCase();
     if (!key) return;
 
-    await this.catalog.load();
+    /* Con lo que hay en memoria, sin esperar; si es viejo se relee en segundo
+       plano. Un precio que cambió en otra caja lo detiene el cobro. */
+    await this.catalog.refrescarEnFondo();
     const buscar = () => this.catalog.findByBarcode(key) ?? this.catalog.findByPartNumber(key);
     let p = buscar();
     if (!p) { await this.catalog.load(true); p = buscar(); }

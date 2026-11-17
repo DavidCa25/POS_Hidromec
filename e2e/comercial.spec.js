@@ -299,6 +299,8 @@ test("combo real: elegir componentes, cobrar 59 y devolver sin usar precio norma
     const r = await app.invocar("refundSale", {
       sale_id: sale.id,
       payment_method: "PLATAFORMA",
+      /* 0065: la devolución exige motivo. */
+      motivo: "Error al cobrar",
       items: [
         { productId: ids.find((x) => x.uuid === product.uuid).id, qty: 1 },
       ],
@@ -826,7 +828,8 @@ test("Touch: canal visible bajo cliente, precio y cobro independientes por cuent
     const commercial = p.locator(".tp-cart app-commercial-sale"),
       picker = commercial.locator("wx-select").first().getByRole("combobox");
     await expect(picker).toBeVisible();
-    const customer = await p.locator(".tp-cliente").boundingBox(),
+    /* Devolución usa la misma pastilla (.tp-cliente): se elige por data-guide. */
+    const customer = await p.locator("[data-guide=touch-cliente]").boundingBox(),
       position = await picker.boundingBox();
     expect(position.y).toBeGreaterThan(customer.y + customer.height);
     const row = await commercial.locator('.cs--touch').boundingBox();

@@ -225,6 +225,8 @@ test.describe('Mesas y cocina', () => {
       const r = await w(ventana, () => window.wybix.salon.get());
       return (r.sets[1] || []).find(x => x.nombre === local.mesa)?.estado;
     }, { timeout: 15000, message: 'la mesa se libera al cobrar' }).toBe('LIBRE');
+    /* El cambio queda a la vista hasta «Listo». */
+    await ventana.locator('.tp-overlay--exito .tp-primaria', { hasText: 'Listo' }).click();
 
     await ventana.click('.tp-iconbtn--txt:has-text("Mesas")');
     await expect(ventana.locator('hx-selector-mesas .sm-mesa', { hasText: local.mesa }).locator('.sm-mesa__est'),
@@ -391,6 +393,8 @@ test.describe('Touch · cliente de la venta', () => {
     await ventana.locator('.tp-rapidas button').first().click();
     await ventana.click('.tp-cobro__confirmar');
     await expect.poll(async () => (await ventas(app)).length, { timeout: 30000 }).toBe(antes + 1);
+    /* El cambio queda a la vista hasta «Listo». */
+    await ventana.locator('.tp-overlay--exito .tp-primaria', { hasText: 'Listo' }).click();
     return (await ventas(app))[0];
   }
 
@@ -412,16 +416,16 @@ test.describe('Touch · cliente de la venta', () => {
     await pantalla.waitForLoadState('domcontentloaded');
 
     // 1. Touch abre sin cliente
-    await expect(ventana.locator('.tp-cliente__vacio'), 'Touch abre sin cliente').toHaveText('Seleccionar');
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__vacio'), 'Touch abre sin cliente').toHaveText('Seleccionar');
 
     // 2-3. buscar y seleccionar a David
     await ventana.locator('.tp-servicio button', { hasText: 'Para llevar' }).click();
     await pedirLatte(ventana, s);
-    await ventana.click('.tp-cliente');
+    await ventana.click('[data-guide=touch-cliente]');
     await ventana.fill('#tp-buscar-cliente', `Casillas ${s}`);
     await ventana.locator('.tp-res--cliente', { hasText: davidNombre }).click();
     await expect(ventana.locator('.tp-hoja--cliente'), 'la hoja se cierra al elegir').toHaveCount(0);
-    await expect(ventana.locator('.tp-cliente__nombre')).toHaveText(davidNombre);
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__nombre')).toHaveText(davidNombre);
     await foto(ventana, 'touch-cliente-elegido');
 
     // 5. la pantalla del cliente dice su nombre (solo el nombre)
@@ -429,9 +433,9 @@ test.describe('Touch · cliente de la venta', () => {
     expect(await pantalla.locator('body').innerText(), 'y nada privado').not.toMatch(/5512345678|david@correo|CAKD/);
 
     // cerrar la hoja sin elegir NO pierde la seleccion
-    await ventana.click('.tp-cliente');
+    await ventana.click('[data-guide=touch-cliente]');
     await ventana.locator('.tp-hoja--cliente .tp-iconbtn').click();
-    await expect(ventana.locator('.tp-cliente__nombre')).toHaveText(davidNombre);
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__nombre')).toHaveText(davidNombre);
 
     // 6. enviar a preparacion: la cuenta nace con el cliente (4: el estado real, no la vista)
     await ventana.locator('.tp-enviar').click();
@@ -444,7 +448,7 @@ test.describe('Touch · cliente de la venta', () => {
 
     // 10. cambiar David -> María (alta minima desde Touch)
     const mariaNombre = `María López ${s}`;
-    await ventana.click('.tp-cliente');
+    await ventana.click('[data-guide=touch-cliente]');
     await ventana.fill('#tp-buscar-cliente', mariaNombre);
     await expect(ventana.locator('.tp-res__vacio')).toContainText('Puedes darlo de alta');
     await foto(ventana, 'touch-cliente-buscar');
@@ -452,24 +456,24 @@ test.describe('Touch · cliente de la venta', () => {
     await expect(ventana.locator('#tp-cli-nombre'), 'lo buscado se vuelve el nombre').toHaveValue(mariaNombre);
     await foto(ventana, 'touch-cliente-alta');
     await ventana.getByRole('button', { name: 'Guardar y asignar' }).click();
-    await expect(ventana.locator('.tp-cliente__nombre')).toHaveText(mariaNombre);
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__nombre')).toHaveText(mariaNombre);
     const maria = (await cuenta()).customer_id;
     expect(maria && maria !== david, 'la cuenta cambia a María').toBeTruthy();
     const creadas = ((await app.invocar('getCustomers')).data || []).filter(c => c.customerName === mariaNombre);
     expect(creadas.length, 'un solo cliente nuevo, del modelo real').toBe(1);
 
     // 11. quitar cliente
-    await ventana.click('.tp-cliente');
+    await ventana.click('[data-guide=touch-cliente]');
     await ventana.getByRole('button', { name: 'Quitar cliente' }).click();
-    await expect(ventana.locator('.tp-cliente__vacio')).toHaveText('Seleccionar');
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__vacio')).toHaveText('Seleccionar');
     expect((await cuenta()).customer_id, 'la cuenta se queda sin cliente').toBeNull();
     await expect(pantalla.locator('#saleCliente')).toHaveText('');
 
     // y de vuelta a David, para cobrar
-    await ventana.click('.tp-cliente');
+    await ventana.click('[data-guide=touch-cliente]');
     await ventana.fill('#tp-buscar-cliente', davidNombre);
     await ventana.locator('.tp-res--cliente', { hasText: davidNombre }).click();
-    await expect(ventana.locator('.tp-cliente__nombre')).toHaveText(davidNombre);
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__nombre')).toHaveText(davidNombre);
     expect((await cuenta()).customer_id).toBe(david);
 
     // 7-8. cobrar: la venta conserva al cliente; la pantalla ensena numero y nombre
@@ -484,7 +488,7 @@ test.describe('Touch · cliente de la venta', () => {
       { timeout: 15000, message: 'la cuenta cobrada queda con el cliente de la venta' }).toBe(`COBRADA:${david}`);
 
     // 9. el carrito nuevo NO conserva a David
-    await expect(ventana.locator('.tp-cliente__vacio'), 'la venta siguiente empieza sin cliente').toHaveText('Seleccionar');
+    await expect(ventana.locator('[data-guide=touch-cliente] .tp-cliente__vacio'), 'la venta siguiente empieza sin cliente').toHaveText('Seleccionar');
 
     // 12. una venta sin cliente sigue funcionando (y el agua no va a cocina ni pregunta)
     const barraAntes = (await cuentaDeBarra(ventana, s)).length;

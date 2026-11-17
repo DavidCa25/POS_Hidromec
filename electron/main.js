@@ -1,4 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, dialog, screen, nativeImage, webContents } = require('electron');
+/* Antes de registrar cualquier canal: los que cambian productos avisan a
+   Venta y Touch para que relean su catálogo (ver lib/aviso-catalogo.js). */
+require('./lib/aviso-catalogo').vigilarCanales(ipcMain);
 const path = require('path');
 const fs = require('fs');
 const { poolPromise, sql } = require('./db');
@@ -2727,6 +2730,34 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
   }));
 
   if (!lines.length) return { success: false, error: 'La venta no tiene partidas.' };
+
+  /* El precio con que la caja armó cada línea, contra el de la base. La caja
+     cobra desde su copia del catálogo; si el precio cambió después (en
+     Inventario, en otra caja, desde la nube), se detiene y le dice cuál
+     cambió, en vez de cobrar el viejo. Con cotización comercial no hace
+     falta: la cotización ya leyó los precios de la base. Una línea sin
+     `catalogPrice` (precio a mano, cuenta u orden ya guardada) no se compara. */
+  if (!p.commercialQuote) {
+    const dichos = (p.lines || []).map(l => ({ productId: Number(l.productId ?? l.product_id), catalogPrice: l.catalogPrice }))
+      .filter(x => Number.isInteger(x.productId) && x.catalogPrice != null && Number.isFinite(Number(x.catalogPrice)));
+    if (dichos.length) {
+      const pool = await poolPromise;
+      const ids = [...new Set(dichos.map(x => x.productId))];
+      const base = (await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+        .query('SELECT p.id, p.nombre, p.price FROM dbo.products p WHERE p.id IN (SELECT CAST([value] AS INT) FROM OPENJSON(@ids));')).recordset;
+      const cambios = [];
+      for (const x of dichos) {
+        const b = base.find(r => Number(r.id) === x.productId);
+        if (!b || b.price == null || cambios.some(c => c.productId === x.productId)) continue;
+        if (Math.abs(Number(b.price) - Number(x.catalogPrice)) > 0.004) cambios.push({ productId: x.productId, nombre: b.nombre, antes: Number(x.catalogPrice), ahora: Number(b.price) });
+      }
+      if (cambios.length) {
+        const $ = (n) => '$' + n.toFixed(2);
+        return { success: false, motivo: 'PRECIO_CAMBIO', cambios,
+          error: `Cambió el precio: ${cambios.map(c => `${c.nombre} ${$(c.antes)} → ${$(c.ahora)}`).join(', ')}. La cuenta ya tiene el precio nuevo: revisa el total y cobra de nuevo.` };
+      }
+    }
+  }
 
   /* 0071: con la regla de Asistencia «hay que checar entrada antes de vender»,
      quien no ha checado no cobra. Sin la aplicacion activada no frena nada. */

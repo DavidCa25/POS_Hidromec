@@ -861,6 +861,7 @@ export class TouchPos implements OnInit, OnDestroy {
       productId: p.id,
       productName: p.product_name,
       unitPrice: Number(p.price),
+      catalogPrice: Number(p.price),
       claveProdServ: p.clave_prod_serv ?? null,
       claveUnidad: p.clave_unidad ?? null,
       objetoImpuesto: p.objeto_impuesto ?? null,
