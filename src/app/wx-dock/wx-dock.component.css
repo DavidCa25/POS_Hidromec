@@ -86,6 +86,16 @@
 .wxdock__pulso:active { transform: scale(0.96); }
 .wxdock__pulso:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); }
 
+/* Cuántas cosas nuevas encontró Wybix: un número, como un aviso de mensajes. */
+.wxdock__cuenta {
+  position: absolute; top: 2px; right: 0;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--wx-danger, #dc2626); color: #fff;
+  font-size: 11px; font-weight: 750; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2.5px var(--wx-rail);
+}
+
 /* El punto dice que hay algo sin que haya que abrir el panel. Va con anillo
    del color del dock para no mancharse contra la figura. */
 .wxdock__pulsopunto {

@@ -1,0 +1,212 @@
+# Frases completas: gastos, finanzas, facturación y personal. [producto] {persona}.
+
+@ gasto.registrar
+pague 850 de luz
+registra un gasto de 5000 de renta
+gasto de gas 600
+pagamos 300 de agua
+se pagaron 599 de internet
+gaste 150 en limpieza
+egreso de 200 por papeleria
+anota 500 de gasolina
+pague la luz 1200 en efectivo
+pague la renta 6000 por transferencia
+se compro cloro y jabon 180 para limpieza
+gasto de 350 de telefono
+pague 400 del gas en efectivo
+anota un gasto de 250 de fletes
+pagamos 1800 de sueldos
+pague la raya 3500
+le pague 2000 al contador
+pague 700 de predial
+pago del internet 450 con tarjeta
+se gastaron 120 en comida para los empleados
+compre bolsas y desechables por 300
+gasto de mantenimiento 900 al plomero
+anota 1500 de publicidad en facebook
+pague 280 de garrafones para la oficina
+gaste 90 en rollos de ticket
+pague el recibo de cfe 980
+pago de renta del local 7000
+gasto de 160 de uber
+anota que pague 350 al electricista
+gaste 500 en volantes
+registrar gasto
+quiero registrar un gasto
+anotar un gasto
+registra un egreso
+pague un recibo
+pague 400 de la luz con transferencia
+gasto de agua 220 en efectivo
+se pago el tanque de gas 650
+pague 1000 de impuestos
+gaste 60 en el pasaje
+
+@ gasto.resumen
+cuanto he gastado este mes
+cuanto he gastado esta semana
+gastos del mes
+en que se me va el dinero
+cuanto pague de luz
+resumen de gastos
+cuanto gaste este mes
+mis gastos fijos
+cuanto llevo de gastos
+cuanto gaste en gas
+cuanto gaste la semana pasada
+gastos de la semana
+cuanto se ha ido en sueldos
+cuanto pague de renta este año
+en que gasto mas
+cual es mi gasto mas grande
+cuanto llevo gastado hoy
+cuanto se gasto ayer
+cuanto me cuesta operar al mes
+cuanto pago de servicios
+gastos por categoria
+desglose de gastos
+cuanto gaste el mes pasado
+cuanto he pagado de luz este año
+gastos de limpieza del mes
+
+@ finanzas.ganancia
+cuanto he ganado este mes
+cuanto he ganado hoy
+cuanto gane hoy
+cuanto gane ayer
+cuanto gane esta semana
+ganancia del mes
+ganancia de la semana
+utilidad de la semana
+cuanto ganamos hoy
+cuanto me queda de ganancia
+cuanto es ganancia de lo que vendi
+cuanto le gane a la venta de hoy
+cuanto gane el mes pasado
+cuanto margen tengo en general
+cuanto es mi ganancia bruta
+cuanto gano en promedio por venta
+cuanto he ganado en el año
+cual es mi ganancia de hoy
+cuanto me deja la tienda al dia
+ganancia de ayer
+cuanto deja el negocio
+cuanto gane la semana pasada
+que porcentaje gano en promedio
+utilidad bruta del mes
+cuanto es lo que gano de verdad
+
+@ finanzas.resultado
+como van los numeros del mes
+estado de resultados
+me queda dinero despues de gastos
+cuanto gane limpio
+es rentable mi negocio
+utilidad neta del mes
+balance del mes
+cuanto me quedo despues de pagar todo
+cuanto gane ya restando gastos
+estoy ganando o perdiendo
+el negocio deja o no deja
+estoy en numeros rojos
+cuanto es mi utilidad neta
+ventas menos gastos del mes
+como estuvo el mes en numeros
+resultados del mes pasado
+salgo tablas
+cubro mis gastos con lo que vendo
+cuanto me queda libre al mes
+punto de equilibrio
+el negocio es rentable
+cuanto gano neto
+numeros del negocio
+cuanto me queda de verdad
+
+@ factura.resumen
+cuantas facturas llevo
+facturas del mes
+cuanto he facturado
+cuanto he facturado este mes
+hay facturas con error
+facturas pendientes
+que facturas se timbraron hoy
+cuantas facturas hice esta semana
+facturas canceladas
+cuanto he facturado en el año
+hay facturas por timbrar
+que facturas fallaron
+resumen de facturacion
+cuantos timbres he usado
+facturas de ayer
+total facturado del mes pasado
+hay algun problema con las facturas
+facturas sin timbrar
+
+@ factura.emitir
+factura la venta 1234
+quiero facturar
+hazle factura al ticket 556
+timbra el ticket 889
+el cliente quiere factura
+facturar una venta
+hacer una factura
+facturame el ticket 102
+quiero hacer factura de la venta 77
+me piden factura del ticket 3021
+emitir factura
+generar factura de la venta 450
+hacer factura global
+facturar el folio 1203
+el señor quiere factura de su compra
+
+@ factura.cancelar
+cancela la factura 120
+quiero cancelar una factura
+anular factura
+cancelacion de cfdi
+cancela la factura del ticket 556
+hay que cancelar una factura mal hecha
+la factura salio mal cancelala
+cancelar factura con error
+sustituir una factura
+cancela el cfdi de la venta 88
+
+@ personal.asistencia
+quien vino hoy
+quien esta trabajando
+quien falto
+quien falto hoy
+quien llego tarde
+asistencia de hoy
+quien ya checo
+quien no ha llegado
+ya llegaron todos
+quien esta en turno
+cuantos empleados vinieron
+quien checo entrada
+quien ya se fue
+quien llego tarde esta semana
+faltas de la semana
+retardos de hoy
+quien trabajo ayer
+asistencia de la semana
+quien esta en descanso
+quien entro hoy
+
+@ personal.ventas
+cuanto vendio cada cajero
+quien vendio mas hoy
+ventas por empleado
+cuanto lleva cada cajero
+que cajero vende mas
+ventas por vendedor esta semana
+cuanto vendio cada quien
+quien es el que mas vende
+ventas por usuario
+cuanto ha cobrado cada cajero hoy
+quien vendio mas este mes
+ranking de cajeros
+cuanto vendio el turno de la mañana
+cuanto vendio el de la tarde
+que tal vende el nuevo
+cuantas ventas hizo cada cajero

@@ -70,7 +70,7 @@ function registrar({ ipcMain, sql, poolPromise, cloudSync }) {
       cerrado: fechaHora(s.closed_at),
       duracion: duracion(s.opened_at, s.closed_at),
       ciego: !!cab.blind_count,
-      ventas: { total: n(s.total), tickets: n(s.tickets), descuentos: n(s.discount), devoluciones: n(s.refunds), iva: n(s.tax) },
+      ventas: { total: n(s.total), tickets: n(s.tickets), descuentos: n(s.discount), devoluciones: n(s.refunds), iva: n(s.tax), otrosImpuestos: n(s.other_tax) },
       pagos: (s.payments || []).map((p) => ({ metodo: p.payment_method || "", importe: n(p.amount) })),
       arqueo: {
         fondo: n(s.opening_cash), esperado: n(s.cash_expected), contado: n(s.cash_delivered),

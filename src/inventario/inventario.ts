@@ -42,6 +42,12 @@ interface ProductRow {
   image_version?: number;
 }
 
+/** Un impuesto del catálogo además del IVA (0083: IEPS, locales). */
+interface ImpuestoCat {
+  id: number; nombre: string; clase: 'IEPS' | 'LOCAL'; factor: 'Tasa' | 'Cuota';
+  tasa: number | null; cuota: number | null; unidad: string | null; en_base_iva: boolean; activo: boolean; nota?: string | null;
+}
+
 interface ProductForm {
   brand: number | null;
   category: number | null;
@@ -112,6 +118,63 @@ export class Inventario {
   /** El costo del producto que se edita (de sus compras), o null si no hay o no se puede ver. */
   costoProducto: number | null = null;
   veCostos = false;
+  /** El costo como se escribe en la ficha (sin IVA). Solo viaja si cambió. */
+  costoCaptura: number | null = null;
+
+  /** 0083: impuestos además del IVA. El catálogo (encendidos + los que ya trae el producto) y los marcados. */
+  impuestosCatalogo: ImpuestoCat[] = [];
+  impuestosProducto: { id: number; cantidad: number | null }[] = [];
+  private impuestosAlAbrir = '[]';
+
+  private async cargarImpuestos(productId: number | null) {
+    const api = (window as any).electronAPI;
+    this.impuestosCatalogo = [];
+    this.impuestosProducto = [];
+    this.impuestosAlAbrir = '[]';
+    try {
+      const [cat, prod] = await Promise.all([
+        api?.impuestosListar?.({}),
+        productId ? api?.productoImpuestos?.({ productId }) : Promise.resolve({ success: true, data: [] }),
+      ]);
+      const marcados: ImpuestoCat[] = (prod?.success ? prod.data : []).map((x: any) => this.impuesto(x));
+      const activos: ImpuestoCat[] = (cat?.success ? cat.data : []).map((x: any) => this.impuesto(x));
+      /* Los marcados apagados también se ven: el producto los tiene aunque hoy no se cobren. */
+      this.impuestosCatalogo = [...activos, ...marcados.filter((m) => !activos.some((a) => a.id === m.id))];
+      this.impuestosProducto = (prod?.success ? prod.data : []).map((x: any) => ({ id: Number(x.id), cantidad: x.cantidad != null ? Number(x.cantidad) : null }));
+      this.impuestosAlAbrir = JSON.stringify(this.impuestosProducto);
+    } catch { /* sin catálogo: la ficha sigue con solo IVA */ }
+  }
+
+  private impuesto(x: any): ImpuestoCat {
+    return { id: Number(x.id), nombre: String(x.nombre), clase: x.clase, factor: x.factor,
+             tasa: x.tasa != null ? Number(x.tasa) : null, cuota: x.cuota != null ? Number(x.cuota) : null,
+             unidad: x.unidad ?? null, en_base_iva: !!x.en_base_iva, activo: !!x.activo, nota: x.nota ?? null };
+  }
+
+  tieneImpuesto(id: number) { return this.impuestosProducto.some((x) => x.id === id); }
+  cantidadImpuesto(id: number) { return this.impuestosProducto.find((x) => x.id === id)?.cantidad ?? null; }
+
+  alternarImpuesto(i: ImpuestoCat) {
+    if (this.tieneImpuesto(i.id)) this.impuestosProducto = this.impuestosProducto.filter((x) => x.id !== i.id);
+    else this.impuestosProducto = [...this.impuestosProducto, { id: i.id, cantidad: i.factor === 'Cuota' ? 1 : null }];
+  }
+
+  fijarCantidadImpuesto(id: number, v: any) {
+    const n = Number(v);
+    this.impuestosProducto = this.impuestosProducto.map((x) => x.id === id ? { ...x, cantidad: Number.isFinite(n) && n > 0 ? n : null } : x);
+  }
+
+  /** Lo que vale un impuesto en palabras: «8%» o «$1.50 por litro». */
+  valorImpuesto(i: ImpuestoCat) {
+    if (i.factor === 'Tasa') return i.tasa != null ? `${Math.round(i.tasa * 10000) / 100}%` : 'sin tasa';
+    return i.cuota != null ? `$${i.cuota.toFixed(2)} por ${i.unidad || 'unidad'}` : 'sin cuota';
+  }
+
+  private async guardarImpuestos(productId: number) {
+    if (!productId || this.editingCorporativo || JSON.stringify(this.impuestosProducto) === this.impuestosAlAbrir) return;
+    const r = await (window as any).electronAPI?.productoImpuestosGuardar?.({ productId, impuestos: this.impuestosProducto });
+    if (!r?.success) throw new Error(r?.error || 'No se guardaron los impuestos del producto.');
+  }
   /** La ganancia que se puso en la última compra de este producto (purchase_detail). */
   ultimaCompra: { porcentaje: number; fecha: string | null } | null = null;
 
@@ -123,17 +186,31 @@ export class Inventario {
    * (sp_get_profit_overview): precio SIN IVA menos el costo.
    */
   get desglosePrecio(): { final: number; base: number; iva: number; tasa: number; costo: number | null;
-                         ganancia: number | null; margen: number | null } | null {
+                         ganancia: number | null; margen: number | null; otros: { nombre: string; importe: number }[] } | null {
     const final = Number(this.form.price);
     if (!Number.isFinite(final) || final <= 0) return null;
     const tasa = this.form.objetoImpuesto === '02' ? Number(this.form.tasaIva) || 0 : 0;
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    const base = r2(final / (1 + tasa));
-    const costo = this.costoProducto;
+    /* 0083: la misma cuenta que sp_venta_impuestos, para UNA pieza.
+       P = (B·(1+Te) + Ce)·(1+IVA) + B·Tl + Cl */
+    const marcados = this.impuestosProducto
+      .map((x) => ({ x, i: this.impuestosCatalogo.find((c) => c.id === x.id) }))
+      .filter((m): m is { x: { id: number; cantidad: number | null }; i: ImpuestoCat } => !!m.i && m.i.activo);
+    let te = 0, tl = 0, ce = 0, cl = 0;
+    for (const { x, i } of marcados) {
+      if (i.factor === 'Tasa') { if (i.en_base_iva) te += i.tasa || 0; else tl += i.tasa || 0; }
+      else { const c = (i.cuota || 0) * (x.cantidad || 0); if (i.en_base_iva) ce += c; else cl += c; }
+    }
+    const bruta = (final - ce * (1 + tasa) - cl) / ((1 + te) * (1 + tasa) + tl);
+    const base = r2(bruta > 0 ? bruta : final / (1 + tasa));
+    const otros = bruta > 0 ? marcados.map(({ x, i }) => ({ nombre: i.nombre,
+      importe: r2(i.factor === 'Tasa' ? bruta * (i.tasa || 0) : (i.cuota || 0) * (x.cantidad || 0)) })) : [];
+    const ivaMonto = bruta > 0 ? r2((bruta * (1 + te) + ce) * tasa) : r2(final - base);
+    const costo = this.costoCaptura;
     const ganancia = costo != null ? r2(base - costo) : null;
     /* El % como lo usa Compras: sobre el COSTO (precio = costo × IVA × (1 + %)).
        Así el número coincide con el «% Ganancia» que se escribió al comprar. */
-    return { final, base, iva: r2(final - base), tasa, costo, ganancia,
+    return { final, base, iva: ivaMonto, tasa, costo, ganancia, otros,
              margen: ganancia != null && costo != null && costo > 0 ? Math.round((ganancia / costo) * 1000) / 10 : null };
   }
 
@@ -862,6 +939,7 @@ export class Inventario {
         await this.guardarPresentaciones(nuevoId);
         await this.guardarSuelto(nuevoId);
         await this.guardarDueno(nuevoId);
+        await this.guardarImpuestos(nuevoId);
         await this.guardarImagen(nuevoId);
         await this.consultarInventario();
         this.cerrarProductoModal();
@@ -966,6 +1044,9 @@ export class Inventario {
         objeto_impuesto: this.form.objetoImpuesto || '02',
         tasa_iva: this.form.tasaIva ?? 0.16,
         ...this.controlDelProducto('snake'),
+        /* El costo solo viaja si quien lo ve lo cambió (el canal vuelve a exigir VER_COSTOS). */
+        ...(this.veCostos && this.costoCaptura != null && this.costoCaptura >= 0
+            && Math.abs(this.costoCaptura - Math.round((this.costoProducto ?? -1) * 100) / 100) > 0.004 ? { cost: this.costoCaptura } : {}),
       };
 
       const res = await api.actualizarProducto(payload);
@@ -977,6 +1058,7 @@ export class Inventario {
       await this.guardarPresentaciones(Number(this.editingProductId));
       await this.guardarSuelto(Number(this.editingProductId));
       await this.guardarDueno(Number(this.editingProductId));
+      await this.guardarImpuestos(Number(this.editingProductId));
       await this.guardarImagen(Number(this.editingProductId));
       await this.consultarInventario();
       this.cerrarProductoModal();
@@ -1003,6 +1085,9 @@ export class Inventario {
   abrirProductoModal() {
     this.editingProductId = null;
     this.costoProducto = null;
+    this.costoCaptura = null;
+    this.editingCorporativo = false;
+    void this.cargarImpuestos(null);
     this.ultimaCompra = null;
     this.veCostos = this.inventario.some((p: any) => 'cost' in p);
     this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
@@ -1029,7 +1114,9 @@ export class Inventario {
     /* El costo llega solo a quien puede verlo (VER_COSTOS): sin la columna,
        el desglose no enseña costo ni ganancia. */
     this.costoProducto = item && 'cost' in item && item.cost != null ? Number((item as any).cost) : null;
+    this.costoCaptura = this.costoProducto != null ? Math.round(this.costoProducto * 100) / 100 : null;
     this.veCostos = !!item && 'cost' in item;
+    void this.cargarImpuestos(Number(item?.id ?? 0) || null);
     this.ultimaCompra = null;
     if (this.veCostos && item?.id) void this.cargarUltimaCompra(Number(item.id));
     this.form = {

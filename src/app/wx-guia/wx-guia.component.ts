@@ -4,6 +4,8 @@ import {
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Router } from '@angular/router';
 import { WxMascotaComponent } from '../wx-mascota/wx-mascota.component';
+import { WxWybixChatComponent } from './wx-wybix-chat.component';
+import { AsistenteService } from '../../core/asistente.service';
 import { GuiaService, AvisoGuia } from './guia.service';
 import { GuiaPuertaService } from '../wx-guide/guia-puerta.service';
 import { GuiaProgresoService } from '../wx-guide/guia-progreso.service';
@@ -42,7 +44,7 @@ const GRUPOS: { id: Escenario['grupo']; titulo: string }[] = [
 @Component({
   selector: 'wx-guia',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, WxMascotaComponent],
+  imports: [NgIf, NgFor, NgClass, WxMascotaComponent, WxWybixChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './wx-guia.component.html',
   styleUrls: ['./wx-guia.component.css'],
@@ -57,6 +59,9 @@ export class WxGuiaComponent implements AfterViewInit, OnDestroy {
 
   /** Lo que esta persona puede recorrer aqui. Se calcula al abrir. */
   readonly escenarios = signal<Escenario[]>([]);
+  /* Chat primero: es lo que se busca al tocar a Wybix. Los recorridos siguen a un toque. */
+  readonly pestana = signal<'chat' | 'recorridos'>('chat');
+  readonly asistente = inject(AsistenteService);
 
   constructor() {
     /* Al abrir se carga el motor y se pregunta si esta ventana es una demo:

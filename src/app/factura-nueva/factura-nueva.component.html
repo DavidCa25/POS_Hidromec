@@ -159,6 +159,12 @@
       <div class="fn-totales">
         <div class="fn-t-row"><span>Subtotal (sin IVA)</span><span>{{ money(subtotal) }}</span></div>
         <div class="fn-t-row"><span>IVA (incluido)</span><span>{{ money(ivaEstimado) }}</span></div>
+        <!-- 0083/0085: IEPS e impuestos locales de la venta. -->
+        <div class="fn-t-row" *ngIf="iepsIncluido > 0.004"><span>IEPS (incluido)</span><span>{{ money(iepsIncluido) }}</span></div>
+        <div class="fn-t-row" *ngIf="localIncluido > 0.004"><span>Impuesto local (complemento)</span><span>{{ money(localIncluido) }}</span></div>
+        <label class="fn-t-row" *ngIf="iepsIncluido > 0.004" data-guide="factura-desglosar-ieps">
+          <span><input type="checkbox" [(ngModel)]="desglosarIeps" name="desglosarIeps"> El cliente acredita el IEPS: desglosarlo</span>
+        </label>
         <div class="fn-t-row total"><span>Total</span><span>{{ money(total) }}</span></div>
       </div>
     </div>

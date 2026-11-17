@@ -1,0 +1,396 @@
+# Frases completas: inventario y catálogo. [producto] {persona}.
+
+@ consulta.existencia
+cuantas [cocas] quedan
+cuantas [cocas de 600] me quedan
+cuanto [azucar] hay
+hay [sabritas]
+tengo [huevo]
+existencia de [leche lala]
+cuantos [garrafones] tengo
+queda [pan bimbo]
+stock de [tortillas]
+cuanto me queda de [harina]
+inventario de [atun]
+todavia hay [conchas]
+cuantas [conchas] quedan
+cuantas [donas glaseadas] hay
+nos queda [cafe en grano]
+cuanto tenemos de [leche entera]
+tienes [maruchan]
+hay existencia de [cerveza corona]
+quedan [cigarros]
+cuantos [cigarros marlboro] hay
+cuantas [pilas] quedan
+cuantos [panes de muerto] quedan
+cuanto [queso oaxaca] queda
+cuanto [jamon] hay
+hay [hielo]
+cuantas bolsas de [hielo] quedan
+cuantos [detergentes] hay
+cuantos paquetes de [papel higienico] me quedan
+cuanto [cloro] tengo
+hay [frijol]
+cuanto [arroz] queda
+tenemos [aceite]
+cuantas [galletas marias] hay
+cuantos [croissants] quedan
+queda [chocolate caliente]
+cuanto [shampoo profesional] me queda
+hay [cera para cabello]
+cuantas [doritos] quedan
+aun hay [refresco de naranja]
+cuantos [pañales] quedan
+me quedan [agua de 1 litro]
+revisa cuantas [cocas] hay
+checa si hay [leche deslactosada]
+fijate si tenemos [mantequilla]
+cuantos [bisquets] hay en vitrina
+cuantos [cuernitos] quedan
+cuanto queda de [cafe soluble]
+ya se acabo la [coca de 2 litros]
+cuantas piezas de [concha] hay
+cuantos kilos de [tortilla] tengo
+cuanto [huevo] me queda
+existencias de [sal]
+stock de [chiles en lata]
+hay [cerveza]
+
+@ producto.info
+a como esta la [coca]
+a como esta la [coca de 600]
+cuanto vale la [concha]
+en cuanto damos el [latte grande]
+precio de las [sabritas]
+a como das el [garrafon]
+que precio tiene el [pan bimbo]
+codigo de la [leche lala]
+datos del [atun]
+en cuanto vendo la [cerveza corona]
+cuanto cuesta la [maruchan]
+cuanto cuesta un [corte de cabello]
+cuanto cobramos por el [tinte]
+a como esta el kilo de [tortilla]
+cuanto esta el [huevo]
+en cuanto tengo el [frappe de moka]
+cuanto cuesta el [americano]
+a como tengo los [cigarros]
+que precio le puse al [croissant]
+cuanto vale el [manicure]
+cuanto damos los [chilaquiles verdes]
+cuanto cuesta la orden de [tacos al pastor]
+precio del [queso oaxaca]
+a cuanto esta el [jabon zote]
+cuanto sale el [detergente]
+cuanto cuesta el [hielo]
+a como esta la [dona de chocolate]
+en cuanto se vende el [pastel de chocolate]
+cual es el precio del [capuchino]
+a como esta el [arroz]
+cuanto vale un [pedicure]
+precio del [planchado]
+cuanto cobro por un [peinado]
+que codigo de barras tiene la [coca de 2 litros]
+cual es la clave del [atun]
+info del [aceite]
+dame los datos de la [harina]
+
+@ inventario.agotados
+que esta agotado
+que productos estan en cero
+que se acabo
+que ya no tengo
+productos sin existencia
+que me falta en el anaquel
+que esta en ceros
+que se termino
+que productos se agotaron
+que ya se acabo
+que no hay
+que no tenemos
+que se nos acabo hoy
+que productos tengo en cero
+que esta agotado en la tienda
+hay algo agotado
+que tengo en negativo
+que productos estan en negativo
+que esta en rojo en el inventario
+que no tengo para vender
+que hay que reponer ya
+lista de agotados
+productos agotados
+que se acabo ayer
+que se agoto esta semana
+de que me quede sin nada
+
+@ inventario.sin_movimiento
+que no se vende
+que productos no se mueven
+que es lo que menos se vende
+producto estancado
+que tengo parado
+que lleva mucho sin venderse
+que esta muerto en el inventario
+que productos no se han vendido en un mes
+que tengo que no sale
+que no ha salido
+que se esta empolvando
+que mercancia no rota
+que productos tienen poca rotacion
+que me sobra
+que tengo de mas
+que no deberia volver a comprar
+que productos deberia rematar
+que le pongo en oferta
+que esta estancado en bodega
+que se queda en el anaquel
+lo que menos sale
+los menos vendidos
+productos sin venta
+que lleva 60 dias sin venderse
+que no se vende desde hace mucho
+
+@ inventario.valor
+cuanto vale mi inventario
+cuanto dinero tengo en mercancia
+valor del inventario
+cuanto tengo invertido en producto
+cuanto vale lo que hay en la tienda
+valor de la mercancia
+cuanto vale todo lo que tengo
+cuanto tengo en producto
+cuanto dinero hay en el almacen
+cuanto vale la bodega
+cuanto tengo invertido en inventario
+cuanto me costo lo que tengo en anaqueles
+cuanto valdria si vendiera todo
+cuanto dinero tengo parado en mercancia
+valor a costo del inventario
+valor a precio de venta del inventario
+cuanto vale el stock
+cuanto capital tengo en mercancia
+de cuanto es mi inventario
+cuanto tengo en insumos
+
+@ inventario.movimientos
+movimientos de la [coca]
+movimientos de la [coca de 600]
+que ha pasado con las [sabritas]
+kardex de la [leche lala]
+historial del [atun]
+entradas y salidas del [azucar]
+por que bajo la existencia de [conchas]
+quien movio las [cervezas]
+que paso con el [huevo]
+por que no me cuadra el [garrafon]
+como se fue la [harina]
+cuando entro la [leche entera]
+cuando se vendio el ultimo [pan de muerto]
+revisa los movimientos del [cafe en grano]
+quiero ver el kardex del [shampoo profesional]
+historial de movimientos de [tortillas]
+cuando fue la ultima venta de [maruchan]
+por que tengo menos [cigarros]
+que salidas tuvo el [queso oaxaca]
+de donde salio la diferencia de [jabon zote]
+cuantas entradas de [hielo] hubo
+movimientos de esta semana del [aceite]
+que se hizo con el [chocolate caliente]
+quien le movio al [detergente]
+revisa que paso con las [donas glaseadas]
+
+@ inventario.ajuste
+ajusta la [coca] a 20
+ajusta las [cocas de 600] a 24
+en realidad hay 15 [sabritas]
+conte 12 [leches lala]
+corrige la existencia del [atun] a 30
+deja el [garrafon] en 8
+el fisico de [azucar] es 10
+pon la existencia de [conchas] en 0
+hay 6 [donas glaseadas] no las que dice
+la existencia de [pan bimbo] esta mal son 7
+conte las [cervezas] y son 48
+en el anaquel hay 5 [maruchan]
+el sistema dice 10 pero hay 8 [huevos]
+corrige [tortillas] a 12
+ajuste de inventario de [harina] a 25
+ajustale al [cafe en grano] 3
+ajusta [cigarros] a 40
+cuadra el [jabon zote] a 18
+la [leche entera] tiene 9 en fisico
+pon 20 de [hielo]
+ponle existencia 50 al [refresco de naranja]
+conteo de [shampoo profesional] 6
+quedan realmente 4 [croissants]
+ya conte el [queso oaxaca] hay 3
+deja en ceros el [pan de muerto]
+el [detergente] tiene 11 piezas reales
+ajusta [aceite] a 14
+hay que ajustar [atun] a 22
+corrige el stock de [cloro] a 7
+corrige el inventario de [sal] son 10
+
+@ merma.registrar
+registra merma de 6 [donas glaseadas]
+merma 3 [conchas]
+merma de 2 [croissants]
+se cayeron 4 [conchas]
+se me cayo una [coca de 600]
+se cayeron 2 [cervezas corona]
+tira 5 [donas de chocolate] caducadas
+tiramos 3 [panes de muerto]
+se echaron a perder 2 [leches lala]
+se echo a perder el [queso oaxaca]
+dar de baja 4 [yogurts] por caducidad
+se rompieron 2 [garrafones]
+se rompio un [garrafon]
+se reventaron 3 [cocas]
+se quebraron 6 [huevos]
+caducaron 5 [jamon]
+caduco una [leche deslactosada]
+se vencieron 2 [atunes]
+se quemaron 8 [conchas] en el horno
+salieron mal 4 [croissants]
+se nos quemo una charola de [galletas de avena]
+regalamos 2 [cuernitos] de degustacion
+dimos 3 [bisquets] de prueba
+se le dio a probar 1 [pastel de chocolate]
+anota merma de 2 [lattes grandes] que salieron mal
+hay que tirar 10 [donas rellenas]
+la [leche entera] se corto tira 2
+se aplasto un [pan bimbo]
+se mojaron 3 [papel higienico]
+descuenta 2 [sabritas] por merma
+2 [doritos] rotos a la basura
+merma de 1 [tinte] que se derramo
+se tiro un [shampoo profesional]
+merma de 5 [tortillas] duras
+se echo a perder la [mantequilla]
+registra que se cayeron 2 [refrescos de naranja]
+se pudrieron 4 [platanos]
+mermas de hoy 6 [conchas]
+registra una merma
+quiero registrar una merma
+merma
+anota una merma de [cocas]
+
+@ producto.precio
+cambia el precio de la [coca] a 22
+cambia el precio de la [coca de 600] a $20
+sube las [sabritas] a 19
+baja el precio de la [concha] a 12
+pon el [garrafon] a 38
+ahora la [leche lala] cuesta 28
+el [pan bimbo] a 52
+nuevo precio [atun] 24
+subele a la [cerveza corona] a 25
+que la [maruchan] cueste 18
+ponle 45 al [latte grande]
+cambiar precio del [croissant]
+quiero cambiar el precio del [americano]
+el precio del [corte de cabello] va a ser 150
+sube el [tinte] a 450
+bajale al [manicure] a 180
+sube el [huevo] a 45 el kilo
+la [tortilla] ahora esta a 24
+actualiza el precio del [frappe de moka] a 65
+sube el precio de los [cigarros]
+sube 2 pesos la [coca]
+subele 3 pesos al [pan de muerto]
+bajale 5 pesos al [pastel de chocolate]
+aumenta 1 peso las [sabritas]
+la [cerveza] ahora vale 23
+el [chilaquiles verdes] sube a 95
+cambiale el precio al [cafe en grano] a 280
+ponle precio de 60 al [capuchino]
+precio nuevo para el [queso oaxaca] 130
+el [hielo] a 30
+el [detergente] ahora a 42
+ajusta el precio del [jabon zote] a 26
+rebajale al [refresco de naranja] a 15
+sube el precio
+cambiar un precio
+quiero modificar un precio
+modifica el precio de las [conchas]
+
+@ producto.crear
+crea producto pay de queso a 45
+crear agua de jamaica a $25
+dar de alta torta de jamon en 50
+nuevo producto galleta de avena 15
+agrega producto cafe de olla de 30
+alta de chilaquiles a 85
+registra un producto nuevo garrafon 20 litros cuesta 35
+quiero vender aceite 5w30 a 120
+crea un producto cuaderno profesional
+dar de alta un producto
+nuevo producto
+agrega frappe de moka al catalogo a 60
+crear producto pan de muerto con precio 35
+da de alta empanadas que cuestan 18
+crea gelatina a 15
+agrega el producto paleta de hielo a 12
+alta de producto agua mineral en 22
+crea un producto que se llame limonada a 25
+agrega tamales a 20
+crea el servicio corte de niño a 90
+da de alta mascarilla facial a 250
+crea bolsa de hielo 5 kilos a 35
+nuevo producto chicharrones a 15
+agregar producto nuevo pan dulce
+quiero dar de alta un articulo
+crea un nuevo platillo enchiladas verdes a 90
+nuevo articulo galletas surtidas a 28
+registra jugo de naranja a 30
+crea cafe americano grande a 40
+agrega el producto vela aromatica a 80
+
+@ consulta.ganancia
+cuanto gano con la [coca]
+que margen tiene el [latte grande]
+ganancia de las [sabritas]
+cuanto le gano a la [concha]
+es rentable el [croissant]
+cuanto me deja el [garrafon]
+utilidad del [atun]
+cuanto me cuesta el [pan bimbo]
+costo de la [leche lala]
+cuanto le saco a la [cerveza corona]
+que tanto gano con el [americano]
+margen de los [cigarros]
+cuanto me cuesta hacer un [capuchino]
+cuanto cuesta preparar un [frappe de moka]
+cuanto me sale hacer un [latte chico]
+cuanto gano por cada [dona glaseada]
+cuanto me cuesta un [corte de cabello]
+cuanto me deja un [tinte]
+le gano bien a la [maruchan]
+estoy ganando con el [huevo]
+cuanto le gano a cada [torta de milanesa]
+cual es la utilidad de los [chilaquiles verdes]
+cuanto porcentaje le gano al [detergente]
+cuanto me cuesta producir una [concha]
+el [pan de muerto] me deja ganancia
+cuanto me queda de cada [cerveza]
+le estoy perdiendo a la [leche entera]
+cuanto le gano al [queso oaxaca]
+que tan rentable es el [manicure]
+cuanto me cuesta el kilo de [tortilla]
+
+@ inventario.traspaso
+haz un traspaso
+manda 10 [cocas] a la otra sucursal
+traspasa [sabritas] a la sucursal centro
+enviar mercancia a la sucursal
+mover producto entre sucursales
+traspaso de inventario
+quiero mandar producto a la otra tienda
+pasa 5 [garrafones] a la sucursal norte
+manda [leche lala] a la otra tienda
+traspaso de 20 [conchas] a la otra panaderia
+llevate 6 [cervezas] a la sucursal
+transfiere mercancia
+recibir un traspaso
+llego un traspaso de la otra sucursal
+hacer transferencia de inventario

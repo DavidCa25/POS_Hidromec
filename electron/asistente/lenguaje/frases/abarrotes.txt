@@ -1,0 +1,526 @@
+# Frases completas con jerga de tienda de abarrotes, miscelánea y mini súper.
+# Valen para todos los giros (son intents del núcleo). [producto] {persona}.
+
+@ consulta.hoy
+cuanto llevo de venta hoy en la tienda
+cuanto ha vendido la tiendita hoy
+como va la venta del changarro
+ya cuanto hicimos hoy
+cuanto se ha hecho hoy
+cuanto se ha juntado de venta
+cuanto lleva la registradora
+cuanto he sacado de venta hoy
+como estuvo la venta en la tarde
+como estuvo la venta del domingo
+cuanto vendimos el sabado
+cuanto se vendio en la quincena
+como nos fue en la quincena
+como va la venta del mes en la tienda
+cuanta venta llevamos
+cuantas ventas se han hecho
+cuantos tickets se han hecho hoy
+cuantas cuentas hemos cobrado
+cuanto vendio la tienda ayer
+venta total de ayer
+como amanecio la venta
+cuanto entro de venta en la mañana
+cuanto llevo desde las 7
+cuanto he vendido desde que abri
+que tal estuvo el dia de ayer
+como estuvo el fin de semana
+cuanto vendimos el fin de semana
+cuanto se vendio el lunes
+como va el dia en la tienda
+
+@ venta.top
+que es lo que mas sale de la tienda
+que refresco se vende mas
+que botana sale mas
+que cerveza se vende mas
+cuales son las papas que mas se venden
+que es lo que mas me compra la gente del barrio
+que se me acaba primero
+que es lo que mas rota
+cuales son los productos que mas jalan
+que vendo mas la [coca] o la [pepsi]
+cuantas [cocas] vendi esta semana
+cuantas [sabritas] se vendieron hoy
+cuantos [garrafones] vendi este mes
+cuantas [cervezas] se vendieron el fin de semana
+cuantos [cigarros] vendi hoy
+cuanto vendi de [tortillas] hoy
+cuantos [huevos] se vendieron esta semana
+que tanto se vende el [pan bimbo]
+lo que mas se vendio en la quincena
+que se vende mas en las mañanas
+los productos mas pedidos de la tienda
+dame los 5 mas vendidos
+dame el top 20 del mes
+
+@ venta.por_pago
+cuanto entro en billetes hoy
+cuanto me pagaron con tarjeta de debito
+cuanto vendi con la terminal esta semana
+cuanto se cobro con mercado pago
+cuanto vendi en vales de despensa
+cuanto fue en efectivo esta semana
+cuanto me cayo de transferencias hoy
+cuanto pago la gente con tarjeta
+cuanto fue de efectivo ayer
+cuanto me va a depositar el banco de la terminal
+cuanto se cobro en efectivo en la quincena
+cuanto se vendio al contado
+cuanto se fio hoy
+cuantas ventas fueron fiadas
+cuanto fue con transferencia el fin de semana
+
+@ venta.cotizar
+cuanto es de 2 [cocas de 2 litros] y 3 [sabritas]
+cuanto le cobro a la señora 1 [aceite] 1 [arroz] y 1 [frijol]
+cuanto es 1 kilo de [huevo] y 2 de [tortilla]
+cuanto le cobro por 3 [atunes] y 1 [mayonesa]
+cuanto es un [garrafon] y 2 [hielos]
+cuanto me da 2 [leches lala] y 1 [pan bimbo]
+cuanto son 6 [cervezas corona]
+cuanto es la caguama y unas [sabritas]
+cuanto es un six de [cerveza corona]
+cuanto cuesta todo 2 [jabon zote] 1 [cloro] y 1 [detergente]
+cuanto son 4 [maruchan] y 2 [cocas]
+cuanto es 1 [papel higienico] y 1 [panales chicos]
+cuanto son 2 [doritos] y 2 [refrescos de naranja]
+haz la cuenta de 3 [galletas marias] y 3 [yogurts]
+cuanto le cobro por 2 [pilas aa]
+cuanto es medio kilo de [jamon de pavo] y un cuarto de [queso oaxaca]
+cuanto es 1 [cafe soluble] y 1 [azucar]
+cuanto me sale 5 [aguas de 1 litro]
+cuanto es 2 [salsas valentina] y 1 [chiles en lata]
+cuanto es una [coca] y un [pan blanco]
+
+@ venta.cobrar
+cobrale a la señora 2 [cocas] y unas [sabritas]
+marcale una [coca de 600]
+cobrale el [garrafon] al vecino
+vendele 6 [cervezas corona] al señor
+pasale a cobrar 3 [maruchan]
+cobrame un kilo de [tortillas]
+cobrale 1 [leche lala] y 1 [pan bimbo]
+cobra 2 [jabon zote]
+cobrame 12 [huevos]
+vende un [cloro] y un [detergente]
+cobrale al chavo unos [doritos]
+cobra un [hielo] y 2 [cocas de 2 litros]
+cobrale los [cigarros] al señor
+marca 2 [aguas de 1 litro]
+vendele un paquete de [papel higienico]
+
+@ caja.efectivo
+cuanto hay en la registradora
+cuanta lana hay en la caja
+cuanto efectivo trae la caja
+cuanto deberia haber en la registradora
+cuanta morralla tengo
+tengo monedas para cambio
+cuanto hay de cambio
+me alcanza el cambio
+cuanto tengo de feria en la caja
+cuanto dinero hay en la tienda
+cuanto juntamos en efectivo
+cuanto hay en caja para pagarle al de la coca
+me alcanza lo de la caja para pagar el pedido
+cuanto deberia entregar al cerrar
+cuanto efectivo hay en la caja del mostrador
+
+@ caja.entrada
+meti 300 de morralla
+entro cambio del banco por 500
+mete 1000 que me prestaron
+deja registrado que meti 200 de monedas
+puse 500 en la caja para cambio
+mete los 300 que traje de la casa
+entrada de 2000 del dueño
+ingresa 100 de monedas
+mete 400 que dejo mi esposa
+pon 1000 de fondo extra
+registra que entraron 600 de cambio
+agrega 250 de cambio a la registradora
+
+@ caja.salida
+saque 500 para la coca
+saque 200 para el gas
+saca 1000 para pagarle al de la cerveza
+me lleve 500 para el mandado
+retira 3000 para depositar al banco
+saque 300 para comprar hielo
+sacale 1500 a la caja
+se saco dinero para la comida 200
+saca 700 para el pedido de bimbo
+retiro de caja 2500
+me lleve la feria 1000
+quita 400 de la registradora
+saque 100 para el garrafon de la casa
+
+@ caja.cortes
+como salio la caja ayer
+cuadro el corte del muchacho
+al chalan le falto dinero
+le falto dinero a la cajera
+cuanto falto en la caja del sabado
+como entrego la caja la muchacha
+se descuadro la caja
+salio sobrante en el corte
+que tan seguido falta dinero
+cuanto ha faltado esta semana en caja
+cortes de la quincena
+como entrego caja el de la tarde
+
+@ caja.turno
+quien esta en la registradora
+quien abrio la tienda hoy
+a que hora abrieron la caja
+quien tiene el turno de la mañana
+ya abrio caja el muchacho
+con cuanto fondo abrio la cajera
+quien esta despachando
+quien esta atendiendo la tienda
+
+@ caja.corte
+hazme el corte de la tienda
+voy a cerrar la tienda haz el corte
+cierra la registradora
+corte de la tarde
+ya cerramos haz el corte
+el muchacho va a entregar caja
+cierre de caja de hoy
+hacer el corte de la quincena
+
+@ consulta.existencia
+cuantos [garrafones] llenos quedan
+hay [coca de 2 litros] fria
+tengo [hielo] en el congelador
+cuantas cajas de [cerveza corona] quedan
+quedan [cigarros marlboro]
+cuantos paquetes de [panales chicos] hay
+hay [leche deslactosada] todavia
+me quedan [pilas aa]
+cuantos [atunes] tengo en el anaquel
+cuanto [frijol] queda en el costal
+hay [salsa valentina]
+cuantas [mayonesas] quedan
+queda [yogurt natural]
+hay [platanos]
+cuantas [galletas marias] me quedan
+cuantos [refrescos de naranja] hay
+tengo [cafe soluble]
+cuanto [aceite] queda
+hay [pan blanco]
+quedan [doritos nacho]
+hay [jabon zote] en bodega
+cuantas bolsas de [azucar] tengo
+tengo [sal] en la tienda
+fijate cuantas [maruchan] hay
+checa si quedan [chiles en lata]
+hay [mantequilla] en el refri
+
+@ producto.info
+a como tienes el [garrafon]
+a como esta la caguama de [cerveza corona]
+cuanto cuesta el six de [cerveza]
+a como das el kilo de [huevo]
+a como estan los [cigarros marlboro]
+cuanto cobro por el [hielo]
+cuanto vale el [papel higienico]
+a como esta la [maruchan]
+en cuanto das las [pilas aa]
+cuanto le cobro al cliente por el [atun]
+que precio tiene la [salsa valentina]
+cuanto vale la [mayonesa]
+cuanto cuesta el [yogurt natural]
+a como esta el [platano]
+a como tienes el [pan blanco]
+cuanto vale la [leche deslactosada]
+en cuanto esta el [cafe soluble]
+cuanto cuesta el kilo de [frijol]
+a como das el [aceite]
+a cuanto vendo el [detergente]
+cual es el precio de las [galletas marias]
+cuanto vale el [refresco de naranja]
+
+@ inventario.agotados
+que me falta en el refri
+que se me acabo de botanas
+que refrescos se acabaron
+que cervezas ya no tengo
+que se acabo de la tienda
+que esta vacio en el anaquel
+que ya no hay en la tienda
+de que me quede sin existencia
+que productos ya no me quedan
+que cosas se agotaron el fin de semana
+cuales estan en cero
+que tengo agotado de limpieza
+
+@ inventario.sin_movimiento
+que tengo en la tienda que no se vende
+que mercancia esta parada
+que productos tienen polvo
+que compre y no se ha vendido
+que productos no he vendido en todo el mes
+cuales son los que menos se venden de la tienda
+que se esta quedando en el anaquel
+que deberia dejar de comprar
+que remato
+que puedo poner en oferta para que salga
+que tengo de mas en bodega
+que no rota
+
+@ inventario.valor
+cuanto vale la mercancia de la tienda
+cuanto dinero tengo metido en la tienda
+cuanto tengo invertido en el changarro
+cuanto vale todo lo que hay en anaqueles
+cuanto dinero tengo en bodega
+cuanto valen mis existencias
+de cuanto es la mercancia
+cuanto me costaria surtir todo de nuevo
+
+@ inventario.ajuste
+conte los [garrafones] y hay 12
+en el refri hay 20 [cocas] no 25
+el [hielo] en realidad son 6 bolsas
+ajusta el [frijol] a 8 kilos
+ajusta los [cigarros marlboro] a 30
+la [cerveza corona] esta mal son 36
+el [atun] en fisico son 14
+deja los [panales chicos] en 5
+hay 3 [mayonesas] corrigelo
+ajusta la [salsa valentina] a 9
+pon [pilas aa] en 20
+el inventario de [jabon zote] esta mal hay 10
+cuadra el [aceite] a 6
+la [leche deslactosada] en fisico es 4
+
+@ merma.registrar
+se rompio una caguama de [cerveza corona]
+se reventaron 2 [cocas de 2 litros]
+se cayo un [garrafon] y se rompio
+se echaron a perder 3 [yogurts]
+se pudrieron los [platanos] tira 2 kilos
+caduco el [jamon de pavo]
+se vencieron 4 [leches lala]
+se rompieron 6 [huevos]
+se derramo un [cloro]
+se aplastaron 2 [pan blanco]
+se abrieron 3 [sabritas]
+se mojo un paquete de [papel higienico]
+tira 5 [galletas marias] caducadas
+se descompuso el [queso oaxaca]
+se hecho a perder la [mayonesa]
+merma de 2 [hielos] que se derritieron
+
+@ producto.precio
+subele a la [coca] a 22
+la [coca de 2 litros] ya esta a 42
+el de la coca subio el precio pon la [coca de 600] a 21
+las [sabritas] subieron ahora a 20
+la [cerveza corona] ahora a 24
+el [garrafon] lo voy a dar en 40
+sube el kilo de [huevo] a 48
+sube la [tortilla] a 25
+ponle a las [pilas aa] 35
+los [cigarros marlboro] ahora a 85
+bajale a la [maruchan] a 17
+el [hielo] subio a 32
+pon el [papel higienico] a 48
+cambia la [mayonesa] a 45
+el [atun] ahora vale 26
+
+@ producto.crear
+da de alta coca de vidrio a 18
+crea caguama victoria a 45
+agrega sabritas adobadas a 19
+nuevo producto chicles a 2
+crea una paleta payaso a 15
+da de alta tortillas de harina a 30
+agrega refresco jarrito a 16
+crea pan dulce a 10
+nuevo producto bolsa de carbon a 60
+alta de producto encendedor a 15
+agrega veladoras a 25
+crea leche nido a 120
+
+@ consulta.ganancia
+cuanto le gano a la caguama
+cuanto le gano al [garrafon]
+cuanto me deja el six de [cerveza]
+cuanto le saco al kilo de [huevo]
+le gano algo a los [cigarros marlboro]
+cuanto le gano a las [pilas aa]
+cuanto me queda de cada [coca de 2 litros]
+cuanto gano en el [hielo]
+cuanto le gano al [atun]
+que margen le dejo a la [maruchan]
+
+@ consulta.comprar
+que le pido a la coca
+que tengo que traer de la central de abastos
+que me falta de refrescos
+que me falta de botanas
+que me falta de cervezas
+que me falta de lacteos
+que tengo que comprar en el costco
+que me hace falta para el fin de semana
+que tengo que pedir para la quincena
+que se esta acabando en la tienda
+que tengo que surtir del refri
+lista para el mayoreo
+que compro mañana en el mercado
+
+@ compra.pedido
+que le pido al de {bimbo} mañana
+cuantos paquetes le pido a {bimbo}
+que le encargo al de {lala}
+cuantas cajas le pido a {cerveceria modelo}
+que me falta de {sabritas}
+el de {coca cola femsa} viene el martes que le pido
+que le pido a {distribuidora lopez} de abarrotes
+arma la lista para {abarrotes mayoreo del bajio}
+
+@ compra.ultima
+a como me dejo el de la coca la [coca de 600]
+a como me vendio {bimbo} el [pan blanco]
+cuanto me costo la caja de [cerveza corona]
+cuando fue la ultima vez que surti [cigarros]
+a como compre el [garrafon] la ultima vez
+cuanto pague por el bulto de [azucar]
+cuanto me costo el costal de [frijol]
+a como me lo dejaron el [aceite]
+
+@ compra.resumen
+cuanto le he comprado a la coca este mes
+cuanto he gastado en surtir la tienda
+cuanto gaste en el mayoreo esta semana
+cuanto he invertido en mercancia este mes
+cuanto me costo surtir la tienda la semana pasada
+cuanto se ha ido en pedidos este mes
+
+@ compra.registrar
+ya vino el de la coca registra la compra
+llego el pedido de {sabritas} hay que meterlo
+dale entrada al pedido de {lala}
+registra lo que traje del mayoreo
+traje mercancia de la central registrala
+meter compra del costco
+llego la cerveza registra la compra de {cerveceria modelo}
+
+@ proveedor.deuda
+cuanto le debo al de la coca
+cuanto le debo al de {bimbo}
+le debo al de la cerveza
+cuanto le quedo a deber al de {sabritas}
+a que proveedor le debo mas
+cuanto debo de pedidos
+que pedidos no he pagado
+
+@ proveedor.pago
+ya le pague al de {bimbo} 800
+le pague al de la coca 1500 en efectivo
+pagale al de {lala} 650
+le di 2000 al de la {cerveceria modelo}
+le pague a {sabritas} 900 en efectivo
+le liquide a {distribuidora lopez}
+abone 500 al de {abarrotes mayoreo del bajio}
+
+@ cliente.deuda
+cuanto me debe la vecina
+cuanto debe la señora de la esquina
+quien me debe de la colonia
+cuanto debe {doña mary} de fiado
+cuanto tiene apuntado {don pepe}
+cuanto lleva de fiado {chela}
+cuanto le he fiado esta semana a {toño}
+cuanto me deben de fiado en total
+quien tiene mas fiado en la tienda
+quien no me ha pagado lo fiado
+quien me debe desde la quincena pasada
+cuanto debe {lupita hernandez} de la libreta
+la cuenta de {juan perez}
+revisa lo que debe {mario diaz}
+cuanto le falta a {ana torres} para liquidar
+
+@ cliente.abono
+{doña mary} pago 150 de lo fiado
+{don pepe} abono 300 de su cuenta
+{chela} vino a pagar 200
+{toño} me dio 100 de lo que debe
+{lupita hernandez} liquido 450
+apuntale a {juan perez} un abono de 250
+{mario diaz} abono 500 en efectivo
+{ana torres} pago 120 con transferencia
+recibi 80 de {laura gomez}
+{rosa martinez} trajo 300 de su cuenta
+{carlos ruiz} pago su fiado 600
+{fer sanchez} abono 200 en efectivo
+
+@ cliente.alta
+apunta a la vecina lupe como cliente
+agrega a don chencho como cliente
+nuevo cliente la señora de las tortillas
+da de alta a la tienda el sol como cliente
+registra a mi compadre ramiro como cliente
+agrega al cliente la cocina economica doña rosy
+
+@ cliente.top
+quien me compra mas en la colonia
+quien es el que mas viene a la tienda
+que clientes me compran cada semana
+quienes son mis clientes de siempre
+quien me deja mas en la tienda
+
+@ cliente.info
+que fia {doña mary}
+cuando fue la ultima vez que vino {don pepe}
+que se lleva siempre {chela}
+cuanto compra {toño} a la semana
+cual es el telefono de {lupita hernandez}
+
+@ gasto.registrar
+pague 250 del garrafon de la tienda
+pague la luz de la tienda 1100
+anota que pague la renta del local 5500
+pague 300 de bolsas
+compre bolsas de plastico por 180
+pague el gas 520 en efectivo
+pague 200 de la basura
+anota 150 del muchacho que ayudo a descargar
+pague 800 de la raya del chalan
+pague el internet de la tienda 399
+gaste 100 en gasolina para el mandado
+compre escobas y trapeador 220
+
+@ gasto.resumen
+cuanto he pagado de luz en la tienda
+cuanto se va en gas al mes
+cuanto pago de renta al año
+cuanto gaste en bolsas este mes
+cuanto se fue en la raya este mes
+cuales son mis gastos de la tienda
+
+@ finanzas.ganancia
+cuanto le gane a la venta de la tienda hoy
+cuanto me deja la tiendita al mes
+cuanto gane en la quincena
+cuanto es de ganancia lo que vendi esta semana
+cuanto saco de ganancia al dia en la tienda
+
+@ finanzas.resultado
+despues de pagar todo cuanto me queda de la tienda
+la tienda deja o no deja
+me conviene seguir con la tienda
+cuanto me queda limpio al mes de la tienda
+la tienda esta en numeros rojos
+
+@ personal.ventas
+cuanto vendio el chalan hoy
+cuanto vendio la muchacha en su turno
+cuanto cobro la cajera de la mañana
+quien vende mas el de la mañana o el de la tarde

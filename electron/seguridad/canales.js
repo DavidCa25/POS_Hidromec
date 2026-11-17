@@ -367,6 +367,12 @@ const EXIGE = {
   // Ligar un suelto a su paquete es editar el catalogo, como una presentacion.
   'venta-suelta:guardar': CATALOGO_EDITAR,
 
+  // ------------------------------------------------------- 0083 impuestos
+  // Marcar el IEPS de un producto es editar su ficha, como su IVA. Cambiar
+  // una tasa del catálogo cambia lo que cobran TODAS las cajas: administrador.
+  'producto:impuestos-guardar': CATALOGO_EDITAR,
+  'impuestos:guardar': CONFIGURACION_ADMINISTRAR,
+
   // ------------------------------------------------- 0079 socios y propinas
   // Activar y cambiar las reglas es decidir como funciona el negocio. Ver lo
   // de cada socio, liquidar y sus retiros es dinero de los duenos. El dueno
@@ -549,6 +555,22 @@ const EXIGE = {
  * revisar la decisión dentro de un año sin reconstruir el razonamiento.
  */
 const ABIERTOS = {
+  /* WYBIX, ASISTENTE (docs/arquitectura/asistente-operativo.md). Leer,
+     conversar y registrar cómo terminó un plan no cambia nada del negocio:
+     la operación la ejecuta la pantalla por su canal, con su paquete y sus
+     aprobaciones. Lo que cada quien ve se filtra con SUS permisos. */
+  'asistente:resumen': 'los pendientes de Wybix, filtrados por los permisos de la sesión',
+  'asistente:hallazgos': 'lo que Wybix encontró, filtrado por los permisos de la sesión',
+  'asistente:historial': 'la conversación de la propia persona',
+  'asistente:enviar': 'conversar con Wybix: responde y propone, no ejecuta',
+  'asistente:resultado': 'registra cómo terminó un plan que la pantalla ejecutó por su propio canal',
+  'asistente:evaluar': 'volver a revisar el negocio; solo lee',
+  'asistente:entender': 'lo que Wybix va entendiendo al escribir; no responde ni guarda',
+  'asistente:alias': 'un apodo del negocio («la roja» = Coca 600): solo cambia cómo entiende Wybix, no el catálogo; queda en la bitácora',
+  'asistente:voz': 'el dictado sin internet: lee el motor y el modelo de voz instalados; no escucha ni guarda nada',
+  'asistente:voz-descargar': 'baja una sola vez el modelo de voz en español (URL y SHA-256 fijos en el código) a la carpeta de datos; no toca el negocio',
+  'asistente:habla': 'lee en voz alta un texto con la voz instalada en la caja (Piper); no guarda nada ni toca el negocio',
+  'asistente:habla-descargar': 'baja una sola vez Piper y su voz en español (URL y SHA-256 fijos en el código) a la carpeta de datos; no toca el negocio',
   /* Devuelve la RUTA del logo que ya esta guardado, nada mas. Ponerlo es
      `ticket:guardar-logo`, que si exige el paquete de configuracion. */
   /* Leer el estado de las cargas no cambia nada y la pantalla de Inicio lo
@@ -671,6 +693,8 @@ const ABIERTOS = {
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
   'venta-suelta:get': 'lectura de venta suelta',
+  'impuestos:listar': 'lectura del catálogo de impuestos (tasas públicas de la ley)',
+  'producto:impuestos': 'lectura de los impuestos de un producto, como su IVA en la ficha',
   'socios:config': 'lectura de socios y de quien es cada categoria',
   'propinas:config': 'lectura de los porcentajes de propina',
   'hospitality:availability': 'lectura de disponibilidad',

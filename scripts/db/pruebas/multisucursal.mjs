@@ -34,6 +34,8 @@ const migracion = readFileSync('electron/migrations/0055_multisucursal.sql', 'ut
 // 0058: la version de la politica comercial, una sola (la sucursal no podia cobrar).
 const m0058 = readFileSync('electron/migrations/0058_version-politica-sucursal.sql', 'utf8').split(/^\s*GO\s*$/im).filter((b) => b.trim());
 
+const m0085 = readFileSync('electron/migrations/0085_impuestos-ticket-corte-sucursales.sql', 'utf8').split(/^\s*GO\s*$/im).filter((b) => b.trim());
+
 try {
   seccion('1. La migración, dos veces, en las dos bases');
   for (const db of [M, N]) {
@@ -45,6 +47,8 @@ try {
   q(N, `IF NOT EXISTS (SELECT 1 FROM dbo.commercial_policy WHERE id=1) INSERT dbo.commercial_policy(id,version,payload) VALUES(1,7,N'{"version":3,"channels":[],"prices":[],"promotions":[],"combos":[]}');
         ELSE UPDATE dbo.commercial_policy SET version=7, payload=JSON_MODIFY(payload,'$.version',3) WHERE id=1;`);
   for (const b of m0058) q(N, b);
+  /* 0085: las versiones de HOY del catálogo corporativo (0055 y 0058 dejan las suyas). */
+  for (const db of [M, N]) for (const b of m0085) q(db, b);
   check(uno(N, "SELECT CASE WHEN TRY_CONVERT(INT,JSON_VALUE(payload,'$.version'))=version THEN 1 ELSE 0 END AS ok FROM dbo.commercial_policy WHERE id=1").ok === 1,
     '0058 alinea la version del JSON con la de la columna');
   check(uno(M, "SELECT COL_LENGTH('dbo.products','corporate_override') AS c").c != null, 'columnas nuevas en products');
@@ -98,6 +102,36 @@ try {
   check(pN('CAFE-LOC').corporate === 0 && Number(pN('CAFE-LOC').price) === 30, 'el producto propio no se toca');
   check(uno(N, `SELECT COUNT(*) AS n FROM dbo.recipe_lines rl JOIN dbo.recipes r ON r.id=rl.recipe_id JOIN dbo.products p ON p.id=r.product_id WHERE p.part_number=N'DON-CAJ'`).n === 1, 'la receta llega con su insumo');
   check(uno(N, `SELECT COUNT(*) AS n FROM dbo.product_modifier_groups pmg JOIN dbo.products p ON p.id=pmg.product_id WHERE p.part_number=N'DON-GLA'`).n === 1, 'y el modificador de la glaseada');
+
+  /* 0085: los impuestos además del IVA viajan con el catálogo. La matriz pone
+     IEPS 8% a la glaseada y crea uno propio por cuota en la rellena. */
+  seccion('3b. Los impuestos de la matriz llegan a la sucursal (0085)');
+  const iepsM = uno(M, "SELECT id FROM dbo.CAT_impuestos WHERE clave='IEPS_ALIMENTOS'").id;
+  const propioM = Number(Object.values(uno(M, "EXEC dbo.sp_impuesto_guardar @nombre=N'IEPS QA por pieza', @clase='IEPS', @factor='Cuota', @cuota=0.75, @unidad=N'pieza', @activo=1"))[0]);
+  q(M, `EXEC dbo.sp_producto_impuestos_guardar @product_id=${glaseada}, @impuestos=N'[{"id":${iepsM}}]';
+        EXEC dbo.sp_producto_impuestos_guardar @product_id=${rellena}, @impuestos=N'[{"id":${propioM},"cantidad":2}]';`);
+  /* La sucursal ya tenía un impuesto propio con la misma clave que el de la matriz: no se pisa. */
+  q(N, "EXEC dbo.sp_impuesto_guardar @nombre=N'Impuesto propio de la sucursal', @clase='LOCAL', @factor='Tasa', @tasa=0.02, @activo=1");
+  const catImp = exportar(M);
+  check(catImp.taxes.some((x) => x.clave === 'IEPS_ALIMENTOS') && catImp.product_taxes.some((x) => x.product_uuid === uuidDe(glaseada) && x.tax_clave === 'IEPS_ALIMENTOS'),
+    'el catálogo trae el catálogo de impuestos y los de cada producto');
+  aplicar(catImp, over);
+  const impN = (pn) => q(N, `SELECT i.clave, i.nombre, i.factor, x.cantidad FROM dbo.product_impuestos x JOIN dbo.products p ON p.id=x.product_id JOIN dbo.CAT_impuestos i ON i.id=x.impuesto_id WHERE p.part_number=N'${pn}'`).at(-1) || [];
+  check(impN('DON-GLA').length === 1 && impN('DON-GLA')[0].clave === 'IEPS_ALIMENTOS', 'la glaseada llega con IEPS 8%');
+  const rel = impN('DON-REL');
+  check(rel.length === 1 && rel[0].clave === `M_PROPIO_${propioM}` && Number(rel[0].cantidad) === 2, 'el impuesto propio de la matriz llega como M_PROPIO_n, con su cantidad', JSON.stringify(rel));
+  check(uno(N, "SELECT COUNT(*) AS n FROM dbo.CAT_impuestos WHERE nombre=N'Impuesto propio de la sucursal' AND activo=1").n === 1, 'el propio de la sucursal sigue igual');
+  check(impN('CAFE-LOC').length === 0, 'el producto propio no recibe impuestos de la matriz');
+  const glaN = uno(N, "SELECT id FROM dbo.products WHERE part_number=N'DON-GLA'").id;
+  check(String(falla(N, `EXEC dbo.sp_producto_impuestos_guardar @product_id=${glaN}, @impuestos=N'[]'`) || '').includes('matriz'), 'en la sucursal no se cambian los impuestos de un producto de la matriz');
+  /* La matriz le quita el IEPS: en la sucursal también se va. */
+  q(M, `EXEC dbo.sp_producto_impuestos_guardar @product_id=${glaseada}, @impuestos=N'[]';`);
+  aplicar(exportar(M), over);
+  check(impN('DON-GLA').length === 0, 'quitarlo en la matriz lo quita en la sucursal');
+  /* Un catálogo viejo (sin «taxes») no toca nada. */
+  const viejo = exportar(M); delete viejo.taxes; delete viejo.product_taxes;
+  aplicar(viejo, over);
+  check(impN('DON-REL').length === 1, 'un catálogo de una matriz sin actualizar no borra impuestos');
   const lupita = uno(N, "SELECT CAST(u.corporate AS INT) AS c, u.password_hash, a.pin_hash FROM dbo.users u LEFT JOIN dbo.trabajadores_acceso a ON a.user_id=u.id WHERE u.usuario=N'lupita'");
   check(lupita.c === 1 && lupita.password_hash === 'scrypt$hash-lupita' && lupita.pin_hash === 'pinhash-lupita', 'lupita entra con su contraseña y su PIN');
   check(!uno(N, "SELECT COUNT(*) AS n FROM dbo.users WHERE usuario IN (N'solo-matriz',N'solo-sur')").n, 'los que no son de esta sucursal no llegan');

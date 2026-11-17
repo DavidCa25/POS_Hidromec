@@ -31,6 +31,7 @@ const SERVICIOS_CONOCIDOS = Object.freeze([
   'respaldos',
   'nube',             // sincronización, Club y menú en línea, con la credencial de la empresa
   'avisos-whatsapp',  // barre los pedidos listos de la base activa
+  'asistente',        // Wybix revisa el negocio activo cada 10 min (electron/asistente)
 ]);
 
 /* La licencia NO está aquí: es del equipo, no de la empresa. */

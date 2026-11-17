@@ -1,0 +1,367 @@
+# Frases completas: análisis. Pronóstico, cuándo se acaba algo, «¿y si…?»,
+# «¿por qué?» y preguntas de venta con filtros combinados. [producto] {persona}.
+
+@ analisis.pronostico
+cuanto voy a vender hoy
+cuanto voy a vender manana
+cuanto vamos a vender el sabado
+cuanto crees que venda manana
+cuanto calculas que vendamos el viernes
+cuanto se va a vender el domingo
+cuanto espero vender este sabado
+cuanto debo esperar vender manana
+cuanto deberia vender hoy
+que tanto vamos a vender manana
+como pinta el dia de manana
+cuanto venderemos el fin
+pronostico de ventas de manana
+dame el pronostico de hoy
+dame un estimado de la venta de manana
+un estimado de lo que voy a vender
+cuanto entraria manana mas o menos
+cuanto dinero va a entrar el viernes
+cuanto voy a hacer de venta el sabado
+cuanto le voy a sacar al domingo
+cuantas [conchas] hago manana
+cuantas [conchas] preparo para el sabado
+cuantas [donas glaseadas] hago para manana
+cuantos [croissants] horneo manana
+cuantos [bisquets] preparo para hoy
+cuantos [cuernitos] saco manana
+cuantas [donas de chocolate] voy a vender manana
+cuantos [lattes grandes] voy a vender hoy
+cuantas [cocas] voy a vender el sabado
+cuantas [tortillas] voy a vender manana
+cuantos [garrafones] se van a vender el lunes
+cuantas [hamburguesas] voy a vender el viernes
+cuantos [tacos al pastor] calculas para el sabado
+cuantos [chilaquiles] preparo para el domingo
+cuanto [pozole] hago para el sabado
+cuantas [quesadillas] se van a vender manana
+cuantos [cortes de cabello] voy a tener el sabado
+cuantos [manicures] calculas para el viernes
+cuanto pan hago para manana
+cuanto pan horneo el domingo
+que tanto pan preparo para el sabado
+cuantas piezas de [concha] necesito para manana
+cuantas [conchas] me van a pedir manana
+cuantas [cervezas] se venden un sabado
+cuantos [frappes de moka] voy a vender hoy
+cuantas [sabritas] voy a vender esta semana
+cuanto voy a vender pasado manana
+calcula cuanto vendo manana
+calculame la venta del viernes
+haz un pronostico para el sabado
+cuanto crees que entre hoy
+crees que hoy venda mas que ayer
+cuanto me falta para vender lo normal hoy
+cuanto falta para llegar a lo de un sabado normal
+voy bien para lo que se vende un viernes
+cuanto seria una buena venta para hoy
+cuanta gente espero manana
+cuantos tickets voy a hacer manana
+cuantos clientes vendran el sabado
+oye cuanto voy a vender manana
+wybix cuanto calculas para hoy
+cuanto preparo de [dona rellena] para manana
+cuantas [galletas de avena] horneo para el viernes
+cuantos [pasteles de chocolate] hago para el fin de semana
+que tanto [cafe americano] se va a vender manana
+cuantas [aguas de jamaica] preparo para manana
+cuanta [limonada] hago para el sabado
+cuantas [tortas de milanesa] saco para manana
+cuanto voy a vender esta noche
+cuanto se espera vender el lunes
+cuanto vendere el jueves
+cuanto deberiamos vender manana
+pronostico para el domingo
+cuanto se proyecta para el sabado
+proyeccion de ventas para manana
+cuantos [panes de muerto] voy a vender manana
+cuantas [cocas de 600] se van a ir el sabado
+cuantos [huevos rancheros] preparo para el domingo
+cuantos [molletes] se van a pedir manana
+cuantas [enchiladas suizas] hago para el viernes
+cuantos [tintes] voy a hacer el sabado
+cuantos [pedicures] calculas para manana
+
+@ analisis.agotar
+cuando se me acaba la [leche]
+cuando se me acaban las [tortillas]
+cuando se termina el [azucar]
+cuando se agota la [coca de 600]
+para cuantos dias me alcanza el [huevo]
+para cuantos dias tengo [leche entera]
+cuantos dias me alcanza el [cafe en grano]
+cuantos dias me dura la [harina]
+cuanto me dura el [aceite]
+cuanto me duran las [maruchan]
+hasta cuando me alcanza el [garrafon]
+hasta cuando tengo [papel higienico]
+me alcanza el [azucar] para la semana
+me alcanza la [leche] hasta el lunes
+me va a alcanzar el [cafe en grano] para el fin de semana
+cuando voy a quedarme sin [harina]
+cuando me quedo sin [mantequilla]
+en cuantos dias se acaba el [jamon de pavo]
+en cuantos dias me quedo sin [queso oaxaca]
+cuanto tiempo me dura el [detergente]
+cuanto aguanta el [cloro] que tengo
+para cuando se acaba la [cerveza corona]
+cuando tengo que volver a pedir [pan bimbo]
+cuando se van a acabar las [sabritas]
+se me va a acabar el [hielo] esta semana
+cuanto me queda de [leche] en dias
+para cuantos dias tengo [cerveza corona]
+cuantos dias aguanta el [garrafon]
+cuanto me dura el [pan blanco] que tengo
+me alcanza la [coca cola 2 l] para el sabado
+hasta que dia me alcanza el [frijol negro]
+cuando se me termina el [arroz]
+cuando se me acaba el [jabon zote]
+cuando se acaban los [panales chicos]
+en cuanto se me acaban los [cigarros]
+para cuantos dias hay [agua de 1 l]
+cuantos dias tengo de [leche deslactosada]
+cuando se me acaba la [cera para cabello]
+cuando se acaba el [shampoo profesional]
+para cuantos dias me alcanza el [cafe en grano]
+cuanto me dura la [leche entera] a este ritmo
+a este ritmo cuando se acaba el [azucar]
+al paso que voy cuando se acaba la [harina]
+con lo que vendo cuando me quedo sin [huevo]
+cuando me quedo sin [coca de 600] al ritmo que va
+para cuando necesito mas [tortillas]
+que dia se me acaba la [leche]
+que dia me quedo sin [cafe soluble]
+ya casi se acaba el [aceite]
+cuanto falta para que se acabe el [arroz]
+cuanto le queda al [jamon de pavo]
+cuantos dias le quedan a la [mayonesa]
+oye cuando se me acaba la [leche]
+wybix para cuantos dias tengo [azucar]
+
+
+
+@ analisis.simular
+si subo la [concha] a 14 cuanto gano
+si subo la [coca de 600] a 22 cuanto ganaria
+que pasa si subo el [latte grande] a 65
+que pasa si bajo la [dona glaseada] a 15
+que pasaria si pongo el [corte de cabello] en 180
+y si le subo 2 pesos a la [concha]
+y si le bajo 3 pesos al [americano]
+si le subo 5 pesos al [frappe de moka] me conviene
+me conviene subir la [concha] a 15
+me conviene bajar el [capuchino] a 45
+me conviene poner los [doritos] a 20
+conviene subir el [pozole] a 120
+cuanto ganaria si vendo la [concha] a 16
+cuanto ganaria si cobro el [tinte] a 450
+cuanto perderia si bajo la [coca cola 2 l] a 35
+cuanto me deja la [dona rellena] si la pongo a 22
+simula la [concha] a 15
+simula el [latte chico] a 50
+simulame la [hamburguesa sencilla] a 95
+haz una simulacion de la [torta de milanesa] a 85
+y si la [concha] la pongo a 14
+y si el [croissant] lo dejo en 38
+que tal si subo el [pan de muerto] a 45
+que tal si bajo los [tacos al pastor] a 18
+si subiera la [coca de 600] a 23 cuanto me quedaria
+si bajara el [americano] a 30 que pasaria
+si cobro el [manicure] a 200 cuanto gano al mes
+si pongo la [cerveza corona] a 28 cuanto le gano
+si le subo a la [leche lala entera 1 l] cuanto gano mas
+que pasa si le subo un peso a la [tortilla]
+que pasa si dejo el [garrafon] en 40
+cuanto ganaria de mas si subo la [concha] a 14
+cuanto dejaria de ganar si bajo la [dona glaseada] a 14
+si subo el precio de la [concha] a 14 me conviene
+si subo el precio del [capuchino] cuanto gano
+si le pongo 3 pesos mas al [latte grande]
+si le quito 2 pesos a la [galleta de avena]
+que pasa con mi ganancia si subo el [corte de barba] a 120
+cuanto le ganaria al [chilaquiles verdes] a 110
+cuanto le ganaria a las [enchiladas suizas] si las pongo en 125
+vale la pena subir la [concha] a 15
+vale la pena bajar el [frappe de moka] a 60
+subir la [coca de 600] a 22 me conviene o no
+oye y si subo la [concha] a 14
+wybix que pasa si bajo el [latte chico] a 40
+si subo las [quesadillas] a 40 cuanto mas gano
+cuantas menos [conchas] puedo vender si la subo a 15
+cuantas [donas] mas tendria que vender si las bajo a 14
+si bajo la [dona glaseada] cuantas mas tengo que vender
+hasta cuanto puedo bajar de venta si subo el [tinte] a 500
+y si cobro la [planchado] en 150
+que pasa si pongo el [pedicure] en 250
+si le subo al [shampoo profesional] a 220 que pasa
+que pasaria si la [limonada] la vendo en 35
+simula subir 10 por ciento la [concha]
+simula el [agua de jamaica] en 30
+y si la [sopa del dia] la pongo a 60
+que me conviene mas la [concha] a 13 o a 14
+cuanto gano si la [coca de 600] queda en 21
+si subo el [atun en agua] a 25 me sigue conviniendo
+
+@ venta.comparar
+por que vendi menos esta semana
+por que vendi menos hoy
+por que vendimos menos el mes pasado
+por que bajo la venta
+por que bajaron las ventas este mes
+por que subieron las ventas
+por que vendi mas esta semana
+por que se vendio menos ayer
+por que entro menos dinero esta semana
+por que hubo menos venta el sabado
+por que estuvo flojo el dia
+por que estuvo tan flojo hoy
+por que estuvo bueno el fin de semana
+por que gane menos este mes
+por que cayeron las ventas
+por que aumentaron las ventas
+que paso con las ventas esta semana
+que paso que vendi menos
+que paso hoy que vendi tan poco
+que paso el sabado que se vendio poco
+a que se debe que haya vendido menos
+a que se debe la baja en ventas
+de donde viene la baja de ventas
+donde se me fue la venta esta semana
+que fue lo que bajo esta semana
+que producto me bajo la venta
+que se dejo de vender esta semana
+por que bajo la venta de [concha]
+por que se vende menos la [dona glaseada]
+por que vendi menos [coca de 600] esta semana
+por que se vendieron menos [conchas]
+por que subio la venta de [latte grande]
+por que se vende mas el [frappe de moka] ahora
+por que bajaron los [cortes de cabello]
+por que vendi menos los sabados
+por que bajaron las ventas en la tarde
+por que bajo lo de tarjeta
+por que vendi menos en efectivo
+explicame por que vendi menos
+explicame la baja de ventas
+explicame por que subieron las ventas
+dime por que vendi menos esta semana
+oye por que vendi menos hoy
+wybix por que bajaron las ventas
+vinieron menos clientes o gastaron menos
+fue que vino menos gente o que compraron menos
+la baja es porque vino menos gente
+por que el ticket promedio bajo
+por que se esta vendiendo menos
+por que no estoy vendiendo como antes
+que me hizo vender mas esta semana
+que me hizo vender menos el mes pasado
+por que este mes va peor que el pasado
+por que esta semana va mejor
+por que el mes pasado fue mejor
+por que esta quincena va mas floja
+que esta pasando con las ventas
+que le esta pasando a la venta
+
+@ consulta.hoy
+cuanto vendi los sabados
+cuanto vendo los domingos
+cuanto vendi los fines de semana
+cuanto vendo entre semana
+cuanto se vende los lunes
+cuanto vendi en octubre
+cuanto vendi en septiembre
+cuanto vendimos en diciembre del ano pasado
+cuanto vendi del 1 al 15
+cuanto vendi del 1 al 15 de octubre
+cuanto vendi el 12 de octubre
+cuanto vendi los ultimos 10 dias
+cuanto vendi los ultimos 15 dias
+cuanto vendi antier
+cuanto vendimos el ano pasado
+cuanto vendi despues de las 6
+cuanto vendo despues de las 7 de la noche
+cuanto vendi antes de las 10
+cuanto vendo en la manana
+cuanto vendo en las tardes
+cuanto se vende en la noche
+cuanto vendo entre las 2 y las 4
+cuanto vendi a mediodia
+cuanto vendi los sabados despues de las 6
+cuanto vendo los domingos en la manana
+cuanto vendi de bebidas esta semana
+cuanto vendi de panaderia el mes pasado
+cuanto se vende de abarrotes los sabados
+cuanto vendi de bebidas los fines de semana
+cuanto vendi de panaderia en la manana
+cuanto vendo los viernes en la noche
+cuanto entro los domingos
+cuantos tickets hago los sabados
+cuantos tickets hago despues de las 6
+cuantos clientes vienen en la manana
+cuanto es el ticket promedio los sabados
+cuanto gastan en promedio los domingos
+
+@ venta.top
+que se vende mas los sabados
+que es lo que mas se vende en la manana
+que se vende mas en la noche
+que se vende mas despues de las 6
+que es lo mas vendido los fines de semana
+que se vende mas entre semana
+que fue lo mas vendido en octubre
+que se vendio mas el mes pasado de bebidas
+que es lo que mas sale de panaderia
+que se vende mas de abarrotes
+que es lo que mas pagan con tarjeta
+lo mas vendido los domingos
+lo mas vendido en la tarde
+cuantas [conchas] vendo los sabados
+cuantas [conchas] vendi en la manana
+cuantos [lattes grandes] vendo despues de las 6
+cuantas [cocas de 600] vendi los fines de semana
+cuantas [donas glaseadas] vendi en octubre
+cuantos [cortes de cabello] hice los sabados
+cuantas [tortillas] vendo en la manana
+
+@ venta.por_pago
+cuanto se cobro con transferencia en octubre
+cuanto vendi con tarjeta los sabados
+cuanto vendi en efectivo despues de las 6
+cuanto me pagaron con tarjeta en la tarde
+cuanto me pagan con tarjeta los sabados
+como me pagan en la noche
+cuanto entra en efectivo en las mananas
+como pagan los clientes los fines de semana
+desglose por forma de pago de octubre
+cuanto fue de tarjeta el mes pasado
+como me pagaron en septiembre
+
+@ venta.horas
+a que hora vendo mas los sabados
+cual es la hora pico los domingos
+a que hora se llena entre semana
+a que hora vendo mas de bebidas
+que horario es el mejor los fines de semana
+a que hora se vende mas la panaderia
+a que hora vendo mas en octubre
+
+@ finanzas.ganancia
+cuanto gane en octubre
+cuanto gane los sabados
+cuanto gano de bebidas
+cuanto le gane a la panaderia este mes
+cuanto gane en la manana
+cuanto gane el mes de septiembre
+cuanta ganancia me dejan los fines de semana
+
+@ personal.ventas
+cuanto cobro ana esta semana
+cuanto vendio beto los sabados
+quien vende mas los sabados
+quien vendio mas en octubre
+que cajero vende mas en la noche
+quien cobra mas en las mananas
+quien vendio mas los fines de semana

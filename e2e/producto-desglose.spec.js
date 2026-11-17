@@ -56,7 +56,8 @@ test('editar producto: precio final, antes de IVA, IVA, costo y ganancia', async
   await expect(d).toContainText('$100.00');
   await expect(d).toContainText('IVA 16%');
   await expect(d).toContainText('$16.00');
-  await expect(d).toContainText('$60.00');
+  /* El costo ahora se escribe en la ficha (0083): es un campo, no texto. */
+  await expect(p.locator('[data-guide=producto-costo]')).toHaveValue('60');
   await expect(d).toContainText('$40.00');
   await expect(d).toContainText('66.7%');
   await expect(p.locator('[data-guide=producto-ultima-compra]')).toContainText('66.67% de ganancia');

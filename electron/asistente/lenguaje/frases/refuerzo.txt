@@ -1,0 +1,420 @@
+# Segunda tanda: frases para las confusiones que encontró el loop.
+# Cada bloque separa dos intents que se parecen. [producto] {persona}.
+
+@ saludo
+como estas wybix
+como te va
+que tal estas
+como amaneciste
+como andas wybix
+sale gracias
+sale pues
+va que va
+ok
+okey
+vale
+de acuerdo
+entendido
+perfecto
+muy bien
+esta bien gracias
+gracias por la ayuda
+que amable
+buenisimo
+ya quedo gracias
+
+@ ayuda
+eres un robot
+eres una inteligencia artificial
+quien eres
+que eres
+como te llamas
+que tipo de cosas entiendes
+que tipo de preguntas contestas
+que entiendes
+hasta donde sabes
+que tanto me puedes ayudar
+tu que haces
+como te pido las cosas
+como te hablo
+me explicas como funcionas
+que te puedo decir
+tienes un menu de opciones
+como se usa este chat
+para que es este chat
+
+@ ir_a
+regresame al inicio
+regresa a la pantalla principal
+vuelve al inicio
+llevame a la pantalla de inicio
+quiero salir al inicio
+abre la pantalla de cobro
+abreme la pantalla de mesas
+llevame a traspasos
+ve a la pantalla de corte
+abre la agenda de citas
+
+@ caja.cortes
+falta dinero en la caja del corte
+sale faltante seguido
+que tan seguido sale faltante
+cada cuando falta dinero
+cuantas veces ha faltado dinero en caja
+el corte salio con faltante
+me salio corto el corte
+el cajero entrego de menos
+cuanto ha faltado en total en los cortes
+en que cortes falto dinero
+quien entrega corto la caja
+
+@ caja.salida
+hay mucho dinero en caja saca 3000
+ya hay mucho efectivo retira 2000
+saca 4000 que ya hay mucho
+retira lo que sobra 1500
+saca dinero para el banco 6000
+
+@ caja.corte
+hacer el corte de la semana
+haz el corte de caja de la noche
+quiero el corte ya
+hagamos cierre de turno
+cortar caja ahorita
+
+@ cita.cancelar
+quiero cancelar una cita
+cancelar la cita de la tarde
+necesito cancelar una cita de mañana
+cancela una cita
+cancelame la cita de las 4
+hay que cancelar una cita
+borrar cita
+la clienta cancelo su cita
+el cliente cancelo la cita de hoy
+quita una cita de la agenda
+
+@ cita.lista
+quien no ha confirmado su cita
+que citas faltan por confirmar
+que clientes no han confirmado
+citas sin confirmar
+a quien le confirmo la cita de mañana
+quien tiene cita sin confirmar
+
+@ cliente.top
+quien ha comprado mas esta semana
+que cliente ha comprado mas este mes
+quien compro mas en la semana
+cual cliente compra mas seguido
+quien es el cliente que mas gasta
+que clientes han gastado mas este año
+
+@ cliente.info
+ha venido {fer sanchez} este mes
+cuando vino {chela}
+vino {toño} esta semana
+hace cuanto no viene {laura gomez}
+cuanto tiempo lleva sin venir {carlos ruiz}
+que ha comprado {ana torres} ultimamente
+{doña mary} viene seguido
+
+@ cliente.cumple
+cumpleañeros del mes
+cumpleañeros de la semana
+festejados del mes
+clientes que cumplen años hoy
+a quien felicito esta semana
+quien esta de manteles largos
+
+@ consulta.comprar
+que voy a necesitar mañana
+que voy a ocupar para el fin de semana
+que me hace falta para mañana
+que necesito tener para mañana
+que debo comprar para no quedarme sin nada
+que se esta acabando en la tienda
+que esta por terminarse
+que productos estan por terminarse
+que me falta de botanas
+que me falta de refrescos para el fin
+que reabastezco
+que repongo esta semana
+que debo pedir
+que hay que pedir
+
+@ inventario.agotados
+que refrescos se acabaron
+que botanas se acabaron
+que cervezas estan agotadas
+que se acabo del refri
+que ya se termino en la tienda
+que esta en cero de lacteos
+que productos estan agotados ahorita
+cuales ya no tengo nada
+
+@ compra.pedido
+que productos de {lala} se estan acabando
+que productos de {bimbo} me faltan
+que me falta del proveedor {sabritas}
+cuanto le pido de todo a {coca cola femsa}
+que tengo que pedirle a {distribuidora lopez}
+lo de {cerveceria modelo} que se esta acabando
+
+@ compra.registrar
+recibi el pedido de {cafe veracruz}
+ya llego el pedido de {bimbo}
+me entregaron el pedido de {lala}
+me surtio {sabritas} hoy
+llego la mercancia de {coca cola femsa}
+ya me trajo el pedido {distribuidora lopez}
+
+@ consulta.ganancia
+cuanto me queda de cada [cerveza]
+cuanto me queda de cada [coca de 2 litros]
+cuanto le queda de ganancia a cada [concha]
+cuanto me deja cada [garrafon]
+cuanto gano en cada [latte grande]
+cuanto le saco a cada [tinte]
+que ganancia me deja cada [maruchan]
+por cada [sabritas] cuanto gano
+
+@ consulta.hoy
+cuantos clientes atendimos hoy
+cuantos clientes vinieron hoy
+cuanta gente ha comprado hoy
+cuantas personas compraron hoy
+cuanto gasta cada cliente en promedio
+cual es el ticket promedio
+de cuanto es la compra promedio
+cuanto se vendio el lunes
+cuanto vendi el martes
+cuanto se vendio el domingo
+cuantas cuentas hemos cobrado hoy
+cuantas ventas hemos cobrado
+cuantos cobros llevamos
+
+@ consulta.pendientes
+dime que esta fallando en la tienda
+que esta fallando
+que anda mal en el negocio
+en que la estoy regando
+que debo corregir en el negocio
+hay algo que no este bien
+
+@ factura.cancelar
+cancelar factura con error
+la factura tiene error cancelala
+cancelar la factura que salio mal
+anular la factura equivocada
+cancela la factura del cliente que se equivoco de rfc
+
+@ finanzas.ganancia
+cuanto deja el negocio al dia
+cuanto deja la venta
+cuanto me deja lo que vendo
+cuanto es la ganancia de la semana
+ganancia bruta del mes
+cuanto le gano a lo que vendo
+
+@ finanzas.resultado
+cuanto es mi utilidad neta
+utilidad neta
+cuanto me queda neto
+cubro mis gastos con lo que vendo
+me alcanza lo que vendo para los gastos
+me conviene seguir con la tienda
+vale la pena el negocio
+el negocio es negocio
+cuanto gano ya con todo y gastos
+ventas menos costos menos gastos
+
+@ gasto.resumen
+cuanto se ha ido en sueldos
+cuanto se va en sueldos al mes
+cuanto he pagado de nomina
+cuanto pago de raya a la semana
+cuanto se ha ido en servicios
+cuanto me cuesta la luz al mes
+cuanto gaste en luz y agua
+
+@ hosp.cocina
+que comandas llevan mas de 15 minutos
+que comandas llevan mucho
+que pedido lleva mas tiempo
+que lleva mas tiempo en cocina
+que orden esta mas atrasada
+que ya esta listo para entregar
+que platillos estan listos
+que salio de cocina
+que falta por salir de la barra
+cuanto se esta tardando la cocina
+que comanda esta atorada
+
+@ hosp.cuenta
+la 4 quiere su cuenta
+la 7 pide la cuenta
+la mesa 3 ya se va
+cobrale a la mesa 5
+cuanto es de la 6
+cuanto le cobro a la mesa 2
+la mesa 9 cuanto debe
+
+@ hosp.mesas
+como va el salon
+como esta el restaurante
+cuanto llevan todas las mesas
+cuanto suman las cuentas abiertas
+que mesas faltan por cobrar
+que mesas siguen sin pagar
+hay mesa disponible
+hay lugar en el restaurante
+caben 4 personas
+cuantas mesas hay libres ahorita
+
+@ hosp.receta
+de que esta hecho el [chocolate caliente]
+de que esta hecha la [concha]
+que ingredientes tiene la [dona glaseada]
+que ingredientes lleva el [capuchino]
+cuales son los ingredientes del [latte chico]
+con que se prepara el [frappe de moka]
+que insumos lleva la [torta de milanesa]
+
+@ inventario.ajuste
+ajusta la [coca] a 20
+ajusta la [salsa valentina] a 9
+ajusta las [sabritas] a 12
+ajusta el [garrafon] a 5 piezas
+ajusta el stock de [atun] a 18
+ajusta existencia de [cerveza] a 30
+ajustale la existencia al [pan bimbo] a 4
+
+@ inventario.movimientos
+por que tengo menos [cigarros]
+por que me faltan [cocas]
+por que hay menos [sabritas] de las que deberia
+donde quedaron las [cervezas]
+quien saco [atun] del inventario
+que paso con las [leches lala]
+
+@ inventario.sin_movimiento
+que deberia dejar de comprar
+que ya no deberia pedir
+que es lo que menos se vende
+que es lo que menos sale
+lo que menos se vendio en el mes
+cuales son los productos que menos se venden
+que productos casi no se venden
+
+@ inventario.traspaso
+transfiere mercancia
+transfiere producto a la otra sucursal
+mandar mercancia a la sucursal norte
+pasa producto de esta tienda a la otra
+haz una transferencia a la sucursal
+
+@ inventario.valor
+cuanto me costaria surtir todo de nuevo
+cuanto vale reponer todo el inventario
+cuanto dinero representa mi inventario
+cuanto tengo en mercancia a precio de costo
+
+@ merma.registrar
+se le dio a probar 1 [pastel de chocolate]
+dimos de probar 2 [conchas]
+se regalaron 3 [croissants] de muestra
+le dimos degustacion de 2 [lattes chicos]
+cortesia de 1 [frappe de moka]
+de cortesia 2 [donas glaseadas]
+
+@ personal.ventas
+que tal vende el nuevo
+como va vendiendo el cajero nuevo
+cuanto ha vendido el nuevo
+cuanto vendio el cajero de la tarde
+cuanto vende la cajera nueva
+
+@ producto.crear
+crear agua de jamaica a $25
+crear horchata a $25
+crear producto pastel de tres leches a $380
+crea concha de nata a $16
+crea limonada mineral a $35
+crear torta cubana a $90
+
+@ producto.info
+cuanto sale el [detergente]
+cuanto sale la [coca de 600]
+cuanto sale un [corte de cabello]
+cuanto sale el kilo de [huevo]
+cuanto sale el [latte grande]
+cuanto sale la orden de [chilaquiles verdes]
+
+@ proveedor.deuda
+estado de cuenta de {abarrotes mayoreo}
+estado de cuenta con {bimbo}
+estado de cuenta del proveedor {lala}
+cuanto llevo pagado a {sabritas} y cuanto debo
+mi saldo con {coca cola femsa}
+
+@ proveedor.pago
+liquidale a {lala} lo que le debo
+paga lo que le debo a {bimbo}
+pagale todo a {sabritas}
+liquida la cuenta de {cerveceria modelo}
+quiero pagarle a un proveedor
+voy a pagarle a un proveedor
+le voy a pagar al proveedor
+registrar pago al proveedor
+
+@ servicios.profesional
+ranking de profesionales
+cual estilista vende mas
+que barbero hizo mas cortes
+quien de los profesionales genero mas
+cuanto genero cada estilista este mes
+comisiones por profesional
+
+@ sistema.estado
+tengo espacio en el disco
+se esta llenando la computadora
+cuanto espacio queda en la computadora
+la computadora tiene espacio
+hay espacio de almacenamiento
+
+@ venta.comparar
+como voy comparado con antes
+como voy comparado con la semana pasada
+cuanto baje esta semana
+cuanto subi este mes
+en cuanto subieron las ventas
+cuanto bajaron las ventas este mes
+voy arriba o abajo
+
+@ venta.devolucion
+cancela la venta 554
+cancela el ticket 230
+cancelar la venta 102
+me devolvieron una [leche lala] echada a perder
+me regresaron unas [sabritas] abiertas
+el cliente regreso la [coca] porque estaba caliente
+la señora devolvio el [detergente]
+el cliente trajo de regreso el [shampoo profesional]
+
+@ venta.por_pago
+cuanto entro en billetes hoy
+cuanto entro en efectivo hoy
+cuanto fue en billete
+cuanto me pagaron en efectivo esta semana
+cuanto paso por la terminal esta semana
+
+@ venta.top
+cuanto vendi de [tortillas] hoy
+cuanto vendi de [coca] esta semana
+cuantas [conchas] vendi hoy
+cuantos [lattes grandes] se vendieron hoy
+cuantos [cortes de cabello] hice esta semana
+cuantas [cervezas corona] vendimos el sabado
+que tanto he vendido de [sabritas] este mes
+cuanto se ha vendido de [garrafon] hoy

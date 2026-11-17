@@ -311,7 +311,7 @@ test.describe('Demo Services', () => {
     test.setTimeout(400000);
     const base = 'Wybix_E2E_GuiaTallerH';
     await conDemo({ base, perfil: 'servicios', preset: 'TALLER_AUTOMOTRIZ' }, async ({ ventana }) => {
-      await ventana.click('.wxdock__pulso');
+      await ventana.click('.wxdock__pulso'); await ventana.click('[data-guide=wybix-pestana-recorridos]');
       const hub = ventana.locator('.wxg');
       await expect(hub.locator('[data-escenario="demo.services.workshop"]')).toBeVisible({ timeout: 15000 });
       await expect(hub.locator('[data-escenario="demo.services.beauty"]')).toHaveCount(0);

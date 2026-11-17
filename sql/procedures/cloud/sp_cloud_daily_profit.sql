@@ -20,9 +20,10 @@ BEGIN
     JOIN dbo.sale_detail sd ON sd.sale_id = s.id
     JOIN dbo.products p ON p.id = sd.product_id
     CROSS APPLY (SELECT
-        CASE WHEN ISNULL(sd.tax_object, '02') = '02'
+        /* 0083: con IEPS u otro impuesto, la base sin NINGÚN impuesto de la foto. */
+        COALESCE(sd.base_neta, CASE WHEN ISNULL(sd.tax_object, '02') = '02'
              THEN sd.subtotal / (1 + ISNULL(sd.tax_rate, ISNULL(p.tasa_iva, 0)))
-             ELSE sd.subtotal END AS base,
+             ELSE sd.subtotal END) AS base,
         sd.quantity * COALESCE(sd.unit_cost, p.cost, 0) AS costo) x
     WHERE s.datee >= @hoy
       AND s.datee <  DATEADD(DAY, 1, @hoy);

@@ -54,6 +54,8 @@ function registrar({ ipcMain, sql, poolPromise }) {
         .input('user_id', sql.Int, sesion.actorDe(ses))
         .input('product_id', sql.Int, numero(p.productId))
         .input('planned_qty', sql.Decimal(12, 2), numero(p.cantidad))
+        /* Opcional: «para mañana» (Wybix). Sin fecha, hoy, como siempre. */
+        .input('production_date', sql.Date, /^\d{4}-\d{2}-\d{2}$/.test(String(p.fecha || '')) ? new Date(`${p.fecha}T12:00:00`) : null)
         .input('note', sql.NVarChar(255), p.nota ? String(p.nota).slice(0, 255) : null)
         .input('machine_name', sql.NVarChar(120), maquina())
         .input('uuid', sql.UniqueIdentifier, p.uuid || null)

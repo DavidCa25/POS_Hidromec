@@ -1,5 +1,6 @@
 /* sp_production_plan
- * Definicion canonica. No editar en SSMS: modificar este archivo y crear una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;

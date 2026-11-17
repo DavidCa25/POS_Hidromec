@@ -1,5 +1,6 @@
 /* sp_corporate_catalog_apply
- * Definicion canonica. No editar en SSMS: modificar este archivo y crear una migracion.
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
  */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -187,6 +188,48 @@ BEGIN
               JOIN dbo.products p ON p.uuid = j.product_uuid
               JOIN dbo.modifier_groups g ON g.uuid = j.group_uuid
              GROUP BY p.id, g.id;
+
+            /* ---------------------------------------- 0083: impuestos
+               El catálogo de la matriz manda: los sembrados por su clave; los
+               propios de la matriz entran como «M_<clave>» para no chocar con
+               los propios de esta sucursal. Un catálogo viejo (sin «taxes»)
+               no toca nada. */
+            IF JSON_QUERY(@catalog, '$.taxes') IS NOT NULL
+            BEGIN
+                SELECT CASE WHEN ISNULL(t.sistema, 0) = 1 THEN t.clave ELSE LEFT(CONCAT('M_', t.clave), 40) END AS clave,
+                       LEFT(t.nombre, 80) AS nombre, t.clase, t.factor, t.tasa, t.cuota, t.unidad, ISNULL(t.en_base_iva, 1) AS en_base_iva,
+                       t.nota, ISNULL(t.activo, 0) AS activo, ISNULL(t.sistema, 0) AS sistema, t.clave AS clave_matriz
+                  INTO #imp
+                  FROM OPENJSON(@catalog, '$.taxes') WITH (clave VARCHAR(40) '$.clave', nombre NVARCHAR(80) '$.nombre', clase VARCHAR(10) '$.clase',
+                         factor VARCHAR(6) '$.factor', tasa DECIMAL(9, 6) '$.tasa', cuota DECIMAL(12, 4) '$.cuota', unidad NVARCHAR(20) '$.unidad',
+                         en_base_iva BIT '$.en_base_iva', nota NVARCHAR(200) '$.nota', activo BIT '$.activo', sistema BIT '$.sistema') t
+                 WHERE NULLIF(t.clave, '') IS NOT NULL AND t.clase IN ('IEPS', 'LOCAL') AND t.factor IN ('Tasa', 'Cuota')
+                   AND (ISNULL(t.activo, 0) = 0 OR t.tasa IS NOT NULL OR t.cuota IS NOT NULL);
+                /* Un nombre de la matriz que esta sucursal ya usa en otro impuesto propio: el de la matriz lleva «(matriz)». */
+                UPDATE j SET j.nombre = LEFT(CONCAT(j.nombre, N' (matriz)'), 80)
+                  FROM #imp j WHERE EXISTS (SELECT 1 FROM dbo.CAT_impuestos x WHERE x.nombre = j.nombre AND x.clave <> j.clave);
+                UPDATE x SET x.nombre = j.nombre, x.clase = j.clase, x.factor = j.factor,
+                             x.tasa = CASE WHEN j.factor = 'Tasa' THEN j.tasa END, x.cuota = CASE WHEN j.factor = 'Cuota' THEN j.cuota END,
+                             x.unidad = j.unidad, x.en_base_iva = j.en_base_iva, x.nota = j.nota, x.activo = j.activo, x.actualizado_en = SYSDATETIME()
+                  FROM dbo.CAT_impuestos x JOIN #imp j ON j.clave = x.clave;
+                INSERT INTO dbo.CAT_impuestos (clave, nombre, clase, factor, tasa, cuota, unidad, en_base_iva, nota, activo, sistema)
+                SELECT j.clave, j.nombre, j.clase, j.factor, CASE WHEN j.factor = 'Tasa' THEN j.tasa END, CASE WHEN j.factor = 'Cuota' THEN j.cuota END,
+                       j.unidad, j.en_base_iva, j.nota, j.activo, j.sistema
+                  FROM #imp j WHERE NOT EXISTS (SELECT 1 FROM dbo.CAT_impuestos x WHERE x.clave = j.clave);
+
+                /* Los impuestos de cada producto corporativo: los de la matriz. */
+                DELETE x FROM dbo.product_impuestos x JOIN dbo.products p ON p.id = x.product_id JOIN #p j ON j.uuid = p.uuid;
+                INSERT INTO dbo.product_impuestos (product_id, impuesto_id, cantidad)
+                SELECT p.id, i.id, CASE WHEN i.factor = 'Cuota' THEN MAX(t.cantidad) END
+                  FROM OPENJSON(@catalog, '$.product_taxes') WITH (product_uuid UNIQUEIDENTIFIER '$.product_uuid', tax_clave VARCHAR(40) '$.tax_clave',
+                         cantidad DECIMAL(12, 4) '$.cantidad') t
+                  JOIN #imp m ON m.clave_matriz = t.tax_clave
+                  JOIN dbo.CAT_impuestos i ON i.clave = m.clave
+                  JOIN dbo.products p ON p.uuid = t.product_uuid
+                  JOIN #p j ON j.uuid = p.uuid
+                 WHERE i.factor = 'Tasa' OR t.cantidad > 0
+                 GROUP BY p.id, i.id, i.factor;
+            END
 
             /* --------------------------------------------------- recetas */
             SELECT r.uuid, p.id AS product_id, vo.id AS variant_option_id, r.active, r.notes, r.lines

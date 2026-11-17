@@ -187,9 +187,11 @@ try {
     // tiene llave foranea a el) y los conceptos de egreso son el punto de
     // partida, con "Pago al personal" del sistema. 0069 suma "Comisiones de
     // plataforma", tambien del sistema.
-    cash_movement_types: 9, expense_categories: 11,
+    cash_movement_types: 13, expense_categories: 11,
     // Singletons que el SP actualiza sin upsert: puntos (0064) y menu en linea (0067).
     loyalty_points_config: 1, menu_en_linea_config: 1,
+    // 0083: el catalogo de impuestos ademas del IVA (IEPS y locales).
+    CAT_impuestos: 12,
     schema_migrations: archivos.length,
   };
   const sobra = filas.filter(f => SEMBRADAS[f.tabla] !== Number(f.filas));

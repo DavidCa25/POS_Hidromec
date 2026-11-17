@@ -1,0 +1,172 @@
+# Frases completas: clientes. [producto] {persona}.
+
+@ cliente.deuda
+quien me debe
+quienes me deben
+cuanto me debe {doña mary}
+cuanto me debe {don pepe}
+cuanto tengo fiado
+cuanto tengo fiado en total
+clientes que deben
+cuentas por cobrar
+cuanto debe {chela}
+cuanto le he fiado a {laura gomez}
+estado de cuenta de {carlos ruiz}
+cuanto me debe la {señora rosa}
+cuanto debe {toño}
+quien me debe mas
+quien tiene mas fiado
+a quien le he fiado
+que clientes tienen adeudo
+cuanto me deben en total
+cuanto dinero tengo en la calle
+cuanto me deben los clientes
+debe algo {ana torres}
+tiene saldo {fer sanchez}
+cuanto debe {mario diaz}
+cuanto lleva fiado {doña mary}
+cuanto le debo cobrar a {don pepe}
+cuanto le falta pagar a {lupita hernandez}
+quien no me ha pagado
+quien esta atrasado en sus pagos
+clientes con pagos vencidos
+quien tiene la cuenta vencida
+cuanto me deben de hace mas de un mes
+la cuenta de {chela}
+cuanto es lo que debe {juan perez}
+revisa la cuenta de {laura gomez}
+ya pago {carlos ruiz}
+saldo de {rosa martinez}
+que tanto me debe {toño}
+cuanto credito tiene {ana torres}
+cuanto credito le queda a {doña mary}
+
+@ cliente.abono
+{doña mary} abono 200
+{don pepe} me pago 500
+{chela} dejo 100 a cuenta
+registra un abono de 300 de {laura gomez}
+abono de {carlos ruiz} 450
+{toño} trajo 200 de lo que debe
+abonale 150 a la cuenta de {ana torres}
+{la señora rosa} abono $250 en efectivo
+{fer sanchez} pago 1000 por transferencia
+{mario diaz} me dio 300
+recibi 200 de {doña mary}
+{lupita hernandez} vino a pagar 400
+registra que {juan perez} pago 600 con tarjeta
+{don pepe} liquido su cuenta 850
+abono de 100 de {chela} en efectivo
+{laura gomez} me transfirio 500
+apunta que {carlos ruiz} dejo 250
+{ana torres} abona 350
+pago de {toño} por 120
+{rosa martinez} pago 700 en efectivo
+anota un abono de {doña mary} de 50
+{fer sanchez} abono $1500 con transferencia
+le abonaron 300 a la cuenta de {mario diaz}
+{juan perez} trajo 200 pesos
+registrar abono
+quiero registrar un abono
+abono de cliente
+un cliente vino a pagar
+
+@ cliente.alta
+agrega al cliente juan perez
+nuevo cliente maria gonzalez
+da de alta a pedro ramirez como cliente
+registra un cliente lucia hernandez telefono 4771239876
+alta de cliente roberto diaz
+agrega un cliente nuevo
+nuevo cliente llamado jose luis martinez
+registra a la señora carmen lopez como cliente
+da de alta al cliente tienda la esquina
+nuevo cliente sofia ortega cel 4775551234
+alta de cliente don chuy
+agrega a patricia mendez como cliente
+crea un cliente que se llama luis torres
+registrar cliente nuevo
+quiero dar de alta un cliente
+nuevo cliente abarrotes el porvenir
+agrega a mi vecina guadalupe ruiz como cliente
+da de alta al cliente escuela primaria benito juarez
+registra el cliente hector salas telefono 4779988776
+nuevo cliente karina flores
+
+@ cliente.top
+quienes son mis mejores clientes
+que cliente compra mas
+clientes frecuentes
+top de clientes
+quien gasta mas en la tienda
+mis clientes mas fieles
+quien me compra mas
+cual es mi mejor cliente
+quienes son los que mas vienen
+clientes que mas compran este mes
+quien es mi cliente estrella
+lista de mejores clientes
+quienes me dejan mas dinero
+que clientes vienen mas seguido
+mejores clientes del año
+quien ha comprado mas esta semana
+clientes vip
+a quienes deberia darles un premio
+quienes son mis clientes consentidos
+mejores compradores
+
+@ cliente.info
+datos de {doña mary}
+telefono de {don pepe}
+cuando vino {chela} por ultima vez
+que compra {laura gomez}
+cuanto ha comprado {carlos ruiz}
+informacion del cliente {toño}
+numero de {ana torres}
+que es lo que siempre compra {fer sanchez}
+cuando fue la ultima compra de {mario diaz}
+cada cuanto viene {lupita hernandez}
+cuanto gasta {juan perez} en promedio
+correo de {rosa martinez}
+datos de contacto de {doña mary}
+dame la ficha de {don pepe}
+que tanto compra {chela}
+desde cuando es cliente {laura gomez}
+cuanto ha gastado {carlos ruiz} este año
+cliente {ana torres}
+{toño} que compra
+ha venido {fer sanchez} este mes
+
+@ cliente.puntos
+cuantos puntos tiene {doña mary}
+puntos de {don pepe}
+cuanto tiene en monedero {chela}
+sellos de {laura gomez}
+ya tiene premio {carlos ruiz}
+cuantos puntos lleva {toño}
+le alcanza para un premio a {ana torres}
+cuanto tiene acumulado {fer sanchez}
+cuantos sellos lleva {mario diaz}
+cuanto saldo tiene en su monedero {lupita hernandez}
+puntos acumulados de {juan perez}
+cuanto le falta a {rosa martinez} para su cafe gratis
+revisa los puntos de {doña mary}
+tarjeta de sellos de {chela}
+cuantas visitas lleva {laura gomez}
+
+@ cliente.cumple
+quien cumple años hoy
+quien cumple anos hoy
+cumpleaños de la semana
+que clientes cumplen este mes
+hay cumpleaños hoy
+quien cumple esta semana
+cumpleañeros del mes
+a quien le felicito hoy
+clientes que cumplen mañana
+quien cumple años este mes
+hay algun cliente de cumpleaños
+cumpleaños de clientes
+a que clientes les mando felicitacion
+quien esta de cumpleaños
+proximos cumpleaños

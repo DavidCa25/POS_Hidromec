@@ -128,3 +128,20 @@
 @media (prefers-reduced-motion: reduce) {
   .wxg, .wxg-velo { animation: none; }
 }
+
+/* ------------------------------------------------- Wybix, el chat (asistente)
+   Sale del dock, abajo a la izquierda, como un globo de la mascota: no tapa
+   la pantalla entera, así se sigue viendo de qué se habla. */
+.wxg.es-chat {
+  inset: auto auto 96px 16px; margin: 0;
+  width: min(440px, calc(100vw - 32px));
+  height: min(660px, calc(100dvh - 120px)); max-height: none;
+  border-radius: 22px 22px 22px 8px;
+}
+.wxg.es-chat .wxg__cab { align-items: center; padding: 14px 14px 10px 16px; }
+.wxg.es-chat .wxg__cab h2 { font-size: 18px; }
+.wxg__cara { width: 40px; height: 40px; display: grid; place-items: center; flex: none; }
+.wxg__pestanas { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--wx-sunken); align-self: center; }
+.wxg__pestanas button { border: 0; background: transparent; color: var(--wx-text-muted); font: inherit; font-size: 12.5px; font-weight: 650;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+.wxg__pestanas button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: var(--wx-shadow-sm, 0 1px 2px rgba(0,0,0,.08)); }

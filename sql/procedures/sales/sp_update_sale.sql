@@ -142,6 +142,11 @@ BEGIN
     JOIN dbo.products p ON p.id = n.product_id
     LEFT JOIN #old o ON o.product_id = n.product_id;
 
+    /* 0083: el IVA del renglón (como en sp_register_sale) y los demás impuestos. */
+    UPDATE d SET tax_rate = p.tasa_iva, tax_object = p.objeto_impuesto
+      FROM dbo.sale_detail d JOIN dbo.products p ON p.id = d.product_id WHERE d.sale_id = @sale_id;
+    EXEC dbo.sp_venta_impuestos @sale_id = @sale_id;
+
     INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn, source, sold_product_id, units, unit_cost)
     SELECT
       d.product_id,

@@ -1,3 +1,7 @@
+/* sp_income_statement
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
+ */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
@@ -64,9 +68,10 @@ BEGIN
            CASE WHEN s.datee >= @desde THEN 1 ELSE 0 END AS actual,
            s.id AS sale_id, d.product_id, d.quantity,
            CAST(d.subtotal AS DECIMAL(14, 4)) AS cobrado,
-           CAST(CASE WHEN ISNULL(d.tax_object, '02') = '02'
+           /* 0083: con IEPS u otro impuesto, la base sin NINGÚN impuesto de la foto. */
+           CAST(COALESCE(d.base_neta, CASE WHEN ISNULL(d.tax_object, '02') = '02'
                      THEN d.subtotal / (1 + ISNULL(d.tax_rate, ISNULL(p.tasa_iva, 0)))
-                     ELSE d.subtotal END AS DECIMAL(14, 4)) AS base,
+                     ELSE d.subtotal END) AS DECIMAL(14, 4)) AS base,
            CAST(d.quantity * COALESCE(d.unit_cost, p.cost, 0) AS DECIMAL(14, 4)) AS costo,
            CASE WHEN d.unit_cost IS NULL THEN 1 ELSE 0 END AS costo_estimado,
            TRY_CONVERT(DECIMAL(12, 2), JSON_VALUE(s.commercial_snapshot, '$.discount')) AS descuento_venta,
@@ -86,8 +91,10 @@ BEGIN
     SELECT CAST(f.datee AS DATE) AS dia,
            CASE WHEN f.datee >= @desde THEN 1 ELSE 0 END AS actual,
            CAST(COALESCE(rd.commercial_amount, rd.quantity * rd.unitary_price) AS DECIMAL(14, 4)) AS cobrado,
+           /* 0083: si el renglón vendido tiene foto, la misma proporción base/cobrado. */
            CAST(COALESCE(rd.commercial_amount, rd.quantity * rd.unitary_price)
-                / CASE WHEN ISNULL(o.tax_object, '02') = '02' THEN 1 + ISNULL(o.tax_rate, ISNULL(p.tasa_iva, 0)) ELSE 1 END AS DECIMAL(14, 4)) AS base,
+                * COALESCE(o.base_neta / NULLIF(o.subtotal, 0),
+                           1.0 / CASE WHEN ISNULL(o.tax_object, '02') = '02' THEN 1 + ISNULL(o.tax_rate, ISNULL(p.tasa_iva, 0)) ELSE 1 END) AS DECIMAL(14, 4)) AS base,
            CAST(rd.quantity * COALESCE(o.unit_cost, p.cost, 0) AS DECIMAL(14, 4)) AS costo,
            rd.product_id, rd.quantity,
            ISNULL(JSON_VALUE(vs.commercial_snapshot, '$.channel'), N'LOCAL')
@@ -95,7 +102,7 @@ BEGIN
       JOIN dbo.sale_refund_detail rd ON rd.refund_id = f.id
       LEFT JOIN dbo.sales vs ON vs.id = f.sale_id
       JOIN dbo.products p ON p.id = rd.product_id
-      OUTER APPLY (SELECT TOP 1 d.unit_cost, d.tax_rate, d.tax_object
+      OUTER APPLY (SELECT TOP 1 d.unit_cost, d.tax_rate, d.tax_object, d.base_neta, d.subtotal
                      FROM dbo.sale_detail d WHERE d.sale_id = f.sale_id AND d.product_id = rd.product_id
                     ORDER BY d.id) o
      WHERE f.datee >= @ant_desde AND f.datee < DATEADD(DAY, 1, @hasta);

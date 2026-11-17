@@ -197,6 +197,36 @@ contextBridge.exposeInMainWorld('electronAPI', {
     alertsCounts: (p) => invoke('alerts:counts', p),
     inventoryMovements: (p) => invoke('inventory:movements', p),
     ultimaCompraProducto: (p) => invoke('inventory:ultima-compra', p),
+    /* Wybix, asistente operativo (electron/ipc/asistente.js). */
+    asistenteResumen: () => invoke('asistente:resumen'),
+    asistenteHallazgos: () => invoke('asistente:hallazgos'),
+    asistenteHistorial: () => invoke('asistente:historial'),
+    asistenteEnviar: (p) => invoke('asistente:enviar', p),
+    asistenteResultado: (p) => invoke('asistente:resultado', p),
+    asistenteEvaluar: () => invoke('asistente:evaluar'),
+    asistenteEntender: (p) => invoke('asistente:entender', p),
+    asistenteAlias: (p) => invoke('asistente:alias', p),
+    asistenteVoz: (p) => invoke('asistente:voz', p),
+    asistenteVozDescargar: () => invoke('asistente:voz-descargar'),
+    /* Wybix habla (Piper, voz-piper.js). */
+    asistenteHabla: (p) => invoke('asistente:habla', p),
+    asistenteHablaDescargar: () => invoke('asistente:habla-descargar'),
+    onAsistenteHablaAvance: (fn) => {
+      const h = (_e, d) => { try { fn(d); } catch { /* noop */ } };
+      ipcRenderer.on('asistente:habla-avance', h);
+      return () => ipcRenderer.removeListener('asistente:habla-avance', h);
+    },
+    /* El avance real de la descarga de la voz. Se escucha, no se sondea. */
+    onAsistenteVozAvance: (fn) => {
+      const h = (_e, d) => { try { fn(d); } catch { /* noop */ } };
+      ipcRenderer.on('asistente:voz-avance', h);
+      return () => ipcRenderer.removeListener('asistente:voz-avance', h);
+    },
+    onAsistenteCambio: (fn) => {
+      const h = () => { try { fn(); } catch { /* noop */ } };
+      ipcRenderer.on('asistente:cambio', h);
+      return () => ipcRenderer.removeListener('asistente:cambio', h);
+    },
     inventoryApplyCount: (p) => invoke('inventory:apply-count', p),
     usersList: () => invoke('users:list'),
     usersCreate: (p) => invoke('users:create', p),
@@ -264,6 +294,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 0073: Venta suelta.
     ventaSueltaGet: p => invoke('venta-suelta:get',p),
     ventaSueltaGuardar: p => invoke('venta-suelta:guardar',p),
+    /* 0083: impuestos además del IVA (electron/ipc/impuestos.js). */
+    impuestosListar: (p) => invoke('impuestos:listar', p),
+    impuestosGuardar: (p) => invoke('impuestos:guardar', p),
+    productoImpuestos: (p) => invoke('producto:impuestos', p),
+    productoImpuestosGuardar: (p) => invoke('producto:impuestos-guardar', p),
     // 0079: Socios y Propinas.
     sociosConfig: () => invoke('socios:config'),
     sociosActivar: p => invoke('socios:activar',p),

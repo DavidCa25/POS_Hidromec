@@ -84,7 +84,7 @@ const tocarLoEncuadrado = (v) => v.locator('.driver-active-element').click();
 
 /** Lo que el tablero lista en ESTE negocio. */
 async function delTablero(v) {
-  await v.click('.wxdock__pulso');
+  await v.click('.wxdock__pulso'); await v.click('[data-guide=wybix-pestana-recorridos]');
   const hub = v.locator('.wxg');
   await expect(hub).toBeVisible();
   await expect(hub.locator('[data-escenario="core.first_run"]')).toBeVisible();

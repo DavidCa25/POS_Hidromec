@@ -7,6 +7,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { WxMascotaComponent } from '../wx-mascota/wx-mascota.component';
 import { PaletaService } from '../wx-paleta/paleta.service';
 import { GuiaService } from '../wx-guia/guia.service';
+import { AsistenteService } from '../../core/asistente.service';
 import { WxGuiaComponent } from '../wx-guia/wx-guia.component';
 import { Area, Destino, NavegacionService } from '../wx-nav/navegacion.service';
 import { AppsWybixService } from '../apps-wybix/apps-wybix.service';
@@ -113,6 +114,8 @@ export class WxDockComponent implements OnDestroy {
   }
 
   constructor() {
+    /* Wybix revisa el negocio en segundo plano; el dock solo escucha el resumen. */
+    this.asistente.iniciar();
     /* Navegar cierra lo que estuviera abierto: el panel ya cumplio. */
     effect(() => { this.nav.ruta(); untracked(() => this.cerrarTodo()); });
   }
@@ -249,7 +252,10 @@ export class WxDockComponent implements OnDestroy {
    * siempre lo mismo porque son el mismo calculo.
    */
   readonly estadoWybix = computed<'idle' | 'atencion'>(() =>
-    this.guia.hayPendientes() ? 'atencion' : 'idle');
+    this.guia.hayPendientes() || this.asistente.hayUrgente() ? 'atencion' : 'idle');
+  /** Cuántas cosas nuevas encontró Wybix (las que aún no se ven). */
+  readonly pendientesWybix = computed(() => this.asistente.pendientes());
+  readonly asistente = inject(AsistenteService);
 
   /** Pulsar la figura abre el resumen. No navega a ninguna parte. */
   alternarGuia(e: Event) {

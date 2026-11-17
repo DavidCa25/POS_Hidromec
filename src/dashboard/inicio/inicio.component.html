@@ -11,7 +11,12 @@
     <div class="ini__saludotxt">
       <p class="ini__fecha">{{ fecha }}</p>
       <h1 class="ini__h1">{{ saludo }}, {{ nombre }}.</h1>
-      <p class="ini__sub">{{ frase() }}</p>
+      <p class="ini__sub" *ngIf="!urgente(); else conUrgente">{{ frase() }}</p>
+      <ng-template #conUrgente>
+        <button type="button" class="ini__sub ini__urgente" (click)="verUrgente()" data-guide="inicio-wybix-urgente">
+          {{ frase() }} <i class="ph ph-chat-circle-dots" aria-hidden="true"></i>
+        </button>
+      </ng-template>
     </div>
 
     <!-- Las cifras del dia viven en la misma fila que el saludo: son la

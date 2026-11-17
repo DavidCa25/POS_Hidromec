@@ -1971,6 +1971,9 @@ app.on('window-all-closed', () => {
  * conteste.
  */
 let soltandoCaja = false;
+/* La voz de Wybix (Piper) corre en su propio proceso: se cierra con la app. */
+app.on('will-quit', () => { try { require('./asistente/voz-piper').cerrar(); } catch { /* noop */ } });
+
 app.on('before-quit', (e) => {
   if (soltandoCaja) return;
   const caja = cajaArrendada.instantanea();
@@ -2583,7 +2586,14 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     req.input('sellable', sql.Bit, payload?.sellable == null ? null : (payload.sellable ? 1 : 0));
     req.input('base_uom', sql.NVarChar(10), payload?.base_uom ?? null);
     req.input('allow_decimal_qty', sql.Bit, payload?.allow_decimal_qty == null ? null : (payload.allow_decimal_qty ? 1 : 0));
-    req.input('cost', sql.Decimal(14, 4), payload?.cost ?? null);
+    /* El costo lo cambia quien lo ve (VER_COSTOS): sin el paquete, se conserva. */
+    const costo = payload?.cost == null || payload.cost === '' ? null : Number(payload.cost);
+    if (costo != null && (!Number.isFinite(costo) || costo < 0)) return { success: false, error: 'Costo invalido.' };
+    const costoPermitido = costo != null && ses.permisos.has(permisos.BUNDLES.VER_COSTOS) ? costo : null;
+    const costoAntes = costoPermitido != null
+      ? Number((await pool.request().input('id', sql.Int, productId).query('SELECT cost FROM dbo.products WHERE id = @id;')).recordset?.[0]?.cost ?? 0)
+      : null;
+    req.input('cost', sql.Decimal(14, 4), costoPermitido);
 
     await req.execute('sp_update_product');
 
@@ -2593,6 +2603,10 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
         registrarEventoSeguridad({ userId: ses.userId, autorizadoPor: c.via === 'APP' ? null : Number(c.autorizadorId) || null,
           tipo: 'STOCK_ADJUST_AUTHORIZED',
           detalle: `${antes.nombre}: existencia ${Number(antes.stock)} → ${stock} · ${c.via === 'APP' ? 'aprobado desde la app por ' : 'autorizó '}${c.autorizadorUsuario}` }).catch(() => {});
+      }
+      if (costoPermitido != null && Math.abs((costoAntes ?? 0) - costoPermitido) > 0.00005) {
+        registrarEventoSeguridad({ userId: ses.userId, tipo: 'PRICE_CHANGE', monto: 0, alertar: false,
+          detalle: `${antes.nombre}: costo $${(costoAntes ?? 0).toFixed(2)} → $${costoPermitido.toFixed(2)} · ${ses.usuario}` }).catch(() => {});
       }
       const precioAntes = Number(antes.price || 0);
       if (Math.abs(precioAntes - precio) > 0.004) {
@@ -2775,6 +2789,7 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
       const fila = result.recordset?.[0] ?? null;
       // Roles v2: el cajon se abre "al cobrar" solo si de verdad hubo un cobro aqui.
       ultimoCobro.set(event.sender.id, Date.now());
+      asistente.pronto();
       const saleId = fila?.sale_id ?? fila?.id ?? null;
       /* 0079: ya con la venta registrada, su reparto entre socios y su
          propina. Nunca tumban la venta: lo que falle se dice en `propina`. */
@@ -4795,6 +4810,8 @@ require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
 require('./ipc/asistencia').registrar({ ipcMain, sql, poolPromise });
 /* 0073: Venta suelta (el cigarro de la cajetilla). */
 require('./ipc/venta-suelta').registrar({ ipcMain, sql, poolPromise });
+/* 0083: IEPS y demás impuestos además del IVA. */
+require('./ipc/impuestos').registrar({ ipcMain, sql, poolPromise });
 /* 0079: Socios (reparto de ganancias entre duenos) y Propinas. */
 require('./ipc/socios').registrar({ ipcMain, sql, poolPromise,
   cajaDeEsteEquipo: () => loadDeviceConfig()?.register?.id ?? null });
@@ -6176,6 +6193,23 @@ const licenciaEmpresas = require('./empresas/licencia-empresa').crearLicenciaEmp
 });
 /* La prueba de una empresa vence con la app abierta: se recalcula seguido. */
 setInterval(() => { void licenciaEmpresas.refrescar(); }, 10 * 60_000).unref?.();
+
+/* WYBIX, ASISTENTE OPERATIVO (docs/arquitectura/asistente-operativo.md).
+   Revisa el negocio activo con reglas (sin IA generativa), conversa en el
+   chat del dock y propone planes que la pantalla ejecuta con la API de
+   siempre. Es un servicio de la EMPRESA: se reinicia al cambiar de empresa. */
+const asistente = require('./asistente').crearAsistente({
+  sql, poolPromise,
+  modulosActivos: async () => modulosActivos(),
+  licenciaEstado: () => licencia.estado(),
+  respaldo: () => backup.loadBackupConfig(),
+  nubeActiva: () => !!cloudSync.getCloudConfig()?.enabled,
+  equipo: () => loadDeviceConfig(),
+  carpetaDatos: app.getPath('userData'),
+  avisar: () => { for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('asistente:cambio'); } catch { /* ventana cerrada */ } } },
+});
+ciclo.registrarServicio('asistente', asistente.servicio);
+require('./ipc/asistente').registrar({ ipcMain, asistente });
 
 // Solo pruebas E2E, y nunca en el instalador: el arnés firma un certificado
 // con SU clave efímera (arriba) para el machineId de este equipo y lo aplica

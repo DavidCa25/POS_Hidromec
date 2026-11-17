@@ -5,18 +5,31 @@
 <div #portal class="wxg-portal">
   <div class="wxg-velo" *ngIf="guia.abierta()" aria-hidden="true"></div>
 
-  <div class="wxg" *ngIf="guia.abierta()" role="dialog" aria-modal="true" aria-labelledby="wxg-titulo">
+  <div class="wxg" *ngIf="guia.abierta()" role="dialog" aria-modal="true" aria-labelledby="wxg-titulo"
+       [class.es-chat]="pestana() === 'chat'">
     <header class="wxg__cab">
+      <span class="wxg__cara" *ngIf="pestana() === 'chat'" aria-hidden="true">
+        <wx-mascota [estado]="asistente.cara()" [variante]="guia.variante()" [size]="38"></wx-mascota>
+      </span>
       <div>
-        <h2 id="wxg-titulo">Wybix Guide</h2>
-        <p>¿Qué quieres aprender?</p>
+        <h2 id="wxg-titulo">{{ pestana() === 'chat' ? 'Wybix' : 'Wybix Guide' }}</h2>
+        <p>{{ pestana() === 'chat' ? asistente.subtitulo() : '¿Qué quieres aprender?' }}</p>
       </div>
-      <button type="button" class="wxg__x wx-pulsar" (click)="guia.cerrar()" aria-label="Cerrar Wybix Guide">
+      <div class="wxg__pestanas" role="tablist" aria-label="Wybix">
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'" [class.on]="pestana() === 'chat'"
+                (click)="pestana.set('chat')" data-guide="wybix-pestana-chat">Chat</button>
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'recorridos'" [class.on]="pestana() === 'recorridos'"
+                (click)="pestana.set('recorridos')" data-guide="wybix-pestana-recorridos">Recorridos</button>
+      </div>
+      <button type="button" class="wxg__x wx-pulsar" (click)="guia.cerrar()" aria-label="Cerrar Wybix">
         <i class="ph ph-x" aria-hidden="true"></i>
       </button>
     </header>
 
-    <div class="wxg__cuerpo">
+    <!-- El chat de Wybix (asistente operativo). -->
+    <wx-wybix-chat *ngIf="pestana() === 'chat'"></wx-wybix-chat>
+
+    <div class="wxg__cuerpo" *ngIf="pestana() === 'recorridos'">
       <!-- ------------------------------------------------ los recorridos -->
       <div class="wxg__lista">
         <section class="wxg__grupo" *ngFor="let g of grupos(); trackBy: porId">

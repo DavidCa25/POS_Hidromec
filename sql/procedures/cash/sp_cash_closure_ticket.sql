@@ -1,3 +1,7 @@
+/* sp_cash_closure_ticket
+ * Definicion canonica. Generada desde la base con scripts/db/extraer.mjs.
+ * No editar en SSMS: modificar este archivo y crear una migracion.
+ */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
@@ -13,7 +17,12 @@ BEGIN
  (SELECT ISNULL(SUM(refund_total),0) FROM dbo.sale_refunds f WHERE f.closure_id=c.id) refunds,
  (SELECT ISNULL(SUM(CASE WHEN amount>0 AND typee NOT IN('OPENING','SALE') THEN amount ELSE 0 END),0) FROM dbo.cash_movements m WHERE m.closure_id=c.id) cash_in,
  (SELECT ISNULL(SUM(CASE WHEN amount<0 THEN -amount ELSE 0 END),0) FROM dbo.cash_movements m WHERE m.closure_id=c.id) cash_out,
- (SELECT SUM(CASE WHEN d.tax_object='02' THEN d.subtotal-d.subtotal/(1+d.tax_rate) ELSE 0 END) FROM dbo.sales s JOIN dbo.sale_detail d ON d.sale_id=s.id WHERE (s.closure_id=c.id OR (s.closure_id IS NULL AND s.register_id=c.register_id AND s.datee>=c.opened_at AND s.datee<=ISNULL(c.closed_at,SYSDATETIME()))) AND d.tax_rate IS NOT NULL) tax,
+ /* 0083: con la foto de IEPS y locales, el IVA es lo cobrado menos la base sin
+    impuestos y menos esos otros impuestos (un impuesto local NO va en la base
+    del IVA, así que dividir entre 1+tasa lo inflaba). Sin foto, como antes. */
+ (SELECT SUM(CASE WHEN d.base_neta IS NOT NULL THEN d.subtotal-d.base_neta-ISNULL(d.otros_impuestos,0)
+                  WHEN d.tax_object='02' THEN d.subtotal-d.subtotal/(1+d.tax_rate) ELSE 0 END) FROM dbo.sales s JOIN dbo.sale_detail d ON d.sale_id=s.id WHERE (s.closure_id=c.id OR (s.closure_id IS NULL AND s.register_id=c.register_id AND s.datee>=c.opened_at AND s.datee<=ISNULL(c.closed_at,SYSDATETIME()))) AND d.tax_rate IS NOT NULL) tax,
+ (SELECT ISNULL(SUM(d.otros_impuestos),0) FROM dbo.sales s JOIN dbo.sale_detail d ON d.sale_id=s.id WHERE (s.closure_id=c.id OR (s.closure_id IS NULL AND s.register_id=c.register_id AND s.datee>=c.opened_at AND s.datee<=ISNULL(c.closed_at,SYSDATETIME())))) other_tax,
  JSON_QUERY((SELECT p.payment_method,SUM(p.amount) amount FROM (
  SELECT s.register_id,s.datee,s.closure_id,p.payment_method,p.amount FROM dbo.sales s JOIN dbo.sale_payments p ON p.sale_id=s.id
  UNION ALL SELECT s.register_id,s.datee,s.closure_id,s.payment_method,s.total FROM dbo.sales s WHERE NOT EXISTS(SELECT 1 FROM dbo.sale_payments p WHERE p.sale_id=s.id)

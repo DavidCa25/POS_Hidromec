@@ -49,7 +49,14 @@ BEGIN
     SELECT @sale_id sale_id,s.product_id,p.nombre,s.quantity,CAST(s.line_total/s.quantity AS DECIMAL(10,2)) unitary_price,s.line_total,
       ISNULL(r.qty,0) refunded_qty,s.quantity-ISNULL(r.qty,0) remaining_qty,NULL sale_detail_id,s.unit_cost,s.inventory_mode,
       N'Oferta comercial: devolución proporcional al importe pagado' note,p.clave_prod_serv,p.clave_unidad,p.objeto_impuesto,p.tasa_iva,
-      N'Oferta comercial' modifiers
+      N'Oferta comercial' modifiers,
+      /* 0085: la foto de IEPS y locales del producto en esta venta (NULL: solo IVA). */
+      (SELECT CASE WHEN COUNT(dd.base_neta) = COUNT(*) THEN SUM(dd.base_neta) END FROM dbo.sale_detail dd
+        WHERE dd.sale_id = @sale_id AND dd.product_id = s.product_id) base_neta,
+      (SELECT x.nombre, x.clase, x.factor, x.tasa, x.cuota, SUM(x.cantidad) unidades, SUM(x.importe) importe
+         FROM dbo.sale_detail_impuestos x JOIN dbo.sale_detail dd ON dd.id = x.sale_detail_id
+        WHERE dd.sale_id = @sale_id AND dd.product_id = s.product_id
+        GROUP BY x.nombre, x.clase, x.factor, x.tasa, x.cuota FOR JSON PATH) impuestos_json
     FROM sold s JOIN dbo.products p ON p.id=s.product_id LEFT JOIN returned r ON r.product_id=s.product_id;
     RETURN;
   END;
@@ -79,6 +86,10 @@ BEGIN
     p.clave_unidad,
     p.objeto_impuesto,
     p.tasa_iva,
+    /* 0085: la foto de IEPS y locales del renglón (NULL: solo IVA). */
+    d.base_neta,
+    (SELECT x.nombre, x.clase, x.factor, x.tasa, x.cuota, x.cantidad unidades, x.importe
+       FROM dbo.sale_detail_impuestos x WHERE x.sale_detail_id = d.id FOR JSON PATH) AS impuestos_json,
     mods.modifiers
   FROM dbo.sale_detail d
   JOIN dbo.products p ON p.id = d.product_id

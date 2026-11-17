@@ -98,10 +98,10 @@ function corte(data, p, business = {}) {
       row("Salidas", money(data.cash_out)),
     refunds: row("Devoluciones", money(data.refunds)),
     discount: row("Descuentos", money(data.discount)),
-    tax: row(
-      "Impuestos incluidos",
-      data.tax == null ? "No disponible" : money(data.tax),
-    ),
+    /* 0083: IVA aparte de IEPS e impuestos locales. */
+    tax:
+      row("IVA incluido", data.tax == null ? "No disponible" : money(data.tax)) +
+      (Number(data.other_tax) > 0.004 ? row("IEPS y otros impuestos", money(data.other_tax)) : ""),
     declaration:
       row("Efectivo esperado", money(data.cash_expected)) +
       row(

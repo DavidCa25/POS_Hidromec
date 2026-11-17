@@ -1,0 +1,262 @@
+# Frases completas: compras y proveedores. [producto] {persona}.
+
+@ consulta.comprar
+que me falta comprar
+que tengo que comprar
+que se esta acabando
+que se acaba
+lista de compras
+dame la lista de compras
+que debo pedir al proveedor
+que necesito comprar esta semana
+que productos estan por agotarse
+sugerencia de compra
+que hace falta comprar
+que tengo que surtir
+que pido
+que se me esta terminando
+que esta por acabarse
+que hay que comprar
+arma la lista de compras
+necesito surtir algo
+hay algo que surtir
+hay algo que comprar
+que me hace falta surtir
+que hay que reponer
+que tengo que resurtir
+que voy a necesitar mañana
+que compro para el fin de semana
+que me va a faltar
+que esta bajo de inventario
+que tengo bajo
+que esta por debajo del minimo
+que pido al mayoreo
+que compro en el super
+lista del super
+lista para ir al mercado
+que tengo que traer de la central
+que ingredientes se estan acabando
+que insumos me faltan
+que me falta de insumos
+cuanto tengo que comprar de cada cosa
+que se me va a acabar esta semana
+para cuantos dias me alcanza el inventario
+que me alcanza para menos de 3 dias
+
+@ compra.pedido
+que le pido a {bimbo}
+arma el pedido de {coca cola}
+pedido para {lala}
+que le encargo a {sabritas}
+ya viene {bimbo} que le pido
+orden de compra para {distribuidora lopez}
+que necesito de {lala}
+que le compro a {cerveceria modelo}
+pedido de {coca cola femsa}
+que le pido al de {bimbo}
+haz el pedido de {abarrotes mayoreo}
+que me falta de {sabritas}
+que le encargo a {harinera central}
+cuanto le pido a {cafe veracruz}
+lista de pedido para {belleza pro}
+que le voy a pedir a {gas express}
+que productos de {lala} se estan acabando
+arma la orden para {distribuidora lopez}
+manana viene {coca cola} que le pido
+que le compro al de la {cerveceria modelo}
+sugiereme el pedido para {bimbo}
+preparame el pedido de {abarrotes mayoreo del bajio}
+que necesito pedirle a {harinera central}
+que pido de {cafe veracruz} esta semana
+pedido sugerido de {sabritas}
+
+@ compra.ultima
+cuando compre [coca] por ultima vez
+a cuanto compre la [coca de 600]
+ultima compra de [sabritas]
+a quien le compre el [atun]
+cuanto me costo la [leche lala] la ultima vez
+en cuanto me dejaron el [pan bimbo]
+a como lo compre el [azucar]
+cuando fue la ultima compra de [harina]
+a cuanto me lo vendieron la [cerveza corona]
+cuanto pague por el [cafe en grano]
+cuando me surtieron [garrafones]
+cuanto me costo el [shampoo profesional]
+a como compre el [huevo] la semana pasada
+de quien fue la ultima compra de [queso oaxaca]
+cuando entro por ultima vez el [hielo]
+cuando compre [cigarros]
+a como me dejaron el kilo de [tortilla]
+cuanto me cobraron el [tinte]
+ultima vez que compre [maruchan]
+en cuanto me salio la [mantequilla]
+cuanto pague la ultima vez por [detergente]
+cuando le compre [leche entera] al proveedor
+cuanto vale la [cerveza] en la ultima factura
+a quien le compre las [donas glaseadas]
+costo de la ultima compra de [aceite]
+
+@ compra.resumen
+cuanto he comprado este mes
+cuanto he comprado esta semana
+compras del mes
+cuanto gaste en mercancia
+cuanto le compre a proveedores este mes
+total de compras
+cuanto he invertido en compras
+cuanto llevo de compras
+compras de la semana
+cuanto compre ayer
+cuanto compre el mes pasado
+cuanto se ha gastado en surtir
+cuanto le he comprado a cada proveedor
+cuantas compras hice esta semana
+resumen de compras
+cuanto gaste en insumos
+cuanto llevo invertido en mercancia este mes
+a que proveedor le compro mas
+con quien gasto mas en compras
+cuanto he comprado en el año
+
+@ compra.registrar
+registra una compra
+quiero registrar una compra
+llego el pedido de {bimbo}
+recibi mercancia de {lala}
+quiero meter una compra
+capturar la factura de {coca cola}
+entrada de mercancia
+ya llego {sabritas}
+llego el camion de {coca cola femsa}
+registra lo que trajo {distribuidora lopez}
+recibi la factura de {cerveceria modelo}
+dar entrada a mercancia
+capturar compra
+nueva compra
+me surtieron hoy
+llego el proveedor
+ya vino el de {bimbo}
+ingresar factura de compra
+meter la nota de {abarrotes mayoreo}
+registrar mercancia que llego
+compre en el super y quiero registrarlo
+traje cosas de la central hay que registrar
+registrar compra de {harinera central}
+recibi el pedido de {cafe veracruz}
+llegaron productos de {belleza pro}
+
+@ proveedor.deuda
+a quien le debo
+cuanto le debo a {bimbo}
+que le debo a los proveedores
+cuentas por pagar
+cuanto debo de mercancia
+tengo pagos pendientes
+cuanto se le debe a {lala}
+cuanto le debo a {coca cola}
+a que proveedores les debo
+cuanto debo en total a proveedores
+cuanto me falta pagarle a {sabritas}
+que facturas tengo sin pagar
+cuanto le quedo a deber a {distribuidora lopez}
+debo algo a {cerveceria modelo}
+le debo a {harinera central}
+cuando le tengo que pagar a {bimbo}
+saldo con {lala}
+estado de cuenta de {abarrotes mayoreo}
+que pagos vencen esta semana
+cuanto le debo al de {cafe veracruz}
+que proveedor tiene mas adeudo
+deudas con proveedores
+le debo dinero a alguien
+saldo pendiente con {gas express}
+cuanto debo a {belleza pro}
+
+@ proveedor.pago
+pagale 500 a {bimbo}
+pagale $1200 a {lala} en efectivo
+registra un pago de 2000 a {coca cola}
+abonale 800 a {sabritas}
+le pague 1500 a {distribuidora lopez} en efectivo
+liquida a {cerveceria modelo}
+pago a proveedor {harinera central} 3000
+le di 600 al de {bimbo}
+pagale a {lala} 950 con transferencia
+le transferi 4000 a {abarrotes mayoreo}
+pago de 700 a {cafe veracruz} en efectivo
+paga 1000 a {gas express}
+abona 500 a la cuenta de {bimbo}
+le pagamos 2500 a {coca cola femsa} por transferencia
+registra el pago a {sabritas} de 1300
+liquidale a {lala} lo que le debo
+le pague al de {belleza pro} 900
+dale 400 al de la {harinera central}
+pagale 1500 a {distribuidora lopez} con tarjeta
+le deposite 3000 a {cerveceria modelo}
+pago en efectivo de 650 a {bimbo}
+pagar a un proveedor
+quiero pagarle a un proveedor
+registrar pago a proveedor
+abonar a proveedor
+
+@ proveedor.alta
+agrega al proveedor distribuidora garcia
+nuevo proveedor abarrotes la paz
+da de alta al proveedor cremeria los altos
+registra un proveedor que se llama refrescos del norte
+alta de proveedor dulceria el sol telefono 4771234567
+agrega un proveedor nuevo
+nuevo proveedor tortilleria lupita
+da de alta a frutas y verduras martinez como proveedor
+registra al proveedor gas del bajio tel 4775550101
+agrega el proveedor carnes selectas
+alta de proveedor papeleria central
+nuevo proveedor llamado productos de belleza mar
+crea el proveedor hielo cristal
+agrega a lacteos san juan como proveedor
+quiero dar de alta un proveedor
+registrar proveedor nuevo
+alta de proveedor desechables leon
+nuevo proveedor polleria el gallo telefono 4779876543
+agrega al proveedor cafe de altura
+da de alta a la distribuidora mendoza
+
+@ proveedor.quien
+quien me surte [coca]
+quien me trae las [sabritas]
+que proveedor tiene [leche lala]
+a quien le compro el [atun]
+donde consigo [cafe en grano]
+proveedor de [pan bimbo]
+quien me vende la [harina]
+quien trae el [hielo]
+a quien le pido [garrafones]
+quien surte la [cerveza corona]
+quien me surte el [shampoo profesional]
+de donde viene el [queso oaxaca]
+con quien compro [huevo]
+quien me vende [tortillas]
+que proveedor me trae [cigarros]
+a quien le compro el [tinte]
+quien me da el [detergente]
+proveedor del [aceite]
+de quien es la [maruchan]
+quien me surte los [cuernitos]
+
+@ proveedor.contacto
+telefono de {bimbo}
+numero de {lala}
+pasame el contacto de {coca cola}
+datos del proveedor {sabritas}
+como contacto a {distribuidora lopez}
+correo de {cerveceria modelo}
+whatsapp de {harinera central}
+cual es el numero del de {bimbo}
+dame el telefono de {gas express}
+como le hablo a {cafe veracruz}
+contacto de {abarrotes mayoreo}
+rfc de {lala}
+datos de {belleza pro}
+numero del proveedor {coca cola femsa}
+como localizo al de {sabritas}
