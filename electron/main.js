@@ -6205,6 +6205,8 @@ const asistente = require('./asistente').crearAsistente({
   respaldo: () => backup.loadBackupConfig(),
   nubeActiva: () => !!cloudSync.getCloudConfig()?.enabled,
   equipo: () => loadDeviceConfig(),
+  /* La configuración de avisos por WhatsApp (en la nube): «ya no avises de las membresías» cambia solo eso. */
+  whatsappConfig: async () => (avisosWhatsapp ? avisosWhatsapp.leerConfig(true) : null),
   carpetaDatos: app.getPath('userData'),
   avisar: () => { for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('asistente:cambio'); } catch { /* ventana cerrada */ } } },
 });

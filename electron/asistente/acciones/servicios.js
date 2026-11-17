@@ -475,5 +475,20 @@ module.exports = (h) => {
         ejecutar: { api: 'electronAPI.serviciosBorrarAusencia', payload: { id: Number(a.id) } }, permiso: 'SERVICIOS_ADMINISTRAR',
       }) });
     },
+
+    /* «Da de baja el carro de doña Mary». */
+    async 'activo.baja'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const clase = /carro|auto|coche|camioneta|moto|vehiculo/.test(h.v(it, 'claseTexto') || '') ? 'VEHICULO' : /perro|gato|mascota/.test(h.v(it, 'claseTexto') || '') ? 'MASCOTA' : null;
+      const xs = await h.q(`SELECT id, label, identifier FROM dbo.customer_assets WHERE customer_id = @c AND active = 1 ${clase ? 'AND kind = @k' : ''};`,
+        [['c', h.sql.Int, c.id], ...(clase ? [['k', h.sql.NVarChar(20), clase]] : [])]).catch(() => []);
+      if (!xs.length) return h.msg(`${c.nombre} no tiene eso registrado.`);
+      if (xs.length > 1) return h.msg(`${c.nombre} tiene ${xs.length}: ${xs.map((x) => x.label).join(', ')}. Dímelo con su nombre o placas en Servicios.`);
+      return h.msg('Esto voy a dar de baja:', { plan: h.plan('activo.baja', {
+        titulo: `Dar de baja ${xs[0].label}`, vista: [{ etiqueta: 'Cliente', valor: c.nombre }, { etiqueta: 'Activo', valor: `${xs[0].label}${xs[0].identifier ? ' · ' + xs[0].identifier : ''}` }],
+        ejecutar: { api: 'electronAPI.serviciosActivarActivo', payload: { id: Number(xs[0].id), activo: false } }, permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
   };
 };

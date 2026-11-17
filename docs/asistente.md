@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 117 de 167 acciones (70 %)».
+Además imprime el avance, por ejemplo «asistente: 127 de 165 acciones (77 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -403,6 +403,24 @@ solo lo dicho cambiado (el procedimiento escribe todo lo que recibe).
 | «la frase / el horario / la dirección del menú es …», «el color del menú es #aa3300» | `menu-linea:diseno-guardar`. |
 | «oculta la concha del menú», «destaca el latte en el menú», «la descripción del latte en el menú es …», «quita la foto de la concha del menú» | `menu-linea:producto-guardar`, `menu-linea:imagen-borrar`. |
 | «confirma la liquidación de Rappi», «cancela la liquidación de Rappi, venía mal», «llegó el depósito de Rappi por 4,500», «el pedido A123 de Rappi es la venta 456», «el canal didi-1 es de DiDi Food» | `plataformas:confirmar`, `cancelar`, `deposito`, `emparejar`, `canal-guardar`. Capturar una liquidación es con el archivo de la plataforma. |
+
+### Más ventas, tickets y ajustes
+
+Reglas en `lenguaje/varios.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «cambia la coca del ticket 120 por una pepsi» | `devoluciones:cambio` (`sp_exchange_sale`): devuelve y se lleva en una operación; la diferencia en efectivo de esta caja. |
+| «corrige la venta 120: eran 3 conchas» | `sp-update-sale` con la venta completa y esa cantidad. Pide «Modificar venta». |
+| «el cigarro suelto sale de la cajetilla de 20» | `venta-suelta:guardar`. |
+| «manda el ticket 120 a juan@correo.com», «imprime el corte», «imprime la devolución 5», «quita el logo del ticket» | `ticket:email`, `ticket:print-document`, `ticket:borrar-logo`. |
+| «da de baja el carro de doña Mary» | `servicios:activar-activo`. |
+| «avisa por WhatsApp cuando el pedido esté listo», «ya no avises de las membresías», «avisa 3 días antes de que venza la membresía» | `whatsapp:config-guardar` con lo demás igual (la configuración se lee de la nube). |
+| «apaga las aprobaciones», «enciende las aprobaciones» | `aprobaciones:politica-cambiar`. |
+| «crea el impuesto Hospedaje 3%», «crea el impuesto IEPS por cuota de 1.64 por litro» | `impuestos:guardar`. |
+
+Pedir y cancelar una aprobación a distancia lo hace la operación misma
+(manuales a propósito).
 
 ## El loop de entrenamiento
 

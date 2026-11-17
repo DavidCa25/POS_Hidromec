@@ -517,3 +517,31 @@ test('menú en línea y plataformas hablados', () => {
   /* Un color que no es #rrggbb no se manda. */
   assert.notEqual(l('el color del menú es rojo').intent, 'menu.diseno');
 });
+
+test('cambio de producto, corregir venta, venta suelta, tickets, activos, WhatsApp, aprobaciones e impuestos', () => {
+  const personas = prepararCatalogo([{ id: 1, nombre: 'Doña Mary', tipo: 'cliente' }]);
+  const cat = prepararCatalogo([{ id: 3, nombre: 'Coca Cola 600 ml' }, { id: 4, nombre: 'Pepsi 600 ml' }, { id: 6, nombre: 'Concha' },
+    { id: 7, nombre: 'Cigarro suelto' }, { id: 8, nombre: 'Cajetilla de cigarros' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas, modulos: new Set(['servicios']), ahora: HOY });
+  const casos = [
+    ['cambia la coca del ticket 120 por una pepsi', 'venta.cambio', { folio: 120, devuelve: 3, lleva: 4 }],
+    ['el cigarro suelto sale de la cajetilla de 20', 'venta.suelta', { producto: 7, padre: 8, piezas: 20 }],
+    ['manda el ticket 120 a Juan@Correo.com', 'ticket.correo', { folio: 120, correo: 'juan@correo.com' }],
+    ['imprime el corte', 'ticket.imprimir', { documento: 'closure' }],
+    ['imprime la devolución 5', 'ticket.imprimir', { documento: 'refund', folio: 5 }],
+    ['quita el logo del ticket', 'ticket.logo_quitar', {}],
+    ['da de baja el carro de doña mary', 'activo.baja', { cliente: 1 }],
+    ['avisa por WhatsApp cuando el pedido esté listo', 'whatsapp.config', { campo: 'pedidoListo', valor: true }],
+    ['ya no avises por whatsapp de las membresías', 'whatsapp.config', { campo: 'membresia', valor: false }],
+    ['apaga las aprobaciones', 'aprobaciones.politica', { activas: false }],
+    ['crea el impuesto Hospedaje 3%', 'impuesto.crear', { nombre: 'Hospedaje', clase: 'LOCAL', tasa: 0.03 }],
+    ['crea el impuesto IEPS por cuota de 1.64 por litro', 'impuesto.crear', { factor: 'Cuota', cuota: 1.64, unidad: 'litro' }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  const c = l('corrige la venta 120: eran 3 conchas');
+  assert.equal(c.intent, 'venta.corregir'); assert.deepEqual(c.slots.renglon.valor, { productId: 6, cantidad: 3 });
+});

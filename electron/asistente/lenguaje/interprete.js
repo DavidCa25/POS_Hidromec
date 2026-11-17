@@ -39,6 +39,7 @@ const { mesas: reglaMesas } = require('./mesas');
 const { config: reglaConfig } = require('./config');
 const { recetas: reglaRecetas } = require('./recetas');
 const { menu: reglaMenu } = require('./menu');
+const { varios: reglaVarios } = require('./varios');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -448,6 +449,31 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Cambio de producto, corregir venta, venta suelta, tickets, activos,
+       WhatsApp, aprobaciones e impuestos (lenguaje/varios.js). */
+    const rva = !esperando && reglaVarios(texto);
+    if (rva && disponible(rva.intent, modulos)) {
+      const prod = (txt) => { const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null; return ap?.prod?.valor != null ? ap : null; };
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rva)) if (k !== 'intent' && !/^texto/.test(k) && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      for (const [k, dest] of [['textoDevuelve', 'devuelve'], ['textoLleva', 'lleva'], ['textoProducto', 'producto'], ['textoPadre', 'padre']]) {
+        if (rva[k] == null) continue;
+        const ap = prod(rva[k]);
+        if (ap) slots[dest] = { valor: ap.prod.valor, texto: ap.prod.texto, confianza: 'exacto', cantidad: ap.cants?.[0]?.valor ?? null }; else ok = false;
+      }
+      if (rva.textoRenglon) {
+        const ap = prod(rva.textoRenglon);
+        if (ap && ap.cants?.length) slots.renglon = { valor: { productId: ap.prod.valor, cantidad: ap.cants[0].valor }, texto: ap.prod.texto, confianza: 'exacto' }; else ok = false;
+      }
+      if (rva.textoCliente) {
+        const lista = personas.filter((x) => x.tipo === 'cliente');
+        const r = lista.length ? ex.producto(normalizar(rva.textoCliente).tokens, lista, { excluir: new Set() }) : null;
+        if (r?.valor != null) slots.cliente = { valor: r.valor, texto: r.texto, confianza: 'exacto' }; else ok = false;
+      }
+      if (rva.motivoTexto) slots.razon = { valor: ex.motivoDevolucion(normalizar(rva.motivoTexto).texto) || 'Otro', texto: rva.motivoTexto, confianza: 'exacto' };
+      if (ok) return cerrar(rva.intent, slots, 0.95, []);
     }
     /* Menú en línea y plataformas de reparto (lenguaje/menu.js). */
     const rmn = !esperando && reglaMenu(texto);

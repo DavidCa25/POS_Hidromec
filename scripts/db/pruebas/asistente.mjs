@@ -635,6 +635,27 @@ try {
   } catch (e) { check(false, 'el SP guarda el producto del menú', e.message); }
   const rLq = await pedirC('plataforma.confirmar', { plataforma: ex('RAPPI') });
   check(!rLq.plan && /No hay liquidación/.test(rLq.texto), 'sin liquidación de Rappi no hay qué confirmar');
+
+  /* 18. Corregir una venta y cambiar un producto. */
+  seccion('18. Corregir una venta y cambiar un producto');
+  await q(`INSERT INTO dbo.sales (datee, useer_id, total, payment_method, paid_amount, balance, register_id) VALUES (GETDATE(), 1, 20, 'EFECTIVO', 20, 0, ${caja});
+           INSERT INTO dbo.sale_detail (sale_id, product_id, quantity, unitary_price, unit_cost, tax_object, tax_rate) VALUES (SCOPE_IDENTITY(), ${concha}, 2, 10, 5, '02', 0);`);
+  const vc = Number(await escalar('SELECT MAX(id) FROM dbo.sales'));
+  const rCor = await pedirC('venta.corregir', { folio: ex(vc), renglon: ex({ productId: concha, cantidad: 3 }) });
+  check(rCor.plan?.ejecutar.api === 'electronAPI.updateSale' && rCor.plan.ejecutar.payload.items[0].qty === 3 && /\$20.00 → \$30.00/.test(JSON.stringify(rCor.plan.vista)),
+    'corregir: 2 → 3 conchas, total $20 → $30', JSON.stringify(rCor.plan?.vista));
+  const rCam = await pedirC('venta.cambio', { folio: ex(vc), devuelve: { valor: concha, cantidad: 1 }, lleva: { valor: cafe, cantidad: null } });
+  const cm = rCam.plan?.ejecutar.payload;
+  check(rCam.plan?.ejecutar.api === 'electronAPI.refundExchange' && cm.items[0].qty === 1 && cm.lleva[0].productId === cafe, 'cambio: devuelve 1 concha y se lleva 1 café', JSON.stringify(rCam.plan?.vista));
+  try {
+    const tvpX = new sql.Table('dbo.SaleDetailType');
+    tvpX.columns.add('product_id', sql.Int, { nullable: false }); tvpX.columns.add('quantity', sql.Decimal(12, 2), { nullable: false }); tvpX.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+    for (const it2 of cm.items) tvpX.rows.add(it2.productId, it2.qty, it2.unitPrice);
+    await maquina(pool.request().input('sale_id', sql.Int, cm.sale_id).input('user_id', sql.Int, 1).input('RefundDetails', tvpX).input('new_lines_json', sql.NVarChar(sql.MAX), JSON.stringify(cm.lleva))
+      .input('reason', sql.NVarChar(40), cm.motivo).input('note', sql.NVarChar(400), cm.note).input('diff_method', sql.NVarChar(20), cm.diff_method)
+      .input('received', sql.Decimal(12, 2), cm.received).input('register_id', sql.Int, caja)).execute('sp_exchange_sale');
+    check(Number(await escalar(`SELECT COUNT(*) FROM dbo.sale_refunds WHERE sale_id = ${vc}`)) === 1, 'el SP registra el cambio');
+  } catch (e) { check(false, 'el SP registra el cambio', e.message); }
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

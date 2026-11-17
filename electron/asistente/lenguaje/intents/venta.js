@@ -82,4 +82,45 @@ module.exports = [
                'reimprime el ultimo ticket', 'imprime el ticket {folio}', 'sacame una copia del ticket {folio}',
                'reimpresion del ticket {folio}', 'imprime el ultimo ticket otra vez'],
   },
+  /* Reglas de lenguaje/varios.js, no clasificador. */
+  {
+    id: 'venta.cambio', etiqueta: 'Cambiar un producto de una venta', tipo: 'accion', permiso: 'DEVOLUCIONES', soloRegla: true,
+    slots: { folio: { requerido: true }, devuelve: { requerido: true }, lleva: { requerido: true }, razon: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'venta.corregir', etiqueta: 'Corregir una venta', tipo: 'accion', permiso: 'MODIFICAR_VENTA', soloRegla: true,
+    slots: { folio: { requerido: true }, renglon: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'venta.suelta', etiqueta: 'Vender suelto de un paquete', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, padre: { requerido: true }, piezas: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.correo', etiqueta: 'Mandar un ticket por correo', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, correo: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.imprimir', etiqueta: 'Imprimir un corte o una devolución', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { documento: { requerido: true }, folio: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.logo_quitar', etiqueta: 'Quitar el logo del ticket', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'activo.baja', etiqueta: 'Dar de baja un activo del cliente', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, claseTexto: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'whatsapp.config', etiqueta: 'Avisos por WhatsApp', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { campo: { requerido: true }, valor: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'aprobaciones.politica', etiqueta: 'Aprobaciones desde la app', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { activas: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'impuesto.crear', etiqueta: 'Crear un impuesto', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, clase: {}, factor: {}, tasa: {}, cuota: {}, unidad: {} }, claves: [], ejemplos: [],
+  },
 ];

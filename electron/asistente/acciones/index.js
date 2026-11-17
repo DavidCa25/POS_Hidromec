@@ -82,7 +82,7 @@ const AREAS = ['general', 'venta', 'caja', 'inventario', 'compras', 'proveedores
 /**
  * @param d { sql, pool, sensores, listarHallazgos, sistema(), apodos: { listar() }, preferencias: { guardar, olvidar } }
  */
-function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async () => ({}), apodos = { listar: async () => [] }, preferencias = null, equipo = () => null }) {
+function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async () => ({}), apodos = { listar: async () => [] }, preferencias = null, equipo = () => null, whatsappConfig = async () => null }) {
   const q = async (texto, entradas = []) => {
     const req = (await pool()).request();
     for (const [n, t, v] of entradas) req.input(n, t, v);
@@ -154,6 +154,7 @@ function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async (
     equipo: () => { try { return equipo() || {}; } catch { return {}; } },
     cajaEquipo: () => { try { return Number(equipo()?.register?.id) || null; } catch { return null; } },
     cotizarCuenta: (lineas) => cotizarCuenta(lineas),
+    whatsappConfig: async () => { try { return await whatsappConfig(); } catch { return null; } },
     /** Sin acentos, minúsculas y espacios simples: para comparar nombres dichos. */
     llano: (s) => require('../lenguaje/edicion').llano(String(s || '')).replace(/\s+/g, ' ').trim(),
   };

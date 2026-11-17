@@ -241,7 +241,115 @@ module.exports = (h) => {
         permiso: 'DEVOLUCIONES',
       }) });
     },
+
+    /* «Cambia la coca del ticket 120 por una pepsi»: sp_exchange_sale en una
+       sola operación; la diferencia se paga o se regresa en efectivo. */
+    async 'venta.cambio'(it, ctx) {
+      const folio = h.v(it, 'folio');
+      const { cab, quedan } = await quedanDe(folio);
+      if (!cab) return h.msg(`No encuentro la venta ${folio}.`);
+      const sale = quedan.find((x) => x.productId === Number(h.v(it, 'devuelve')));
+      if (!sale) return h.msg(`En el ticket ${folio} no hay ${it.slots.devuelve?.texto || 'ese producto'} por devolver.`);
+      const nDev = Math.min(Number(it.slots.devuelve?.cantidad) || 1, sale.maximo);
+      const lleva = await h.producto(h.v(it, 'lleva'));
+      if (!lleva) return h.msg('No encontré lo que se lleva.');
+      const nLleva = Number(it.slots.lleva?.cantidad) || nDev;
+      const devuelto = h.r2(nDev * sale.precio), nuevo = h.r2(nLleva * Number(lleva.price)), dif = h.r2(nuevo - devuelto);
+      const motivo = h.v(it, 'razon') || 'Se equivocó de producto';
+      return h.msg('Este cambio voy a registrar:', { plan: h.plan('venta.cambio', {
+        titulo: `Cambio en el ticket ${folio}`,
+        vista: [{ etiqueta: `Devuelve ${h.num(nDev)} × ${sale.nombre}`, valor: h.dinero(devuelto) }, { etiqueta: `Se lleva ${h.num(nLleva)} × ${lleva.nombre}`, valor: h.dinero(nuevo) },
+                { etiqueta: dif > 0 ? 'Paga la diferencia' : dif < 0 ? 'Se le regresa' : 'Diferencia', valor: dif === 0 ? 'nada' : h.dinero(Math.abs(dif)) }, { etiqueta: 'Motivo', valor: motivo }],
+        avisos: [dif !== 0 ? 'La diferencia se cobra o se regresa en efectivo de esta caja.' : 'Sin diferencia de dinero.'],
+        nivel: ctx.puede('DEVOLUCIONES') ? 'confirmar' : 'autorizar',
+        ejecutar: { api: 'electronAPI.refundExchange', payload: { sale_id: Number(folio), items: [{ productId: sale.productId, qty: nDev, unitPrice: sale.precio }],
+          motivo, note: 'Desde Wybix', lleva: [{ productId: lleva.id, qty: nLleva }], diff_method: dif !== 0 ? 'EFECTIVO' : null,
+          received: dif > 0 ? dif : null, amount: devuelto, reason: `Cambio · ${motivo} · folio #${folio}` } },
+        permiso: 'DEVOLUCIONES',
+      }) });
+    },
+
+    /* «Corrige la venta 120: eran 3 conchas»: sp_update_sale con la venta completa y esa cantidad. */
+    async 'venta.corregir'(it) {
+      const folio = h.v(it, 'folio');
+      const { cab, detalle } = await quedanDe(folio);
+      if (!cab) return h.msg(`No encuentro la venta ${folio}.`);
+      const r = h.v(it, 'renglon');
+      const lineas = detalle.map((d) => ({ productId: Number(d.product_id), nombre: String(d.product_name ?? d.nombre ?? ''), qty: Number(d.quantity), unitPrice: Number(d.unitary_price) }));
+      const l = lineas.find((x) => x.productId === Number(r.productId));
+      if (!l) return h.msg(`La venta ${folio} no tiene ${it.slots.renglon?.texto || 'ese producto'}.`);
+      if (Number(l.qty) === Number(r.cantidad)) return h.msg(`La venta ${folio} ya tiene ${h.num(r.cantidad)} de ${l.nombre}.`);
+      const antes = h.r2(lineas.reduce((a, x) => a + x.qty * x.unitPrice, 0));
+      l.qty = Number(r.cantidad);
+      const despues = h.r2(lineas.reduce((a, x) => a + x.qty * x.unitPrice, 0));
+      return h.msg('Esta corrección voy a registrar:', { plan: h.plan('venta.corregir', {
+        titulo: `Corregir la venta ${folio}`,
+        vista: [{ etiqueta: l.nombre, valor: `${h.num(detalle.find((d) => Number(d.product_id) === l.productId).quantity)} → ${h.num(l.qty)}` },
+                { etiqueta: 'Total', valor: `${h.dinero(antes)} → ${h.dinero(despues)}` }],
+        avisos: [despues > antes ? 'La diferencia se cobra en esta caja.' : 'La diferencia se regresa en esta caja.', 'El inventario se ajusta.'],
+        ejecutar: { api: 'electronAPI.updateSale', payload: { sale_id: Number(folio), items: lineas.filter((x) => x.qty > 0).map((x) => ({ productId: x.productId, qty: x.qty, unitPrice: x.unitPrice })),
+          note: 'Corrección desde Wybix' } },
+        permiso: 'MODIFICAR_VENTA',
+      }) });
+    },
+
+    /* «El cigarro suelto sale de la cajetilla de 20». */
+    async 'venta.suelta'(it) {
+      const p = await h.producto(h.v(it, 'producto')), padre = await h.producto(h.v(it, 'padre'));
+      if (!p || !padre) return h.msg('No encontré esos productos.');
+      if (p.id === padre.id) return h.msg('El producto suelto y el paquete tienen que ser distintos.');
+      const n = Number(h.v(it, 'piezas'));
+      return h.msg('Esto voy a guardar:', { plan: h.plan('venta.suelta', {
+        titulo: `${p.nombre} sale de ${padre.nombre}`, vista: [{ etiqueta: 'Suelto', valor: p.nombre }, { etiqueta: 'Paquete', valor: `${padre.nombre} (${h.num(n)} piezas)` }],
+        avisos: ['Al vender sueltos, se abren paquetes solos cuando hace falta.'],
+        ejecutar: { api: 'electronAPI.ventaSueltaGuardar', payload: { productId: p.id, parentProductId: padre.id, piezas: n } }, permiso: 'CATALOGO_EDITAR',
+      }) });
+    },
+
+    async 'ticket.correo'(it) {
+      const s = await ventaDe(h.v(it, 'folio'));
+      if (!s) return h.msg(`No encuentro la venta ${h.v(it, 'folio')}.`);
+      const correo = String(h.v(it, 'correo'));
+      if (!/^\S+@\S+\.\S+$/.test(correo)) return h.msg('Ese correo no se ve bien.');
+      return h.msg('Este ticket voy a mandar:', { plan: h.plan('ticket.correo', {
+        titulo: `Ticket ${s.id} a ${correo}`, vista: [{ etiqueta: 'Venta', valor: `${s.id} · ${h.dinero(s.total)}` }, { etiqueta: 'Correo', valor: correo }],
+        ejecutar: { api: 'electronAPI.ticketEmail', payload: { saleId: Number(s.id), email: correo } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'ticket.imprimir'(it) {
+      const doc = h.v(it, 'documento');
+      if (doc === 'closure') {
+        const c = await h.uno('SELECT TOP 1 id, closed_at FROM dbo.cash_closures WHERE closed_at IS NOT NULL AND (@caja IS NULL OR register_id = @caja) ORDER BY closed_at DESC;', [['caja', h.sql.Int, h.cajaEquipo()]]);
+        if (!c) return h.msg('Todavía no hay cortes cerrados.');
+        return h.msg('Este corte voy a imprimir:', { plan: h.plan('ticket.imprimir', {
+          titulo: `Imprimir el corte del ${h.diaTexto(c.closed_at)}`, vista: [{ etiqueta: 'Corte', valor: `${h.diaTexto(c.closed_at)} ${h.horaTexto(c.closed_at)}` }],
+          ejecutar: { api: 'electronAPI.ticketPrintDocument', payload: { document: 'closure', id: Number(c.id) } }, permiso: 'VENTAS_OPERAR',
+        }) });
+      }
+      const r = await h.uno('SELECT id, sale_id, refund_total FROM dbo.sale_refunds WHERE id = @id;', [h.id(h.v(it, 'folio'))]).catch(() => null);
+      if (!r) return h.msg(`No encuentro la devolución ${h.v(it, 'folio')}.`);
+      return h.msg('Este comprobante voy a imprimir:', { plan: h.plan('ticket.imprimir', {
+        titulo: `Imprimir la devolución ${r.id}`, vista: [{ etiqueta: 'Devolución', valor: `${r.id} · venta ${r.sale_id} · ${h.dinero(r.refund_total)}` }],
+        ejecutar: { api: 'electronAPI.ticketPrintDocument', payload: { document: 'refund', id: Number(r.id) } }, permiso: 'VENTAS_OPERAR',
+      }) });
+    },
+
+    async 'ticket.logo_quitar'() {
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('ticket.logo_quitar', {
+        titulo: 'Quitar el logo del ticket', vista: [{ etiqueta: 'Logo', valor: 'se quita' }],
+        ejecutar: { api: 'electronAPI.ticketBorrarLogo', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
   };
+
+  /** Lo que todavía se puede devolver de una venta (sp_get_sale_by_folio). */
+  async function quedanDe(id) {
+    const [[cab] = [], detalle = []] = await h.sp('sp_get_sale_by_folio', [['sale_id', h.sql.Int, Number(id)]]);
+    return { cab, quedan: detalle.filter((d) => Number(d.remaining_qty ?? 0) > 0).map((d) => ({
+      productId: Number(d.product_id), nombre: String(d.product_name ?? d.nombre ?? ''), precio: Number(d.unitary_price ?? 0), maximo: Number(d.remaining_qty ?? 0),
+      vendidas: Number(d.quantity ?? d.remaining_qty ?? 0) })), detalle };
+  }
 
   /** La venta por folio, o la última de esta caja («el último ticket»). */
   async function ventaDe(folio) {

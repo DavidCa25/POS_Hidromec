@@ -254,4 +254,45 @@ module.exports = (h) => ({
       ejecutar: { api: 'electronAPI.backupSetConfig', args: [cambios] }, permiso: 'CONFIGURACION_ADMINISTRAR',
     }) });
   },
+
+  /* «Avisa por WhatsApp cuando el pedido esté listo», «ya no avises de las membresías». */
+  async 'whatsapp.config'(it) {
+    const c = await h.whatsappConfig();
+    if (!c || c.nube === false) return h.msg('Los avisos por WhatsApp necesitan la caja vinculada con la nube.');
+    const actual = { pedidoListo: !!c.pedido_listo, membresia: !!c.membresia, diasAntes: Number(c.dias_antes) || 3, comoRenovar: c.como_renovar || 'Paga tu mensualidad en caja.' };
+    const campo = h.v(it, 'campo'), valor = h.v(it, 'valor');
+    if (actual[campo] === valor) return h.msg('Ya está así.');
+    if (campo === 'diasAntes' && !(valor >= 1 && valor <= 15)) return h.msg('Elige de 1 a 15 días antes.');
+    const N = { pedidoListo: 'Aviso de pedido listo', membresia: 'Aviso de membresía por vencer', diasAntes: 'Días antes de que venza' };
+    const ver = (v) => (typeof v === 'boolean' ? (v ? 'sí' : 'no') : String(v));
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('whatsapp.config', {
+      titulo: 'Avisos por WhatsApp', vista: [{ etiqueta: N[campo], valor: `${ver(actual[campo])} → ${ver(valor)}` }],
+      ejecutar: { api: 'electronAPI.whatsappConfigGuardar', payload: { ...actual, [campo]: valor } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'aprobaciones.politica'(it) {
+    const activas = !!h.v(it, 'activas');
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('aprobaciones.politica', {
+      titulo: `${activas ? 'Encender' : 'Apagar'} las aprobaciones`,
+      vista: [{ etiqueta: 'Aprobaciones', valor: activas ? 'se piden (PIN o app del dueño)' : 'ya no se piden' }],
+      avisos: activas ? [] : ['Quien tenga el permiso hará esas operaciones sin pedir autorización. Queda en la bitácora.'],
+      ejecutar: { api: 'electronAPI.aprobacionesCambiar', args: [activas] }, permiso: 'VENTAS_SUPERVISAR',
+    }) });
+  },
+
+  async 'impuesto.crear'(it) {
+    const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 80);
+    const ya = await h.uno('SELECT TOP 1 nombre FROM dbo.CAT_impuestos WHERE nombre = @n;', [['n', h.sql.NVarChar(80), nombre]]).catch(() => null);
+    if (ya) return h.msg(`Ya existe el impuesto «${ya.nombre}».`);
+    const factor = h.v(it, 'factor') || 'Tasa', tasa = h.v(it, 'tasa'), cuota = h.v(it, 'cuota'), unidad = h.v(it, 'unidad'), clase = h.v(it, 'clase') || 'IEPS';
+    return h.msg('Este impuesto voy a crear:', { plan: h.plan('impuesto.crear', {
+      titulo: `Impuesto nuevo · ${nombre}`,
+      vista: [{ etiqueta: 'Impuesto', valor: nombre }, { etiqueta: 'Tipo', valor: clase === 'LOCAL' ? 'Local' : 'IEPS' },
+              { etiqueta: factor === 'Cuota' ? 'Cuota' : 'Tasa', valor: factor === 'Cuota' ? `${h.dinero(cuota)} por ${unidad || 'unidad'}` : `${Math.round(tasa * 10000) / 100}%` }],
+      avisos: ['Para aplicarlo dime a qué productos: «ponle ' + nombre + ' a las papas».'],
+      ejecutar: { api: 'electronAPI.impuestosGuardar', payload: { id: null, nombre, clase, factor, tasa, cuota, unidad, enBaseIva: clase === 'IEPS', nota: null, activo: true } },
+      permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
 });

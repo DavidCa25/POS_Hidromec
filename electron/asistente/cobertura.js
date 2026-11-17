@@ -116,6 +116,8 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'aprobaciones:solicitar': 'La pide sola la operación que necesita autorización (el canal la dispara al confirmar una tarjeta de nivel «autorizar»); no es un paso que alguien pida aparte.',
+  'aprobaciones:cancelar': 'Cancela la solicitud que esa misma pantalla está esperando (solo la ventana que la pidió puede cancelarla).',
   'plataformas:guardar': 'Una liquidación se captura con el archivo que descarga la plataforma (miles de pedidos): se sube en su pantalla.',
   'users:create': 'Crear un usuario pide su contraseña o PIN: lo escribe la persona en su pantalla; el asistente no maneja contraseñas.',
   'export-database': 'Saca un archivo de la base a una carpeta que se elige en el diálogo del sistema.',
@@ -203,22 +205,16 @@ const MANUAL = {
 };
 
 const PENDIENTE = {
-  'aprobaciones': ['aprobaciones:cancelar', 'aprobaciones:politica-cambiar', 'aprobaciones:solicitar'],
   'configuracion': ['update-business-config'],
   'cloud': ['cloud:crear-sucursal'],
   'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
   'commercial': ['commercial:save'],
-  'ventas': ['devoluciones:cambio', 'sp-update-sale', 'venta-suelta:guardar'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
   'fiscal': ['fiscal-cancel-invoice', 'fiscal-save-invoice', 'fiscal:cancelar', 'fiscal:timbrar'],
-  'impuestos': ['impuestos:guardar'],
   'localhost': ['localhost:activar', 'localhost:cambiar-funcion', 'localhost:renombrar', 'localhost:revocar', 'localhost:trabajador-revocar'],
   'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
   'services': ['services:clear', 'services:operate', 'services:set-config'],
-  'servicios': ['servicios:activar-activo'],
-  'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],
   'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],
-  'whatsapp': ['whatsapp:config-guardar'],
 };
 
 /**
