@@ -1,0 +1,137 @@
+/**
+ * COBERTURA DEL ASISTENTE: todo lo que se hace a mano, lo hace el asistente.
+ *
+ * Para cada canal protegido (electron/seguridad/canales.js):
+ *   - cubierto: algún plan de electron/asistente/acciones llama a la función
+ *     de preload que lo invoca (se calcula leyendo los archivos);
+ *   - o está en electron/asistente/cobertura.js como LECTURA, MANUAL (con
+ *     motivo) o PENDIENTE.
+ *
+ * Falla si un canal no está en ningún lado (nadie decidió), si un canal
+ * cubierto sigue en PENDIENTE (hay que sacarlo), si uno MANUAL lo hace el
+ * asistente, o si la lista nombra un canal que ya no existe.
+ *
+ *   node --test scripts/pruebas/asistente-cobertura.test.mjs
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const require = createRequire(import.meta.url);
+const raiz = join(import.meta.dirname, '..', '..');
+const { EXIGE } = require(join(raiz, 'electron/seguridad/canales.js'));
+const { LECTURA, MANUAL, PENDIENTE, PANTALLA, EQUIVALE = {} } = require(join(raiz, 'electron/asistente/cobertura.js'));
+
+/**
+ * Ruta completa de cada función de preload → canal que invoca:
+ * «electronAPI.actualizarProducto» → «sp-update-product»,
+ * «wybix.produccion.cancelar» → «produccion:cancelar». Con la ruta completa,
+ * dos funciones que se llaman igual en áreas distintas no se confunden.
+ */
+function funcionesDePreload() {
+  const t = readFileSync(join(raiz, 'electron/preload.js'), 'utf8');
+  const out = new Map();
+  const inicioWybix = t.indexOf("exposeInMainWorld('wybix'");
+  /* Las áreas de window.wybix: «    produccion: {» (cuatro espacios). */
+  const areas = [...t.matchAll(/^ {4}(\w+): \{\s*$/gm)].filter((m) => m.index > inicioWybix).map((m) => ({ i: m.index, area: m[1] }));
+  /* «x: (p) => invoke('canal')» y también «x: p => invoke('canal')». */
+  const re = /(\w+)\s*:\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>\s*(?:\{\s*(?:return\s+)?)?invoke\(\s*'([^']+)'/g;
+  let m;
+  while ((m = re.exec(t))) {
+    if (inicioWybix < 0 || m.index < inicioWybix) { out.set(`electronAPI.${m[1]}`, m[2]); continue; }
+    const area = areas.filter((a) => a.i < m.index).pop()?.area;
+    out.set(area ? `wybix.${area}.${m[1]}` : `wybix.${m[1]}`, m[2]);
+  }
+  return out;
+}
+
+/** Lo que llaman los planes, con su ruta: «electronAPI.x» o «wybix.area.x». */
+function apisDeLosPlanes() {
+  const dir = join(raiz, 'electron/asistente/acciones');
+  const usadas = new Set();
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+    const t = readFileSync(join(dir, f), 'utf8');
+    for (const m of t.matchAll(/['"`]((?:electronAPI|wybix)\.[\w.]+)['"`]/g)) usadas.add(m[1]);
+  }
+  return usadas;
+}
+
+/** «pantalla.cobrar»: planes que ejecuta AsistenteService con un servicio de la pantalla. */
+function pantallaDeLosPlanes() {
+  const dir = join(raiz, 'electron/asistente/acciones');
+  const usadas = new Set();
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+    for (const m of readFileSync(join(dir, f), 'utf8').matchAll(/['"`]pantalla\.(\w+)['"`]/g)) usadas.add(m[1]);
+  }
+  return usadas;
+}
+
+function calcular() {
+  const preload = funcionesDePreload();
+  const cubiertos = new Set();
+  for (const fn of apisDeLosPlanes()) { const c = preload.get(fn); if (c && EXIGE[c]) cubiertos.add(c); }
+  for (const fn of pantallaDeLosPlanes()) { const c = PANTALLA[fn]; if (c && EXIGE[c]) cubiertos.add(c); }
+  /* Lo mismo que otro canal ya cubierto. */
+  for (const [c, igual] of Object.entries(EQUIVALE)) if (EXIGE[c] && cubiertos.has(igual)) cubiertos.add(c);
+  const pendientes = Object.values(PENDIENTE).flat();
+  return { cubiertos, pendientes };
+}
+
+test('cobertura: cada canal protegido está decidido (lo hace el asistente, es lectura, manual con motivo o pendiente)', () => {
+  const { cubiertos, pendientes } = calcular();
+  const listados = [...LECTURA, ...Object.keys(MANUAL), ...pendientes];
+
+  const equivaleSinCubrir = Object.entries(EQUIVALE).filter(([c, igual]) => !EXIGE[c] || !cubiertos.has(igual)).map(([c]) => c);
+  assert.deepEqual(equivaleSinCubrir, [], 'EQUIVALE apunta a un canal que el asistente no cubre (o ya no existe)');
+
+  const repetidos = listados.filter((c, i) => listados.indexOf(c) !== i);
+  assert.deepEqual(repetidos, [], 'un canal va en una sola lista');
+
+  const fantasma = listados.filter((c) => !EXIGE[c]);
+  assert.deepEqual(fantasma, [], 'la lista nombra canales que ya no existen en canales.js');
+
+  const sinDecidir = Object.keys(EXIGE).filter((c) => !cubiertos.has(c) && !listados.includes(c));
+  assert.deepEqual(sinDecidir, [], 'canales nuevos sin decidir: agrégalos a electron/asistente/cobertura.js');
+
+  const yaCubiertos = pendientes.filter((c) => cubiertos.has(c));
+  assert.deepEqual(yaCubiertos, [], 'ya los hace el asistente: sácalos de PENDIENTE');
+
+  const manualPeroHecho = Object.keys(MANUAL).filter((c) => cubiertos.has(c));
+  assert.deepEqual(manualPeroHecho, [], 'están como MANUAL pero el asistente los hace: decide cuál es');
+
+  const sinMotivo = Object.entries(MANUAL).filter(([, m]) => String(m || '').trim().length < 10).map(([c]) => c);
+  assert.deepEqual(sinMotivo, [], 'cada canal MANUAL dice por qué');
+
+  const acciones = cubiertos.size + pendientes.length;
+  console.log(`   asistente: ${cubiertos.size} de ${acciones} acciones (${Math.round((cubiertos.size / acciones) * 100)}%) · ` +
+    `${Object.keys(MANUAL).length} manuales a propósito · ${LECTURA.length} de lectura`);
+  for (const [area, cs] of Object.entries(PENDIENTE)) if (cs.length) console.log(`   pendiente ${area}: ${cs.length}`);
+});
+
+test('cobertura: cada plan llama a una función que existe en preload y está protegida', () => {
+  const preload = funcionesDePreload();
+  const sinCanal = [...apisDeLosPlanes()].filter((fn) => !preload.has(fn));
+  /* Funciones del asistente mismo (apodos, preferencias) no son canales del negocio. */
+  const propias = new Set(['electronAPI.asistenteAlias', 'electronAPI.asistenteAliasOlvidar']);
+  assert.deepEqual(sinCanal.filter((fn) => !propias.has(fn)), [], 'un plan llama a algo que preload no expone');
+
+  /* «pantalla.x»: declarado en PANTALLA y atendido por AsistenteService. */
+  const servicio = readFileSync(join(raiz, 'src/core/asistente.service.ts'), 'utf8');
+  for (const fn of pantallaDeLosPlanes()) {
+    assert.ok(PANTALLA[fn], `pantalla.${fn} no está en PANTALLA (cobertura.js)`);
+    assert.ok(EXIGE[PANTALLA[fn]], `pantalla.${fn} apunta a un canal sin protección`);
+    assert.match(servicio, new RegExp(`\\b${fn}\\s*:\\s*\\(`), `AsistenteService no atiende pantalla.${fn}`);
+  }
+});
+
+/* Las acciones por REGLA no pasan por el clasificador: su banco de variantes
+   (electron/asistente/lenguaje/frases-reglas.txt) se mide aquí. */
+test('las reglas entienden sus variantes (banco frases-reglas.txt)', async () => {
+  const { medir, META } = await import('../asistente/medir-reglas.mjs');
+  const r = medir();
+  const fallas = r.porIntent.flatMap((g) => g.fallas.map((x) => `${g.intent} ← «${x.frase}» (dio ${x.dio})`));
+  assert.ok(r.pct >= META, `reglas: ${r.bien}/${r.total}\n${fallas.join('\n')}`);
+  for (const g of r.porIntent) assert.ok(g.frases >= 3, `${g.intent}: menos de 3 variantes en el banco`);
+});

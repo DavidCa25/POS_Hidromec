@@ -52,8 +52,59 @@ module.exports = (h) => ({
       datos: filas.slice(0, 8).map((f) => ({ etiqueta: f.proveedor, valor: h.dinero(f.total) })) });
   },
 
+  /**
+   * «Compré 24 cocas a 12 a Coca-Cola en efectivo». Costo SIN IVA por pieza,
+   * como en Registrar compra. sp_register_purchase recalcula el precio de
+   * venta con el margen de cada renglón: aquí se manda el margen que DEJA el
+   * precio de ahora; si el costo nuevo lo pasa, el precio sube a costo + IVA
+   * y la tarjeta lo dice.
+   */
   async 'compra.registrar'(it) {
     const prov = h.v(it, 'proveedor') ? await h.proveedor(h.v(it, 'proveedor')) : null;
-    return h.ir(`Te llevo a Registrar compra${prov ? ` (proveedor ${prov.nombre})` : ''}: agregas los productos con su costo y la existencia sube sola.`, '/dashboard/registrarCompra');
+    const rs = h.v(it, 'renglones') || [];
+    if (!rs.length) {
+      return h.ir(`Te llevo a Registrar compra${prov ? ` (proveedor ${prov.nombre})` : ''}: agregas los productos con su costo y la existencia sube sola. También me lo puedes dictar: «compré 24 cocas a 12 a Coca-Cola».`, '/dashboard/registrarCompra');
+    }
+    if (!prov) return h.msg('¿A qué proveedor se lo compraste?', { esperando: { intent: it.intent, slots: it.slots, falta: 'proveedor' } });
+    const costos = h.v(it, 'costos') || [];
+    const lineas = [];
+    for (let i = 0; i < rs.length; i++) {
+      const p = await h.producto(rs[i].productId);
+      if (!p) continue;
+      const costo = costos.length ? Number(costos[i]) : Number(p.cost) || 0;
+      if (!(costo > 0)) return h.msg(`¿A cuánto te dejaron ${p.nombre}? Dímelo así: «${h.num(rs[i].cantidad)} ${p.nombre.toLowerCase()} a 12».`);
+      const objeto = String(p.objeto_impuesto || '02') === '02';
+      const tasa = objeto ? (p.tasa_iva == null ? 0.16 : Number(p.tasa_iva)) : 0;
+      const conIva = costo * (1 + tasa);
+      /* El margen que deja el precio de ahora (sp_register_purchase lo usa). */
+      const margen = p.sellable === false || p.sellable === 0 ? 0 : Math.max(0, Math.min(999.99, Math.round((Number(p.price) / conIva - 1) * 10000) / 100));
+      const nuevoPrecio = Math.round(conIva * (1 + margen / 100) * 100) / 100;
+      lineas.push({ p, cantidad: Number(rs[i].cantidad), costo, tasa, margen, nuevoPrecio, dicho: costos.length > 0 });
+    }
+    if (!lineas.length) return h.msg('No encontré esos productos.');
+    const subtotal = h.r2(lineas.reduce((a, l) => a + l.costo * l.cantidad, 0));
+    const iva = h.r2(lineas.reduce((a, l) => a + l.costo * l.cantidad * l.tasa, 0));
+    const total = h.r2(subtotal + iva);
+    const metodo = h.v(it, 'metodo') || 'CREDITO';
+    const nombreMetodo = { CREDITO: 'A crédito (cuenta por pagar)', EFECTIVO: 'Efectivo de la caja', TRANSFERENCIA: 'Transferencia', TARJETA: 'Tarjeta' }[metodo] || metodo;
+    const vista = lineas.map((l) => ({ etiqueta: `${h.num(l.cantidad)} × ${l.p.nombre}`, valor: `${h.dinero(l.costo)} c/u${l.dicho ? '' : ' (costo anterior)'} · ${h.dinero(l.costo * l.cantidad)}` }));
+    vista.push({ etiqueta: 'Subtotal', valor: h.dinero(subtotal) }, { etiqueta: 'IVA', valor: h.dinero(iva) }, { etiqueta: 'Total', valor: h.dinero(total) },
+               { etiqueta: 'Proveedor', valor: prov.nombre }, { etiqueta: 'Pago', valor: nombreMetodo });
+    const avisos = ['La existencia sube y el costo de cada producto queda en el de esta compra.'];
+    for (const l of lineas) {
+      if (Math.abs(l.nuevoPrecio - Number(l.p.price)) > 0.01) avisos.push(`${l.p.nombre}: el precio de venta pasa de ${h.dinero(l.p.price)} a ${h.dinero(l.nuevoPrecio)} (el costo nuevo con IVA ya no cabe en el precio).`);
+    }
+    if (metodo === 'EFECTIVO') avisos.push('Sale del cajón: necesita la caja abierta y entra al corte.');
+    const hoy = await h.uno(`SELECT TOP 1 id, total FROM dbo.purchase WHERE supplier_id = @p AND CAST(datee AS DATE) = CAST(GETDATE() AS DATE) ORDER BY id DESC;`,
+      [['p', h.sql.Int, prov.id]]).catch(() => null);
+    if (hoy) avisos.unshift(`Hoy ya hay una compra de ${prov.nombre} por ${h.dinero(hoy.total)} (folio ${hoy.id}). Confirma solo si es otra.`);
+    return h.msg('Esta compra voy a registrar:', { plan: h.plan('compra.registrar', {
+      titulo: `Compra a ${prov.nombre} · ${h.dinero(total)}`, vista, avisos,
+      ejecutar: { api: 'electronAPI.registerPurchase', payload: {
+        supplier_id: prov.id, tax_rate: subtotal > 0 ? Math.round((iva / subtotal) * 10000) / 10000 : 0.16, tax_amount: iva, subtotal, total,
+        payment_method: metodo, register_id: h.cajaEquipo(), apply_payment_id: null, socio_pago_id: null,
+        detalles: lineas.map((l) => ({ product_id: l.p.id, quantity: l.cantidad, unit_price: l.costo, profit_percent: l.margen, presentation_id: null })) } },
+      permiso: 'INVENTARIO_OPERAR',
+    }) });
   },
 });

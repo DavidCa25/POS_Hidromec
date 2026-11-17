@@ -92,8 +92,8 @@ function crearAsistente(d) {
     if (!forzar && Date.now() - cat.en < 2 * 60_000) return cat;
     const db = await pool();
     const leer = async (texto) => { try { return (await db.request().query(texto)).recordset || []; } catch { return []; } };
-    const [productos, categorias, clientes, proveedores, profesionales, conceptos, usuarios, apodos] = await Promise.all([
-      leer(`SELECT id, nombre, stock, inventory_mode FROM dbo.products WHERE active = 1;`),
+    const [productos, categorias, clientes, proveedores, profesionales, conceptos, usuarios, apodos, socios, estaciones] = await Promise.all([
+      leer(`SELECT id, nombre, stock, inventory_mode, bar_code, part_number FROM dbo.products WHERE active = 1;`),
       leer(`SELECT id, namee AS nombre FROM dbo.CAT_categories ORDER BY namee;`),
       leer(`SELECT id, customerName AS nombre FROM dbo.customers WHERE active = 1;`),
       leer(`SELECT id, nombre FROM dbo.CAT_suppliers WHERE ISNULL(activo, 1) = 1;`),
@@ -101,6 +101,10 @@ function crearAsistente(d) {
       leer(`SELECT id, name AS nombre FROM dbo.expense_categories WHERE active = 1 ORDER BY sort_order, name;`),
       leer(`SELECT id, usuario AS nombre FROM dbo.users WHERE active = 1;`),
       store.apodos(),
+      /* Socios (0079): solo los activos; sin la tabla, ninguno. */
+      leer(`SELECT id, nombre FROM dbo.socios WHERE activo = 1;`),
+      /* Estaciones de preparación (Hospitality): «las bebidas van a la barra». */
+      leer(`SELECT id, nombre FROM dbo.prep_stations WHERE activa = 1;`),
     ]);
     /* Un apodo es otro nombre del mismo producto o persona: entra al catálogo
        con las palabras del apodo y el nombre real (así se contesta con él). */
@@ -110,7 +114,7 @@ function crearAsistente(d) {
       .map((a) => ({ ...prepararCatalogo([{ id: a.refId, nombre: a.alias }])[0], nombre: nombreDe[tipo].get(a.refId), apodo: a.alias })).filter((x) => x.tokens);
     cat = {
       en: Date.now(),
-      productos: [...prepararCatalogo(productos.map((p) => ({ id: p.id, nombre: p.nombre,
+      productos: [...prepararCatalogo(productos.map((p) => ({ id: p.id, nombre: p.nombre, bar_code: p.bar_code, part_number: p.part_number,
         nota: p.inventory_mode === 'DIRECT' ? `${Number(p.stock) || 0}` : undefined }))), ...conApodo('producto')],
       categorias,
       personas: [...prepararCatalogo([
@@ -120,6 +124,8 @@ function crearAsistente(d) {
       ]), ...['cliente', 'proveedor', 'profesional'].flatMap((t) => conApodo(t).map((x) => ({ ...x, tipo: t })))],
       conceptos,
       usuarios,
+      socios,
+      estaciones,
       apodos: apodos.map((a) => ({ ...a, nombre: nombreDe[a.tipo]?.get(a.refId) || null })),
     };
     return cat;
@@ -209,7 +215,7 @@ function crearAsistente(d) {
     detener() { clearTimeout(arranque); clearInterval(timer); clearTimeout(prontoT); timer = arranque = null; },
   };
 
-  const acciones = crearAcciones({ sql, pool, sensores, listarHallazgos, sistema: () => leerSistema(),
+  const acciones = crearAcciones({ sql, pool, sensores, listarHallazgos, sistema: () => leerSistema(), equipo: () => d.equipo?.() || null, whatsappConfig: () => d.whatsappConfig?.(), multi: () => d.multi?.() ?? null, eventos: () => d.eventos?.() ?? [], empresas: () => d.empresas?.() ?? null,
                                    apodos: { listar: async () => (await cargarCatalogo()).apodos },
                                    preferencias: { guardar: (u, c) => store.guardarPreferencias(u, c), olvidar: (u) => store.olvidarPreferencias(u) } });
 

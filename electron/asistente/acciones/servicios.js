@@ -3,6 +3,17 @@
    membresías y órdenes de servicio. */
 
 module.exports = (h) => {
+  /* ------------------------------------------------ ayudas de órdenes */
+  const ESTADO_ORDEN = { BORRADOR: 'borrador', ABIERTA: 'abierta', EN_PROCESO: 'en proceso', TERMINADA: 'terminada', ENTREGADA: 'entregada', CANCELADA: 'cancelada' };
+  /** La orden con su testigo de versión (0x…): el canal rechaza si alguien la cambió después. */
+  const orden = (id) => h.uno(`
+    SELECT o.id, o.folio, o.status, o.customer_id, c.customerName AS cliente, o.customer_asset_id, o.reported_issue, o.diagnosis,
+           o.promised_at, o.notes, CONVERT(VARCHAR(18), o.rowver, 1) AS rowver
+      FROM dbo.service_orders o LEFT JOIN dbo.customers c ON c.id = o.customer_id WHERE o.id = @id;`, [h.id(id)]);
+  const noOrden = (id) => h.msg(`No encuentro la orden ${id}.`);
+  const local0 = (iso, dias = 0) => { const [y, m, d] = String(iso).split('-').map(Number); const x = new Date(y, m - 1, d + dias); return local(x); };
+  const DIA = ['', 'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
   /** «2026-11-15T17:00:00» en hora local: así lo lee el canal de citas. */
   const local = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
   const profesionales = () => h.q('SELECT id, full_name AS nombre FROM dbo.professionals WHERE active = 1 ORDER BY full_name;');
@@ -188,6 +199,296 @@ module.exports = (h) => {
                                                valor: `${String(f.status).toLowerCase()}${f.promised_at ? ` · para el ${h.fechaCorta(new Date(f.promised_at).toISOString())}` : ''}` })),
         opciones: [{ etiqueta: 'Abrir órdenes', intent: 'ir_a', params: { ruta: '/dashboard/ordenes-de-servicio', etiqueta: 'Órdenes de servicio' } }],
         tono: atrasadas.length ? 'atencion' : 'normal' });
+    },
+
+    /* ============================================== ÓRDENES DE SERVICIO */
+    async 'orden.crear'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const reportado = h.v(it, 'reportado');
+      return h.msg('Esta orden voy a abrir:', { plan: h.plan('orden.crear', {
+        titulo: `Orden nueva · ${c.nombre}`,
+        vista: [{ etiqueta: 'Cliente', valor: c.nombre }, { etiqueta: 'Lo que reporta', valor: reportado || '— (lo anotas después)' }],
+        ejecutar: { api: 'electronAPI.serviciosOrdenCrear', payload: { clienteId: c.id, activoId: null, reportado: reportado || null, prometidaPara: null,
+                                                                        notas: null, cajaId: h.cajaEquipo(), estado: 'ABIERTA' } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.estado'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      const estado = h.v(it, 'estado');
+      if (o.status === estado) return h.msg(`La orden ${o.folio} ya está ${ESTADO_ORDEN[estado]}.`);
+      if (o.status === 'CANCELADA' || o.status === 'ENTREGADA') return h.msg(`La orden ${o.folio} ya está ${ESTADO_ORDEN[o.status]}: no cambia.`);
+      const avisos = estado === 'ENTREGADA' ? ['Para entregarla tiene que estar cobrada (o registrada a crédito).']
+        : estado === 'TERMINADA' ? ['Necesita al menos un renglón marcado como hecho.'] : [];
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('orden.estado', {
+        titulo: `Orden ${o.folio} · ${ESTADO_ORDEN[estado]}`,
+        vista: [{ etiqueta: 'Cliente', valor: o.cliente || '—' }, { etiqueta: 'Estado', valor: `${ESTADO_ORDEN[o.status]} → ${ESTADO_ORDEN[estado]}` }],
+        avisos, ejecutar: { api: 'electronAPI.serviciosOrdenEstado', payload: { id: Number(o.id), estado, rowver: o.rowver } }, permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.autorizar'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      const quien = h.v(it, 'autoriza') || o.cliente || 'El cliente';
+      const via = h.v(it, 'via') || 'MOSTRADOR';
+      return h.msg('Esta autorización voy a registrar:', { plan: h.plan('orden.autorizar', {
+        titulo: `Orden ${o.folio} autorizada`,
+        vista: [{ etiqueta: 'Autoriza', valor: quien }, { etiqueta: 'Por', valor: { TELEFONO: 'teléfono', WHATSAPP: 'WhatsApp', MOSTRADOR: 'en mostrador' }[via] || via }],
+        avisos: ['Queda autorizado el presupuesto de ahora: si después se agrega algo, se vuelve a pedir.'],
+        ejecutar: { api: 'electronAPI.serviciosOrdenAutorizar', payload: { id: Number(o.id), autorizaNombre: quien, via, rowver: o.rowver } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.cancelar'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      if (o.status === 'CANCELADA') return h.msg(`La orden ${o.folio} ya estaba cancelada.`);
+      const motivo = h.v(it, 'motivo');
+      if (!motivo) return h.msg('¿Por qué se cancela?', { esperando: { intent: it.intent, slots: it.slots, falta: 'motivo' } });
+      return h.msg('Esta orden voy a cancelar:', { plan: h.plan('orden.cancelar', {
+        titulo: `Cancelar la orden ${o.folio}`,
+        vista: [{ etiqueta: 'Cliente', valor: o.cliente || '—' }, { etiqueta: 'Motivo', valor: motivo }],
+        ejecutar: { api: 'electronAPI.serviciosOrdenCancelar', payload: { id: Number(o.id), motivo, rowver: o.rowver } }, permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.diagnostico'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      const diagnostico = h.v(it, 'diagnostico');
+      return h.msg('Esto voy a anotar:', { plan: h.plan('orden.diagnostico', {
+        titulo: `Diagnóstico de la orden ${o.folio}`,
+        vista: [{ etiqueta: 'Diagnóstico', valor: `${o.diagnosis ? `«${o.diagnosis}» → ` : ''}«${diagnostico}»` }],
+        ejecutar: { api: 'electronAPI.serviciosOrdenActualizar', payload: { id: Number(o.id), activoId: o.customer_asset_id, reportado: o.reported_issue,
+                                                                             diagnostico, prometidaPara: o.promised_at, notas: o.notes, rowver: o.rowver } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.linea'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto o servicio.');
+      const n = Number(h.v(it, 'cantidad')) || 1;
+      const avisos = o.status === 'ABIERTA' || o.status === 'EN_PROCESO' ? ['Cambia el presupuesto: si ya estaba autorizado, hay que volver a pedir la autorización.'] : [];
+      return h.msg('Esto voy a agregar:', { plan: h.plan('orden.linea', {
+        titulo: `Orden ${o.folio} · ${h.num(n)} × ${p.nombre}`,
+        vista: [{ etiqueta: `${h.num(n)} × ${p.nombre}`, valor: `${h.dinero(p.price)} c/u · ${h.dinero(Number(p.price) * n)}` }, { etiqueta: 'Cliente', valor: o.cliente || '—' }],
+        avisos,
+        ejecutar: { api: 'electronAPI.serviciosLineaAgregar', payload: { ordenId: Number(o.id), productoId: p.id, cantidad: n, profesionalId: null,
+                                                                          precio: Number(p.price), comisionPct: null, notas: null } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    async 'orden.linea_cambiar'(it) {
+      const o = await orden(h.v(it, 'folio'));
+      if (!o) return noOrden(h.v(it, 'folio'));
+      const l = await h.uno(`SELECT TOP 1 id, name_snapshot AS nombre, quantity, unit_price_snapshot AS precio, professional_id, commission_pct_snapshot AS comision, status, notes
+                              FROM dbo.service_order_lines WHERE order_id = @o AND product_id = @p AND status <> 'CANCELADA' ORDER BY line_no;`,
+        [['o', h.sql.Int, o.id], ['p', h.sql.Int, h.v(it, 'producto')]]);
+      if (!l) return h.msg(`La orden ${o.folio} no tiene ese renglón.`);
+      const estado = h.v(it, 'estado'), precio = h.v(it, 'precio');
+      const ESTADO_LINEA = { PENDIENTE: 'pendiente', EN_PROCESO: 'en proceso', HECHA: 'hecha', CANCELADA: 'cancelada' };
+      const vista = estado ? [{ etiqueta: l.nombre, valor: `${ESTADO_LINEA[l.status] || l.status} → ${ESTADO_LINEA[estado]}` }]
+        : [{ etiqueta: `${l.nombre} (precio)`, valor: `${h.dinero(l.precio)} → ${h.dinero(precio)}` }];
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('orden.linea_cambiar', {
+        titulo: `Orden ${o.folio} · ${l.nombre}`, vista,
+        ejecutar: { api: 'electronAPI.serviciosLineaActualizar', payload: { lineaId: Number(l.id), cantidad: Number(l.quantity), precio: precio ?? Number(l.precio),
+                                                                             profesionalId: l.professional_id, comisionPct: l.comision, estado: estado || l.status, notas: l.notes } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    /* «Llegó doña Mary a su cita»: la cita de hoy pasa a orden. */
+    async 'cita.orden'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const a = await h.uno(`SELECT TOP 1 a.id, a.starts_at, p.nombre AS servicio FROM dbo.appointments a LEFT JOIN dbo.products p ON p.id = a.service_product_id
+                              WHERE a.customer_id = @c AND a.service_order_id IS NULL AND a.status NOT IN ('CANCELADA', 'NO_ASISTIO')
+                                AND CAST(a.starts_at AS DATE) = CAST(GETDATE() AS DATE) ORDER BY a.starts_at;`, [['c', h.sql.Int, c.id]]).catch(() => null);
+      if (!a) return h.msg(`${c.nombre} no tiene cita hoy pendiente de atender.`);
+      return h.msg('Esta cita voy a pasar a orden:', { plan: h.plan('cita.orden', {
+        titulo: `Atender a ${c.nombre}`,
+        vista: [{ etiqueta: 'Cita', valor: `${h.horaTexto(a.starts_at)}${a.servicio ? ' · ' + a.servicio : ''}` }, { etiqueta: 'Cliente', valor: c.nombre }],
+        avisos: ['Se abre la orden con el servicio de la cita; ahí se cobra.'],
+        ejecutar: { api: 'electronAPI.serviciosCitaAOrden', payload: { id: Number(a.id), cajaId: h.cajaEquipo() } }, permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    /* =================================== CATÁLOGO DE SERVICIOS Y GIRO */
+    async 'servicio.crear'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim();
+      if (!nombre) return h.msg('¿Cómo se llama el servicio?');
+      const ya = await h.uno('SELECT TOP 1 nombre FROM dbo.products WHERE nombre = @n AND active = 1;', [['n', h.sql.NVarChar(100), nombre]]);
+      if (ya) return h.msg(`Ya existe «${ya.nombre}».`);
+      const precio = h.v(it, 'precio'), dur = h.v(it, 'duracion');
+      return h.msg('Este servicio voy a crear:', { plan: h.plan('servicio.crear', {
+        titulo: `Servicio nuevo · ${nombre}`,
+        vista: [{ etiqueta: 'Servicio', valor: nombre }, { etiqueta: 'Precio', valor: precio != null ? h.dinero(precio) : 'sin precio (se pone después)' },
+                { etiqueta: 'Duración', valor: dur ? `${dur} minutos` : 'la de siempre' }],
+        ejecutar: { api: 'electronAPI.serviciosGuardarServicio', payload: { productId: null, nombre, precio: precio ?? 0, clave: null, categoriaId: null,
+          claveProdServ: null, claveUnidad: null, tasaIva: null, duracionMinutos: dur ?? null, requiereProfesional: true, comisionPct: null, agendable: true, notas: null } },
+        permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    async 'servicio.activar'(it) {
+      const s = await h.uno('SELECT p.id, p.nombre, p.active FROM dbo.services s JOIN dbo.products p ON p.id = s.product_id WHERE s.product_id = @id;', [h.id(h.v(it, 'producto'))]);
+      if (!s) return h.msg('Ese no es un servicio del catálogo.');
+      const activo = !!h.v(it, 'activo');
+      if (!!s.active === activo) return h.msg(`«${s.nombre}» ya está ${activo ? 'activo' : 'desactivado'}.`);
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('servicio.activar', {
+        titulo: `${activo ? 'Activar' : 'Desactivar'} «${s.nombre}»`, vista: [{ etiqueta: 'Estado', valor: `${s.active ? 'activo' : 'desactivado'} → ${activo ? 'activo' : 'desactivado'}` }],
+        avisos: activo ? [] : ['Deja de ofrecerse en la agenda y en Venta; lo ya registrado se queda.'],
+        ejecutar: { api: 'electronAPI.serviciosActivarServicio', payload: { productId: s.id, activo } }, permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    async 'servicio.giro'(it) {
+      const preset = h.v(it, 'preset');
+      const nombres = { TALLER_AUTOMOTRIZ: 'Taller automotriz', BELLEZA: 'Belleza y barbería', REPARACION_ELECTRONICA: 'Reparación de electrónicos', MANTENIMIENTO: 'Mantenimiento y servicios técnicos' };
+      return h.msg('Así voy a configurar Servicios:', { plan: h.plan('servicio.giro', {
+        titulo: `Giro de servicios · ${nombres[preset] || preset}`, vista: [{ etiqueta: 'Giro', valor: nombres[preset] || preset }],
+        avisos: ['Cambia cómo se llaman las cosas (orden, cita, vehículo, mascota) y enciende lo que ese giro usa.'],
+        ejecutar: { api: 'electronAPI.serviciosElegirGiro', args: [preset] }, permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'activo.crear'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const clase = h.v(it, 'clase') || 'OTRO', etiqueta = h.v(it, 'etiqueta'), ident = h.v(it, 'identificador'), anio = h.v(it, 'anio');
+      const nombreClase = { VEHICULO: 'Vehículo', MASCOTA: 'Mascota', EQUIPO: 'Equipo', INMUEBLE: 'Inmueble', OTRO: 'Otro' }[clase];
+      return h.msg('Esto voy a registrar:', { plan: h.plan('activo.crear', {
+        titulo: `${nombreClase} de ${c.nombre}`,
+        vista: [{ etiqueta: nombreClase, valor: etiqueta || '—' }, ...(ident ? [{ etiqueta: 'Placas / identificador', valor: ident }] : []),
+                ...(anio ? [{ etiqueta: 'Año', valor: String(anio) }] : []), { etiqueta: 'Cliente', valor: c.nombre }],
+        ejecutar: { api: 'electronAPI.serviciosGuardarActivo', payload: { id: null, clienteId: c.id, clase, etiqueta: etiqueta || nombreClase, identificador: ident,
+                                                                           identificadorDos: null, marca: null, modelo: null, anioOEdad: anio, color: null, notas: null } },
+        permiso: 'SERVICIOS_OPERAR',
+      }) });
+    },
+
+    /* ==================================================== PROFESIONALES */
+    async 'profesional.alta'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim();
+      if (!nombre) return h.msg('¿Cómo se llama?');
+      const ya = await h.uno('SELECT TOP 1 full_name, active FROM dbo.professionals WHERE full_name = @n;', [['n', h.sql.NVarChar(120), nombre]]);
+      if (ya) return h.msg(ya.active ? `${ya.full_name} ya está en la lista de profesionales.` : `${ya.full_name} existe pero está desactivado: dime «activa a ${ya.full_name}».`);
+      const puesto = h.v(it, 'puesto');
+      return h.msg('Así lo voy a registrar:', { plan: h.plan('profesional.alta', {
+        titulo: `Profesional nuevo · ${nombre}`, vista: [{ etiqueta: 'Nombre', valor: nombre }, ...(puesto ? [{ etiqueta: 'Puesto', valor: puesto }] : [])],
+        avisos: ['Después dime qué servicios hace y su horario: «Laura hace cortes», «Laura trabaja de lunes a viernes de 9 a 6».'],
+        ejecutar: { api: 'electronAPI.serviciosGuardarProfesional', payload: { id: null, nombre, puesto: puesto || null, telefono: null, email: null, usuarioId: null, comisionPct: null, color: null } },
+        permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    async 'profesional.activar'(it) {
+      const p = await h.uno('SELECT id, full_name AS nombre, active FROM dbo.professionals WHERE id = @id;', [h.id(h.v(it, 'profesional'))]);
+      if (!p) return h.msg('No encontré a esa persona.');
+      const activo = !!h.v(it, 'activo');
+      if (!!p.active === activo) return h.msg(`${p.nombre} ya está ${activo ? 'activo' : 'desactivado'}.`);
+      const citas = activo ? null : await h.uno(`SELECT COUNT(*) AS n FROM dbo.appointments WHERE professional_id = @id AND starts_at >= GETDATE() AND status NOT IN ('CANCELADA', 'NO_ASISTIO');`, [h.id(p.id)]).catch(() => null);
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('profesional.activar', {
+        titulo: `${activo ? 'Activar' : 'Desactivar'} a ${p.nombre}`, vista: [{ etiqueta: 'Estado', valor: `${p.active ? 'activo' : 'desactivado'} → ${activo ? 'activo' : 'desactivado'}` }],
+        avisos: citas?.n ? [`Tiene ${citas.n} cita(s) próximas: muévelas o cancélalas.`] : [],
+        ejecutar: { api: 'electronAPI.serviciosActivarProfesional', payload: { id: p.id, activo } }, permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Laura hace cortes»: la lista de quién hace ese servicio, con ella (o sin ella). */
+    async 'profesional.servicio'(it) {
+      const prof = await h.uno('SELECT id, full_name AS nombre FROM dbo.professionals WHERE id = @id;', [h.id(h.v(it, 'profesional'))]);
+      const s = await h.uno('SELECT p.id, p.nombre FROM dbo.services s JOIN dbo.products p ON p.id = s.product_id WHERE s.product_id = @id;', [h.id(h.v(it, 'producto'))]);
+      if (!prof || !s) return h.msg(!prof ? 'No encontré a esa persona.' : 'Ese no es un servicio del catálogo.');
+      const lista = await h.q('SELECT professional_id, commission_pct FROM dbo.service_professionals WHERE service_product_id = @id;', [h.id(s.id)]);
+      const quitar = !!h.v(it, 'quitar');
+      const tiene = lista.some((x) => x.professional_id === prof.id);
+      if (quitar && !tiene) return h.msg(`${prof.nombre} no está en «${s.nombre}».`);
+      if (!quitar && tiene) return h.msg(`${prof.nombre} ya hace «${s.nombre}».`);
+      const nueva = quitar ? lista.filter((x) => x.professional_id !== prof.id) : [...lista, { professional_id: prof.id, commission_pct: null }];
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('profesional.servicio', {
+        titulo: `${prof.nombre} ${quitar ? 'deja de hacer' : 'hace'} «${s.nombre}»`,
+        vista: [{ etiqueta: s.nombre, valor: `${lista.length} → ${nueva.length} profesional(es)` }],
+        ejecutar: { api: 'electronAPI.serviciosAsignarProfesionales', payload: { productId: s.id, asignaciones: nueva.map((x) => ({ professionalId: x.professional_id, commissionPct: x.commission_pct })) } },
+        permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Laura trabaja de lunes a viernes de 9 a 6»: esos días se reemplazan, los demás se quedan. */
+    async 'profesional.horario'(it) {
+      const prof = await h.uno('SELECT id, full_name AS nombre FROM dbo.professionals WHERE id = @id;', [h.id(h.v(it, 'profesional'))]);
+      if (!prof) return h.msg('No encontré a esa persona.');
+      const dias = h.v(it, 'dias') || [], desde = h.v(it, 'desde'), hasta = h.v(it, 'hasta');
+      if (!(desde < hasta)) return h.msg('La hora de salida tiene que ser después de la de entrada.');
+      const actual = await h.q(`SELECT weekday, CONVERT(VARCHAR(5), starts_at, 108) AS d, CONVERT(VARCHAR(5), ends_at, 108) AS a FROM dbo.professional_schedules
+                                 WHERE professional_id = @id AND active = 1 ORDER BY weekday, starts_at;`, [h.id(prof.id)]);
+      const franjas = [...actual.filter((x) => !dias.includes(x.weekday)).map((x) => ({ weekday: x.weekday, startsAt: x.d, endsAt: x.a })),
+                       ...dias.map((d) => ({ weekday: d, startsAt: desde, endsAt: hasta }))].sort((a, b) => a.weekday - b.weekday);
+      return h.msg('Así queda su horario:', { plan: h.plan('profesional.horario', {
+        titulo: `Horario de ${prof.nombre}`,
+        vista: [1, 2, 3, 4, 5, 6, 7].map((d) => [d === 1 ? 8 : d, d]).sort((a, b) => a[0] - b[0]).map(([, d]) => {
+          const fs = franjas.filter((f) => f.weekday === d);
+          return { etiqueta: DIA[d], valor: fs.length ? fs.map((f) => `${f.startsAt}–${f.endsAt}`).join(', ') : 'descansa' };
+        }),
+        ejecutar: { api: 'electronAPI.serviciosGuardarHorario', payload: { profesionalId: prof.id, franjas } }, permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    async 'profesional.ausencia'(it) {
+      const prof = await h.uno('SELECT id, full_name AS nombre FROM dbo.professionals WHERE id = @id;', [h.id(h.v(it, 'profesional'))]);
+      if (!prof) return h.msg('No encontré a esa persona.');
+      const f = h.v(it, 'fechas');
+      const motivo = h.v(it, 'motivo') || 'Ausencia';
+      const citas = await h.q(`SELECT a.starts_at, c.customerName AS cliente FROM dbo.appointments a LEFT JOIN dbo.customers c ON c.id = a.customer_id
+                                WHERE a.professional_id = @p AND a.starts_at >= @d AND a.starts_at < DATEADD(DAY, 1, CAST(@h AS DATE)) AND a.status NOT IN ('CANCELADA', 'NO_ASISTIO');`,
+        [['p', h.sql.Int, prof.id], ['d', h.sql.Date, f.desde], ['h', h.sql.Date, f.hasta]]).catch(() => []);
+      return h.msg('Esta ausencia voy a registrar:', { plan: h.plan('profesional.ausencia', {
+        titulo: `${prof.nombre} · ${motivo.toLowerCase()}`,
+        vista: [{ etiqueta: 'Desde', valor: h.diaTexto(h.cuando(f.desde)) }, { etiqueta: 'Hasta', valor: h.diaTexto(h.cuando(f.hasta)) }, { etiqueta: 'Motivo', valor: motivo }],
+        avisos: citas.length ? [`Tiene ${citas.length} cita(s) esos días (${citas.slice(0, 3).map((c) => c.cliente).join(', ')}): muévelas.`] : [],
+        ejecutar: { api: 'electronAPI.serviciosGuardarAusencia', payload: { id: null, profesionalId: prof.id, desde: local0(f.desde), hasta: local0(f.hasta, 1), motivo } },
+        permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    async 'profesional.ausencia_borrar'(it) {
+      const prof = await h.uno('SELECT id, full_name AS nombre FROM dbo.professionals WHERE id = @id;', [h.id(h.v(it, 'profesional'))]);
+      if (!prof) return h.msg('No encontré a esa persona.');
+      const f = h.v(it, 'fechas');
+      const a = await h.uno(`SELECT TOP 1 id, starts_at, ends_at, reason FROM dbo.professional_time_off
+                              WHERE professional_id = @p AND starts_at < DATEADD(DAY, 1, CAST(@d AS DATE)) AND ends_at > CAST(@d AS DATE) ORDER BY starts_at;`,
+        [['p', h.sql.Int, prof.id], ['d', h.sql.Date, f.desde]]);
+      if (!a) return h.msg(`${prof.nombre} no tiene ausencia ese día.`);
+      return h.msg('Esta ausencia voy a quitar:', { plan: h.plan('profesional.ausencia_borrar', {
+        titulo: `${prof.nombre} sí viene`,
+        vista: [{ etiqueta: 'Ausencia', valor: `${h.diaTexto(a.starts_at)} → ${h.diaTexto(new Date(new Date(a.ends_at).getTime() - 1))}` }, { etiqueta: 'Motivo', valor: a.reason || '—' }],
+        avisos: ['Se borra la ausencia completa: si eran varios días, vuelve a registrar los que sí falta.'],
+        ejecutar: { api: 'electronAPI.serviciosBorrarAusencia', payload: { id: Number(a.id) } }, permiso: 'SERVICIOS_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Da de baja el carro de doña Mary». */
+    async 'activo.baja'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const clase = /carro|auto|coche|camioneta|moto|vehiculo/.test(h.v(it, 'claseTexto') || '') ? 'VEHICULO' : /perro|gato|mascota/.test(h.v(it, 'claseTexto') || '') ? 'MASCOTA' : null;
+      const xs = await h.q(`SELECT id, label, identifier FROM dbo.customer_assets WHERE customer_id = @c AND active = 1 ${clase ? 'AND kind = @k' : ''};`,
+        [['c', h.sql.Int, c.id], ...(clase ? [['k', h.sql.NVarChar(20), clase]] : [])]).catch(() => []);
+      if (!xs.length) return h.msg(`${c.nombre} no tiene eso registrado.`);
+      if (xs.length > 1) return h.msg(`${c.nombre} tiene ${xs.length}: ${xs.map((x) => x.label).join(', ')}. Dímelo con su nombre o placas en Servicios.`);
+      return h.msg('Esto voy a dar de baja:', { plan: h.plan('activo.baja', {
+        titulo: `Dar de baja ${xs[0].label}`, vista: [{ etiqueta: 'Cliente', valor: c.nombre }, { etiqueta: 'Activo', valor: `${xs[0].label}${xs[0].identifier ? ' · ' + xs[0].identifier : ''}` }],
+        ejecutar: { api: 'electronAPI.serviciosActivarActivo', payload: { id: Number(xs[0].id), activo: false } }, permiso: 'SERVICIOS_OPERAR',
+      }) });
     },
   };
 };

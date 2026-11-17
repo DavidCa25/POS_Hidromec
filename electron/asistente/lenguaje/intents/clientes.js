@@ -50,4 +50,64 @@ module.exports = [
     ejemplos: ['quien cumple anos hoy', 'cumpleanos de la semana', 'que clientes cumplen este mes', 'hay cumpleanos hoy',
                'quien cumple esta semana'],
   },
+  {
+    /* Regla (lenguaje/edicion.js: edicionPersona), no clasificador. */
+    id: 'cliente.editar', etiqueta: 'Cambiar datos de un cliente', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, campo: { requerido: true }, valor: { requerido: true } },
+    claves: ['telefono', 'correo', 'limite', 'rfc'],
+    ejemplos: [],
+  },
+  /* Fidelización: reglas de lenguaje/fidelizacion.js, no clasificador. */
+  {
+    id: 'puntos.ajustar', etiqueta: 'Ajustar puntos de un cliente', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, cantidad: { requerido: true }, nota: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'club.cancelar', etiqueta: 'Cancelar una membresía', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, nota: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.cerrar', etiqueta: 'Cerrar una rifa', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.sortear', etiqueta: 'Sortear una rifa', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true }, ganadores: {}, suplentes: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cupon.emitir', etiqueta: 'Emitir cupones', tipo: 'accion', permiso: 'CREDITO_CUPONES', soloRegla: true,
+    slots: { textoCupon: { requerido: true }, cantidad: {}, cliente: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'puntos.config', etiqueta: 'Configurar los puntos', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { puntos: {}, cadaMonto: {}, caducaMeses: {}, porVisita: {}, activo: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'cupon.definir', etiqueta: 'Crear un tipo de cupón', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, tipo: { requerido: true }, pct: {}, monto: {}, producto: {}, dias: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.crear', etiqueta: 'Crear una rifa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, premio: {}, hasta: {}, ganadores: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.abrir', etiqueta: 'Abrir una rifa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'sellos.crear', etiqueta: 'Crear una tarjeta de sellos', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true }, sellos: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'club.plan', etiqueta: 'Crear un plan del Club', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, producto: { requerido: true }, limite: {}, precio: {}, dias: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'campana.crear', etiqueta: 'Crear una campaña de premios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { resultado: { requerido: true }, minimo: {}, porCada: {}, textoCupon: {}, textoRifa: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ruleta.casilla', etiqueta: 'Casillas de la ruleta', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { etiqueta: { requerido: true }, peso: {}, borrar: {} }, claves: [], ejemplos: [],
+  },
 ];

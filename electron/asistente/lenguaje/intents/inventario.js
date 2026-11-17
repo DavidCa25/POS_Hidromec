@@ -72,6 +72,27 @@ module.exports = [
       'que {prod} cueste {precio}', 'cambiar precio de {prod}', 'quiero cambiar el precio del {prod}', 'ponle {precio} al {prod}', 'sube el precio',
     ],
   },
+  /* Editar la ficha y darla de baja: los reconoce la regla de
+     lenguaje/edicion.js; qué campos hay y por qué canal se guarda, en
+     acciones/entidades.js. */
+  {
+    id: 'producto.editar', etiqueta: 'Cambiar un dato de un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, campo: { requerido: true }, valor: { requerido: true } },
+    claves: ['costo', 'codigo', 'barras', 'sku', 'nombre', 'iva'],
+    ejemplos: [],
+  },
+  {
+    id: 'producto.impuesto', etiqueta: 'Ponerle o quitarle un impuesto a un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, impuesto: { requerido: true } },
+    claves: ['ieps', 'impuesto'],
+    ejemplos: [],
+  },
+  {
+    id: 'producto.baja', etiqueta: 'Dar de baja un producto', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { producto: { requerido: true } },
+    claves: ['baja', 'desactiva'],
+    ejemplos: [],
+  },
   {
     id: 'producto.crear', etiqueta: 'Dar de alta un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR',
     /* costo y existencia se PREGUNTAN (una vez) pero no son obligatorios:
@@ -100,5 +121,67 @@ module.exports = [
     claves: ['traspaso', 'traspasa', 'manda', 'envia', 'sucursal', 'mover'],
     ejemplos: ['haz un traspaso', 'manda {n} {prod} a la otra sucursal', 'traspasa {prod} a la sucursal', 'enviar mercancia a la sucursal',
                'mover producto entre sucursales', 'traspaso de inventario'],
+  },
+  {
+    /* Reglas de lenguaje/catalogo.js, no clasificador. */
+    id: 'categoria.alta', etiqueta: 'Crear una categoría', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { nombre: { requerido: true } }, claves: ['categoria'], ejemplos: [],
+  },
+  {
+    id: 'marca.alta', etiqueta: 'Crear una marca', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { nombre: { requerido: true } }, claves: ['marca'], ejemplos: [],
+  },
+  {
+    id: 'producto.proveedor', etiqueta: 'Quién surte un producto', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { proveedor: { requerido: true }, producto: { requerido: true }, accion: {} }, claves: ['surte', 'proveedor'], ejemplos: [],
+  },
+  /* Reglas de lenguaje/recetas.js, no clasificador. */
+  {
+    id: 'receta.guardar', etiqueta: 'Receta de un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, lineas: {}, quitarIngrediente: {}, agrega: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'receta.borrar', etiqueta: 'Borrar una receta', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'formula.guardar', etiqueta: 'Fórmula de producción', tipo: 'accion', permiso: 'PRODUCCION_OPERAR', soloRegla: true,
+    slots: { producto: { requerido: true }, lineas: { requerido: true }, rinde: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'formula.quitar', etiqueta: 'Borrar una fórmula de producción', tipo: 'accion', permiso: 'PRODUCCION_OPERAR', soloRegla: true,
+    slots: { producto: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'presentacion.guardar', etiqueta: 'Presentación de un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, nombre: { requerido: true }, factor: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'presentacion.borrar', etiqueta: 'Borrar una presentación', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, presentacion: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'opciones.crear', etiqueta: 'Crear un grupo de opciones', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, opciones: { requerido: true }, rol: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'opciones.producto', etiqueta: 'Grupo de opciones de un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, grupo: { requerido: true }, quitar: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'opciones.borrar', etiqueta: 'Borrar un grupo de opciones', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { grupo: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'producto.dueno', etiqueta: 'De qué socio es un producto', tipo: 'accion', modulo: 'socios', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, socios: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'inventario.reporte', etiqueta: 'Aplicar o descartar un reporte de conteo', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { producto: { requerido: true }, accion: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'inventario.revisado', etiqueta: 'Ya revisé el inventario', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
   },
 ];

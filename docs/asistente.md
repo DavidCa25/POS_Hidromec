@@ -163,7 +163,7 @@ electron/ipc/asistente.js           canales asistente:* (incluye alias y voz)
 src/core/asistente.service.ts       la pantalla; ejecuta los planes confirmados y carga el carrito
 src/core/dictado.service.ts         el dictado sin internet (Vosk)
 src/app/wx-guia/wx-wybix-chat.*     el chat (pestaña «Chat» del panel de Wybix)
-scripts/asistente/                  entrenar.mjs (loop) · giros.mjs (catálogos de prueba) · casos.mjs · humo-sql.mjs
+scripts/asistente/                  entrenar.mjs (loop) · medir-reglas.mjs (acciones por regla) · giros.mjs (catálogos de prueba) · casos.mjs · humo-sql.mjs
 ```
 
 ## Agregar algo que Wybix entienda
@@ -177,6 +177,293 @@ scripts/asistente/                  entrenar.mjs (loop) · giros.mjs (catálogos
 4. Palabras nuevas de jerga a su concepto en `lexico.js`; si hay un patrón
    inconfundible, una señal en `senales.js`.
 5. `npm run asistente:entrenar` hasta cumplir la meta.
+
+## Todo lo que se hace a mano, lo hace el asistente
+
+**La regla:** cada operación que una persona puede hacer en una pantalla, el
+asistente la tiene que poder hacer. Las excepciones son a propósito y con
+motivo.
+
+### El mapa: `electron/asistente/cobertura.js`
+
+Cada canal protegido de `electron/seguridad/canales.js` está en uno de estos
+lugares:
+
+| Dónde | Qué quiere decir |
+|---|---|
+| Lo hace el asistente | **No se escribe a mano: se calcula.** Algún plan de `acciones/` llama a la función de preload que invoca ese canal. |
+| `LECTURA` | El canal solo lee. No es una acción. |
+| `MANUAL` | A propósito no lo hace el asistente, con motivo: un archivo, un secreto, hardware o algo irreversible. |
+| `PENDIENTE` | Falta. Es la lista de trabajo, por área. |
+
+`node --test scripts/pruebas/asistente-cobertura.test.mjs` (dentro de
+`npm run test:asistente`) falla en estos casos:
+
+- un canal nuevo que no está en ninguna parte (nadie decidió);
+- un canal que el asistente ya cubre y sigue en `PENDIENTE`;
+- un canal `MANUAL` que el asistente hace;
+- un canal `MANUAL` sin motivo;
+- la lista nombra un canal que ya no existe.
+
+Además imprime el avance, por ejemplo «asistente: 155 de 155 acciones (100 %)».
+
+**El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
+con la misma función de `preload`. Así pasa por el mismo canal: permisos,
+autorizaciones, candados de sucursal, bitácora, nube e impresión.
+
+Cuando la operación tiene efectos que viven en la pantalla, el plan dice
+`pantalla.<método>` y lo atiende `AsistenteService`. Cada uno se declara en
+`PANTALLA` (`cobertura.js`) con el canal que termina invocando. La prueba
+comprueba que el método exista. Hoy solo hay uno: `pantalla.cobrar` →
+`sp-register-sale`.
+
+### Editar una ficha hablando
+
+Lo reconoce una **regla** en `lenguaje/edicion.js`, no el clasificador. Los
+campos de cada entidad viven en `acciones/entidades.js`: etiqueta, cómo se lee
+el valor actual, validación, permiso y el payload del canal. Agregar un campo
+es una entrada ahí y su forma de decirlo en `edicion.js`.
+
+Hoy, del producto:
+
+| Frase | Qué hace |
+|---|---|
+| «cambia el costo de la concha a 8», «el costo de la concha es 8» | Costo sin IVA. Pide `VER_COSTOS`. La tarjeta muestra cómo queda la ganancia. |
+| «ponle el código de barras 750… a la coca», «quítale el código de barras a…» | Código de barras. Rechaza uno que ya tiene otro producto. |
+| «cambia el SKU de la concha a PAN-001» | Número de parte. |
+| «renombra la concha a Concha de vainilla» | Nombre, con sus acentos y mayúsculas. |
+| «ponle IVA 16 a la coca», «la coca va sin IVA» | 16 %, 8 % o exento. |
+| «ponle IEPS 8% a las papas», «quítale el IEPS a…» | Otros impuestos (`producto:impuestos-guardar`). Uno por cuota pide cuánto trae una pieza. |
+| «da de baja la concha», «ya no vendo la concha» | Baja lógica (`sp-delete-product`). «Dar de baja 5 conchas» sigue siendo merma. |
+
+**El producto también se nombra por su código de barras o su SKU:**
+«cambia el costo del 7501055300846 a 9.50», «ponle 25 pesos al
+7501055300846». El intérprete lo busca antes que por nombre y no lo confunde
+con una cantidad. Si el código lo tienen dos productos, pregunta cuál.
+
+Si falta el valor («cambia el costo de la concha»), pregunta nombrando el
+campo («¿A qué costo, sin IVA?»).
+
+### Caja y ventas hablando
+
+La caja es la de **este equipo** (`device-config` → `register`), la misma que
+usan Venta y Corte. El asistente la recibe como `equipo` en `crearAsistente`.
+
+| Frase | Qué hace |
+|---|---|
+| «abre la caja con 500» | Abre el turno (`sp-open-shift`). Si ya está abierta, lo dice. |
+| «haz el corte, conté 3,250» | Cierra el turno propio (`sp-close-shift`). La tarjeta muestra lo esperado con la misma suma que `sp_close_shift` (fondo + movimientos). Corte ciego para quien no es encargado: no ve lo esperado. El turno de otra persona se cierra en Corte, con PIN. Avisa si parece que no contó el fondo. |
+| «abre el cajón» | Apertura sin venta (`open-cash-drawer`). La autoriza un encargado y queda en bitácora. |
+| «manda el corte por correo» | El último corte de esta caja (`corte:correo-enviar`). |
+| «reimprime el ticket 1234», «… el último ticket» | `print-sale-ticket`. «El último» es la última venta de esta caja. |
+| «devuelve el ticket 120, venía en mal estado», «devuelve 2 cocas del ticket 120» | `sp-refund-sale` con lo que todavía se puede devolver y el motivo, con las mismas etiquetas que la pantalla. La tarjeta anticipa por dónde regresa el dinero. Sin folio o sin motivo, los pregunta. |
+| «cóbrale 2 cocas en efectivo, me dio 100», «cobra 3 conchas con tarjeta» | Cobra desde el chat. La tarjeta trae el total **con las ofertas de hoy** (el mismo motor comercial) y el cambio. Al confirmar, `AsistenteService.cobrar` hace la venta con `SaleService.checkout` en una cuenta aparte: turno, ticket, cajón, premios y cupones, igual que el botón Cobrar. La cuenta abierta en la caja no se toca. Si el total ya no es el de la tarjeta, no cobra. |
+
+Sin forma de pago, «cóbrale 2 cocas» deja la cuenta cargada en Venta. Un
+producto con opciones (tamaño, sabor) también se cobra en Venta.
+
+### Clientes, proveedores, compras y catálogo
+
+| Frase | Qué hace |
+|---|---|
+| «cambia el teléfono de doña Mary a 55…», «el correo de Bimbo es …», «ponle límite de crédito de 2000 a doña Mary», «dale 30 días de crédito a…», «cambia el RFC de…», «renombra al cliente Juan a …» | Ficha del cliente (`sp-update-customer`, con la ficha completa) o del proveedor (`sp-supplier-save`). Regla `edicionPersona` en `edicion.js`; solo entra si la persona existe. Límite y días piden «Crédito y cupones», como la pantalla. |
+| «compré 24 cocas a 12 a Coca-Cola», «llegó el pedido de Bimbo: 30 conchas a 6 y 10 sabritas a 14 en efectivo» | Compra (`sp-register-purchase`). Costo **sin IVA** por pieza; sin costo usa el anterior. Sin forma de pago queda a crédito. `sp_register_purchase` recalcula el precio de venta con el margen de cada renglón: el asistente manda el margen que **deja el precio de ahora**. Si el costo nuevo no cabe, el precio sube a costo + IVA y la tarjeta lo dice. Avisa si hoy ya hay una compra de ese proveedor. |
+| «crea la categoría Lácteos», «agrega la marca Lala» | `sp-add-category`, `sp-add-brand`. Rechaza una que ya existe. |
+| «Bimbo me surte las conchas», «el proveedor principal de la concha es Bimbo», «Bimbo ya no me surte las conchas» | Proveedores del producto (`sp-upsert-product-supplier`, `sp-set-product-default-supplier`, `sp-remove-product-supplier`). Reglas en `lenguaje/catalogo.js`. |
+
+`EQUIVALE` (`cobertura.js`) marca un canal que hace lo mismo que otro ya
+cubierto: el alta rápida de proveedor de Inventario (`sp-add-supplier`) es la
+misma alta que `sp-supplier-save`. La prueba exige que el de la derecha esté
+cubierto.
+
+### Producción, socios, propinas y gastos
+
+| Frase | Qué hace |
+|---|---|
+| «empieza la tanda de conchas», «salieron 48 conchas», «cancela la tanda de conchas» | Tandas (`wybix.produccion.empezar / terminar / cancelar`). Se empieza una planeada (salen los ingredientes), se termina una en proceso y lo que falta es merma: pregunta el motivo. Solo se cancela una planeada. |
+| «Juan retiró 500 de la caja», «Ana aportó 2,000», «le pagué 1,000 a Juan por transferencia» | Movimiento de socio (`socios:movimiento`). Un retiro sin decir cómo sale del cajón. |
+| «la compra 45 la pagó Juan», «el gasto 12 es de Ana», «el gasto 12 lo pagó Juan» | `socios:compra`, `socios:gasto`. Un gasto en efectivo lo pagó el negocio. |
+| «liquida a los socios» | `socios:liquidar` hasta ayer. La tarjeta trae el saldo de cada uno (`sp_socios_resumen`). |
+| «reparte las propinas» | La tarjeta trae el cálculo de `sp_propinas_repartir` sin confirmar; al confirmar, el mismo procedimiento paga y cierra. |
+| «cancela el gasto 12, era de otra sucursal», «crea el concepto de gasto Papelería», «renombra el concepto Luz a Luz y agua», «desactiva el concepto Gasolina» | `egresos:cancelar` (pide el motivo) y `egresos:concepto-guardar`. |
+
+Los socios no están en el catálogo de personas: el intérprete recibe la lista de
+socios activos y la regla (`lenguaje/socios.js`) solo entra si el nombre
+dicho es de uno. «El cajero sacó 300» no es un socio. Sin la aplicación de
+Socios o Propinas encendida, esas frases no se entienden como suyas.
+
+### Servicios
+
+Reglas en `lenguaje/servicios.js`. Solo con Servicios encendido, y solo si la
+persona (cliente o profesional) o el servicio existen: si no, la frase sigue
+su camino («Pedro trabaja de 9 a 6» no es un horario si Pedro no es
+profesional).
+
+| Frase | Qué hace |
+|---|---|
+| «abre una orden para doña Mary: no prende la licuadora» | `servicios:orden-crear` (abierta, en esta caja). |
+| «la orden 12 ya está lista», «la orden 12 está en proceso», «entrega la orden 12» | `servicios:orden-estado`. Entregar pide que esté cobrada. |
+| «el cliente autorizó la orden 12 por teléfono» | `servicios:orden-autorizar` (mostrador, teléfono o WhatsApp). |
+| «cancela la orden 12, ya no lo quiso» | `servicios:orden-cancelar`; sin motivo, lo pregunta. |
+| «el diagnóstico de la orden 12 es: falla el motor» | `servicios:orden-actualizar` con el resto de la orden igual. |
+| «ponle 2 balatas a la orden 12», «el cambio de aceite de la orden 12 ya está hecho / a 350» | `servicios:linea-agregar`, `servicios:linea-actualizar`. |
+| «llegó doña Mary a su cita» | `servicios:cita-a-orden` con su cita de hoy. |
+| «crea el servicio Corte de dama a 250 de 45 minutos», «desactiva el servicio Tinte» | `servicios:guardar-servicio`, `servicios:activar-servicio`. |
+| «mi negocio es una barbería» | `servicios:elegir-giro`. |
+| «registra el carro de doña Mary: Nissan Versa 2018 placas ABC1234» | `servicios:guardar-activo` (vehículo, mascota, equipo o inmueble). |
+| «da de alta a la estilista Paola Ruiz», «desactiva a Laura» | `servicios:guardar-profesional`, `servicios:activar-profesional`. |
+| «Laura hace cortes», «Laura ya no hace tintes» | `servicios:asignar-profesionales` con la lista completa del servicio. |
+| «Laura trabaja de lunes a viernes de 9 a 6», «… los sábados de 10 a 2» | `servicios:guardar-horario`: esos días se reemplazan, los demás se quedan. |
+| «Laura no viene el viernes», «Laura sale de vacaciones del 1 al 15 de diciembre», «siempre sí viene Laura el viernes» | `servicios:guardar-ausencia`, `servicios:borrar-ausencia`. Avisa de sus citas esos días. |
+
+Los cambios a una orden llevan su testigo de versión (`rowver`): si alguien la
+cambió entre la tarjeta y el «Confirmar», el canal lo rechaza.
+
+### Fidelización
+
+Reglas en `lenguaje/fidelizacion.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «ponle 100 puntos a doña Mary porque se le cobró doble», «quítale 50 puntos a doña Mary» | `puntos:ajustar`, con el saldo antes → después. No deja saldo negativo. |
+| «cancela la membresía de doña Mary» | `club:gestionar` (CANCELAR) sobre su membresía activa. |
+| «cierra la rifa de Navidad», «sortea la rifa de Navidad con 3 ganadores» | `raffles:close`, `raffles:draw`. Sortear pide que esté cerrada y es irreversible. |
+| «dale a doña Mary un cupón de 10%», «genera 20 cupones de 2x1» | `coupons:issue` con la definición que coincide por nombre, % o monto. |
+| «da 1 punto por cada 10 pesos», «los puntos caducan a los 12 meses», «apaga los puntos» | `puntos:config-guardar` con la configuración completa y solo ese cambio. |
+
+También se crean: «crea el cupón 10% de descuento, vale 30 días», «crea la rifa
+Navidad, premio una canasta, cierra el 24 de diciembre», «abre la rifa Navidad»,
+«crea la tarjeta de sellos del café: 9 sellos y el 10 gratis», «crea el plan Café
+diario: 1 café al día por 300 al mes» (con su producto de cobro ya creado), «cada
+compra de más de 200 da un cupón de 10%», «por cada 100 pesos un boleto de la rifa
+Navidad» (`loyalty:save-definition`, `raffles:save`, `puntos:tarjeta-guardar`,
+`club:plan-guardar`, `loyalty:save-campaign`).
+
+A propósito manuales: el canje del cupón (lo hace el cobro), escanear el pase
+de la cartera, emitirlo (sale como QR en la pantalla del Club) y girar la ruleta
+(lo hace el cliente).
+
+Casillas de la ruleta: «agrega a la ruleta la casilla Café gratis con peso 2»,
+«… sigue participando con peso 5», «quita de la ruleta la casilla Café gratis»
+(`dynamics:save-segment`; el premio es la recompensa con ese nombre).
+
+### Mesas, comandas, salón y estaciones (Hospitality)
+
+Reglas en `lenguaje/mesas.js`, solo con Hospitality encendido. La mesa se busca
+por su nombre o su número («4», «mesa 4», «terraza 2»).
+
+| Frase | Qué hace |
+|---|---|
+| «abre la mesa 4 para 3», «abre una cuenta para llevar a nombre de Juan» | `cuentas:abrir`. Una mesa abierta no se abre otra vez. |
+| «la mesa 4 pide 2 tacos y una coca», «manda 3 aguas a la mesa 4» | `cuentas:enviar`: el mismo envío que la caja (comanda por estación, impresión). Un producto con opciones se manda desde la caja. |
+| «la mesa 4 pidió la cuenta», «la mesa 4 es de doña Mary», «libera la mesa 4» | `cuentas:estado`, `cuentas:cliente`, `cuentas:liberar` (solo sin consumo). |
+| «la comanda 12 ya está lista», «cancela la comanda 12, se quemó», «reimprime la comanda 12» | `kds:estado` (solo hacia adelante), `comandas:cancelar`, `comandas:reimprimir`. |
+| «crea el área Terraza», «agrega la mesa 10 en la terraza para 4» | `salon:area-guardar`, `salon:mesa-guardar`. |
+| «crea la estación Postres», «el agua de jamaica va a la barra» | `estaciones:guardar`, `estaciones:producto-asignar`. La estación tiene que existir. |
+
+Cerrar la cuenta con la venta (`cuentas:cobrada`) lo hace Venta al cobrar.
+
+### Configuración, asistencia y propinas
+
+Reglas en `lenguaje/config.js`. El usuario tiene que existir.
+
+| Frase | Qué hace |
+|---|---|
+| «desactiva al usuario Pedro», «activa a Pedro» | `users:set-active`. Nadie se desactiva a sí mismo y siempre queda un administrador. |
+| «haz encargado a Pedro», «Pedro ahora es cajero» | `users:update-role`. |
+| «dale a Pedro permiso de devoluciones», «quítale a Pedro el permiso de ver costos» | `users:set-permissions` con la lista ajustable completa (`seguridad/permisos.js`). |
+| «agrega la caja 3», «desactiva la caja 2» | `registers-add`, `registers-set-active` (no con turno abierto). |
+| «enciende Servicios», «apaga la venta suelta», «activa propinas repartidas por horas», «activa asistencia» | `modules:set`; Propinas y Asistencia con su propio canal de activación y valores de inicio. Socios se enciende en su pantalla. |
+| «el giro es panadería» | `negocio:giro-guardar`. |
+| «haz un respaldo ahora», «respalda todos los días a las 11 de la noche», «guarda 30 días de respaldos» | `backup-run-now`, `backup-set-config`. |
+| «checa mi entrada», «salgo a comer», «ya regresé», «checa mi salida» | `asistencia:marcar` del usuario de la sesión. |
+| «el horario de Pedro es de lunes a viernes de 9 a 6 con 30 minutos de comida» | `asistencia:horario-guardar` (esos días se reemplazan). |
+| «corrige la entrada de Pedro de ayer a las 9», «no marques los retardos», «que tengan que checar antes de vender» | `asistencia:corregir`, `asistencia:reglas-guardar`. |
+| «las propinas se reparten por horas» | `propinas:config-guardar` con lo demás igual. |
+
+A propósito manuales: crear un usuario (su contraseña la escribe la persona),
+exportar la base (archivo) y el asistente de Socios.
+
+«El teléfono del negocio es …», «el pie del ticket dice …», «la dirección / el
+nombre / el RFC del negocio es …» van por `update-business-config` con los
+datos completos y ese cambio, igual que la pantalla. (El procedimiento también
+escribe columnas fiscales viejas de `business_config` en nulo; nada las lee:
+la facturación usa `fiscal_config`.)
+
+### Recetas, fórmulas, presentaciones y opciones
+
+Reglas en `lenguaje/recetas.js`. El producto y cada ingrediente tienen que
+existir; sin unidad dicha, se usa la unidad base del ingrediente.
+
+| Frase | Qué hace |
+|---|---|
+| «la hamburguesa lleva 150 gramos de carne, 1 pan y 2 rebanadas de queso», «quítale el queso a la receta de la hamburguesa», «borra la receta de la hamburguesa» | `recipes:save` con la receta completa (un ingrediente dicho otra vez cambia su cantidad, los demás se quedan); `recipes:delete`. |
+| «la fórmula de las conchas: 1 kilo de harina y 200 gramos de azúcar, rinde 20», «borra la fórmula de las conchas» | `produccion:formula-guardar`, `produccion:formula-quitar`. Sin «rinde», usa el de antes o lo pregunta. |
+| «la coca también se vende en caja de 24», «borra la presentación caja de 24 de la coca» | `presentations:save`, `presentations:delete`. |
+| «crea el grupo Tamaño con chico, mediano +5 y grande +10», «el latte lleva el grupo Tamaño», «quítale el grupo Tamaño al latte», «borra el grupo Tamaño» | `modifiers:save` (Tamaño: una, obligatoria; los demás: opcionales), `modifiers:set-product-groups` con la lista completa, `modifiers:delete`. |
+| «las conchas son de Juan», «… de Juan y Ana» | `socios:producto-dueno` (a partes iguales). |
+| «aplica el conteo de la coca», «descarta el reporte de la coca», «ya revisé el inventario» | `inventario:reporte-resolver` (lo que reportó un dispositivo), `license:inventory-review-dismiss`. |
+
+### Menú en línea y plataformas de reparto
+
+Reglas en `lenguaje/menu.js`. Cada cambio manda la configuración completa con
+solo lo dicho cambiado (el procedimiento escribe todo lo que recibe).
+
+| Frase | Qué hace |
+|---|---|
+| «acepta el pedido en línea 12», «acepta el pedido de Juan», «rechaza el pedido 12, no hay gas» | `menu-linea:aceptar` (abre la cuenta y lo manda a preparación), `menu-linea:rechazar` (pide el motivo: el cliente lo ve). |
+| «activa el menú en línea», «ya no recibas pedidos en línea», «el tiempo de entrega es de 30 minutos», «el mensaje del menú es …» | `menu-linea:guardar`. |
+| «la frase / el horario / la dirección del menú es …», «el color del menú es #aa3300» | `menu-linea:diseno-guardar`. |
+| «oculta la concha del menú», «destaca el latte en el menú», «la descripción del latte en el menú es …», «quita la foto de la concha del menú» | `menu-linea:producto-guardar`, `menu-linea:imagen-borrar`. |
+| «confirma la liquidación de Rappi», «cancela la liquidación de Rappi, venía mal», «llegó el depósito de Rappi por 4,500», «el pedido A123 de Rappi es la venta 456», «el canal didi-1 es de DiDi Food» | `plataformas:confirmar`, `cancelar`, `deposito`, `emparejar`, `canal-guardar`. Capturar una liquidación es con el archivo de la plataforma. |
+
+### Más ventas, tickets y ajustes
+
+Reglas en `lenguaje/varios.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «cambia la coca del ticket 120 por una pepsi» | `devoluciones:cambio` (`sp_exchange_sale`): devuelve y se lleva en una operación; la diferencia en efectivo de esta caja. |
+| «corrige la venta 120: eran 3 conchas» | `sp-update-sale` con la venta completa y esa cantidad. Pide «Modificar venta». |
+| «el cigarro suelto sale de la cajetilla de 20» | `venta-suelta:guardar`. |
+| «manda el ticket 120 a juan@correo.com», «imprime el corte», «imprime la devolución 5», «quita el logo del ticket» | `ticket:email`, `ticket:print-document`, `ticket:borrar-logo`. |
+| «da de baja el carro de doña Mary» | `servicios:activar-activo`. |
+| «avisa por WhatsApp cuando el pedido esté listo», «ya no avises de las membresías», «avisa 3 días antes de que venza la membresía» | `whatsapp:config-guardar` con lo demás igual (la configuración se lee de la nube). |
+| «apaga las aprobaciones», «enciende las aprobaciones» | `aprobaciones:politica-cambiar`. |
+| «crea el impuesto Hospedaje 3%», «crea el impuesto IEPS por cuota de 1.64 por litro» | `impuestos:guardar`. |
+| «pon la coca a 15 los martes», «la coca a 15 de 5 a 7», «10% de descuento en panadería los fines de semana», «2x1 en conchas los miércoles», «quita la promoción de la coca» | Promociones (`commercial:save` con la política completa y una promoción más o apagada; reglas en `lenguaje/promos.js`). Sin día, horario, «hoy» u «oferta», «pon la coca a 15» sigue siendo cambiar el precio. Lo que pase del límite de un operador lo autoriza un encargado. |
+
+Pedir y cancelar una aprobación a distancia lo hace la operación misma
+(manuales a propósito).
+
+### Empresas, sucursales y pantallas
+
+Reglas en `lenguaje/equipos.js`.
+
+| Frase | Qué hace |
+|---|---|
+| «crea la empresa Panadería Centro, giro panadería», «sal del grupo de empresas», «desvincula la empresa Panadería Norte», «pídele a Panadería Norte que ponga la concha a 12», «… que dé de alta el pay a 45», «manda 20 cocas al evento Feria de mayo» | `empresas:crear`, `empresas:enlace-salir`, `empresas:desvincular`, `empresas:remota-pedir` (con su catálogo publicado), `transferencias:enviar`. |
+| «crea la sucursal Centro», «crea el evento Feria de mayo del 1 al 5 de mayo» | `cloud:crear-sucursal`. |
+| «enciende Wybix Local Host», «renombra la tablet Mesa 1 a Terraza», «desconecta la tablet Terraza», «la tablet Terraza ahora es de mesero», «quítale el acceso a Pedro en las tablets» | `localhost:activar`, `renombrar`, `revocar`, `cambiar-funcion`, `trabajador-revocar`. |
+
+**Facturar y cancelar CFDI quedan manuales a propósito.** Son irreversibles
+ante el SAT y la pantalla revisa receptor, uso, forma de pago y conceptos antes
+de timbrar. «Factura la venta 120» lleva a Facturar con la venta cargada.
+Cambiar de empresa recarga toda la ventana con otra base: se hace con la
+pastilla de empresa.
+
+### Multisucursal
+
+Reglas en `lenguaje/multi.js`. Las sucursales y los traspasos por recibir se leen de la nube (`cloudSync.multi`, que el asistente recibe como `multi`).
+
+| Frase | Qué hace |
+|---|---|
+| «publica el catálogo a las sucursales», «trae el catálogo de la matriz» | `multi:publicar`, `multi:recibir`. |
+| «que las sucursales puedan cambiar sus precios», «que las sucursales no tengan productos propios» | `multi:reglas-guardar` con la otra regla igual. |
+| «en la sucursal Centro la coca cuesta 18», «en la sucursal Centro no se vende la coca» | `multi:excepciones-guardar` con las demás excepciones de esa sucursal. |
+| «manda 20 cocas a la sucursal Centro», «recibe el traspaso de la matriz», «cancela el traspaso a Centro» | `multi:traspaso-enviar`, `traspaso-recibir` (completo), `traspaso-cancelar`. |
+| «Pedro puede entrar a todas las sucursales», «Pedro solo entra a la sucursal Centro» | `multi:usuario-alcance`. |
+| «desconecta el pago de servicios» | `services:clear`. Las credenciales del proveedor y la recarga quedan manuales. |
 
 ## El loop de entrenamiento
 
@@ -205,6 +492,28 @@ Estado al 2026-11-15: **3,114 frases completas** (retail 2,730 · hospitality
 En cada caja, el intérprete además se reentrena solo con las frases que la
 gente de ese negocio confirmó (`asistente_frases`), y entiende sus apodos
 (`asistente_alias`).
+
+### Las acciones por regla
+
+Las 132 acciones marcadas `soloRegla` no pasan por el clasificador: las
+entiende una regla de `lenguaje/`. El loop de arriba no las mide, así que
+tienen su propio banco: `electron/asistente/lenguaje/frases-reglas.txt`
+(«@ intent» y una forma distinta de decirlo por renglón: cortesías, otro
+orden, sinónimos, sin acentos, «la 4» por «la mesa 4»).
+
+```
+node scripts/asistente/medir-reglas.mjs     cuántas entiende y cuáles no
+```
+
+Usa el intérprete real con un negocio de prueba (21 productos, clientes,
+proveedores, una profesional, usuarios, socios, estaciones) y todos los
+módulos encendidos. `npm run test:asistente` falla si baja de 90 % o si una
+acción tiene menos de 3 variantes. Cuando una variante falla, se amplía la
+regla (no se borra la variante).
+
+Estado al 2026-11-17: **533/533 variantes (100 %), 132/132 acciones**. La
+primera medida dio 386/405 y, con el banco ampliado, 503/533; las fallas se
+cerraron ampliando las reglas.
 
 ## Dictado (opcional)
 

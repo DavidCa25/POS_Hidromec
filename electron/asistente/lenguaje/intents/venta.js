@@ -54,17 +54,85 @@ module.exports = [
                'cuanto sale {n} {prod} con {n} {prod}', 'cuanto seria {n} {prod}', 'total de {n} {prod} y {n} {prod}'],
   },
   {
-    id: 'venta.devolucion', etiqueta: 'Hacer una devolución', tipo: 'pantalla', permiso: 'DEVOLUCIONES',
-    slots: { folio: {} },
-    claves: ['devolucion', 'devolver', 'regresar', 'reembolso', 'cambio', 'devuelve'],
+    /* Con folio arma la devolución (todo el ticket, o lo que se diga de él) y
+       la registra por sp-refund-sale con el motivo; sin folio, lo pregunta. */
+    id: 'venta.devolucion', etiqueta: 'Hacer una devolución', tipo: 'accion', permiso: 'DEVOLUCIONES',
+    slots: { folio: {}, renglones: {}, razon: { requerido: true } },
+    claves: ['devolucion', 'devolver', 'regresar', 'reembolso', 'cambio', 'devuelve', 'reembolsa'],
     ejemplos: ['quiero hacer una devolucion', 'devolucion del ticket {folio}', 'el cliente quiere devolver {prod}', 'reembolsa la venta {folio}',
-               'cambio de producto', 'regresar dinero de la venta {folio}', 'devuelve el ticket {folio}'],
+               'regresar dinero de la venta {folio}', 'devuelve el ticket {folio}', 'devuelve {n} {prod} del ticket {folio}',
+               'devolucion de {n} {prod} de la venta {folio}', 'el ticket {folio} viene en mal estado devuelvelo'],
   },
   {
-    id: 'venta.cobrar', etiqueta: 'Cobrar una venta', tipo: 'pantalla', permiso: 'VENTAS_OPERAR',
-    slots: { renglones: {} },
+    /* Con forma de pago («cóbrale 2 cocas en efectivo») cobra desde el chat
+       con el mismo SaleService.checkout de Venta; sin ella, deja la cuenta
+       cargada en Venta para elegirla ahí. */
+    id: 'venta.cobrar', etiqueta: 'Cobrar una venta', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { renglones: {}, metodo: {}, monto: {} },
     claves: ['cobra', 'cobrale', 'vende', 'vendele', 'cobrar', 'cobrame', 'despacha'],
     ejemplos: ['cobrale {n} {prod}', 'vendele {n} {prod} y {n} {prod}', 'cobra {n} {prod}', 'quiero cobrar {n} {prod}',
-               'hazme una venta de {n} {prod}', 'despacha {n} {prod}', 'cobrame {n} {prod} y {n} {prod}'],
+               'hazme una venta de {n} {prod}', 'despacha {n} {prod}', 'cobrame {n} {prod} y {n} {prod}',
+               'cobrale {n} {prod} en efectivo', 'cobra {n} {prod} con tarjeta', 'vendele {n} {prod} pago con transferencia'],
+  },
+  {
+    id: 'venta.reimprimir', etiqueta: 'Reimprimir un ticket', tipo: 'accion', permiso: 'VENTAS_OPERAR',
+    slots: { folio: {} },
+    claves: ['reimprime', 'reimprimir', 'imprime', 'imprimir', 'reimpresion', 'otra', 'vez', 'copia'],
+    ejemplos: ['reimprime el ticket {folio}', 'imprime otra vez el ticket {folio}', 'vuelve a imprimir el ultimo ticket',
+               'reimprime el ultimo ticket', 'imprime el ticket {folio}', 'sacame una copia del ticket {folio}',
+               'reimpresion del ticket {folio}', 'imprime el ultimo ticket otra vez'],
+  },
+  /* Reglas de lenguaje/varios.js, no clasificador. */
+  {
+    id: 'venta.cambio', etiqueta: 'Cambiar un producto de una venta', tipo: 'accion', permiso: 'DEVOLUCIONES', soloRegla: true,
+    slots: { folio: { requerido: true }, devuelve: { requerido: true }, lleva: { requerido: true }, razon: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'venta.corregir', etiqueta: 'Corregir una venta', tipo: 'accion', permiso: 'MODIFICAR_VENTA', soloRegla: true,
+    slots: { folio: { requerido: true }, renglon: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'venta.suelta', etiqueta: 'Vender suelto de un paquete', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, padre: { requerido: true }, piezas: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.correo', etiqueta: 'Mandar un ticket por correo', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { folio: { requerido: true }, correo: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.imprimir', etiqueta: 'Imprimir un corte o una devolución', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { documento: { requerido: true }, folio: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'ticket.logo_quitar', etiqueta: 'Quitar el logo del ticket', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'activo.baja', etiqueta: 'Dar de baja un activo del cliente', tipo: 'accion', modulo: 'servicios', permiso: 'SERVICIOS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, claseTexto: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'whatsapp.config', etiqueta: 'Avisos por WhatsApp', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { campo: { requerido: true }, valor: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'aprobaciones.politica', etiqueta: 'Aprobaciones desde la app', tipo: 'accion', permiso: 'VENTAS_SUPERVISAR', soloRegla: true,
+    slots: { activas: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'impuesto.crear', etiqueta: 'Crear un impuesto', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, clase: {}, factor: {}, tasa: {}, cuota: {}, unidad: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'servicios_pago.desconectar', etiqueta: 'Desconectar el pago de servicios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'promo.crear', etiqueta: 'Crear una promoción', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { tipo: { requerido: true }, valor: {}, buy: {}, pay: {}, cuando: {}, producto: {}, categoria: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'promo.quitar', etiqueta: 'Quitar una promoción', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { texto: { requerido: true }, producto: {}, categoria: {} }, claves: [], ejemplos: [],
   },
 ];

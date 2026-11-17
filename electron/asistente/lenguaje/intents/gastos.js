@@ -15,4 +15,13 @@ module.exports = [
     ejemplos: ['cuanto he gastado {periodo}', 'gastos del mes', 'en que se me va el dinero', 'cuanto pague de luz', 'resumen de gastos',
                'cuanto gaste {periodo}', 'mis gastos fijos'],
   },
+  {
+    /* Reglas de lenguaje/gastos.js, no clasificador. */
+    id: 'gasto.cancelar', etiqueta: 'Cancelar un gasto', tipo: 'accion', permiso: 'RETIROS_EGRESOS', soloRegla: true,
+    slots: { folio: { requerido: true }, motivo: {} }, claves: ['cancela', 'gasto'], ejemplos: [],
+  },
+  {
+    id: 'gasto.concepto', etiqueta: 'Conceptos de gasto', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { accion: { requerido: true }, nombre: {}, concepto: {} }, claves: ['concepto'], ejemplos: [],
+  },
 ];

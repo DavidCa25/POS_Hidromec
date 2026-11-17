@@ -2,6 +2,33 @@
 /* CLIENTES: fiado, abonos, altas, mejores clientes, ficha, puntos y cumpleaños. */
 
 module.exports = (h) => {
+  /** Cerrar (deja de admitir boletos) o sortear (irreversible) la rifa nombrada. */
+  async function rifa(it, que) {
+    const dicho = h.llano(h.v(it, 'textoRifa'));
+    const rifas = await h.q(`SELECT id, name, status, winners_count, closed_entries_count, (SELECT COUNT(*) FROM dbo.raffle_entries e WHERE e.raffle_id = r.id) AS boletos
+                              FROM dbo.raffle_definitions r WHERE status IN ('OPEN', 'CLOSED');`).catch(() => []);
+    const r = rifas.find((x) => h.llano(x.name) === dicho) || rifas.find((x) => h.llano(x.name).includes(dicho) || dicho.includes(h.llano(x.name)));
+    if (!r) return h.msg(rifas.length ? `No encuentro esa rifa. Abiertas: ${rifas.map((x) => x.name).join(', ')}.` : 'No hay rifas abiertas ni cerradas por sortear.');
+    if (que === 'cerrar') {
+      if (r.status !== 'OPEN') return h.msg(`«${r.name}» ya está cerrada: falta sortearla.`);
+      return h.msg('Esta rifa voy a cerrar:', { plan: h.plan('rifa.cerrar', {
+        titulo: `Cerrar la rifa «${r.name}»`, vista: [{ etiqueta: 'Boletos', valor: h.num(r.boletos) }],
+        avisos: ['Ya no entra ningún boleto. Sortear es aparte.'],
+        ejecutar: { api: 'wybix.raffles.close', payload: { raffleId: Number(r.id), userId: null } }, permiso: 'VENTAS_SUPERVISAR',
+      }) });
+    }
+    if (r.status !== 'CLOSED') return h.msg(`Primero hay que cerrar «${r.name}»: dime «cierra la rifa ${r.name}».`);
+    const ganadores = Number(h.v(it, 'ganadores')) || Number(r.winners_count) || 1;
+    const suplentes = Number(h.v(it, 'suplentes')) || 0;
+    return h.msg('Este sorteo voy a hacer:', { plan: h.plan('rifa.sortear', {
+      titulo: `Sortear «${r.name}»`,
+      vista: [{ etiqueta: 'Boletos', valor: h.num(r.closed_entries_count ?? r.boletos) }, { etiqueta: 'Ganadores', valor: String(ganadores) }, ...(suplentes ? [{ etiqueta: 'Suplentes', valor: String(suplentes) }] : [])],
+      avisos: ['Es irreversible: queda registrado el sorteo con su semilla para comprobarlo después.'],
+      ejecutar: { api: 'wybix.raffles.draw', payload: { raffleId: Number(r.id), userId: null, registerId: h.cajaEquipo(), winners: ganadores, alternates: suplentes } },
+      permiso: 'VENTAS_SUPERVISAR',
+    }) });
+  }
+
   const notasAbiertas = (cid) => h.q(`
     SELECT id, datee, total, balance, due_date FROM dbo.sales
      WHERE customer_id = @id AND balance > 0.005 ORDER BY datee;`, [h.id(cid)]);
@@ -131,6 +158,226 @@ module.exports = (h) => {
       if (!filas.length) return h.msg(`Nadie cumple años ${cuando} (de los clientes con fecha de nacimiento).`);
       return h.msg(`${h.plural(filas.length, 'cliente')} cumple${filas.length === 1 ? '' : 'n'} años ${cuando}:`, {
         datos: filas.map((f) => ({ etiqueta: f.nombre, valor: `${h.fechaCorta(new Date(f.este).toISOString())}${f.mobile || f.phone ? ` · ${f.mobile || f.phone}` : ''}` })) });
+    },
+    /* «Cambia el teléfono de doña Mary a 55…», «ponle límite de 2000 a don Pepe». */
+    async 'cliente.editar'(it, ctx) {
+      return require('./entidades').editarFicha(h, ctx, { ent: require('./entidades').cliente, tipo: 'cliente', id: h.v(it, 'cliente'),
+        campo: h.v(it, 'campo'), nuevo: h.v(it, 'valor'), intent: 'cliente.editar' });
+    },
+
+    /* «Ponle 100 puntos a doña Mary porque…» / «quítale 50 puntos…». */
+    async 'puntos.ajustar'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const n = Math.trunc(Number(h.v(it, 'cantidad')) || 0);
+      if (!n) return h.msg('¿Cuántos puntos?');
+      const saldo = await h.uno('SELECT ISNULL(SUM(delta), 0) AS p FROM dbo.loyalty_ledger WHERE customer_id = @c AND card_id IS NULL;', [['c', h.sql.Int, c.id]]).catch(() => null);
+      const antes = saldo ? Number(saldo.p) : null;
+      if (antes != null && antes + n < 0) return h.msg(`${c.nombre} solo tiene ${h.num(antes)} puntos.`);
+      const nota = h.v(it, 'nota') || 'Ajuste desde Wybix';
+      return h.msg('Este ajuste voy a registrar:', { plan: h.plan('puntos.ajustar', {
+        titulo: `${n > 0 ? 'Abonar' : 'Quitar'} ${h.num(Math.abs(n))} puntos · ${c.nombre}`,
+        vista: [{ etiqueta: 'Cliente', valor: c.nombre }, ...(antes != null ? [{ etiqueta: 'Puntos', valor: `${h.num(antes)} → ${h.num(antes + n)}` }] : []),
+                { etiqueta: 'Motivo', valor: nota }],
+        avisos: ['Queda en el historial de puntos con quién lo hizo.'],
+        ejecutar: { api: 'electronAPI.puntosAjustar', payload: { customerId: c.id, cantidad: n, tarjetaId: null, nota } }, permiso: 'VENTAS_SUPERVISAR',
+      }) });
+    },
+
+    async 'club.cancelar'(it) {
+      const c = await h.cliente(h.v(it, 'cliente'));
+      if (!c) return h.msg('No encontré a ese cliente.');
+      const m = await h.uno(`SELECT TOP 1 m.id, p.name AS plan, m.paid_until FROM dbo.customer_memberships m JOIN dbo.membership_plans p ON p.id = m.plan_id
+                              WHERE m.customer_id = @c AND m.status = N'ACTIVE' ORDER BY m.paid_until DESC;`, [['c', h.sql.Int, c.id]]).catch(() => null);
+      if (!m) return h.msg(`${c.nombre} no tiene membresía activa.`);
+      const nota = h.v(it, 'nota');
+      return h.msg('Esta membresía voy a cancelar:', { plan: h.plan('club.cancelar', {
+        titulo: `Cancelar la membresía de ${c.nombre}`,
+        vista: [{ etiqueta: 'Plan', valor: m.plan }, { etiqueta: 'Pagada hasta', valor: m.paid_until ? h.diaTexto(m.paid_until) : '—' }, ...(nota ? [{ etiqueta: 'Motivo', valor: nota }] : [])],
+        avisos: ['Deja de dar el beneficio desde ya; lo pagado no se devuelve solo.'],
+        ejecutar: { api: 'electronAPI.clubGestionar', payload: { accion: 'CANCELAR', id: Number(m.id), nota: nota || null } }, permiso: 'VENTAS_SUPERVISAR',
+      }) });
+    },
+
+    async 'rifa.cerrar'(it) { return rifa(it, 'cerrar'); },
+    async 'rifa.sortear'(it) { return rifa(it, 'sortear'); },
+
+    /* «Dale a doña Mary un cupón de 10%», «genera 20 cupones de 2x1». */
+    async 'cupon.emitir'(it) {
+      const dicho = h.llano(h.v(it, 'textoCupon'));
+      const defs = await h.q('SELECT id, name, kind, amount, discount_pct, valid_days FROM dbo.coupon_definitions WHERE active = 1;').catch(() => []);
+      const pct = (dicho.match(/(\d+)\s*%|(\d+)\s*por ciento/) || []).slice(1).find(Boolean);
+      const monto = (dicho.match(/\$\s*(\d+)|(\d+)\s*pesos/) || []).slice(1).find(Boolean);
+      const d = defs.find((x) => h.llano(x.name) === dicho) || defs.find((x) => h.llano(x.name).includes(dicho) || dicho.includes(h.llano(x.name)))
+        || (pct && defs.find((x) => Number(x.discount_pct) === Number(pct))) || (monto && defs.find((x) => Number(x.amount) === Number(monto)));
+      if (!d) return h.msg(defs.length ? `No tengo un cupón «${h.v(it, 'textoCupon')}». Hay: ${defs.slice(0, 6).map((x) => x.name).join(', ')}.` : 'No hay cupones dados de alta: créalos en Fidelización.');
+      const n = Math.max(1, Math.min(500, Number(h.v(it, 'cantidad')) || 1));
+      const c = h.v(it, 'cliente') ? await h.cliente(h.v(it, 'cliente')) : null;
+      return h.msg('Estos cupones voy a emitir:', { plan: h.plan('cupon.emitir', {
+        titulo: `${n === 1 ? 'Un cupón' : `${n} cupones`} · ${d.name}${c ? ' para ' + c.nombre : ''}`,
+        vista: [{ etiqueta: 'Cupón', valor: d.name }, { etiqueta: 'Cuántos', valor: String(n) }, ...(c ? [{ etiqueta: 'Para', valor: c.nombre }] : []),
+                ...(d.valid_days ? [{ etiqueta: 'Vale', valor: `${d.valid_days} días` }] : [])],
+        avisos: ['Los códigos salen al confirmar; se pueden imprimir o mandar desde Fidelización.'],
+        ejecutar: { api: 'wybix.coupons.issue', payload: { definitionId: Number(d.id), quantity: n, customerId: c?.id ?? null, machineId: null, registerId: h.cajaEquipo() } },
+        permiso: 'CREDITO_CUPONES',
+      }) });
+    },
+
+    /* «Da 1 punto por cada 10 pesos», «los puntos caducan a los 12 meses»: la configuración completa con ese cambio. */
+    async 'puntos.config'(it) {
+      const c = await h.uno('SELECT TOP 1 enabled, per_amount, points_per, visit_points, expiry_months FROM dbo.loyalty_points_config;').catch(() => null)
+        || { enabled: false, per_amount: null, points_per: 1, visit_points: 0, expiry_months: null };
+      const nuevo = { activo: !!c.enabled, cadaMonto: c.per_amount != null ? Number(c.per_amount) : null, puntos: Number(c.points_per) || 1,
+                      porVisita: Number(c.visit_points) || 0, caducaMeses: c.expiry_months != null ? Number(c.expiry_months) : null };
+      const cambios = [];
+      if (h.v(it, 'puntos') != null) { nuevo.puntos = h.v(it, 'puntos'); nuevo.cadaMonto = h.v(it, 'cadaMonto'); nuevo.activo = true; cambios.push('regla'); }
+      if (h.v(it, 'caducaMeses') != null) { nuevo.caducaMeses = h.v(it, 'caducaMeses') || null; cambios.push('caducidad'); }
+      if (h.v(it, 'porVisita') != null) { nuevo.porVisita = h.v(it, 'porVisita'); nuevo.activo = true; cambios.push('visita'); }
+      if (h.v(it, 'activo') != null) { nuevo.activo = !!h.v(it, 'activo'); cambios.push('estado'); }
+      const regla = (x) => (x.cadaMonto ? `${x.puntos} punto(s) por cada ${h.dinero(x.cadaMonto)}` : 'sin puntos por compra');
+      const antes = { activo: !!c.enabled, cadaMonto: c.per_amount, puntos: c.points_per, porVisita: c.visit_points, caducaMeses: c.expiry_months };
+      return h.msg('Así quedan los puntos:', { plan: h.plan('puntos.config', {
+        titulo: 'Configuración de puntos',
+        vista: [{ etiqueta: 'Puntos', valor: `${antes.activo ? 'encendidos' : 'apagados'} → ${nuevo.activo ? 'encendidos' : 'apagados'}` },
+                { etiqueta: 'Por compra', valor: `${regla(antes)} → ${regla(nuevo)}` },
+                { etiqueta: 'Por visita', valor: `${antes.porVisita || 0} → ${nuevo.porVisita || 0}` },
+                { etiqueta: 'Caducan', valor: `${antes.caducaMeses ? antes.caducaMeses + ' meses' : 'nunca'} → ${nuevo.caducaMeses ? nuevo.caducaMeses + ' meses' : 'nunca'}` }],
+        ejecutar: { api: 'electronAPI.puntosConfigGuardar', payload: nuevo }, permiso: 'COMERCIAL_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Crea el cupón 10% de descuento, vale 30 días». */
+    async 'cupon.definir'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 120);
+      const ya = await h.uno('SELECT TOP 1 name FROM dbo.coupon_definitions WHERE name = @n AND active = 1;', [['n', h.sql.NVarChar(120), nombre]]).catch(() => null);
+      if (ya) return h.msg(`Ya existe el cupón «${ya.name}».`);
+      const tipo = h.v(it, 'tipo'), dias = h.v(it, 'dias');
+      const p = tipo === 'FREE_PRODUCT' ? await h.producto(h.v(it, 'producto')) : null;
+      if (tipo === 'FREE_PRODUCT' && !p) return h.msg('No encontré el producto que se regala.');
+      const valor = tipo === 'PERCENT' ? `${h.v(it, 'pct')}% de descuento` : tipo === 'AMOUNT' ? `${h.dinero(h.v(it, 'monto'))} de descuento` : `${p.nombre} gratis`;
+      return h.msg('Este cupón voy a crear:', { plan: h.plan('cupon.definir', {
+        titulo: `Cupón nuevo · ${nombre}`, vista: [{ etiqueta: 'Da', valor }, { etiqueta: 'Vale', valor: dias ? `${dias} días` : 'sin caducidad' }, { etiqueta: 'Usos', valor: '1 por cupón' }],
+        avisos: ['Para repartirlo: «genera 20 cupones de ' + nombre + '» o en una campaña.'],
+        ejecutar: { api: 'wybix.loyalty.saveDefinition', payload: { kindOf: 'COUPON', id: null, name: nombre, kind: tipo, productId: p?.id ?? null,
+          amount: tipo === 'AMOUNT' ? h.v(it, 'monto') : null, discountPct: tipo === 'PERCENT' ? h.v(it, 'pct') : null, validDays: dias ?? null, usesAllowed: 1, codePrefix: null, active: true } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'rifa.crear'(it) {
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 120);
+      const premio = h.v(it, 'premio'), hasta = h.v(it, 'hasta'), ganadores = Number(h.v(it, 'ganadores')) || 1;
+      return h.msg('Esta rifa voy a crear:', { plan: h.plan('rifa.crear', {
+        titulo: `Rifa nueva · ${nombre}`,
+        vista: [{ etiqueta: 'Premio', valor: premio || '—' }, { etiqueta: 'Cierra', valor: hasta ? h.diaTexto(h.cuando(hasta)) : 'cuando la cierres' }, { etiqueta: 'Ganadores', valor: String(ganadores) }],
+        avisos: ['Queda en borrador: dime «abre la rifa ' + nombre + '» para que empiece a dar boletos, y crea su campaña («por cada 100 pesos un boleto de la rifa ' + nombre + '»).'],
+        ejecutar: { api: 'wybix.raffles.save', payload: { id: null, name: nombre, description: null, prize: premio, startsAt: null, endsAt: hasta ? `${hasta}T23:59:00` : null,
+          winnersCount: ganadores, codePrefix: null, status: 'DRAFT', ticketsTotal: null } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    async 'rifa.abrir'(it) {
+      const dicho = h.llano(h.v(it, 'textoRifa'));
+      const rifas = await h.q("SELECT id, name, description, prize, starts_at, ends_at, winners_count, code_prefix, tickets_total FROM dbo.raffle_definitions WHERE status = 'DRAFT';").catch(() => []);
+      const r = rifas.find((x) => h.llano(x.name) === dicho) || rifas.find((x) => h.llano(x.name).includes(dicho));
+      if (!r) return h.msg(rifas.length ? `En borrador hay: ${rifas.map((x) => x.name).join(', ')}.` : 'No hay rifas en borrador.');
+      return h.msg('Esta rifa voy a abrir:', { plan: h.plan('rifa.abrir', {
+        titulo: `Abrir la rifa «${r.name}»`, vista: [{ etiqueta: 'Premio', valor: r.prize || '—' }, { etiqueta: 'Estado', valor: 'borrador → abierta' }],
+        ejecutar: { api: 'wybix.raffles.save', payload: { id: Number(r.id), name: r.name, description: r.description, prize: r.prize, startsAt: r.starts_at, endsAt: r.ends_at,
+          winnersCount: r.winners_count, codePrefix: r.code_prefix, status: 'OPEN', ticketsTotal: r.tickets_total } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Crea la tarjeta de sellos del café: 9 sellos y el 10 gratis». */
+    async 'sellos.crear'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto.');
+      const sellos = Number(h.v(it, 'sellos'));
+      if (!(sellos >= 2 && sellos <= 50)) return h.msg('Una tarjeta lleva de 2 a 50 sellos.');
+      const nombre = `Tarjeta de ${p.nombre}`;
+      return h.msg('Esta tarjeta voy a crear:', { plan: h.plan('sellos.crear', {
+        titulo: `${nombre} · ${sellos} sellos`, vista: [{ etiqueta: 'Sella', valor: p.nombre }, { etiqueta: 'Sellos', valor: String(sellos) }, { etiqueta: 'Premio', valor: `${p.nombre} gratis` }],
+        ejecutar: { api: 'electronAPI.puntosTarjetaGuardar', payload: { id: null, nombre, sellos, productoPremio: p.id, activo: true, productos: [p.id] } }, permiso: 'COMERCIAL_ADMINISTRAR',
+      }) });
+    },
+
+    /* «Crea el plan Café diario: 1 café al día por 300 al mes»: el plan y su producto de cobro. */
+    async 'club.plan'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré el producto del beneficio.');
+      const nombre = String(h.v(it, 'nombre') || '').trim().slice(0, 80);
+      const precio = h.v(it, 'precio'), dias = Number(h.v(it, 'dias')) || 30, limite = Number(h.v(it, 'limite')) || 1;
+      const cobro = await h.uno('SELECT TOP 1 id, nombre, price FROM dbo.products WHERE nombre = @n AND active = 1;', [['n', h.sql.NVarChar(100), `Membresía ${nombre}`]]).catch(() => null);
+      if (!cobro) return h.msg(`Primero crea el producto que se cobra: «crea el producto Membresía ${nombre} a ${precio}». Luego repíteme el plan.`);
+      return h.msg('Este plan voy a crear:', { plan: h.plan('club.plan', {
+        titulo: `Plan del Club · ${nombre}`,
+        vista: [{ etiqueta: 'Beneficio', valor: `${limite} ${p.nombre} al día` }, { etiqueta: 'Se cobra con', valor: `${cobro.nombre} · ${h.dinero(cobro.price)}` }, { etiqueta: 'Dura', valor: `${dias} días` }],
+        ejecutar: { api: 'electronAPI.clubPlanGuardar', payload: { id: null, nombre, productoCobro: cobro.id, dias, limiteDiario: limite, gracia: 0, activo: true, productos: [p.id] } },
+        permiso: 'COMERCIAL_ADMINISTRAR',
+      }) });
+    },
+
+    /* Campañas que reparten al cobrar: un cupón por compra mínima, o boletos de una rifa por monto. */
+    async 'campana.crear'(it) {
+      const resultado = h.v(it, 'resultado');
+      if (resultado === 'COUPON') {
+        const dicho = h.llano(h.v(it, 'textoCupon'));
+        const defs = await h.q('SELECT id, name, discount_pct, amount FROM dbo.coupon_definitions WHERE active = 1;').catch(() => []);
+        const pct = (dicho.match(/(\d+)\s*%/) || [])[1];
+        const d = defs.find((x) => h.llano(x.name) === dicho) || defs.find((x) => h.llano(x.name).includes(dicho)) || (pct && defs.find((x) => Number(x.discount_pct) === Number(pct)));
+        if (!d) return h.msg(`Primero crea el cupón: «crea el cupón ${h.v(it, 'textoCupon')}».`);
+        const minimo = Number(h.v(it, 'minimo'));
+        return h.msg('Esta campaña voy a crear:', { plan: h.plan('campana.crear', {
+          titulo: `Compras de más de ${h.dinero(minimo)} → cupón ${d.name}`, vista: [{ etiqueta: 'Cuando', valor: `compra de más de ${h.dinero(minimo)}` }, { etiqueta: 'Da', valor: `cupón ${d.name}` }],
+          avisos: ['Sale al cobrar, impreso en el ticket.'],
+          ejecutar: { api: 'wybix.loyalty.saveCampaign', payload: { id: null, name: `Cupón ${d.name} desde ${h.dinero(minimo)}`, description: null, outcome: 'COUPON', couponDefinitionId: Number(d.id),
+            quantity: 1, minTotal: minimo, perAmount: null, requiresCustomer: false, firstPurchaseOnly: false, priority: 100, active: true } },
+          permiso: 'CONFIGURACION_ADMINISTRAR',
+        }) });
+      }
+      const dicho = h.llano(h.v(it, 'textoRifa'));
+      const rifas = await h.q("SELECT id, name FROM dbo.raffle_definitions WHERE status IN ('DRAFT', 'OPEN');").catch(() => []);
+      const r = rifas.find((x) => h.llano(x.name) === dicho) || rifas.find((x) => h.llano(x.name).includes(dicho));
+      if (!r) return h.msg('Primero crea la rifa: «crea la rifa Navidad, premio una canasta».');
+      const porCada = Number(h.v(it, 'porCada'));
+      return h.msg('Esta campaña voy a crear:', { plan: h.plan('campana.crear', {
+        titulo: `Un boleto de «${r.name}» por cada ${h.dinero(porCada)}`, vista: [{ etiqueta: 'Por cada', valor: h.dinero(porCada) }, { etiqueta: 'Da', valor: `1 boleto de ${r.name}` }],
+        ejecutar: { api: 'wybix.loyalty.saveCampaign', payload: { id: null, name: `Boletos ${r.name}`, description: null, outcome: 'RAFFLE_ENTRY', raffleId: Number(r.id),
+          quantity: 1, perAmount: porCada, minTotal: null, requiresCustomer: false, firstPurchaseOnly: false, priority: 100, active: true } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
+
+    /* Casillas de la ruleta. El premio de una casilla es una recompensa del catálogo con ese
+       nombre («café gratis»); «sigue participando» no da nada. Quién gana lo decide SQL. */
+    async 'ruleta.casilla'(it) {
+      const r = await h.uno("SELECT TOP 1 id, name FROM dbo.dynamic_definitions WHERE active = 1 AND type = 'WHEEL' ORDER BY id;").catch(() => null)
+        || await h.uno('SELECT TOP 1 id, name FROM dbo.dynamic_definitions WHERE active = 1 ORDER BY id;').catch(() => null);
+      if (!r) return h.msg('No hay ruleta creada: créala en Fidelización → Dinámicas.');
+      const etiqueta = String(h.v(it, 'etiqueta') || '').trim().slice(0, 60);
+      const casillas = await h.q('SELECT id, label, weight, sort_order FROM dbo.dynamic_segments WHERE definition_id = @d AND active = 1 ORDER BY sort_order;', [['d', h.sql.Int, r.id]]);
+      if (h.v(it, 'borrar')) {
+        const c = casillas.find((x) => h.llano(x.label) === h.llano(etiqueta)) || casillas.find((x) => h.llano(x.label).includes(h.llano(etiqueta)));
+        if (!c) return h.msg(`La ruleta no tiene la casilla «${etiqueta}». Tiene: ${casillas.map((x) => x.label).join(', ')}.`);
+        return h.msg('Esta casilla voy a quitar:', { plan: h.plan('ruleta.casilla', {
+          titulo: `Quitar «${c.label}» de la ruleta`, vista: [{ etiqueta: 'Casillas', valor: `${casillas.length} → ${casillas.length - 1}` }],
+          ejecutar: { api: 'wybix.dynamics.saveSegment', payload: { id: Number(c.id), definitionId: r.id, borrar: true } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+        }) });
+      }
+      const nada = /sigue participando|nada|suerte/.test(h.llano(etiqueta));
+      const premio = nada ? null : await h.uno('SELECT TOP 1 id, name FROM dbo.reward_definitions WHERE active = 1 AND name = @n;', [['n', h.sql.NVarChar(120), etiqueta]]).catch(() => null);
+      if (!nada && !premio) return h.msg(`Primero crea la recompensa «${etiqueta}» en Fidelización (o di «sigue participando» para una casilla sin premio).`);
+      const peso = Number(h.v(it, 'peso')) || 1;
+      const total = casillas.reduce((a, x) => a + Number(x.weight || 0), 0) + peso;
+      return h.msg('Esta casilla voy a agregar:', { plan: h.plan('ruleta.casilla', {
+        titulo: `Casilla «${etiqueta}» en la ruleta`,
+        vista: [{ etiqueta: 'Premio', valor: premio ? premio.name : 'ninguno (sigue participando)' }, { etiqueta: 'Probabilidad', valor: `${Math.round((peso / total) * 1000) / 10}%` }],
+        ejecutar: { api: 'wybix.dynamics.saveSegment', payload: { id: null, definitionId: r.id, label: etiqueta, outcome: premio ? 'REWARD' : 'NONE', rewardDefinitionId: premio?.id ?? null,
+          raffleId: null, quantity: 1, weight: peso, sortOrder: casillas.length + 1 } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
     },
   };
 };

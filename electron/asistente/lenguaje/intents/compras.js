@@ -33,10 +33,15 @@ module.exports = [
                'total de compras', 'cuanto he invertido en compras'],
   },
   {
-    id: 'compra.registrar', etiqueta: 'Registrar una compra', tipo: 'pantalla', permiso: 'INVENTARIO_OPERAR',
-    slots: { proveedor: {} },
+    /* Con productos («compré 24 cocas a 12 a Coca-Cola») arma la compra y la
+       registra por sp-register-purchase; sin productos, lleva a la pantalla. */
+    id: 'compra.registrar', etiqueta: 'Registrar una compra', tipo: 'accion', permiso: 'INVENTARIO_OPERAR',
+    slots: { proveedor: {}, renglones: {}, costos: {}, metodo: {} },
     claves: ['registrar', 'llego', 'llegaron', 'recibi', 'entrada', 'factura', 'compra'],
     ejemplos: ['registra una compra', 'llego el pedido de {persona}', 'recibi mercancia de {persona}', 'quiero meter una compra',
-               'capturar la factura de {persona}', 'entrada de mercancia', 'ya llego {persona}'],
+               'capturar la factura de {persona}', 'entrada de mercancia', 'ya llego {persona}',
+               'compre {n} {prod} a {precio} a {persona}', 'llego el pedido de {persona} {n} {prod} a {precio}',
+               'le compre a {persona} {n} {prod} a {precio} y {n} {prod} a {precio}', 'registra la compra de {n} {prod} a {precio} de {persona}',
+               'me surtio {persona} {n} {prod} a {precio} en efectivo'],
   },
 ];

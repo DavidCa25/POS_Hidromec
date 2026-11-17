@@ -28,6 +28,22 @@ const { filtros: filtrosDe } = require('./filtros');
 const { apodo } = require('./apodos');
 const { preguntaLibre } = require('./pregunta');
 const ref = require('./referencias');
+const { edicion, edicionPersona, valorDeCampo, valorPersona } = require('./edicion');
+const EDITAR_PERSONA = { cliente: 'cliente.editar', proveedor: 'proveedor.editar' };
+const { catalogo: reglaCatalogo } = require('./catalogo');
+const { socios: reglaSocios } = require('./socios');
+const { gastos: reglaGastos } = require('./gastos');
+const { servicios: reglaServicios } = require('./servicios');
+const { fidelizacion: reglaFidelizacion } = require('./fidelizacion');
+const { mesas: reglaMesas } = require('./mesas');
+const { config: reglaConfig } = require('./config');
+const { recetas: reglaRecetas } = require('./recetas');
+const { menu: reglaMenu } = require('./menu');
+const { varios: reglaVarios } = require('./varios');
+const { equipos: reglaEquipos } = require('./equipos');
+const { multi: reglaMulti } = require('./multi');
+const { promos: reglaPromos } = require('./promos');
+const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
 
@@ -56,7 +72,39 @@ const PERSONA_SLOTS = { cliente: 'cliente', proveedor: 'proveedor', profesional:
 function prepararCatalogo(filas) {
   return (filas || []).filter((p) => p && p.nombre).map((p) => ({
     ...p, tokens: normalizar(p.nombre).tokens.map(raiz).filter((t) => (!ex.RUIDO.has(t) || t.length > 3) && !HONORIFICOS.has(t)),
+    codigos: codigosDe(p),
   })).filter((p) => p.tokens.length);
+}
+
+/**
+ * Código de barras y número de parte (SKU), como palabras normalizadas:
+ * «actualiza el 7501055300846 a 25». Un código solo de números necesita 6
+ * dígitos o más (para no confundir «600» de «coca de 600» con un código); uno
+ * con letras, 4 caracteres o más.
+ */
+function codigosDe(p) {
+  return [p.bar_code, p.part_number].map((c) => normalizar(String(c ?? '')).tokens)
+    .filter((ts) => { const s = ts.join(''); return ts.length && (/^\d+$/.test(s) ? s.length >= 6 : s.length >= 4); });
+}
+
+/**
+ * ¿La frase dice el código de un producto? Devuelve los índices de las
+ * palabras del código y los productos que lo tienen (más de uno si el código
+ * se repite: entonces se pregunta cuál).
+ */
+function buscarCodigo(tokens, catalogo) {
+  let mejor = null;
+  for (const p of catalogo) {
+    for (const c of p.codigos || []) {
+      for (let i = 0; i + c.length <= tokens.length; i++) {
+        if (!c.every((w, k) => tokens[i + k] === w)) continue;
+        const idx = c.map((_, k) => i + k);
+        if (!mejor || idx.length > mejor.idx.length) mejor = { idx, ids: [p.id], nombres: [p.nombre] };
+        else if (idx.length === mejor.idx.length && idx[0] === mejor.idx[0] && !mejor.ids.includes(p.id)) { mejor.ids.push(p.id); mejor.nombres.push(p.nombre); }
+      }
+    }
+  }
+  return mejor;
 }
 
 /** Todas las palabras con las que se nombra un id: su nombre y sus apodos. */
@@ -109,14 +157,23 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
       .flatMap((t) => (t.length >= 4 && /[a-z]$/.test(t) ? [t, /[aeiou]$/.test(t) ? `${t}s` : `${t}es`] : [t])));
     const tokens = conocidas.size ? norm0.tokens.map((t) => (lemasConocidos.has(lemaSuave(t)) ? t : corregir(t, conocidas, extra))) : norm0.tokens;
     const norm = tokens.join(' ');
-    const { dineroIdx, numIdx, cants, din } = indicesNumericos(tokens, { precioConPreposicion: o.precioConPreposicion !== false });
+    /* El código de barras o el SKU de un producto ES el producto: no es una
+       cantidad ni un precio. Para los números se tapa con una palabra neutra. */
+    const codigo = catalogo.length ? buscarCodigo(norm0.tokens, catalogo) : null;
+    const paraNumeros = codigo ? tokens.map((w, i) => (codigo.idx.includes(i) ? 'xcodigox' : w)) : tokens;
+    const { dineroIdx, numIdx, cants, din } = indicesNumericos(paraNumeros, { precioConPreposicion: o.precioConPreposicion !== false });
     const excluir = new Set([...dineroIdx, ...numIdx]);
     tokens.forEach((t, i) => { if (HONORIFICOS.has(t)) excluir.add(i); });
 
     /* Producto. «tengo harina para 100 conchas»: lo que se cuenta es lo que
        sigue al número; primero se busca en ese tramo, luego en toda la frase. */
     let prod = null, cantDelProd = null;
-    if (catalogo.length) {
+    if (codigo) {
+      prod = codigo.ids.length === 1
+        ? { valor: codigo.ids[0], texto: codigo.nombres[0], confianza: 'exacto', porCodigo: true }
+        : { valor: null, texto: codigo.idx.map((i) => norm0.tokens[i]).join(' '), confianza: 'dudoso', porCodigo: true,
+            opciones: codigo.ids.map((v, k) => ({ valor: v, etiqueta: codigo.nombres[k] })) };
+    } else if (catalogo.length) {
       for (const c of cants) {
         let desde = c.inicio + (c.conUnidad ? 2 : 1);
         while (['de', 'del', 'la', 'las', 'los', 'el'].includes(tokens[desde])) desde++;
@@ -130,13 +187,14 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     /* «Coca de 600» o «la coca grande» entre la de 600 ml y la de 2 L: el
        número y el adjetivo no cuentan para buscar, pero si solo UNA de las
        opciones lo lleva en su nombre, es esa. */
-    if (prod && prod.valor == null && prod.opciones?.length > 1) {
+    if (!codigo && prod && prod.valor == null && prod.opciones?.length > 1) {
       const nums = tokens.filter((t) => /^\d+(?:\.\d+)?$/.test(t) || SOLO_ADJETIVOS.has(t));
       const conNum = prod.opciones.filter((o) => nums.some((x) => tokensDeId(catalogo, o.valor).includes(x)));
       if (conNum.length === 1) prod = { valor: conNum[0].valor, texto: conNum[0].etiqueta, confianza: 'exacto' };
     }
     let prodIdx = new Set();
-    if (prod && prod.valor != null) prodIdx = indicesDe(tokens, tokensDeId(catalogo, prod.valor), excluir);
+    if (codigo) prodIdx = new Set(codigo.idx);
+    else if (prod && prod.valor != null) prodIdx = indicesDe(tokens, tokensDeId(catalogo, prod.valor), excluir);
     /* Producto en duda («huevo»: ¿el kilo o los rancheros?): igual es un
        producto para el clasificador; cuál, se pregunta después. */
     else if (prod?.opciones?.length) {
@@ -146,7 +204,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     /* …salvo que vaya junto a una palabra desconocida: «late grande» es un
        dedazo de «Latte grande», y entonces el adjetivo sí cuenta. */
     const desconocida = (i) => tokens[i] && !conocidas.has(tokens[i]) && !ex.RUIDO.has(tokens[i]) && !/^\d/.test(tokens[i]);
-    if (prod && prod.confianza !== 'exacto' && prodIdx.size && [...prodIdx].every((i) => SOLO_ADJETIVOS.has(tokens[i]))
+    if (!codigo && prod && prod.confianza !== 'exacto' && prodIdx.size && [...prodIdx].every((i) => SOLO_ADJETIVOS.has(tokens[i]))
         && ![...prodIdx].some((i) => desconocida(i - 1) || desconocida(i + 1))) {
       prod = null; prodIdx = new Set(); cantDelProd = null;
     }
@@ -267,7 +325,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
    *            esperando: { intent, slots, falta }  (lo que Wybix preguntó antes)
    *            contexto:  { intent, slots }          (lo último que se entendió, para «¿y ayer?») }
    */
-  function interpretar(texto, { catalogo = [], personas = [], categorias = [], conceptos = [], usuarios = [], modulos = null, ahora = new Date(),
+  function interpretar(texto, { catalogo = [], personas = [], categorias = [], conceptos = [], usuarios = [], socios = [], estaciones = [], modulos = null, ahora = new Date(),
                                 esperando = null, contexto = null } = {}) {
     const a = analizar(texto, catalogo, { personas });
     const datos = { catalogo, personas, categorias, conceptos, usuarios, ahora };
@@ -291,6 +349,299 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         pref.cambios.nombre = dicho.charAt(0).toUpperCase() + dicho.slice(1).toLowerCase();
       }
       return cerrar('sistema.preferencia', { preferencia: { valor: pref, texto: a.normOriginal, confianza: 'exacto' } }, 0.95, []);
+    }
+
+    /* «Cambia el costo de la concha a 8», «ponle el código 750… a la coca»,
+       «da de baja la concha»: editar la ficha. Regla, no predicción
+       (lenguaje/edicion.js). Si Wybix preguntó el valor o el producto, la
+       respuesta suelta lo llena. */
+    if (esperando && EDITAR.has(esperando.intent)) {
+      const slots = { ...esperando.slots };
+      if (esperando.falta === 'valor') {
+        const v = valorDeCampo(slots.campo?.valor, texto);
+        if (v != null) slots.valor = { valor: v, texto: String(texto).trim(), confianza: 'exacto' };
+        return cerrar(esperando.intent, slots, 1, []);
+      }
+      if (esperando.falta === 'producto') {
+        const pr = a.prod?.confianza === 'dudoso' && slots.producto?.opciones?.length ? null : a.prod;
+        const elegido = slots.producto?.opciones?.length ? elegirOpcion(a.norm, slots.producto.opciones) : null;
+        if (elegido) slots.producto = { valor: elegido.valor, texto: elegido.etiqueta, confianza: 'exacto' };
+        else if (pr && (pr.valor != null || pr.opciones?.length)) slots.producto = pr;
+        return cerrar(esperando.intent, slots, 1, []);
+      }
+    }
+    /* «Cambia el teléfono de doña Mary a 55…», «el correo de Bimbo es …»:
+       editar la ficha de un cliente o proveedor. Solo si la persona existe. */
+    if (esperando && Object.values(EDITAR_PERSONA).includes(esperando.intent) && esperando.falta === 'valor') {
+      const slots = { ...esperando.slots };
+      const v = valorPersona(slots.campo?.valor, texto);
+      if (v != null) slots.valor = { valor: v, texto: String(v), confianza: 'exacto' };
+      return cerrar(esperando.intent, slots, 1, []);
+    }
+    const ep = !esperando && edicionPersona(texto);
+    if (ep && ep.textoPersona) {
+      const tipos = ep.tipo ? [ep.tipo] : ['cliente', 'proveedor'];
+      for (const tipo of tipos) {
+        const lista = personas.filter((x) => x.tipo === tipo);
+        const r = lista.length ? ex.producto(normalizar(ep.textoPersona).tokens, lista, { excluir: new Set() }) : null;
+        if (!r || (r.valor == null && !r.opciones?.length) || !disponible(EDITAR_PERSONA[tipo], modulos)) continue;
+        if (r.valor == null && !ep.tipo && tipo === 'cliente') {
+          const otro = personas.filter((x) => x.tipo === 'proveedor');
+          const rp = otro.length ? ex.producto(normalizar(ep.textoPersona).tokens, otro, { excluir: new Set() }) : null;
+          if (rp?.valor != null) continue;
+        }
+        const slots = { [tipo]: { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones },
+                        campo: { valor: ep.campo, texto: ep.campo, confianza: 'exacto' } };
+        if (ep.valor != null) slots.valor = { valor: ep.valor, texto: ep.valorTexto, confianza: 'exacto' };
+        return cerrar(EDITAR_PERSONA[tipo], slots, 0.95, []);
+      }
+    }
+    /* Servicios: órdenes, profesionales, catálogo de servicios, activos del
+       cliente y giro (lenguaje/servicios.js). Una persona o producto que no
+       existe no cuenta: la frase sigue su camino. */
+    if (esperando?.intent === 'orden.cancelar' && esperando.falta === 'motivo') {
+      return cerrar('orden.cancelar', { ...esperando.slots, motivo: { valor: String(texto).trim().slice(0, 200), texto: String(texto).trim(), confianza: 'exacto' } }, 1, []);
+    }
+    const rv = !esperando && reglaServicios(texto, ahora);
+    if (rv && disponible(rv.intent, modulos)) {
+      const ex1 = (v, t = String(v)) => ({ valor: v, texto: t, confianza: 'exacto' });
+      const persona = (txt, tipo) => {
+        const lista = personas.filter((x) => x.tipo === tipo);
+        const r = lista.length && txt ? ex.producto(normalizar(txt).tokens, lista, { excluir: new Set() }) : null;
+        return r && (r.valor != null || r.opciones?.length) ? { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones } : null;
+      };
+      const producto = (txt) => {
+        const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null;
+        return ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? { prod: ap.prod, cant: ap.cants?.[0]?.valor ?? null } : null;
+      };
+      const slots = {};
+      for (const k of ['folio', 'reportado', 'motivo', 'diagnostico', 'via', 'autoriza', 'estado', 'precio', 'nombre', 'duracion', 'activo', 'preset',
+                       'clase', 'etiqueta', 'identificador', 'anio', 'puesto', 'quitar', 'dias', 'desde', 'hasta', 'fechas']) {
+        if (rv[k] != null) slots[k] = ex1(rv[k], typeof rv[k] === 'object' ? JSON.stringify(rv[k]) : String(rv[k]));
+      }
+      let ok = true;
+      if (rv.textoCliente != null) { const c = persona(rv.textoCliente, 'cliente'); if (c) slots.cliente = c; else ok = false; }
+      if (rv.textoProfesional != null) { const p = persona(rv.textoProfesional, 'profesional'); if (p) slots.profesional = p; else ok = false; }
+      if (rv.textoProducto != null) {
+        const p = producto(rv.textoProducto);
+        if (p) { slots.producto = p.prod; if (p.cant != null && rv.intent === 'orden.linea') slots.cantidad = ex1(p.cant); } else ok = false;
+      }
+      if (ok) return cerrar(rv.intent, slots, 0.95, []);
+    }
+    /* Mesas, cuentas, comandas, salón y estaciones (lenguaje/mesas.js). */
+    const rm = !esperando && reglaMesas(texto, { estaciones });
+    if (rm && disponible(rm.intent, modulos)) {
+      const slots = {};
+      for (const k of ['mesa', 'personas', 'etiqueta', 'estado', 'comanda', 'motivo', 'nombre', 'textoArea', 'capacidad', 'impresora', 'estacion', 'estacionNombre']) {
+        if (rm[k] != null) slots[k] = { valor: rm[k], texto: String(rm[k]), confianza: 'exacto' };
+      }
+      let ok = true;
+      if (rm.textoCliente) {
+        const lista = personas.filter((x) => x.tipo === 'cliente');
+        const r = lista.length ? ex.producto(normalizar(rm.textoCliente).tokens, lista, { excluir: new Set() }) : null;
+        if (r && (r.valor != null || r.opciones?.length)) slots.cliente = { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones };
+        else ok = false;
+      }
+      if (rm.textoProducto) {
+        const ap = analizar(rm.textoProducto, catalogo, { personas: [] });
+        if (ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length)) slots.producto = ap.prod; else ok = false;
+      }
+      if (rm.textoPedido) {
+        const ap = analizar(rm.textoPedido, catalogo, { personas: [] });
+        const r = llenar('venta.cobrar', ap, { catalogo, personas: [] }).renglones;
+        if (r) slots.renglones = r; else ok = false;
+      }
+      if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Promociones (lenguaje/promos.js): producto o categoría que existan. */
+    const rpr = !esperando && reglaPromos(texto, ahora);
+    if (rpr && disponible(rpr.intent, modulos)) {
+      const slots = {};
+      for (const k of ['tipo', 'valor', 'buy', 'pay', 'cuando', 'texto']) if (rpr[k] != null) slots[k] = { valor: rpr[k], texto: typeof rpr[k] === 'object' ? JSON.stringify(rpr[k]) : String(rpr[k]), confianza: 'exacto' };
+      let ok = rpr.intent === 'promo.quitar';
+      if (rpr.objetivo) {
+        const cat = categorias.find((x) => normalizar(x.nombre).texto === normalizar(rpr.objetivo).texto);
+        const ap = cat ? null : analizar(rpr.objetivo, catalogo, { personas: [] });
+        if (cat) { slots.categoria = { valor: cat.id, texto: cat.nombre, confianza: 'exacto' }; ok = true; }
+        else if (ap?.prod?.valor != null) { slots.producto = ap.prod; ok = true; }
+      }
+      if (ok) return cerrar(rpr.intent, slots, 0.95, []);
+    }
+    /* Multisucursal (lenguaje/multi.js). */
+    const rmu = !esperando && reglaMulti(texto, { usuarios });
+    if (rmu && disponible(rmu.intent, modulos)) {
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rmu)) if (k !== 'intent' && k !== 'textoProducto' && k !== 'textoPedido' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      if (rmu.textoProducto) { const ap = analizar(rmu.textoProducto, catalogo, { personas: [] }); if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false; }
+      if (rmu.textoPedido) {
+        const ap = analizar(rmu.textoPedido, catalogo, { personas: [] });
+        const r = llenar('venta.cobrar', ap, { catalogo, personas: [] }).renglones;
+        if (r?.valor) slots.renglones = r; else ok = false;
+      }
+      if (ok) return cerrar(rmu.intent, slots, 0.95, []);
+    }
+    /* Empresas, sucursales y pantallas de Local Host (lenguaje/equipos.js). */
+    const req2 = !esperando && reglaEquipos(texto, ahora);
+    if (req2 && disponible(req2.intent, modulos)) {
+      const slots = {};
+      for (const [k, v] of Object.entries(req2)) if (k !== 'intent' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      let ok = true;
+      if (req2.personaTexto) {
+        const u = usuarios.find((x) => normalizar(x.nombre).texto === normalizar(req2.personaTexto).texto);
+        if (u) slots.usuario = { valor: u.id, texto: u.nombre, confianza: 'exacto' }; else ok = false;
+      }
+      if (ok) return cerrar(req2.intent, slots, 0.95, []);
+    }
+    /* Cambio de producto, corregir venta, venta suelta, tickets, activos,
+       WhatsApp, aprobaciones e impuestos (lenguaje/varios.js). */
+    const rva = !esperando && reglaVarios(texto);
+    if (rva && disponible(rva.intent, modulos)) {
+      const prod = (txt) => { const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null; return ap?.prod?.valor != null ? ap : null; };
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rva)) if (k !== 'intent' && !/^texto/.test(k) && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      for (const [k, dest] of [['textoDevuelve', 'devuelve'], ['textoLleva', 'lleva'], ['textoProducto', 'producto'], ['textoPadre', 'padre']]) {
+        if (rva[k] == null) continue;
+        const ap = prod(rva[k]);
+        if (ap) slots[dest] = { valor: ap.prod.valor, texto: ap.prod.texto, confianza: 'exacto', cantidad: ap.cants?.[0]?.valor ?? null }; else ok = false;
+      }
+      if (rva.textoRenglon) {
+        const ap = prod(rva.textoRenglon);
+        if (ap && ap.cants?.length) slots.renglon = { valor: { productId: ap.prod.valor, cantidad: ap.cants[0].valor }, texto: ap.prod.texto, confianza: 'exacto' }; else ok = false;
+      }
+      if (rva.textoCliente) {
+        const lista = personas.filter((x) => x.tipo === 'cliente');
+        const r = lista.length ? ex.producto(normalizar(rva.textoCliente).tokens, lista, { excluir: new Set() }) : null;
+        if (r?.valor != null) slots.cliente = { valor: r.valor, texto: r.texto, confianza: 'exacto' }; else ok = false;
+      }
+      if (rva.motivoTexto) slots.razon = { valor: ex.motivoDevolucion(normalizar(rva.motivoTexto).texto) || 'Otro', texto: rva.motivoTexto, confianza: 'exacto' };
+      if (ok) return cerrar(rva.intent, slots, 0.95, []);
+    }
+    /* Menú en línea y plataformas de reparto (lenguaje/menu.js). */
+    const rmn = !esperando && reglaMenu(texto);
+    if (rmn && disponible(rmn.intent, modulos)) {
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rmn)) if (k !== 'intent' && k !== 'textoProducto' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      if (rmn.textoProducto) {
+        const ap = analizar(rmn.textoProducto, catalogo, { personas: [] });
+        if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false;
+      }
+      if (ok) return cerrar(rmn.intent, slots, 0.95, []);
+    }
+    /* Recetas, fórmulas, presentaciones, grupos de opciones, dueño y
+       reportes de conteo (lenguaje/recetas.js). Producto, ingredientes y
+       socios tienen que existir. */
+    const rr = !esperando && reglaRecetas(texto);
+    if (rr && disponible(rr.intent, modulos)) {
+      const prod = (txt) => { const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null; return ap?.prod && ap.prod.valor != null ? ap.prod : null; };
+      const slots = {};
+      let ok = true;
+      if (rr.textoProducto != null) { const p = prod(rr.textoProducto); if (p) slots.producto = p; else ok = false; }
+      if (rr.lineas) {
+        const ls = rr.lineas.map((l) => { const p = prod(l.texto); return p ? { productId: p.valor, nombre: p.texto, cantidad: l.cantidad, unidad: l.unidad } : null; });
+        if (ls.every(Boolean)) slots.lineas = { valor: ls, texto: ls.map((l) => l.nombre).join(', '), confianza: 'exacto' }; else ok = false;
+      }
+      if (rr.quitarTexto) { const p = prod(rr.quitarTexto); if (p) slots.quitarIngrediente = { valor: p.valor, texto: p.texto, confianza: 'exacto' }; else ok = false; }
+      if (rr.socios) {
+        const llanoS = (x) => normalizar(x).texto;
+        const ids = rr.socios.map((s) => socios.find((x) => llanoS(x.nombre) === llanoS(s) || llanoS(x.nombre).split(' ').includes(llanoS(s)))?.id);
+        if (ids.length && ids.every(Boolean)) slots.socios = { valor: ids, texto: rr.socios.join(' y '), confianza: 'exacto' }; else ok = false;
+      }
+      for (const k of ['rinde', 'agrega', 'presentacion', 'nombre', 'factor', 'grupo', 'opciones', 'rol', 'accion', 'quitar']) {
+        if (rr[k] != null && rr[k] !== false) slots[k] = { valor: rr[k], texto: typeof rr[k] === 'object' ? JSON.stringify(rr[k]) : String(rr[k]), confianza: 'exacto' };
+      }
+      if (ok) return cerrar(rr.intent, slots, 0.95, []);
+    }
+    /* Usuarios, cajas, aplicaciones, giro, respaldos y asistencia
+       (lenguaje/config.js). Un usuario que no existe no cuenta. */
+    const rc2 = !esperando && reglaConfig(texto, { usuarios });
+    if (rc2 && disponible(rc2.intent, modulos)) {
+      const slots = {};
+      for (const [k, v] of Object.entries(rc2)) if (k !== 'intent' && v != null) slots[k] = { valor: v, texto: typeof v === 'object' ? JSON.stringify(v) : String(v), confianza: 'exacto' };
+      return cerrar(rc2.intent, slots, 0.95, []);
+    }
+    /* Puntos, membresías, rifas y cupones (lenguaje/fidelizacion.js). */
+    const rf = !esperando && reglaFidelizacion(texto);
+    if (rf && disponible(rf.intent, modulos)) {
+      const slots = {};
+      for (const k of ['cantidad', 'nota', 'textoRifa', 'ganadores', 'suplentes', 'textoCupon', 'puntos', 'cadaMonto', 'caducaMeses', 'porVisita', 'activo',
+                       'nombre', 'tipo', 'pct', 'monto', 'dias', 'premio', 'hasta', 'sellos', 'limite', 'precio', 'resultado', 'minimo', 'porCada', 'etiqueta', 'peso', 'borrar']) {
+        if (rf[k] != null) slots[k] = { valor: rf[k], texto: String(rf[k]), confianza: 'exacto' };
+      }
+      let ok = true;
+      if (rf.textoCliente) {
+        const lista = personas.filter((x) => x.tipo === 'cliente');
+        const r = lista.length ? ex.producto(normalizar(rf.textoCliente).tokens, lista, { excluir: new Set() }) : null;
+        if (r && (r.valor != null || r.opciones?.length)) slots.cliente = { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones };
+        else ok = false;
+      }
+      if (rf.textoProducto) { const ap = analizar(rf.textoProducto, catalogo, { personas: [] }); if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false; }
+      if (ok) return cerrar(rf.intent, slots, 0.95, []);
+    }
+    /* Socios y propinas: «Juan retiró 500», «liquida a los socios»,
+       «reparte las propinas». El socio tiene que existir (y estar activo). */
+    const rs = !esperando && reglaSocios(texto);
+    if (rs && disponible(rs.intent, modulos)) {
+      if (rs.intent === 'propinas.repartir' || rs.intent === 'socio.liquidar') {
+        return cerrar(rs.intent, rs.hasta ? { hasta: { valor: rs.hasta, texto: rs.hasta, confianza: 'exacto' } } : {}, 0.95, []);
+      }
+      const llanoS = (x) => normalizar(x).texto;
+      const dicho = llanoS(rs.socio);
+      const s = socios.find((x) => llanoS(x.nombre) === dicho)
+        || socios.find((x) => dicho && (llanoS(x.nombre).split(' ').includes(dicho) || llanoS(x.nombre).startsWith(dicho)));
+      if (s) {
+        const slots = { socio: { valor: s.id, texto: s.nombre, confianza: 'exacto' } };
+        if (rs.tipo) slots.tipo = { valor: rs.tipo, texto: rs.tipo, confianza: 'exacto' };
+        if (rs.monto != null) slots.monto = { valor: rs.monto, texto: '$' + rs.monto, confianza: 'exacto' };
+        if (rs.metodo) slots.metodo = { valor: rs.metodo, texto: rs.metodo, confianza: 'exacto' };
+        if (rs.folio) slots.folio = { valor: rs.folio, texto: String(rs.folio), confianza: 'exacto' };
+        if (rs.pago != null) slots.pago = { valor: rs.pago, texto: rs.pago ? 'lo pagó' : 'a su cargo', confianza: 'exacto' };
+        return cerrar(rs.intent, slots, 0.95, []);
+      }
+    }
+    /* «Cancela el gasto 12», «crea el concepto de gasto Gasolina». Si Wybix
+       preguntó por qué se cancela, la respuesta entera es el motivo. */
+    if (esperando?.intent === 'gasto.cancelar' && esperando.falta === 'motivo') {
+      return cerrar('gasto.cancelar', { ...esperando.slots, motivo: { valor: String(texto).trim().slice(0, 200), texto: String(texto).trim(), confianza: 'exacto' } }, 1, []);
+    }
+    const rg = !esperando && reglaGastos(texto);
+    if (rg && disponible(rg.intent, modulos)) {
+      const slots = {};
+      for (const k of ['folio', 'motivo', 'accion', 'nombre', 'concepto']) if (rg[k] != null) slots[k] = { valor: rg[k], texto: String(rg[k]), confianza: 'exacto' };
+      if (rg.concepto) {
+        const c = ex.conceptoGasto(normalizar(rg.concepto).texto, conceptos, normalizar);
+        if (c?.valor != null) slots.concepto = c;
+      }
+      return cerrar(rg.intent, slots, 0.95, []);
+    }
+    /* «Crea la categoría Lácteos», «Bimbo me surte las conchas». */
+    const rc = !esperando && reglaCatalogo(texto);
+    if (rc && disponible(rc.intent, modulos)) {
+      if (rc.intent !== 'producto.proveedor') return cerrar(rc.intent, { nombre: { valor: rc.nombre, texto: rc.nombre, confianza: 'exacto' } }, 0.95, []);
+      const provs = personas.filter((x) => x.tipo === 'proveedor');
+      const pv = provs.length ? ex.producto(normalizar(rc.textoProveedor).tokens, provs, { excluir: new Set() }) : null;
+      const ap = analizar(rc.textoProducto, catalogo, { personas: [] });
+      const pr = ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? ap.prod : null;
+      if (pv && (pv.valor != null || pv.opciones?.length) && pr) {
+        return cerrar('producto.proveedor', {
+          proveedor: { valor: pv.valor, texto: pv.texto, confianza: pv.valor != null ? pv.confianza : 'dudoso', opciones: pv.opciones },
+          producto: pr, accion: { valor: rc.accion, texto: rc.accion, confianza: 'exacto' } }, 0.95, []);
+      }
+    }
+    const ed = !esperando && edicion(texto);
+    if (ed && EDITAR.has(ed.intent) && disponible(ed.intent, modulos)) {
+      const ap = ed.textoProducto ? analizar(ed.textoProducto, catalogo, { personas }) : null;
+      let producto = ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? ap.prod : null;
+      /* «Cámbiale el costo a 8» después de hablar de la concha: esa. */
+      if (!producto && contexto?.slots?.producto?.valor != null) producto = contexto.slots.producto;
+      const slots = {};
+      if (producto) slots.producto = producto;
+      if (ed.intent !== 'producto.baja') slots.campo = { valor: ed.campo, texto: ed.campo, confianza: 'exacto' };
+      if (ed.intent === 'producto.impuesto') slots.impuesto = { valor: { texto: ed.valor, quitar: !!ed.quitar }, texto: ed.valorTexto, confianza: 'exacto' };
+      else if (ed.intent === 'producto.editar' && ed.valor != null) slots.valor = { valor: ed.valor, texto: ed.valorTexto, confianza: 'exacto' };
+      return cerrar(ed.intent, slots, 0.95, []);
     }
 
     const p = puntuar(a, modulos);
@@ -548,7 +899,14 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     if (v) s[quiere('producto') ? 'producto' : 'servicio'] = v;
   }
   if (quiere('renglones') && catalogo.length) {
-    let rs = ex.renglones(a.tokens, catalogo, { excluir: new Set([...a.excluir].filter((i) => !/^\d/.test(a.tokens[i]))) });
+    const fuera = new Set([...a.excluir].filter((i) => !/^\d/.test(a.tokens[i])));
+    /* En una compra «a 12» es el costo y el proveedor no es producto
+       («Coca-Cola» no son cocas). */
+    if (intent === 'compra.registrar') {
+      a.tokens.forEach((t, i) => { if (/^\d/.test(t) && a.tokens[i - 1] === 'a') fuera.add(i); });
+      for (const i of a.personaIdx) fuera.add(i);
+    }
+    let rs = ex.renglones(a.tokens, catalogo, { excluir: fuera });
     if (!rs.length && a.prod?.valor != null) rs = [{ cantidad: 1, producto: a.prod }];
     if (rs.length) {
       const dudoso = rs.some((r) => r.producto.valor == null);
@@ -572,7 +930,13 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
       if (/^\d+(\.\d+)?$/.test(ult) && Number(ult) > 0) s.precio = { valor: Number(ult), texto: ult, confianza: 'exacto' };
     }
   }
-  if (quiere('monto')) {
+  if (quiere('monto') && intent === 'venta.cobrar') {
+    /* En un cobro los números son cantidades; lo recibido se dice aparte:
+       «me dio 100», «paga con 200», «con un billete de 500». */
+    const m = a.norm.match(/\bbillete de\s+\$?(\d+(?:\.\d+)?)\b/)
+      || a.norm.match(/\b(?:me dio|me dieron|me paga|me pago|paga con|pago con|pagan con|recibi)\s+\$?(\d+(?:\.\d+)?)\b(?!\s*(?:billete|billetes)\b)/);
+    if (m) s.monto = { valor: Number(m[1]), texto: `$${m[1]}`, confianza: 'exacto' };
+  } else if (quiere('monto')) {
     if (a.din) s.monto = { valor: a.din.valor, texto: `$${a.din.valor}`, confianza: 'exacto' };
     else {
       /* «doña Mary abonó 200»: el número que no es teléfono, hora ni folio. */
@@ -582,6 +946,14 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     }
   }
   if (quiere('metodo')) { const m = ex.metodoPago(a.norm); if (m) s.metodo = m; }
+  /* Compra: el costo de cada renglón, en el orden en que se dijo
+     («24 cocas a 12 y 10 sabritas a 15»). Solo si cada renglón trae el suyo,
+     o uno solo para todos. */
+  if (quiere('costos') && s.renglones?.valor?.length) {
+    const tramos = a.norm.split(/\s(?:y|,)\s|,\s*/);
+    const costos = tramos.map((t) => t.match(/\ba\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos?)?\b(?!\s*(?:piezas?|pzas?|kg|kilos?|litros?))/)).filter(Boolean).map((m) => Number(m[1]));
+    if (costos.length === s.renglones.valor.length) s.costos = { valor: costos, texto: costos.join(', '), confianza: 'exacto' };
+  }
   if (quiere('concepto')) {
     const c = ex.conceptoGasto(a.norm, conceptos, normalizar);
     if (c) s.concepto = c;
@@ -591,6 +963,12 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     const f = ex.folio(a.norm) || (respuestaA === 'folio' && a.cants[0] ? { valor: a.cants[0].valor, texto: String(a.cants[0].valor), confianza: 'exacto' } : null)
       || (a.cants.length === 1 && !a.prodIdx.size ? { valor: a.cants[0].valor, texto: String(a.cants[0].valor), confianza: 'exacto' } : null);
     if (f) s.folio = f;
+    /* «reimprime el último ticket», «devuelve la última venta». */
+    else if (/\bultim[oa]s?\b/.test(a.norm)) s.folio = { valor: 'ultimo', texto: 'el último', confianza: 'exacto' };
+  }
+  if (quiere('razon')) {
+    const r = ex.motivoDevolucion(a.norm) || (respuestaA === 'razon' ? ex.MOTIVOS_DEVOLUCION.find((m) => normalizar(m).texto === a.norm) || (a.norm.length > 2 ? 'Otro' : null) : null);
+    if (r) s.razon = { valor: r, texto: r, confianza: 'exacto' };
   }
   if (quiere('mesa')) {
     const m = ex.mesa(a.norm) || (a.cants.length === 1 ? { valor: a.cants[0].valor, texto: `mesa ${a.cants[0].valor}`, confianza: 'exacto' } : null);

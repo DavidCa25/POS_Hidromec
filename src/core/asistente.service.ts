@@ -3,6 +3,10 @@ import type { Mensaje, Plan } from '../../shared/asistente';
 import { CartService } from './cart.service';
 import { VozRespuestaService } from './voz-respuesta.service';
 import { CatalogService } from './catalog.service';
+import { SaleService } from './sale.service';
+import { CommercialService } from './commercial.service';
+import type { CartLine } from './cart.service';
+import type { PaymentMethod } from './models';
 
 /*
  * WYBIX, ASISTENTE OPERATIVO — lo que necesita la pantalla.
@@ -31,6 +35,8 @@ export class AsistenteService {
   private readonly cart = inject(CartService);
   private readonly catalogo = inject(CatalogService);
   private readonly voz = inject(VozRespuestaService);
+  private readonly venta = inject(SaleService);
+  private readonly comercial = inject(CommercialService);
   private get api() { return (window as any).electronAPI; }
 
   readonly mensajes = signal<MensajeChat[]>([]);
@@ -179,9 +185,63 @@ export class AsistenteService {
     return { agregados, omitidos };
   }
 
-  /** «wybix.produccion.merma» → window.wybix.produccion.merma. Solo esas dos raíces. */
+  /**
+   * Planes que ejecuta la pantalla con sus propios servicios, no una función
+   * de preload. Cada uno está declarado en electron/asistente/cobertura.js
+   * (PANTALLA) con el canal que termina invocando.
+   */
+  private readonly pantalla: Record<string, (p: any) => Promise<any>> = {
+    cobrar: (p) => this.cobrar(p),
+  };
+
+  /**
+   * «Cóbrale 2 cocas en efectivo», confirmado: la MISMA venta que el botón
+   * Cobrar (SaleService.checkout: turno, cotización, ticket, cajón, premios y
+   * cupones), en una cuenta aparte para no tocar la que la caja tiene abierta.
+   * Si con las ofertas el total ya no es el de la tarjeta, no cobra.
+   */
+  async cobrar(p: { lineas: { productId: number; cantidad: number }[]; metodo: PaymentMethod; recibido?: number | null; total: number }) {
+    /* Recién leído: precio y existencia de ahora, y productos dados de alta
+       después de abrir Venta (la tarjeta los cotizó con la base). */
+    try { await this.catalogo.load(true); } catch { /* se valida abajo */ }
+    const lineas: CartLine[] = [];
+    for (const l of p?.lineas || []) {
+      const x = this.catalogo.findById(Number(l.productId));
+      if (!x) return { success: false, error: 'Uno de los productos ya no está en el catálogo.' };
+      if (x.has_modifiers) return { success: false, error: `${x.product_name} lleva opciones: cóbralo en Venta.` };
+      lineas.push(this.cart.makeLine(CatalogService.toLineSource(x), Number(l.cantidad)));
+    }
+    if (!lineas.length) return { success: false, error: 'La cuenta está vacía.' };
+    const antes = this.cart.activeCart().id;
+    const cuenta = this.cart.createCart();
+    if (!cuenta) return { success: false, error: 'Hay demasiadas cuentas abiertas en Venta: cierra una y vuelve a intentarlo.' };
+    cuenta.lines = lineas;
+    this.cart.notify();
+    const soltar = () => { this.cart.closeCart(cuenta.id); this.cart.switchTo(antes); };
+    try {
+      await this.comercial.prepare(cuenta, true);
+      const total = CartService.totalsOf(cuenta).total;
+      if (Math.abs(total - Number(p.total)) > 0.01) {
+        soltar();
+        return { success: false, error: `El total cambió a $${total.toFixed(2)} (ofertas o precios). No cobré: pídemelo otra vez.` };
+      }
+      const efectivo = p.metodo === 'EFECTIVO';
+      const r = await this.venta.checkout({ method: p.metodo, received: efectivo ? (p.recibido ?? total) : null },
+                                           { openDrawer: efectivo, autoPrint: true });
+      if (!r.ok) { soltar(); return { success: false, error: r.error || 'No se pudo registrar la venta.' }; }
+      /* checkout ya cerró la cuenta del asistente; se vuelve a la de la caja. */
+      this.cart.switchTo(antes);
+      return { success: true, saleId: r.saleId, total: r.total, cambio: r.change };
+    } catch (e: any) {
+      soltar();
+      return { success: false, error: e?.message || 'No se pudo registrar la venta.' };
+    }
+  }
+
+  /** «wybix.produccion.merma» → window.wybix.produccion.merma; «pantalla.cobrar» → this.pantalla.cobrar. */
   private resolver(ruta: string): ((...a: unknown[]) => Promise<any>) | null {
     const [raiz, ...partes] = String(ruta || '').split('.');
+    if (raiz === 'pantalla') return partes.length === 1 && Object.hasOwn(this.pantalla, partes[0]) ? this.pantalla[partes[0]] : null;
     if (raiz !== 'electronAPI' && raiz !== 'wybix') return null;
     let obj: any = (window as any)[raiz];
     for (let i = 0; i < partes.length - 1; i++) obj = obj?.[partes[i]];
