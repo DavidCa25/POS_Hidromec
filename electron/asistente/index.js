@@ -93,7 +93,7 @@ function crearAsistente(d) {
     const db = await pool();
     const leer = async (texto) => { try { return (await db.request().query(texto)).recordset || []; } catch { return []; } };
     const [productos, categorias, clientes, proveedores, profesionales, conceptos, usuarios, apodos] = await Promise.all([
-      leer(`SELECT id, nombre, stock, inventory_mode FROM dbo.products WHERE active = 1;`),
+      leer(`SELECT id, nombre, stock, inventory_mode, bar_code, part_number FROM dbo.products WHERE active = 1;`),
       leer(`SELECT id, namee AS nombre FROM dbo.CAT_categories ORDER BY namee;`),
       leer(`SELECT id, customerName AS nombre FROM dbo.customers WHERE active = 1;`),
       leer(`SELECT id, nombre FROM dbo.CAT_suppliers WHERE ISNULL(activo, 1) = 1;`),
@@ -110,7 +110,7 @@ function crearAsistente(d) {
       .map((a) => ({ ...prepararCatalogo([{ id: a.refId, nombre: a.alias }])[0], nombre: nombreDe[tipo].get(a.refId), apodo: a.alias })).filter((x) => x.tokens);
     cat = {
       en: Date.now(),
-      productos: [...prepararCatalogo(productos.map((p) => ({ id: p.id, nombre: p.nombre,
+      productos: [...prepararCatalogo(productos.map((p) => ({ id: p.id, nombre: p.nombre, bar_code: p.bar_code, part_number: p.part_number,
         nota: p.inventory_mode === 'DIRECT' ? `${Number(p.stock) || 0}` : undefined }))), ...conApodo('producto')],
       categorias,
       personas: [...prepararCatalogo([

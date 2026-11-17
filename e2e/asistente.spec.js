@@ -260,7 +260,8 @@ test('Wybix: apodos, filtros, simulación, pronóstico, frase compuesta y carrit
   // ---------------------------------------------- dos órdenes en una frase
   const antes = await p.locator('[data-guide=wybix-mensaje]').count();
   await decir('pague 120 de luz en efectivo y dime cuanto hay en caja');
-  await expect.poll(() => p.locator('[data-guide=wybix-mensaje]').count()).toBe(antes + 2);
+  /* Dos respuestas, una por orden (puede venir una observación más, «un día raro»). */
+  await expect.poll(() => p.locator('[data-guide=wybix-mensaje]').count()).toBeGreaterThanOrEqual(antes + 2);
   const gasto = p.locator('[data-guide=wybix-plan]').last();
   await expect(gasto).toContainText('Luz');
   await expect(gasto).toContainText('$120.00');
@@ -362,4 +363,70 @@ test('Wybix: pregunta libre con gráfica, referencias, explicación, preferencia
   expect(Number(nuevo.cost)).toBe(7);
   expect(Number(nuevo.category_id)).toBe(Number(ids.pan));
   await p.screenshot({ path: path.join(SHOTS, '12-alta.png') });
+});
+
+test('Wybix: editar la ficha hablando (costo, código de barras, nombre, IEPS) y dar de baja, con tarjeta y en la base', async ({ app }) => {
+  test.setTimeout(300000);
+  fs.mkdirSync(SHOTS, { recursive: true });
+  const p = app.ventana;
+  await p.setViewportSize?.({ width: 1440, height: 900 });
+  const [ids] = await sql(app.base, `
+    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'E2E Ficha') INSERT INTO dbo.CAT_categories (namee) VALUES (N'E2E Ficha');
+    DECLARE @c INT = (SELECT id FROM dbo.CAT_categories WHERE namee = N'E2E Ficha');
+    DELETE FROM dbo.asistente_mensajes;
+    DELETE FROM dbo.product_impuestos WHERE product_id IN (SELECT id FROM dbo.products WHERE part_number IN (N'WYB-PALANQ', N'WYB-BAJA'));
+    UPDATE dbo.products SET bar_code = NULL WHERE bar_code IN (N'7500000009911', N'7500000009922');
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE part_number = N'WYB-PALANQ')
+      INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, inventory_mode, category_id, cost, objeto_impuesto, tasa_iva, registrated_date, bar_code)
+      VALUES (N'WYB-PALANQ', N'Palanqueta nogal', 20, 10, 1, 1, 'DIRECT', @c, 9, '02', 0.16, GETDATE(), N'7500000009911');
+    UPDATE dbo.products SET nombre = N'Palanqueta nogal', cost = 9, bar_code = N'7500000009911', active = 1 WHERE part_number = N'WYB-PALANQ';
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE part_number = N'WYB-BAJA')
+      INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, inventory_mode, category_id, cost, objeto_impuesto, tasa_iva, registrated_date)
+      VALUES (N'WYB-BAJA', N'Turron cobre', 15, 0, 1, 1, 'DIRECT', @c, 5, '02', 0.16, GETDATE());
+    UPDATE dbo.products SET active = 1 WHERE part_number = N'WYB-BAJA';
+    SELECT (SELECT id FROM dbo.products WHERE part_number = N'WYB-PALANQ') AS palanqueta,
+           (SELECT id FROM dbo.products WHERE part_number = N'WYB-BAJA') AS turron,
+           (SELECT id FROM dbo.CAT_impuestos WHERE clave = 'IEPS_ALIMENTOS') AS ieps;`);
+
+  await p.fill('#username', CUENTAS.admin.usuario);
+  await p.fill('#password', CUENTAS.admin.password);
+  await p.click('#btnLogin');
+  await expect.poll(async () => { try { return (await app.invocar('sesion'))?.data?.usuario; } catch { return null; } }, { timeout: 60000 })
+    .toBe(CUENTAS.admin.usuario);
+  await p.click('[data-guide=wybix-guide]');
+  await expect(p.locator('[data-guide=wybix-chat]')).toBeVisible();
+  const campo = p.locator('[data-guide=wybix-campo]');
+  const decir = async (t) => { await campo.fill(t); await campo.press('Enter'); };
+  const confirmarUltimo = async (texto) => {
+    const plan = p.locator('[data-guide=wybix-plan]').last();
+    await expect(plan).toContainText(texto, { timeout: 20000 });
+    await plan.locator('[data-guide=wybix-confirmar]').click();
+    await expect(plan).toHaveAttribute('data-guide-estado', 'hecho', { timeout: 20000 });
+    return plan;
+  };
+  const ficha = async () => (await sql(app.base, `SELECT nombre, cost, bar_code, active FROM dbo.products WHERE id = ${ids.palanqueta}`))[0];
+
+  /* Por el código de barras: el código ES el producto. */
+  await decir('cambia el costo del 7500000009911 a 11.50');
+  const pc = await confirmarUltimo('$9.00 → $11.50');
+  await pc.screenshot({ path: path.join(SHOTS, 'ficha-costo.png') });
+  await expect.poll(async () => Number((await ficha()).cost)).toBe(11.5);
+
+  await decir('ponle el código de barras 7500000009922 a la palanqueta nogal');
+  await confirmarUltimo('7500000009911 → 7500000009922');
+  await expect.poll(async () => (await ficha()).bar_code).toBe('7500000009922');
+
+  await decir('renombra la palanqueta nogal a Palanqueta de nuez');
+  await confirmarUltimo('Palanqueta de nuez');
+  await expect.poll(async () => (await ficha()).nombre).toBe('Palanqueta de nuez');
+  expect(Number((await ficha()).cost), 'renombrar no toca el costo').toBe(11.5);
+
+  await decir('ponle IEPS 8% a la palanqueta de nuez');
+  await confirmarUltimo('IEPS');
+  await expect.poll(async () => (await sql(app.base, `SELECT COUNT(*) AS n FROM dbo.product_impuestos WHERE product_id = ${ids.palanqueta} AND impuesto_id = ${ids.ieps}`))[0].n).toBe(1);
+
+  await decir('da de baja el turron cobre');
+  await confirmarUltimo('Dar de baja Turron cobre');
+  await expect.poll(async () => (await sql(app.base, `SELECT active FROM dbo.products WHERE id = ${ids.turron}`))[0].active).toBe(false);
+  await p.screenshot({ path: path.join(SHOTS, 'ficha-chat.png') });
 });

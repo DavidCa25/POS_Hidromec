@@ -28,6 +28,8 @@ const { filtros: filtrosDe } = require('./filtros');
 const { apodo } = require('./apodos');
 const { preguntaLibre } = require('./pregunta');
 const ref = require('./referencias');
+const { edicion, valorDeCampo } = require('./edicion');
+const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
 
@@ -56,7 +58,39 @@ const PERSONA_SLOTS = { cliente: 'cliente', proveedor: 'proveedor', profesional:
 function prepararCatalogo(filas) {
   return (filas || []).filter((p) => p && p.nombre).map((p) => ({
     ...p, tokens: normalizar(p.nombre).tokens.map(raiz).filter((t) => (!ex.RUIDO.has(t) || t.length > 3) && !HONORIFICOS.has(t)),
+    codigos: codigosDe(p),
   })).filter((p) => p.tokens.length);
+}
+
+/**
+ * Código de barras y número de parte (SKU), como palabras normalizadas:
+ * «actualiza el 7501055300846 a 25». Un código solo de números necesita 6
+ * dígitos o más (para no confundir «600» de «coca de 600» con un código); uno
+ * con letras, 4 caracteres o más.
+ */
+function codigosDe(p) {
+  return [p.bar_code, p.part_number].map((c) => normalizar(String(c ?? '')).tokens)
+    .filter((ts) => { const s = ts.join(''); return ts.length && (/^\d+$/.test(s) ? s.length >= 6 : s.length >= 4); });
+}
+
+/**
+ * ¿La frase dice el código de un producto? Devuelve los índices de las
+ * palabras del código y los productos que lo tienen (más de uno si el código
+ * se repite: entonces se pregunta cuál).
+ */
+function buscarCodigo(tokens, catalogo) {
+  let mejor = null;
+  for (const p of catalogo) {
+    for (const c of p.codigos || []) {
+      for (let i = 0; i + c.length <= tokens.length; i++) {
+        if (!c.every((w, k) => tokens[i + k] === w)) continue;
+        const idx = c.map((_, k) => i + k);
+        if (!mejor || idx.length > mejor.idx.length) mejor = { idx, ids: [p.id], nombres: [p.nombre] };
+        else if (idx.length === mejor.idx.length && idx[0] === mejor.idx[0] && !mejor.ids.includes(p.id)) { mejor.ids.push(p.id); mejor.nombres.push(p.nombre); }
+      }
+    }
+  }
+  return mejor;
 }
 
 /** Todas las palabras con las que se nombra un id: su nombre y sus apodos. */
@@ -109,14 +143,23 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
       .flatMap((t) => (t.length >= 4 && /[a-z]$/.test(t) ? [t, /[aeiou]$/.test(t) ? `${t}s` : `${t}es`] : [t])));
     const tokens = conocidas.size ? norm0.tokens.map((t) => (lemasConocidos.has(lemaSuave(t)) ? t : corregir(t, conocidas, extra))) : norm0.tokens;
     const norm = tokens.join(' ');
-    const { dineroIdx, numIdx, cants, din } = indicesNumericos(tokens, { precioConPreposicion: o.precioConPreposicion !== false });
+    /* El código de barras o el SKU de un producto ES el producto: no es una
+       cantidad ni un precio. Para los números se tapa con una palabra neutra. */
+    const codigo = catalogo.length ? buscarCodigo(norm0.tokens, catalogo) : null;
+    const paraNumeros = codigo ? tokens.map((w, i) => (codigo.idx.includes(i) ? 'xcodigox' : w)) : tokens;
+    const { dineroIdx, numIdx, cants, din } = indicesNumericos(paraNumeros, { precioConPreposicion: o.precioConPreposicion !== false });
     const excluir = new Set([...dineroIdx, ...numIdx]);
     tokens.forEach((t, i) => { if (HONORIFICOS.has(t)) excluir.add(i); });
 
     /* Producto. «tengo harina para 100 conchas»: lo que se cuenta es lo que
        sigue al número; primero se busca en ese tramo, luego en toda la frase. */
     let prod = null, cantDelProd = null;
-    if (catalogo.length) {
+    if (codigo) {
+      prod = codigo.ids.length === 1
+        ? { valor: codigo.ids[0], texto: codigo.nombres[0], confianza: 'exacto', porCodigo: true }
+        : { valor: null, texto: codigo.idx.map((i) => norm0.tokens[i]).join(' '), confianza: 'dudoso', porCodigo: true,
+            opciones: codigo.ids.map((v, k) => ({ valor: v, etiqueta: codigo.nombres[k] })) };
+    } else if (catalogo.length) {
       for (const c of cants) {
         let desde = c.inicio + (c.conUnidad ? 2 : 1);
         while (['de', 'del', 'la', 'las', 'los', 'el'].includes(tokens[desde])) desde++;
@@ -130,13 +173,14 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     /* «Coca de 600» o «la coca grande» entre la de 600 ml y la de 2 L: el
        número y el adjetivo no cuentan para buscar, pero si solo UNA de las
        opciones lo lleva en su nombre, es esa. */
-    if (prod && prod.valor == null && prod.opciones?.length > 1) {
+    if (!codigo && prod && prod.valor == null && prod.opciones?.length > 1) {
       const nums = tokens.filter((t) => /^\d+(?:\.\d+)?$/.test(t) || SOLO_ADJETIVOS.has(t));
       const conNum = prod.opciones.filter((o) => nums.some((x) => tokensDeId(catalogo, o.valor).includes(x)));
       if (conNum.length === 1) prod = { valor: conNum[0].valor, texto: conNum[0].etiqueta, confianza: 'exacto' };
     }
     let prodIdx = new Set();
-    if (prod && prod.valor != null) prodIdx = indicesDe(tokens, tokensDeId(catalogo, prod.valor), excluir);
+    if (codigo) prodIdx = new Set(codigo.idx);
+    else if (prod && prod.valor != null) prodIdx = indicesDe(tokens, tokensDeId(catalogo, prod.valor), excluir);
     /* Producto en duda («huevo»: ¿el kilo o los rancheros?): igual es un
        producto para el clasificador; cuál, se pregunta después. */
     else if (prod?.opciones?.length) {
@@ -146,7 +190,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     /* …salvo que vaya junto a una palabra desconocida: «late grande» es un
        dedazo de «Latte grande», y entonces el adjetivo sí cuenta. */
     const desconocida = (i) => tokens[i] && !conocidas.has(tokens[i]) && !ex.RUIDO.has(tokens[i]) && !/^\d/.test(tokens[i]);
-    if (prod && prod.confianza !== 'exacto' && prodIdx.size && [...prodIdx].every((i) => SOLO_ADJETIVOS.has(tokens[i]))
+    if (!codigo && prod && prod.confianza !== 'exacto' && prodIdx.size && [...prodIdx].every((i) => SOLO_ADJETIVOS.has(tokens[i]))
         && ![...prodIdx].some((i) => desconocida(i - 1) || desconocida(i + 1))) {
       prod = null; prodIdx = new Set(); cantDelProd = null;
     }
@@ -291,6 +335,39 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         pref.cambios.nombre = dicho.charAt(0).toUpperCase() + dicho.slice(1).toLowerCase();
       }
       return cerrar('sistema.preferencia', { preferencia: { valor: pref, texto: a.normOriginal, confianza: 'exacto' } }, 0.95, []);
+    }
+
+    /* «Cambia el costo de la concha a 8», «ponle el código 750… a la coca»,
+       «da de baja la concha»: editar la ficha. Regla, no predicción
+       (lenguaje/edicion.js). Si Wybix preguntó el valor o el producto, la
+       respuesta suelta lo llena. */
+    if (esperando && EDITAR.has(esperando.intent)) {
+      const slots = { ...esperando.slots };
+      if (esperando.falta === 'valor') {
+        const v = valorDeCampo(slots.campo?.valor, texto);
+        if (v != null) slots.valor = { valor: v, texto: String(texto).trim(), confianza: 'exacto' };
+        return cerrar(esperando.intent, slots, 1, []);
+      }
+      if (esperando.falta === 'producto') {
+        const pr = a.prod?.confianza === 'dudoso' && slots.producto?.opciones?.length ? null : a.prod;
+        const elegido = slots.producto?.opciones?.length ? elegirOpcion(a.norm, slots.producto.opciones) : null;
+        if (elegido) slots.producto = { valor: elegido.valor, texto: elegido.etiqueta, confianza: 'exacto' };
+        else if (pr && (pr.valor != null || pr.opciones?.length)) slots.producto = pr;
+        return cerrar(esperando.intent, slots, 1, []);
+      }
+    }
+    const ed = !esperando && edicion(texto);
+    if (ed && EDITAR.has(ed.intent) && disponible(ed.intent, modulos)) {
+      const ap = ed.textoProducto ? analizar(ed.textoProducto, catalogo, { personas }) : null;
+      let producto = ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? ap.prod : null;
+      /* «Cámbiale el costo a 8» después de hablar de la concha: esa. */
+      if (!producto && contexto?.slots?.producto?.valor != null) producto = contexto.slots.producto;
+      const slots = {};
+      if (producto) slots.producto = producto;
+      if (ed.intent !== 'producto.baja') slots.campo = { valor: ed.campo, texto: ed.campo, confianza: 'exacto' };
+      if (ed.intent === 'producto.impuesto') slots.impuesto = { valor: { texto: ed.valor, quitar: !!ed.quitar }, texto: ed.valorTexto, confianza: 'exacto' };
+      else if (ed.intent === 'producto.editar' && ed.valor != null) slots.valor = { valor: ed.valor, texto: ed.valorTexto, confianza: 'exacto' };
+      return cerrar(ed.intent, slots, 0.95, []);
     }
 
     const p = puntuar(a, modulos);

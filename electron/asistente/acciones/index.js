@@ -32,9 +32,13 @@ const PREGUNTAS = {
   nombre: '¿Cómo se llama?', categoria: '¿En qué categoría va?', destino: '¿A dónde te llevo?', monto: '¿De cuánto?',
   metodo: '¿Cómo se pagó?', concepto: '¿De qué fue el gasto?', cliente: '¿Qué cliente?', proveedor: '¿Qué proveedor?',
   profesional: '¿Con quién?', servicio: '¿Qué servicio?', fecha: '¿Qué día?', hora: '¿A qué hora?', folio: '¿Qué folio?',
-  mesa: '¿Qué mesa?', renglones: '¿Qué productos y cuántos?',
+  mesa: '¿Qué mesa?', renglones: '¿Qué productos y cuántos?', impuesto: '¿Qué impuesto?',
   costo: '¿Cuánto te cuesta cada uno, sin IVA? Si todavía no sabes, dime «no sé».',
   existencia: '¿Cuántos tienes ahorita? Si todavía ninguno, dime «ninguno».',
+};
+const PREGUNTA_CAMPO = {
+  costo: '¿A qué costo, sin IVA?', nombre: '¿Cómo se va a llamar?', codigo_barras: '¿Cuál es el código de barras?',
+  sku: '¿Cuál es el número de parte?', iva: '¿Con qué IVA? 16%, 8% o exento.',
 };
 /* Lo que no encontró, dicho por tipo. */
 const NO_ENCONTRADO = {
@@ -99,7 +103,9 @@ function crearAcciones({ sql, pool, sensores, listarHallazgos, sistema = async (
     if (interp.falta === 'costo') opciones = [{ etiqueta: 'No sé', texto: 'no sé' }];
     if (interp.falta === 'existencia') opciones = [{ etiqueta: 'Ninguno', texto: 'ninguno' }];
     const noEsta = NO_ENCONTRADO[interp.falta];
-    const texto = noEsta && s?.texto && !s.opciones?.length ? noEsta(s.texto) : PREGUNTAS[interp.falta] || '¿Me das ese dato?';
+    /* «Cambia el costo de la concha» sin decir a cuánto: la pregunta nombra el campo. */
+    const deCampo = interp.falta === 'valor' && PREGUNTA_CAMPO[interp.slots.campo?.valor];
+    const texto = deCampo || (noEsta && s?.texto && !s.opciones?.length ? noEsta(s.texto) : PREGUNTAS[interp.falta] || '¿Me das ese dato?');
     return msg(texto, { opciones, esperando: { intent: interp.intent, slots: interp.slots, falta: interp.falta } });
   }
 

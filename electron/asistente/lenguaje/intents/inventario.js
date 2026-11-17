@@ -72,6 +72,27 @@ module.exports = [
       'que {prod} cueste {precio}', 'cambiar precio de {prod}', 'quiero cambiar el precio del {prod}', 'ponle {precio} al {prod}', 'sube el precio',
     ],
   },
+  /* Editar la ficha y darla de baja: los reconoce la regla de
+     lenguaje/edicion.js; qué campos hay y por qué canal se guarda, en
+     acciones/entidades.js. */
+  {
+    id: 'producto.editar', etiqueta: 'Cambiar un dato de un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, campo: { requerido: true }, valor: { requerido: true } },
+    claves: ['costo', 'codigo', 'barras', 'sku', 'nombre', 'iva'],
+    ejemplos: [],
+  },
+  {
+    id: 'producto.impuesto', etiqueta: 'Ponerle o quitarle un impuesto a un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { producto: { requerido: true }, impuesto: { requerido: true } },
+    claves: ['ieps', 'impuesto'],
+    ejemplos: [],
+  },
+  {
+    id: 'producto.baja', etiqueta: 'Dar de baja un producto', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { producto: { requerido: true } },
+    claves: ['baja', 'desactiva'],
+    ejemplos: [],
+  },
   {
     id: 'producto.crear', etiqueta: 'Dar de alta un producto', tipo: 'accion', permiso: 'CATALOGO_EDITAR',
     /* costo y existencia se PREGUNTAN (una vez) pero no son obligatorios:

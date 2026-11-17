@@ -178,6 +178,66 @@ scripts/asistente/                  entrenar.mjs (loop) · giros.mjs (catálogos
    inconfundible, una señal en `senales.js`.
 5. `npm run asistente:entrenar` hasta cumplir la meta.
 
+## Todo lo que se hace a mano, lo hace el asistente
+
+**La regla:** cada operación que una persona puede hacer en una pantalla, el
+asistente la tiene que poder hacer. Las excepciones son a propósito y con
+motivo.
+
+### El mapa: `electron/asistente/cobertura.js`
+
+Cada canal protegido de `electron/seguridad/canales.js` está en uno de estos
+lugares:
+
+| Dónde | Qué quiere decir |
+|---|---|
+| Lo hace el asistente | **No se escribe a mano: se calcula.** Algún plan de `acciones/` llama a la función de preload que invoca ese canal. |
+| `LECTURA` | El canal solo lee. No es una acción. |
+| `MANUAL` | A propósito no lo hace el asistente, con motivo: un archivo, un secreto, hardware o algo irreversible. |
+| `PENDIENTE` | Falta. Es la lista de trabajo, por área. |
+
+`node --test scripts/pruebas/asistente-cobertura.test.mjs` (dentro de
+`npm run test:asistente`) falla en estos casos:
+
+- un canal nuevo que no está en ninguna parte (nadie decidió);
+- un canal que el asistente ya cubre y sigue en `PENDIENTE`;
+- un canal `MANUAL` que el asistente hace;
+- un canal `MANUAL` sin motivo;
+- la lista nombra un canal que ya no existe.
+
+Además imprime el avance, por ejemplo «asistente: 17 de 184 acciones (9 %)».
+
+**El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
+con la misma función de `preload`. Así pasa por el mismo canal: permisos,
+autorizaciones, candados de sucursal, bitácora, nube e impresión.
+
+### Editar una ficha hablando
+
+Lo reconoce una **regla** en `lenguaje/edicion.js`, no el clasificador. Los
+campos de cada entidad viven en `acciones/entidades.js`: etiqueta, cómo se lee
+el valor actual, validación, permiso y el payload del canal. Agregar un campo
+es una entrada ahí y su forma de decirlo en `edicion.js`.
+
+Hoy, del producto:
+
+| Frase | Qué hace |
+|---|---|
+| «cambia el costo de la concha a 8», «el costo de la concha es 8» | Costo sin IVA. Pide `VER_COSTOS`. La tarjeta muestra cómo queda la ganancia. |
+| «ponle el código de barras 750… a la coca», «quítale el código de barras a…» | Código de barras. Rechaza uno que ya tiene otro producto. |
+| «cambia el SKU de la concha a PAN-001» | Número de parte. |
+| «renombra la concha a Concha de vainilla» | Nombre, con sus acentos y mayúsculas. |
+| «ponle IVA 16 a la coca», «la coca va sin IVA» | 16 %, 8 % o exento. |
+| «ponle IEPS 8% a las papas», «quítale el IEPS a…» | Otros impuestos (`producto:impuestos-guardar`). Uno por cuota pide cuánto trae una pieza. |
+| «da de baja la concha», «ya no vendo la concha» | Baja lógica (`sp-delete-product`). «Dar de baja 5 conchas» sigue siendo merma. |
+
+**El producto también se nombra por su código de barras o su SKU:**
+«cambia el costo del 7501055300846 a 9.50», «ponle 25 pesos al
+7501055300846». El intérprete lo busca antes que por nombre y no lo confunde
+con una cantidad. Si el código lo tienen dos productos, pregunta cuál.
+
+Si falta el valor («cambia el costo de la concha»), pregunta nombrando el
+campo («¿A qué costo, sin IVA?»).
+
 ## El loop de entrenamiento
 
 ```

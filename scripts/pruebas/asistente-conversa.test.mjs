@@ -170,3 +170,46 @@ test('conversación: el alta de un producto pregunta costo y existencia, y «no 
   assert.equal(respondidas.at(-1).it.slots.costo.omitido, true);
   assert.equal(respondidas.at(-1).it.slots.existencia.valor, 20);
 });
+
+test('editar la ficha hablando: costo, código, SKU, nombre, IVA, impuestos y baja; por nombre o por código de barras', () => {
+  const cat = prepararCatalogo([{ id: 1, nombre: 'Concha', bar_code: '7501000111111', part_number: 'PAN-CON' },
+    { id: 3, nombre: 'Coca Cola 600 ml', bar_code: '7501055300846' }, { id: 5, nombre: 'Papas Sabritas 45 g' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, categorias: CATEGORIAS, modulos: new Set(), ahora: HOY });
+  const casos = [
+    ['cambia el costo de la concha a 8', 'producto.editar', 1, 'costo', 8],
+    ['el costo de la concha es 8', 'producto.editar', 1, 'costo', 8],
+    ['cambia el costo del 7501055300846 a 9.50', 'producto.editar', 3, 'costo', 9.5],
+    ['ponle el codigo de barras 7501234567890 a la concha', 'producto.editar', 1, 'codigo_barras', '7501234567890'],
+    ['cambia el código de barras de la concha a 7501234567890', 'producto.editar', 1, 'codigo_barras', '7501234567890'],
+    ['quítale el código de barras a la concha', 'producto.editar', 1, 'codigo_barras', ''],
+    ['cambia el sku de la concha a PAN-001', 'producto.editar', 1, 'sku', 'PAN-001'],
+    ['renombra la concha a Concha de vainilla', 'producto.editar', 1, 'nombre', 'Concha de vainilla'],
+    ['ponle iva 16 a la coca', 'producto.editar', 3, 'iva', 0.16],
+    ['la coca va sin IVA', 'producto.editar', 3, 'iva', 0],
+    ['ponle IEPS 8% a las papas', 'producto.impuesto', 5],
+    ['quítale el IEPS a las papas', 'producto.impuesto', 5],
+    ['da de baja la concha', 'producto.baja', 1],
+    ['desactiva el 7501055300846', 'producto.baja', 3],
+    ['actualiza el producto con código de barras 7501055300846 a 25 pesos', 'producto.precio', 3],
+    ['ponle 25 pesos al 7501055300846', 'producto.precio', 3],
+  ];
+  for (const [texto, intent, prod, campo, valor] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    assert.equal(r.slots.producto?.valor, prod, `${texto}: producto`);
+    if (campo) { assert.equal(r.slots.campo.valor, campo, `${texto}: campo`); assert.equal(r.slots.valor.valor, valor, `${texto}: valor`); }
+  }
+  /* Una pregunta no es una orden, y una merma no es una baja del catálogo. */
+  assert.notEqual(l('cuál es el costo de la concha').intent, 'producto.editar');
+  assert.equal(l('dar de baja 5 conchas por caducidad').intent, 'merma.registrar');
+  /* Sin valor: pregunta el que falta, con el campo en la pregunta. */
+  const sinValor = l('cambia el costo de la concha');
+  assert.equal(sinValor.falta, 'valor');
+  const respuesta = interprete.interpretar('7.5', { catalogo: cat, categorias: CATEGORIAS, modulos: new Set(), ahora: HOY,
+    esperando: { intent: sinValor.intent, slots: sinValor.slots, falta: 'valor' } });
+  assert.equal(respuesta.slots.valor.valor, 7.5); assert.equal(respuesta.falta, null);
+  /* Un código de barras repetido en dos productos: pregunta cuál. */
+  const dup = prepararCatalogo([{ id: 1, nombre: 'Concha', bar_code: '7855745585855' }, { id: 2, nombre: 'Bolillo', bar_code: '7855745585855' }]);
+  const rd = interprete.interpretar('cambia el costo del 7855745585855 a 5', { catalogo: dup, categorias: [], modulos: new Set(), ahora: HOY });
+  assert.equal(rd.falta, 'producto'); assert.equal(rd.slots.producto.opciones.length, 2);
+});

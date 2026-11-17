@@ -1,6 +1,7 @@
 'use strict';
 /* INVENTARIO Y CATÁLOGO: existencias, merma, ajustes, precios, altas y márgenes. */
 const crypto = require('crypto');
+const E = require('./entidades');
 
 module.exports = (h) => {
   const NOMBRE_MOTIVO = Object.fromEntries(h.MOTIVOS.map((m) => [m.valor, m.etiqueta.toLowerCase()]));
@@ -144,6 +145,126 @@ module.exports = (h) => {
           bar_code: p.bar_code ?? null, clave_prod_serv: p.clave_prod_serv ?? null, clave_unidad: p.clave_unidad ?? null,
           objeto_impuesto: p.objeto_impuesto ?? null, tasa_iva: p.tasa_iva ?? null } },
         permiso: 'CATALOGO_EDITAR', hallazgoId: ctx.hallazgoId ?? null,
+      }) });
+    },
+
+    /* «Cambia el costo de la concha a 8», «ponle el código 750… a la coca»,
+       «renombra…», «ponle IVA 16…». Los campos, en entidades.js; se guarda por
+       el mismo canal que la ficha de Inventario. */
+    async 'producto.editar'(it, ctx) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto.');
+      const campo = h.v(it, 'campo');
+      const def = E.producto.campos[campo];
+      if (!def) return h.msg('Ese dato del producto todavía no lo cambio yo: hazlo en Inventario.', { ruta: '/dashboard/inventario' });
+      if (def.permiso && !ctx.puede(def.permiso)) return h.msg(`Tu usuario no puede cambiar ${def.dicho}. Pídeselo a un encargado.`);
+      const nuevo = h.v(it, 'valor');
+      const error = def.validar(nuevo);
+      if (error) return h.msg(error);
+      const antes = def.leer(p);
+      if (def.igual ? def.igual(antes, nuevo) : String(antes ?? '') === String(nuevo ?? '')) {
+        return h.msg(`${p.nombre} ya tiene ${def.dicho} ${def.mostrar(nuevo)}.`);
+      }
+      const vista = [{ etiqueta: def.etiqueta, valor: `${def.mostrar(antes)} → ${def.mostrar(nuevo)}` }];
+      const avisos = [];
+      if (campo === 'costo' && Number(nuevo) > 0) {
+        const base = Number(p.price) / (1 + tasaDe(p));
+        const ganancia = (c) => (c > 0 ? `${Math.round(((base - c) / c) * 1000) / 10}%` : '—');
+        vista.push({ etiqueta: 'Ganancia sobre el costo', valor: `${ganancia(Number(p.cost))} → ${ganancia(Number(nuevo))}` });
+        if (base < Number(nuevo)) avisos.push('Con este costo vendes con pérdida: el precio sin IVA queda abajo del costo.');
+      }
+      if (campo === 'codigo_barras' && nuevo) {
+        const otro = await h.uno('SELECT TOP 1 nombre FROM dbo.products WHERE bar_code = @c AND id <> @id;', [['c', h.sql.NVarChar(100), String(nuevo)], h.id(p.id)]);
+        if (otro) return h.msg(`Ese código de barras ya lo tiene «${otro.nombre}». Un código va en un solo producto.`);
+      }
+      if (campo === 'sku') {
+        const otro = await h.uno('SELECT TOP 1 nombre FROM dbo.products WHERE part_number = @c AND id <> @id;', [['c', h.sql.NVarChar(100), String(nuevo)], h.id(p.id)]);
+        if (otro) return h.msg(`Ese número de parte ya lo tiene «${otro.nombre}».`);
+      }
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.editar', {
+        titulo: `${p.nombre} · ${def.dicho.replace(/^el /, '')}`, vista, avisos,
+        ejecutar: { api: E.producto.api, payload: E.producto.payload(p, def.cambios(nuevo)) },
+        permiso: 'CATALOGO_EDITAR', hallazgoId: ctx.hallazgoId ?? null,
+      }) });
+    },
+
+    /* «Ponle IEPS 8% a las papas», «quítale el IEPS a las papas». Se guarda la
+       lista completa del producto por producto:impuestos-guardar, igual que la
+       ficha. Uno por cuota necesita cuánto trae una pieza («0.6 litros»). */
+    async 'producto.impuesto'(it, ctx) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto.');
+      const pedido = h.v(it, 'impuesto') || {};
+      const dicho = String(pedido.texto || '').toLowerCase();
+      let actuales = [], catalogo = [];
+      try {
+        actuales = await h.q('EXEC dbo.sp_producto_impuestos_get @product_id = @id;', [h.id(p.id)]);
+        catalogo = await h.q('EXEC dbo.sp_impuestos_listar @todos = 0;', []);
+      } catch { return h.msg('Esta caja todavía no tiene el catálogo de impuestos (necesita la versión 1.6.0).'); }
+      const elegir = (lista) => {
+        let xs = lista;
+        const num = dicho.match(/(\d+(?:\.\d+)?)\s*%/);
+        if (num) xs = xs.filter((x) => x.tasa != null && Math.abs(Number(x.tasa) * 100 - Number(num[1])) < 0.01);
+        if (/\bieps\b/.test(dicho)) xs = xs.filter((x) => x.clase === 'IEPS');
+        if (/\blocal\b|\bhospedaje\b/.test(dicho)) xs = xs.filter((x) => x.clase === 'LOCAL');
+        const palabras = dicho.split(/[^a-záéíóúñ]+/).filter((w) => w.length >= 4 && !['ieps', 'impuesto', 'impuestos', 'local'].includes(w));
+        if (palabras.length) {
+          const conPalabra = xs.filter((x) => palabras.some((w) => String(x.nombre).toLowerCase().includes(w)));
+          if (conPalabra.length) xs = conPalabra;
+        }
+        return xs;
+      };
+      if (pedido.quitar) {
+        if (!actuales.length) return h.msg(`${p.nombre} no lleva otros impuestos además del IVA.`);
+        const xs = dicho.replace(/\b(?:el|los|la)\b/g, '').trim() === 'ieps' || dicho.trim() === 'impuestos' ? actuales.filter((x) => x.clase === 'IEPS' || dicho.trim() === 'impuestos') : elegir(actuales);
+        if (!xs.length) return h.msg(`${p.nombre} no lleva ese impuesto. Lleva: ${actuales.map((x) => x.nombre).join(', ')}.`);
+        const quedan = actuales.filter((x) => !xs.some((y) => y.id === x.id));
+        return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.impuesto', {
+          titulo: `${p.nombre} · quitar ${xs.map((x) => x.nombre).join(', ')}`,
+          vista: [{ etiqueta: 'Otros impuestos', valor: `${actuales.map((x) => x.nombre).join(', ')} → ${quedan.map((x) => x.nombre).join(', ') || 'ninguno'}` }],
+          avisos: ['El precio no cambia: lo que se deja de cobrar de impuesto queda como ganancia.'],
+          ejecutar: { api: 'electronAPI.productoImpuestosGuardar', payload: { productId: p.id, impuestos: quedan.map((x) => ({ id: x.id, cantidad: x.cantidad })) } },
+          permiso: 'CATALOGO_EDITAR', hallazgoId: ctx.hallazgoId ?? null,
+        }) });
+      }
+      const xs = elegir(catalogo.filter((x) => x.activo));
+      if (!xs.length) return h.msg('No encontré ese impuesto encendido. Revísalo en Configuración → Impuestos.', { ruta: '/dashboard/configuracion' });
+      if (xs.length > 1) {
+        return h.msg('¿Cuál de estos?', { opciones: xs.slice(0, 6).map((x) => ({ etiqueta: x.nombre, texto: `ponle ${x.nombre} a ${p.nombre}` })) });
+      }
+      const imp = xs[0];
+      if (actuales.some((x) => x.id === imp.id)) return h.msg(`${p.nombre} ya lleva ${imp.nombre}.`);
+      let cantidad = null;
+      if (imp.factor === 'Cuota') {
+        const m = dicho.match(/(\d+(?:\.\d+)?)\s*(?:l|lt|lts|litros?|ml|cigarros?|piezas?|pzas?)\b/);
+        if (!m) return h.msg(`${imp.nombre} es por ${imp.unidad || 'unidad'}: dime cuánto trae una pieza. Por ejemplo: «ponle ${imp.nombre} 0.6 ${imp.unidad || 'litros'} a ${p.nombre}».`);
+        cantidad = /\bml\b/.test(m[0]) ? Number(m[1]) / 1000 : Number(m[1]);
+      }
+      const nueva = [...actuales.map((x) => ({ id: x.id, cantidad: x.cantidad })), { id: imp.id, cantidad }];
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.impuesto', {
+        titulo: `${p.nombre} · ${imp.nombre}`,
+        vista: [{ etiqueta: 'Otros impuestos', valor: `${actuales.map((x) => x.nombre).join(', ') || 'ninguno'} → ${[...actuales.map((x) => x.nombre), imp.nombre].join(', ')}` },
+                ...(cantidad != null ? [{ etiqueta: 'Por pieza', valor: `${h.num(cantidad)} ${imp.unidad || ''}`.trim() }] : [])],
+        avisos: ['El precio no cambia: el impuesto sale de lo que ya cobras, así que tu ganancia baja.'],
+        ejecutar: { api: 'electronAPI.productoImpuestosGuardar', payload: { productId: p.id, impuestos: nueva } },
+        permiso: 'CATALOGO_EDITAR', hallazgoId: ctx.hallazgoId ?? null,
+      }) });
+    },
+
+    /* «Da de baja la concha». Baja lógica por el canal de la ficha
+       (sp-delete-product): si es ingrediente de una receta o de un
+       modificador, el canal lo dice y no la hace. */
+    async 'producto.baja'(it, ctx) {
+      const p = await h.producto(h.v(it, 'producto'));
+      if (!p) return h.msg('No encontré ese producto (o ya está dado de baja).');
+      const avisos = [];
+      if (p.inventory_mode === 'DIRECT' && Number(p.stock) > 0) avisos.push(`Todavía tiene ${h.cant(p.stock, p.base_uom)} en existencia: dejará de verse en Venta e Inventario.`);
+      return h.msg('Esto voy a hacer:', { plan: h.plan('producto.baja', {
+        titulo: `Dar de baja ${p.nombre}`,
+        vista: [{ etiqueta: 'Producto', valor: p.nombre }, { etiqueta: 'Precio', valor: h.dinero(p.price) }],
+        avisos: [...avisos, 'Las ventas pasadas no cambian.'],
+        ejecutar: { api: 'electronAPI.darDeBajaProducto', args: [p.id] },
+        permiso: 'INVENTARIO_OPERAR', hallazgoId: ctx.hallazgoId ?? null,
       }) });
     },
 

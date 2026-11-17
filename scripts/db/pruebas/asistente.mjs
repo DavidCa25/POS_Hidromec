@@ -209,6 +209,59 @@ try {
   const rTop = await acciones.responder({ intent: 'venta.top', puntaje: 1, alternativas: [], slots: { filtros: { ...filtros, valor: { rango: filtros.valor.rango } } }, falta: null, texto: 'que es lo que mas vendo' },
     { userId: 1, usuario: 'qa', puede: () => true });
   check(/QA Concha/.test(rTop.texto), 'lo más vendido (en piezas) es la concha', rTop.texto.slice(0, 140));
+
+  /* 8. Editar la ficha hablando. La tarjeta trae el antes → después y el
+     payload del MISMO canal que la pantalla; aquí se ejecuta el mismo SP con
+     ese payload para probar que el canal lo acepta. */
+  seccion('8. Editar un producto: costo, código, IVA, impuesto y baja');
+  const ctxTodo = { userId: 1, usuario: 'qa', puede: () => true };
+  const pedir = (intent, slots) => acciones.responder({ intent, puntaje: 1, alternativas: [], slots, falta: null, texto: '' }, ctxTodo);
+  const ex = (v, texto = String(v)) => ({ valor: v, texto, confianza: 'exacto' });
+  await q(`UPDATE dbo.products SET bar_code = N'7501000111111' WHERE id = ${concha}; UPDATE dbo.products SET bar_code = N'7501000222222' WHERE id = ${cafe};`);
+  const ejecutarFicha = async (p) => {
+    const r = pool.request();
+    for (const [k, t, v] of [['product_id', sql.Int, p.product_id], ['nombre', sql.NVarChar(100), p.nombre], ['precio', sql.Decimal(10, 2), p.precio],
+      ['stock', sql.Decimal(10, 2), p.stock], ['numero_parte', sql.NVarChar(100), p.numero_parte], ['bar_code', sql.NVarChar(100), p.bar_code],
+      ['tasa_iva', sql.Decimal(5, 4), p.tasa_iva], ['cost', sql.Decimal(14, 4), p.cost ?? null]]) r.input(k, t, v);
+    await r.execute('sp_update_product');
+  };
+  const rCosto = await pedir('producto.editar', { producto: ex(concha, 'QA Concha'), campo: ex('costo'), valor: ex(5) });
+  const pc = rCosto.plan;
+  check(pc?.ejecutar?.api === 'electronAPI.actualizarProducto' && pc.vista[0].valor === '$4.00 → $5.00' && pc.ejecutar.payload.cost === 5,
+    'costo: tarjeta $4.00 → $5.00 por el canal de la ficha', JSON.stringify(pc?.vista));
+  check(/Ganancia/.test(pc.vista[1]?.etiqueta || ''), 'y muestra cómo queda la ganancia');
+  await ejecutarFicha(pc.ejecutar.payload);
+  check(Number(await escalar(`SELECT cost FROM dbo.products WHERE id = ${concha}`)) === 5 && Number(await escalar(`SELECT price FROM dbo.products WHERE id = ${concha}`)) === 10,
+    'el SP con ese payload cambia el costo y deja el precio igual');
+  const sinCostos = await acciones.responder({ intent: 'producto.editar', puntaje: 1, alternativas: [], falta: null, texto: '',
+    slots: { producto: ex(concha), campo: ex('costo'), valor: ex(6) } }, { ...ctxTodo, puede: (x) => x !== 'VER_COSTOS' });
+  check(!sinCostos.plan && /no puede cambiar el costo./.test(sinCostos.texto), 'sin permiso de ver costos no se ofrece cambiarlo', sinCostos.texto);
+
+  const rCod = await pedir('producto.editar', { producto: ex(concha), campo: ex('codigo_barras'), valor: ex('7501000222222') });
+  check(!rCod.plan && /QA Café/.test(rCod.texto), 'un código de barras que ya tiene otro producto se rechaza antes de la tarjeta', rCod.texto);
+  const rCod2 = await pedir('producto.editar', { producto: ex(concha), campo: ex('codigo_barras'), valor: ex('7501000333333') });
+  await ejecutarFicha(rCod2.plan.ejecutar.payload);
+  check(await escalar(`SELECT bar_code FROM dbo.products WHERE id = ${concha}`) === '7501000333333', 'código nuevo guardado');
+  const ivaAntes = await escalar(`SELECT tasa_iva FROM dbo.products WHERE id = ${cafe}`);
+  const rIva = await pedir('producto.editar', { producto: ex(cafe), campo: ex('iva'), valor: ex(0.08) });
+  check(/→ 8%$/.test(rIva.plan?.vista[0].valor || '') && rIva.plan.ejecutar.payload.tasa_iva === 0.08, `IVA: ${ivaAntes} → 8%`, JSON.stringify(rIva.plan?.vista));
+  const rNom = await pedir('producto.editar', { producto: ex(concha), campo: ex('nombre'), valor: ex('QA Concha de vainilla') });
+  await ejecutarFicha(rNom.plan.ejecutar.payload);
+  check(await escalar(`SELECT nombre FROM dbo.products WHERE id = ${concha}`) === 'QA Concha de vainilla'
+    && await escalar(`SELECT bar_code FROM dbo.products WHERE id = ${concha}`) === '7501000333333'
+    && Number(await escalar(`SELECT cost FROM dbo.products WHERE id = ${concha}`)) === 5,
+    'renombrar no toca el código ni el costo');
+
+  const rImp = await pedir('producto.impuesto', { producto: ex(cafe), impuesto: { valor: { texto: 'ieps 8%', quitar: false }, texto: 'ieps 8%', confianza: 'exacto' } });
+  const iepsId = Number(await escalar(`SELECT id FROM dbo.CAT_impuestos WHERE clave = 'IEPS_ALIMENTOS'`));
+  check(rImp.plan?.ejecutar?.api === 'electronAPI.productoImpuestosGuardar' && rImp.plan.ejecutar.payload.impuestos.some((x) => x.id === iepsId),
+    'IEPS 8%: la tarjeta guarda la lista con el IEPS de alimentos', JSON.stringify(rImp.plan?.ejecutar?.payload));
+  await q(`EXEC dbo.sp_producto_impuestos_guardar @product_id = ${cafe}, @impuestos = N'${JSON.stringify(rImp.plan.ejecutar.payload.impuestos)}';`);
+  const rQuita = await pedir('producto.impuesto', { producto: ex(cafe), impuesto: { valor: { texto: 'ieps', quitar: true }, texto: 'ieps', confianza: 'exacto' } });
+  check(rQuita.plan && rQuita.plan.ejecutar.payload.impuestos.length === 0, 'quitar el IEPS deja la lista vacía', JSON.stringify(rQuita.plan?.ejecutar?.payload));
+
+  const rBaja = await pedir('producto.baja', { producto: ex(cafe) });
+  check(rBaja.plan?.ejecutar?.api === 'electronAPI.darDeBajaProducto' && rBaja.plan.ejecutar.args[0] === cafe, 'baja: por el canal de la ficha con el id');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);
