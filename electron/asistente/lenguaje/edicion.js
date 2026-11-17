@@ -180,4 +180,61 @@ function valorDeCampo(campo, dicho) {
   return null;
 }
 
-module.exports = { edicion, valorDeCampo, llano };
+/* ------------------------------------------------ personas (cliente, proveedor)
+   «Cambia el teléfono de doña Mary a 5512345678», «el correo de Bimbo es
+   ventas@bimbo.mx», «ponle límite de crédito de 2000 a don Pepe»,
+   «renombra al cliente Juan a Juan Pérez». */
+const CAMPOS_PERSONA = [
+  { campo: 'limite', re: /\b(?:limite de credito|limite|credito maximo|tope de credito)\b/ },
+  { campo: 'dias', re: /\b(?:dias de credito|plazo de credito|plazo)\b/ },
+  { campo: 'telefono', re: /\b(?:telefono|celular|cel|whatsapp|numero de telefono|numero)\b/ },
+  { campo: 'correo', re: /\b(?:correo electronico|correo|email|e-mail|mail)\b/ },
+  { campo: 'rfc', re: /\brfc\b/ },
+  { campo: 'nombre', re: /\b(?:nombre|renombra|renombrar)\b/ },
+];
+const TIPO = /\b(cliente|clienta|proveedor|proveedora)\b/;
+
+/** El valor de un campo de persona, sacado del texto original. */
+function valorPersona(campo, raw) {
+  const r = String(raw || '');
+  if (campo === 'telefono') { const m = r.replace(/(\d)[\s-](?=\d)/g, '$1').match(/\b(\d{10})\b/); return m ? m[1] : null; }
+  if (campo === 'correo') { const m = r.match(/[^\s@,;«»"']+@[^\s@,;«»"']+\.[a-z]{2,}/i); return m ? m[0].toLowerCase() : null; }
+  if (campo === 'rfc') { const m = r.toUpperCase().match(/\b([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})\b/); return m ? m[1] : null; }
+  if (campo === 'limite') return numero(r);
+  if (campo === 'dias') { const n = numero(r); return n == null ? null : Math.round(n); }
+  if (campo === 'nombre') { const v = limpio(r); return v ? v.charAt(0).toUpperCase() + v.slice(1) : null; }
+  return null;
+}
+
+/**
+ * @returns null o { campo, valor, valorTexto, tipo: 'cliente'|'proveedor'|null, textoPersona }
+ */
+function edicionPersona(texto) {
+  const raw = String(texto || '').trim().replace(/[¿?¡!]+/g, '');
+  const t = llano(raw);
+  if (!t || /^(?:cual|cuanto|cuanta|que|como|donde|dime|sabes|tiene)\b/.test(t)) return null;
+  const hit = CAMPOS_PERSONA.map((c) => ({ ...c, m: t.match(c.re) })).find((c) => c.m);
+  if (!hit) return null;
+  const afirma = /\s(?:ahora es|es|sera|queda en|va a ser)\s/.test(t);
+  if (!VERBO.test(t) && !afirma && !/\b(?:dale|dales|darle|da|subele|bajale|aumentale)\b/.test(t)) return null;
+  const tipo = (t.match(TIPO)?.[1] || '').startsWith('proveedor') ? 'proveedor' : TIPO.test(t) ? 'cliente' : null;
+  const i = hit.m.index, fin = i + hit.m[0].length;
+  let valorRaw = null, quien = '';
+  if (hit.campo === 'nombre') {
+    /* «renombra a doña Mary a María López»: el nombre nuevo va al final. */
+    const con = ultimoConector(t, fin);
+    if (con) { valorRaw = raw.slice(con.fin); quien = t.slice(fin, con.i); }
+    else quien = t.slice(fin);
+  } else {
+    valorRaw = raw;
+    const v = valorPersona(hit.campo, raw);
+    const sinValor = v == null ? t : t.replace(llano(String(v)), ' ').replace(/\$?\s?[\d.,\s-]{4,}/g, ' ');
+    quien = sinValor.slice(0, i).replace(VERBO, ' ') + ' ' + sinValor.slice(fin);
+  }
+  const valor = valorRaw == null ? null : valorPersona(hit.campo, valorRaw);
+  const textoPersona = quien.replace(VERBO, ' ').replace(/\b(?:ahora es|es|sera|queda en|va a ser|a|al|de|del|el|la|los|las|su|le|para|en|que|con|pesos|dias|cliente|clienta|proveedor|proveedora|credito)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return { campo: hit.campo, valor, valorTexto: valor == null ? null : String(valor), tipo, textoPersona };
+}
+
+module.exports = { edicion, edicionPersona, valorDeCampo, valorPersona, llano };

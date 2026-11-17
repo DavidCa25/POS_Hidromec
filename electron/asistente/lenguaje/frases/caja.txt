@@ -184,6 +184,8 @@ corte de caja hay 1700
 hacer el corte del turno
 hacer el corte de la semana
 hacer el corte del mes
+hacer el corte de la quincena pasada
+hacer el corte del dia de hoy
 
 @ caja.abrir
 abre la caja con 500

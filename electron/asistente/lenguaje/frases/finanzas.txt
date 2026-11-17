@@ -64,6 +64,9 @@ cuanto se gasto ayer
 cuanto me cuesta operar al mes
 cuanto pago de servicios
 gastos por categoria
+gastos por concepto
+cuanto gaste por categoria
+gastos de cada categoria
 desglose de gastos
 cuanto gaste el mes pasado
 cuanto he pagado de luz este año

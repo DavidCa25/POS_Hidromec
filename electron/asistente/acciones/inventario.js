@@ -4,6 +4,22 @@ const crypto = require('crypto');
 const E = require('./entidades');
 
 module.exports = (h) => {
+  /** Alta de categoría o marca: el mismo canal que el botón «+» de la ficha. */
+  async function altaCatalogo(it, que) {
+    const nombre = String(h.v(it, 'nombre') || '').trim();
+    if (!nombre) return h.msg(`¿Cómo se va a llamar la ${que}?`);
+    if (nombre.length > 100) return h.msg('Ese nombre es muy largo.');
+    const tabla = que === 'categoria' ? 'dbo.CAT_categories' : 'dbo.CAT_brands';
+    const ya = await h.uno(`SELECT TOP 1 namee FROM ${tabla} WHERE namee = @n;`, [['n', h.sql.NVarChar(150), nombre]]);
+    if (ya) return h.msg(`Ya existe la ${que} «${ya.namee}».`);
+    const etiqueta = que === 'categoria' ? 'Categoría' : 'Marca';
+    return h.msg('Esto voy a crear:', { plan: h.plan(`${que}.alta`, {
+      titulo: `${etiqueta} nueva · ${nombre}`, vista: [{ etiqueta, valor: nombre }],
+      ejecutar: { api: que === 'categoria' ? 'electronAPI.createCategory' : 'electronAPI.createBrand', payload: { nombre } },
+      permiso: 'CATALOGO_EDITAR',
+    }) });
+  }
+
   const NOMBRE_MOTIVO = Object.fromEntries(h.MOTIVOS.map((m) => [m.valor, m.etiqueta.toLowerCase()]));
   const tasaDe = (p) => ((p.objeto_impuesto || '02') === '02' ? Number(p.tasa_iva ?? 0.16) : 0);
 
@@ -308,6 +324,53 @@ module.exports = (h) => {
 
     async 'inventario.traspaso'() {
       return h.ir('Los traspasos se hacen en su pantalla: eliges la sucursal y los productos, y la otra los recibe. Te llevo.', '/dashboard/traspasos');
+    },
+    /* «Crea la categoría Lácteos» / «agrega la marca Lala». */
+    async 'categoria.alta'(it) { return altaCatalogo(it, 'categoria'); },
+    async 'marca.alta'(it) { return altaCatalogo(it, 'marca'); },
+
+    /**
+     * «Bimbo me surte las conchas» (agregar), «el proveedor principal de la
+     * concha es Bimbo» (principal), «Bimbo ya no me surte las conchas»
+     * (quitar). Los mismos canales que la pestaña Proveedores de la ficha.
+     */
+    async 'producto.proveedor'(it) {
+      const p = await h.producto(h.v(it, 'producto'));
+      const prov = await h.proveedor(h.v(it, 'proveedor'));
+      if (!p || !prov) return h.msg('No encontré ese producto o ese proveedor.');
+      const accion = h.v(it, 'accion') || 'agregar';
+      const liga = await h.uno('SELECT is_default, active, last_cost FROM dbo.product_suppliers WHERE product_id = @p AND supplier_id = @s;',
+        [['p', h.sql.Int, p.id], ['s', h.sql.Int, prov.id]]);
+      const actual = await h.uno(`SELECT TOP 1 s.nombre FROM dbo.product_suppliers ps JOIN dbo.CAT_suppliers s ON s.id = ps.supplier_id
+                                     WHERE ps.product_id = @p AND ps.is_default = 1 AND ps.active = 1;`, [['p', h.sql.Int, p.id]]);
+      if (accion === 'quitar') {
+        if (!liga || !liga.active) return h.msg(`${prov.nombre} no está como proveedor de ${p.nombre}.`);
+        return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.proveedor', {
+          titulo: `${prov.nombre} deja de surtir ${p.nombre}`,
+          vista: [{ etiqueta: 'Producto', valor: p.nombre }, { etiqueta: 'Proveedor', valor: `${prov.nombre} → ya no lo surte` }],
+          avisos: liga.is_default ? ['Era su proveedor principal: el producto queda sin principal.'] : [],
+          ejecutar: { api: 'electronAPI.removeProductSupplier', args: [p.id, prov.id] }, permiso: 'INVENTARIO_OPERAR',
+        }) });
+      }
+      if (accion === 'principal') {
+        if (liga?.active && liga.is_default) return h.msg(`${prov.nombre} ya es el proveedor principal de ${p.nombre}.`);
+        /* Sin liga todavía: se crea ya como principal (un solo paso). */
+        const ejecutar = liga?.active ? { api: 'electronAPI.setProductDefaultSupplier', args: [p.id, prov.id] }
+          : { api: 'electronAPI.upsertProductSupplier', payload: { product_id: p.id, supplier_id: prov.id, is_default: 1, active: 1, last_cost: null } };
+        return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.proveedor', {
+          titulo: `Proveedor principal de ${p.nombre}`,
+          vista: [{ etiqueta: 'Proveedor principal', valor: `${actual?.nombre || 'ninguno'} → ${prov.nombre}` }],
+          ejecutar, permiso: 'INVENTARIO_OPERAR',
+        }) });
+      }
+      if (liga?.active) return h.msg(`${prov.nombre} ya está como proveedor de ${p.nombre}.`);
+      return h.msg('Esto voy a cambiar:', { plan: h.plan('producto.proveedor', {
+        titulo: `${prov.nombre} surte ${p.nombre}`,
+        vista: [{ etiqueta: 'Producto', valor: p.nombre }, { etiqueta: 'Proveedor', valor: prov.nombre },
+                { etiqueta: 'Principal', valor: actual ? `no (sigue ${actual.nombre})` : 'sí (no tenía)' }],
+        ejecutar: { api: 'electronAPI.upsertProductSupplier', payload: { product_id: p.id, supplier_id: prov.id, is_default: actual ? 0 : 1, active: 1, last_cost: null } },
+        permiso: 'INVENTARIO_OPERAR',
+      }) });
     },
   };
 };

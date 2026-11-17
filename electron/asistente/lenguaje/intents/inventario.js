@@ -122,4 +122,17 @@ module.exports = [
     ejemplos: ['haz un traspaso', 'manda {n} {prod} a la otra sucursal', 'traspasa {prod} a la sucursal', 'enviar mercancia a la sucursal',
                'mover producto entre sucursales', 'traspaso de inventario'],
   },
+  {
+    /* Reglas de lenguaje/catalogo.js, no clasificador. */
+    id: 'categoria.alta', etiqueta: 'Crear una categoría', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { nombre: { requerido: true } }, claves: ['categoria'], ejemplos: [],
+  },
+  {
+    id: 'marca.alta', etiqueta: 'Crear una marca', tipo: 'accion', permiso: 'CATALOGO_EDITAR', soloRegla: true,
+    slots: { nombre: { requerido: true } }, claves: ['marca'], ejemplos: [],
+  },
+  {
+    id: 'producto.proveedor', etiqueta: 'Quién surte un producto', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { proveedor: { requerido: true }, producto: { requerido: true }, accion: {} }, claves: ['surte', 'proveedor'], ejemplos: [],
+  },
 ];

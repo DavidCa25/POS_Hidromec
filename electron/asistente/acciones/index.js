@@ -41,6 +41,8 @@ const PREGUNTAS = {
 const PREGUNTA_CAMPO = {
   costo: '¿A qué costo, sin IVA?', nombre: '¿Cómo se va a llamar?', codigo_barras: '¿Cuál es el código de barras?',
   sku: '¿Cuál es el número de parte?', iva: '¿Con qué IVA? 16%, 8% o exento.',
+  telefono: '¿Cuál es el teléfono? (10 dígitos)', correo: '¿Cuál es el correo?', rfc: '¿Cuál es el RFC?',
+  limite: '¿De cuánto es el límite de crédito?', dias: '¿Cuántos días de crédito?',
 };
 /* Lo que no encontró, dicho por tipo. */
 const NO_ENCONTRADO = {

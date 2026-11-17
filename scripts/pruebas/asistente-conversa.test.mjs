@@ -249,3 +249,38 @@ test('ventas y caja hablando: abrir, corte con lo contado, cajón, correo, reimp
   /* Corte sin lo contado: lo pregunta. */
   assert.equal(l('haz el corte').falta, 'monto');
 });
+
+test('clientes, proveedores, compras y catálogo hablando', () => {
+  const personas = prepararCatalogo([{ id: 1, nombre: 'Doña Mary', tipo: 'cliente' }, { id: 2, nombre: 'Bimbo', tipo: 'proveedor' },
+    { id: 3, nombre: 'Coca-Cola FEMSA', tipo: 'proveedor' }]);
+  const cat = prepararCatalogo([{ id: 5, nombre: 'Coca Cola 600 ml' }, { id: 6, nombre: 'Concha' }, { id: 7, nombre: 'Sabritas 45 g' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas, categorias: CATEGORIAS, modulos: new Set(), ahora: HOY });
+  const casos = [
+    ['cambia el teléfono de doña mary a 55 1234 5678', 'cliente.editar', { cliente: 1, campo: 'telefono', valor: '5512345678' }],
+    ['ponle límite de crédito de 2000 a doña mary', 'cliente.editar', { cliente: 1, campo: 'limite', valor: 2000 }],
+    ['dale 30 días de crédito a doña mary', 'cliente.editar', { cliente: 1, campo: 'dias', valor: 30 }],
+    ['el correo de bimbo es Ventas@Bimbo.mx', 'proveedor.editar', { proveedor: 2, campo: 'correo', valor: 'ventas@bimbo.mx' }],
+    ['cambia el rfc de bimbo a BIM011108DJ5', 'proveedor.editar', { proveedor: 2, campo: 'rfc', valor: 'BIM011108DJ5' }],
+    ['compré 24 cocas a 12 a coca-cola', 'compra.registrar', { proveedor: 3 }],
+    ['crea la categoría Lácteos', 'categoria.alta', { nombre: 'Lácteos' }],
+    ['agrega la marca Lala', 'marca.alta', { nombre: 'Lala' }],
+    ['Bimbo me surte las conchas', 'producto.proveedor', { proveedor: 2, producto: 6, accion: 'agregar' }],
+    ['el proveedor principal de la concha es Bimbo', 'producto.proveedor', { proveedor: 2, producto: 6, accion: 'principal' }],
+    ['bimbo ya no me surte las conchas', 'producto.proveedor', { proveedor: 2, producto: 6, accion: 'quitar' }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  /* En una compra «a 12» es el costo y «Coca-Cola» el proveedor, no cocas. */
+  const c = l('llegó el pedido de bimbo: 30 conchas a 6 pesos y 10 sabritas a 14 en efectivo');
+  assert.deepEqual(c.slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[6, 30], [7, 10]]);
+  assert.deepEqual(c.slots.costos.valor, [6, 14]);
+  assert.equal(c.slots.metodo.valor, 'EFECTIVO');
+  assert.deepEqual(l('compré 24 cocas a 12 a coca-cola').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[5, 24]]);
+  /* Preguntas no son órdenes. */
+  assert.equal(l('quién me surte las conchas').intent, 'proveedor.quien');
+  assert.equal(l('cuál es el teléfono de doña mary').intent, 'cliente.info');
+  assert.equal(l('cambia el teléfono de doña mary').falta, 'valor');
+});

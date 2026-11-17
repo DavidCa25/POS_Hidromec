@@ -331,6 +331,75 @@ try {
     `cobrar 2 conchas en efectivo: $${precioConcha * 2}, recibe $50 y da cambio`, JSON.stringify(rCobro.plan?.vista));
   const rCobroSin = await pedirC('venta.cobrar', { renglones: ex([{ productId: concha, cantidad: 2, nombre: 'concha' }]) });
   check(!rCobroSin.plan && rCobroSin.ruta === '/dashboard/venta' && rCobroSin.carrito?.length === 1, 'sin forma de pago deja la cuenta en Venta');
+
+  /* 10. Clientes, proveedores, compras y catálogo. */
+  seccion('10. Cliente y proveedor, compra con su precio, categoría, marca y proveedor del producto');
+  await q(`INSERT INTO dbo.customers (customerName, phone, credit_limit, terms_days) VALUES (N'QA Doña Mary', N'5500000000', 500, 0);
+           IF NOT EXISTS (SELECT 1 FROM dbo.CAT_suppliers WHERE nombre = N'QA Bimbo') INSERT INTO dbo.CAT_suppliers (nombre) VALUES (N'QA Bimbo');`);
+  const mary = Number(await escalar("SELECT id FROM dbo.customers WHERE customerName = N'QA Doña Mary'"));
+  const bimbo = Number(await escalar("SELECT id FROM dbo.CAT_suppliers WHERE nombre = N'QA Bimbo'"));
+
+  const rTel = await pedirC('cliente.editar', { cliente: ex(mary), campo: ex('telefono'), valor: ex('5512345678') });
+  check(rTel.plan?.ejecutar.api === 'electronAPI.updateCustomer' && rTel.plan.ejecutar.args.length === 16, 'cliente: tarjeta con la ficha completa (16 datos)', JSON.stringify(rTel.plan?.vista));
+  const a = rTel.plan.ejecutar.args;
+  const rq = pool.request();
+  [['id', sql.Int], ['code', sql.NVarChar(30)], ['customerName', sql.NVarChar(120)], ['tax_id', sql.NVarChar(20)], ['email', sql.NVarChar(120)], ['phone', sql.NVarChar(30)],
+   ['credit_limit', sql.Decimal(12, 2)], ['terms_days', sql.Int], ['active', sql.Bit], ['regimen_fiscal', sql.NVarChar(5)], ['uso_cfdi', sql.NVarChar(5)],
+   ['razon_social', sql.NVarChar(255)], ['grace_days', sql.Int], ['late_fee_pct', sql.Decimal(5, 2)], ['late_fee_fixed', sql.Decimal(12, 2)], ['risk_level', sql.TinyInt]]
+    .forEach(([k, t], i) => rq.input(k, t, k === 'code' ? (a[i] || null) : a[i]));
+  await rq.execute('sp_update_customer');
+  const m2 = (await q(`SELECT phone, credit_limit, customerName FROM dbo.customers WHERE id = ${mary}`))[0];
+  check(m2.phone === '5512345678' && Number(m2.credit_limit) === 500 && m2.customerName === 'QA Doña Mary', 'el SP cambia el teléfono y deja el límite y el nombre');
+  const rLim = await pedirC('cliente.editar', { cliente: ex(mary), campo: ex('limite'), valor: ex(2000) }, { ...ctxTodo, puede: (x) => x !== 'CREDITO_CUPONES' });
+  check(!rLim.plan && /no puede cambiar el límite/.test(rLim.texto), 'sin «Crédito y cupones» no ofrece cambiar el límite', rLim.texto);
+
+  const rCorreo2 = await pedirC('proveedor.editar', { proveedor: ex(bimbo), campo: ex('correo'), valor: ex('ventas@bimbo.mx') });
+  const pp = rCorreo2.plan?.ejecutar.payload;
+  await pool.request().input('id', sql.Int, pp.id).input('nombre', sql.NVarChar(100), pp.nombre).input('telefono', sql.NVarChar(20), pp.telefono)
+    .input('correo', sql.NVarChar(100), pp.correo).input('rfc', sql.NVarChar(20), pp.rfc).execute('sp_supplier_save');
+  check(await escalar(`SELECT correo FROM dbo.CAT_suppliers WHERE id = ${bimbo}`) === 'ventas@bimbo.mx', 'proveedor: el SP guarda el correo');
+
+  /* Compra: el precio de venta se queda; con un costo que no cabe, sube. */
+  await q(`UPDATE dbo.products SET price = 10, cost = 4, tasa_iva = 0, objeto_impuesto = '02', stock = 0 WHERE id = ${concha}`);
+  const rCompra = await pedirC('compra.registrar', { proveedor: ex(bimbo), renglones: ex([{ productId: concha, cantidad: 30, nombre: 'concha' }]), costos: ex([5]), metodo: ex('CREDITO') });
+  const pcm = rCompra.plan?.ejecutar.payload;
+  check(rCompra.plan?.ejecutar.api === 'electronAPI.registerPurchase' && pcm.total === 150 && pcm.detalles[0].profit_percent === 100,
+    'compra: total $150 y el margen que deja el precio de $10', JSON.stringify(rCompra.plan?.vista));
+  const tvpC = new sql.Table('dbo.PurchaseDetailType'); ['product_id', 'quantity', 'unit_price', 'profit_percent'].forEach((c) => tvpC.columns.add(c, c === 'product_id' ? sql.Int : sql.Decimal(12, 2), { nullable: c === 'profit_percent' }));
+  const tvpC2 = new sql.Table('dbo.PurchaseDetailType2');
+  tvpC2.columns.add('product_id', sql.Int, { nullable: false }); tvpC2.columns.add('quantity', sql.Decimal(12, 2), { nullable: false });
+  tvpC2.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false }); tvpC2.columns.add('profit_percent', sql.Decimal(5, 2), { nullable: true });
+  tvpC2.columns.add('presentation_id', sql.Int, { nullable: true });
+  for (const d of pcm.detalles) tvpC2.rows.add(d.product_id, d.quantity, d.unit_price, d.profit_percent, d.presentation_id);
+  await pool.request().input('user_id', sql.Int, 1).input('supplier_id', sql.Int, pcm.supplier_id).input('tax_rate', sql.Decimal(5, 2), pcm.tax_rate)
+    .input('tax_amount', sql.Decimal(10, 2), pcm.tax_amount).input('subtotal', sql.Decimal(10, 2), pcm.subtotal).input('total', sql.Decimal(10, 2), pcm.total)
+    .input('PurchaseDetails', tvpC).input('PurchaseDetails2', tvpC2).input('payment_method', sql.NVarChar(20), pcm.payment_method)
+    .input('register_id', sql.Int, pcm.register_id).input('apply_payment_id', sql.Int, null).execute('sp_register_purchase');
+  const tras = (await q(`SELECT price, cost, stock FROM dbo.products WHERE id = ${concha}`))[0];
+  check(Number(tras.price) === 10 && Number(tras.cost) === 5 && Number(tras.stock) === 30, 'el SP sube 30 piezas, el costo a $5 y el precio se queda en $10', JSON.stringify(tras));
+  const rCara = await pedirC('compra.registrar', { proveedor: ex(bimbo), renglones: ex([{ productId: concha, cantidad: 1, nombre: 'concha' }]), costos: ex([12]) });
+  check(rCara.plan?.avisos.some((x) => /precio de venta pasa de \$10.00 a \$12.00/.test(x)), 'un costo que no cabe avisa que el precio sube', JSON.stringify(rCara.plan?.avisos));
+  const rSinProv = await pedirC('compra.registrar', { renglones: ex([{ productId: concha, cantidad: 1, nombre: 'concha' }]) });
+  check(!rSinProv.plan && rSinProv.esperando?.falta === 'proveedor', 'sin proveedor lo pregunta');
+
+  const rCat = await pedirC('categoria.alta', { nombre: ex('QA Lácteos') });
+  await pool.request().input('namee', sql.NVarChar(150), rCat.plan.ejecutar.payload.nombre).query('INSERT INTO dbo.CAT_categories (namee) VALUES (@namee);');
+  const rCat2 = await pedirC('categoria.alta', { nombre: ex('QA Lácteos') });
+  check(rCat.plan?.ejecutar.api === 'electronAPI.createCategory' && !rCat2.plan && /Ya existe/.test(rCat2.texto), 'categoría: tarjeta, y una repetida se rechaza');
+  const rMarca = await pedirC('marca.alta', { nombre: ex('QA Lala') });
+  check(rMarca.plan?.ejecutar.api === 'electronAPI.createBrand' && rMarca.plan.ejecutar.payload.nombre === 'QA Lala', 'marca: tarjeta por sp-add-brand');
+
+  await q(`DELETE FROM dbo.product_suppliers WHERE product_id = ${concha}`);
+  const rSurte = await pedirC('producto.proveedor', { proveedor: ex(bimbo), producto: ex(concha), accion: ex('agregar') });
+  const ps = rSurte.plan?.ejecutar.payload;
+  check(rSurte.plan?.ejecutar.api === 'electronAPI.upsertProductSupplier' && ps.is_default === 1, 'surte: sin principal, entra como principal');
+  await pool.request().input('product_id', sql.Int, ps.product_id).input('supplier_id', sql.Int, ps.supplier_id).input('is_default', sql.Bit, ps.is_default)
+    .input('active', sql.Bit, 1).input('last_cost', sql.Decimal(10, 2), null).execute('sp_upsert_product_supplier');
+  const rYa = await pedirC('producto.proveedor', { proveedor: ex(bimbo), producto: ex(concha), accion: ex('principal') });
+  check(!rYa.plan && /ya es el proveedor principal/.test(rYa.texto), 'ya es principal: no hay nada que cambiar');
+  const rSinSurtir = await pedirC('producto.proveedor', { proveedor: ex(bimbo), producto: ex(concha), accion: ex('quitar') });
+  check(rSinSurtir.plan?.ejecutar.api === 'electronAPI.removeProductSupplier' && rSinSurtir.plan.ejecutar.args[1] === bimbo && rSinSurtir.plan.avisos.length === 1,
+    'quitar: por el canal de la ficha, avisando que era el principal');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

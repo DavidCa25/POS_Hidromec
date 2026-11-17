@@ -132,5 +132,10 @@ module.exports = (h) => {
       return h.msg(`${h.plural(filas.length, 'cliente')} cumple${filas.length === 1 ? '' : 'n'} años ${cuando}:`, {
         datos: filas.map((f) => ({ etiqueta: f.nombre, valor: `${h.fechaCorta(new Date(f.este).toISOString())}${f.mobile || f.phone ? ` · ${f.mobile || f.phone}` : ''}` })) });
     },
+    /* «Cambia el teléfono de doña Mary a 55…», «ponle límite de 2000 a don Pepe». */
+    async 'cliente.editar'(it, ctx) {
+      return require('./entidades').editarFicha(h, ctx, { ent: require('./entidades').cliente, tipo: 'cliente', id: h.v(it, 'cliente'),
+        campo: h.v(it, 'campo'), nuevo: h.v(it, 'valor'), intent: 'cliente.editar' });
+    },
   };
 };

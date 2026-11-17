@@ -36,4 +36,11 @@ module.exports = [
     ejemplos: ['telefono de {persona}', 'numero de {persona}', 'pasame el contacto de {persona}', 'datos del proveedor {persona}',
                'como contacto a {persona}', 'correo de {persona}'],
   },
+  {
+    /* Regla (lenguaje/edicion.js: edicionPersona), no clasificador. */
+    id: 'proveedor.editar', etiqueta: 'Cambiar datos de un proveedor', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { proveedor: { requerido: true }, campo: { requerido: true }, valor: { requerido: true } },
+    claves: ['telefono', 'correo', 'rfc'],
+    ejemplos: [],
+  },
 ];

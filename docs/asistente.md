@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 24 de 183 acciones (13 %)».
+Además imprime el avance, por ejemplo «asistente: 32 de 183 acciones (17 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -261,6 +261,20 @@ usan Venta y Corte. El asistente la recibe como `equipo` en `crearAsistente`.
 
 Sin forma de pago, «cóbrale 2 cocas» deja la cuenta cargada en Venta. Un
 producto con opciones (tamaño, sabor) también se cobra en Venta.
+
+### Clientes, proveedores, compras y catálogo
+
+| Frase | Qué hace |
+|---|---|
+| «cambia el teléfono de doña Mary a 55…», «el correo de Bimbo es …», «ponle límite de crédito de 2000 a doña Mary», «dale 30 días de crédito a…», «cambia el RFC de…», «renombra al cliente Juan a …» | Ficha del cliente (`sp-update-customer`, con la ficha completa) o del proveedor (`sp-supplier-save`). Regla `edicionPersona` en `edicion.js`; solo entra si la persona existe. Límite y días piden «Crédito y cupones», como la pantalla. |
+| «compré 24 cocas a 12 a Coca-Cola», «llegó el pedido de Bimbo: 30 conchas a 6 y 10 sabritas a 14 en efectivo» | Compra (`sp-register-purchase`). Costo **sin IVA** por pieza; sin costo usa el anterior. Sin forma de pago queda a crédito. `sp_register_purchase` recalcula el precio de venta con el margen de cada renglón: el asistente manda el margen que **deja el precio de ahora**. Si el costo nuevo no cabe, el precio sube a costo + IVA y la tarjeta lo dice. Avisa si hoy ya hay una compra de ese proveedor. |
+| «crea la categoría Lácteos», «agrega la marca Lala» | `sp-add-category`, `sp-add-brand`. Rechaza una que ya existe. |
+| «Bimbo me surte las conchas», «el proveedor principal de la concha es Bimbo», «Bimbo ya no me surte las conchas» | Proveedores del producto (`sp-upsert-product-supplier`, `sp-set-product-default-supplier`, `sp-remove-product-supplier`). Reglas en `lenguaje/catalogo.js`. |
+
+`EQUIVALE` (`cobertura.js`) marca un canal que hace lo mismo que otro ya
+cubierto: el alta rápida de proveedor de Inventario (`sp-add-supplier`) es la
+misma alta que `sp-supplier-save`. La prueba exige que el de la derecha esté
+cubierto.
 
 ## El loop de entrenamiento
 

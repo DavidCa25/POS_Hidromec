@@ -28,7 +28,9 @@ const { filtros: filtrosDe } = require('./filtros');
 const { apodo } = require('./apodos');
 const { preguntaLibre } = require('./pregunta');
 const ref = require('./referencias');
-const { edicion, valorDeCampo } = require('./edicion');
+const { edicion, edicionPersona, valorDeCampo, valorPersona } = require('./edicion');
+const EDITAR_PERSONA = { cliente: 'cliente.editar', proveedor: 'proveedor.editar' };
+const { catalogo: reglaCatalogo } = require('./catalogo');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -356,6 +358,46 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         return cerrar(esperando.intent, slots, 1, []);
       }
     }
+    /* «Cambia el teléfono de doña Mary a 55…», «el correo de Bimbo es …»:
+       editar la ficha de un cliente o proveedor. Solo si la persona existe. */
+    if (esperando && Object.values(EDITAR_PERSONA).includes(esperando.intent) && esperando.falta === 'valor') {
+      const slots = { ...esperando.slots };
+      const v = valorPersona(slots.campo?.valor, texto);
+      if (v != null) slots.valor = { valor: v, texto: String(v), confianza: 'exacto' };
+      return cerrar(esperando.intent, slots, 1, []);
+    }
+    const ep = !esperando && edicionPersona(texto);
+    if (ep && ep.textoPersona) {
+      const tipos = ep.tipo ? [ep.tipo] : ['cliente', 'proveedor'];
+      for (const tipo of tipos) {
+        const lista = personas.filter((x) => x.tipo === tipo);
+        const r = lista.length ? ex.producto(normalizar(ep.textoPersona).tokens, lista, { excluir: new Set() }) : null;
+        if (!r || (r.valor == null && !r.opciones?.length) || !disponible(EDITAR_PERSONA[tipo], modulos)) continue;
+        if (r.valor == null && !ep.tipo && tipo === 'cliente') {
+          const otro = personas.filter((x) => x.tipo === 'proveedor');
+          const rp = otro.length ? ex.producto(normalizar(ep.textoPersona).tokens, otro, { excluir: new Set() }) : null;
+          if (rp?.valor != null) continue;
+        }
+        const slots = { [tipo]: { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones },
+                        campo: { valor: ep.campo, texto: ep.campo, confianza: 'exacto' } };
+        if (ep.valor != null) slots.valor = { valor: ep.valor, texto: ep.valorTexto, confianza: 'exacto' };
+        return cerrar(EDITAR_PERSONA[tipo], slots, 0.95, []);
+      }
+    }
+    /* «Crea la categoría Lácteos», «Bimbo me surte las conchas». */
+    const rc = !esperando && reglaCatalogo(texto);
+    if (rc && disponible(rc.intent, modulos)) {
+      if (rc.intent !== 'producto.proveedor') return cerrar(rc.intent, { nombre: { valor: rc.nombre, texto: rc.nombre, confianza: 'exacto' } }, 0.95, []);
+      const provs = personas.filter((x) => x.tipo === 'proveedor');
+      const pv = provs.length ? ex.producto(normalizar(rc.textoProveedor).tokens, provs, { excluir: new Set() }) : null;
+      const ap = analizar(rc.textoProducto, catalogo, { personas: [] });
+      const pr = ap?.prod && (ap.prod.valor != null || ap.prod.opciones?.length) ? ap.prod : null;
+      if (pv && (pv.valor != null || pv.opciones?.length) && pr) {
+        return cerrar('producto.proveedor', {
+          proveedor: { valor: pv.valor, texto: pv.texto, confianza: pv.valor != null ? pv.confianza : 'dudoso', opciones: pv.opciones },
+          producto: pr, accion: { valor: rc.accion, texto: rc.accion, confianza: 'exacto' } }, 0.95, []);
+      }
+    }
     const ed = !esperando && edicion(texto);
     if (ed && EDITAR.has(ed.intent) && disponible(ed.intent, modulos)) {
       const ap = ed.textoProducto ? analizar(ed.textoProducto, catalogo, { personas }) : null;
@@ -625,7 +667,14 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     if (v) s[quiere('producto') ? 'producto' : 'servicio'] = v;
   }
   if (quiere('renglones') && catalogo.length) {
-    let rs = ex.renglones(a.tokens, catalogo, { excluir: new Set([...a.excluir].filter((i) => !/^\d/.test(a.tokens[i]))) });
+    const fuera = new Set([...a.excluir].filter((i) => !/^\d/.test(a.tokens[i])));
+    /* En una compra «a 12» es el costo y el proveedor no es producto
+       («Coca-Cola» no son cocas). */
+    if (intent === 'compra.registrar') {
+      a.tokens.forEach((t, i) => { if (/^\d/.test(t) && a.tokens[i - 1] === 'a') fuera.add(i); });
+      for (const i of a.personaIdx) fuera.add(i);
+    }
+    let rs = ex.renglones(a.tokens, catalogo, { excluir: fuera });
     if (!rs.length && a.prod?.valor != null) rs = [{ cantidad: 1, producto: a.prod }];
     if (rs.length) {
       const dudoso = rs.some((r) => r.producto.valor == null);
@@ -665,6 +714,14 @@ function llenar(intent, a, { catalogo, personas = [], categorias = [], conceptos
     }
   }
   if (quiere('metodo')) { const m = ex.metodoPago(a.norm); if (m) s.metodo = m; }
+  /* Compra: el costo de cada renglón, en el orden en que se dijo
+     («24 cocas a 12 y 10 sabritas a 15»). Solo si cada renglón trae el suyo,
+     o uno solo para todos. */
+  if (quiere('costos') && s.renglones?.valor?.length) {
+    const tramos = a.norm.split(/\s(?:y|,)\s|,\s*/);
+    const costos = tramos.map((t) => t.match(/\ba\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos?)?\b(?!\s*(?:piezas?|pzas?|kg|kilos?|litros?))/)).filter(Boolean).map((m) => Number(m[1]));
+    if (costos.length === s.renglones.valor.length) s.costos = { valor: costos, texto: costos.join(', '), confianza: 'exacto' };
+  }
   if (quiere('concepto')) {
     const c = ex.conceptoGasto(a.norm, conceptos, normalizar);
     if (c) s.concepto = c;

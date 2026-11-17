@@ -83,4 +83,9 @@ module.exports = (h) => ({
     return h.msg(datos.length ? `Datos de ${prov.nombre}:` : `${prov.nombre} no tiene datos de contacto registrados.`, { datos,
       opciones: [{ etiqueta: 'Abrir proveedores', intent: 'ir_a', params: { ruta: '/dashboard/proveedores', etiqueta: 'Proveedores' } }] });
   },
+  /* «El correo de Bimbo es ventas@bimbo.mx», «cambia el teléfono de Sabritas a 55…». */
+  async 'proveedor.editar'(it, ctx) {
+    return require('./entidades').editarFicha(h, ctx, { ent: require('./entidades').proveedor, tipo: 'proveedor', id: h.v(it, 'proveedor'),
+      campo: h.v(it, 'campo'), nuevo: h.v(it, 'valor'), intent: 'proveedor.editar' });
+  },
 });

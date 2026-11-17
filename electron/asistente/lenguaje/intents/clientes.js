@@ -50,4 +50,11 @@ module.exports = [
     ejemplos: ['quien cumple anos hoy', 'cumpleanos de la semana', 'que clientes cumplen este mes', 'hay cumpleanos hoy',
                'quien cumple esta semana'],
   },
+  {
+    /* Regla (lenguaje/edicion.js: edicionPersona), no clasificador. */
+    id: 'cliente.editar', etiqueta: 'Cambiar datos de un cliente', tipo: 'accion', permiso: 'VENTAS_OPERAR', soloRegla: true,
+    slots: { cliente: { requerido: true }, campo: { requerido: true }, valor: { requerido: true } },
+    claves: ['telefono', 'correo', 'limite', 'rfc'],
+    ejemplos: [],
+  },
 ];

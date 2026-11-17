@@ -199,7 +199,7 @@ const PENDIENTE = {
   'egresos': ['egresos:cancelar', 'egresos:concepto-guardar', 'egresos:concepto-mover'],
   'empresas': ['empresas:cambiar', 'empresas:crear', 'empresas:desvincular', 'empresas:enlace-salir', 'empresas:remota-catalogo', 'empresas:remota-pedir'],
   'estaciones': ['estaciones:guardar'],
-  'catalogo': ['estaciones:producto-asignar', 'estaciones:productos', 'inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno', 'sp-add-brand', 'sp-add-category', 'sp-remove-product-supplier', 'sp-set-product-default-supplier', 'sp-upsert-product-supplier'],
+  'catalogo': ['estaciones:producto-asignar', 'estaciones:productos', 'inventario:reporte-resolver', 'license:inventory-review-dismiss', 'menu-linea:producto-guardar', 'modifiers:delete', 'modifiers:save', 'modifiers:set-product-groups', 'presentations:delete', 'presentations:save', 'recipes:delete', 'recipes:save', 'socios:producto-dueno'],
   'fiscal': ['fiscal-cancel-invoice', 'fiscal-save-invoice', 'fiscal:cancelar', 'fiscal:timbrar'],
   'impuestos': ['impuestos:guardar'],
   'kds': ['kds:estado'],
@@ -213,8 +213,6 @@ const PENDIENTE = {
   'services': ['services:clear', 'services:operate', 'services:set-config'],
   'servicios': ['servicios:activar-activo', 'servicios:activar-profesional', 'servicios:activar-servicio', 'servicios:asignar-profesionales', 'servicios:borrar-ausencia', 'servicios:cita-a-orden', 'servicios:elegir-giro', 'servicios:guardar-activo', 'servicios:guardar-ausencia', 'servicios:guardar-horario', 'servicios:guardar-profesional', 'servicios:guardar-servicio', 'servicios:linea-actualizar', 'servicios:linea-agregar', 'servicios:orden-actualizar', 'servicios:orden-autorizar', 'servicios:orden-cancelar', 'servicios:orden-crear', 'servicios:orden-estado'],
   'socios': ['socios:activar', 'socios:compra', 'socios:config-guardar', 'socios:gasto', 'socios:liquidar', 'socios:movimiento'],
-  'compras': ['sp-add-supplier', 'sp-register-purchase'],
-  'clientes': ['sp-update-customer'],
   'ticket': ['ticket:borrar-logo', 'ticket:email', 'ticket:print-document'],
   'transferencias': ['transferencias:enviar', 'transferencias:recibir-retorno'],
   'whatsapp': ['whatsapp:config-guardar'],
@@ -230,4 +228,15 @@ const PANTALLA = {
   cobrar: 'sp-register-sale',
 };
 
-module.exports = { LECTURA, MANUAL, PENDIENTE, PANTALLA };
+/**
+ * Canales que hacen LO MISMO que otro que el asistente ya cubre (dos
+ * pantallas, dos formas de la misma alta). Canal → el que lo cubre.
+ * La prueba exige que el de la derecha esté cubierto.
+ */
+const EQUIVALE = {
+  /* Alta rápida de proveedor desde Inventario; el asistente da de alta con
+     sp-supplier-save, que además guarda teléfono, correo y RFC. */
+  'sp-add-supplier': 'sp-supplier-save',
+};
+
+module.exports = { LECTURA, MANUAL, PENDIENTE, PANTALLA, EQUIVALE };

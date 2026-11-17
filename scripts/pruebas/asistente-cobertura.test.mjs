@@ -22,7 +22,7 @@ import { join } from 'node:path';
 const require = createRequire(import.meta.url);
 const raiz = join(import.meta.dirname, '..', '..');
 const { EXIGE } = require(join(raiz, 'electron/seguridad/canales.js'));
-const { LECTURA, MANUAL, PENDIENTE, PANTALLA } = require(join(raiz, 'electron/asistente/cobertura.js'));
+const { LECTURA, MANUAL, PENDIENTE, PANTALLA, EQUIVALE = {} } = require(join(raiz, 'electron/asistente/cobertura.js'));
 
 /** Función de preload → canal que invoca («actualizarProducto» → «sp-update-product»). */
 function funcionesDePreload() {
@@ -61,6 +61,8 @@ function calcular() {
   const cubiertos = new Set();
   for (const fn of apisDeLosPlanes()) { const c = preload.get(fn); if (c && EXIGE[c]) cubiertos.add(c); }
   for (const fn of pantallaDeLosPlanes()) { const c = PANTALLA[fn]; if (c && EXIGE[c]) cubiertos.add(c); }
+  /* Lo mismo que otro canal ya cubierto. */
+  for (const [c, igual] of Object.entries(EQUIVALE)) if (EXIGE[c] && cubiertos.has(igual)) cubiertos.add(c);
   const pendientes = Object.values(PENDIENTE).flat();
   return { cubiertos, pendientes };
 }
@@ -68,6 +70,9 @@ function calcular() {
 test('cobertura: cada canal protegido está decidido (lo hace el asistente, es lectura, manual con motivo o pendiente)', () => {
   const { cubiertos, pendientes } = calcular();
   const listados = [...LECTURA, ...Object.keys(MANUAL), ...pendientes];
+
+  const equivaleSinCubrir = Object.entries(EQUIVALE).filter(([c, igual]) => !EXIGE[c] || !cubiertos.has(igual)).map(([c]) => c);
+  assert.deepEqual(equivaleSinCubrir, [], 'EQUIVALE apunta a un canal que el asistente no cubre (o ya no existe)');
 
   const repetidos = listados.filter((c, i) => listados.indexOf(c) !== i);
   assert.deepEqual(repetidos, [], 'un canal va en una sola lista');
