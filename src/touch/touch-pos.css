@@ -267,13 +267,8 @@
 .tp-card__media.con-foto { background: var(--wx-sunken); }
 .tp-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* Sin foto: icono del dominio e inicial discreta, no un placeholder. */
-.tp-card__media > i { font-size: 28px; opacity: 0.42; }
-.tp-card__ini {
-  position: absolute; left: 8px; bottom: 7px;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-  color: var(--wx-text-dim); opacity: 0.5;
-}
+/* Sin foto: su ilustración (wx-ilustracion) llena el mosaico como lo haría la foto. */
+.tp-card__ilu { position: absolute; inset: 0; }
 
 /* Un badge pequeno, no una etiqueta gritando. */
 .tp-card__estado {
@@ -495,7 +490,9 @@
   display: grid; place-items: center;
   background: var(--wx-accent-soft); border-radius: var(--wx-radius-md);
   color: var(--wx-accent-text); font-size: 22px;
+  overflow: hidden;
 }
+.tp-hoja__media img, .tp-hoja__media wx-ilustracion { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tp-hoja__head h3 { margin: 0; font-size: var(--wx-text-lg); font-weight: 650; letter-spacing: -0.01em; }
 .tp-hoja__head p {
   margin: 2px 0 0; color: var(--wx-text-muted);

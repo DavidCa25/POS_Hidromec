@@ -6,6 +6,7 @@ import { distribuirPagoDividido, type PagoAplicado } from '../../shared/pagos';
 import {CommercialService} from '../core/commercial.service';
 import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.component';
 import { WxMascotaComponent, type EstadoMascota } from '../app/wx-mascota/wx-mascota.component';
+import { WxIlustracionComponent } from '../app/wx-ilustracion/wx-ilustracion.component';
 import { ADDON } from '../app/marca/addon';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -63,7 +64,7 @@ interface Aviso {
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
-  imports: [AsistenciaChecarComponent, PropinaCobroComponent, WxMascotaComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
+  imports: [AsistenciaChecarComponent, PropinaCobroComponent, WxMascotaComponent, WxIlustracionComponent,ReceiptEmail,ReceiptViewer,FacturaNueva,CommercialSaleComponent,CommonModule, FormsModule, PremiosVenta, CuponVenta, SelectorMesasComponent, SalidaEfectivo, EntradaEfectivo, ClubClienteComponent, DevolucionTouch, GranelCantidadComponent],
   templateUrl: './touch-pos.html',
   styleUrls: ['./touch-pos.css'],
 })
@@ -611,17 +612,12 @@ export class TouchPos implements OnInit, OnDestroy {
     return Math.max(0, Math.floor(Number(p.available_units) || 0));
   }
 
-  /** Iniciales discretas para el mosaico cuando el producto no tiene imagen. */
-  iniciales(p: MenuProduct): string {
-    return p.product_name.split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase();
-  }
-
   /**
-   * Icono del mosaico cuando el producto no tiene foto.
+   * Icono de un renglón del buscador (lista compacta).
    *
-   * Sale del modo de inventario, que es un dato del dominio, no de adivinar
-   * por el nombre: una receta se ve como receta y un servicio como servicio,
-   * sin heuristicas de texto.
+   * Sale del modo de inventario: una receta se ve como receta y un servicio
+   * como servicio. El mosaico y la hoja de opciones ya no lo usan: sin foto
+   * muestran su ilustración (`wx-ilustracion`, shared/ilustraciones.ts).
    */
   icono(p: MenuProduct): string {
     if (p.inventory_mode === 'RECIPE') return 'ph-cooking-pot';
