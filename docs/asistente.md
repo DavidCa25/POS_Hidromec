@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 94 de 171 acciones (55 %)».
+Además imprime el avance, por ejemplo «asistente: 106 de 171 acciones (62 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -376,6 +376,20 @@ pie del ticket del negocio). El canal solo manda esos campos y
 `sp_update_business_config` escribe también los fiscales: los deja en nulo y
 apaga la facturación. Pasa igual desde la pantalla. El asistente no lo usa
 hasta que el canal conserve lo que no se manda.
+
+### Recetas, fórmulas, presentaciones y opciones
+
+Reglas en `lenguaje/recetas.js`. El producto y cada ingrediente tienen que
+existir; sin unidad dicha, se usa la unidad base del ingrediente.
+
+| Frase | Qué hace |
+|---|---|
+| «la hamburguesa lleva 150 gramos de carne, 1 pan y 2 rebanadas de queso», «quítale el queso a la receta de la hamburguesa», «borra la receta de la hamburguesa» | `recipes:save` con la receta completa (un ingrediente dicho otra vez cambia su cantidad, los demás se quedan); `recipes:delete`. |
+| «la fórmula de las conchas: 1 kilo de harina y 200 gramos de azúcar, rinde 20», «borra la fórmula de las conchas» | `produccion:formula-guardar`, `produccion:formula-quitar`. Sin «rinde», usa el de antes o lo pregunta. |
+| «la coca también se vende en caja de 24», «borra la presentación caja de 24 de la coca» | `presentations:save`, `presentations:delete`. |
+| «crea el grupo Tamaño con chico, mediano +5 y grande +10», «el latte lleva el grupo Tamaño», «quítale el grupo Tamaño al latte», «borra el grupo Tamaño» | `modifiers:save` (Tamaño: una, obligatoria; los demás: opcionales), `modifiers:set-product-groups` con la lista completa, `modifiers:delete`. |
+| «las conchas son de Juan», «… de Juan y Ana» | `socios:producto-dueno` (a partes iguales). |
+| «aplica el conteo de la coca», «descarta el reporte de la coca», «ya revisé el inventario» | `inventario:reporte-resolver` (lo que reportó un dispositivo), `license:inventory-review-dismiss`. |
 
 ## El loop de entrenamiento
 

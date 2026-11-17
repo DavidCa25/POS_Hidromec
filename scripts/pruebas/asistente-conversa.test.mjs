@@ -451,3 +451,39 @@ test('configuración hablada: usuarios, cajas, aplicaciones, giro, respaldos, as
   assert.notEqual(l('desactiva a juan').intent, 'usuario.activar');
   assert.notEqual(l('checa mi entrada', new Set()).intent, 'asistencia.marcar');
 });
+
+test('recetas, fórmulas, presentaciones, grupos de opciones, dueño y reportes de conteo', () => {
+  const cat = prepararCatalogo([{ id: 40, nombre: 'Hamburguesa sencilla' }, { id: 41, nombre: 'Carne molida' }, { id: 42, nombre: 'Pan de hamburguesa' },
+    { id: 43, nombre: 'Queso amarillo' }, { id: 44, nombre: 'Concha' }, { id: 45, nombre: 'Harina' }, { id: 46, nombre: 'Azúcar' },
+    { id: 47, nombre: 'Coca Cola 600 ml' }, { id: 48, nombre: 'Latte' }]);
+  const socios = [{ id: 1, nombre: 'Juan Pérez' }, { id: 2, nombre: 'Ana' }];
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas: [], socios, modulos: new Set(['socios']), ahora: HOY });
+  const r1 = l('la hamburguesa sencilla lleva 150 gramos de carne molida, 1 pan de hamburguesa y 2 rebanadas de queso amarillo');
+  assert.equal(r1.intent, 'receta.guardar'); assert.equal(r1.slots.producto.valor, 40);
+  assert.deepEqual(r1.slots.lineas.valor.map((x) => [x.productId, x.cantidad, x.unidad]), [[41, 150, 'g'], [42, 1, null], [43, 2, 'pza']]);
+  const r2 = l('la fórmula de las conchas: 1 kilo de harina y 200 gramos de azúcar, rinde 20');
+  assert.equal(r2.intent, 'formula.guardar'); assert.equal(r2.slots.rinde.valor, 20);
+  assert.deepEqual(r2.slots.lineas.valor.map((x) => [x.productId, x.cantidad, x.unidad]), [[45, 1, 'kg'], [46, 200, 'g']]);
+  const casos = [
+    ['quítale el queso amarillo a la receta de la hamburguesa sencilla', 'receta.guardar', { producto: 40, quitarIngrediente: 43 }],
+    ['borra la receta de la hamburguesa sencilla', 'receta.borrar', { producto: 40 }],
+    ['borra la fórmula de las conchas', 'formula.quitar', { producto: 44 }],
+    ['la coca también se vende en caja de 24', 'presentacion.guardar', { producto: 47, nombre: 'Caja de 24', factor: 24 }],
+    ['borra la presentación caja de 24 de la coca', 'presentacion.borrar', { producto: 47, presentacion: 'caja de 24' }],
+    ['crea el grupo Tamaño con chico, mediano +5 y grande +10', 'opciones.crear', { nombre: 'Tamaño', rol: 'SIZE' }],
+    ['el latte lleva el grupo tamaño', 'opciones.producto', { producto: 48, grupo: 'tamano' }],
+    ['quítale el grupo tamaño al latte', 'opciones.producto', { producto: 48, quitar: true }],
+    ['borra el grupo tamaño', 'opciones.borrar', { grupo: 'tamano' }],
+    ['aplica el conteo de la coca', 'inventario.reporte', { producto: 47, accion: 'APLICAR' }],
+    ['ya revisé el inventario', 'inventario.revisado', {}],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  assert.deepEqual(l('crea el grupo Tamaño con chico, mediano +5 y grande +10').slots.opciones.valor.map((o) => o.precio), [0, 5, 10]);
+  assert.deepEqual(l('las conchas son de juan y ana').slots.socios.valor, [1, 2]);
+  /* «La concha es de chocolate» no es de un socio. */
+  assert.notEqual(l('la concha es de chocolate').intent, 'producto.dueno');
+});

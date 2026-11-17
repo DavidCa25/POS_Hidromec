@@ -585,6 +585,41 @@ try {
   check(!rSoc.plan && rSoc.ruta === '/dashboard/aplicaciones', 'Socios se enciende con sus preguntas, en su pantalla');
   const rHor = await pedirC('asistencia.horario', { usuario: ex(ana), dias: ex([2, 3, 4, 5, 6]), desde: ex('09:00'), hasta: ex('18:00'), descanso: ex(30) });
   check(rHor.plan?.ejecutar.payload.dias.length === 5 && rHor.plan.ejecutar.payload.dias[0].descansoMin === 30, 'horario de lunes a viernes con 30 min de descanso');
+
+  /* 16. Receta, presentación y grupo de opciones. */
+  seccion('16. Receta, presentación y grupo de opciones');
+  await q(`INSERT INTO dbo.products (part_number, nombre, price, stock, category_id, cost, objeto_impuesto, tasa_iva, active, registrated_date, inventory_mode, sellable, base_uom)
+           VALUES (N'QA-HAMB', N'QA Hamburguesa', 80, 0, (SELECT MIN(id) FROM dbo.CAT_categories), 0, '02', 0, 1, GETDATE(), 'RECIPE', 1, 'pza'),
+                  (N'QA-CARNE', N'QA Carne molida', 0, 5000, (SELECT MIN(id) FROM dbo.CAT_categories), 0.1, '02', 0, 1, GETDATE(), 'DIRECT', 0, 'g');`);
+  const hamb = Number(await escalar("SELECT id FROM dbo.products WHERE part_number = N'QA-HAMB'"));
+  const carne = Number(await escalar("SELECT id FROM dbo.products WHERE part_number = N'QA-CARNE'"));
+  const rRec = await pedirC('receta.guardar', { producto: ex(hamb), lineas: ex([{ productId: carne, nombre: 'carne', cantidad: 150, unidad: 'g' }, { productId: concha, nombre: 'pan', cantidad: 1, unidad: null }]) });
+  const rec = rRec.plan?.ejecutar.payload;
+  check(rRec.plan?.ejecutar.api === 'wybix.recipes.save' && rec.lines.length === 2 && rec.lines[1].inputUom === 'pza', 'receta: 150 g de carne y 1 pieza (la unidad base del ingrediente)', JSON.stringify(rec?.lines));
+  const tvpR = new sql.Table('dbo.RecipeLineType');
+  tvpR.columns.add('ingredient_product_id', sql.Int, { nullable: false }); tvpR.columns.add('input_qty', sql.Decimal(12, 3), { nullable: false });
+  tvpR.columns.add('input_uom', sql.NVarChar(10), { nullable: false }); tvpR.columns.add('waste_pct', sql.Decimal(5, 2), { nullable: true }); tvpR.columns.add('sort_order', sql.Int, { nullable: true });
+  for (const l of rec.lines) tvpR.rows.add(l.ingredientProductId, l.inputQty, l.inputUom, l.wastePct, l.sortOrder);
+  try {
+    await pool.request().input('product_id', sql.Int, hamb).input('variant_option_id', sql.Int, null).input('notes', sql.NVarChar(300), null).input('Lines', tvpR).execute('sp_save_recipe');
+    const rRec2 = await pedirC('receta.guardar', { producto: ex(hamb), lineas: ex([{ productId: carne, nombre: 'carne', cantidad: 180, unidad: 'g' }]) });
+    check(rRec2.plan.ejecutar.payload.lines.length === 2 && rRec2.plan.ejecutar.payload.lines[0].inputQty === 180, 'decir otra vez un ingrediente cambia su cantidad y conserva los demás');
+    const rQui = await pedirC('receta.guardar', { producto: ex(hamb), quitarIngrediente: ex(concha) });
+    check(rQui.plan.ejecutar.payload.lines.length === 1, 'quitar un ingrediente deja el resto');
+  } catch (e) { check(false, 'el SP guarda la receta', e.message); }
+
+  const rPre = await pedirC('presentacion.guardar', { producto: ex(cafe), nombre: ex('Caja de 24'), factor: ex(24) });
+  const pre = rPre.plan?.ejecutar.payload;
+  try {
+    await pool.request().input('id', sql.Int, null).input('product_id', sql.Int, pre.productId).input('name', sql.NVarChar(60), pre.name)
+      .input('factor_to_base', sql.Decimal(14, 4), pre.factorToBase).input('is_default', sql.Bit, 0).input('active', sql.Bit, 1).execute('sp_save_product_presentation');
+    const rPre2 = await pedirC('presentacion.guardar', { producto: ex(cafe), nombre: ex('Caja de 24'), factor: ex(24) });
+    check(!rPre2.plan && /ya tiene/.test(rPre2.texto), 'presentación guardada; repetida se rechaza');
+  } catch (e) { check(rPre.plan?.ejecutar.api === 'wybix.presentations.save', 'presentación: tarjeta (SP: ' + e.message + ')'); }
+
+  const rGr = await pedirC('opciones.crear', { nombre: ex('QA Tamaño'), opciones: ex([{ nombre: 'chico', precio: 0 }, { nombre: 'grande', precio: 10 }]), rol: ex('SIZE') });
+  const gr = rGr.plan?.ejecutar.payload;
+  check(rGr.plan?.ejecutar.api === 'wybix.modifiers.save' && gr.required === true && gr.maxSelect === 1 && gr.options[1].priceDelta === 10, 'grupo de tamaño: uno obligatorio, grande +$10');
 } catch (e) {
   fallos++;
   console.log(`\n   ERROR  ${e.stack || e.message}`);

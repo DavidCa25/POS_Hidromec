@@ -37,6 +37,7 @@ const { servicios: reglaServicios } = require('./servicios');
 const { fidelizacion: reglaFidelizacion } = require('./fidelizacion');
 const { mesas: reglaMesas } = require('./mesas');
 const { config: reglaConfig } = require('./config');
+const { recetas: reglaRecetas } = require('./recetas');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -446,6 +447,30 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Recetas, fórmulas, presentaciones, grupos de opciones, dueño y
+       reportes de conteo (lenguaje/recetas.js). Producto, ingredientes y
+       socios tienen que existir. */
+    const rr = !esperando && reglaRecetas(texto);
+    if (rr && disponible(rr.intent, modulos)) {
+      const prod = (txt) => { const ap = txt ? analizar(txt, catalogo, { personas: [] }) : null; return ap?.prod && ap.prod.valor != null ? ap.prod : null; };
+      const slots = {};
+      let ok = true;
+      if (rr.textoProducto != null) { const p = prod(rr.textoProducto); if (p) slots.producto = p; else ok = false; }
+      if (rr.lineas) {
+        const ls = rr.lineas.map((l) => { const p = prod(l.texto); return p ? { productId: p.valor, nombre: p.texto, cantidad: l.cantidad, unidad: l.unidad } : null; });
+        if (ls.every(Boolean)) slots.lineas = { valor: ls, texto: ls.map((l) => l.nombre).join(', '), confianza: 'exacto' }; else ok = false;
+      }
+      if (rr.quitarTexto) { const p = prod(rr.quitarTexto); if (p) slots.quitarIngrediente = { valor: p.valor, texto: p.texto, confianza: 'exacto' }; else ok = false; }
+      if (rr.socios) {
+        const llanoS = (x) => normalizar(x).texto;
+        const ids = rr.socios.map((s) => socios.find((x) => llanoS(x.nombre) === llanoS(s) || llanoS(x.nombre).split(' ').includes(llanoS(s)))?.id);
+        if (ids.length && ids.every(Boolean)) slots.socios = { valor: ids, texto: rr.socios.join(' y '), confianza: 'exacto' }; else ok = false;
+      }
+      for (const k of ['rinde', 'agrega', 'presentacion', 'nombre', 'factor', 'grupo', 'opciones', 'rol', 'accion', 'quitar']) {
+        if (rr[k] != null && rr[k] !== false) slots[k] = { valor: rr[k], texto: typeof rr[k] === 'object' ? JSON.stringify(rr[k]) : String(rr[k]), confianza: 'exacto' };
+      }
+      if (ok) return cerrar(rr.intent, slots, 0.95, []);
     }
     /* Usuarios, cajas, aplicaciones, giro, respaldos y asistencia
        (lenguaje/config.js). Un usuario que no existe no cuenta. */
