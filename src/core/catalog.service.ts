@@ -85,6 +85,19 @@ export class CatalogService {
   });
   private readonly porId = computed(() => new Map(this.products().map(p => [p.id, p])));
 
+  constructor() {
+    /* Un producto cambió en esta computadora (Inventario, una compra, el
+       asistente, el catálogo de la matriz): se relee en segundo plano y la
+       caja sigue mostrando lo que tenía mientras tanto. Antes nadie avisaba
+       y la Venta cobraba el precio viejo hasta releer por su cuenta. */
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    this.bridge.api?.onCatalogoCambio?.(() => {
+      if (!this.products().length) return;
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => { espera = null; void this.load(true); }, 150);
+    });
+  }
+
   /** Carga (o reutiliza) el catalogo. `force` vuelve a leer de SQL. */
   async load(force = false): Promise<CatalogProduct[]> {
     if (!force && this.products().length) return this.products();
@@ -195,6 +208,7 @@ export class CatalogService {
       productId: p.id,
       productName: p.product_name,
       unitPrice: Number(p.price ?? 0),
+      catalogPrice: Number(p.price ?? 0),
       claveProdServ: p.clave_prod_serv ?? null,
       claveUnidad: p.clave_unidad ?? null,
       objetoImpuesto: p.objeto_impuesto ?? null,

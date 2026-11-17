@@ -222,6 +222,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('asistente:voz-avance', h);
       return () => ipcRenderer.removeListener('asistente:voz-avance', h);
     },
+    /** Un producto cambió en esta computadora: Venta y Touch releen su catálogo. */
+    onCatalogoCambio: (fn) => {
+      const h = (_e, d) => { try { fn(d); } catch { /* noop */ } };
+      ipcRenderer.on('catalogo:cambio', h);
+      return () => ipcRenderer.removeListener('catalogo:cambio', h);
+    },
     onAsistenteCambio: (fn) => {
       const h = () => { try { fn(); } catch { /* noop */ } };
       ipcRenderer.on('asistente:cambio', h);

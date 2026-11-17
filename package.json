@@ -155,7 +155,8 @@
     "e2e:asistente": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/asistente.spec.js e2e/dictado.spec.js e2e/habla.spec.js",
     "e2e:impuestos": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/impuestos.spec.js e2e/producto-desglose.spec.js",
     "asistente:humo": "node scripts/asistente/humo-sql.mjs",
-    "e2e:rendimiento": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/rendimiento.spec.js"
+    "e2e:rendimiento": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/rendimiento.spec.js",
+    "e2e:precio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/precio-actualizado.spec.js"
   },
   "prettier": {
     "overrides": [

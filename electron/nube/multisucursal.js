@@ -88,6 +88,8 @@ function crearMultisucursal({ pool, sql, llamar, cfg, log = () => {} }) {
       .input('overrides_revision', sql.Int, r.overrides_revision ?? null);
     const res = (await q.execute('sp_corporate_catalog_apply')).recordset?.[0] ?? {};
     if (res.avisos) log(`catálogo corporativo: ${res.avisos}`);
+    /* Llegaron precios de la matriz: las cajas abiertas releen su catálogo. */
+    try { require('../lib/aviso-catalogo').avisarCatalogo('multi:sincronizar'); } catch { /* fuera de Electron (pruebas) */ }
     return { aplicado: true, version: r.version, ...res };
   }
 
