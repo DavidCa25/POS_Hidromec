@@ -127,10 +127,9 @@
 
           <span class="tp-card__media" [class.con-foto]="p.thumb">
             <img *ngIf="p.thumb" [src]="p.thumb" [alt]="p.product_name" loading="lazy">
-            <ng-container *ngIf="!p.thumb">
-              <i class="ph {{ icono(p) }}" aria-hidden="true"></i>
-              <span class="tp-card__ini">{{ iniciales(p) }}</span>
-            </ng-container>
+            <!-- Sin foto: su ilustración (dona, frappé, tijeras…). La foto del cliente siempre manda. -->
+            <wx-ilustracion *ngIf="!p.thumb" class="tp-card__ilu" [nombre]="p.product_name" [categoria]="p.category_name"
+                            [productoId]="p.id" [giro]="caps.businessProfile()" [inventario]="p.inventory_mode" />
 
             <!-- La disponibilidad se muestra SIEMPRE, no solo cuando escasea.
                  Antes solo aparecia con 5 o menos, asi que en una barra con
@@ -428,7 +427,11 @@
     <div class="tp-hoja" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
       <header class="tp-hoja__head">
         <div class="tp-hoja__id">
-          <span class="tp-hoja__media"><i class="ph {{ icono(p) }}" aria-hidden="true"></i></span>
+          <span class="tp-hoja__media">
+            <img *ngIf="p.thumb" [src]="p.thumb" alt="" />
+            <wx-ilustracion *ngIf="!p.thumb" [nombre]="p.product_name" [categoria]="p.category_name"
+                            [productoId]="p.id" [giro]="caps.businessProfile()" [inventario]="p.inventory_mode" />
+          </span>
           <div>
             <h3>{{ p.product_name }}</h3>
             <p>{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}</p>
