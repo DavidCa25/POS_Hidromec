@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 135 de 158 acciones (85 %)».
+Además imprime el avance, por ejemplo «asistente: 144 de 156 acciones (92 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -437,6 +437,19 @@ ante el SAT y la pantalla revisa receptor, uso, forma de pago y conceptos antes
 de timbrar. «Factura la venta 120» lleva a Facturar con la venta cargada.
 Cambiar de empresa recarga toda la ventana con otra base: se hace con la
 pastilla de empresa.
+
+### Multisucursal
+
+Reglas en `lenguaje/multi.js`. Las sucursales y los traspasos por recibir se leen de la nube (`cloudSync.multi`, que el asistente recibe como `multi`).
+
+| Frase | Qué hace |
+|---|---|
+| «publica el catálogo a las sucursales», «trae el catálogo de la matriz» | `multi:publicar`, `multi:recibir`. |
+| «que las sucursales puedan cambiar sus precios», «que las sucursales no tengan productos propios» | `multi:reglas-guardar` con la otra regla igual. |
+| «en la sucursal Centro la coca cuesta 18», «en la sucursal Centro no se vende la coca» | `multi:excepciones-guardar` con las demás excepciones de esa sucursal. |
+| «manda 20 cocas a la sucursal Centro», «recibe el traspaso de la matriz», «cancela el traspaso a Centro» | `multi:traspaso-enviar`, `traspaso-recibir` (completo), `traspaso-cancelar`. |
+| «Pedro puede entrar a todas las sucursales», «Pedro solo entra a la sucursal Centro» | `multi:usuario-alcance`. |
+| «desconecta el pago de servicios» | `services:clear`. Las credenciales del proveedor y la recarga quedan manuales. |
 
 ## El loop de entrenamiento
 

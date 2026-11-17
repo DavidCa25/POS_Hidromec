@@ -123,4 +123,8 @@ module.exports = [
     id: 'impuesto.crear', etiqueta: 'Crear un impuesto', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { nombre: { requerido: true }, clase: {}, factor: {}, tasa: {}, cuota: {}, unidad: {} }, claves: [], ejemplos: [],
   },
+  {
+    id: 'servicios_pago.desconectar', etiqueta: 'Desconectar el pago de servicios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
 ];

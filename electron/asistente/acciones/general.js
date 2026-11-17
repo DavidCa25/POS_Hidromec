@@ -40,6 +40,17 @@ async function dispositivoDe(h, dicho) {
 
 module.exports = (h) => {
   const dispositivo = (dicho) => dispositivoDe(h, dicho);
+  /** Estado de multisucursal desde la nube (sucursales, reglas). */
+  async function estadoMulti() {
+    const m = h.multi();
+    if (!m) return { error: h.msg('Multisucursal necesita la caja vinculada con la nube.') };
+    try { const e = await m.estado(); return e?.multisucursal ? { m, e } : { error: h.msg('Este negocio no tiene varias sucursales.') }; }
+    catch (err) { return { error: h.msg(`No pude leer las sucursales: ${err.message}`) }; }
+  }
+  const sucursalDe = (e, dicho) => {
+    const d = h.llano(dicho || '');
+    return (e.sucursales || []).find((s) => h.llano(s.nombre) === d) || (e.sucursales || []).find((s) => h.llano(s.nombre).includes(d));
+  };
   return {
   /* El saludo es el resumen del día (acciones/resumen.js): al abrir el chat
      la primera vez del día, y cada vez que lo saludan. */
@@ -395,6 +406,139 @@ module.exports = (h) => {
     return h.msg('Este acceso voy a quitar:', { plan: h.plan('localhost.acceso_revocar', {
       titulo: `Quitar a ${u.usuario} de las pantallas`, vista: [{ etiqueta: 'Acceso', valor: 'QR y PIN dejan de servir' }],
       ejecutar: { api: 'wybix.localHost.revocarTrabajador', payload: { accesoId: Number(a.id) } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  /* ==================================================== MULTISUCURSAL */
+  async 'multi.publicar'() {
+    return h.msg('Esto voy a hacer:', { plan: h.plan('multi.publicar', {
+      titulo: 'Publicar el catálogo', vista: [{ etiqueta: 'Catálogo', valor: 'productos, precios y categorías de la matriz → sucursales' }],
+      avisos: ['Las sucursales lo reciben en su siguiente sincronización.'],
+      ejecutar: { api: 'electronAPI.multiPublicar', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'multi.recibir'() {
+    return h.msg('Esto voy a hacer:', { plan: h.plan('multi.recibir', {
+      titulo: 'Traer el catálogo de la matriz', vista: [{ etiqueta: 'Catálogo', valor: 'se actualiza con lo que publicó la matriz' }],
+      ejecutar: { api: 'electronAPI.multiRecibir', args: [] }, permiso: 'INVENTARIO_OPERAR',
+    }) });
+  },
+
+  async 'multi.reglas'(it) {
+    const r = await estadoMulti();
+    if (r.error) return r.error;
+    const regla = h.v(it, 'regla'), valor = !!h.v(it, 'valor');
+    const actual = { precios_sucursal: !!r.e.reglas?.precios_sucursal, productos_locales: r.e.reglas?.productos_locales !== false };
+    if (actual[regla] === valor) return h.msg('Ya está así.');
+    const N = { precios_sucursal: 'Las sucursales cambian sus precios', productos_locales: 'Las sucursales tienen productos propios' };
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('multi.reglas', {
+      titulo: 'Reglas de las sucursales', vista: [{ etiqueta: N[regla], valor: `${actual[regla] ? 'sí' : 'no'} → ${valor ? 'sí' : 'no'}` }],
+      ejecutar: { api: 'electronAPI.multiReglasGuardar', payload: { ...actual, [regla]: valor } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  /* «En la sucursal Centro la coca cuesta 18» / «… no se vende la coca»: las excepciones de esa sucursal con ese cambio. */
+  async 'multi.excepcion'(it) {
+    const r = await estadoMulti();
+    if (r.error) return r.error;
+    const s = sucursalDe(r.e, h.v(it, 'sucursalTexto'));
+    if (!s) return h.msg(`No encuentro la sucursal «${h.v(it, 'sucursalTexto')}». Hay: ${(r.e.sucursales || []).map((x) => x.nombre).join(', ')}.`);
+    const p = await h.uno('SELECT id, nombre, price, LOWER(CONVERT(VARCHAR(36), uuid)) AS uuid FROM dbo.products WHERE id = @id;', [h.id(h.v(it, 'producto'))]);
+    if (!p) return h.msg('No encontré ese producto.');
+    let items = [];
+    try { items = await r.m.excepciones(String(s.id)); } catch { items = []; }
+    const actual = items.find((x) => String(x.product_uuid).toLowerCase() === p.uuid) || { product_uuid: p.uuid, price: null, available: true };
+    const nuevo = { product_uuid: p.uuid, price: h.v(it, 'precio') ?? actual.price ?? null, available: h.v(it, 'disponible') ?? actual.available !== false };
+    const lista = [...items.filter((x) => String(x.product_uuid).toLowerCase() !== p.uuid).map((x) => ({ product_uuid: x.product_uuid, price: x.price, available: x.available !== false })), nuevo];
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('multi.excepcion', {
+      titulo: `${p.nombre} en ${s.nombre}`,
+      vista: h.v(it, 'precio') != null ? [{ etiqueta: 'Precio en esa sucursal', valor: `${h.dinero(actual.price ?? p.price)} → ${h.dinero(nuevo.price)}` }]
+        : [{ etiqueta: 'Se vende en esa sucursal', valor: `${actual.available !== false ? 'sí' : 'no'} → ${nuevo.available ? 'sí' : 'no'}` }],
+      ejecutar: { api: 'electronAPI.multiExcepcionesGuardar', payload: { locationId: String(s.id), items: lista } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  async 'multi.traspaso'(it) {
+    const r = await estadoMulti();
+    if (r.error) return r.error;
+    const s = sucursalDe(r.e, h.v(it, 'sucursalTexto'));
+    if (!s) return h.msg(`No encuentro la sucursal «${h.v(it, 'sucursalTexto')}».`);
+    const lineas = [];
+    for (const x of h.v(it, 'renglones') || []) {
+      const p = await h.uno('SELECT id, nombre, stock, LOWER(CONVERT(VARCHAR(36), uuid)) AS uuid FROM dbo.products WHERE id = @id;', [h.id(x.productId)]);
+      if (p) lineas.push({ p, qty: Number(x.cantidad) });
+    }
+    if (!lineas.length) return h.msg('¿Qué le mandas?');
+    const falta = lineas.find((l) => Number(l.p.stock) < l.qty);
+    return h.msg('Este traspaso voy a mandar:', { plan: h.plan('multi.traspaso', {
+      titulo: `Traspaso a ${s.nombre}`, vista: lineas.map((l) => ({ etiqueta: l.p.nombre, valor: `${h.num(l.qty)} (hay ${h.num(l.p.stock)})` })),
+      avisos: [...(falta ? [`De ${falta.p.nombre} solo hay ${h.num(falta.p.stock)}.`] : []), 'Sale de tu inventario ahora; entra al de la sucursal cuando lo reciba.'],
+      ejecutar: { api: 'electronAPI.multiTraspasoEnviar', payload: { toLocationId: String(s.id), toNombre: s.nombre, lineas: lineas.map((l) => ({ product_uuid: l.p.uuid, qty: l.qty })), nota: 'Desde Wybix' } },
+      permiso: 'INVENTARIO_OPERAR',
+    }) });
+  },
+
+  /* «Recibe el traspaso de la matriz»: lo que llegó completo (si llegó distinto, se recibe en Traspasos). */
+  async 'multi.recibir_traspaso'(it) {
+    const r = await estadoMulti();
+    if (r.error) return r.error;
+    let porRecibir = [];
+    try { ({ porRecibir = [] } = await r.m.sincronizarTraspasos()); } catch (e) { return h.msg(`No pude leer los traspasos: ${e.message}`); }
+    const d = h.llano(h.v(it, 'sucursalTexto') || '');
+    const filtrados = d ? porRecibir.filter((x) => h.llano(x.from_nombre || '').includes(d)) : porRecibir;
+    /* «De la matriz» cuando la matriz se llama distinto: si solo hay uno, es ese. */
+    const xs = filtrados.length ? filtrados : porRecibir.length === 1 ? porRecibir : [];
+    if (!xs.length) return h.msg('No hay traspasos por recibir.');
+    if (xs.length > 1) return h.msg(`Hay ${xs.length} por recibir: ${xs.map((x) => x.from_nombre).join(', ')}. Dime de cuál.`);
+    const t = xs[0];
+    return h.msg('Este traspaso voy a recibir:', { plan: h.plan('multi.recibir_traspaso', {
+      titulo: `Recibir traspaso de ${t.from_nombre || 'otra sucursal'}`, vista: (t.lines || []).map((l) => ({ etiqueta: l.nombre, valor: h.num(l.qty) })),
+      avisos: ['Se recibe completo. Si llegó distinto, recíbelo en Traspasos con lo que de verdad llegó.'],
+      ejecutar: { api: 'electronAPI.multiTraspasoRecibir', payload: { traspaso: t, recibido: {} } }, permiso: 'INVENTARIO_OPERAR',
+    }) });
+  },
+
+  async 'multi.cancelar_traspaso'(it) {
+    const r = await estadoMulti();
+    if (r.error) return r.error;
+    const s = sucursalDe(r.e, h.v(it, 'sucursalTexto'));
+    if (!s) return h.msg(`No encuentro la sucursal «${h.v(it, 'sucursalTexto')}».`);
+    const t = await h.uno(`SELECT TOP 1 LOWER(CONVERT(VARCHAR(36), uuid)) AS id, created_at FROM dbo.stock_transfers
+                            WHERE kind = 'BRANCH_OUT' AND status = 'SENT' AND LOWER(CONVERT(VARCHAR(36), event_location_uuid)) = @s ORDER BY created_at DESC;`,
+      [['s', h.sql.VarChar(36), String(s.id).toLowerCase()]]).catch(() => null);
+    if (!t) return h.msg(`No hay traspaso pendiente a ${s.nombre}.`);
+    return h.msg('Este traspaso voy a cancelar:', { plan: h.plan('multi.cancelar_traspaso', {
+      titulo: `Cancelar traspaso a ${s.nombre}`, vista: [{ etiqueta: 'Enviado', valor: `${h.diaTexto(t.created_at)} ${h.horaTexto(t.created_at)}` }],
+      avisos: ['La mercancía vuelve a tu inventario.'],
+      ejecutar: { api: 'electronAPI.multiTraspasoCancelar', payload: { id: t.id } }, permiso: 'INVENTARIO_OPERAR',
+    }) });
+  },
+
+  async 'multi.alcance'(it) {
+    const u = await h.uno('SELECT id, usuario, CAST(corporate AS BIT) AS corporate FROM dbo.users WHERE id = @id;', [h.id(h.v(it, 'usuario'))]);
+    if (!u) return h.msg('No encontré a ese usuario.');
+    if (u.corporate) return h.msg(`${u.usuario} viene de la matriz: se administra allá.`);
+    let scope = ['*'], texto = 'todas las sucursales';
+    if (!h.v(it, 'todas')) {
+      const r = await estadoMulti();
+      if (r.error) return r.error;
+      const s = sucursalDe(r.e, h.v(it, 'sucursalTexto'));
+      if (!s) return h.msg(`No encuentro la sucursal «${h.v(it, 'sucursalTexto')}».`);
+      scope = [String(s.id).toLowerCase()]; texto = s.nombre;
+    }
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('multi.alcance', {
+      titulo: `${u.usuario} · sucursales`, vista: [{ etiqueta: 'Puede entrar a', valor: texto }],
+      ejecutar: { api: 'electronAPI.multiUsuarioAlcance', payload: { userId: Number(u.id), scope } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  /* «Desconecta el pago de servicios»: borra proveedor y credenciales. */
+  async 'servicios_pago.desconectar'() {
+    return h.msg('Esto voy a hacer:', { plan: h.plan('servicios_pago.desconectar', {
+      titulo: 'Desconectar pago de servicios y recargas', vista: [{ etiqueta: 'Proveedor', valor: 'se borra junto con sus credenciales' }],
+      avisos: ['Para volver a usarlo hay que capturar las credenciales otra vez en su pantalla.'],
+      ejecutar: { api: 'electronAPI.servicesClear', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
     }) });
   },
   };

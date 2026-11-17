@@ -120,4 +120,37 @@ module.exports = [
     id: 'localhost.acceso_revocar', etiqueta: 'Quitar el acceso de alguien a las pantallas', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { usuario: { requerido: true } }, claves: [], ejemplos: [],
   },
+  /* Reglas de lenguaje/multi.js, no clasificador. */
+  {
+    id: 'multi.publicar', etiqueta: 'Publicar el catálogo a las sucursales', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.recibir', etiqueta: 'Traer el catálogo de la matriz', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: {}, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.reglas', etiqueta: 'Reglas de las sucursales', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { regla: { requerido: true }, valor: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.excepcion', etiqueta: 'Precio o disponibilidad en una sucursal', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { sucursalTexto: { requerido: true }, producto: { requerido: true }, precio: {}, disponible: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.traspaso', etiqueta: 'Mandar mercancía a otra sucursal', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { sucursalTexto: { requerido: true }, renglones: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.recibir_traspaso', etiqueta: 'Recibir un traspaso', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { sucursalTexto: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.cancelar_traspaso', etiqueta: 'Cancelar un traspaso', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { sucursalTexto: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'multi.alcance', etiqueta: 'A qué sucursales entra un usuario', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { usuario: { requerido: true }, todas: {}, sucursalTexto: {} }, claves: [], ejemplos: [],
+  },
 ];

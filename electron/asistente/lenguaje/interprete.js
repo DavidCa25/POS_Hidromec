@@ -41,6 +41,7 @@ const { recetas: reglaRecetas } = require('./recetas');
 const { menu: reglaMenu } = require('./menu');
 const { varios: reglaVarios } = require('./varios');
 const { equipos: reglaEquipos } = require('./equipos');
+const { multi: reglaMulti } = require('./multi');
 const EDITAR = new Set(['producto.editar', 'producto.baja', 'producto.impuesto']);
 /* «No sé», «ninguno»: saltar un dato que se pregunta sin ser obligatorio. */
 const SALTAR = /^(?:no|no se|nose|ni idea|ninguno|ninguna|nada|ningun|despues|luego|ahorita no|todavia no|aun no|sin costo|no tengo|0|cero|paso|siguiente)$/;
@@ -450,6 +451,20 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r) slots.renglones = r; else ok = false;
       }
       if (ok) return cerrar(rm.intent, slots, 0.95, []);
+    }
+    /* Multisucursal (lenguaje/multi.js). */
+    const rmu = !esperando && reglaMulti(texto, { usuarios });
+    if (rmu && disponible(rmu.intent, modulos)) {
+      const slots = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(rmu)) if (k !== 'intent' && k !== 'textoProducto' && k !== 'textoPedido' && v != null) slots[k] = { valor: v, texto: String(v), confianza: 'exacto' };
+      if (rmu.textoProducto) { const ap = analizar(rmu.textoProducto, catalogo, { personas: [] }); if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false; }
+      if (rmu.textoPedido) {
+        const ap = analizar(rmu.textoPedido, catalogo, { personas: [] });
+        const r = llenar('venta.cobrar', ap, { catalogo, personas: [] }).renglones;
+        if (r?.valor) slots.renglones = r; else ok = false;
+      }
+      if (ok) return cerrar(rmu.intent, slots, 0.95, []);
     }
     /* Empresas, sucursales y pantallas de Local Host (lenguaje/equipos.js). */
     const req2 = !esperando && reglaEquipos(texto, ahora);

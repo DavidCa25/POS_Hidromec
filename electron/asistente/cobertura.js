@@ -117,6 +117,8 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'services:set-config': 'Guarda las credenciales del proveedor de recargas (usuario y llave): son secretos que se capturan en su pantalla.',
+  'services:operate': 'La recarga o el pago de un servicio todavía no está conectado (falta la API del proveedor); cuando exista, se hará desde Venta.',
   'empresas:cambiar': 'Cambia toda la ventana a otra base y vuelve a pedir sesión: se hace con la pastilla de empresa, no dentro de una conversación.',
   'transferencias:recibir-retorno': 'Se recibe escaneando el comprobante QR que trae la tablet del evento.',
   'fiscal:timbrar': 'Timbrar un CFDI es irreversible ante el SAT: se revisa receptor, uso, forma de pago y conceptos en Facturar. El asistente lleva ahí con la venta cargada.',
@@ -216,8 +218,6 @@ const PENDIENTE = {
   'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
   'commercial': ['commercial:save'],
   'empresas': ['empresas:desvincular', 'empresas:remota-pedir'],
-  'multi': ['multi:excepciones-guardar', 'multi:publicar', 'multi:recibir', 'multi:reglas-guardar', 'multi:traspaso-cancelar', 'multi:traspaso-enviar', 'multi:traspaso-recibir', 'multi:usuario-alcance'],
-  'services': ['services:clear', 'services:operate', 'services:set-config'],
   'transferencias': ['transferencias:enviar'],
 };
 

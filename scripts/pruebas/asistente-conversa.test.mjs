@@ -566,3 +566,26 @@ test('empresas, sucursales y pantallas de Local Host', () => {
     for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
   }
 });
+
+test('multisucursal y pago de servicios hablados', () => {
+  const cat = prepararCatalogo([{ id: 3, nombre: 'Coca Cola 600 ml' }]);
+  const usuarios = [{ id: 2, nombre: 'pedro' }];
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas: [], usuarios, modulos: new Set(), ahora: HOY });
+  const casos = [
+    ['publica el catálogo a las sucursales', 'multi.publicar', {}],
+    ['trae el catálogo de la matriz', 'multi.recibir', {}],
+    ['que las sucursales puedan cambiar sus precios', 'multi.reglas', { regla: 'precios_sucursal', valor: true }],
+    ['en la sucursal Centro la coca cuesta 18', 'multi.excepcion', { sucursalTexto: 'centro', producto: 3, precio: 18 }],
+    ['en la sucursal Centro no se vende la coca', 'multi.excepcion', { producto: 3, disponible: false }],
+    ['recibe el traspaso de la matriz', 'multi.recibir_traspaso', {}],
+    ['cancela el traspaso a Centro', 'multi.cancelar_traspaso', { sucursalTexto: 'centro' }],
+    ['pedro puede entrar a todas las sucursales', 'multi.alcance', { usuario: 2, todas: true }],
+    ['desconecta el pago de servicios', 'servicios_pago.desconectar', {}],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+  assert.deepEqual(l('manda 20 cocas a la sucursal Centro').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[3, 20]]);
+});

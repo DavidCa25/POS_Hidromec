@@ -51,6 +51,9 @@ function varios(texto) {
   m = t.match(/^avisa\s+(?:por\s+whats(?:app)?\s+)?(\d+)\s+dias\s+antes\s+de\s+que\s+venza\s+la\s+membresia$/);
   if (m) return { intent: 'whatsapp.config', campo: 'diasAntes', valor: Number(m[1]) };
 
+  /* Pago de servicios y recargas: desconectar el proveedor. */
+  if (/^(?:desconecta|quita|borra|apaga)\s+(?:el\s+)?(?:pago de servicios|recargas|proveedor de recargas|taecel)$/.test(t)) return { intent: 'servicios_pago.desconectar' };
+
   /* Aprobaciones a distancia. */
   m = t.match(/^(apaga|desactiva|quita|enciende|activa|prende)\s+(?:las\s+)?(?:aprobaciones|autorizaciones)(?:\s+desde la app)?$/);
   if (m) return { intent: 'aprobaciones.politica', activas: /^(enciende|activa|prende)$/.test(m[1]) };
