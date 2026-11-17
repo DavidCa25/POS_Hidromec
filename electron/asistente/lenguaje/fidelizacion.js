@@ -55,6 +55,11 @@ function fidelizacion(texto) {
     const orig = (frag) => raw.slice(t.indexOf(frag), t.indexOf(frag) + frag.length).trim();
     return { intent: 'rifa.crear', nombre: orig(m[1]), premio: orig(m[2]), hasta, ganadores: m[5] ? Number(m[5]) : 1 };
   }
+  /* Ruleta: «agrega a la ruleta la casilla café gratis», «… sigue participando con peso 5», «quita de la ruleta la casilla café gratis». */
+  m = t.match(/^(?:agrega|pon|anade)\s+(?:a|en)\s+la\s+ruleta\s+(?:la\s+)?(?:casilla\s+)?(.+?)(?:\s+(?:con\s+)?peso\s+(\d+))?$/);
+  if (m) return { intent: 'ruleta.casilla', etiqueta: raw.slice(t.indexOf(m[1]), t.indexOf(m[1]) + m[1].length).trim(), peso: m[2] ? Number(m[2]) : 1 };
+  m = t.match(/^(?:quita|borra|elimina)\s+de\s+la\s+ruleta\s+(?:la\s+)?(?:casilla\s+)?(.+)$/);
+  if (m) return { intent: 'ruleta.casilla', etiqueta: m[1], borrar: true };
   m = t.match(/^(?:abre|abrir|empieza|activa)\s+(?:la\s+)?rifa\s+(?:de\s+)?(.+)$/);
   if (m) return { intent: 'rifa.abrir', textoRifa: m[1] };
   /* «Crea la tarjeta de sellos del café: 9 sellos y el 10 gratis». */

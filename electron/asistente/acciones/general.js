@@ -558,5 +558,72 @@ module.exports = (h) => {
       ejecutar: { api: 'electronAPI.updateBusinessConfig', payload: nuevo }, permiso: 'CONFIGURACION_ADMINISTRAR',
     }) });
   },
+
+  /* «Manda 20 cocas al evento Feria de mayo»: sale de aquí; el evento lo recibe en su tablet. */
+  async 'evento.enviar'(it) {
+    const evs = await h.eventos();
+    if (evs == null) return h.msg('Mandar a un evento necesita la caja vinculada con la nube.');
+    const d = h.llano(h.v(it, 'eventoTexto'));
+    const ev = evs.find((e) => h.llano(e.nombre) === d) || evs.find((e) => h.llano(e.nombre).includes(d));
+    if (!ev) return h.msg(evs.length ? `No encuentro ese evento. Hay: ${evs.map((e) => e.nombre).join(', ')}.` : 'No hay eventos: créalo con «crea el evento Feria de mayo del 1 al 5 de mayo».');
+    const lineas = [];
+    for (const x of h.v(it, 'renglones') || []) { const p = await h.producto(x.productId); if (p) lineas.push({ p, qty: Number(x.cantidad) }); }
+    if (!lineas.length) return h.msg('¿Qué le mandas?');
+    const falta = lineas.find((l) => Number(l.p.stock) < l.qty);
+    return h.msg('Esto voy a mandar al evento:', { plan: h.plan('evento.enviar', {
+      titulo: `Mandar a ${ev.nombre}`, vista: lineas.map((l) => ({ etiqueta: l.p.nombre, valor: `${h.num(l.qty)} (hay ${h.num(l.p.stock)})` })),
+      avisos: [...(falta ? [`De ${falta.p.nombre} solo hay ${h.num(falta.p.stock)}.`] : []), 'Sale de tu inventario ahora. El comprobante QR para recibir sin Internet queda en Eventos.'],
+      ejecutar: { api: 'electronAPI.transferenciasEnviar', payload: { event_location_uuid: ev.location_id, event_name: ev.nombre, note: 'Desde Wybix',
+                                                                     lines: lineas.map((l) => ({ product_id: l.p.id, qty: l.qty })) } },
+      permiso: 'INVENTARIO_OPERAR',
+    }) });
+  },
+
+  /* «Desvincula la empresa Panadería Norte»: sale del grupo; no se borra nada. */
+  async 'empresa.desvincular'(it, ctx) {
+    const E = h.empresas();
+    if (!E) return h.msg('No pude leer las empresas de esta computadora.');
+    const lista = await E.locales.listar(ctx.usuario).catch(() => []);
+    const d = h.llano(h.v(it, 'empresaTexto'));
+    const e = lista.find((x) => h.llano(x.nombre) === d) || lista.find((x) => h.llano(x.nombre || '').includes(d));
+    if (!e) return h.msg(`No encuentro esa empresa en el grupo. Hay: ${lista.map((x) => x.nombre).join(', ')}.`);
+    if (e.esEsta) return h.msg('No puedes sacar del grupo la empresa en la que estás.');
+    return h.msg('Esto voy a hacer:', { plan: h.plan('empresa.desvincular', {
+      titulo: `Sacar «${e.nombre}» del grupo`, vista: [{ etiqueta: 'Empresa', valor: `${e.nombre} → sigue sola` }],
+      avisos: ['No se borra nada: deja de aparecer en la lista y en los reportes del grupo.'],
+      ejecutar: { api: 'electronAPI.empresasDesvincular', payload: { base: e.base } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
+
+  /* «Pídele a Panadería Norte que ponga la concha a 12» / «… que dé de alta el pay a 45». */
+  async 'empresa.pedir'(it) {
+    const E = h.empresas();
+    if (!E?.remotas) return h.msg('Pedirle algo a otra empresa necesita la nube de Wybix activa.');
+    let remotas = [];
+    try { remotas = await E.remotas.listar(); } catch (err) { return h.msg(`No pude leer las empresas del grupo: ${err.message}`); }
+    const d = h.llano(h.v(it, 'empresaTexto'));
+    const r = remotas.find((x) => h.llano(x.nombre) === d) || remotas.find((x) => h.llano(x.nombre || '').includes(d));
+    if (!r) return h.msg(remotas.length ? `No encuentro esa empresa. En el grupo hay: ${remotas.map((x) => x.nombre).join(', ')}.` : 'No hay empresas de otras computadoras en el grupo.');
+    const tipo = h.v(it, 'tipo'), precio = Number(h.v(it, 'precio'));
+    let datos, vista;
+    if (tipo === 'PRODUCTO_PRECIO') {
+      let cat;
+      try { cat = await E.remotas.catalogo(String(r.companyId)); } catch (err) { return h.msg(`No pude leer su catálogo: ${err.message}`); }
+      const dp = h.llano(h.v(it, 'productoTexto'));
+      const p = (cat?.productos || []).find((x) => h.llano(x.nombre) === dp) || (cat?.productos || []).find((x) => h.llano(x.nombre).includes(dp));
+      if (!p) return h.msg(`${r.nombre} no tiene «${h.v(it, 'productoTexto')}» en su catálogo publicado.`);
+      datos = { productUuid: p.uuid, nombre: p.nombre, precio };
+      vista = [{ etiqueta: p.nombre, valor: `${h.dinero(p.precio)} → ${h.dinero(precio)}` }];
+    } else {
+      datos = { nombre: h.v(it, 'productoTexto'), precio, codigo: null, categoria: null };
+      vista = [{ etiqueta: 'Producto nuevo', valor: `${datos.nombre} · ${h.dinero(precio)}` }];
+    }
+    return h.msg('Este pedido voy a mandar:', { plan: h.plan('empresa.pedir', {
+      titulo: `Pedido a ${r.nombre}`, vista: [{ etiqueta: 'Empresa', valor: r.nombre }, ...vista],
+      avisos: ['Lo aplica esa empresa cuando lo acepte; ves su estado en Empresas.'],
+      ejecutar: { api: 'electronAPI.empresasRemotaPedir', payload: { companyId: String(r.companyId), tipo, datos, claveCliente: require('crypto').randomUUID() } },
+      permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
   };
 };

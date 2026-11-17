@@ -349,5 +349,35 @@ module.exports = (h) => {
         permiso: 'CONFIGURACION_ADMINISTRAR',
       }) });
     },
+
+    /* Casillas de la ruleta. El premio de una casilla es una recompensa del catálogo con ese
+       nombre («café gratis»); «sigue participando» no da nada. Quién gana lo decide SQL. */
+    async 'ruleta.casilla'(it) {
+      const r = await h.uno("SELECT TOP 1 id, name FROM dbo.dynamic_definitions WHERE active = 1 AND type = 'WHEEL' ORDER BY id;").catch(() => null)
+        || await h.uno('SELECT TOP 1 id, name FROM dbo.dynamic_definitions WHERE active = 1 ORDER BY id;').catch(() => null);
+      if (!r) return h.msg('No hay ruleta creada: créala en Fidelización → Dinámicas.');
+      const etiqueta = String(h.v(it, 'etiqueta') || '').trim().slice(0, 60);
+      const casillas = await h.q('SELECT id, label, weight, sort_order FROM dbo.dynamic_segments WHERE definition_id = @d AND active = 1 ORDER BY sort_order;', [['d', h.sql.Int, r.id]]);
+      if (h.v(it, 'borrar')) {
+        const c = casillas.find((x) => h.llano(x.label) === h.llano(etiqueta)) || casillas.find((x) => h.llano(x.label).includes(h.llano(etiqueta)));
+        if (!c) return h.msg(`La ruleta no tiene la casilla «${etiqueta}». Tiene: ${casillas.map((x) => x.label).join(', ')}.`);
+        return h.msg('Esta casilla voy a quitar:', { plan: h.plan('ruleta.casilla', {
+          titulo: `Quitar «${c.label}» de la ruleta`, vista: [{ etiqueta: 'Casillas', valor: `${casillas.length} → ${casillas.length - 1}` }],
+          ejecutar: { api: 'wybix.dynamics.saveSegment', payload: { id: Number(c.id), definitionId: r.id, borrar: true } }, permiso: 'CONFIGURACION_ADMINISTRAR',
+        }) });
+      }
+      const nada = /sigue participando|nada|suerte/.test(h.llano(etiqueta));
+      const premio = nada ? null : await h.uno('SELECT TOP 1 id, name FROM dbo.reward_definitions WHERE active = 1 AND name = @n;', [['n', h.sql.NVarChar(120), etiqueta]]).catch(() => null);
+      if (!nada && !premio) return h.msg(`Primero crea la recompensa «${etiqueta}» en Fidelización (o di «sigue participando» para una casilla sin premio).`);
+      const peso = Number(h.v(it, 'peso')) || 1;
+      const total = casillas.reduce((a, x) => a + Number(x.weight || 0), 0) + peso;
+      return h.msg('Esta casilla voy a agregar:', { plan: h.plan('ruleta.casilla', {
+        titulo: `Casilla «${etiqueta}» en la ruleta`,
+        vista: [{ etiqueta: 'Premio', valor: premio ? premio.name : 'ninguno (sigue participando)' }, { etiqueta: 'Probabilidad', valor: `${Math.round((peso / total) * 1000) / 10}%` }],
+        ejecutar: { api: 'wybix.dynamics.saveSegment', payload: { id: null, definitionId: r.id, label: etiqueta, outcome: premio ? 'REWARD' : 'NONE', rewardDefinitionId: premio?.id ?? null,
+          raffleId: null, quantity: 1, weight: peso, sortOrder: casillas.length + 1 } },
+        permiso: 'CONFIGURACION_ADMINISTRAR',
+      }) });
+    },
   };
 };

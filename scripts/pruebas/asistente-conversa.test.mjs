@@ -636,3 +636,28 @@ test('promociones habladas, sin confundirlas con cambiar el precio', () => {
   /* Sin «cuándo», es cambiar el precio. */
   assert.notEqual(l('pon la coca a 15').intent, 'promo.crear');
 });
+
+test('mandar mercancía a un evento', () => {
+  const cat = prepararCatalogo([{ id: 3, nombre: 'Coca Cola 600 ml' }]);
+  const r = interprete.interpretar('manda 20 cocas al evento Feria de mayo', { catalogo: cat, personas: [], modulos: new Set(), ahora: HOY });
+  assert.equal(r.intent, 'evento.enviar'); assert.equal(r.slots.eventoTexto.valor, 'feria de mayo');
+  assert.deepEqual(r.slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[3, 20]]);
+});
+
+test('empresas del grupo: desvincular y pedirle cambios a otra', () => {
+  const l = (texto) => interprete.interpretar(texto, { catalogo: [], personas: [], modulos: new Set(), ahora: HOY });
+  const a = l('desvincula la empresa Panadería Norte');
+  assert.equal(a.intent, 'empresa.desvincular'); assert.equal(a.slots.empresaTexto.valor, 'panaderia norte');
+  const b = l('pídele a Panadería Norte que ponga la concha a 12');
+  assert.equal(b.intent, 'empresa.pedir'); assert.equal(b.slots.tipo.valor, 'PRODUCTO_PRECIO'); assert.equal(b.slots.precio.valor, 12);
+  const c = l('pídele a Panadería Norte que dé de alta el Pay de queso a 45');
+  assert.equal(c.slots.tipo.valor, 'PRODUCTO_ALTA'); assert.equal(c.slots.productoTexto.valor, 'Pay de queso');
+});
+
+test('casillas de la ruleta', () => {
+  const l = (texto) => interprete.interpretar(texto, { catalogo: [], personas: [], modulos: new Set(), ahora: HOY });
+  const a = l('agrega a la ruleta la casilla Café gratis con peso 2');
+  assert.equal(a.intent, 'ruleta.casilla'); assert.equal(a.slots.etiqueta.valor, 'Café gratis'); assert.equal(a.slots.peso.valor, 2);
+  const b = l('quita de la ruleta la casilla café gratis');
+  assert.equal(b.intent, 'ruleta.casilla'); assert.equal(b.slots.borrar.valor, true);
+});

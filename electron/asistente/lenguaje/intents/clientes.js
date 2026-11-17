@@ -106,4 +106,8 @@ module.exports = [
     id: 'campana.crear', etiqueta: 'Crear una campaña de premios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { resultado: { requerido: true }, minimo: {}, porCada: {}, textoCupon: {}, textoRifa: {} }, claves: [], ejemplos: [],
   },
+  {
+    id: 'ruleta.casilla', etiqueta: 'Casillas de la ruleta', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { etiqueta: { requerido: true }, peso: {}, borrar: {} }, claves: [], ejemplos: [],
+  },
 ];

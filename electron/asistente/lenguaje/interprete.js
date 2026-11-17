@@ -567,7 +567,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     if (rf && disponible(rf.intent, modulos)) {
       const slots = {};
       for (const k of ['cantidad', 'nota', 'textoRifa', 'ganadores', 'suplentes', 'textoCupon', 'puntos', 'cadaMonto', 'caducaMeses', 'porVisita', 'activo',
-                       'nombre', 'tipo', 'pct', 'monto', 'dias', 'premio', 'hasta', 'sellos', 'limite', 'precio', 'resultado', 'minimo', 'porCada']) {
+                       'nombre', 'tipo', 'pct', 'monto', 'dias', 'premio', 'hasta', 'sellos', 'limite', 'precio', 'resultado', 'minimo', 'porCada', 'etiqueta', 'peso', 'borrar']) {
         if (rf[k] != null) slots[k] = { valor: rf[k], texto: String(rf[k]), confianza: 'exacto' };
       }
       let ok = true;

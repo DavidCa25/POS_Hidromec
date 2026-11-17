@@ -28,6 +28,8 @@ function multi(texto, { usuarios = [] } = {}) {
   m = t.match(/^en\s+(?:la\s+)?sucursal\s+(.+?)\s+(no\s+)?se\s+vende\s+(?:el|la|los|las)?\s*(.+)$/);
   if (m) return { intent: 'multi.excepcion', sucursalTexto: m[1], textoProducto: m[3], disponible: !m[2] };
 
+  m = t.match(/^(?:manda|mandale|envia|lleva|llevate)\s+(.+?)\s+(?:al|a la|para el|para la)\s+(?:evento|feria|expo)\s+(?:de\s+)?(.+)$/);
+  if (m) return { intent: 'evento.enviar', textoPedido: m[1], eventoTexto: m[2] };
   m = t.match(/^(?:manda|mandale|envia|traspasa|pasa)\s+(.+?)\s+a\s+(?:la\s+)?sucursal\s+(.+)$/);
   if (m) return { intent: 'multi.traspaso', textoPedido: m[1], sucursalTexto: m[2] };
   if (/^(?:recibe|recibir|recibi|ya llego)\s+(?:el\s+)?traspaso(?:\s+de\s+.+)?$/.test(t)) return { intent: 'multi.recibir_traspaso', sucursalTexto: (t.match(/traspaso\s+de\s+(?:la\s+)?(?:sucursal\s+)?(.+)$/) || [])[1] || null };

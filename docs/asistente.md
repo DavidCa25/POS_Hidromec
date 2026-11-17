@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 151 de 155 acciones (97 %)».
+Además imprime el avance, por ejemplo «asistente: 155 de 155 acciones (100 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -343,6 +343,10 @@ A propósito manuales: el canje del cupón (lo hace el cobro), escanear el pase
 de la cartera, emitirlo (sale como QR en la pantalla del Club) y girar la ruleta
 (lo hace el cliente).
 
+Casillas de la ruleta: «agrega a la ruleta la casilla Café gratis con peso 2»,
+«… sigue participando con peso 5», «quita de la ruleta la casilla Café gratis»
+(`dynamics:save-segment`; el premio es la recompensa con ese nombre).
+
 ### Mesas, comandas, salón y estaciones (Hospitality)
 
 Reglas en `lenguaje/mesas.js`, solo con Hospitality encendido. La mesa se busca
@@ -438,7 +442,7 @@ Reglas en `lenguaje/equipos.js`.
 
 | Frase | Qué hace |
 |---|---|
-| «crea la empresa Panadería Centro, giro panadería», «sal del grupo de empresas» | `empresas:crear` (otra base en esta computadora), `empresas:enlace-salir`. |
+| «crea la empresa Panadería Centro, giro panadería», «sal del grupo de empresas», «desvincula la empresa Panadería Norte», «pídele a Panadería Norte que ponga la concha a 12», «… que dé de alta el pay a 45», «manda 20 cocas al evento Feria de mayo» | `empresas:crear`, `empresas:enlace-salir`, `empresas:desvincular`, `empresas:remota-pedir` (con su catálogo publicado), `transferencias:enviar`. |
 | «crea la sucursal Centro», «crea el evento Feria de mayo del 1 al 5 de mayo» | `cloud:crear-sucursal`. |
 | «enciende Wybix Local Host», «renombra la tablet Mesa 1 a Terraza», «desconecta la tablet Terraza», «la tablet Terraza ahora es de mesero», «quítale el acceso a Pedro en las tablets» | `localhost:activar`, `renombrar`, `revocar`, `cambiar-funcion`, `trabajador-revocar`. |
 

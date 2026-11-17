@@ -6209,6 +6209,10 @@ const asistente = require('./asistente').crearAsistente({
   whatsappConfig: async () => (avisosWhatsapp ? avisosWhatsapp.leerConfig(true) : null),
   /* Multisucursal (nube): sucursales, excepciones y traspasos por recibir, para armar las tarjetas. */
   multi: () => cloudSync.multi ?? null,
+  /* Eventos (ferias) a los que se les manda mercancía. */
+  eventos: async () => (await cloudSync.bandejaTransferencias()).events ?? [],
+  /* Empresas de este grupo (locales) y de otras computadoras (remotas). */
+  empresas: () => empresas,
   carpetaDatos: app.getPath('userData'),
   avisar: () => { for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('asistente:cambio'); } catch { /* ventana cerrada */ } } },
 });

@@ -157,4 +157,16 @@ module.exports = [
     id: 'negocio.datos', etiqueta: 'Datos del negocio', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { campo: { requerido: true }, valor: { requerido: true } }, claves: [], ejemplos: [],
   },
+  {
+    id: 'evento.enviar', etiqueta: 'Mandar mercancía a un evento', tipo: 'accion', permiso: 'INVENTARIO_OPERAR', soloRegla: true,
+    slots: { eventoTexto: { requerido: true }, renglones: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'empresa.desvincular', etiqueta: 'Sacar una empresa del grupo', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { empresaTexto: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'empresa.pedir', etiqueta: 'Pedirle un cambio a otra empresa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { empresaTexto: { requerido: true }, tipo: { requerido: true }, productoTexto: { requerido: true }, precio: { requerido: true } }, claves: [], ejemplos: [],
+  },
 ];

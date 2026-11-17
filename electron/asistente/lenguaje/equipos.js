@@ -31,6 +31,12 @@ function equipos(texto, ahora = new Date()) {
     return { intent: 'empresa.crear', nombre: original(raw, t, m[1]), giro: g ? g[1] : null, rfc: m[3] ? m[3].toUpperCase() : null };
   }
   if (/^(?:sal|salte|salir|sacame)\s+del\s+grupo\s+de\s+empresas$|^desvincula\s+esta\s+computadora\s+del\s+grupo$/.test(t)) return { intent: 'empresa.salir_grupo' };
+  m = t.match(/^(?:desvincula|saca|quita)\s+(?:a\s+)?(?:la\s+)?empresa\s+(.+?)(?:\s+del\s+grupo)?$/);
+  if (m) return { intent: 'empresa.desvincular', empresaTexto: m[1] };
+  m = t.match(/^(?:pidele|pide|solicita)\s+a\s+(.+?)\s+que\s+(?:ponga|deje|cambie)\s+(?:el|la|los|las)?\s*(.+?)\s+a\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos)?$/);
+  if (m) return { intent: 'empresa.pedir', empresaTexto: m[1], tipo: 'PRODUCTO_PRECIO', productoTexto: m[2], precio: Number(m[3]) };
+  m = t.match(/^(?:pidele|pide|solicita)\s+a\s+(.+?)\s+que\s+(?:de de alta|agregue|cree)\s+(?:el|la)?\s*(.+?)\s+a\s+\$?(\d+(?:\.\d+)?)(?:\s*pesos)?$/);
+  if (m) return { intent: 'empresa.pedir', empresaTexto: m[1], tipo: 'PRODUCTO_ALTA', productoTexto: raw.slice(t.indexOf(m[2]), t.indexOf(m[2]) + m[2].length).trim(), precio: Number(m[3]) };
 
   m = t.match(/^(?:crea|crear|da de alta|abre|nueva)\s+(?:la\s+|una\s+)?(?:nueva\s+)?sucursal\s+(?:llamada\s+)?(.+)$/);
   if (m) return { intent: 'sucursal.crear', nombre: original(raw, t, m[1]), tipo: 'BRANCH' };
