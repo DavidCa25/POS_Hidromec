@@ -589,3 +589,35 @@ test('multisucursal y pago de servicios hablados', () => {
   }
   assert.deepEqual(l('manda 20 cocas a la sucursal Centro').slots.renglones.valor.map((x) => [x.productId, x.cantidad]), [[3, 20]]);
 });
+
+test('datos del negocio hablados', () => {
+  const l = (texto) => interprete.interpretar(texto, { catalogo: [], personas: [], modulos: new Set(), ahora: HOY });
+  const a = l('el teléfono del negocio es 55 1234 5678');
+  assert.equal(a.intent, 'negocio.datos'); assert.equal(a.slots.campo.valor, 'phone'); assert.equal(a.slots.valor.valor, '5512345678');
+  const b = l('el pie del ticket dice: ¡Gracias por su compra!');
+  assert.equal(b.intent, 'negocio.datos'); assert.equal(b.slots.campo.valor, 'ticket_footer'); assert.equal(b.slots.valor.valor, 'Gracias por su compra');
+  const c = l('el rfc del negocio es xaxx010101000');
+  assert.equal(c.slots.valor.valor, 'XAXX010101000');
+});
+
+test('fidelización: crear cupones, rifas, tarjetas de sellos, planes del Club y campañas', () => {
+  const cat = prepararCatalogo([{ id: 9, nombre: 'Café americano' }]);
+  const l = (texto) => interprete.interpretar(texto, { catalogo: cat, personas: [], modulos: new Set(), ahora: HOY });
+  const casos = [
+    ['crea el cupón 10% de descuento, vale 30 días', 'cupon.definir', { tipo: 'PERCENT', pct: 10, dias: 30 }],
+    ['crea el cupón $50 de descuento', 'cupon.definir', { tipo: 'AMOUNT', monto: 50 }],
+    ['crea el cupón café americano gratis', 'cupon.definir', { tipo: 'FREE_PRODUCT', producto: 9 }],
+    ['crea la rifa Navidad, premio una canasta, cierra el 24 de diciembre, 2 ganadores', 'rifa.crear', { nombre: 'Navidad', premio: 'una canasta', ganadores: 2 }],
+    ['abre la rifa navidad', 'rifa.abrir', { textoRifa: 'navidad' }],
+    ['crea la tarjeta de sellos del café americano: 9 sellos y el 10 gratis', 'sellos.crear', { producto: 9, sellos: 9 }],
+    ['crea el plan Café diario: 1 café americano al día por 300 al mes', 'club.plan', { nombre: 'Café diario', producto: 9, limite: 1, precio: 300, dias: 30 }],
+    ['cada compra de más de 200 da un cupón de 10%', 'campana.crear', { resultado: 'COUPON', minimo: 200 }],
+    ['por cada 100 pesos un boleto de la rifa navidad', 'campana.crear', { resultado: 'RAFFLE', porCada: 100 }],
+    ['genera 20 cupones de 2x1', 'cupon.emitir', { cantidad: 20 }],
+  ];
+  for (const [texto, intent, slots] of casos) {
+    const r = l(texto);
+    assert.equal(r.intent, intent, texto);
+    for (const [k, v] of Object.entries(slots)) assert.equal(r.slots[k]?.valor, v, `${texto}: ${k}`);
+  }
+});

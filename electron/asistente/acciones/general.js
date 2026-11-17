@@ -541,5 +541,22 @@ module.exports = (h) => {
       ejecutar: { api: 'electronAPI.servicesClear', args: [] }, permiso: 'CONFIGURACION_ADMINISTRAR',
     }) });
   },
+
+  /* «El teléfono del negocio es …», «el pie del ticket dice …»: los datos completos con ese cambio, como la pantalla. */
+  async 'negocio.datos'(it) {
+    const c = await h.uno('SELECT TOP 1 business_name, address, phone, rfc, ticket_footer FROM dbo.business_config ORDER BY id;');
+    if (!c) return h.msg('Primero termina la configuración inicial del negocio.');
+    const campo = h.v(it, 'campo'), valor = String(h.v(it, 'valor') || '').trim();
+    const N = { business_name: 'Nombre del negocio', phone: 'Teléfono', address: 'Dirección', rfc: 'RFC', ticket_footer: 'Pie del ticket' };
+    if (campo === 'business_name' && !valor) return h.msg('El nombre no puede quedar vacío.');
+    if (campo === 'rfc' && valor && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(valor)) return h.msg('El RFC lleva 12 o 13 caracteres.');
+    if (String(c[campo] ?? '') === valor) return h.msg('Ya está así.');
+    const nuevo = { business_name: c.business_name, address: c.address, phone: c.phone, rfc: c.rfc, ticket_footer: c.ticket_footer, [campo]: valor || null };
+    return h.msg('Esto voy a cambiar:', { plan: h.plan('negocio.datos', {
+      titulo: 'Datos del negocio', vista: [{ etiqueta: N[campo], valor: `${c[campo] || '—'} → ${valor || '—'}` }],
+      avisos: campo === 'ticket_footer' || campo === 'business_name' ? ['Sale así en los tickets desde la siguiente venta.'] : [],
+      ejecutar: { api: 'electronAPI.updateBusinessConfig', payload: nuevo }, permiso: 'CONFIGURACION_ADMINISTRAR',
+    }) });
+  },
   };
 };

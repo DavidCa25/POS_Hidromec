@@ -82,4 +82,28 @@ module.exports = [
     id: 'puntos.config', etiqueta: 'Configurar los puntos', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
     slots: { puntos: {}, cadaMonto: {}, caducaMeses: {}, porVisita: {}, activo: {} }, claves: [], ejemplos: [],
   },
+  {
+    id: 'cupon.definir', etiqueta: 'Crear un tipo de cupón', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, tipo: { requerido: true }, pct: {}, monto: {}, producto: {}, dias: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.crear', etiqueta: 'Crear una rifa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, premio: {}, hasta: {}, ganadores: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'rifa.abrir', etiqueta: 'Abrir una rifa', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { textoRifa: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'sellos.crear', etiqueta: 'Crear una tarjeta de sellos', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { producto: { requerido: true }, sellos: { requerido: true } }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'club.plan', etiqueta: 'Crear un plan del Club', tipo: 'accion', permiso: 'COMERCIAL_ADMINISTRAR', soloRegla: true,
+    slots: { nombre: { requerido: true }, producto: { requerido: true }, limite: {}, precio: {}, dias: {} }, claves: [], ejemplos: [],
+  },
+  {
+    id: 'campana.crear', etiqueta: 'Crear una campaña de premios', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { resultado: { requerido: true }, minimo: {}, porCada: {}, textoCupon: {}, textoRifa: {} }, claves: [], ejemplos: [],
+  },
 ];

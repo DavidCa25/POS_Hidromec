@@ -205,7 +205,7 @@ lugares:
 - un canal `MANUAL` sin motivo;
 - la lista nombra un canal que ya no existe.
 
-Además imprime el avance, por ejemplo «asistente: 144 de 156 acciones (92 %)».
+Además imprime el avance, por ejemplo «asistente: 150 de 155 acciones (97 %)».
 
 **El asistente no llama SPs directo.** Un plan se ejecuta desde la pantalla
 con la misma función de `preload`. Así pasa por el mismo canal: permisos,
@@ -331,8 +331,17 @@ Reglas en `lenguaje/fidelizacion.js`.
 | «dale a doña Mary un cupón de 10%», «genera 20 cupones de 2x1» | `coupons:issue` con la definición que coincide por nombre, % o monto. |
 | «da 1 punto por cada 10 pesos», «los puntos caducan a los 12 meses», «apaga los puntos» | `puntos:config-guardar` con la configuración completa y solo ese cambio. |
 
+También se crean: «crea el cupón 10% de descuento, vale 30 días», «crea la rifa
+Navidad, premio una canasta, cierra el 24 de diciembre», «abre la rifa Navidad»,
+«crea la tarjeta de sellos del café: 9 sellos y el 10 gratis», «crea el plan Café
+diario: 1 café al día por 300 al mes» (con su producto de cobro ya creado), «cada
+compra de más de 200 da un cupón de 10%», «por cada 100 pesos un boleto de la rifa
+Navidad» (`loyalty:save-definition`, `raffles:save`, `puntos:tarjeta-guardar`,
+`club:plan-guardar`, `loyalty:save-campaign`).
+
 A propósito manuales: el canje del cupón (lo hace el cobro), escanear el pase
-de la cartera y girar la ruleta (lo hace el cliente).
+de la cartera, emitirlo (sale como QR en la pantalla del Club) y girar la ruleta
+(lo hace el cliente).
 
 ### Mesas, comandas, salón y estaciones (Hospitality)
 
@@ -371,11 +380,11 @@ Reglas en `lenguaje/config.js`. El usuario tiene que existir.
 A propósito manuales: crear un usuario (su contraseña la escribe la persona),
 exportar la base (archivo) y el asistente de Socios.
 
-**Pendiente con razón:** `update-business-config` (nombre, teléfono, RFC y
-pie del ticket del negocio). El canal solo manda esos campos y
-`sp_update_business_config` escribe también los fiscales: los deja en nulo y
-apaga la facturación. Pasa igual desde la pantalla. El asistente no lo usa
-hasta que el canal conserve lo que no se manda.
+«El teléfono del negocio es …», «el pie del ticket dice …», «la dirección / el
+nombre / el RFC del negocio es …» van por `update-business-config` con los
+datos completos y ese cambio, igual que la pantalla. (El procedimiento también
+escribe columnas fiscales viejas de `business_config` en nulo; nada las lee:
+la facturación usa `fiscal_config`.)
 
 ### Recetas, fórmulas, presentaciones y opciones
 

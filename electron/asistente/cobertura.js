@@ -117,6 +117,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'club:wallet-emitir': 'El pase de cartera sale como QR que el cliente escanea con su teléfono en la pantalla del Club; el chat no puede mostrárselo.',
   'services:set-config': 'Guarda las credenciales del proveedor de recargas (usuario y llave): son secretos que se capturan en su pantalla.',
   'services:operate': 'La recarga o el pago de un servicio todavía no está conectado (falta la API del proveedor); cuando exista, se hará desde Venta.',
   'empresas:cambiar': 'Cambia toda la ventana a otra base y vuelve a pedir sesión: se hace con la pastilla de empresa, no dentro de una conversación.',
@@ -214,8 +215,7 @@ const MANUAL = {
 };
 
 const PENDIENTE = {
-  'configuracion': ['update-business-config'],
-  'fidelizacion': ['club:plan-guardar', 'club:wallet-emitir', 'dynamics:save-segment', 'loyalty:save-campaign', 'loyalty:save-definition', 'puntos:tarjeta-guardar', 'raffles:save'],
+  'fidelizacion': ['dynamics:save-segment'],
   'commercial': ['commercial:save'],
   'empresas': ['empresas:desvincular', 'empresas:remota-pedir'],
   'transferencias': ['transferencias:enviar'],

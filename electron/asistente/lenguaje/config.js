@@ -92,6 +92,17 @@ function config(texto, { usuarios = [] } = {}) {
     }
   }
 
+  /* Datos del negocio: «el teléfono del negocio es …», «el pie del ticket dice …». */
+  m = t.match(/^(?:el|la)\s+(nombre|telefono|direccion|rfc)\s+del\s+negocio\s+(?:es|sera|ahora es)\s*:?\s+(.+)$/)
+    || t.match(/^(?:el\s+)?(pie)\s+del\s+ticket\s+(?:dice|es|sera|que diga)\s*:?\s+(.+)$/);
+  if (m) {
+    const campo = { nombre: 'business_name', telefono: 'phone', direccion: 'address', rfc: 'rfc', pie: 'ticket_footer' }[m[1]];
+    let valor = raw.slice(t.length - m[2].length).trim().replace(/^["'«“]+|["'»”]+$/g, '');
+    if (campo === 'rfc') valor = valor.toUpperCase();
+    if (campo === 'phone') valor = valor.replace(/[^\d+]/g, '');
+    return { intent: 'negocio.datos', campo, valor };
+  }
+
   /* ---------------------------------------------------------------- giro */
   m = t.match(/^(?:el\s+)?giro\s+(?:del negocio\s+)?(?:es|sera)\s+(?:una?\s+)?(.+)$/) || t.match(/^(?:cambia|pon)\s+el\s+giro\s+(?:a|en)\s+(?:una?\s+)?(.+)$/);
   if (m) { const g = GIROS.find(([k]) => m[1].includes(k)); if (g) return { intent: 'negocio.giro', giro: g[1] }; }

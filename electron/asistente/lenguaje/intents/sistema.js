@@ -153,4 +153,8 @@ module.exports = [
     id: 'multi.alcance', etiqueta: 'A qué sucursales entra un usuario', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
     slots: { usuario: { requerido: true }, todas: {}, sucursalTexto: {} }, claves: [], ejemplos: [],
   },
+  {
+    id: 'negocio.datos', etiqueta: 'Datos del negocio', tipo: 'accion', permiso: 'CONFIGURACION_ADMINISTRAR', soloRegla: true,
+    slots: { campo: { requerido: true }, valor: { requerido: true } }, claves: [], ejemplos: [],
+  },
 ];

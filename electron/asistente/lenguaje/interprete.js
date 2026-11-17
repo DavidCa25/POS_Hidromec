@@ -551,7 +551,8 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
     const rf = !esperando && reglaFidelizacion(texto);
     if (rf && disponible(rf.intent, modulos)) {
       const slots = {};
-      for (const k of ['cantidad', 'nota', 'textoRifa', 'ganadores', 'suplentes', 'textoCupon', 'puntos', 'cadaMonto', 'caducaMeses', 'porVisita', 'activo']) {
+      for (const k of ['cantidad', 'nota', 'textoRifa', 'ganadores', 'suplentes', 'textoCupon', 'puntos', 'cadaMonto', 'caducaMeses', 'porVisita', 'activo',
+                       'nombre', 'tipo', 'pct', 'monto', 'dias', 'premio', 'hasta', 'sellos', 'limite', 'precio', 'resultado', 'minimo', 'porCada']) {
         if (rf[k] != null) slots[k] = { valor: rf[k], texto: String(rf[k]), confianza: 'exacto' };
       }
       let ok = true;
@@ -561,6 +562,7 @@ function crearInterprete({ frasesNegocio = [], semilla = 7, sinApartadas = false
         if (r && (r.valor != null || r.opciones?.length)) slots.cliente = { valor: r.valor, texto: r.texto, confianza: r.valor != null ? r.confianza : 'dudoso', opciones: r.opciones };
         else ok = false;
       }
+      if (rf.textoProducto) { const ap = analizar(rf.textoProducto, catalogo, { personas: [] }); if (ap?.prod?.valor != null) slots.producto = ap.prod; else ok = false; }
       if (ok) return cerrar(rf.intent, slots, 0.95, []);
     }
     /* Socios y propinas: «Juan retiró 500», «liquida a los socios»,
