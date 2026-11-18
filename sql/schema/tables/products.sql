@@ -16,7 +16,7 @@ CREATE TABLE dbo.products (
     category_id INT NULL,
     brand_id INT NULL,
     cost DECIMAL(14, 4) NULL,
-    bar_code NVARCHAR(50) COLLATE Modern_Spanish_CI_AS NULL DEFAULT ('7855745585855'),
+    bar_code NVARCHAR(50) COLLATE Modern_Spanish_CI_AS NULL,
     clave_prod_serv NVARCHAR(8) COLLATE Modern_Spanish_CI_AS NULL,
     clave_unidad NVARCHAR(5) COLLATE Modern_Spanish_CI_AS NULL,
     objeto_impuesto NVARCHAR(2) COLLATE Modern_Spanish_CI_AS NOT NULL DEFAULT ('02'),

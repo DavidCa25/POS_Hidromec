@@ -46,25 +46,8 @@ async function cerrarAvisoDeVenta(p) {
 
 /** El catálogo de la frutería en la base (idempotente: FRU-001…). */
 async function sembrar(base) {
-  const { FRUTERIA } = await import('../scripts/giros/fruteria.mjs');
-  const q = (s) => s.replace(/'/g, "''");
-  const cats = [...new Set(FRUTERIA.map((f) => f[1]))];
-  const filas = FRUTERIA.map(([nombre, cat, unidad, precio], i) => {
-    const kg = unidad === 'kg';
-    return `(N'FRU-${String(i + 1).padStart(3, '0')}', N'${q(nombre)}', ${precio}, ${kg ? 25 : 30}, N'${q(cat)}', ${kg ? 1 : 0}, ${kg ? "'kg'" : "'pza'"}, ${Math.round(precio * 60) / 100})`;
-  });
-  await sql(base, `
-    IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'Mercado') INSERT INTO dbo.CAT_brands (namee) VALUES (N'Mercado');
-    ${cats.map((c) => `IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'${q(c)}') INSERT INTO dbo.CAT_categories (namee) VALUES (N'${q(c)}');`).join('\n')}
-    DECLARE @b INT = (SELECT id FROM dbo.CAT_brands WHERE namee = N'Mercado');
-    DECLARE @f TABLE (pn NVARCHAR(40), nombre NVARCHAR(100), price DECIMAL(10,2), stock DECIMAL(10,2), cat NVARCHAR(100), granel BIT, uom NVARCHAR(10), cost DECIMAL(10,2));
-    INSERT INTO @f VALUES ${filas.join(',\n')};
-    INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, inventory_mode, category_id, brand_id, cost, objeto_impuesto, tasa_iva, registrated_date)
-      SELECT f.pn, f.nombre, f.price, f.stock, 1, 1, 'DIRECT', c.id, @b, f.cost, '02', 0, GETDATE()
-        FROM @f f JOIN dbo.CAT_categories c ON c.namee = f.cat
-       WHERE NOT EXISTS (SELECT 1 FROM dbo.products p WHERE p.part_number = f.pn);
-    UPDATE p SET p.price = f.price, p.stock = f.stock, p.allow_decimal_qty = f.granel, p.base_uom = f.uom, p.active = 1, p.sellable = 1
-      FROM dbo.products p JOIN @f f ON f.pn = p.part_number;`);
+  const { FRUTERIA, sqlSembrar } = await import('../scripts/giros/fruteria.mjs');
+  await sql(base, sqlSembrar());
   return FRUTERIA.length;
 }
 
