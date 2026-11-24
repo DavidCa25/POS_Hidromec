@@ -77,6 +77,24 @@
           </p>
         </div>
 
+        <!-- El vaso que se prepara: sale de la tabla de abajo, no guarda nada. -->
+        <section class="hosp-escena" *ngIf="esBebida()" aria-label="Así queda la bebida">
+          <wx-vaso-receta [lineas]="lineasVaso()" [unidades]="unidadesVaso()" [capacidad]="capacidadSel()"
+                          [titulo]="nombreVariante()" [heredada]="!!recetaHeader()?.is_fallback"></wx-vaso-receta>
+          <div class="hosp-comparar" *ngIf="comparativa().length" data-guide="receta-comparar">
+            <span class="lbl">Comparar tamaños</span>
+            <button type="button" class="hosp-comparar__op" *ngFor="let t of comparativa()"
+                    [class.on]="varianteSel() === t.id" (click)="cambiarVariante(t.id)">
+              <svg viewBox="0 0 36 46" aria-hidden="true"><path [attr.d]="t.contorno" class="mini-vidrio"></path><path [attr.d]="t.nivel" class="mini-nivel"></path></svg>
+              <span>
+                <b>{{ t.nombre }}</b>
+                <small>Costo {{ t.costo | currency:'MXN':'symbol-narrow':'1.2-2' }}{{ t.heredada ? ' · usa la base' : '' }}</small>
+                <small class="m" [class.bajo]="(t.margen ?? 0) < 60" *ngIf="t.margen !== null">Margen {{ t.margen | number:'1.0-0' }}%</small>
+              </span>
+            </button>
+          </div>
+        </section>
+
         <!-- Ingredientes -->
         <section class="wx-set">
           <header class="wx-set__head"><i class="ph ph-list-bullets"></i><h3>Ingredientes de una unidad</h3></header>
@@ -247,6 +265,11 @@
           <div class="wx-set__body">
 
             <div class="hosp-opt" *ngFor="let o of draftOptions(); let i = index">
+              <!-- Qué le pasa a la bebida con esta opción: lo dice el dibujo y el texto. -->
+              <div class="hosp-opt__efecto" data-guide="modificador-efecto">
+                <wx-mini-vaso [efecto]="o.effect" [ingrediente]="nombreIngrediente(o.ingredientProductId)" [factor]="o.qtyFactor"></wx-mini-vaso>
+                <p>{{ resumenOpcion(o) }}</p>
+              </div>
               <div class="hosp-opt__row">
                 <div class="grow">
                   <label class="lbl">Nombre</label>

@@ -40,6 +40,7 @@
     "db:test-socios": "node scripts/db/pruebas/socios.mjs",
     "db:test-venta-suelta": "node scripts/db/pruebas/venta-suelta.mjs",
     "test:ilustraciones": "node --test scripts/pruebas/ilustraciones.test.mjs",
+    "test:vaso": "node --test scripts/pruebas/vaso.test.mjs",
     "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",

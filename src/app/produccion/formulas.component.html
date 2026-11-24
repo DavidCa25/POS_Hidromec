@@ -38,6 +38,19 @@
         piezas de <span class="fo-producto">{{ p.product_name }}</span> se usa:
       </h2>
 
+      <div class="fo-mesa">
+      <!-- El tazón: lo que lleva la fórmula, por capas. Decorativo: la lista manda. -->
+      <div class="fo-tazon" aria-hidden="true" *ngIf="lineas().length">
+        <svg viewBox="0 0 230 200">
+          <defs><clipPath id="fo-tazon-clip"><path d="M20 70 Q20 186 115 186 Q210 186 210 70 Z"></path></clipPath></defs>
+          <ellipse cx="115" cy="190" rx="80" ry="7" fill="rgba(15,23,42,0.10)"></ellipse>
+          <g clip-path="url(#fo-tazon-clip)">
+            <rect *ngFor="let c of tazon()" class="fo-capa" x="0" [attr.y]="c.y" width="230" [attr.height]="c.h" [attr.fill]="c.color"></rect>
+          </g>
+          <path d="M20 70 Q20 186 115 186 Q210 186 210 70" fill="none" stroke="#C9B08A" stroke-width="5"></path>
+          <ellipse cx="115" cy="70" rx="95" ry="12" fill="none" stroke="#D9C39F" stroke-width="5"></ellipse>
+        </svg>
+      </div>
       <div class="fo-lineas">
         <div class="fo-linea" *ngFor="let l of lineas(); let i = index; trackBy: porPosicion" data-guide="produccion-formula-linea" [attr.data-guide-clave]="i">
           <div class="fo-linea__nom">
@@ -65,6 +78,7 @@
                      placeholder="Agregar ingrediente" textoBusqueda="Buscar ingrediente" vacio="No hay más productos con inventario directo"></wx-select>
         </div>
       </div>
+      </div>
 
       <div class="fo-pie">
         <input id="fo-notas" class="ctl fo-notas" maxlength="300" [(ngModel)]="notas" placeholder="Notas: freír 2 minutos por lado" aria-label="Notas de la fórmula">
@@ -89,6 +103,29 @@
         </div>
         <p class="fo-sim__ayuda">Para revisar la fórmula y planear. No mueve inventario.</p>
         <p class="fo-vacio" *ngIf="!lineas().length">Agrega ingredientes para ver qué pediría la tanda.</p>
+        <!-- La charola: una pieza por cada una; las que no alcanzan, punteadas. -->
+        <div class="fo-charola" *ngIf="lineas().length" data-guide="produccion-formula-charola">
+          <svg [attr.viewBox]="'0 0 438 ' + charola().alto" role="img"
+               [attr.aria-label]="'Charola con ' + simular() + ' piezas; alcanzan ' + (simulacion().alcanzaPara >= simular() ? simular() : simulacion().alcanzaPara)">
+            <rect x="1" y="1" width="436" [attr.height]="charola().alto - 2" rx="12" class="fo-charola__fondo"></rect>
+            <g *ngFor="let p of charola().piezas">
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="14" [attr.fill]="p.ok ? p.color : 'none'" [class.fo-pieza--falta]="!p.ok" class="fo-pieza"></circle>
+              <circle *ngIf="p.ok" [attr.cx]="p.x - 4" [attr.cy]="p.y - 4" r="4" fill="rgba(255,255,255,0.45)"></circle>
+            </g>
+          </svg>
+          <small *ngIf="charola().mas > 0">y {{ charola().mas }} más</small>
+        </div>
+        <div class="fo-frascos" *ngIf="lineas().length" aria-hidden="true">
+          <div class="fo-frasco" *ngFor="let f of frascos()">
+            <svg viewBox="0 0 44 70">
+              <rect x="10" y="2" width="24" height="8" rx="3" fill="#C8D2DE"></rect>
+              <rect x="4" y="10" width="36" height="58" rx="8" class="fo-frasco__vidrio"></rect>
+              <rect class="fo-capa" x="6" [attr.y]="f.y" width="32" [attr.height]="f.h" rx="6" [attr.fill]="f.color"></rect>
+              <line x1="2" x2="42" [attr.y1]="f.marca" [attr.y2]="f.marca" [class.falta]="f.falta" class="fo-frasco__marca"></line>
+            </svg>
+            <span>{{ f.nombre }}</span>
+          </div>
+        </div>
         <div class="fo-sim__filas" *ngIf="lineas().length">
           <ng-container *ngFor="let f of simulacion().filas">
             <span>{{ f.nombre }}</span>
