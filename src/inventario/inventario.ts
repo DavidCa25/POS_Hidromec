@@ -133,6 +133,50 @@ export class Inventario {
   /** El costo como se escribe en la ficha (sin IVA). Solo viaja si cambió. */
   costoCaptura: number | null = null;
 
+  /**
+   * ¿El costo que se escribe ya trae IVA? El ticket del proveedor muchas veces
+   * dice el precio con IVA, y Wybix guarda el costo SIN IVA (el IVA de una
+   * compra es acreditable). Se pregunta junto al campo y se convierte aquí:
+   * `costoCaptura` sigue siendo sin IVA.
+   */
+  costoConIva = false;
+  private get tasaCosto(): number { return this.form.objetoImpuesto === '02' ? Number(this.form.tasaIva) || 0 : 0; }
+
+  /** Lo que se ve en el campo: con o sin IVA, según la pregunta. */
+  get costoVisible(): number | null {
+    if (this.costoCaptura == null) return null;
+    const v = this.costoConIva ? this.costoCaptura * (1 + this.tasaCosto) : this.costoCaptura;
+    return Math.round(v * 100) / 100;
+  }
+  set costoVisible(v: number | null) {
+    if (v == null || (v as any) === '' || !Number.isFinite(Number(v))) { this.costoCaptura = null; return; }
+    const n = Number(v);
+    this.costoCaptura = Math.round((this.costoConIva ? n / (1 + this.tasaCosto) : n) * 10000) / 10000;
+  }
+  /** Cambiar la respuesta no cambia el número escrito: cambia lo que significa. */
+  costoIncluyeIva(conIva: boolean) {
+    const escrito = this.costoVisible;
+    this.costoConIva = conIva;
+    this.costoVisible = escrito;
+  }
+
+  /** El % de ganancia sobre el costo con el que se propone el precio al público. */
+  gananciaPropuesta: number | null = null;
+  /**
+   * El precio al público que deja ese costo con esa ganancia, con IVA, igual
+   * que lo calcula Compras: costo × (1 + IVA) × (1 + %). Si el producto lleva
+   * otros impuestos (IEPS), es una referencia: el desglose de arriba manda.
+   */
+  get precioPropuesto(): number | null {
+    const c = this.costoCaptura, g = this.gananciaPropuesta;
+    if (c == null || !(c > 0) || g == null || !Number.isFinite(Number(g))) return null;
+    return Math.round(c * (1 + this.tasaCosto) * (1 + Number(g) / 100) * 100) / 100;
+  }
+  usarPrecioPropuesto() {
+    const p = this.precioPropuesto;
+    if (p != null) this.form.price = p;
+  }
+
   /** 0083: impuestos además del IVA. El catálogo (encendidos + los que ya trae el producto) y los marcados. */
   impuestosCatalogo: ImpuestoCat[] = [];
   impuestosProducto: { id: number; cantidad: number | null }[] = [];
@@ -836,6 +880,68 @@ export class Inventario {
   private sueltoOriginal: { padre: number | null; piezas: number | null } = { padre: null, piezas: null };
   /** Los sueltos que salen de ESTE producto. Si tiene, es paquete: no puede ser suelto. */
   sueltosDeEste: string[] = [];
+  /** Los mismos, con cuántas piezas trae el paquete, para explicarlo. */
+  sueltosDetalle: { nombre: string; piezas: number }[] = [];
+  /** El paquete del que sale ESTE producto, para el ejemplo («queda 1 cajetilla menos»). */
+  paqueteNombre = '';
+
+  /**
+   * «Este producto es el paquete y también vendo sus piezas»: en vez de dar de
+   * alta la pieza a mano y volver a ligarla, se crea desde aquí con lo que ya
+   * tiene el paquete (marca, categoría, claves del SAT, IVA) y queda ligada.
+   */
+  piezaNueva: { abierta: boolean; nombre: string; piezas: number | null; precio: number | null; creando: boolean } =
+    { abierta: false, nombre: '', piezas: null, precio: null, creando: false };
+
+  abrirPiezaNueva() {
+    this.piezaNueva = { abierta: true, nombre: `${(this.form.name || '').trim()} (pieza suelta)`, piezas: null, precio: null, creando: false };
+  }
+
+  /** Lo que sale cada pieza al precio del paquete, para comparar con el de la pieza. */
+  get piezaDelPaquete(): number | null {
+    const n = Number(this.piezaNueva.piezas ?? 0), precio = Number(this.form.price ?? 0);
+    return n >= 2 && precio > 0 ? Math.round((precio / n) * 100) / 100 : null;
+  }
+
+  async crearPiezaSuelta() {
+    const padreId = Number(this.editingProductId);
+    const n = Number(this.piezaNueva.piezas ?? 0), precio = Number(this.piezaNueva.precio ?? 0), nombre = this.piezaNueva.nombre.trim();
+    if (!padreId) return;
+    if (!nombre || n < 2 || !(precio > 0)) {
+      await Swal.fire({ icon: 'warning', title: 'Faltan datos de la pieza', text: 'Escribe su nombre, cuántas piezas trae el paquete (2 o más) y el precio de cada pieza.' });
+      return;
+    }
+    this.piezaNueva.creando = true;
+    try {
+      const { brand, category } = this.form;
+      const clave = `${(this.form.partNumber || 'PZA').trim()}-S`.slice(0, 40);
+      const r = await (window as any).electronAPI.agregarProducto(
+        brand, category, clave, nombre, precio, 0,
+        this.form.claveProdServ || null, this.form.claveUnidad || null,
+        this.form.objetoImpuesto || '02', this.form.tasaIva ?? 0.16, null,
+        { ...(this.controlDelProducto() ?? {}), iva_exento: this.form.tasaIva === 0 && !!this.form.ivaExento });
+      if (!r?.success) throw new Error(r?.error || 'No se pudo crear la pieza.');
+      const piezaId = Number(r?.data?.[0]?.id ?? 0);
+      const liga = await (window as any).electronAPI.ventaSueltaGuardar({ productId: piezaId, parentProductId: padreId, piezas: n });
+      if (!liga?.success) throw new Error(liga?.error || 'La pieza se creó, pero no se pudo ligar al paquete.');
+      this.piezaNueva = { abierta: false, nombre: '', piezas: null, precio: null, creando: false };
+      await this.consultarInventario();
+      await this.cargarSuelto(padreId);
+      await Swal.fire({ icon: 'success', title: 'Pieza suelta creada', text: `«${nombre}» se vende a $${precio.toFixed(2)} y sale de este paquete (${n} piezas).`, timer: 2200, showConfirmButton: false });
+    } catch (e: any) {
+      this.piezaNueva.creando = false;
+      await Swal.fire({ icon: 'error', title: 'No se pudo crear la pieza', text: e?.message || 'Error.' });
+    }
+  }
+
+  /** El ejemplo con los números de este producto: qué pasa al vender piezas sin tener sueltas. */
+  get ejemploSuelto(): string {
+    const n = Number(this.suelto.piezas ?? 0);
+    if (!this.suelto.padre || n < 2) return '';
+    const paquete = this.paqueteNombre || (this.inventario ?? []).find((p: any) => Number(p.id) === Number(this.suelto.padre))?.product_name || 'el paquete';
+    const vende = Math.min(3, n - 1);
+    return `Ejemplo: sin piezas sueltas, vendes ${vende}. Wybix abre 1 «${paquete}»: queda un paquete menos y ${n - vende} piezas sueltas para las siguientes ventas.`;
+  }
 
   get gestionaSuelto(): boolean {
     return this.caps.ventaSuelta && this.capturaStock;
@@ -871,6 +977,9 @@ export class Inventario {
     this.suelto = { padre: null, piezas: null };
     this.sueltoOriginal = { padre: null, piezas: null };
     this.sueltosDeEste = [];
+    this.sueltosDetalle = [];
+    this.paqueteNombre = '';
+    this.piezaNueva = { abierta: false, nombre: '', piezas: null, precio: null, creando: false };
   }
 
   private async cargarSuelto(productId: number) {
@@ -883,8 +992,10 @@ export class Inventario {
       if (paq) {
         this.suelto = { padre: Number(paq.parent_product_id), piezas: Number(paq.piezas) };
         this.sueltoOriginal = { ...this.suelto };
+        this.paqueteNombre = String(paq.parent_name ?? '');
       }
       this.sueltosDeEste = (r.data?.sueltos ?? []).map((s: any) => String(s.product_name ?? ''));
+      this.sueltosDetalle = (r.data?.sueltos ?? []).map((s: any) => ({ nombre: String(s.product_name ?? ''), piezas: Number(s.piezas) }));
       this.cdr.detectChanges();
     } catch {
       // Sin el vinculo el producto se edita igual: es opcional.
@@ -1156,6 +1267,8 @@ export class Inventario {
        el desglose no enseña costo ni ganancia. */
     this.costoProducto = item && 'cost' in item && item.cost != null ? Number((item as any).cost) : null;
     this.costoCaptura = this.costoProducto != null ? Math.round(this.costoProducto * 100) / 100 : null;
+    this.costoConIva = false;
+    this.gananciaPropuesta = this.desglosePrecio?.margen ?? null;
     this.veCostos = !!item && 'cost' in item;
     void this.cargarImpuestos(Number(item?.id ?? 0) || null);
     this.ultimaCompra = null;

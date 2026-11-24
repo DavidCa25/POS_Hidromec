@@ -158,10 +158,12 @@ export const MODULOS: ModuleDefinition[] = [
   {
     id: 'venta-suelta',
     name: 'Venta suelta',
-    description: 'Vende por pieza lo que compras en paquete: el cigarro de la cajetilla.',
-    detalle: 'El suelto es un producto con su precio y su código. Lo ligas a su paquete y ' +
-             'dices cuántas piezas trae; cuando se acaban las piezas, la venta abre un ' +
-             'paquete sola y el inventario cuadra en paquetes y en piezas.',
+    description: 'Vende por pieza lo que compras en paquete: el cigarro de la cajetilla, el rollo del paquete de 4.',
+    detalle: 'Son dos productos ligados: el paquete (la cajetilla de 20, que compras y también ' +
+             'puedes vender entera) y la pieza (el cigarro suelto, con su propio precio). Desde el ' +
+             'paquete, en Inventario, «Crear la pieza suelta» la da de alta ya ligada. En la caja ' +
+             'vendes la pieza; si no hay piezas sueltas, Wybix abre un paquete solo: 1 cajetilla ' +
+             'menos y 20 cigarros más. Así el inventario cuadra en paquetes cerrados y en piezas.',
     icon: 'package',
     category: 'VENTAS',
     capability: 'ventaSuelta',

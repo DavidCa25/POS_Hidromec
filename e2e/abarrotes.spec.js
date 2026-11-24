@@ -178,10 +178,53 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   expect(await stock('ABA-CHOC-BARRA')).toBe(antes['ABA-CHOC-BARRA'] - 2);
   expect(await stock('ABA-TE-MANZ')).toBe(antes['ABA-TE-MANZ'] - 4);
 
+  /* Un paquete sin pieza, para crearla desde su ficha (paso 4). */
+  await sql(app.base, `
+    DECLARE @c INT = (SELECT TOP 1 id FROM dbo.CAT_categories WHERE namee = N'Dulces');
+    DECLARE @b INT = (SELECT id FROM dbo.CAT_brands WHERE namee = N'Abarrotes');
+    IF NOT EXISTS (SELECT 1 FROM dbo.products WHERE part_number = N'ABA-CHICLE-TIRA')
+      INSERT INTO dbo.products (part_number, nombre, price, stock, active, sellable, inventory_mode, category_id, brand_id, cost, objeto_impuesto, tasa_iva, registrated_date, base_uom)
+      VALUES (N'ABA-CHICLE-TIRA', N'Chicle de hierbabuena tira 10', 15, 6, 1, 1, 'DIRECT', @c, @b, 8, '02', 0.16, GETDATE(), 'pza');`);
   /* La hoja de inventario, para revisarla a ojo. */
   await irPorDock(p, 'Inventario');
   await p.locator('tbody tr').nth(5).waitFor({ timeout: 60000 });
   await p.locator('.ventas-search input[type=search]').fill('suelt');
   await foto('5-inventario-sueltos');
+
+  /* ------------- 4. la ficha: crear la pieza desde su paquete, y el costo */
+  await p.locator('.ventas-search input[type=search]').fill('Chicle de hierbabuena tira');
+  await p.locator('tr', { hasText: 'Chicle de hierbabuena tira 10' }).locator('button.btn-editar').click();
+  const guia = p.locator('[data-guide=producto-suelto-guia]');
+  await expect(guia).toBeVisible();
+  await guia.locator('summary').click();
+  await expect(guia).toContainText('La pieza es otro producto');
+  await p.locator('[data-guide=producto-suelto-crear-abrir]').click();
+  await p.locator('[data-guide=producto-suelto-crear-piezas] ').fill('10');
+  await p.locator('[data-guide=producto-suelto-crear-precio]').fill('2');
+  await expect(p.locator('[data-guide=producto-suelto-crear]')).toContainText('cada pieza sale en $1.50');
+  await foto('6-crear-pieza-suelta');
+  await p.locator('[data-guide=producto-suelto-crear-guardar]').click();
+  await expect(p.locator('.swal2-popup')).toContainText('Pieza suelta creada', { timeout: 15000 });
+  const pieza = await sql(app.base, `
+    SELECT p.nombre, CAST(p.price AS FLOAT) AS price, v.piezas FROM dbo.venta_suelta v JOIN dbo.products p ON p.id = v.product_id
+     WHERE v.parent_product_id = (SELECT id FROM dbo.products WHERE part_number = N'ABA-CHICLE-TIRA');`);
+  expect(pieza[0]).toMatchObject({ nombre: 'Chicle de hierbabuena tira 10 (pieza suelta)', price: 2, piezas: 10 });
+  await p.locator('.swal2-container').waitFor({ state: 'detached' }).catch(() => {});
+  await expect(p.locator('[data-guide=producto-suelto-es-paquete]')).toContainText('(10 piezas por paquete)');
+
+  /* El costo del ticket ya trae IVA: $11.60 son $10 sin IVA; con 30% de
+     ganancia el público paga 10 × 1.16 × 1.30 = $15.08. */
+  await p.locator('[data-guide=producto-costo-iva] button', { hasText: 'Con IVA' }).click();
+  await p.locator('[data-guide=producto-costo]').fill('11.60');
+  await expect(p.locator('[data-guide=producto-costo-sin-iva]')).toContainText('$10.00 sin IVA');
+  await p.locator('[data-guide=producto-precio-publico] input').fill('30');
+  await expect(p.locator('[data-guide=producto-precio-publico]')).toContainText('$15.08');
+  await p.locator('[data-guide=producto-usar-precio]').click();
+  await expect(p.locator('[data-guide=producto-precio]')).toHaveValue('15.08');
+  await foto('7-costo-con-iva');
+  await p.locator('[data-guide="producto-guardar"]').click();
+  await expect(p.locator('.swal2-popup')).toContainText('Producto actualizado', { timeout: 15000 });
+  const tira = await sql(app.base, `SELECT CAST(price AS FLOAT) AS price, CAST(cost AS FLOAT) AS cost FROM dbo.products WHERE part_number = N'ABA-CHICLE-TIRA';`);
+  expect(tira[0]).toMatchObject({ price: 15.08, cost: 10 });
   console.log(`abarrotes: ${ABARROTES.length} productos de venta suelta, capturas en ${SHOTS}`);
 });
