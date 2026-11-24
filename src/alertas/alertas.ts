@@ -6,6 +6,7 @@ import { ReportService, ReportConfig } from '../services/report.service';
 import { Router } from '@angular/router';
 import { LineaPedido, PedidoProveedor, PedidoSugeridoService } from '../core/pedido-sugerido.service';
 import { seAcaba } from '../../shared/pedido';
+import { fechaDeSql, zonaDeSql } from '../core/fechas';
 
 interface Reorden {
   id: number; nombre: string; stock: number; vendido_ventana: number;
@@ -187,6 +188,8 @@ interface Reorden {
     .al-pedido__total{font-size:.85rem;color:var(--wx-text-muted);}
     .al-pedido__total b{color:var(--wx-text);font-family:var(--wx-font-mono);}
     .al-pedido__fuera td{opacity:.5;}
+    .al-costos .pill{white-space:nowrap;}
+    .al-pedido__memoria{margin:0;padding:.45rem .9rem;border-bottom:1px solid var(--wx-edge-soft);display:flex;gap:.4rem;align-items:center;}
     .al-paso{display:inline-flex;align-items:center;gap:.35rem;}
     .al-paso button{width:30px;height:30px;border-radius:8px;border:1px solid var(--wx-edge-strong);background:var(--wx-surface);font:inherit;cursor:pointer;color:var(--wx-text);}
     .al-paso b{min-width:2ch;text-align:center;font-family:var(--wx-font-mono);}
@@ -401,7 +404,8 @@ interface Reorden {
                 <button type="button" class="al-btn al-btn--cta" *ngIf="p.supplierId != null" (click)="registrarComoCompra(p)" [disabled]="!hayEnPedido(p)"
                         data-guide="alertas-pedido-compra">Registrar como compra</button>
               </header>
-              <p class="al-sub" *ngIf="p.supplierId == null">Estos productos no tienen proveedor ligado. Lígalo en Inventario y saldrán en su pedido.</p>
+              <p class="al-sub al-pedido__memoria" *ngIf="memoriaPedido(p) as m" data-guide="alertas-pedido-memoria"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> {{ m }}</p>
+              <p class="al-sub" *ngIf="p.supplierId == null">Estos productos no tienen proveedor ligado ni compras registradas. Lígalo en Inventario o regístrales una compra y saldrán en su pedido.</p>
               <table class="al-table">
                 <thead><tr><th></th><th>Producto</th><th class="r">Hay</th><th class="r">Se acaba en</th><th class="r">Pedir</th><th class="r">Último costo</th><th class="r">Importe</th></tr></thead>
                 <tbody>
@@ -446,6 +450,55 @@ interface Reorden {
                         </tbody>
                       </table>
                     </div>
+          </div>
+        </article>
+        <!-- 0092 · costos y márgenes -->
+        <article class="al-fila" *ngIf="f === 'costos'" [ngClass]="'sev-'+sev('costos')" data-guide="alertas-costos">
+          <div class="al-fila__cab" (click)="alternar('costos')" role="button" tabindex="0"
+               [attr.aria-expanded]="abierta('costos')" (keydown.enter)="alternar('costos')">
+            <span class="al-tile"><i class="ph {{ CATALOGO['costos'].icono }}" aria-hidden="true"></i></span>
+            <div class="al-ident">
+              <div class="al-ident__l1">
+                <h3>{{ CATALOGO['costos'].titulo }}</h3>
+                <span class="al-badge">{{ sevTexto('costos') }}</span>
+              </div>
+              <p class="al-ident__l2">{{ CATALOGO['costos'].explica }}</p>
+            </div>
+            <div class="al-metricas">
+              <div class="al-metrica" *ngFor="let m of metricas('costos')" [ngClass]="m.tono ? 'tono-'+m.tono : ''">
+                <span class="al-metrica__et">{{ m.etiqueta }}</span>
+                <span class="al-metrica__v" [class.es-fuerte]="m.fuerte">{{ m.valor }}</span>
+              </div>
+            </div>
+            <div class="al-accion">
+              <span class="al-accion__et">Acción recomendada</span>
+              <span class="al-accion__t">{{ CATALOGO['costos'].accion }}</span>
+            </div>
+            <div class="al-cta" (click)="$event.stopPropagation()">
+              <button class="al-btn al-btn--cta" (click)="alternar('costos')">{{ CATALOGO['costos'].cta }}</button>
+            </div>
+            <span class="al-chev" aria-hidden="true"><i class="ph ph-caret-down"></i></span>
+          </div>
+          <div class="al-detalle" *ngIf="abierta('costos')">
+            <div class="al-load" *ngIf="cargandoCostos">Cargando…</div>
+            <div class="scroll" *ngIf="costos.length">
+              <table class="al-table al-costos">
+                <thead><tr><th>Qué pasa</th><th>Producto</th><th class="r">Costo</th><th class="r">Precio</th><th class="r">Mínimo</th><th class="r"></th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let c of costos" data-guide="alertas-costo" [attr.data-guide-clave]="c.tipo + '|' + c.product_id + '|' + (c.detalle || '')">
+                    <td><span class="pill" [ngClass]="c.tipo === 'SUBIO' ? 'warn' : 'crit'">{{ tipoCosto(c.tipo) }}</span></td>
+                    <td class="al-name">
+                      {{ c.product_name }}
+                      <div class="al-sub">{{ explicaCosto(c) }}</div>
+                    </td>
+                    <td class="r">{{ money(c.costo_ahora) }}<div class="al-sub">por {{ c.base_uom || 'pza' }}, sin IVA</div></td>
+                    <td class="r">{{ money(c.precio) }}</td>
+                    <td class="r">{{ c.minimo == null ? '—' : money(c.minimo) }}</td>
+                    <td class="r"><span class="pill" [ngClass]="c.tipo === 'SUBIO' ? 'warn' : 'crit'">{{ c.pct > 0 ? '+' : '' }}{{ c.pct }} %</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </article>
         <!-- low -->
@@ -864,6 +917,8 @@ export class Alertas implements OnInit {
   devoluciones: any[] = []; cargandoDevol = false;
   vencidos: any[] = []; cargandoVencidos = false;
   riesgo: any[] = []; cargandoRiesgo = false;
+  /** 0092 · costos que subieron y precios que ya no cubren el costo. */
+  costos: any[] = []; cargandoCostos = false;
   private clientesMap: Record<number, string> = {};
 
   // 0090 · Pedido sugerido por proveedor: «Generar pedido» lo arma de verdad.
@@ -905,11 +960,13 @@ export class Alertas implements OnInit {
     if (!tel) return;
     const numero = tel.length === 10 ? '52' + tel : tel;
     this.api?.openExternal?.(`https://wa.me/${numero}?text=${encodeURIComponent(PedidoSugeridoService.texto(p))}`);
+    void this.pedido.enviado(p, 'WHATSAPP');
   }
 
   async copiarPedido(p: PedidoProveedor) {
     try {
       await navigator.clipboard.writeText(PedidoSugeridoService.texto(p));
+      void this.pedido.enviado(p, 'COPIA');
       this.copiado = p.nombre;
       setTimeout(() => { if (this.copiado === p.nombre) this.copiado = null; }, 2000);
     } catch { /* sin portapapeles: el pedido sigue en pantalla */ }
@@ -918,7 +975,8 @@ export class Alertas implements OnInit {
   async ngOnInit() {
     await Promise.all([
       this.cargarReorden(), this.cargarLow(), this.cargarAgotados(), this.cargarMuertos(), this.cargarCero(),
-      this.cargarDescuadre(), this.cargarDevoluciones(), this.cargarVencidos(), this.cargarRiesgo()
+      this.cargarDescuadre(), this.cargarDevoluciones(), this.cargarVencidos(), this.cargarRiesgo(),
+      this.cargarCostos(),
     ]);
   }
 
@@ -1026,6 +1084,31 @@ export class Alertas implements OnInit {
     return `${n} ${f?.base_uom || 'pza'}`;
   }
 
+  // ---- 0092 · Costos y márgenes ----
+  async cargarCostos() {
+    this.cargandoCostos = true;
+    try {
+      const r = await this.api?.alertasCostos?.({ dias: 60 });
+      this.costos = r?.success ? (r.data || []) : [];
+    } catch { this.costos = []; } finally { this.cargandoCostos = false; }
+  }
+  tipoCosto(t: string): string {
+    return t === 'PERDIDA' ? 'Vende con pérdida' : t === 'PAQUETE' ? 'Paquete bajo costo' : 'Subió el costo';
+  }
+  explicaCosto(c: any): string {
+    const fecha = this.diaCorto(c.fecha);
+    if (c.tipo === 'PAQUETE') return `${c.detalle}: se vende a ${this.money(c.precio)} y sus piezas cuestan ${this.money(c.minimo)} con IVA. Sube su precio en la ficha del producto.`;
+    if (c.tipo === 'PERDIDA') return `La pieza se vende a ${this.money(c.precio)} y cuesta ${this.money(c.minimo)} con IVA.`;
+    return `De ${this.money(c.costo_antes)} a ${this.money(c.costo_ahora)}${c.detalle ? ' con ' + c.detalle : ''}${fecha ? ' · ' + fecha : ''}. Revisa el precio de sus paquetes.`;
+  }
+  private diaCorto(v: unknown): string {
+    const d = fechaDeSql(v);
+    return d ? d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: zonaDeSql(v) }) : '';
+  }
+  memoriaPedido(p: PedidoProveedor): string | null {
+    return PedidoSugeridoService.memoria(p, this.diaCorto(p.proximaCompra));
+  }
+
   // ---- Agotados ----
   async cargarAgotados() {
     this.cargandoAgotados = true;
@@ -1082,6 +1165,8 @@ export class Alertas implements OnInit {
       case 'low':          return this.lowStock.length ? 'atencion' : 'ok';
       case 'devoluciones': return this.devoluciones.length ? 'informativo' : 'ok';
       case 'muertos':      return this.muertos.length ? 'informativo' : 'ok';
+      case 'costos':       return this.costos.some(c => c.tipo !== 'SUBIO') ? 'critico'
+                                : (this.costos.length ? 'informativo' : 'ok');
       default:             return 'ok';
     }
   }
@@ -1092,9 +1177,9 @@ export class Alertas implements OnInit {
     return peso[this.sev(id)] + this.POSICION.indexOf(id);
   }
   private readonly POSICION = ['riesgo','agotados','vencidos','descuadre','cero',
-                               'reorden','low','devoluciones','muertos'];
+                               'costos','reorden','low','devoluciones','muertos'];
 
-  private readonly TODAS = ['riesgo','reorden','low','agotados','muertos',
+  private readonly TODAS = ['riesgo','reorden','costos','low','agotados','muertos',
                             'cero','descuadre','devoluciones','vencidos'];
 
   /**
@@ -1172,6 +1257,9 @@ export class Alertas implements OnInit {
     devoluciones: { titulo: 'Devoluciones por cajero', icono: 'ph-arrow-u-up-left', grupo: 'auditoria',
                     explica: 'Cómo se reparten las devoluciones entre cajeros.',
                     accion: 'Revisa las devoluciones.', cta: 'Ver detalle' },
+    costos:       { titulo: 'Costos y márgenes', icono: 'ph-trend-up', grupo: 'inventario',
+                    explica: 'Lo que dejaron las compras: costos que subieron y precios que ya no cubren el costo.',
+                    accion: 'Ajusta el precio de la pieza o del paquete.', cta: 'Ver detalle' },
     muertos:      { titulo: 'Productos sin rotación', icono: 'ph-snowflake', grupo: 'inventario',
                     explica: 'Ocupan inventario y llevan tiempo sin venderse.',
                     accion: 'Considera liquidar o devolver.', cta: 'Ver detalle' },
@@ -1189,6 +1277,7 @@ export class Alertas implements OnInit {
       case 'descuadre':    return this.descuadres.length;
       case 'devoluciones': return this.devoluciones.length;
       case 'vencidos':     return this.vencidos.length;
+      case 'costos':       return this.costos.length;
       default:             return 0;
     }
   }
@@ -1205,6 +1294,7 @@ export class Alertas implements OnInit {
       case 'descuadre':    return this.cargandoDescuadre;
       case 'devoluciones': return this.cargandoDevol;
       case 'vencidos':     return this.cargandoVencidos;
+      case 'costos':       return this.cargandoCostos;
       default:             return false;
     }
   }
@@ -1238,6 +1328,12 @@ export class Alertas implements OnInit {
         }
         filas.push({ etiqueta: 'Pedir', valor: f.sugerido == null ? '—' : n(f.sugerido) });
         return filas;
+      }
+      case 'costos': {
+        const c = this.costos[0]; if (!c) return [];
+        const malos = this.costos.filter(x => x.tipo !== 'SUBIO').length;
+        return [{ etiqueta: 'Producto', valor: n(c.product_name) },
+                { etiqueta: malos ? 'Bajo costo' : 'Subieron', valor: String(malos || this.costos.length), fuerte: true, tono: malos ? 'critico' : 'atencion' }];
       }
       case 'muertos': {
         const m = this.muertos[0]; if (!m) return [];

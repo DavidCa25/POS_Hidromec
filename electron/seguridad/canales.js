@@ -179,6 +179,10 @@ const EXIGE = {
   'sp-register-purchase': INVENTARIO_OPERAR,
   // 0090: el pedido sugerido trae costos de proveedor: quien compra.
   'compras:pedido-sugerido': INVENTARIO_OPERAR,
+  // 0092: lo comprado antes, costos y el pedido mandado: quien compra.
+  'compras:memoria': INVENTARIO_OPERAR,
+  'compras:pedido-enviado': INVENTARIO_OPERAR,
+  'alertas:costos': INVENTARIO_OPERAR,
   'sp-register-supplier-payment': INVENTARIO_OPERAR,
   'sp-add-supplier': INVENTARIO_OPERAR,
   'sp-supplier-save': INVENTARIO_OPERAR,

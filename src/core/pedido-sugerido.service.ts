@@ -31,6 +31,12 @@ export interface FilaPedidoSugerido {
   pedir: number;
   /** Por unidad base, sin IVA. */
   costo: number;
+  /* 0092 · lo que aprendió de las compras */
+  dias_con_existencia?: number | null;
+  ciclo_dias?: number | null;
+  entrega_dias?: number | null;
+  cobertura_dias?: number | null;
+  proxima_compra?: unknown;
 }
 
 /** Un renglón del pedido en la unidad en que se compra (cajas, paquetes o piezas). */
@@ -55,6 +61,13 @@ export interface PedidoProveedor {
   nombre: string;
   telefono: string | null;
   lineas: LineaPedido[];
+  /** 0092 · cada cuántos días se le compra (null: menos de 3 compras en 120 días). */
+  cicloDias?: number | null;
+  /** 0092 · cuánto tarda en surtir un pedido mandado (null: no se ha medido). */
+  entregaDias?: number | null;
+  /** 0092 · para cuántos días alcanza lo que se pide. */
+  coberturaDias?: number | null;
+  proximaCompra?: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -73,7 +86,11 @@ export class PedidoSugeridoService {
     const grupos = new Map<string, PedidoProveedor>();
     for (const f of filas) {
       const k = f.supplier_id == null ? 'sin' : String(f.supplier_id);
-      if (!grupos.has(k)) grupos.set(k, { supplierId: f.supplier_id, nombre: f.supplier_name || 'Sin proveedor', telefono: f.supplier_phone || null, lineas: [] });
+      if (!grupos.has(k)) grupos.set(k, {
+        supplierId: f.supplier_id, nombre: f.supplier_name || 'Sin proveedor', telefono: f.supplier_phone || null, lineas: [],
+        cicloDias: f.ciclo_dias ?? null, entregaDias: f.entrega_dias ?? null,
+        coberturaDias: f.cobertura_dias ?? null, proximaCompra: f.proxima_compra ?? null,
+      });
       const factor = Number(f.presentation_factor) > 1 ? Number(f.presentation_factor) : 1;
       grupos.get(k)!.lineas.push({
         productId: f.product_id,
@@ -97,6 +114,29 @@ export class PedidoSugeridoService {
     const filas = p.lineas.filter(l => l.incluido && l.cantidad > 0)
       .map(l => `• ${l.cantidad} ${l.factor > 1 ? l.presentacion : l.baseUom} de ${l.nombre}`);
     return [`Hola${p.nombre && p.supplierId != null ? ' ' + p.nombre : ''}, te encargo este pedido${negocio ? ' para ' + negocio : ''}:`, ...filas, 'Gracias.'].join('\n');
+  }
+
+  /**
+   * 0092 · Lo que el pedido sabe del proveedor, en una línea:
+   * «Le compras cada ~7 días · tarda 2 días en surtir · alcanza para 9 días».
+   * `proxima` llega ya escrita (la pantalla la formatea).
+   */
+  static memoria(p: PedidoProveedor, proxima = ''): string | null {
+    const partes: string[] = [];
+    const ciclo = Number(p.cicloDias), entrega = p.entregaDias == null ? NaN : Number(p.entregaDias);
+    if (ciclo > 0) partes.push(`Le compras cada ~${ciclo} ${ciclo === 1 ? 'día' : 'días'}`);
+    if (entrega >= 0) partes.push(entrega === 0 ? 'surte el mismo día' : `tarda ${entrega} ${entrega === 1 ? 'día' : 'días'} en surtir`);
+    if (!partes.length) return null;
+    if (proxima) partes.push(`próxima compra: ${proxima}`);
+    if (Number(p.coberturaDias) > 0) partes.push(`el pedido alcanza para ${p.coberturaDias} días`);
+    return partes.join(' · ');
+  }
+
+  /** 0092 · Se mandó o se copió: con la compra que llegue se mide la entrega. */
+  async enviado(p: PedidoProveedor, via: 'WHATSAPP' | 'COPIA') {
+    if (p.supplierId == null) return;
+    try { await this.api?.comprasPedidoEnviado?.({ supplier_id: p.supplierId, via, lineas: p.lineas.filter(l => l.incluido && l.cantidad > 0).length }); }
+    catch { /* no impide mandar el pedido */ }
   }
 
   /** Deja el pedido para que Registrar compra lo tome al abrir. */

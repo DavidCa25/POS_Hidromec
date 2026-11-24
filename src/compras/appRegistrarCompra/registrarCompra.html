@@ -107,6 +107,9 @@
                       <span class="compra-estado" [attr.data-tono]="e.tono" data-guide="compra-estado-pedido">{{ e.texto }}</span>
                     </ng-container>
                     <span class="compra-estado" data-tono="aviso" *ngIf="cambioDeCosto(it) as c">costo {{ c }}</span>
+                    <!-- 0092 · Lo que se le compró antes, y si otro lo da más barato. -->
+                    <div class="compra-memoria" *ngIf="ultimaCompra(it) as u" data-guide="compra-memoria">{{ u }}</div>
+                    <div class="compra-memoria compra-memoria--barato" *ngIf="masBarato(it) as b" data-guide="compra-mas-barato"><i class="ph ph-tag" aria-hidden="true"></i> {{ b }}</div>
                   </td>
 
                   <td>
@@ -121,7 +124,7 @@
                     <wx-select *ngIf="it.presentaciones.length > 1"
                                class="wx-sel-compacto mt-1"
                                [ngModel]="it.presentationId"
-                               (ngModelChange)="cambiarPresentacion(it, $event)"
+                               (ngModelChange)="cambiarPresentacion(it, $event, true)"
                                name="pres-{{i}}"
                                [opciones]="it.opciones"
                                data-guide="compra-presentacion"></wx-select>

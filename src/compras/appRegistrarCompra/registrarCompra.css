@@ -178,3 +178,7 @@ h2 {
 }
 .compra-estado[data-tono="ok"] { background: var(--wx-success-soft); color: var(--wx-success); }
 .compra-estado[data-tono="aviso"] { background: var(--wx-warning-soft); color: var(--wx-warning); }
+
+/* 0092 · lo que se le compró antes a este proveedor */
+.compra-memoria{font-size:.78rem;font-weight:400;color:var(--wx-text-muted,#64748b);margin-top:.25rem;}
+.compra-memoria--barato{color:var(--wx-success-strong,#15803d);}

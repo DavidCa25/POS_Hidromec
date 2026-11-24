@@ -78,6 +78,8 @@ const LECTURA = [
   'produccion:tablero',
   'produccion:sugerido',      // 0090: lo que conviene producir hoy
   'compras:pedido-sugerido',  // 0090: el pedido sugerido por proveedor
+  'compras:memoria',          // 0092: lo comprado antes a un proveedor
+  'alertas:costos',           // 0092: costos que subieron y precios bajo costo
   'propinas:historial',
   'puntos:admin',
   'puntos:costo',
@@ -149,6 +151,7 @@ const MANUAL = {
   'cloud:unirse-codigo': 'Unirse a una empresa con un código de otra pantalla.',
   'club:sincronizar': 'Sincronización interna con la nube.',
   'compras-doc:aprender': 'Aprende de una factura subida como archivo.',
+  'compras:pedido-enviado': 'Lo anota solo la pantalla del pedido al mandarlo por WhatsApp o copiarlo; no es un paso aparte.',
   'compras-doc:archivo': 'La factura del proveedor se sube como archivo.',
   'devices:set-config': 'Impresora, cajón y báscula: hardware, se prueban en pantalla.',
   'download-update': 'Descarga una versión: va junto con instalarla.',

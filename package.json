@@ -42,6 +42,7 @@
     "test:ilustraciones": "node --test scripts/pruebas/ilustraciones.test.mjs",
     "test:vaso": "node --test scripts/pruebas/vaso.test.mjs",
     "test:pedido": "node --test scripts/pruebas/pedido.test.mjs",
+    "test:compra-memoria": "node --test scripts/pruebas/compra-memoria.test.mjs",
     "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",

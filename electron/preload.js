@@ -190,6 +190,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     alertsReorder: (p) => invoke('alerts:reorder', p),
     // 0090: el pedido sugerido por proveedor, para llenar la compra.
     comprasPedidoSugerido: (p) => invoke('compras:pedido-sugerido', p),
+    // 0092: compras que aprenden.
+    comprasMemoria: (p) => invoke('compras:memoria', p),
+    comprasPedidoEnviado: (p) => invoke('compras:pedido-enviado', p),
+    alertasCostos: (p) => invoke('alertas:costos', p),
     alertsOutOfStock: () => invoke('alerts:out-of-stock'),
     alertsZeroSales: (p) => invoke('alerts:zero-sales', p),
     alertsCashClosures: (p) => invoke('alerts:cash-closures', p),

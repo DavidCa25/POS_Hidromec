@@ -79,6 +79,8 @@ asignar('sales', [
 
 asignar('purchases', [
   'sp_register_purchase', 'sp_get_purchases', 'sp_get_next_purchase_folio',
+  // 0092: lo que se le compro a cada proveedor, para llenar la compra.
+  'sp_compra_memoria',
 ]);
 
 asignar('inventory', [
@@ -87,6 +89,8 @@ asignar('inventory', [
   'sp_get_brands', 'sp_get_categories', 'sp_dead_products', 'sp_reorder_suggestions',
   // 0090: el pedido sugerido, por proveedor.
   'sp_purchase_order_suggestions',
+  // 0092: costos que subieron y precios que ya no cubren el costo.
+  'sp_alertas_costos',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
   // Aplicar un conteo fisico al inventario.
   'sp_inventory_count_apply',
