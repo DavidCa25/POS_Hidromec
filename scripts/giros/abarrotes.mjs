@@ -80,6 +80,7 @@ export const ABARROTES = [
   ['ABA-BOLSA', 'Bolsa camiseta chica', 'Desechables', 1, 'Paquete 100', 100, 45, null],
   // ------------------------------------------------ higiene y hogar
   ['ABA-PAPEL-ROLLO', 'Papel higiénico rollo suelto', 'Higiene', 10, 'Bulto 12', 12, 336, { paquete: 'Papel higiénico paquete 4 rollos', piezas: 4, precioPaquete: 36 }],
+  ['ABA-PAPEL6-ROLLO', 'Papel higiénico jumbo rollo suelto', 'Higiene', 12, 'Bulto 8', 8, 384, { paquete: 'Papel higiénico jumbo paquete 6 rollos', piezas: 6, precioPaquete: 58 }],
   ['ABA-PANAL', 'Pañal etapa 4 suelto', 'Higiene', 7, 'Bulto 4', 4, 680, { paquete: 'Pañales etapa 4 paquete 40', piezas: 40, precioPaquete: 245 }],
   ['ABA-TOALLA-FEM', 'Toalla femenina suelta', 'Higiene', 5, 'Caja 24', 24, 576, { paquete: 'Toallas femeninas paquete 10', piezas: 10, precioPaquete: 38 }],
   ['ABA-SHAMPOO-SOB', 'Shampoo sobre 10 ml', 'Higiene', 4, 'Tira 12', 12, 30, null],
@@ -95,10 +96,42 @@ export const ABARROTES = [
   ['ABA-ANTIACIDO', 'Antiácido sobre efervescente', 'Farmacia', 8, 'Caja 50', 50, 260, null],
 ];
 
+/**
+ * UN PRODUCTO, MUCHAS PRESENTACIONES (0089): la pieza se vende sola y en
+ * varios paquetes, cada uno a su precio, y el inventario se lleva en piezas.
+ * El rollo de papel en paquete de 4, 6, 12 y 18; la lata en six, doce y caja;
+ * el huevo en docena, media reja y reja; el pañal en paquete de 10, 20 y 40.
+ *
+ * Cada renglón:
+ *   [clave, nombre, categoría, precio de la pieza,
+ *    [presentación de compra, piezas, costo sin IVA],
+ *    [[presentación de venta, piezas, precio], …]]
+ */
+export const PRESENTACIONES = [
+  ['ABA-MP-PAPEL', 'Papel higiénico rollo doble hoja', 'Higiene', 10, ['Bulto 48', 48, 336],
+    [['Paquete 4', 4, 36], ['Paquete 6', 6, 52], ['Paquete 12', 12, 98], ['Paquete 18', 18, 140]]],
+  ['ABA-MP-REFRESCO', 'Refresco de cola lata 355 ml', 'Bebidas', 16, ['Caja 24', 24, 288],
+    [['Six 6', 6, 90], ['Doce 12', 12, 175], ['Caja 24 completa', 24, 340]]],
+  ['ABA-MP-CERVEZA', 'Cerveza clara lata 355 ml', 'Cerveza', 22, ['Caja 24', 24, 444],
+    [['Six 6', 6, 125], ['Doce 12', 12, 245], ['Caja 24 completa', 24, 470]]],
+  ['ABA-MP-HUEVO', 'Huevo rojo pieza', 'Abarrotes', 3.5, ['Caja 360', 360, 900],
+    [['Docena', 12, 40], ['Media reja 15', 15, 50], ['Reja 30', 30, 95]]],
+  ['ABA-MP-AGUA', 'Agua natural 1 L botella', 'Bebidas', 14, ['Paquete 12', 12, 120],
+    [['Six 6', 6, 78], ['Paquete 12 completo', 12, 150]]],
+  ['ABA-MP-PANAL', 'Pañal etapa 3 pieza', 'Higiene', 7, ['Bulto 160', 160, 800],
+    [['Paquete 10', 10, 65], ['Paquete 20', 20, 125], ['Paquete 40', 40, 240]]],
+  ['ABA-MP-PILA', 'Pila AAA', 'Hogar', 14, ['Caja 48', 48, 384],
+    [['Blíster 2', 2, 26], ['Blíster 4', 4, 50]]],
+  ['ABA-MP-VASO', 'Vaso desechable #10', 'Desechables', 1, ['Bulto 1000', 1000, 450],
+    [['Paquete 25', 25, 22], ['Paquete 50', 50, 40], ['Paquete 100', 100, 75]]],
+];
+
 /** Lo que sale del catálogo: cuántos productos, cuántos sueltos de paquete. */
 export const RESUMEN = {
-  productos: ABARROTES.length,
+  productos: ABARROTES.length + PRESENTACIONES.length,
   sueltosDePaquete: ABARROTES.filter((r) => r[7]).length,
+  conVariasPresentaciones: PRESENTACIONES.length,
+  presentacionesDeVenta: PRESENTACIONES.reduce((a, r) => a + r[5].length, 0),
 };
 
 /**
@@ -121,7 +154,11 @@ export function sqlSembrar() {
       filas.push(`(N'${pn}', N'${q(nombre)}', N'${q(cat)}', ${precio}, N'${q(pres)}', ${factor}, ${costoPres / factor}, NULL, 0)`);
     }
   }
-  const cats = [...new Set(ABARROTES.map((r) => r[2]))];
+  for (const [pn, nombre, cat, precio, [pres, factor, costoPres]] of PRESENTACIONES) {
+    filas.push(`(N'${pn}', N'${q(nombre)}', N'${q(cat)}', ${precio}, N'${q(pres)}', ${factor}, ${costoPres / factor}, NULL, 0)`);
+  }
+  const ventas = PRESENTACIONES.flatMap(([pn, , , , , vs]) => vs.map(([n, f, precio]) => `(N'${pn}', N'${q(n)}', ${f}, ${precio})`));
+  const cats = [...new Set([...ABARROTES, ...PRESENTACIONES].map((r) => r[2]))];
   return `
     IF NOT EXISTS (SELECT 1 FROM dbo.CAT_brands WHERE namee = N'Abarrotes') INSERT INTO dbo.CAT_brands (namee) VALUES (N'Abarrotes');
     ${cats.map((c) => `IF NOT EXISTS (SELECT 1 FROM dbo.CAT_categories WHERE namee = N'${q(c)}') INSERT INTO dbo.CAT_categories (namee) VALUES (N'${q(c)}');`).join('\n')}
@@ -138,6 +175,15 @@ export function sqlSembrar() {
     INSERT INTO dbo.product_presentations (product_id, name, factor_to_base, is_default, active)
       SELECT p.id, f.pres, f.factor, 1, 1 FROM @f f JOIN dbo.products p ON p.part_number = f.pn
        WHERE f.pres IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.product_presentations x WHERE x.product_id = p.id AND x.name = f.pres);
+
+    /* Las presentaciones que se VENDEN (0089): sin código, con su precio. */
+    DECLARE @v TABLE (pn NVARCHAR(40), nombre NVARCHAR(60), factor INT, precio DECIMAL(10,2));
+    INSERT INTO @v VALUES ${ventas.join(',\n')};
+    INSERT INTO dbo.product_presentations (product_id, name, factor_to_base, is_default, active, sale_price)
+      SELECT p.id, v.nombre, v.factor, 0, 1, v.precio FROM @v v JOIN dbo.products p ON p.part_number = v.pn
+       WHERE NOT EXISTS (SELECT 1 FROM dbo.product_presentations x WHERE x.product_id = p.id AND x.name = v.nombre);
+    UPDATE x SET x.sale_price = v.precio, x.active = 1
+      FROM dbo.product_presentations x JOIN dbo.products p ON p.id = x.product_id JOIN @v v ON v.pn = p.part_number AND v.nombre = x.name;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.business_modules WHERE module_key = N'venta-suelta')
       EXEC dbo.sp_set_business_module @module_key = N'venta-suelta', @enabled = 1;

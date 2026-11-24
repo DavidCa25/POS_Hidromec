@@ -60,7 +60,7 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   fs.mkdirSync(SHOTS, { recursive: true });
   const p = app.ventana;
   await p.setViewportSize?.({ width: 1440, height: 900 });
-  const { ABARROTES, sqlSembrar } = await import('../scripts/giros/abarrotes.mjs');
+  const { ABARROTES, PRESENTACIONES, sqlSembrar } = await import('../scripts/giros/abarrotes.mjs');
   const filas = await sql(app.base, sqlSembrar());
   const porPn = Object.fromEntries(filas.map((f) => [f.part_number, f]));
   expect(ABARROTES.length).toBeGreaterThanOrEqual(50);
@@ -117,6 +117,13 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
     /* Como en pantalla: la ganancia que conserva el precio de venta de hoy. */
     const ganancia = Math.round((f.price / ((costoPres / factor) * 1.16) - 1) * 10000) / 100;
     detalles.push({ product_id: f.id, quantity: suelto ? 1 : 2, unit_price: costoPres, profit_percent: ganancia, presentation_id: f.presentation_id, _pn: clave, _factor: factor });
+  }
+  const CUANTOS = { 'ABA-MP-PAPEL': 2, 'ABA-MP-REFRESCO': 2, 'ABA-MP-CERVEZA': 2, 'ABA-MP-AGUA': 2 };
+  for (const [pn, , , , [, factor, costoPres]] of PRESENTACIONES) {
+    const f = porPn[pn];
+    expect(f?.presentation_id, `${pn} sin presentación de compra`).toBeTruthy();
+    const ganancia = Math.round((f.price / ((costoPres / factor) * 1.16) - 1) * 10000) / 100;
+    detalles.push({ product_id: f.id, quantity: CUANTOS[pn] ?? 1, unit_price: costoPres, profit_percent: ganancia, presentation_id: f.presentation_id, _pn: pn, _factor: factor });
   }
   const subtotal = detalles.reduce((a, d) => a + d.quantity * d.unit_price, 0);
   const compra = await app.invocar('registerPurchase', {
@@ -178,6 +185,55 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   expect(await stock('ABA-CHOC-BARRA')).toBe(antes['ABA-CHOC-BARRA'] - 2);
   expect(await stock('ABA-TE-MANZ')).toBe(antes['ABA-TE-MANZ'] - 4);
 
+  /* ------- 3c. un producto, muchas presentaciones, y el paquete de 6 */
+  await irPorDock(p, 'Inventario');
+  await irPorDock(p, 'Venta');
+  await p.waitForSelector('.pos-wrap');
+  const abrirBuscador = async (texto) => {
+    if (!(await p.locator('.modal-productos').count())) await p.getByRole('button', { name: /Agregar producto/ }).click();
+    await p.locator('[data-guide=venta-buscar]').fill(texto);
+  };
+  const tocarPaquete = async (texto, pn, nombre) => {
+    await abrirBuscador(texto);
+    await p.locator(`.modal-productos [data-guide=venta-paquete][data-guide-clave="${pn}|${nombre}"]`).click({ timeout: 30000 });
+  };
+  /* El rollo suelto y sus cuatro paquetes: cinco renglones del mismo producto. */
+  await abrirBuscador('papel higienico rollo doble');
+  await expect(p.locator('.modal-productos [data-guide=venta-paquete]', { hasText: 'Papel higiénico rollo doble hoja' })).toHaveCount(4, { timeout: 30000 });
+  await foto('4d-buscador-papel-presentaciones');
+  await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-MP-PAPEL"]').click();
+  const rollo = p.locator(`[data-guide=venta-linea][data-guide-clave="${porPn['ABA-MP-PAPEL'].id}"]`).first();
+  await rollo.locator('input[type=number]').first().fill('2');
+  await rollo.locator('input[type=number]').first().press('Tab');
+  for (const n of ['Paquete 4', 'Paquete 6', 'Paquete 12', 'Paquete 18']) await tocarPaquete('papel higienico doble', 'ABA-MP-PAPEL', n);
+  await tocarPaquete('huevo rojo', 'ABA-MP-HUEVO', 'Docena');
+  await tocarPaquete('huevo rojo reja', 'ABA-MP-HUEVO', 'Reja 30');
+  await tocarPaquete('refresco lata six', 'ABA-MP-REFRESCO', 'Six 6');
+  /* El jumbo (venta suelta, paquete de 6): un rollo suelto y un paquete entero. */
+  await abrirBuscador('papel higienico jumbo');
+  await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-PAPEL6-ROLLO"]').click();
+  await abrirBuscador('papel higienico jumbo paquete');
+  await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-PAPEL6-ROLLO-PAQ"]').click();
+  await expect(p.locator('[data-guide=venta-linea]')).toHaveCount(10);
+  /* Papel 2×10 + 36 + 52 + 98 + 140 = 346 · huevo 40 + 95 · six 90 · jumbo 12 + 58 */
+  await expect.poll(async () => Number(((await p.locator('#total-venta').innerText()).match(/[\d,.]+/) || ['0'])[0].replace(/,/g, '')),
+    { timeout: 20000 }).toBe(641);
+  /* El paquete no deja escribir su precio y lo dice claro: $52 el paquete de 6, $8.67 c/u. */
+  await expect(p.locator('[data-guide=venta-linea]', { hasText: 'Paquete 6' }).locator('[data-guide=venta-linea-paquete]')).toContainText('$8.67');
+  await foto('4e-venta-presentaciones');
+  const paqJumboAntes = await stock('ABA-PAPEL6-ROLLO-PAQ');
+  await p.locator('[data-guide=venta-cobrar]').click();
+  /* «Dinero recibido» llega con el total de la cuenta. */
+  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('641');
+  await p.locator('[data-guide=venta-recibido]').fill('700');
+  await p.locator('[data-guide=venta-confirmar-cobro]').click();
+  await expect.poll(() => stock('ABA-MP-PAPEL'), { timeout: 30000 }).toBe(96 - 42);
+  await cerrarAvisos(p);
+  expect(await stock('ABA-MP-HUEVO'), 'docena y reja: 42 huevos').toBe(360 - 42);
+  expect(await stock('ABA-MP-REFRESCO')).toBe(48 - 6);
+  expect(await stock('ABA-PAPEL6-ROLLO-PAQ'), 'un paquete entero y uno abierto').toBe(paqJumboAntes - 2);
+  expect(await stock('ABA-PAPEL6-ROLLO'), 'del paquete de 6 quedan 5 rollos').toBe(5);
+
   /* ------------- 3b. el cartón sin escanear: se busca y se toca (0091) */
   /* El cartón de 24 se vende entero a $430, sin código de barras. */
   await sql(app.base, `UPDATE pp SET pp.sale_price = 430 FROM dbo.product_presentations pp
@@ -207,6 +263,23 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await p.locator('[data-guide=venta-recibido]').fill('500');
   await p.locator('[data-guide=venta-confirmar-cobro]').click();
   await expect.poll(() => stock('ABA-CERV-CLARA'), { timeout: 30000 }).toBe(18);
+  await cerrarAvisos(p);
+
+  /* Cobrar con tarjeta y que la siguiente venta empiece en efectivo. */
+  await abrirBuscador('chocolate con leche barra');
+  await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-CHOC-BARRA"]').click();
+  await p.locator('[data-guide=venta-cobrar]').click();
+  await p.locator('.modal-cobro .pay-pill', { hasText: /^\s*Tarjeta\s*$/ }).click();
+  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('18');
+  await p.locator('[data-guide=venta-confirmar-cobro]').click();
+  await cerrarAvisos(p);
+  await abrirBuscador('chocolate con leche barra');
+  await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-CHOC-BARRA"]').click();
+  await p.locator('[data-guide=venta-cobrar]').click();
+  await expect(p.locator('[data-guide=venta-pago-efectivo]')).toHaveClass(/active/);
+  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('18');
+  await foto('4f-siguiente-venta-en-efectivo');
+  await p.locator('[data-guide=venta-confirmar-cobro]').click();
   await cerrarAvisos(p);
 
   /* Un paquete sin pieza, para crearla desde su ficha (paso 4). */
