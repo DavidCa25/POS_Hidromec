@@ -161,7 +161,8 @@
     "e2e:precio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/precio-actualizado.spec.js",
     "e2e:granel": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/granel-redondeo.spec.js",
     "e2e:mayoreo": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/mayoreo.spec.js",
-    "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js"
+    "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js",
+    "e2e:papeleria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/papeleria.spec.js"
   },
   "prettier": {
     "overrides": [
