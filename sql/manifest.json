@@ -43,6 +43,50 @@
       "checksum": "33edf9e240020982"
     },
     {
+      "nombre": "sp_alertas_costos",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_alertas_costos.sql",
+      "origen": "repo:sql/procedures/inventory/sp_alertas_costos.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4bc1eeb24539a3b4",
+      "ausenteEnBase": true,
+      "nota": "migracion 0092: falta aplicarla a Wybix_Production"
+    },
+    {
+      "nombre": "sp_production_suggestions",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_production_suggestions.sql",
+      "origen": "repo:sql/procedures/inventory/sp_production_suggestions.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7cf3d9f89a6e2369",
+      "ausenteEnBase": true,
+      "nota": "migracion 0090: falta aplicarla a Wybix_Production"
+    },
+    {
+      "nombre": "sp_purchase_order_suggestions",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_purchase_order_suggestions.sql",
+      "origen": "repo:sql/procedures/inventory/sp_purchase_order_suggestions.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d79aef3951d0d104",
+      "ausenteEnBase": true,
+      "nota": "migracion 0090 y 0092: falta aplicarla a Wybix_Production"
+    },
+    {
+      "nombre": "sp_compra_memoria",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/purchases/sp_compra_memoria.sql",
+      "origen": "repo:sql/procedures/purchases/sp_compra_memoria.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "854ba901ea1ed1cb",
+      "ausenteEnBase": true,
+      "nota": "migracion 0092: falta aplicarla a Wybix_Production"
+    },
+    {
       "nombre": "sp_add_register",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/setup/sp_add_register.sql",
@@ -3481,6 +3525,17 @@
       "checksum": "694f92a9e17d4466"
     },
     {
+      "nombre": "sp_venta_suelta_lista",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/venta_suelta/sp_venta_suelta_lista.sql",
+      "origen": "repo:sql/procedures/venta_suelta/sp_venta_suelta_lista.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7afff5152491cc0d",
+      "ausenteEnBase": true,
+      "nota": "migracion 0091: falta aplicarla a Wybix_Production"
+    },
+    {
       "nombre": "sp_WA_AddHistorial",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/whatsapp/sp_WA_AddHistorial.sql",
@@ -3714,14 +3769,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 178,
-      "columnas": 1789,
-      "pk": 178,
+      "tablas": 179,
+      "columnas": 1795,
+      "pk": 179,
       "unicas": 25,
-      "foraneas": 219,
+      "foraneas": 220,
       "chequeos": 209,
-      "predeterminados": 419,
-      "indices": 169
+      "predeterminados": 421,
+      "indices": 170
     },
     "objetos": [
       {
@@ -5165,6 +5220,20 @@
         "predeterminados": 2,
         "indices": 2,
         "checksum": "9d1a37d98fd1f9b0"
+      },
+      {
+        "nombre": "purchase_order_sent",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/purchase_order_sent.sql",
+        "origen": "Wybix_E2E_Core",
+        "columnas": 6,
+        "pk": "PK_purchase_order_sent",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "fc8d8e167903facf"
       },
       {
         "nombre": "raffle_definitions",
