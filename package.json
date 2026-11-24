@@ -165,7 +165,8 @@
     "e2e:mayoreo": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/mayoreo.spec.js",
     "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js",
     "e2e:papeleria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/papeleria.spec.js",
-    "e2e:vista-negocio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/vista-negocio.spec.js"
+    "e2e:vista-negocio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/vista-negocio.spec.js",
+    "e2e:abarrotes": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/abarrotes.spec.js"
   },
   "prettier": {
     "overrides": [
