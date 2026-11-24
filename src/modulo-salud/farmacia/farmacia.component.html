@@ -1,0 +1,189 @@
+<div class="srv-pagina">
+  <header class="srv-cab">
+    <div>
+      <h1>Farmacia</h1>
+      <p class="srv-sub">Qué pide receta, qué lleva lote y qué está por caducar. La venta sigue en la caja.</p>
+    </div>
+  </header>
+
+  <section class="sl-kpis" *ngIf="resumen() as r" data-guide="salud-resumen">
+    <button type="button" class="sl-kpi" [class.sl-kpi--danger]="r.lotes_caducados > 0" (click)="irACaducidades()">
+      <b>{{ r.lotes_caducados }}</b><span>Lotes caducados con existencia</span>
+    </button>
+    <button type="button" class="sl-kpi" [class.sl-kpi--warn]="r.lotes_por_caducar > 0" (click)="irACaducidades()">
+      <b>{{ r.lotes_por_caducar }}</b><span>Por caducar en 90 días</span>
+    </button>
+    <div class="sl-kpi"><b>{{ r.con_receta }}</b><span>Productos que piden receta</span></div>
+    <div class="sl-kpi"><b>{{ r.recetas_hoy }}</b><span>Recetas surtidas hoy</span></div>
+    <button type="button" class="sl-kpi" [class.sl-kpi--warn]="r.lecturas_hoy === 0" (click)="irATemperaturas()">
+      <b>{{ r.lecturas_hoy }}</b><span>Lecturas de temperatura hoy</span>
+    </button>
+    <div class="sl-kpi" [class.sl-kpi--danger]="r.sobre_maximo > 0"><b>{{ r.sobre_maximo }}</b><span>Sobre el precio máximo</span></div>
+  </section>
+
+  <div class="srv-barra">
+    <input class="form-control ctl" type="search" [(ngModel)]="buscar" (ngModelChange)="alEscribir()"
+           placeholder="Buscar por nombre, clave, código o sustancia activa" data-guide="salud-buscar-producto">
+    <label class="d-inline-flex align-items-center gap-2 srv-dim">
+      <input type="checkbox" [(ngModel)]="soloMedicamentos" (ngModelChange)="cargar()"> Solo con ficha sanitaria
+    </label>
+  </div>
+
+  <p class="srv-error" *ngIf="error()">{{ error() }}</p>
+
+  <div class="srv-tabla-wrap">
+    <table class="srv-tabla" data-guide="salud-productos">
+      <thead>
+        <tr>
+          <th>Producto</th><th>Sustancia activa</th><th>Clasificación</th>
+          <th class="ta-r">Existencia</th><th class="ta-r">Sin lote</th><th>Próxima caducidad</th><th class="ta-r">Precio</th>
+          <th *ngIf="responsable"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of productos(); trackBy: trackProducto" class="srv-fila" tabindex="0"
+            [attr.data-guide-clave]="p.part_number || p.product_id"
+            (click)="abrirFicha(p)" (keydown.enter)="abrirFicha(p)">
+          <td>
+            <b>{{ p.nombre }}</b>
+            <div class="srv-hint">{{ p.presentacion || p.part_number }}</div>
+          </td>
+          <td>{{ p.sustancia_activa || '—' }}</td>
+          <td>
+            <span class="srv-badge srv-badge--danger" *ngIf="p.es_controlado">Controlado · {{ etiquetaFraccion(p) }}</span>
+            <span class="srv-badge srv-badge--warn" *ngIf="p.requiere_receta && !p.es_controlado">Receta · {{ etiquetaFraccion(p) }}</span>
+            <span class="srv-badge srv-badge--mute" *ngIf="p.tiene_ficha && !p.requiere_receta">{{ etiquetaFraccion(p) || 'Sin receta' }}</span>
+            <span class="srv-badge srv-badge--info" *ngIf="!p.tiene_ficha && responsable">Sin ficha</span>
+            <span class="srv-badge srv-badge--info" *ngIf="p.refrigeracion"><i class="ph ph-snowflake"></i></span>
+          </td>
+          <td class="ta-r mono">{{ p.stock | number:'1.0-3' }}</td>
+          <td class="ta-r mono"><span [class.srv-alerta]="p.controla_lotes && p.sin_lote > 0">{{ p.sin_lote | number:'1.0-3' }}</span></td>
+          <td>
+            <span *ngIf="p.proxima_caducidad; else sinCad"
+                  [class.srv-alerta]="p.proxima_caducidad <= hoy">{{ p.proxima_caducidad | date:'dd/MM/yyyy' }}</span>
+            <ng-template #sinCad><span class="srv-dim">—</span></ng-template>
+          </td>
+          <td class="ta-r mono">
+            {{ p.price | currency:'MXN':'symbol-narrow' }}
+            <div class="srv-alerta" *ngIf="p.excede_maximo">Máx. {{ p.precio_maximo | currency:'MXN':'symbol-narrow' }}</div>
+          </td>
+          <td *ngIf="responsable" class="ta-r">
+            <button type="button" class="btn srv-sm" (click)="abrirLote(p, $event)" [disabled]="p.sin_lote <= 0"
+                    data-guide="salud-asignar-lote" title="Asignar lote y caducidad a la existencia sin lote">
+              <i class="ph ph-barcode"></i> Lote
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="srv-vacio" *ngIf="!cargando() && !productos().length">
+      <i class="ph ph-pill" style="font-size:2rem"></i>
+      <p>{{ buscar ? 'No hay productos con esa búsqueda.' : 'Aún no hay productos. Dalos de alta en Inventario o impórtalos.' }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ FICHA -->
+<div class="modal fade show d-block srv-modal" *ngIf="ficha() as f" role="dialog" aria-modal="true" aria-labelledby="fi-t">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="fi-t">Ficha sanitaria · {{ f.nombre }}</h5>
+        <button type="button" class="btn-close" (click)="ficha.set(null)" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+        <div class="srv-campos">
+          <div>
+            <label class="form-label" for="fi-fr">Clasificación (art. 226 LGS)</label>
+            <wx-select id="fi-fr" [opciones]="opcFraccion" [ngModel]="f.fraccion" (ngModelChange)="editarFicha('fraccion', $event)"
+                       data-guide="salud-ficha-fraccion"></wx-select>
+          </div>
+          <div>
+            <label class="form-label" for="fi-sus">Sustancia activa</label>
+            <input id="fi-sus" class="form-control" [ngModel]="f.sustanciaActiva" (ngModelChange)="editarFicha('sustanciaActiva', $event)"
+                   placeholder="Amoxicilina" data-guide="salud-ficha-sustancia">
+          </div>
+          <div>
+            <label class="form-label" for="fi-pre">Presentación</label>
+            <input id="fi-pre" class="form-control" [ngModel]="f.presentacion" (ngModelChange)="editarFicha('presentacion', $event)"
+                   placeholder="Cápsulas 500 mg, caja con 12">
+          </div>
+          <div>
+            <label class="form-label" for="fi-reg">Registro sanitario <span class="srv-opcional">(opcional)</span></label>
+            <input id="fi-reg" class="form-control" [ngModel]="f.registroSanitario" (ngModelChange)="editarFicha('registroSanitario', $event)"
+                   placeholder="123M2015 SSA">
+          </div>
+          <div>
+            <label class="form-label" for="fi-max">Precio máximo al público <span class="srv-opcional">(opcional)</span></label>
+            <input id="fi-max" class="form-control" type="number" min="0" step="0.01" [ngModel]="f.precioMaximo"
+                   (ngModelChange)="editarFicha('precioMaximo', $event)">
+          </div>
+        </div>
+        <div class="d-flex flex-column gap-2 mt-3">
+          <label class="d-inline-flex align-items-center gap-2">
+            <input type="checkbox" [ngModel]="f.esAntibiotico" (ngModelChange)="editarFicha('esAntibiotico', $event)" data-guide="salud-ficha-antibiotico">
+            Es antibiótico <span class="srv-dim">(se vende con receta y queda en su libro)</span>
+          </label>
+          <label class="d-inline-flex align-items-center gap-2">
+            <input type="checkbox" [ngModel]="f.refrigeracion" (ngModelChange)="editarFicha('refrigeracion', $event)"> Requiere refrigeración
+          </label>
+          <label class="d-inline-flex align-items-center gap-2">
+            <input type="checkbox" [ngModel]="f.controlaLotes" (ngModelChange)="editarFicha('controlaLotes', $event)"> Controlar lotes y caducidades
+          </label>
+        </div>
+        <p class="srv-importe" *ngIf="f.esAntibiotico || (f.fraccion && f.fraccion <= 4)">
+          <span><i class="ph ph-prescription"></i> La caja pedirá médico, cédula y fecha de la receta antes de cobrar.</span>
+        </p>
+        <p class="srv-error" *ngIf="errorDialogo()">{{ errorDialogo() }}</p>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn" (click)="ficha.set(null)">Cancelar</button>
+          <button type="button" class="btn btn-primary" (click)="guardarFicha()" [disabled]="guardando()" data-guide="salud-ficha-guardar">
+            {{ guardando() ? 'Guardando…' : 'Guardar ficha' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================= LOTE -->
+<div class="modal fade show d-block srv-modal" *ngIf="lote() as l" role="dialog" aria-modal="true" aria-labelledby="lo-t">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-bold m-0" id="lo-t">Lote · {{ l.nombre }}</h5>
+        <button type="button" class="btn-close" (click)="lote.set(null)" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body px-4 pt-1 pb-4">
+        <p class="srv-paso">Hay <b>{{ l.disponible | number:'1.0-3' }}</b> en existencia sin lote. El lote no suma existencia:
+          dice de cuál salió cada pieza y cuándo caduca.</p>
+        <div class="srv-campos">
+          <div>
+            <label class="form-label" for="lo-n">Número de lote</label>
+            <input id="lo-n" class="form-control" [ngModel]="l.lote" (ngModelChange)="editarLote('lote', $event)" data-guide="salud-lote-numero">
+          </div>
+          <div>
+            <label class="form-label" for="lo-c">Caducidad</label>
+            <wx-date id="lo-c" [min]="hoy" [ngModel]="l.caducidad" (ngModelChange)="editarLote('caducidad', $event)" data-guide="salud-lote-caducidad"></wx-date>
+          </div>
+          <div>
+            <label class="form-label" for="lo-q">Cantidad</label>
+            <input id="lo-q" class="form-control" type="number" min="0" [max]="l.disponible" [ngModel]="l.cantidad"
+                   (ngModelChange)="editarLote('cantidad', $event)" data-guide="salud-lote-cantidad">
+          </div>
+          <div>
+            <label class="form-label" for="lo-k">Costo unitario <span class="srv-opcional">(opcional)</span></label>
+            <input id="lo-k" class="form-control" type="number" min="0" step="0.01" [ngModel]="l.costo" (ngModelChange)="editarLote('costo', $event)">
+          </div>
+        </div>
+        <p class="srv-error" *ngIf="errorDialogo()">{{ errorDialogo() }}</p>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn" (click)="lote.set(null)">Cancelar</button>
+          <button type="button" class="btn btn-primary" (click)="guardarLote()" [disabled]="guardando()" data-guide="salud-lote-guardar">
+            {{ guardando() ? 'Guardando…' : 'Guardar lote' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

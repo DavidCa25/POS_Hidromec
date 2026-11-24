@@ -147,6 +147,17 @@ const BUNDLES = {
   VER_NUMEROS_DIA: 'VER_NUMEROS_DIA',
   /** VER · Costos de productos y lo que se debe a proveedores. */
   VER_COSTOS: 'VER_COSTOS',
+  /**
+   * 0087 · Farmacia: la ficha sanitaria, los lotes y el libro de control. Es
+   * del responsable sanitario. Vender con receta NO lo necesita: es vender.
+   */
+  SALUD_FARMACIA: 'SALUD_FARMACIA',
+  /**
+   * 0087 · El expediente clínico: leerlo y escribirlo. Son datos sensibles
+   * (LFPDPPP 2025): ningún rol de mostrador lo trae. Lo tiene el
+   * Administrador y se OTORGA a cada médico o dentista.
+   */
+  SALUD_EXPEDIENTE: 'SALUD_EXPEDIENTE',
 };
 
 const PERMISOS = Object.values(BUNDLES);
@@ -191,6 +202,8 @@ const ROLES = {
     BUNDLES.VER_VENTAS_TODOS,
     BUNDLES.VER_NUMEROS_DIA,
     BUNDLES.VER_COSTOS,
+    // 0087: el responsable de la farmacia en el turno.
+    BUNDLES.SALUD_FARMACIA,
   ],
 
   /**
@@ -313,6 +326,8 @@ const SOLO_ADMIN = new Set([
   // 0080: entrar a otra empresa del dueno. Se OTORGA a un cajero de dos
   // empresas en el mismo mostrador; ningun rol lo trae.
   BUNDLES.EMPRESAS_CAMBIAR,
+  // 0087: el expediente clínico. Se OTORGA a cada médico; ningún rol lo trae.
+  BUNDLES.SALUD_EXPEDIENTE,
 ]);
 
 /**
@@ -343,6 +358,9 @@ const OTORGABLES = [
   BUNDLES.VER_VENTAS_TODOS,
   BUNDLES.VER_NUMEROS_DIA,
   BUNDLES.VER_COSTOS,
+  // 0087
+  BUNDLES.SALUD_FARMACIA,
+  BUNDLES.SALUD_EXPEDIENTE,
 ];
 
 /**
@@ -379,6 +397,10 @@ const HACER = [
     [BUNDLES.ASISTENCIA_GESTIONAR, 'Asistencia del equipo', false],
     [BUNDLES.SOCIOS_GESTIONAR, 'Socios: ver, liquidar y retiros', false],
     [BUNDLES.EMPRESAS_CAMBIAR, 'Cambiar a otra empresa del dueño', false],
+  ] },
+  { grupo: 'Salud', icono: 'ph-first-aid-kit', permisos: [
+    [BUNDLES.SALUD_EXPEDIENTE, 'Expediente clínico de los pacientes', false],
+    [BUNDLES.SALUD_FARMACIA, 'Farmacia: lotes y libro de control', false],
   ] },
 ].map(g => ({ ...g, permisos: g.permisos.map(([clave, nombre, pideAutorizacion]) => ({ clave, nombre, pideAutorizacion })) }));
 
@@ -438,6 +460,8 @@ const DESCRIPCIONES = {
   VER_VENTAS_TODOS: ['Ventas de todos', 'Ver las ventas de los demás, no solo las suyas.'],
   VER_NUMEROS_DIA: ['Números del día', 'Totales de hoy en Inicio y el cierre del día.'],
   VER_COSTOS: ['Costos', 'Costo de los productos y lo que se debe a proveedores.'],
+  SALUD_FARMACIA: ['Farmacia', 'Ficha sanitaria de los medicamentos, lotes, caducidades y libro de control.'],
+  SALUD_EXPEDIENTE: ['Expediente clínico', 'Ver y escribir el expediente de los pacientes: notas, recetas, odontograma, planes y resultados de estudios.'],
 };
 
 /**

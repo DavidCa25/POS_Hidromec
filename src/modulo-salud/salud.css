@@ -1,0 +1,138 @@
+/* ============================================================
+   MÓDULO SALUD — lo propio, encima de modulo-servicios/servicios.css.
+
+   La tabla, las insignias, los botones y el modal son los de Servicios: el
+   mismo sistema, el color del negocio. Aquí solo está lo que no existe allá:
+   las tarjetas de números, el aviso de alergias, el expediente como línea de
+   tiempo y el odontograma.
+
+   Lo clínico NO toma el color del cliente: rojo es alergia y ámbar es por
+   caducar en todos los negocios.
+   ============================================================ */
+
+/* ----------------------------------------------------- números de portada */
+.sl-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.sl-kpi {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md);
+  text-align: left; font: inherit; color: inherit;
+}
+button.sl-kpi { cursor: pointer; }
+button.sl-kpi:hover { border-color: var(--wx-user-accent, var(--wx-accent)); }
+.sl-kpi b { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--wx-text); }
+.sl-kpi span { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+.sl-kpi--danger b { color: var(--wx-danger); }
+.sl-kpi--warn b { color: var(--wx-warning); }
+
+/* ---------------------------------------------------------- alergias */
+.sl-alergias {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--wx-radius-md);
+  background: var(--wx-danger-soft); color: var(--wx-danger); font-weight: 600; font-size: var(--wx-text-sm);
+}
+.sl-alergias i { font-size: 1.2rem; }
+.sl-alergias--sin { background: var(--wx-sunken); color: var(--wx-text-muted); font-weight: 500; }
+
+/* ------------------------------------------------------ cabecera paciente */
+.sl-paciente-cab { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.sl-avatar {
+  display: grid; place-items: center; width: 52px; height: 52px; flex: none; border-radius: 50%;
+  background: var(--wx-user-accent-soft, var(--wx-accent-soft)); color: var(--wx-user-accent-text, var(--wx-accent-text));
+  font-weight: 700; font-size: 1.1rem;
+}
+.sl-datos { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }
+.sl-datos b { color: var(--wx-text); font-weight: 500; }
+
+/* ------------------------------------------------------- línea de tiempo */
+.sl-linea { display: flex; flex-direction: column; gap: 10px; }
+.sl-doc {
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: var(--wx-radius-md);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.sl-doc--borrador { border-style: dashed; }
+.sl-doc__cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sl-doc__cab h3 { margin: 0; font-size: var(--wx-text-md); font-weight: 600; }
+.sl-doc__cab .sl-doc__acciones { margin-left: auto; display: flex; gap: 6px; }
+.sl-doc dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: var(--wx-text-sm); }
+.sl-doc dt { color: var(--wx-text-dim); font-weight: 500; }
+.sl-doc dd { margin: 0; white-space: pre-wrap; color: var(--wx-text); }
+.sl-doc__pie { font-size: var(--wx-text-xs); color: var(--wx-text-dim); display: flex; gap: 10px; flex-wrap: wrap; }
+.sl-adenda { border-left: 3px solid var(--wx-edge); padding: 4px 10px; font-size: var(--wx-text-sm); }
+.sl-adenda small { display: block; color: var(--wx-text-dim); }
+
+/* ----------------------------------------------------------- diagnósticos */
+.sl-dx { display: flex; flex-wrap: wrap; gap: 6px; }
+.sl-dx-buscador { position: relative; }
+.sl-dx-sug {
+  position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none;
+  background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 10px; box-shadow: var(--wx-shadow-md, 0 8px 24px rgb(0 0 0 / .12));
+  max-height: 260px; overflow: auto;
+}
+.sl-dx-sug button { display: flex; gap: 10px; width: 100%; border: 0; background: none; padding: 7px 9px; border-radius: 7px;
+  text-align: left; font: inherit; font-size: var(--wx-text-sm); cursor: pointer; color: var(--wx-text); }
+.sl-dx-sug button:hover, .sl-dx-sug button:focus-visible { background: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+.sl-dx-sug code { font-family: var(--wx-font-mono); color: var(--wx-text-muted); min-width: 52px; }
+
+/* ------------------------------------------------------------ odontograma */
+.sl-odonto { width: 100%; max-width: 860px; height: auto; user-select: none; }
+.sl-odonto .cara { stroke: var(--wx-text-dim); stroke-width: 1; fill: var(--wx-surface); cursor: pointer; transition: fill .12s ease; }
+.sl-odonto .cara:hover { fill: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+.sl-odonto .cara.sel { stroke: var(--wx-user-accent, var(--wx-accent)); stroke-width: 2.4; }
+.sl-odonto .num { font-size: 10px; fill: var(--wx-text-muted); text-anchor: middle; font-family: var(--wx-font-mono); }
+.sl-odonto .x { stroke: var(--wx-danger); stroke-width: 2.4; pointer-events: none; }
+.sl-odonto .aro { fill: none; stroke: var(--wx-warning); stroke-width: 2.4; pointer-events: none; }
+.sl-paleta { display: flex; flex-wrap: wrap; gap: 6px; }
+.sl-paleta button { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--wx-edge); background: var(--wx-surface);
+  border-radius: 999px; padding: 5px 11px; font: inherit; font-size: var(--wx-text-sm); cursor: pointer; color: var(--wx-text); }
+.sl-paleta button.activo { border-color: var(--wx-user-accent, var(--wx-accent)); background: var(--wx-user-accent-soft, var(--wx-accent-soft)); }
+.sl-muestra { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgb(0 0 0 / .15); }
+
+/* Estado del diente: colores clínicos fijos, iguales en todos los negocios. */
+.st-CARIES { fill: #ef4444 !important; }
+.st-OBTURADO { fill: #3b82f6 !important; }
+.st-CORONA { fill: #f59e0b !important; }
+.st-ENDODONCIA { fill: #a855f7 !important; }
+.st-SELLADOR { fill: #22c55e !important; }
+.st-FRACTURA { fill: #f97316 !important; }
+.st-IMPLANTE { fill: #64748b !important; }
+.st-AUSENTE, .st-EXTRACCION { fill: var(--wx-sunken) !important; }
+
+/* ------------------------------------------------------------- impresión */
+.sl-solo-impresion { display: none; }
+.sl-membrete { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; font-size: 11pt; }
+.sl-membrete > div { display: flex; flex-direction: column; }
+.sl-membrete__donde { text-align: right; }
+.sl-huella { font-size: 7pt; color: #555; word-break: break-all; margin-top: 8mm; }
+@media print {
+  body * { visibility: hidden !important; }
+  .sl-imprimible, .sl-imprimible * { visibility: visible !important; }
+  .sl-imprimible { position: absolute; inset: 0; padding: 18mm; background: #fff; color: #000; }
+  .sl-solo-impresion { display: block; }
+  .sl-no-imprimir { display: none !important; }
+}
+
+@media (max-width: 720px) {
+  .sl-doc dl { grid-template-columns: 1fr; }
+}
+
+/* --------------------------------------------- laboratorio e imagen */
+.sl-opciones, .sl-checks { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid var(--wx-edge); border-radius: 10px; max-height: 260px; overflow: auto; }
+.sl-opciones li + li, .sl-checks li + li { border-top: 1px solid var(--wx-edge); }
+.sl-opcion { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 8px 12px; background: none; border: 0; text-align: left; color: inherit; }
+.sl-opcion:hover:not(:disabled) { background: var(--wx-surface-2, var(--wx-surface)); }
+.sl-opcion:disabled { opacity: .55; cursor: not-allowed; }
+.sl-checks label { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; cursor: pointer; }
+.sl-checks input { margin-top: 4px; }
+.sl-elegido { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 1px solid var(--wx-edge); border-radius: 10px; }
+.sl-estudio { border: 1px solid var(--wx-edge); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: var(--wx-surface); }
+.sl-estudio__cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sl-estudio__cab h3 { font-size: var(--wx-text-md, 1rem); margin: 0; }
+.sl-resultados { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: var(--wx-text-sm); }
+.sl-resultados th, .sl-resultados td { padding: 6px 8px; border-bottom: 1px solid var(--wx-edge); text-align: left; }
+.sl-resultados input { max-width: 140px; }
+.sl-fuera { color: var(--wx-danger, #c0392b); font-weight: 600; }
+.sl-param-fila { display: grid; grid-template-columns: 90px 1fr 90px 90px 90px 32px; gap: 6px; align-items: center; margin-bottom: 6px; }
+@media (max-width: 720px) { .sl-param-fila { grid-template-columns: 1fr 1fr; } }
+@media print {
+  .sl-resultados th, .sl-resultados td { border-bottom: 1px solid #999; }
+  .sl-fuera { color: #000; }
+}

@@ -25,6 +25,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_update_product]
     @clave_unidad NVARCHAR(5) = NULL,
     @objeto_impuesto NVARCHAR(2) = NULL,
     @tasa_iva DECIMAL(5,4) = NULL,
+    @iva_exento BIT = NULL,           -- 0088: NULL conserva; con tasa distinta de 0 se apaga
     @inventory_mode NVARCHAR(10) = NULL,
     @sellable BIT = NULL,
     @base_uom NVARCHAR(10) = NULL,
@@ -115,6 +116,7 @@ BEGIN
         clave_unidad    = ISNULL(@clave_unidad, clave_unidad),
         objeto_impuesto = ISNULL(@objeto_impuesto, objeto_impuesto),
         tasa_iva        = ISNULL(@tasa_iva, tasa_iva),
+        iva_exento      = CASE WHEN ISNULL(@tasa_iva, tasa_iva) <> 0 THEN 0 ELSE ISNULL(@iva_exento, iva_exento) END,
         inventory_mode    = ISNULL(@inventory_mode, inventory_mode),
         sellable          = ISNULL(@sellable, sellable),
         base_uom          = ISNULL(@base_uom, base_uom),

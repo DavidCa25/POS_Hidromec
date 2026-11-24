@@ -26,6 +26,8 @@ const POR_MODULO = {
   comandas: 'hospitality.kds',
   servicios: 'services',
   loyalty: 'loyalty',
+  // 0087: el giro Salud (farmacia, expediente, dental).
+  salud: 'health',
 };
 
 /** Paquete de permisos -> entitlement (lo operativo que no es vender). */
@@ -33,6 +35,8 @@ const POR_PAQUETE = {
   INVENTARIO_OPERAR: 'inventory',
   SERVICIOS_OPERAR: 'services',
   SERVICIOS_ADMINISTRAR: 'services',
+  SALUD_FARMACIA: 'health',
+  SALUD_EXPEDIENTE: 'health',
 };
 
 /** Canales con su propio entitlement (por prefijo). */
@@ -58,7 +62,9 @@ const SUPERFICIES = {
   PREPARATION:     { ent: 'operational.preparation',     giro: 'HOSPITALITY' },
   WAITER:          { ent: 'operational.waiter',          giro: 'HOSPITALITY' },
   CUSTOMER_STATUS: { ent: 'operational.customer_status', giro: 'HOSPITALITY' },
-  STAFF_DAY:       { ent: 'operational.staff_day',       giro: 'SERVICES' },
+  // El consultorio de Salud usa la agenda de Servicios: una licencia solo de
+  // Salud consume la cuota de su propio giro.
+  STAFF_DAY:       { ent: 'operational.staff_day',       giro: 'SERVICES', alternos: ['HEALTH'] },
   TECHNICIAN:      { ent: 'operational.technician',      giro: 'SERVICES' },
   // El inventario de piso es de cualquier giro: cuenta en Comercio si la
   // licencia lo tiene y, si no, en el primer giro de la licencia.
@@ -70,13 +76,16 @@ const GIROS = {
   COMMERCE: 'Comercios',
   HOSPITALITY: 'Restaurantes y Cafeterías',
   SERVICES: 'Negocios de Servicios',
+  /* 0087. El catálogo de Supabase (`license_catalog`) da de alta
+     VERTICAL_HEALTH (wybix-owner, migración 20261119120000_giro_salud). */
+  HEALTH: 'Salud',
 };
 
 /** Todo lo que conoce el POS: lo que tiene la instancia del gestor de demos (interna). */
 const TODOS = [
   'sales', 'customers', 'reports', 'invoicing', 'loyalty', 'inventory', 'purchases', 'suppliers', 'cloud_sync', 'backup',
   'commerce', 'hospitality', 'hospitality.tables', 'hospitality.kds', 'services', 'services.agenda', 'services.orders',
-  'operational_surfaces', ...Object.values(SUPERFICIES).map(s => s.ent),
+  'health', 'operational_surfaces', ...Object.values(SUPERFICIES).map(s => s.ent),
 ];
 
 /**
@@ -114,7 +123,10 @@ function crearEvaluador(lic) {
     const s = SUPERFICIES[tipo];
     if (!s) return null;
     const giros = lic?.verticals || [];
-    if (!s.cualquierGiro || giros.includes(s.giro)) return s.giro;
+    if (giros.includes(s.giro)) return s.giro;
+    const alterno = (s.alternos || []).find(g => giros.includes(g));
+    if (alterno) return alterno;
+    if (!s.cualquierGiro) return s.giro;
     return giros[0] ?? s.giro;
   }
 

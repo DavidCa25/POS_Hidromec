@@ -105,7 +105,7 @@ test.describe('Elegir el giro de Servicios', () => {
       /* La pregunta, con los cinco giros del producto y NINGUNO marcado. */
       await expect(ventana.locator('.swal2-title')).toContainText('tipo de negocio');
       const opciones = ventana.locator('.giro-op input[type="radio"]');
-      await expect(opciones).toHaveCount(5);
+      await expect(opciones).toHaveCount(require("../electron/servicios/presets").IDS.length);   // 0087: los que diga presets.json
       await expect(ventana.locator('.giro-op input:checked')).toHaveCount(0);
 
       /* Confirmar sin elegir no enciende nada: se queda pidiéndolo. */

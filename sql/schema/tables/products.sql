@@ -32,6 +32,7 @@ CREATE TABLE dbo.products (
     corporate_sellable BIT NULL,
     corporate_override DECIMAL(10, 2) NULL,
     corporate_available BIT NULL,
+    iva_exento BIT NOT NULL CONSTRAINT DF_products_iva_exento DEFAULT ((0)),
     PRIMARY KEY CLUSTERED (id),
     UNIQUE NONCLUSTERED (part_number)
 );

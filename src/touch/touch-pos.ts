@@ -1055,6 +1055,8 @@ export class TouchPos implements OnInit, OnDestroy {
 
       /* 0071: la regla «checar entrada antes de cobrar» abre Checar ahi mismo. */
       if (!res.ok && res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
+      /* 0087: quien cobra decidió no capturar la receta; la cuenta sigue intacta. */
+      if (!res.ok && res.motivo === 'RECETA_CANCELADA') return;
       if (!res.ok) { this.reaccionar('error', 3500); this.mostrar(res.error || 'No se pudo registrar la venta'); return; }
 
       /* La venta ya esta. Enlazarla libera la mesa; si fallara, se dice y la
@@ -1069,6 +1071,7 @@ export class TouchPos implements OnInit, OnDestroy {
       this.conceptosFactura=(res.lines??[]).map(l=>({description:l.productName,quantity:l.qty,unitPrice:l.unitPrice,claveProdServ:l.claveProdServ,claveUnidad:l.claveUnidad,taxObject:l.objetoImpuesto,taxRate:l.tasaIva}));
       this.propina.set(null);
       if (res.propinaError) this.mostrar(`La venta quedó; la propina no: ${res.propinaError}`, 'error');
+      if (res.saludError) this.mostrar(res.saludError, 'error');
       const cambio = res.change ?? 0;
       this.ultimoCambio.set(cambio);
       this.ultimoFolio.set(res.saleId ?? null);

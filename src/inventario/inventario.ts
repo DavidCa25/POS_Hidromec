@@ -34,6 +34,7 @@ interface ProductRow {
   clave_unidad?: string;
   objeto_impuesto?: string;
   tasa_iva?: number;
+  iva_exento?: boolean;
   default_supplier_name?: string;
   inventory_mode?: InventoryMode;
   sellable?: boolean | number;
@@ -62,6 +63,8 @@ interface ProductForm {
   claveUnidadDesc: string;   
   objetoImpuesto: string;   
   tasaIva: number;           
+  /** 0088: con tasa 0, si es exento (honorarios médicos) y no tasa 0 (medicinas). */
+  ivaExento: boolean;
   /**
    * Como se controla el producto. Ya existia en products y en los procedures
    * desde el dominio Hospitality; lo que faltaba era poder decirlo desde aqui,
@@ -217,7 +220,7 @@ export class Inventario {
   form: ProductForm = {
     brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
     claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-    objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL
+    objetoImpuesto: '02', tasaIva: 0.16, ivaExento: false, ...CONTROL_RETAIL
   };
 
   // ----------------------------------------------------- presentaciones
@@ -657,11 +660,24 @@ export class Inventario {
     { code: '04', label: 'Si objeto, no causa impuesto' }
   ];
 
-  tasaIvaOpts = [
-    { value: 0.16, label: '16%' },
-    { value: 0.08, label: '8% (frontera)' },
-    { value: 0,    label: '0% / Exento' }
+  /* 0088: tasa 0 y exento son dos cosas para el SAT. Los dos cobran 0 de
+     IVA; la factura los distingue (TipoFactor «Tasa» 0% o «Exento»). */
+  tasaIvaOpts: { value: number; exento: boolean; label: string }[] = [
+    { value: 0.16, exento: false, label: '16%' },
+    { value: 0.08, exento: false, label: '8% (frontera)' },
+    { value: 0,    exento: false, label: '0% (medicinas, alimentos)' },
+    { value: 0,    exento: true,  label: 'Exento (honorarios médicos, colegiaturas)' },
   ];
+
+  esTasa(t: { value: number; exento: boolean }): boolean {
+    return t.value === this.form.tasaIva && t.exento === (this.form.tasaIva === 0 && !!this.form.ivaExento);
+  }
+
+  elegirTasa(t: { value: number; exento: boolean }): void {
+    this.form.tasaIva = t.value;
+    this.form.ivaExento = t.exento;
+    this.tasaAbierta = false;
+  }
 
   /** Roles v2: dar de baja mueve inventario; el Operador edita el catálogo pero no da de baja. */
   get puedeDarDeBaja(): boolean { return this.auth.puede(PAQUETES.INVENTARIO_OPERAR); }
@@ -930,7 +946,7 @@ export class Inventario {
         // Sin la casilla marcada se manda NULL: el contrato de `bar_code`
         // ya admite ausencia, no hace falta nada nuevo.
         this.form.tieneCodigoBarras ? (this.form.barCode || null) : null,
-        this.controlDelProducto()
+        { ...(this.controlDelProducto() ?? {}), iva_exento: this.form.tasaIva === 0 && !!this.form.ivaExento }
       );
 
       if (result?.success) {
@@ -945,7 +961,7 @@ export class Inventario {
         this.cerrarProductoModal();
         this.form = { brand: null, category: null, partNumber: '', name: '', price: 0, stock: 0, barCode: '',
           claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-          objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL };
+          objetoImpuesto: '02', tasaIva: 0.16, ivaExento: false, ...CONTROL_RETAIL };
         await Swal.fire({
           icon: 'success',
           title: '¡Producto agregado!',
@@ -1043,6 +1059,7 @@ export class Inventario {
         clave_unidad: this.form.claveUnidad || null,
         objeto_impuesto: this.form.objetoImpuesto || '02',
         tasa_iva: this.form.tasaIva ?? 0.16,
+        iva_exento: this.form.tasaIva === 0 && !!this.form.ivaExento,
         ...this.controlDelProducto('snake'),
         /* El costo solo viaja si quien lo ve lo cambió (el canal vuelve a exigir VER_COSTOS). */
         ...(this.veCostos && this.costoCaptura != null && this.costoCaptura >= 0
@@ -1092,7 +1109,7 @@ export class Inventario {
     this.veCostos = this.inventario.some((p: any) => 'cost' in p);
     this.form = { brand: null, category: null, partNumber: '', name: '', price: null, stock: 0, barCode: '',
       claveProdServ: '', claveProdServDesc: '', claveUnidad: '', claveUnidadDesc: '',
-      objetoImpuesto: '02', tasaIva: 0.16, ...CONTROL_RETAIL };
+      objetoImpuesto: '02', tasaIva: 0.16, ivaExento: false, ...CONTROL_RETAIL };
     this.stockAntesDeEditar = 0;
     this.modoAntesDeEditar = 'DIRECT';
     this.limpiarImagen();
@@ -1133,6 +1150,7 @@ export class Inventario {
       claveUnidadDesc: '',
       objetoImpuesto: String(item?.objeto_impuesto ?? '02'),
       tasaIva: item?.tasa_iva != null ? Number(item.tasa_iva) : 0.16,
+      ivaExento: !!item?.iva_exento,
       // Lo que el producto ya es. Un producto anterior a Hospitality no trae
       // estos campos y cae en los mismos valores con los que se creo.
       inventoryMode: (item?.inventory_mode ?? 'DIRECT') as InventoryMode,
@@ -1691,7 +1709,7 @@ export class Inventario {
   }
 
   get tasaIvaLabel(): string {
-    const t = this.tasaIvaOpts.find(x => x.value === this.form.tasaIva);
+    const t = this.tasaIvaOpts.find(x => this.esTasa(x));
     return t ? t.label : 'Selecciona';
   }
 }

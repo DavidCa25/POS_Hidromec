@@ -61,6 +61,9 @@ export const PAQUETES = {
   VER_VENTAS_TODOS: 'VER_VENTAS_TODOS',
   VER_NUMEROS_DIA: 'VER_NUMEROS_DIA',
   VER_COSTOS: 'VER_COSTOS',
+  // 0087: giro Salud (farmacia y expediente clínico).
+  SALUD_FARMACIA: 'SALUD_FARMACIA',
+  SALUD_EXPEDIENTE: 'SALUD_EXPEDIENTE',
 } as const;
 
 export type Paquete = typeof PAQUETES[keyof typeof PAQUETES];

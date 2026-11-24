@@ -3,7 +3,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { ModulesService, ModulesState } from '../../services/modules.service';
-import { CapabilityService, GiroServiciosService } from '../../core';
+import { CapabilityService, GiroSaludService, GiroServiciosService } from '../../core';
 import { LicenseService } from '../../services/license.service';
 
 /**
@@ -71,6 +71,7 @@ export class NavegacionService {
   private readonly caps = inject(CapabilityService);
   private readonly modules = inject(ModulesService);
   private readonly giro = inject(GiroServiciosService);
+  private readonly giroSalud = inject(GiroSaludService);
   private readonly license = inject(LicenseService);
 
   /** Cifras y avisos de las areas. Vacios hasta que llegan; nunca inventados. */
@@ -117,6 +118,13 @@ export class NavegacionService {
     return (this.auth.puede(PAQUETES.SERVICIOS_OPERAR) || this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR)) && this.license.tiene('services');
   }
   get administrarServicios() { return this.auth.puede(PAQUETES.SERVICIOS_ADMINISTRAR); }
+  /** 0087: la farmacia la ve quien vende; el expediente, quien tiene su paquete. */
+  get verFarmacia() { return this.caps.salud && this.giroSalud.farmacia() && this.operarVentas; }
+  get verExpediente() { return this.caps.salud && this.giroSalud.clinica() && this.auth.puede(PAQUETES.SALUD_EXPEDIENTE); }
+  /** El lugar de Servicios en el dock se presenta como Salud. */
+  /** Laboratorio o imagen: los resultados son del expediente, mismo paquete. */
+  get verEstudios() { return this.caps.salud && this.giroSalud.estudios() && this.auth.puede(PAQUETES.SALUD_EXPEDIENTE); }
+  get esSalud() { return this.verFarmacia || this.verExpediente || this.verEstudios; }
   /** 0071: las horas del equipo, con la aplicacion Asistencia activada. */
   get gestionarAsistencia() { return this.caps.asistencia && this.auth.puede(PAQUETES.ASISTENCIA_GESTIONAR); }
   /** 0079: lo de cada socio y su liquidacion, con la aplicacion Socios activada. */
@@ -247,8 +255,36 @@ export class NavegacionService {
       },
     ];
 
-    return lista.filter(a => a.visible);
+    return lista.map(a => (a.id === 'servicios' ? this.comoSalud(a) : a)).filter(a => a.visible);
   });
+
+  /**
+   * 0087 · EL MISMO LUGAR, OTRO NOMBRE.
+   *
+   * El dock no pasa de seis áreas (scripts/pruebas/servicios-modulo.mjs): Salud
+   * no es una séptima. En un negocio de salud el lugar de Servicios se llama
+   * «Salud» y junta la farmacia, los pacientes y —si la clínica tiene
+   * Servicios— la agenda y las órdenes con las que se cobra la consulta.
+   * Sin Salud encendido el área sale tal cual.
+   */
+  private comoSalud(a: Area): Area {
+    if (!this.esSalud) return a;
+    const deSalud: Destino[] = [
+      { texto: 'Farmacia', ruta: '/dashboard/salud/farmacia', icono: 'ph-pill', visible: this.verFarmacia, principal: this.verFarmacia },
+      { texto: 'Pacientes', ruta: '/dashboard/salud/pacientes', icono: 'ph-identification-card', visible: this.verExpediente || this.verEstudios,
+        principal: !this.verFarmacia && this.verExpediente },
+      { texto: 'Estudios', ruta: '/dashboard/salud/estudios', icono: 'ph-flask', visible: this.verEstudios,
+        principal: !this.verFarmacia && !this.verExpediente },
+      { texto: 'Caducidades', ruta: '/dashboard/salud/caducidades', icono: 'ph-hourglass-medium', visible: this.verFarmacia },
+      { texto: 'Libro de control', ruta: '/dashboard/salud/libro', icono: 'ph-book-open-text',
+        visible: this.verFarmacia && this.auth.puede(PAQUETES.SALUD_FARMACIA) },
+    ];
+    const deServicios = a.visible ? a.destinos.map(d => ({ ...d, principal: false })) : [];
+    return {
+      ...a, nombre: 'Salud', icono: 'ph-first-aid-kit', ruta: '/dashboard/salud', raiz: '/dashboard/salud',
+      visible: true, destinos: [...deSalud, ...deServicios],
+    };
+  }
 
   /** Los destinos de un area que esta persona puede usar. */
   destinosDe(a: Area): Destino[] { return a.destinos.filter(d => d.visible); }

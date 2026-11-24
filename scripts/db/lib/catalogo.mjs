@@ -239,6 +239,29 @@ asignar('servicios', [
   'sp_get_services_config', 'sp_set_services_preset',
 ]);
 
+// 0087 · El giro Salud: farmacia (lotes, receta, libro de control),
+// expediente clinico y dental. docs/giro-salud.md.
+asignar('salud', [
+  'sp_salud_config_get', 'sp_salud_config_set',
+  // Farmacia.
+  'sp_salud_producto_save', 'sp_salud_productos_list', 'sp_salud_lote_entrada',
+  'sp_salud_lote_ajustar', 'sp_salud_lotes_list', 'sp_salud_venta_requisitos',
+  'sp_salud_venta_aplicar', 'sp_salud_libro_control', 'sp_salud_temperatura_save',
+  'sp_salud_temperaturas_list', 'sp_salud_farmacia_resumen',
+  // Expediente.
+  'sp_salud_pacientes_buscar', 'sp_salud_paciente_save', 'sp_salud_expediente_get',
+  'sp_salud_documento_guardar', 'sp_salud_documento_firmar', 'sp_salud_documento_adenda',
+  'sp_salud_documento_descartar', 'sp_salud_cie10_buscar', 'sp_salud_bitacora_list',
+  'sp_salud_profesional_get', 'sp_salud_profesional_save',
+  // Laboratorio e imagen.
+  'sp_salud_estudio_ficha_save', 'sp_salud_estudios_catalogo', 'sp_salud_estudio_orden_crear',
+  'sp_salud_estudio_orden_vincular', 'sp_salud_estudio_estado', 'sp_salud_estudio_capturar',
+  'sp_salud_estudio_validar', 'sp_salud_estudio_entregar', 'sp_salud_estudio_ordenes',
+  // Dental.
+  'sp_salud_odontograma_get', 'sp_salud_odontograma_marcar', 'sp_salud_plan_guardar',
+  'sp_salud_planes_get', 'sp_salud_plan_estado', 'sp_salud_plan_item_hecho',
+]);
+
 // Infraestructura del Core que no pertenece a un dominio de negocio: el
 // registro de que modulos tiene encendidos la empresa.
 asignar('core', ['sp_get_business_modules', 'sp_set_business_module']);

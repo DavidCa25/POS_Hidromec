@@ -164,7 +164,7 @@ export class LicenseService {
    * principal lo manda al servidor y aplica el certificado que responde (o lo
    * deja pendiente si no hay red). No hace nada si no es una prueba.
    */
-  async elegirGiroPrueba(vertical: 'COMMERCE' | 'HOSPITALITY' | 'SERVICES'): Promise<{ ok: boolean; pendiente?: boolean }> {
+  async elegirGiroPrueba(vertical: 'COMMERCE' | 'HOSPITALITY' | 'SERVICES' | 'HEALTH'): Promise<{ ok: boolean; pendiente?: boolean }> {
     try {
       const r = await this.api?.licenseTrialVertical?.({ vertical });
       if (r?.estado) this.fijar(r.estado); else await this.cargarEstado();

@@ -10,7 +10,7 @@ import { UpdaterService, UpdateStatus } from '../services/updater.service';
 import { ThemeService, ACCENT_PRESETS, AccentPreset } from '../services/theme.service';
 import { RegisterService } from '../services/register.service';
 import { ModulesService, ModulesState } from '../services/modules.service';
-import { CapabilityService, GiroServiciosService } from '../core';
+import { CapabilityService, GiroSaludService, GiroServiciosService } from '../core';
 import { WxNavegacionComponent } from '../app/wx-nav/wx-navegacion.component';
 import { NavegacionService } from '../app/wx-nav/navegacion.service';
 import { WxPaletaComponent } from '../app/wx-paleta/wx-paleta.component';
@@ -76,6 +76,9 @@ export class Dashboard {
   // Módulos opcionales activos (controlan qué se ve en el menú)
   modulesState: ModulesState = { pagoServicios: false };
 
+  /* 0087: misma razón que el giro de Servicios: la ruta vacía de Salud se
+     redirige ANTES del guard, así que el giro tiene que estar ya leído. */
+  private readonly giroSalud = inject(GiroSaludService);
   private sub?: Subscription;
   private modSub?: Subscription;
 
@@ -179,6 +182,7 @@ export class Dashboard {
        Cargandolo al entrar al panel, cuando alguien pulsa Servicios el dato
        ya esta. El guard conserva su await como red para un enlace directo. */
     void this.giroServicios.cargar();
+    void this.giroSalud.cargar();
 
     if (this.auth.usuarioActual?.nombre) {
       this.registerService.load();

@@ -169,7 +169,17 @@ export class SaleService {
       /* 0079: la propina viaja con la venta; el proceso principal la
          registra despues del COMMIT, en el mismo canal. */
       const tip = !isCredit && payment.tip && payment.tip.monto > 0 ? payment.tip : null;
-      const resp = await this.registerIntent(intent, tip);
+      let resp = await this.registerIntent(intent, tip);
+      /* 0087: un medicamento que exige receta. Se piden los datos aquí, una
+         sola vez para Retail y Touch, y se vuelve a cobrar con la MISMA
+         intención: la primera no registró nada, así que no hay doble cobro. */
+      if (resp?.motivo === 'RECETA_REQUERIDA') {
+        const { pedirReceta } = await import('./receta-dialogo');
+        const receta = await pedirReceta(resp.productos ?? []);
+        if (!receta) return { ok: false, error: resp.error, motivo: 'RECETA_CANCELADA' };
+        intent.receta = receta;
+        resp = await this.registerIntent(intent, tip);
+      }
       if (!resp?.success) {
         /* El precio cambió en la base desde que esta caja leyó su catálogo: la
            cuenta toma el precio nuevo y quien cobra revisa el total antes de
@@ -239,7 +249,8 @@ export class SaleService {
       this.catalog.marcarViejo();
 
       return { ok: true, saleId, total: totals.total, paid, change, isCredit, lines: sold, customer, premios, cupon,
-               propinaError: resp?.propina && !resp.propina.ok ? (resp.propina.error || 'No se pudo guardar la propina.') : null };
+               propinaError: resp?.propina && !resp.propina.ok ? (resp.propina.error || 'No se pudo guardar la propina.') : null,
+               saludError: resp?.saludError ?? null };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Ocurrió un error inesperado.' };
     } finally {
@@ -277,6 +288,7 @@ export class SaleService {
         dueDate: intent.dueDate,
         registerId: intent.registerId,
         serviceMode: intent.serviceMode,
+        receta: intent.receta ?? null,
       });
     }
     if(intent.payments)return Promise.resolve({success:false,error:'Actualiza el proceso principal para aceptar pagos divididos.'});

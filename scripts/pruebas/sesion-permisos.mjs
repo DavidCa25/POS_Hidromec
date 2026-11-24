@@ -54,7 +54,8 @@ seccion('1. El catalogo: tres roles, doce paquetes');
 // ===========================================================================
 
 /* 0077: 13 paquetes + 9 permisos por persona (lo delicado y lo que se ve). */
-check(permisos.PERMISOS.length === 24, 'hay veinticuatro permisos (0080: EMPRESAS_CAMBIAR)', permisos.PERMISOS.join(' '));
+/* 0087: SALUD_FARMACIA y SALUD_EXPEDIENTE. */
+check(permisos.PERMISOS.length === 26, 'hay veintiséis permisos (0087: SALUD_FARMACIA, SALUD_EXPEDIENTE)', permisos.PERMISOS.join(' '));
 check(Object.keys(permisos.ROLES).length === 3, 'hay tres roles',
   Object.keys(permisos.ROLES).join(' '));
 
@@ -72,9 +73,11 @@ const deAdmin = permisos.permisosDeRol('admin');
 const deEncargado = permisos.permisosDeRol('supervisor');
 const deOperador = permisos.permisosDeRol('cajero');
 
-check(deAdmin.size === 24, 'Administrador tiene los veinticuatro');
+check(deAdmin.size === 26, 'Administrador tiene los veintiséis');
 // Roles v2: el Encargado tiene todo menos administrar el negocio.
-check(deEncargado.size === 21 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+/* 0087: + SALUD_FARMACIA. El expediente NO: es del Administrador y se otorga. */
+check(deEncargado.size === 22 && !deEncargado.has(B.CONFIGURACION_ADMINISTRAR)
+   && deEncargado.has(B.SALUD_FARMACIA) && !deEncargado.has(B.SALUD_EXPEDIENTE)
    && deEncargado.has(B.CAJA_CORTES) && deEncargado.has(B.CONFIGURACION_EQUIPO)
    && deEncargado.has(B.INVENTARIO_OPERAR) && deEncargado.has(B.CATALOGO_EDITAR),
   'Encargado tiene todo menos administrar el negocio', [...deEncargado].join(' '));

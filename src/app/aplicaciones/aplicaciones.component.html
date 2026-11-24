@@ -40,6 +40,13 @@
                   [disabled]="cambiando() === m.id">Cambiar</button>
         </p>
 
+        <p class="apps-card__giro" *ngIf="m.id === 'salud' && encendido(m) && giroSalud.giro() as gs">
+          <i class="ph ph-first-aid-kit"></i>
+          Giro: <b>{{ gs.nombre }}</b>
+          <button type="button" class="apps-card__cambiar" (click)="cambiarGiroSalud()"
+                  [disabled]="cambiando() === m.id">Cambiar</button>
+        </p>
+
         <!-- Integracion que hoy no se puede encender: se dice por que, sin boton. -->
         <div class="apps-card__pie" *ngIf="m.noDisponible">
           <span class="apps-card__falta"><i class="ph ph-lock-simple"></i> {{ m.noDisponible }}</span>

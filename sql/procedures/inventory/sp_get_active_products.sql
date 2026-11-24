@@ -79,6 +79,7 @@ BEGIN
         p.clave_unidad,
         p.objeto_impuesto,
         p.tasa_iva,
+        CAST(CASE WHEN p.tasa_iva = 0 AND p.iva_exento = 1 THEN 1 ELSE 0 END AS BIT) AS iva_exento,
         p.inventory_mode,
         p.sellable,
         p.base_uom,

@@ -114,6 +114,7 @@
     "db:test-servicios": "node scripts/db/pruebas/servicios.mjs",
     "test:servicios": "node scripts/pruebas/servicios-modulo.mjs",
     "e2e:servicios": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/servicios.spec.js",
+    "e2e:salud": "npm run build && node e2e/preparar-bases.mjs salud && playwright test e2e/salud.spec.js",
     "db:test-giros": "node scripts/db/pruebas/servicios-giros.mjs",
     "test:giros": "node scripts/pruebas/giros-servicios.mjs",
     "e2e:ilustraciones": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/ilustraciones.spec.js",

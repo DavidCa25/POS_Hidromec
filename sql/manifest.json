@@ -40,7 +40,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "2c18c980e32530fc"
+      "checksum": "33edf9e240020982"
     },
     {
       "nombre": "sp_add_register",
@@ -742,7 +742,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "17c9c810f5b2c39a"
+      "checksum": "ff6cdf3b3aa24716"
     },
     {
       "nombre": "sp_get_actual_folio",
@@ -1129,7 +1129,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "40ba527641d94714"
+      "checksum": "466d69971e876df3"
     },
     {
       "nombre": "sp_get_sale_ticket",
@@ -2491,6 +2491,357 @@
       "checksum": "7c433f5ea612de9d"
     },
     {
+      "nombre": "sp_salud_bitacora_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_bitacora_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b2f03d3c7ba3fe2f"
+    },
+    {
+      "nombre": "sp_salud_cie10_buscar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_cie10_buscar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e3cf6e4ddab2c286"
+    },
+    {
+      "nombre": "sp_salud_config_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_config_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "76ab6a9d8ead595c"
+    },
+    {
+      "nombre": "sp_salud_config_set",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_config_set.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "222a74cb079da6f5"
+    },
+    {
+      "nombre": "sp_salud_documento_adenda",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_documento_adenda.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7c63b44beea16707"
+    },
+    {
+      "nombre": "sp_salud_documento_descartar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_documento_descartar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "6bb13ac16cbfc89d"
+    },
+    {
+      "nombre": "sp_salud_documento_firmar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_documento_firmar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "fe1f603a1f389fe9"
+    },
+    {
+      "nombre": "sp_salud_documento_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_documento_guardar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "64cd2c95ac00baa7"
+    },
+    {
+      "nombre": "sp_salud_estudio_capturar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_capturar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1eb06a3b5d630367"
+    },
+    {
+      "nombre": "sp_salud_estudio_entregar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_entregar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "576f3cfd705c690e"
+    },
+    {
+      "nombre": "sp_salud_estudio_estado",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_estado.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "a6447c1aaffa5195"
+    },
+    {
+      "nombre": "sp_salud_estudio_ficha_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_ficha_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e91477d9c9e1627e"
+    },
+    {
+      "nombre": "sp_salud_estudio_orden_crear",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_orden_crear.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e489c90aa4f8fda0"
+    },
+    {
+      "nombre": "sp_salud_estudio_orden_vincular",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_orden_vincular.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f61b9a4a0c6ffd98"
+    },
+    {
+      "nombre": "sp_salud_estudio_ordenes",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_ordenes.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "08a0eca83313ef1d"
+    },
+    {
+      "nombre": "sp_salud_estudio_validar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudio_validar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "2a89f4380fd25481"
+    },
+    {
+      "nombre": "sp_salud_estudios_catalogo",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_estudios_catalogo.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1c8dbef6f5d6d678"
+    },
+    {
+      "nombre": "sp_salud_expediente_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_expediente_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "799c24bb7fd71800"
+    },
+    {
+      "nombre": "sp_salud_farmacia_resumen",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_farmacia_resumen.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "c470b3ffef86af98"
+    },
+    {
+      "nombre": "sp_salud_libro_control",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_libro_control.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "9c281dc8bb640ab7"
+    },
+    {
+      "nombre": "sp_salud_lote_ajustar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_lote_ajustar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7aba6b1ddf750ba8"
+    },
+    {
+      "nombre": "sp_salud_lote_entrada",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_lote_entrada.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ef2eda654bdcc23b"
+    },
+    {
+      "nombre": "sp_salud_lotes_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_lotes_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3be468a42f00ad5e"
+    },
+    {
+      "nombre": "sp_salud_odontograma_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_odontograma_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "987722724fc7d23c"
+    },
+    {
+      "nombre": "sp_salud_odontograma_marcar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_odontograma_marcar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "4503d1444fc3ce0c"
+    },
+    {
+      "nombre": "sp_salud_paciente_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_paciente_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8146982edcb2ecac"
+    },
+    {
+      "nombre": "sp_salud_pacientes_buscar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_pacientes_buscar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "bd566d3804be15f1"
+    },
+    {
+      "nombre": "sp_salud_plan_estado",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_plan_estado.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d59cb225049177f3"
+    },
+    {
+      "nombre": "sp_salud_plan_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_plan_guardar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3e4f11e21109c1e5"
+    },
+    {
+      "nombre": "sp_salud_plan_item_hecho",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_plan_item_hecho.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "23d1366913b0e564"
+    },
+    {
+      "nombre": "sp_salud_planes_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_planes_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "39f9f28b5c26f46d"
+    },
+    {
+      "nombre": "sp_salud_producto_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_producto_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8edb1c442992bf4a"
+    },
+    {
+      "nombre": "sp_salud_productos_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_productos_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "5886b160b0d8441e"
+    },
+    {
+      "nombre": "sp_salud_profesional_get",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_profesional_get.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "d36a255a82630172"
+    },
+    {
+      "nombre": "sp_salud_profesional_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_profesional_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "7201a8ab10d74fb1"
+    },
+    {
+      "nombre": "sp_salud_temperatura_save",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_temperatura_save.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "05371d817e0dfd88"
+    },
+    {
+      "nombre": "sp_salud_temperaturas_list",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_temperaturas_list.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "f6d72d42d4058aac"
+    },
+    {
+      "nombre": "sp_salud_venta_aplicar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_venta_aplicar.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ed875e36e6cb3b9b"
+    },
+    {
+      "nombre": "sp_salud_venta_requisitos",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/salud/sp_salud_venta_requisitos.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "71bfa907eac9f060"
+    },
+    {
       "nombre": "sp_save_fiscal_config",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/billing/sp_save_fiscal_config.sql",
@@ -2659,7 +3010,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "9abbf2b2aae65bab"
+      "checksum": "b61114890920244b"
     },
     {
       "nombre": "sp_service_set_active",
@@ -3037,7 +3388,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "56f5c50374c5aefe"
+      "checksum": "e23c9bad659827db"
     },
     {
       "nombre": "sp_update_sale",
@@ -3200,6 +3551,42 @@
       "critico": false,
       "clasificacion": "current",
       "checksum": "d51952b0ce72442e"
+    },
+    {
+      "nombre": "TR_salud_bitacora_append_only",
+      "tipo": "SQL_TRIGGER",
+      "archivo": "sql/triggers/TR_salud_bitacora_append_only.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0ff0b5eb2711482d"
+    },
+    {
+      "nombre": "TR_salud_diagnosticos_inmutable",
+      "tipo": "SQL_TRIGGER",
+      "archivo": "sql/triggers/TR_salud_diagnosticos_inmutable.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e8e2fa95b9e83dee"
+    },
+    {
+      "nombre": "TR_salud_documentos_inmutable",
+      "tipo": "SQL_TRIGGER",
+      "archivo": "sql/triggers/TR_salud_documentos_inmutable.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "fa19a4f098645efb"
+    },
+    {
+      "nombre": "TR_salud_estudio_items_inmutable",
+      "tipo": "SQL_TRIGGER",
+      "archivo": "sql/triggers/TR_salud_estudio_items_inmutable.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "0f516e7b2fd66ce1"
     },
     {
       "nombre": "HospOrdenLineaV2Type",
@@ -4621,14 +5008,14 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/products.sql",
         "origen": "Wybix_Production",
-        "columnas": 26,
+        "columnas": 27,
         "pk": "PK__products__3213E83F91119FC8",
         "unicas": 1,
         "foraneas": 3,
         "chequeos": 1,
         "predeterminados": 12,
         "indices": 1,
-        "checksum": "e5396308703a7fa8"
+        "checksum": "fd5de82854813da1"
       },
       {
         "nombre": "professional_schedules",
@@ -5049,6 +5436,272 @@
         "predeterminados": 2,
         "indices": 1,
         "checksum": "5247ad3492335c24"
+      },
+      {
+        "nombre": "salud_adendas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_adendas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 5,
+        "pk": "PK_salud_adendas",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "c2de299173cb4b5d"
+      },
+      {
+        "nombre": "salud_bitacora",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_bitacora.sql",
+        "origen": "Wybix_Production",
+        "columnas": 6,
+        "pk": "PK_salud_bitacora",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "4626d6465e49cba8"
+      },
+      {
+        "nombre": "salud_cie10",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_cie10.sql",
+        "origen": "Wybix_Production",
+        "columnas": 2,
+        "pk": "PK_salud_cie10",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 0,
+        "predeterminados": 0,
+        "indices": 0,
+        "checksum": "d435b03f04cf3546"
+      },
+      {
+        "nombre": "salud_config",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_config.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_salud_config",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 5,
+        "indices": 0,
+        "checksum": "f903b51e40f51602"
+      },
+      {
+        "nombre": "salud_diagnosticos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_diagnosticos.sql",
+        "origen": "Wybix_Production",
+        "columnas": 5,
+        "pk": "PK_salud_diagnosticos",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 2,
+        "checksum": "b65698833f97315f"
+      },
+      {
+        "nombre": "salud_documentos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_documentos.sql",
+        "origen": "Wybix_Production",
+        "columnas": 15,
+        "pk": "PK_salud_documentos",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 5,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "545dfee877c02ba5"
+      },
+      {
+        "nombre": "salud_estudio_items",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_estudio_items.sql",
+        "origen": "Wybix_Production",
+        "columnas": 21,
+        "pk": "PK_salud_estudio_items",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 5,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "d3a65a367714f5cf"
+      },
+      {
+        "nombre": "salud_estudio_ordenes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_estudio_ordenes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_salud_estudio_ordenes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 2,
+        "checksum": "34e702c62502e83f"
+      },
+      {
+        "nombre": "salud_estudios",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_estudios.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_salud_estudios",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 4,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "dd71f2e6f096a7e4"
+      },
+      {
+        "nombre": "salud_lote_movimientos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_lote_movimientos.sql",
+        "origen": "Wybix_Production",
+        "columnas": 10,
+        "pk": "PK_salud_lote_mov",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 2,
+        "checksum": "9aecb4934c25ac1a"
+      },
+      {
+        "nombre": "salud_lotes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_lotes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 7,
+        "pk": "PK_salud_lotes",
+        "unicas": 1,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 2,
+        "checksum": "d3fd20991dc82cd0"
+      },
+      {
+        "nombre": "salud_odontograma",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_odontograma.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_salud_odontograma",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 3,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "c0b9a9daef446886"
+      },
+      {
+        "nombre": "salud_pacientes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_pacientes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_salud_pacientes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "493844bdf05d3dc1"
+      },
+      {
+        "nombre": "salud_plan_items",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_plan_items.sql",
+        "origen": "Wybix_Production",
+        "columnas": 9,
+        "pk": "PK_salud_plan_items",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 2,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "da12cab00dec61a8"
+      },
+      {
+        "nombre": "salud_planes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_planes.sql",
+        "origen": "Wybix_Production",
+        "columnas": 8,
+        "pk": "PK_salud_planes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "dc9b0e190c6a0c6f"
+      },
+      {
+        "nombre": "salud_productos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_productos.sql",
+        "origen": "Wybix_Production",
+        "columnas": 13,
+        "pk": "PK_salud_productos",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 4,
+        "indices": 2,
+        "checksum": "36a795eca1fd10db"
+      },
+      {
+        "nombre": "salud_profesionales",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_profesionales.sql",
+        "origen": "Wybix_Production",
+        "columnas": 7,
+        "pk": "PK_salud_profesionales",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 2,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "5e0def6ebaf32237"
+      },
+      {
+        "nombre": "salud_recetas_surtidas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_recetas_surtidas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 11,
+        "pk": "PK_salud_recetas_surtidas",
+        "unicas": 1,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "2387d04e3eff8578"
+      },
+      {
+        "nombre": "salud_temperaturas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/salud_temperaturas.sql",
+        "origen": "Wybix_Production",
+        "columnas": 5,
+        "pk": "PK_salud_temperaturas",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "e727be4a9964b215"
       },
       {
         "nombre": "security_events",

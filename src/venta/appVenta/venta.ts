@@ -1075,6 +1075,8 @@ export class Venta implements OnInit, OnDestroy {
       /* 0071: la regla «checar entrada antes de cobrar». Se abre Checar en
          lugar de un error: la persona resuelve ahi mismo y vuelve a cobrar. */
       if (res.motivo === 'ASISTENCIA_SIN_ENTRADA') { this.abrirChecar(res.error || null); return; }
+      /* 0087: no se capturó la receta. No es un error: la cuenta sigue ahí. */
+      if (res.motivo === 'RECETA_CANCELADA') return;
       /* El precio cambió desde que esta caja leyó el catálogo: la cuenta ya
          tiene el nuevo; no es un error, es revisar el total y cobrar otra vez. */
       if (res.motivo === 'PRECIO_CAMBIO') {
@@ -1091,6 +1093,7 @@ export class Venta implements OnInit, OnDestroy {
     this.afterSale(res.saleId ?? null, res, isCredito);
     this.propina = null;
     if (res.propinaError) await Swal.fire({ icon: 'warning', title: 'La venta quedó; la propina no', text: res.propinaError });
+    if (res.saludError) await Swal.fire({ icon: 'warning', title: 'La venta quedó', text: res.saludError });
     this.lastSalePedido = mesa?.numero ?? null;
     this.showModal = false;
     await preguntarCajonVoucher(this.sale, this.paymentMethod === 'MIXTO' ? this.pagosMixtos.map(p => p.method) : [this.paymentMethod]);

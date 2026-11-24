@@ -572,10 +572,10 @@
               </button>
               <div class="sat-dd-menu" *ngIf="tasaAbierta">
                 <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
-                        [class.sel]="t.value === form.tasaIva"
-                        (click)="form.tasaIva = t.value; tasaAbierta = false">
+                        [class.sel]="esTasa(t)"
+                        (click)="elegirTasa(t)">
                   <span>{{ t.label }}</span>
-                  <i class="ph ph-check" *ngIf="t.value === form.tasaIva"></i>
+                  <i class="ph ph-check" *ngIf="esTasa(t)"></i>
                 </button>
               </div>
             </div>

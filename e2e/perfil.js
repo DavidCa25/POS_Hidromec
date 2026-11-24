@@ -55,6 +55,8 @@ const RAIZ = path.join(__dirname, '..');
 const SERVIDOR = process.env.WYBIX_DB_SERVER || 'localhost';
 const BASE_CORE = process.env.WYBIX_E2E_DB || 'Wybix_E2E_Core';
 const BASE_SERVICIOS = process.env.WYBIX_E2E_DB_SERVICIOS || 'Wybix_E2E_Servicios';
+/* 0087: el giro Salud, en su propia base para no encender nada en Core. */
+const BASE_SALUD = process.env.WYBIX_E2E_DB_SALUD || 'Wybix_E2E_Salud';
 
 /** Los archivos que el proceso principal lee ANTES de abrir ninguna ventana. */
 function escribirConfiguracion(dir, base) {
@@ -134,4 +136,4 @@ function borrarMolde() {
 }
 
 module.exports = { nuevoPerfil, opcionesDeArranque, borrarMolde, escribirConfiguracion,
-                   SERVIDOR, BASE_CORE, BASE_SERVICIOS, RAIZ };
+                   SERVIDOR, BASE_CORE, BASE_SERVICIOS, BASE_SALUD, RAIZ };
