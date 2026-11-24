@@ -33,6 +33,8 @@ const {
   // 0077: permisos por persona.
   DEVOLUCIONES, RETIROS_EGRESOS, CAJON_SIN_VENTA, MODIFICAR_VENTA, CREDITO_CUPONES,
   VER_NUMEROS_DIA, VER_COSTOS,
+  // 0087: giro Salud.
+  SALUD_FARMACIA, SALUD_EXPEDIENTE,
 } = BUNDLES;
 
 /**
@@ -52,6 +54,8 @@ const EXIGE = {
   'commercial:quote': VENTAS_OPERAR,
   // 0056: combos, promociones y precios por canal tienen paquete propio.
   'commercial:save': COMERCIAL_ADMINISTRAR,
+  // 0089: qué lista de precios (canal) paga un cliente, p. ej. Mayoreo.
+  'commercial:customer-price-list': COMERCIAL_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
   /* Roles v2: un retiro saca dinero del cajon. El Operador lo pide y lo
@@ -461,6 +465,44 @@ const EXIGE = {
   'servicios:guardar-ausencia': SERVICIOS_ADMINISTRAR,
   'servicios:borrar-ausencia': SERVICIOS_ADMINISTRAR,
 
+  // ------------------------------------------------------- Salud (0087)
+  // Elegir el giro enciende el módulo: misma cerradura que 'modules:set'.
+  'salud:elegir-giro': CONFIGURACION_ADMINISTRAR,
+  // Farmacia: la ficha sanitaria, los lotes y el libro son del responsable
+  // sanitario. Vender con receta es vender (VENTAS_OPERAR, 'sp-register-sale').
+  'salud:producto-guardar': SALUD_FARMACIA,
+  'salud:lote-entrada': SALUD_FARMACIA,
+  'salud:lote-ajustar': SALUD_FARMACIA,
+  // El libro lleva nombre y cédula de médicos y qué se surtió a quién.
+  'salud:libro-control': SALUD_FARMACIA,
+  // Anotar la temperatura del refrigerador es del turno, no del encargado.
+  'salud:temperatura-guardar': VENTAS_OPERAR,
+  // El expediente: datos sensibles (LFPDPPP 2025). LEERLO ya exige el paquete.
+  'salud:pacientes': SALUD_EXPEDIENTE,
+  'salud:paciente-guardar': SALUD_EXPEDIENTE,
+  'salud:expediente': SALUD_EXPEDIENTE,
+  'salud:documento-guardar': SALUD_EXPEDIENTE,
+  'salud:documento-firmar': SALUD_EXPEDIENTE,
+  'salud:documento-adenda': SALUD_EXPEDIENTE,
+  'salud:documento-descartar': SALUD_EXPEDIENTE,
+  'salud:bitacora': SALUD_EXPEDIENTE,
+  'salud:odontograma': SALUD_EXPEDIENTE,
+  'salud:odontograma-marcar': SALUD_EXPEDIENTE,
+  'salud:planes': SALUD_EXPEDIENTE,
+  'salud:plan-guardar': SALUD_EXPEDIENTE,
+  'salud:plan-aceptar': SALUD_EXPEDIENTE,
+  'salud:plan-estado': SALUD_EXPEDIENTE,
+  'salud:plan-item': SALUD_EXPEDIENTE,
+  'salud:profesional': SALUD_EXPEDIENTE,
+  'salud:profesional-guardar': SALUD_EXPEDIENTE,
+  'salud:estudio-guardar': SERVICIOS_ADMINISTRAR,
+  'salud:estudio-orden-crear': SALUD_EXPEDIENTE,
+  'salud:estudio-ordenes': SALUD_EXPEDIENTE,
+  'salud:estudio-estado': SALUD_EXPEDIENTE,
+  'salud:estudio-capturar': SALUD_EXPEDIENTE,
+  'salud:estudio-validar': SALUD_EXPEDIENTE,
+  'salud:estudio-entregar': SALUD_EXPEDIENTE,
+
   // Elegir el giro ENCIENDE el modulo, y encender modulos ya exigia
   // CONFIGURACION_ADMINISTRAR en 'modules:set'. Bajarlo aqui a
   // SERVICIOS_ADMINISTRAR no seria un permiso mas fino: seria la misma
@@ -736,6 +778,15 @@ const ABIERTOS = {
   // delante. Exigirles permiso convertiría la pantalla de un Operador con
   // SERVICIOS_OPERAR en una pantalla de errores justo donde trabaja.
   'servicios:catalogo': 'lectura del catálogo de servicios',
+  // 0087 · Salud. Ninguno de estos lee datos de pacientes.
+  'salud:giros': 'el catálogo de giros de Salud sale de presets.json y no toca la base',
+  'salud:config': 'saber si este negocio es farmacia o consultorio no es información sensible, y el módulo necesita dibujarse',
+  'salud:farmacia-resumen': 'conteos de lotes y lecturas; sin datos de pacientes ni de médicos (exige el módulo)',
+  'salud:farmacia-productos': 'la ficha sanitaria es del producto: quien vende necesita saber si pide receta (exige el módulo)',
+  'salud:lotes': 'lotes y caducidades de la mercancía; quien vende ve qué está por caducar (exige el módulo)',
+  'salud:temperaturas': 'lecturas de temperatura del local y del refrigerador (exige el módulo)',
+  'salud:estudios-catalogo': 'el catálogo de estudios y sus precios: lo consulta quien recibe al paciente y cobra (exige el módulo)',
+  'salud:cie10': 'catálogo público de diagnósticos de la OMS; no dice nada de ningún paciente (exige el módulo)',
   'servicios:giros': 'el catálogo de giros no toca la base: sale de presets.json, y la pantalla que ofrece elegir uno lo necesita antes de que nadie pulse nada',
   'servicios:config': 'saber si este negocio es un taller o una estética no es información sensible, y el módulo necesita cómo llamarse para dibujarse',
   'servicios:activos': 'lectura de los activos del cliente: el coche, la mascota',

@@ -6,6 +6,14 @@ import { LicenseService } from '../../services/license.service';
 import { CATALOGOS_GIRO, GiroCatalogo } from './catalogos-giro';
 import { BusinessProfile, CapabilityService, DeviceProfile } from '../../core';
 import { PRESETS_SERVICIOS, PresetServicios } from '../../core/presets-servicios';
+import { PRESETS_SALUD, PresetSalud } from '../../core/giro-salud.service';
+
+type TipoNegocio = 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS' | 'SALUD';
+
+/** El giro que se pide para la prueba de 30 días, según el tipo de negocio. */
+const GIRO_DE_PRUEBA: Record<TipoNegocio, 'COMMERCE' | 'HOSPITALITY' | 'SERVICES' | 'HEALTH'> = {
+  RETAIL: 'COMMERCE', HOSPITALITY: 'HOSPITALITY', SERVICIOS: 'SERVICES', SALUD: 'HEALTH',
+};
 
 @Component({
   selector: 'app-setup-inicial',
@@ -51,15 +59,17 @@ export class SetupInicial implements OnInit {
    * usuario reconoce -tres clases de negocio- traducido a las dos cosas que el
    * sistema guarda por separado.
    */
-  tipoNegocio: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS' = 'RETAIL';
+  tipoNegocio: TipoNegocio = 'RETAIL';
 
-  readonly tiposNegocio: { valor: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS'; titulo: string; icono: string; ejemplos: string }[] = [
+  readonly tiposNegocio: { valor: TipoNegocio; titulo: string; icono: string; ejemplos: string }[] = [
     { valor: 'RETAIL', titulo: 'Tienda o comercio', icono: 'ph-storefront',
       ejemplos: 'Abarrotes · Ferreterías · Refaccionarias · Papelerías' },
     { valor: 'HOSPITALITY', titulo: 'Alimentos y bebidas', icono: 'ph-coffee',
       ejemplos: 'Cafeterías · Panaderías · Heladerías · Comida rápida' },
     { valor: 'SERVICIOS', titulo: 'Servicios', icono: 'ph-wrench',
       ejemplos: 'Talleres · Barberías · Reparación · Mantenimiento' },
+    { valor: 'SALUD', titulo: 'Salud', icono: 'ph-first-aid-kit',
+      ejemplos: 'Farmacias · Consultorios · Dentistas' },
   ];
 
   /**
@@ -71,6 +81,8 @@ export class SetupInicial implements OnInit {
    * construyo el modulo y no se rompe aqui.
    */
   readonly presets: PresetServicios[] = PRESETS_SERVICIOS;
+  /** Los giros de Salud: la MISMA lista que valida `salud:elegir-giro`. */
+  readonly presetsSalud: PresetSalud[] = PRESETS_SALUD;
   presetGiro = '';
 
   /**
@@ -102,18 +114,21 @@ export class SetupInicial implements OnInit {
 
   constructor(private license: LicenseService, private caps: CapabilityService) {}
 
-  elegirTipoNegocio(v: 'RETAIL' | 'HOSPITALITY' | 'SERVICIOS') {
+  elegirTipoNegocio(v: TipoNegocio) {
     this.tipoNegocio = v;
     /* Servicios guarda RETAIL: lo que cambia no es que vende, es que ademas
        cobra trabajo, y eso es un modulo. */
     this.businessProfile = v === 'HOSPITALITY' ? 'HOSPITALITY' : 'RETAIL';
-    if (v !== 'SERVICIOS') this.presetGiro = '';
+    if (v !== 'SERVICIOS' && v !== 'SALUD') this.presetGiro = '';
+    if (v === 'SALUD' && !this.presetsSalud.some((p) => p.id === this.presetGiro)) this.presetGiro = this.presetsSalud[0]?.id ?? '';
+    if (v === 'SERVICIOS' && !this.presets.some((p) => p.id === this.presetGiro)) this.presetGiro = '';
     // Sugerencia, no imposicion: el usuario puede cambiarla en el paso
     // siguiente y despues en Configuracion.
     this.deviceProfile = v === 'HOSPITALITY' ? 'TOUCH_POS' : 'RETAIL_POS';
   }
 
   get esServicios(): boolean { return this.tipoNegocio === 'SERVICIOS'; }
+  get esSalud(): boolean { return this.tipoNegocio === 'SALUD'; }
 
   elegirGiroNegocio(id: string) { this.presetGiro = id; }
 
@@ -282,7 +297,7 @@ export class SetupInicial implements OnInit {
     /* Un negocio de servicios SIN giro no se puede configurar: el giro decide
        el vocabulario, la pantalla de entrada y si hay agenda o activos. Dejarlo
        vacio serviria un modulo generico que no se parece a lo que hace nadie. */
-    if (this.esServicios && !this.presetGiro) {
+    if ((this.esServicios || this.esSalud) && !this.presetGiro) {
       Swal.fire({ icon: 'warning', title: 'Falta el giro',
                   text: 'Elige a qué se dedica principalmente tu negocio.' });
       return;
@@ -358,7 +373,20 @@ export class SetupInicial implements OnInit {
          el servidor y llega en el certificado firmado; business_profile no
          otorga nada. Si no es una prueba, no hace nada. Sin red queda pendiente. */
       await this.license.elegirGiroPrueba(
-        this.tipoNegocio === 'HOSPITALITY' ? 'HOSPITALITY' : this.tipoNegocio === 'SERVICIOS' ? 'SERVICES' : 'COMMERCE');
+        GIRO_DE_PRUEBA[this.tipoNegocio]);
+
+      /* Salud, DESPUÉS del giro de la prueba: el certificado de Salud trae
+         `health`, que es lo que enciende el módulo. `salud:elegir-giro`
+         guarda el giro y, si hay consultorio, la agenda de Servicios. */
+      if (this.esSalud && this.presetGiro) {
+        const g = await this.api?.saludElegirGiro?.(this.presetGiro);
+        if (!g?.success) {
+          await Swal.fire({
+            icon: 'warning', title: 'El negocio quedo creado',
+            text: 'No se pudo activar Salud. Puedes encenderlo en Aplicaciones.',
+          });
+        }
+      }
 
       // El giro que se acaba de guardar decide si el negocio tiene recetas,
       // ingredientes y modificadores. Las capacidades en memoria se cargaron

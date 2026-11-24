@@ -21,7 +21,7 @@
  */
 const { test: base, expect, _electron: electron } = require('@playwright/test');
 const fs = require('node:fs');
-const { nuevoPerfil, opcionesDeArranque, BASE_CORE, BASE_SERVICIOS } = require('./perfil');
+const { nuevoPerfil, opcionesDeArranque, BASE_CORE, BASE_SERVICIOS, BASE_SALUD } = require('./perfil');
 
 /** Las mismas credenciales que siembra `preparar-bases.mjs`. */
 const CUENTAS = {
@@ -81,6 +81,9 @@ const test = base.extend({
 
   /** Contra `Wybix_E2E_Servicios`: el modulo encendido y listo para trabajar. */
   appServicios: async ({}, use, testInfo) => { await arrancar(BASE_SERVICIOS, use, testInfo); },
+
+  /** Contra `Wybix_E2E_Salud` (0087): recién dada de alta, Salud APAGADO. La prueba lo enciende por Aplicaciones. */
+  appSalud: async ({}, use, testInfo) => { await arrancar(BASE_SALUD, use, testInfo); },
 });
 
 /**

@@ -44,6 +44,19 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeLaOperacion, autorizacionE
             return { success: false, error: String(e.message || e) };
         }
     }));
+    /* 0089 · La lista de precios de un cliente: el canal cuyos precios paga.
+       Al asignarlo a la cuenta, la caja cambia a ese canal. */
+    ipcMain.handle('commercial:customer-price-list', sesion.proteger('commercial:customer-price-list', safe(async (event, p) => {
+        const customerId = Number(p?.customerId);
+        if (!Number.isInteger(customerId) || customerId <= 0)
+            throw Error('Cliente inválido.');
+        const channel = p?.channel == null || p.channel === '' ? null : String(p.channel);
+        if (channel !== null && !/^[a-zA-Z0-9_-]{1,64}$/.test(channel))
+            throw Error('Lista de precios inválida.');
+        const r = await (await poolPromise).request().input('customer_id', sql.Int, customerId)
+            .input('channel', sql.NVarChar(64), channel).execute('sp_customer_price_list_set');
+        return r.recordset[0];
+    })));
     ipcMain.handle('commercial:quote', sesion.proteger('commercial:quote', safe(async (event, p, s) => {
         if (!Array.isArray(p.lines) || p.lines.length > 500)
             throw Error('Cuenta inválida.');

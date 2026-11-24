@@ -271,6 +271,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     commercialCatalog: () => invoke('commercial:catalog'),
     commercialSave: p => invoke('commercial:save',p),
     commercialQuote: p => invoke('commercial:quote',p),
+    commercialCustomerPriceList: p => invoke('commercial:customer-price-list',p),
     getConfig: () => invoke("getConfig"),
     // Solo lectura: dice si la BASE es de demostracion, para poder marcarlo en
     // pantalla. No habilita ninguna operacion del gestor.
@@ -480,6 +481,48 @@ contextBridge.exposeInMainWorld('electronAPI', {
        es el catalogo (no toca la base), `serviciosConfig` lo que eligio este
        negocio y `serviciosElegirGiro` la eleccion, que ademas enciende el
        modulo. */
+    /* ---------------------------------------------------------- SALUD (0087)
+       Farmacia (lotes, receta, libro de control), expediente clínico y
+       dental. Prefijo `salud:`; electron/ipc/salud.js. */
+    saludGiros: () => invoke('salud:giros'),
+    saludConfig: () => invoke('salud:config'),
+    saludElegirGiro: (preset) => invoke('salud:elegir-giro', { preset }),
+    saludFarmaciaResumen: () => invoke('salud:farmacia-resumen'),
+    saludFarmaciaProductos: (p) => invoke('salud:farmacia-productos', p),
+    saludProductoGuardar: (p) => invoke('salud:producto-guardar', p),
+    saludLotes: (p) => invoke('salud:lotes', p),
+    saludLoteEntrada: (p) => invoke('salud:lote-entrada', p),
+    saludLoteAjustar: (p) => invoke('salud:lote-ajustar', p),
+    saludLibroControl: (p) => invoke('salud:libro-control', p),
+    saludTemperaturas: (p) => invoke('salud:temperaturas', p),
+    saludTemperaturaGuardar: (p) => invoke('salud:temperatura-guardar', p),
+    saludCie10: (p) => invoke('salud:cie10', p),
+    saludPacientes: (p) => invoke('salud:pacientes', p),
+    saludPacienteGuardar: (p) => invoke('salud:paciente-guardar', p),
+    saludExpediente: (p) => invoke('salud:expediente', p),
+    saludDocumentoGuardar: (p) => invoke('salud:documento-guardar', p),
+    saludDocumentoFirmar: (p) => invoke('salud:documento-firmar', p),
+    saludDocumentoAdenda: (p) => invoke('salud:documento-adenda', p),
+    saludDocumentoDescartar: (p) => invoke('salud:documento-descartar', p),
+    saludBitacora: (p) => invoke('salud:bitacora', p),
+    saludOdontograma: (p) => invoke('salud:odontograma', p),
+    saludOdontogramaMarcar: (p) => invoke('salud:odontograma-marcar', p),
+    saludPlanes: (p) => invoke('salud:planes', p),
+    saludPlanGuardar: (p) => invoke('salud:plan-guardar', p),
+    saludPlanAceptar: (p) => invoke('salud:plan-aceptar', p),
+    saludPlanEstado: (p) => invoke('salud:plan-estado', p),
+    saludPlanItem: (p) => invoke('salud:plan-item', p),
+    saludProfesional: () => invoke('salud:profesional'),
+    saludProfesionalGuardar: (p) => invoke('salud:profesional-guardar', p),
+    saludEstudiosCatalogo: (p) => invoke('salud:estudios-catalogo', p),
+    saludEstudioGuardar: (p) => invoke('salud:estudio-guardar', p),
+    saludEstudioOrdenCrear: (p) => invoke('salud:estudio-orden-crear', p),
+    saludEstudioOrdenes: (p) => invoke('salud:estudio-ordenes', p),
+    saludEstudioEstado: (p) => invoke('salud:estudio-estado', p),
+    saludEstudioCapturar: (p) => invoke('salud:estudio-capturar', p),
+    saludEstudioValidar: (p) => invoke('salud:estudio-validar', p),
+    saludEstudioEntregar: (p) => invoke('salud:estudio-entregar', p),
+
     serviciosGiros: () => invoke('servicios:giros'),
     serviciosConfig: () => invoke('servicios:config'),
     serviciosElegirGiro: (preset) => invoke('servicios:elegir-giro', { preset }),

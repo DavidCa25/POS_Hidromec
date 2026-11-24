@@ -51,7 +51,7 @@ function crearLicencia({ store, contexto, ahora = () => Date.now(), llaves = und
    * que se rechaza.
    */
   function sinCertificado(st) {
-    if (st.state === 'demo') return { modo: 'DEMO', state: 'demo', type: 'demo', plan: 'demo', entitlements: TODOS, verticals: Object.keys(GIROS), screens: { COMMERCE: null, HOSPITALITY: null, SERVICES: null }, registersMax: null, companiesMax: 99 };
+    if (st.state === 'demo') return { modo: 'DEMO', state: 'demo', type: 'demo', plan: 'demo', entitlements: TODOS, verticals: Object.keys(GIROS), screens: { COMMERCE: null, HOSPITALITY: null, SERVICES: null, HEALTH: null }, registersMax: null, companiesMax: 99 };
     if (st.state === 'tamper') return { modo: 'TAMPER', ...st };
     if (st.state === 'none') return { modo: 'NONE', state: 'none' };
     return { modo: 'TAMPER', state: 'tamper', motivo: 'sin-firma', type: st.type === 'trial' ? 'trial' : 'paid' };

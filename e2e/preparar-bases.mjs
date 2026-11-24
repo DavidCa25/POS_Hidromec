@@ -43,6 +43,9 @@ export const CUENTAS = {
 export const BASES = {
   Core: 'Wybix_E2E_Core',
   Servicios: 'Wybix_E2E_Servicios',
+  /* 0087: el giro Salud (farmacia, expediente, dental). Nace con Salud
+     APAGADO: la prueba lo enciende por Aplicaciones, como un cliente. */
+  Salud: 'Wybix_E2E_Salud',
   /* La prepara 'npm run e2e:liquidaciones' (0069): base propia, para no pisar
      Core si otra prueba la esta usando en el mismo servidor. */
   Liquidaciones: 'Wybix_E2E_Liquidaciones',
@@ -177,6 +180,7 @@ if (esPrincipal) {
            completo. El taller y la barberia los recorre giro.spec.js, que
            levanta su propia base para eso. */
         perfil: 'RETAIL', modulos: ['servicios'], giroServicios: 'MANTENIMIENTO' });
+    if (cual === 'todas' || cual === 'salud') prepararBase(BASES.Salud, { perfil: 'RETAIL' });
   }
   console.log('\nlisto.');
 }

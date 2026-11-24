@@ -4,8 +4,8 @@ import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import {
   AsistenciaService, PREGUNTAS_ASISTENCIA, ReglasAsistencia, reglasSugeridas,
-  CATEGORIAS, CapabilityService, Capabilities, GiroServiciosService, MODULOS,
-  ModuleCategory, ModuleDefinition, PresetServicios, REPARTOS_PROPINA, SociosService,
+  CATEGORIAS, CapabilityService, Capabilities, GiroSaludService, GiroServiciosService, MODULOS,
+  ModuleCategory, ModuleDefinition, PresetSalud, PresetServicios, REPARTOS_PROPINA, SociosService,
 } from '../../core';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 
@@ -45,6 +45,7 @@ import { AuthService, PAQUETES } from '../../services/auth.service';
 export class Aplicaciones implements OnInit {
   readonly caps = inject(CapabilityService);
   readonly giro = inject(GiroServiciosService);
+  readonly giroSalud = inject(GiroSaludService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly cd = inject(ChangeDetectorRef);
@@ -92,7 +93,7 @@ export class Aplicaciones implements OnInit {
     /* El giro se lee siempre, no solo cuando Servicios esta encendido: la
        tarjeta tiene que poder decir de que giro es en cuanto se pinta, y
        preguntarlo despues dejaria un parpadeo justo en la linea que se lee. */
-    await this.giro.cargar(true);
+    await Promise.all([this.giro.cargar(true), this.giroSalud.cargar(true)]);
     this.cd.detectChanges();
   }
 
@@ -154,6 +155,34 @@ export class Aplicaciones implements OnInit {
         await Swal.fire({
           icon: 'success',
           title: `Servicios activado como ${elegido.nombre.toLowerCase()}`,
+          text: m.aparece ? `Ya aparece ${m.aparece}.` : undefined,
+          timer: 2200,
+          showConfirmButton: false,
+        });
+      } catch (e: any) {
+        await Swal.fire({ icon: 'error', title: 'No se pudo activar', text: e?.message || 'Error.' });
+      } finally {
+        this.cambiando.set(null);
+        this.cd.detectChanges();
+      }
+      return;
+    }
+
+    /* 0087: Salud tampoco se enciende a secas. Farmacia y consultorio son
+       pantallas distintas, y la clínica enciende además Servicios (agenda y
+       cobro de la consulta). La elección lo hace todo en el proceso principal. */
+    if (!activo && m.id === 'salud') {
+      const elegido = await this.preguntarGiroSalud(true);
+      if (!elegido) return;
+      this.cambiando.set(m.id);
+      try {
+        const r = await this.giroSalud.elegir(elegido.id);
+        if (!r.ok) throw new Error(r.error);
+        await this.caps.load(true);
+        await this.giro.cargar(true);
+        await Swal.fire({
+          icon: 'success',
+          title: `Salud activado como ${elegido.nombre.toLowerCase()}`,
           text: m.aparece ? `Ya aparece ${m.aparece}.` : undefined,
           timer: 2200,
           showConfirmButton: false,
@@ -282,6 +311,56 @@ export class Aplicaciones implements OnInit {
     });
     if (!r.isConfirmed || !r.value) return null;
     return this.giro.catalogo.find(p => p.id === r.value) ?? null;
+  }
+
+  /** 0087 · Qué es este negocio de salud. Mismo diálogo que el giro de Servicios. */
+  private async preguntarGiroSalud(primeraVez: boolean): Promise<PresetSalud | null> {
+    const actual = this.giroSalud.giro()?.id ?? '';
+    const opciones = this.giroSalud.catalogo.map(p => `
+      <label class="giro-op${p.id === actual ? ' giro-op--actual' : ''}" data-guide="salud-giro-${p.id}">
+        <input type="radio" name="giro-salud" value="${p.id}"${p.id === actual ? ' checked' : ''}>
+        <span class="giro-op__ic"><i class="ph ${p.icono}"></i></span>
+        <span class="giro-op__txt"><b>${p.nombre}</b><small>${p.ejemplos}</small></span>
+      </label>`).join('');
+    const r = await Swal.fire({
+      title: primeraVez ? '¿Qué tipo de negocio de salud es?' : 'Cambiar el giro de Salud',
+      html: `<p class="giro-intro">${primeraVez
+        ? 'La farmacia lleva lotes, receta y libro de control. El consultorio lleva expediente, ' +
+          'agenda y cobro de la consulta. Elige lo que es tu negocio.'
+        : 'Cambia qué partes de Salud se usan. <b>No se borra nada</b>: expedientes, lotes y ' +
+          'recetas se quedan donde están.'}</p>
+        <div class="giro-lista">${opciones}</div>`,
+      width: 560,
+      showCancelButton: true,
+      confirmButtonText: primeraVez ? 'Activar Salud' : 'Guardar el giro',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: () => {
+        const sel = document.querySelector<HTMLInputElement>('input[name="giro-salud"]:checked');
+        if (!sel) { Swal.showValidationMessage('Elige una opción para continuar.'); return null; }
+        return sel.value;
+      },
+    });
+    if (!r.isConfirmed || !r.value) return null;
+    return this.giroSalud.catalogo.find(p => p.id === r.value) ?? null;
+  }
+
+  async cambiarGiroSalud(): Promise<void> {
+    if (!this.puedeAdministrar) return;
+    const elegido = await this.preguntarGiroSalud(false);
+    if (!elegido || elegido.id === this.giroSalud.giro()?.id) return;
+    this.cambiando.set('salud');
+    try {
+      const r = await this.giroSalud.elegir(elegido.id);
+      if (!r.ok) throw new Error(r.error);
+      await this.caps.load(true);
+      await this.giro.cargar(true);
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo cambiar el giro', text: e?.message || 'Error.' });
+    } finally {
+      this.cambiando.set(null);
+      this.cd.detectChanges();
+    }
   }
 
   /**

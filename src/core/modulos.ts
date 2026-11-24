@@ -97,6 +97,22 @@ export const MODULOS: ModuleDefinition[] = [
     aparece: 'Servicios y Agenda, en el menú principal',
   },
   {
+    /* 0087. Se enciende eligiendo qué es: farmacia, consultorio, dental o
+       farmacia con consultorio. Esa elección dice qué pestañas tiene. */
+    id: 'salud',
+    name: 'Salud',
+    description: 'Farmacia con lotes y receta, expediente clínico, consultorio dental, laboratorio e imagen.',
+    detalle: 'Caducidades por lote, venta con receta y libro de control para la farmacia. ' +
+             'Expediente del paciente con notas, diagnósticos y recetas que no se pueden alterar, ' +
+             'odontograma y planes de tratamiento que se cobran en abonos, y estudios de laboratorio o imagen ' +
+             'con resultados que valida quien tiene cédula.',
+    icon: 'first-aid-kit',
+    category: 'OPERACION',
+    capability: 'salud',
+    route: '/dashboard/salud',
+    aparece: 'Salud, en el menú principal',
+  },
+  {
     id: 'mesas',
     name: 'Mesas',
     description: 'Salón con áreas y mesas, y cuentas abiertas mientras el cliente consume.',

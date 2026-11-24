@@ -124,6 +124,23 @@
         cambiar después en Aplicaciones.</small>
       </div>
 
+      <!-- SALUD. Qué partes usa: farmacia, consultorio, dental. La lista es
+           electron/salud/presets.json, la misma que valida el proceso principal. -->
+      <div class="su-field" *ngIf="esSalud">
+        <label>¿Qué tipo de negocio de salud es?</label>
+        <div class="su-presets">
+          <button type="button" class="su-preset" *ngFor="let g of presetsSalud"
+                  [class.on]="presetGiro === g.id" (click)="elegirGiroNegocio(g.id)">
+            <i class="ph {{ g.icono }}" aria-hidden="true"></i>
+            <span class="su-preset__txt">
+              <span class="su-preset__t">{{ g.nombre }}</span>
+              <span class="su-preset__d">{{ g.ejemplos }}</span>
+            </span>
+          </button>
+        </div>
+        <small>Se puede cambiar después en Aplicaciones.</small>
+      </div>
+
       <div class="su-field">
         <label>Direccion (opcional)</label>
         <input type="text" [(ngModel)]="address" placeholder="Calle, numero, colonia" maxlength="300">

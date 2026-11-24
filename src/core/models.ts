@@ -74,6 +74,22 @@ export interface CartCustomer {
   uso_cfdi?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** 0089 · Lista de precios del cliente (canal comercial, p. ej. «MAYOREO»). */
+  price_channel?: string | null;
+}
+
+/**
+ * 0089 · Presentación de venta: el cartón de 24 con su propio código y su
+ * precio. La línea sigue contando piezas (24 por cartón); el precio del
+ * cartón lo aplica la cotización comercial desde la base.
+ */
+export interface PackVenta {
+  id: number;
+  name: string;
+  /** Piezas por paquete. */
+  factor: number;
+  /** Precio del paquete completo. */
+  price: number;
 }
 
 /**
@@ -103,6 +119,8 @@ export interface LineSource {
    * guardada no.
    */
   catalogPrice?: number | null;
+  /** 0089 · Se vende por paquete (cartón). Ver `PackVenta`. */
+  pack?: PackVenta | null;
 }
 
 /** Cabecera de una venta cargada por folio. */
@@ -181,6 +199,8 @@ export interface SaleIntent {
   dueDate: string | null;
   registerId: number | null;
   serviceMode: ServiceMode | null;
+  /** 0087: la receta que respalda una venta de farmacia (ver receta-dialogo.ts). */
+  receta?: import('./receta-dialogo').RecetaVenta | null;
 }
 
 export interface CheckoutResult {
@@ -190,6 +210,8 @@ export interface CheckoutResult {
   motivo?: string;
   /** 0079: la propina no se pudo guardar (la venta si). */
   propinaError?: string | null;
+  /** 0087: la venta quedó, pero la receta o la salida por lote no (farmacia). */
+  saludError?: string | null;
   saleId?: number | null;
   total?: number;
   paid?: number;
@@ -297,6 +319,11 @@ export interface Capabilities {
    * modulos se suman.
    */
   servicios: boolean;
+  /**
+   * 0087 · Giro Salud: farmacia (lotes, receta, libro de control), expediente
+   * clínico y dental. Qué partes usa lo dice el giro (GiroSaludService).
+   */
+  salud: boolean;
   /**
    * TABLE_SERVICE: salon con areas y mesas, y cuentas que se quedan abiertas
    * mientras el cliente consume. Solo con Hospitality: una mesa de un taller

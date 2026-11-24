@@ -171,6 +171,14 @@
               <label>Estado</label>
               <wx-select [(ngModel)]="form.active" [opciones]="opcActivo"></wx-select>
             </div>
+            <!-- 0089 · Lista de precios: al asignarlo en la caja, la cuenta cobra con ella. -->
+            <div class="filter-group" *ngIf="opcListasPrecio.length" data-guide="clientes-lista-precios">
+              <label>Lista de precios</label>
+              <wx-select [(ngModel)]="form.priceChannel" [opciones]="opcListasPrecio"
+                         [disabled]="!puedeListaPrecios"></wx-select>
+              <small class="cli-hint" *ngIf="puedeListaPrecios">En la caja, este cliente paga los precios de su lista.</small>
+              <small class="cli-hint" *ngIf="!puedeListaPrecios">La asigna quien administra precios.</small>
+            </div>
           </div>
         </section>
 

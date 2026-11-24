@@ -1,0 +1,193 @@
+<div class="srv-pagina">
+  <a routerLink="/dashboard/salud/pacientes" class="srv-dim" style="text-decoration:none"><i class="ph ph-arrow-left"></i> Pacientes</a>
+
+  <p class="srv-error" *ngIf="error()">{{ error() }}</p>
+
+  <ng-container *ngIf="ficha() as f">
+    <!-- ------------------------------------------------------ cabecera -->
+    <header class="sl-paciente-cab" data-guide="salud-paciente-cab">
+      <span class="sl-avatar" aria-hidden="true">{{ iniciales() }}</span>
+      <div class="d-flex flex-column gap-1">
+        <h1 class="m-0" style="font-size: var(--wx-text-xl)">{{ f.nombre }}</h1>
+        <div class="sl-datos">
+          <span *ngIf="edad() !== null"><b>{{ edad() }}</b> años</span>
+          <span *ngIf="f.sexo">{{ f.sexo === 'F' ? 'Mujer' : f.sexo === 'M' ? 'Hombre' : 'Otro' }}</span>
+          <span *ngIf="f.grupo_sanguineo">Grupo <b>{{ f.grupo_sanguineo }}</b></span>
+          <span *ngIf="f.telefono"><i class="ph ph-phone"></i> {{ f.telefono }}</span>
+          <span *ngIf="f.curp" class="mono">{{ f.curp }}</span>
+        </div>
+      </div>
+      <button type="button" class="btn ms-auto" (click)="editarFicha.set(true)" data-guide="salud-editar-ficha">
+        <i class="ph ph-pencil-simple"></i> Ficha</button>
+    </header>
+
+    <div class="sl-alergias" [class.sl-alergias--sin]="!f.alergias" data-guide="salud-alergias">
+      <i class="ph" [ngClass]="f.alergias ? 'ph-warning-octagon' : 'ph-check-circle'"></i>
+      {{ f.alergias ? 'Alergias: ' + f.alergias : 'Sin alergias registradas' }}
+    </div>
+
+    <p class="srv-paso" *ngIf="sinConsentimiento()">
+      <i class="ph ph-warning"></i> Falta el consentimiento para tratar sus datos de salud. Sin él no se puede escribir el expediente.
+      <button type="button" class="btn srv-sm ms-2" (click)="editarFicha.set(true)">Registrarlo</button>
+    </p>
+
+    <!-- -------------------------------------------------------- pestañas -->
+    <div class="srv-tabs" role="tablist">
+      <button type="button" class="srv-tab" [class.activo]="pestana() === 'expediente'" (click)="verPestana('expediente')"
+              data-guide="salud-pac-tab-expediente" *ngIf="giro.clinica()"><i class="ph ph-folder-open"></i> Expediente
+        <span class="srv-tab-n">{{ exp()?.documentos?.length ?? 0 }}</span></button>
+      <ng-container *ngIf="giro.dental()">
+        <button type="button" class="srv-tab" [class.activo]="pestana() === 'odontograma'" (click)="verPestana('odontograma')"
+                data-guide="salud-pac-tab-odontograma"><i class="ph ph-tooth"></i> Odontograma</button>
+        <button type="button" class="srv-tab" [class.activo]="pestana() === 'planes'" (click)="verPestana('planes')"
+                data-guide="salud-pac-tab-planes"><i class="ph ph-list-numbers"></i> Planes de tratamiento</button>
+      </ng-container>
+      <button type="button" class="srv-tab" [class.activo]="pestana() === 'estudios'" (click)="verPestana('estudios')"
+              data-guide="salud-pac-tab-estudios" *ngIf="giro.estudios()"><i class="ph ph-flask"></i> Estudios</button>
+      <button type="button" class="srv-tab" [class.activo]="pestana() === 'bitacora'" (click)="verPestana('bitacora')"
+              data-guide="salud-pac-tab-bitacora"><i class="ph ph-shield-check"></i> Bitácora</button>
+    </div>
+
+    <!-- ======================================================= ESTUDIOS -->
+    <ng-container *ngIf="pestana() === 'estudios'">
+      <div class="srv-barra">
+        <button type="button" class="btn btn-primary srv-sm" (click)="nuevaOrdenEstudios()" data-guide="salud-pac-nueva-orden">
+          <i class="ph ph-plus"></i> Nueva orden de estudios</button>
+      </div>
+      <div class="srv-tabla-wrap">
+        <table class="srv-tabla">
+          <thead><tr><th>Folio</th><th>Estudios</th><th>Avance</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let o of estudios()" class="srv-fila" tabindex="0" (click)="abrirOrden(o)" (keydown.enter)="abrirOrden(o)"
+                [attr.data-guide-clave]="o.folio">
+              <td class="mono"><b>{{ o.folio }}</b></td>
+              <td>{{ o.items.length }}</td>
+              <td>{{ o.validados }} de {{ o.estudios }}</td>
+              <td>{{ o.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>{{ o.estado === 'ABIERTA' ? 'En proceso' : o.estado === 'LISTA' ? 'Para entregar' : o.estado === 'ENTREGADA' ? 'Entregada' : 'Cancelada' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="srv-vacio" *ngIf="!estudios().length"><p>Sin estudios todavía.</p></div>
+      </div>
+    </ng-container>
+
+    <!-- ===================================================== EXPEDIENTE -->
+    <ng-container *ngIf="pestana() === 'expediente'">
+      <div class="srv-barra" *ngIf="!editor()">
+        <button type="button" class="btn srv-sm" *ngFor="let d of documentosDisponibles" (click)="nuevo(d.tipo)"
+                [attr.data-guide]="'salud-doc-nuevo-' + d.tipo"><i class="ph {{ d.icono }}"></i> {{ d.nombre }}</button>
+      </div>
+
+      <app-salud-documento-editor *ngIf="editor() as ed" [pacienteId]="id()" [tipo]="ed.tipo" [documento]="ed.doc"
+                                  (cerrar)="editor.set(null); cargar()" (guardado)="alGuardar($event)"></app-salud-documento-editor>
+
+      <div class="srv-tabs" *ngIf="(exp()?.documentos?.length ?? 0) > 3">
+        <button type="button" class="srv-tab" [class.activo]="filtro() === 'TODOS'" (click)="filtro.set('TODOS')">Todos</button>
+        <button type="button" class="srv-tab" *ngFor="let d of documentosDisponibles" [class.activo]="filtro() === d.tipo"
+                (click)="filtro.set(d.tipo)">{{ d.nombre }}</button>
+      </div>
+
+      <div class="sl-linea" data-guide="salud-linea">
+        <article class="sl-doc" *ngFor="let d of documentos(); trackBy: track" [class.sl-doc--borrador]="d.estado === 'BORRADOR'"
+                 [attr.data-guide-clave]="d.tipo" [attr.data-guide-estado]="d.estado">
+          <div class="sl-doc__cab">
+            <i class="ph {{ def(d.tipo).icono }}"></i>
+            <h3>{{ d.titulo || nombreDe(d.tipo) }}</h3>
+            <span class="srv-badge" [ngClass]="d.estado === 'FIRMADO' ? 'srv-badge--ok' : 'srv-badge--info'">
+              {{ d.estado === 'FIRMADO' ? 'Firmado' : 'Borrador' }}</span>
+            <span class="srv-hint">{{ d.created_at | date:'dd/MM/yyyy HH:mm' }} · {{ d.autor }}</span>
+            <div class="sl-doc__acciones">
+              <button type="button" class="btn srv-sm" *ngIf="d.estado === 'BORRADOR'" (click)="continuar(d)" data-guide="doc-continuar">Continuar</button>
+              <ng-container *ngIf="d.estado === 'FIRMADO'">
+                <button type="button" class="btn srv-sm" *ngIf="def(d.tipo).imprimible" (click)="imprimir(d)"><i class="ph ph-printer"></i></button>
+                <button type="button" class="btn srv-sm" (click)="adenda(d)" data-guide="doc-adenda">Adenda</button>
+              </ng-container>
+            </div>
+          </div>
+
+          <div class="sl-datos" *ngIf="signosDe(d).length">
+            <span *ngFor="let s of signosDe(d)">{{ s.texto }} <b>{{ s.valor }}</b></span>
+          </div>
+          <dl *ngIf="camposDe(d).length">
+            <ng-container *ngFor="let c of camposDe(d)"><dt>{{ c.texto }}</dt><dd>{{ c.valor }}</dd></ng-container>
+          </dl>
+          <ol class="m-0" *ngIf="d.contenido?.medicamentos?.length" style="font-size: var(--wx-text-sm)">
+            <li *ngFor="let m of d.contenido.medicamentos"><b>{{ m.medicamento }}</b> — {{ m.dosis }} {{ m.via }}, {{ m.frecuencia }}
+              <span *ngIf="m.duracion">por {{ m.duracion }}</span><span *ngIf="m.cantidad"> · surtir {{ m.cantidad }}</span></li>
+          </ol>
+          <div class="sl-dx" *ngIf="d.diagnosticos.length">
+            <span class="srv-badge" *ngFor="let x of d.diagnosticos" [ngClass]="x.principal ? 'srv-badge--info' : 'srv-badge--mute'">
+              <b *ngIf="x.cie10">{{ x.cie10 }}</b> {{ x.descripcion }}</span>
+          </div>
+          <div class="sl-adenda" *ngFor="let a of d.adendas">{{ a.texto }}<small>Adenda · {{ a.at | date:'dd/MM/yyyy HH:mm' }} · {{ a.autor }}</small></div>
+          <div class="sl-doc__pie" *ngIf="d.estado === 'FIRMADO'">
+            <span><i class="ph ph-seal-check"></i> Firmó {{ d.firmado_por }} el {{ d.firmado_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span class="mono" title="Huella SHA-256 del contenido firmado">{{ d.huella?.slice(0, 18) }}…</span>
+          </div>
+        </article>
+        <div class="srv-vacio" *ngIf="!documentos().length && !editor() && !cargando()">
+          <i class="ph ph-folder-open" style="font-size:2rem"></i><p>El expediente está vacío. Empieza con la historia clínica o una nota.</p>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ================================================== DENTAL -->
+    <!-- Diferidos: un consultorio médico nunca descarga el código dental. -->
+    @if (pestana() === 'odontograma') {
+      @defer { <app-salud-odontograma [customerId]="id()"></app-salud-odontograma> }
+      @loading (minimum 150ms) { <p class="srv-hint">Cargando odontograma…</p> }
+    }
+    @if (pestana() === 'planes') {
+      @defer { <app-salud-planes [customerId]="id()"></app-salud-planes> }
+      @loading (minimum 150ms) { <p class="srv-hint">Cargando planes…</p> }
+    }
+
+    <!-- ================================================== BITÁCORA -->
+    <div class="srv-tabla-wrap" *ngIf="pestana() === 'bitacora'">
+      <table class="srv-tabla" data-guide="salud-bitacora">
+        <thead><tr><th>Fecha</th><th>Quién</th><th>Qué hizo</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let b of bitacora()" [attr.data-guide-estado]="b.accion">
+            <td class="mono">{{ b.at | date:'dd/MM/yyyy HH:mm:ss' }}</td><td>{{ b.usuario || '—' }}</td><td>{{ accion(b.accion) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</div>
+
+<app-salud-ficha-paciente *ngIf="editarFicha() && exp()" [customerId]="id()" [ficha]="ficha()"
+                          (cerrar)="cerrarFicha()" (guardada)="fichaGuardada()"></app-salud-ficha-paciente>
+
+<!-- ======================================================= IMPRESIÓN -->
+<div class="sl-imprimible sl-solo-impresion" *ngIf="imprimiendo() as d">
+  <!-- Encabezado: quién expide (copiado al firmar). La receta lo exige:
+       nombre, cédula, institución del título, especialidad y domicilio. -->
+  <header class="sl-membrete" *ngIf="d.firmante as fm">
+    <div class="sl-membrete__quien">
+      <b>{{ fm.nombre }}</b>
+      <span *ngIf="fm.especialidad">{{ fm.especialidad }}</span>
+      <span>Céd. Prof. {{ fm.cedula }}<ng-container *ngIf="fm.institucion"> · {{ fm.institucion }}</ng-container></span>
+      <span *ngIf="fm.cedula_especialidad">Céd. Esp. {{ fm.cedula_especialidad }}</span>
+    </div>
+    <div class="sl-membrete__donde">
+      <b *ngIf="fm.establecimiento">{{ fm.establecimiento }}</b>
+      <span *ngIf="fm.domicilio">{{ fm.domicilio }}</span>
+      <span *ngIf="fm.telefono">Tel. {{ fm.telefono }}</span>
+    </div>
+  </header>
+  <h2>{{ nombreDe(d.tipo) }}</h2>
+  <p><b>Paciente:</b> {{ ficha()?.nombre }} · <b>Edad:</b> {{ edad() ?? '—' }} · <b>Fecha:</b> {{ d.firmado_at | date:'dd/MM/yyyy' }}</p>
+  <p *ngIf="ficha()?.alergias"><b>Alergias:</b> {{ ficha()?.alergias }}</p>
+  <ol *ngIf="d.contenido?.medicamentos?.length">
+    <li *ngFor="let m of d.contenido.medicamentos"><b>{{ m.medicamento }}</b> — {{ m.dosis }} {{ m.via }}, {{ m.frecuencia }}
+      <span *ngIf="m.duracion">por {{ m.duracion }}</span><span *ngIf="m.cantidad"> · surtir {{ m.cantidad }}</span></li>
+  </ol>
+  <dl><ng-container *ngFor="let c of camposDe(d)"><dt><b>{{ c.texto }}</b></dt><dd>{{ c.valor }}</dd></ng-container></dl>
+  <p *ngIf="d.diagnosticos.length"><b>Diagnóstico:</b>
+    <span *ngFor="let x of d.diagnosticos; let u = last">{{ x.cie10 }} {{ x.descripcion }}{{ u ? '' : '; ' }}</span></p>
+  <p style="margin-top: 40mm">______________________________<br>{{ d.firmante?.nombre || d.firmado_por }}
+    <ng-container *ngIf="d.firmante?.cedula"><br>Céd. Prof. {{ d.firmante?.cedula }}</ng-container></p>
+  <p class="sl-huella" *ngIf="d.huella">Huella {{ d.huella }}</p>
+</div>

@@ -37,6 +37,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_service_save
     @clave_prod_serv        NVARCHAR(8) = NULL,
     @clave_unidad           NVARCHAR(5) = NULL,
     @tasa_iva               DECIMAL(5, 4) = NULL,
+    @iva_exento             BIT = NULL,   -- 0088: honorarios médicos y dentales
     @duration_minutes       INT = 30,
     @requires_professional  BIT = 1,
     @default_commission_pct DECIMAL(5, 2) = NULL,
@@ -97,7 +98,7 @@ BEGIN
 
         INSERT INTO dbo.products
             (part_number, nombre, price, stock, active, category_id, brand_id, cost,
-             clave_prod_serv, clave_unidad, objeto_impuesto, tasa_iva,
+             clave_prod_serv, clave_unidad, objeto_impuesto, tasa_iva, iva_exento,
              inventory_mode, sellable, base_uom, allow_decimal_qty)
         VALUES
             (@part_number, @nombre, @price, 0, 1,
@@ -105,6 +106,7 @@ BEGIN
              ISNULL(@clave_prod_serv, '80111600'),   -- servicios, clave generica del SAT
              ISNULL(@clave_unidad, 'E48'),           -- unidad de servicio
              '02', ISNULL(@tasa_iva, 0.16),
+             CASE WHEN ISNULL(@tasa_iva, 0.16) = 0 THEN ISNULL(@iva_exento, 0) ELSE 0 END,
              'NONE', 1, 'pza', 0);
 
         SET @product_id = SCOPE_IDENTITY();
@@ -137,6 +139,7 @@ BEGIN
                clave_prod_serv = ISNULL(@clave_prod_serv, clave_prod_serv),
                clave_unidad = ISNULL(@clave_unidad, clave_unidad),
                tasa_iva = ISNULL(@tasa_iva, tasa_iva),
+               iva_exento = CASE WHEN ISNULL(@tasa_iva, tasa_iva) <> 0 THEN 0 ELSE ISNULL(@iva_exento, iva_exento) END,
                part_number = ISNULL(NULLIF(LTRIM(RTRIM(@part_number)), ''), part_number),
                /* Un servicio no descuenta existencias, venga de donde venga. */
                inventory_mode = 'NONE',

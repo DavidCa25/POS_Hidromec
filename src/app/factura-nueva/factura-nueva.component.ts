@@ -12,6 +12,8 @@ export interface ConceptoFactura {
   claveUnidad?: string | null;
   taxObject?: string | null;
   taxRate?: number | null;
+  /** 0088: con tasa 0, exento (TipoFactor «Exento») y no tasa 0%. */
+  taxExempt?: boolean;
   /**
    * IEPS e impuestos locales de la venta (0083/0085), por PIEZA. Solo se usa
    * si el concepto no se editó (precio y cantidad como se vendieron).
@@ -132,7 +134,9 @@ export class FacturaNueva implements OnInit {
     try {
       const resp = await this.api.getSaleByFolio(Number(this.saleId));
       const details: any[] = resp?.success ? (resp.data?.details ?? resp.data?.detail ?? resp.data?.rows ?? []) : [];
-      if (!details.some((d) => desgloseDeVenta(d))) return;
+      /* Se rehacen los conceptos desde la venta si alguno trae desglose o es
+         exento (0088): el carrito no sabe ninguna de las dos cosas. */
+      if (!details.some((d) => desgloseDeVenta(d) || d.iva_exento)) return;
       this.conceptos = details.map((d: any) => ({
         description: String(d.product_name ?? d.productName ?? d.nombre ?? d.name ?? `Producto #${d.product_id}`),
         quantity: Number(d.quantity ?? 1),
@@ -141,6 +145,7 @@ export class FacturaNueva implements OnInit {
         claveUnidad: d.clave_unidad ?? null,
         taxObject: d.objeto_impuesto ?? '02',
         taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16,
+        taxExempt: !!d.iva_exento,
         desglose: desgloseDeVenta(d),
       }));
     } catch { /* sin la venta: los conceptos que llegaron */ }
@@ -233,6 +238,7 @@ export class FacturaNueva implements OnInit {
         claveUnidad: d.clave_unidad ?? null,
         taxObject: d.objeto_impuesto ?? '02',
         taxRate: d.tasa_iva != null ? Number(d.tasa_iva) : 0.16,
+        taxExempt: !!d.iva_exento,
         desglose: desgloseDeVenta(d),
       }));
 
@@ -377,6 +383,8 @@ export class FacturaNueva implements OnInit {
             claveUnidad: c.claveUnidad || null,
             taxObject: c.taxObject || '02',
             taxRate: this.tasaConcepto(c),
+            /* Una nube que no lo conoce lo ignora y timbra tasa 0 como antes. */
+            ...(c.taxExempt && this.tasaConcepto(c) === 0 ? { taxExempt: true } : {}),
             discount: 0,
             ...(desglose ? { desglose } : {}),
           };

@@ -26,6 +26,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_add_product]
     @clave_unidad NVARCHAR(5) = NULL,
     @objeto_impuesto NVARCHAR(2) = '02',
     @tasa_iva DECIMAL(5,4) = 0.16,
+    @iva_exento BIT = 0,              -- 0088: exento, distinto de tasa 0
     @inventory_mode NVARCHAR(10) = 'DIRECT',
     @sellable BIT = 1,
     @base_uom NVARCHAR(10) = 'pza',
@@ -71,7 +72,7 @@ BEGIN
 
     INSERT INTO products (
         part_number, nombre, price, stock, category_id, brand_id,
-        bar_code, clave_prod_serv, clave_unidad, objeto_impuesto, tasa_iva,
+        bar_code, clave_prod_serv, clave_unidad, objeto_impuesto, tasa_iva, iva_exento,
         inventory_mode, sellable, base_uom, allow_decimal_qty, cost,
         active, registrated_date
     )
@@ -87,6 +88,7 @@ BEGIN
         @clave_unidad,
         ISNULL(@objeto_impuesto, '02'),
         ISNULL(@tasa_iva, 0.16),
+        CASE WHEN ISNULL(@tasa_iva, 0.16) = 0 THEN ISNULL(@iva_exento, 0) ELSE 0 END,
         @inventory_mode,
         ISNULL(@sellable, 1),
         @base_uom,

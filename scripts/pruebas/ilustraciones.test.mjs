@@ -205,3 +205,16 @@ test('frutería: cada producto tiene su dibujo', async () => {
   }
   assert.deepEqual(mal, []);
 });
+
+/* Papelería: escolar, oficina, manualidades, fiesta y servicios de mostrador
+   (copias, enmicado, engargolado). Catálogo en scripts/giros/papeleria.mjs. */
+test('papelería: cada producto tiene su dibujo', async () => {
+  const { PAPELERIA } = await import('../giros/papeleria.mjs');
+  assert.ok(PAPELERIA.length >= 200, `hay ${PAPELERIA.length}`);
+  const mal = [];
+  for (const [nombre, categoria, , , esperada] of PAPELERIA) {
+    const f = formaDe({ nombre, categoria, giro: 'RETAIL', inventario: 'DIRECT' });
+    if (f === 'caja_generica' || (esperada && f !== esperada)) mal.push(`${nombre}: ${f}${esperada ? ` (esperaba ${esperada})` : ''}`);
+  }
+  assert.deepEqual(mal, []);
+});

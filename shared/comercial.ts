@@ -12,6 +12,9 @@ export interface Canal {
     name: string;
     active: boolean;
     inheritBase: boolean;
+    /** Lista de precios de clientes (mayoreo): solo se cotiza para un cliente
+     *  que la tiene asignada. Lo comprueba quien cotiza, no el motor. */
+    customersOnly?: boolean;
 }
 export interface Horario {
     from: string;
@@ -94,6 +97,15 @@ export interface PartidaComercial {
         id: string;
         instance: string;
         group: string;
+    };
+    /** Presentación de venta (el cartón de 24). `quantity` sigue en piezas,
+     *  múltiplo de `qty`; cada paquete cuesta `price` y ninguna otra oferta
+     *  toca esas piezas. El precio lo pone quien cotiza, desde la base. */
+    pack?: {
+        id: string;
+        name: string;
+        qty: number;
+        price: string;
     };
 }
 export interface ContextoComercial {
@@ -185,6 +197,8 @@ export function validarPolitica(p: PoliticaComercial): void {
         ids.add(x.id);
     } };
     unique(p.channels);
+    if (p.channels.some(c => c.customersOnly !== undefined && (typeof c.customersOnly !== 'boolean' || (c.id === 'LOCAL' && c.customersOnly))))
+        throw new Error('Mostrador es para cualquier cliente.');
     unique(p.promotions);
     unique(p.combos);
     if (!p.channels.some(c => c.id === 'LOCAL' && c.active && c.inheritBase))
@@ -308,6 +322,7 @@ function cotizarCon(p: PoliticaComercial, products: ProductoComercial[], cart: P
         extras: bigint;
         price: bigint;
         rule: string | null;
+        ruleName?: string;
         combo: string | null;
         locked: boolean;
         triggered: boolean;
@@ -324,9 +339,29 @@ function cotizarCon(p: PoliticaComercial, products: ProductoComercial[], cart: P
         if (qty <= 0n)
             throw new Error('Cantidad inválida.');
         const price = p.prices.find(x => x.channel === ctx.channel && x.product === prod.id && x.variant === l.variant) ?? p.prices.find(x => x.channel === ctx.channel && x.product === prod.id && !x.variant);
-        if (!price && !channel.inheritBase)
+        if (!price && !channel.inheritBase && !l.pack)
             throw new Error('Falta configurar el precio de este producto en el canal.');
         const base = centavos(price?.price ?? prod.price), extras = signedCentavos(l.extras);
+        if (l.pack) {
+            // El cartón: su precio se reparte entre sus piezas y el centavo que
+            // no divide exacto queda en la última de cada cartón.
+            const k = l.pack.qty, total = centavos(l.pack.price);
+            if (!entero(k, 2, 1000) || !l.pack.id || !l.pack.name?.trim() || l.combo || extras !== 0n)
+                throw new Error('Presentación inválida.');
+            if (qty % (BigInt(k) * 100n) !== 0n)
+                throw new Error('La presentación se vende por paquetes completos.');
+            const packs = qty / (BigInt(k) * 100n), per = total / BigInt(k), last = total - per * BigInt(k - 1);
+            // Más caro que suelto: sin «descuento» negativo, la base es lo cobrado.
+            const caro = base * BigInt(k) < total;
+            const unit = (q: bigint, price: bigint) => units.push({ src: l, p: prod, q, base: caro ? price : base, extras: 0n, price, rule: 'pres-' + l.pack!.id, ruleName: l.pack!.name, combo: null, locked: true, triggered: false });
+            if (per === last)
+                unit(qty, per);
+            else {
+                unit(packs * BigInt(k - 1) * 100n, per);
+                unit(packs * 100n, last);
+            }
+            continue;
+        }
         if (base + extras < 0n)
             throw Error('El precio con opciones no puede ser negativo.');
         const needsUnits = !!l.combo || autos.some(c => c.groups.some(g => coincide(g.selector, prod, l.variant))) || active.some(r => (r.kind === 'BUY_PAY' || r.kind === 'ADDON' || r.kind === 'VOLUME' || r.maxApplications !== undefined) && (coincide(r.selector, prod, l.variant) || (r.trigger && coincide(r.trigger, prod, l.variant))));
@@ -477,5 +512,5 @@ function cotizarCon(p: PoliticaComercial, products: ProductoComercial[], cart: P
         }
     }
     const gross = redondear(units.reduce((a, u) => a + (u.base + u.extras) * u.q, 0n), 100n), total = redondear(units.reduce((a, u) => a + u.price * u.q, 0n), 100n);
-    return { version: p.version, channel: ctx.channel, channelName: channel.name, context: { ...ctx, audiences: [...(ctx.audiences ?? [])] }, gross: dinero(gross), discount: dinero(gross - total), total: dinero(total), lines: units.map(u => ({ source: u.src.key, product: u.p.id, quantity: dinero(u.q), unitPrice: dinero(u.price), basePrice: dinero(u.base), extras: dinero(u.extras), discount: dinero((u.base + u.extras - u.price) * u.q / 100n), rule: u.rule, ruleName: p.promotions.find(r => r.id === u.rule)?.name ?? p.combos.find(c => c.id === u.rule)?.name, combo: u.combo })) };
+    return { version: p.version, channel: ctx.channel, channelName: channel.name, context: { ...ctx, audiences: [...(ctx.audiences ?? [])] }, gross: dinero(gross), discount: dinero(gross - total), total: dinero(total), lines: units.map(u => ({ source: u.src.key, product: u.p.id, quantity: dinero(u.q), unitPrice: dinero(u.price), basePrice: dinero(u.base), extras: dinero(u.extras), discount: dinero((u.base + u.extras - u.price) * u.q / 100n), rule: u.rule, ruleName: u.ruleName ?? p.promotions.find(r => r.id === u.rule)?.name ?? p.combos.find(c => c.id === u.rule)?.name, combo: u.combo })) };
 }

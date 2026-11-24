@@ -197,6 +197,45 @@
       }
     },
     {
+      "id": "SALUD",
+      "nombre": "Consultorio de salud",
+      "ejemplos": "Consultorio médico, dental, fisioterapia, nutrición",
+      "icono": "ph-first-aid-kit",
+      "orden": 5,
+      "modulos": ["servicios"],
+      "inicio": "agenda",
+      "agenda": true,
+      "autorizacion": "DISCRETA",
+      "activo": {
+        "usa": "NO",
+        "requerido": false,
+        "tipo": null,
+        "tipos": [],
+        "singular": "Ficha",
+        "plural": "Fichas",
+        "identificador": "Referencia",
+        "ejemplo": "",
+        "ejemploIdentificador": ""
+      },
+      "material": {
+        "singular": "Insumo",
+        "plural": "Medicamentos e insumos",
+        "agregar": "+ Medicamento o insumo"
+      },
+      "textos": {
+        "reportado": "Motivo de la consulta",
+        "reportadoEjemplo": "Revisión general, dolor de muela del lado izquierdo…",
+        "reportadoCorto": "Motivo",
+        "diagnostico": "Notas administrativas",
+        "diagnosticoCorto": "Notas",
+        "cambiarActivo": "",
+        "indicarActivo": "",
+        "elegirActivo": "",
+        "registrarActivo": "",
+        "ordenVacia": "Añade la consulta o los procedimientos y, si aplica, los medicamentos e insumos."
+      }
+    },
+    {
       "id": "OTRO",
       "nombre": "Otro",
       "ejemplos": "Cualquier negocio que cobre por trabajo",

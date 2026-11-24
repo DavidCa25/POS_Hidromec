@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "FARMACIA",
+      "nombre": "Farmacia",
+      "ejemplos": "Farmacia, botica, farmacia de genéricos",
+      "icono": "ph-pill",
+      "orden": 1,
+      "farmacia": true,
+      "clinica": false,
+      "dental": false,
+      "estudios": false,
+      "inicio": "farmacia"
+    },
+    {
+      "id": "CONSULTORIO",
+      "nombre": "Consultorio médico",
+      "ejemplos": "Medicina general, pediatría, ginecología, especialidades",
+      "icono": "ph-stethoscope",
+      "orden": 2,
+      "farmacia": false,
+      "clinica": true,
+      "dental": false,
+      "estudios": false,
+      "inicio": "pacientes"
+    },
+    {
+      "id": "DENTAL",
+      "nombre": "Consultorio dental",
+      "ejemplos": "Odontología general, ortodoncia, endodoncia",
+      "icono": "ph-tooth",
+      "orden": 3,
+      "farmacia": false,
+      "clinica": true,
+      "dental": true,
+      "estudios": false,
+      "inicio": "pacientes"
+    },
+    {
+      "id": "FARMACIA_CONSULTORIO",
+      "nombre": "Farmacia con consultorio",
+      "ejemplos": "La farmacia que también da consulta",
+      "icono": "ph-first-aid-kit",
+      "orden": 4,
+      "farmacia": true,
+      "clinica": true,
+      "dental": false,
+      "estudios": false,
+      "inicio": "farmacia"
+    },
+    {
+      "id": "LABORATORIO",
+      "nombre": "Laboratorio clínico",
+      "ejemplos": "Análisis clínicos, toma de muestras",
+      "icono": "ph-flask",
+      "orden": 5,
+      "farmacia": false,
+      "clinica": false,
+      "dental": false,
+      "estudios": true,
+      "inicio": "estudios"
+    },
+    {
+      "id": "IMAGEN",
+      "nombre": "Rayos X e imagen",
+      "ejemplos": "Rayos X, mastografía, ultrasonido, densitometría",
+      "icono": "ph-scan",
+      "orden": 6,
+      "farmacia": false,
+      "clinica": false,
+      "dental": false,
+      "estudios": true,
+      "inicio": "estudios"
+    }
+  ]
+}

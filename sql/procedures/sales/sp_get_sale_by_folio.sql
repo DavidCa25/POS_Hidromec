@@ -49,6 +49,7 @@ BEGIN
     SELECT @sale_id sale_id,s.product_id,p.nombre,s.quantity,CAST(s.line_total/s.quantity AS DECIMAL(10,2)) unitary_price,s.line_total,
       ISNULL(r.qty,0) refunded_qty,s.quantity-ISNULL(r.qty,0) remaining_qty,NULL sale_detail_id,s.unit_cost,s.inventory_mode,
       N'Oferta comercial: devolución proporcional al importe pagado' note,p.clave_prod_serv,p.clave_unidad,p.objeto_impuesto,p.tasa_iva,
+      CAST(CASE WHEN p.tasa_iva=0 AND p.iva_exento=1 THEN 1 ELSE 0 END AS BIT) iva_exento,
       N'Oferta comercial' modifiers,
       /* 0085: la foto de IEPS y locales del producto en esta venta (NULL: solo IVA). */
       (SELECT CASE WHEN COUNT(dd.base_neta) = COUNT(*) THEN SUM(dd.base_neta) END FROM dbo.sale_detail dd
@@ -86,6 +87,7 @@ BEGIN
     p.clave_unidad,
     p.objeto_impuesto,
     p.tasa_iva,
+    CAST(CASE WHEN p.tasa_iva = 0 AND p.iva_exento = 1 THEN 1 ELSE 0 END AS BIT) AS iva_exento,
     /* 0085: la foto de IEPS y locales del renglón (NULL: solo IVA). */
     d.base_neta,
     (SELECT x.nombre, x.clase, x.factor, x.tasa, x.cuota, x.cantidad unidades, x.importe

@@ -141,3 +141,30 @@ test('granel: el importe se redondea a medio peso y la cantidad no cambia', asyn
     if (esperado > 0) assert.equal(cobro, esperado, `${q / 100} kg a $${p}`);
   }
 });
+
+/* 0089 · Presentación de venta: el cartón de 24 cuesta su precio, en piezas. */
+test('cartón: precio del paquete repartido en sus piezas, sin otras ofertas encima', () => {
+  const chela = [{ id: 'chela', price: '18.00', category: 'cerveza' }];
+  const carton = (q, price = '380.00') => ({ key: 'c', product: 'chela', quantity: q, extras: '0.00', pack: { id: '7', name: 'Cartón 24', qty: 24, price } });
+  const q = cotizar(politicaVacia(), chela, [carton('24')], ctx);
+  assert.equal(q.total, '380.00');
+  assert.equal(q.gross, '432.00', 'el bruto es a precio de pieza: el ahorro se ve como descuento');
+  assert.deepEqual(q.lines.map(l => [l.quantity, l.unitPrice]), [['23.00', '15.83'], ['1.00', '15.91']]);
+  assert.ok(q.lines.every(l => l.rule === 'pres-7' && l.ruleName === 'Cartón 24'));
+  assert.equal(cotizar(politicaVacia(), chela, [carton('72')], ctx).total, '1140.00', 'tres cartones');
+  assert.equal(cotizar(politicaVacia(), chela, [carton('24', '384.00')], ctx).lines.length, 1, 'si divide exacto, un renglón');
+  // Ninguna promoción toca las piezas del cartón; las sueltas sí la reciben.
+  const p = { ...politicaVacia(), promotions: [{ id: 'x', name: 'Todo a 10', active: true, priority: 1, kind: 'PRICE', value: '10.00', selector: { products: ['chela'] } }] };
+  assert.equal(cotizar(p, chela, [carton('24'), { key: 's', product: 'chela', quantity: '2', extras: '0.00' }], ctx).total, '400.00');
+  assert.throws(() => cotizar(politicaVacia(), chela, [carton('30')], ctx), /paquetes completos/);
+  // Más caro que sueltas: sin descuento negativo.
+  const caro = cotizar(politicaVacia(), chela, [carton('24', '500.00')], ctx);
+  assert.equal(caro.total, '500.00'); assert.equal(caro.discount, '0.00');
+});
+
+test('lista de clientes: Mostrador no puede ser solo para clientes', () => {
+  const p = politicaVacia(); p.channels.push({ id: 'MAYOREO', name: 'Mayoreo', active: true, inheritBase: true, customersOnly: true });
+  assert.equal(cotizar(p, products, [line('dona')], { ...ctx, channel: 'MAYOREO' }).total, '25.00');
+  p.channels[0].customersOnly = true;
+  assert.throws(() => cotizar(p, products, [line('dona')], ctx), /Mostrador es para cualquier cliente/);
+});

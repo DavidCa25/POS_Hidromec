@@ -56,6 +56,7 @@ export class CapabilityService {
     loyalty: 'loyalty',
     hospitality: 'hospitality',
     servicios: 'servicios',
+    salud: 'salud',
     mesas: 'mesas',
     comandas: 'comandas',
     asistencia: 'asistencia',
@@ -84,6 +85,9 @@ export class CapabilityService {
          cafeteria con salon de belleza es Hospitality + Servicios. Los
          perfiles se excluyen; los modulos se suman. */
       servicios: this.modulos().has('servicios') && lic('services'),
+      /* 0087: se suma como Servicios. Una farmacia es Retail + Salud; un
+         consultorio, Salud + Servicios (la agenda y el cobro de la consulta). */
+      salud: this.modulos().has('salud') && lic('health'),
       /* Mesas y comandas cuelgan de Hospitality: si alguien apaga Hospitality,
          el salon y la cocina se apagan con el aunque su fila siga encendida,
          y vuelven tal cual al encenderlo. */
@@ -106,6 +110,7 @@ export class CapabilityService {
   get touchPos(): boolean { return this.capabilities().touchPos; }
   get loyalty(): boolean { return this.capabilities().loyalty; }
   get servicios(): boolean { return this.capabilities().servicios; }
+  get salud(): boolean { return this.capabilities().salud; }
   get mesas(): boolean { return this.capabilities().mesas; }
   get comandas(): boolean { return this.capabilities().comandas; }
   get asistencia(): boolean { return this.capabilities().asistencia; }

@@ -268,7 +268,12 @@ function registrar({ ipcMain, sql, poolPromise, nativeImage }) {
       .input('name', sql.NVarChar(60), payload.name)
       .input('factor_to_base', sql.Decimal(14, 4), payload.factorToBase)
       .input('is_default', sql.Bit, bit(payload.isDefault, false))
-      .input('active', sql.Bit, bit(payload.active, true)))));
+      .input('active', sql.Bit, bit(payload.active, true))
+      /* 0089: la presentación también se vende (código y precio del cartón).
+         Sin `venta` en el payload (Compras) esos datos no se tocan. */
+      .input('con_venta', sql.Bit, payload.venta ? 1 : 0)
+      .input('bar_code', sql.NVarChar(50), payload.venta?.barCode || null)
+      .input('sale_price', sql.Decimal(10, 2), payload.venta?.salePrice ?? null))));
 
   ipcMain.handle('presentations:delete', sesion.proteger('presentations:delete', async (_e, payload = {}) =>
     ejecutar(await pool(), 'sp_delete_product_presentation', (r) => r.input('id', sql.Int, payload.id))));

@@ -114,6 +114,7 @@
     "db:test-servicios": "node scripts/db/pruebas/servicios.mjs",
     "test:servicios": "node scripts/pruebas/servicios-modulo.mjs",
     "e2e:servicios": "npm run build && node e2e/preparar-bases.mjs && playwright test e2e/servicios.spec.js",
+    "e2e:salud": "npm run build && node e2e/preparar-bases.mjs salud && playwright test e2e/salud.spec.js",
     "db:test-giros": "node scripts/db/pruebas/servicios-giros.mjs",
     "test:giros": "node scripts/pruebas/giros-servicios.mjs",
     "e2e:ilustraciones": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/ilustraciones.spec.js",
@@ -126,6 +127,7 @@
     "test:licencia-integracion": "node scripts/pruebas/correr-con-electron.mjs scripts/pruebas/licencia-integracion.mjs",
     "test:comercial": "node --test scripts/pruebas/comercial.test.mjs",
     "db:test-comercial": "node scripts/db/pruebas/comercial.mjs",
+    "db:test-mayoreo": "node scripts/db/pruebas/mayoreo.mjs",
     "dist:addon": "node scripts/dist-addon.mjs",
     "test:addons": "node scripts/pruebas/addons.mjs",
     "test:multisucursal": "node scripts/pruebas/multisucursal-unidad.mjs",
@@ -158,7 +160,9 @@
     "e2e:rendimiento": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/rendimiento.spec.js",
     "e2e:precio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/precio-actualizado.spec.js",
     "e2e:granel": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/granel-redondeo.spec.js",
-    "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js"
+    "e2e:mayoreo": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/mayoreo.spec.js",
+    "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js",
+    "e2e:papeleria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/papeleria.spec.js"
   },
   "prettier": {
     "overrides": [

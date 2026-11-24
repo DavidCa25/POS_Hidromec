@@ -387,20 +387,37 @@
              La tabla, sus procedimientos y la conversion en la compra existian
              desde el dominio Hospitality; lo que no habia era donde definirlas. -->
         <div class="grid-col-span-3 prod-present" *ngIf="gestionaPresentaciones">
-          <label>Presentaciones de compra <span class="prod-imagen__opt">(opcional)</span></label>
-          <p class="prod-ayuda">Cómo compras este producto. Al registrar una compra de 5 «Caja 1 L», el inventario sube 5000 ml.</p>
+          <label>Presentaciones <span class="prod-imagen__opt">(opcional)</span></label>
+          <p class="prod-ayuda">Cómo compras y vendes este producto por bulto. Al registrar una compra de 5 «Caja 1 L», el inventario sube 5000 ml.
+            Con precio de venta, la caja vende el cartón completo: escanea su código y cobra el precio del cartón; el inventario baja en piezas.</p>
 
-          <div class="prod-present__fila" *ngFor="let p of presentaciones; let i = index">
-            <input type="text" class="prod-present__nombre" placeholder="Ej. Caja 1 L"
-                   [(ngModel)]="p.name" [name]="'presNombre' + i">
-            <input type="number" min="0" step="0.01" class="prod-present__factor" placeholder="1000"
-                   [(ngModel)]="p.factorToBase" [name]="'presFactor' + i">
-            <span class="prod-present__uom">{{ form.baseUom }}</span>
-            <span class="prod-present__eq">{{ equivalencia(p) }}</span>
-            <button type="button" class="prod-present__x" (click)="quitarPresentacion(i)"
-                    aria-label="Quitar presentación">
-              <i class="ph ph-x" aria-hidden="true"></i>
-            </button>
+          <div class="prod-present__item" *ngFor="let p of presentaciones; let i = index" [attr.data-guide]="'inventario-presentacion-' + i">
+            <div class="prod-present__fila">
+              <input type="text" class="prod-present__nombre" placeholder="Ej. Cartón 24"
+                     [(ngModel)]="p.name" [name]="'presNombre' + i" aria-label="Nombre de la presentación">
+              <input type="number" min="0" step="0.01" class="prod-present__factor" placeholder="24"
+                     [(ngModel)]="p.factorToBase" [name]="'presFactor' + i" aria-label="Cuánto trae">
+              <span class="prod-present__uom">{{ form.baseUom }}</span>
+              <span class="prod-present__eq">{{ equivalencia(p) }}</span>
+              <button type="button" class="prod-present__x" (click)="quitarPresentacion(i)"
+                      aria-label="Quitar presentación">
+                <i class="ph ph-x" aria-hidden="true"></i>
+              </button>
+            </div>
+            <!-- 0089 · Venta por bulto: código impreso en el cartón y su precio. Sin precio, solo se compra. -->
+            <div class="prod-present__fila prod-present__venta">
+              <i class="ph ph-barcode prod-present__ico" aria-hidden="true"></i>
+              <input type="text" class="prod-present__codigo" placeholder="Código del cartón (opcional)"
+                     [(ngModel)]="p.barCode" [name]="'presCodigo' + i" aria-label="Código de barras de la presentación"
+                     data-guide="inventario-presentacion-codigo">
+              <div class="prod-present__precio">
+                <span aria-hidden="true">$</span>
+                <input type="number" min="0" step="0.01" placeholder="Precio de venta"
+                       [(ngModel)]="p.salePrice" [name]="'presPrecio' + i" aria-label="Precio de venta de la presentación"
+                       data-guide="inventario-presentacion-precio">
+              </div>
+              <span class="prod-present__eq">{{ piezaDelCarton(p) }}</span>
+            </div>
           </div>
 
           <button type="button" class="btn-outline btn-sm" (click)="agregarPresentacion()">
@@ -572,10 +589,10 @@
               </button>
               <div class="sat-dd-menu" *ngIf="tasaAbierta">
                 <button type="button" class="sat-dd-opt" *ngFor="let t of tasaIvaOpts"
-                        [class.sel]="t.value === form.tasaIva"
-                        (click)="form.tasaIva = t.value; tasaAbierta = false">
+                        [class.sel]="esTasa(t)"
+                        (click)="elegirTasa(t)">
                   <span>{{ t.label }}</span>
-                  <i class="ph ph-check" *ngIf="t.value === form.tasaIva"></i>
+                  <i class="ph ph-check" *ngIf="esTasa(t)"></i>
                 </button>
               </div>
             </div>

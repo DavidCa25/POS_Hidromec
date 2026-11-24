@@ -119,6 +119,7 @@ export class ClientesVentaService {
       uso_cfdi: row.uso_cfdi,
       phone: row.phone,
       email: row.email,
+      price_channel: row.price_channel ?? null,
     };
   }
 }

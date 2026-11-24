@@ -27,7 +27,7 @@ interface FilaVer { clave: string; nombre: string; icono: string; ayuda?: string
 interface Ajustes { hacer: GrupoHacer[]; ver: FilaVer[]; ajustables: string[]; }
 
 /** Que significa cada paquete dicho como lo diria quien lleva el negocio. */
-interface Acceso { paquete: string; titulo: string; detalle: string; icono: string; servicios?: boolean; }
+interface Acceso { paquete: string; titulo: string; detalle: string; icono: string; servicios?: boolean; salud?: boolean; }
 
 /**
  * Los paquetes, en palabras. QUE paquetes tiene cada rol NO se escribe
@@ -60,6 +60,12 @@ const ACCESOS: Acceso[] = [
     detalle: 'El trabajo diario de servicios: órdenes y citas.' },
   { paquete: PAQUETES.SERVICIOS_ADMINISTRAR, titulo: 'Organizar servicios', icono: 'ph-sliders', servicios: true,
     detalle: 'Catálogo de servicios, profesionales, horarios y comisiones.' },
+  /* 0087: solo se enseñan con Salud encendido. El expediente no lo trae ningún
+     puesto: se le da a cada médico o dentista. */
+  { paquete: PAQUETES.SALUD_EXPEDIENTE, titulo: 'Expediente clínico', icono: 'ph-stethoscope', salud: true,
+    detalle: 'Ver y escribir el expediente de los pacientes: notas, recetas, odontograma y planes de tratamiento.' },
+  { paquete: PAQUETES.SALUD_FARMACIA, titulo: 'Farmacia', icono: 'ph-pill', salud: true,
+    detalle: 'Ficha sanitaria de los medicamentos, lotes, caducidades y libro de control.' },
   { paquete: PAQUETES.CONFIGURACION_ADMINISTRAR, titulo: 'Administrar el negocio', icono: 'ph-gear',
     detalle: 'Usuarios, aplicaciones, MultiCaja, respaldos y datos fiscales.' },
 ];
@@ -177,7 +183,7 @@ export class Usuarios implements OnInit, OnDestroy {
     const tiene = new Set(this.paquetesPorRol()[clave ?? ''] ?? []);
     // Los extras de la persona tambien son "puede": de la misma tabla.
     if (p) for (const x of this.permisosPersona()[p.id]?.extras ?? []) tiene.add(x);
-    const visibles = ACCESOS.filter(a => !a.servicios || this.caps.servicios);
+    const visibles = ACCESOS.filter(a => (!a.servicios || this.caps.servicios) && (!a.salud || this.caps.salud));
     return {
       puede: visibles.filter(a => tiene.has(a.paquete)),
       noPuede: visibles.filter(a => !tiene.has(a.paquete)),
@@ -195,7 +201,8 @@ export class Usuarios implements OnInit, OnDestroy {
     if (!info || info.todos) return null;
     const deRol = new Set(info.deRol);
     const visibles = this.otorgables().filter(o => !deRol.has(o.clave)
-      && (this.caps.servicios || !o.clave.startsWith('SERVICIOS_')));
+      && (this.caps.servicios || !o.clave.startsWith('SERVICIOS_'))
+      && (this.caps.salud || !o.clave.startsWith('SALUD_')));
     if (!visibles.length) return null;
     const tiene = new Set(info.extras);
     return visibles.map(o => ({ ...o, activo: tiene.has(o.clave) }));

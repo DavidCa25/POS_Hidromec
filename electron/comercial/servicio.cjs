@@ -75,6 +75,43 @@ async function cotizacion(pool, p, actor) {
         }
         input[i].extras = (Number(delta) / 100).toFixed(2);
     }
+    /* 0089 · PRESENTACIÓN DE VENTA (el cartón de 24): la caja dice cuál; el
+       precio, el contenido y que siga a la venta los dice la base. */
+    const presentaciones = [];
+    const pedidas = [...new Set(p.lines.map(l => Number(l.presentationId)).filter(n => Number.isInteger(n) && n > 0))];
+    if (pedidas.length) {
+        const sql = require('mssql/msnodesqlv8');
+        const filas = (await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(pedidas))
+            .query('SELECT id,product_id,name,factor_to_base,sale_price FROM dbo.product_presentations WHERE id IN (SELECT CAST([value] AS INT) FROM OPENJSON(@ids)) AND active=1 AND sale_price IS NOT NULL')).recordset;
+        for (let i = 0; i < input.length; i++) {
+            const pid = Number(p.lines[i].presentationId);
+            if (!pid)
+                continue;
+            const f = filas.find(x => x.id === pid);
+            if (!f || f.product_id !== Number(p.lines[i].productId))
+                throw Error('Esa presentación ya no se vende. Quítala de la cuenta y vuelve a escanearla.');
+            if ((p.lines[i].options ?? []).length)
+                throw Error('La presentación se vende sin opciones.');
+            input[i].pack = { id: String(f.id), name: f.name, qty: Number(f.factor_to_base), price: Number(f.sale_price).toFixed(2) };
+            if (!presentaciones.some(x => x.id === f.id))
+                presentaciones.push({ id: f.id, price: Number(f.sale_price) });
+        }
+    }
+    /* 0089 · LISTA DE PRECIOS DE CLIENTES: un canal «solo clientes» se cotiza
+       únicamente para el cliente que lo tiene asignado, y la venta queda atada
+       a ese cliente (sp_register_sale lo vuelve a comprobar). */
+    let priceCustomerId = null;
+    const canal = policy.channels.find(c => c.id === (p.channel ?? 'LOCAL'));
+    if (canal?.customersOnly) {
+        const cid = Number(p.priceCustomerId);
+        if (!Number.isInteger(cid) || cid <= 0)
+            throw Error(`${canal.name} es la lista de precios de algunos clientes: asigna el cliente a la cuenta.`);
+        const sql = require('mssql/msnodesqlv8');
+        const c = (await pool.request().input('id', sql.Int, cid).query('SELECT price_channel FROM dbo.customers WHERE id=@id AND active=1')).recordset[0];
+        if (!c || c.price_channel !== canal.id)
+            throw Error(`Ese cliente no tiene la lista de precios ${canal.name}.`);
+        priceCustomerId = cid;
+    }
     let coupon = null, pricedPolicy = policy, montoCupon = null;
     if (p.coupon) {
         if (p.channel && p.channel !== 'LOCAL')
@@ -204,7 +241,7 @@ async function cotizacion(pool, p, actor) {
             let ajuste = 0;
             for (const l of result.lines) {
                 const s = fuente(l);
-                if (!s || !g.includes(Number(s.productId)) || (s.options ?? []).length) continue;
+                if (!s || !g.includes(Number(s.productId)) || (s.options ?? []).length || String(l.rule ?? '').startsWith('pres-')) continue;
                 const antes = Math.round(c(l.quantity) * c(l.unitPrice) / 100);
                 const u = precioGranel(Number(l.quantity), Number(l.unitPrice));
                 l.unitPrice = u.toFixed(2);
@@ -216,8 +253,8 @@ async function cotizacion(pool, p, actor) {
             }
         }
     }
-    const lines = result.lines.map((l, i) => { const source = p.lines[input.findIndex(x => x.key === l.source)]; return { line_no: i + 1, productId: Number(source.productId), qty: Number(l.quantity), unitPrice: Number(l.unitPrice), note: source.note ?? null, options: (source.options ?? []).map(o => ({ optionId: Number(o.optionId), quantity: Number(o.quantity ?? 1) })), audit: l }; });
-    const id = randomUUID(), payload = { ...result, orderReference: p.orderReference ? String(p.orderReference).trim().slice(0, 100) : null, coupon, membership, points, stamps, loyaltyCustomerId: points || stamps ? Number(p.customerId) : null, lines, optionPrices: options.filter(o => p.lines.some(l => l.options?.some(x => Number(x.optionId) === o.id))).map(o => ({ id: o.id, price: Number(o.price_delta) })), catalog: p.lines.map(l => ({ id: Number(l.productId), price: Number(products.find(x => x.uuid === ids.find(y => y.id === Number(l.productId))?.uuid).price) })) };
+    const lines = result.lines.map((l, i) => { const source = p.lines[input.findIndex(x => x.key === l.source)]; return { line_no: i + 1, productId: Number(source.productId), qty: Number(l.quantity), unitPrice: Number(l.unitPrice), note: source.note ?? (String(l.rule ?? '').startsWith('pres-') ? l.ruleName : null), options: (source.options ?? []).map(o => ({ optionId: Number(o.optionId), quantity: Number(o.quantity ?? 1) })), audit: l }; });
+    const id = randomUUID(), payload = { ...result, orderReference: p.orderReference ? String(p.orderReference).trim().slice(0, 100) : null, coupon, membership, points, stamps, loyaltyCustomerId: points || stamps ? Number(p.customerId) : null, priceCustomerId, presentations: presentaciones, lines, optionPrices: options.filter(o => p.lines.some(l => l.options?.some(x => Number(x.optionId) === o.id))).map(o => ({ id: o.id, price: Number(o.price_delta) })), catalog: p.lines.map(l => ({ id: Number(l.productId), price: Number(products.find(x => x.uuid === ids.find(y => y.id === Number(l.productId))?.uuid).price) })) };
     const req = pool.request();
     const sql = require('mssql/msnodesqlv8');
     await req.input('id', sql.UniqueIdentifier, id).input('actor', sql.Int, actor).input('register', sql.Int, p.registerId ?? null).input('version', sql.Int, policy.version).input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))

@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { Login } from '../login/login';
 import { experienciaDeVenta } from './experiencia-venta.guard';
 import { puedeVerServicios } from './servicios.guard';
+import { inicioSalud, puedeVerSalud } from './salud.guard';
 import { puedeVerAsistencia } from './asistencia.guard';
 import { puedeConfigurarSocios, puedeVerPropinas, puedeVerSocios } from './socios.guard';
 import { puedeVerEmpresas } from './empresas/empresas.guard';
@@ -178,6 +179,30 @@ export const routes: Routes = [
         path: 'ordenes-de-servicio/orden/:id',
         canActivate: [puedeVerServicios],
         loadComponent: () => import('../modulo-servicios/orden/orden.component').then(m => m.ServiciosOrden),
+      },
+      /*
+       * 0087 · Salud: farmacia, expediente clínico y dental. Chunk propio: una
+       * caja sin Salud no descarga ni una línea. El guard pregunta módulo y
+       * permisos en cada navegación, como Servicios; la pestaña de entrada la
+       * decide el giro (una farmacia abre en Farmacia, un consultorio en
+       * Pacientes).
+       */
+      {
+        path: 'salud',
+        canActivate: [puedeVerSalud],
+        loadComponent: () => import('../modulo-salud/salud-shell.component').then(m => m.SaludShell),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: () => inicioSalud() },
+          { path: 'farmacia', loadComponent: () => import('../modulo-salud/farmacia/farmacia.component').then(m => m.SaludFarmacia) },
+          { path: 'caducidades', loadComponent: () => import('../modulo-salud/caducidades/caducidades.component').then(m => m.SaludCaducidades) },
+          { path: 'libro', loadComponent: () => import('../modulo-salud/libro/libro.component').then(m => m.SaludLibro) },
+          { path: 'temperaturas', loadComponent: () => import('../modulo-salud/temperaturas/temperaturas.component').then(m => m.SaludTemperaturas) },
+          { path: 'pacientes', loadComponent: () => import('../modulo-salud/pacientes/pacientes.component').then(m => m.SaludPacientes) },
+          { path: 'paciente/:id', loadComponent: () => import('../modulo-salud/paciente/paciente.component').then(m => m.SaludPaciente) },
+          { path: 'estudios', loadComponent: () => import('../modulo-salud/estudios/estudios.component').then(m => m.SaludEstudios) },
+          { path: 'estudios/catalogo', loadComponent: () => import('../modulo-salud/estudios/catalogo-estudios.component').then(m => m.SaludCatalogoEstudios) },
+          { path: 'estudios/:id', loadComponent: () => import('../modulo-salud/estudios/orden-estudios.component').then(m => m.SaludOrdenEstudios) },
+        ],
       },
       { path: 'configuracion', loadComponent: () => import('./config-shell/configShell').then(m => m.ConfigShell) },
       // Aplicaciones: que capacidades opcionales tiene encendidas el negocio.

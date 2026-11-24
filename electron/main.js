@@ -157,6 +157,12 @@ ipcLoyalty.registrar({ ipcMain, sql, poolPromise, machineId: () => machineIdDeEs
 ipcServicios.registrar({ ipcMain, sql, poolPromise,
   olvidarModulos: () => { modulosCache = { valor: null, leidoEn: 0 }; } });
 
+/* 0087 · Giro Salud: farmacia, expediente clínico y dental. Elegir el giro
+   enciende `salud` (y Servicios para la clínica): misma razón para tirar la
+   caché de módulos. */
+require('./ipc/salud').registrar({ ipcMain, sql, poolPromise,
+  olvidarModulos: () => { modulosCache = { valor: null, leidoEn: 0 }; } });
+
 /* IPC de egresos y pagos al personal (0049). La caja de un egreso en
    efectivo es la de ESTE equipo; SQL valida que lo sea en MultiCaja. */
 ipcEgresos.registrar({ ipcMain, sql, poolPromise,
@@ -2283,6 +2289,7 @@ ipcMain.handle('modules:set', sesion.proteger('modules:set', async (_e, p = {}, 
       .input('user_id', sql.Int, s?.userId ?? null)
       .execute('sp_set_business_module');
     modulosCache = { valor: null, leidoEn: 0 };   // que la proxima lectura sea fresca
+    require('./ipc/salud').olvidarFarmacia();      // 0087: apagar Salud deja de pedir receta ya
     businessConfig = null;                        // el perfil pudo cambiar con hospitality
     return { success: true, data: r.recordset?.[0] ?? null };
   } catch (e) { return { success: false, error: e.message }; }
@@ -2434,6 +2441,8 @@ ipcMain.handle('sp-add-product', sesion.proteger('sp-add-product', async (event,
             .input('clave_unidad', sql.NVarChar(5), claveUnidad ?? null)
             .input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto ?? '02')
             .input('tasa_iva', sql.Decimal(5, 4), tasaIva ?? 0.16)
+            // 0088: exento viaja en `control` para no mover los argumentos del canal.
+            .input('iva_exento', sql.Bit, control?.iva_exento ? 1 : 0)
             // Sin `control` van en NULL y el procedimiento aplica sus defaults
             // (DIRECT / vendible / pza / sin decimales): el Retail de siempre.
             .input('inventory_mode', sql.NVarChar(10), control?.inventory_mode ?? null)
@@ -2523,6 +2532,7 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     const claveUnidad = payload?.clave_unidad ?? null;
     const objetoImpuesto = payload?.objeto_impuesto ?? null;
     const tasaIva = payload?.tasa_iva ?? null;
+    const ivaExento = payload?.iva_exento == null ? null : (payload.iva_exento ? 1 : 0);
  
     if (!Number.isFinite(productId) || productId <= 0) return { success: false, error: 'product_id invalido.' };
     if (!nombre) return { success: false, error: 'El nombre es obligatorio.' };
@@ -2581,6 +2591,7 @@ ipcMain.handle('sp-update-product', sesion.proteger('sp-update-product', async (
     req.input('clave_unidad', sql.NVarChar(5), claveUnidad);
     req.input('objeto_impuesto', sql.NVarChar(2), objetoImpuesto);
     req.input('tasa_iva', sql.Decimal(5, 4), tasaIva);
+    req.input('iva_exento', sql.Bit, ivaExento);
 
     // NULL = no lo tocan. El procedimiento resuelve cada campo con ISNULL
     // contra su valor actual, asi que un formulario Retail que no envie nada
@@ -2764,6 +2775,11 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
   const frenoAsistencia = await require('./ipc/asistencia').frenaLaVenta(await poolPromise, sql, p.userId);
   if (frenoAsistencia) return { success: false, error: frenoAsistencia, motivo: 'ASISTENCIA_SIN_ENTRADA' };
 
+  /* 0087: con farmacia encendida, un medicamento que exige receta no se
+     cobra sin ella. La caja pide los datos y vuelve a cobrar. */
+  const frenoSalud = await require('./ipc/salud').frenaLaVenta(await poolPromise, sql, p);
+  if (frenoSalud) return { success: false, error: frenoSalud.error, motivo: frenoSalud.motivo, productos: frenoSalud.productos };
+
   /**
    * Reintento SOLO ante deadlock (1205).
    *
@@ -2825,12 +2841,15 @@ ipcMain.handle('sp-register-sale', sesion.proteger('sp-register-sale', async (ev
       /* 0079: ya con la venta registrada, su reparto entre socios y su
          propina. Nunca tumban la venta: lo que falle se dice en `propina`. */
       const despues = await require('./ipc/socios').despuesDeVender(pool, sql, { saleId, userId: p.userId, tip: p.tip });
+      /* 0087: la receta que respaldó la venta y la salida por lote (FEFO). */
+      const salud = await require('./ipc/salud').despuesDeVender(pool, sql, { saleId, receta: p.receta, userId: p.userId });
       return {
         success: true,
         saleId,
         total: fila?.total ?? null,
         data: result.recordset ?? [],
         propina: despues.propina,
+        saludError: salud.ok ? null : salud.error,
       };
     } catch (err) {
       if (esDeadlock(err) && intento < MAX_INTENTOS) {
@@ -6369,7 +6388,7 @@ ipcMain.handle('license:sync-trial-name', async (_event, payload = {}) => {
  * no otorga nada por sí mismo. Sin red, queda pendiente y se manda en el
  * siguiente refresco. Solo aplica a una prueba.
  */
-const GIROS_PRUEBA = new Set(['COMMERCE', 'HOSPITALITY', 'SERVICES']);
+const GIROS_PRUEBA = new Set(['COMMERCE', 'HOSPITALITY', 'SERVICES', 'HEALTH']);
 async function mandarGiroPrueba(giro) {
   const { data } = await llamarLicencias('trial-license', { action: 'select_vertical', machineId: machineIdDeEsteEquipo(), vertical: giro }, 8000);
   if (!data?.success) return { ok: false, error: data?.error, code: data?.code };
@@ -6397,6 +6416,11 @@ ipcMain.handle('license:trial-vertical', async (_event, payload = {}) => {
  * revocada o retirada): quien decide es el servidor, por el machineId.
  */
 async function refrescarLicencia() {
+  /* E2E sin nube local: el certificado es el del arnés (e2e/perfil.js) y se
+     queda. Sin esto, al entrar la caja pedía el suyo al servidor real, que
+     conoce ESTE equipo: las pruebas acababan con la licencia de quien las
+     corre (otro catálogo, otros giros) en vez de la que siembran. */
+  if (E2E && !process.env.WYBIX_FUNCIONES_URL) return { ok: false, motivo: 'E2E' };
   const e = licencia.estado(true);
   if (!e || ['NONE', 'DEMO'].includes(e.modo)) return { ok: false, motivo: e?.modo };
   const tipo = licencia.tipoGuardado();
