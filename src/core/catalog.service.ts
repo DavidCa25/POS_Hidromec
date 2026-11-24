@@ -102,7 +102,7 @@ export class CatalogService {
    */
   private readonly indice = computed(() => this.vendibles().map(p => ({
     p,
-    texto: `${p.product_name || ''}${p.part_number || ''}${p.bar_code || ''}${p.brand_name || ''}${p.category_name || ''}`.toLowerCase(),
+    texto: CatalogService.sinAcentos(`${p.product_name || ''}${p.part_number || ''}${p.bar_code || ''}${p.brand_name || ''}${p.category_name || ''}`),
   })));
   /** Por codigo de barras y por numero de parte: el escaner no recorre 6,000. */
   private readonly porCodigo = computed(() => {
@@ -264,7 +264,7 @@ export class CatalogService {
     }
     return out;
   }
-  private static sinAcentos(s: string) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  static sinAcentos(s: string) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
   private static palabras(s: string) { return CatalogService.sinAcentos(s).split(/\s+/).filter(w => w.length > 0); }
 
   findByPartNumber(code: string): CatalogProduct | undefined {
@@ -282,15 +282,15 @@ export class CatalogService {
 
   /** Filtro de texto sobre nombre, parte, codigo, marca y categoria. */
   search(term: string, list: CatalogProduct[] = this.vendibles()): CatalogProduct[] {
-    const t = (term || '').trim().toLowerCase();
+    const t = CatalogService.sinAcentos((term || '').trim());
     if (!t) return list;
     if (list === this.vendibles()) return this.indice().filter(x => x.texto.includes(t)).map(x => x.p);
     return list.filter(p =>
-      (p.product_name || '').toLowerCase().includes(t) ||
-      (p.part_number || '').toLowerCase().includes(t) ||
-      (p.bar_code || '').toLowerCase().includes(t) ||
-      (p.brand_name || '').toLowerCase().includes(t) ||
-      (p.category_name || '').toLowerCase().includes(t));
+      CatalogService.sinAcentos(p.product_name || '').includes(t) ||
+      CatalogService.sinAcentos(p.part_number || '').includes(t) ||
+      CatalogService.sinAcentos(p.bar_code || '').includes(t) ||
+      CatalogService.sinAcentos(p.brand_name || '').includes(t) ||
+      CatalogService.sinAcentos(p.category_name || '').includes(t));
   }
 
   /**
@@ -300,7 +300,7 @@ export class CatalogService {
    * texto, en el orden del catalogo.
    */
   buscar(term: string, limite = 120): { items: CatalogProduct[]; total: number } {
-    const t = (term || '').trim().toLowerCase();
+    const t = CatalogService.sinAcentos((term || '').trim());
     const idx = this.indice();
     if (!t) {
       if (idx.length <= limite) return { items: idx.map(x => x.p), total: idx.length };

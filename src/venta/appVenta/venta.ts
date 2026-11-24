@@ -936,9 +936,10 @@ export class Venta implements OnInit, OnDestroy {
     this.pedidoPlataforma = '';
     this.propina = null;
     this.imprimirEstaVenta = true;
-    /* Si la venta anterior fue con tarjeta, el método sigue elegido: el total
-       exacto se pone de una vez. */
-    if (this.paymentMethod === 'TARJETA' || this.paymentMethod === 'TRANSFERENCIA' || this.paymentMethod === 'TERMINAL_MP') {
+    /* «Dinero recibido» llega con el total de la cuenta: el pago exacto es el
+       caso más común y sale con un Enter. Si el cliente da otro billete, al
+       entrar al campo se selecciona todo y se escribe encima. */
+    if (this.paymentMethod !== 'CREDITO' && this.paymentMethod !== 'MIXTO') {
       this.dineroRecibido = this.totalVenta;
       this.recibidoAutomatico = true;
     }
@@ -960,6 +961,8 @@ export class Venta implements OnInit, OnDestroy {
 
   /** «Dinero recibido» lo puso Wybix (pago exacto), no la persona. */
   private recibidoAutomatico = false;
+  /** Lo escribió la persona: ya no se reemplaza al cambiar de método. */
+  recibidoEscrito() { this.recibidoAutomatico = false; }
 
   async onPaymentMethodChange(method: PaymentMethod) {
     if(this.cobrando)return;
@@ -977,9 +980,9 @@ export class Venta implements OnInit, OnDestroy {
     if (method === 'TARJETA' || method === 'TRANSFERENCIA' || method === 'TERMINAL_MP') {
       this.dineroRecibido = this.totalVenta;
       this.recibidoAutomatico = true;
-    } else if (method === 'EFECTIVO' && this.recibidoAutomatico) {
-      this.dineroRecibido = null;
-      this.recibidoAutomatico = false;
+    } else if (method === 'EFECTIVO' && (this.recibidoAutomatico || this.dineroRecibido == null)) {
+      this.dineroRecibido = this.totalVenta;
+      this.recibidoAutomatico = true;
     }
 
     if (method === 'CREDITO') {
@@ -1214,6 +1217,13 @@ export class Venta implements OnInit, OnDestroy {
     this.pedidoPlataforma = '';
     this.customerId = null;
     this.dueDate = null;
+    /* La siguiente venta empieza en efectivo: antes, tras cobrar con tarjeta,
+       el selector se quedaba en tarjeta y la siguiente salía con tarjeta sin
+       que nadie lo eligiera. */
+    this.paymentMethod = 'EFECTIVO';
+    this.metodosMixtos = [];
+    this.capturadosMixtos = {};
+    this.recibidoAutomatico = false;
   }
 
   private async refreshFolioFromDb() {
