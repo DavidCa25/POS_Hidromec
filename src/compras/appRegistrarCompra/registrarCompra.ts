@@ -13,6 +13,8 @@ import { ProveedorFormComponent } from '../../app/proveedores/proveedor-form.com
 import { CompraDocumentoComponent, DocumentoAplicado } from './documento/compra-documento.component';
 import { fechaDeSql, zonaDeSql } from '../../core/fechas';
 import { ShiftService } from '../../core/shift.service';
+import { PedidoProveedor, PedidoSugeridoService } from '../../core/pedido-sugerido.service';
+import { cambioDeCosto as cambioCosto, estadoRenglon } from '../../../shared/pedido';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -173,6 +175,7 @@ export class RegistrarCompra implements OnInit {
     private shift: ShiftService,
     public caps: CapabilityService,
     private socios: SociosService,
+    private pedidoSugerido: PedidoSugeridoService,
   ) {
     this.cargarProveedores();
   }
@@ -186,6 +189,77 @@ export class RegistrarCompra implements OnInit {
   ngOnInit() {
     this.cargarFolio();
     this.cargarSocios();
+    /* 0090 · Si se llegó desde «Registrar como compra» de Alertas, el pedido
+       sugerido llena la compra. Se toma una sola vez. */
+    const p = this.pedidoSugerido.tomar();
+    if (p) void this.aplicarPedido(p);
+  }
+
+  // ---- 0090 · Pedido sugerido: llena la compra y luego se compara con el ticket ----
+
+  /** El pedido que llenó esta compra (proveedor y cantidades pedidas). */
+  pedido: { nombre: string; lineas: Map<string, { cantidad: number; costo: number }> } | null = null;
+  /** Lo que dijo el ticket subido después, por renglón: lo que llegó. */
+  private llego = new Map<string, number>();
+  private clave(productId: number, presentationId: number | null) { return `${productId}|${presentationId ?? 'base'}`; }
+
+  async aplicarPedido(p: PedidoProveedor) {
+    if (!this.productos.length) await this.cargarProductosActivos();
+    if (p.supplierId != null) {
+      if (!this.proveedores.some(x => x.id === p.supplierId)) await this.cargarProveedores();
+      this.seleccionarProveedor(p.supplierId);
+    }
+    const lineas = new Map<string, { cantidad: number; costo: number }>();
+    for (const l of p.lineas) {
+      const prod = this.productos.find(x => x.id === l.productId);
+      if (!prod) continue;
+      const item = new PurchaseItem(
+        prod.id, prod.product_name, l.cantidad, prod.price ?? 0, l.costo,
+        this.margenDe(prod, l.factor > 0 ? l.costo / l.factor : l.costo),
+        l.presentationId, [], [], prod.base_uom || 'pza', prod.sellable, prod.objeto_impuesto || '02', prod.tasa_iva,
+      );
+      this.items.push(item);
+      await this.cargarPresentaciones(item, true);
+      lineas.set(this.clave(prod.id, l.presentationId), { cantidad: l.cantidad, costo: l.costo });
+    }
+    this.pedido = { nombre: p.nombre, lineas };
+    this.llego.clear();
+  }
+
+  /** «Empezar en blanco»: quita lo que puso el pedido. */
+  olvidarPedido() {
+    this.items = [];
+    this.pedido = null;
+    this.llego.clear();
+  }
+
+  /**
+   * Qué pasó con un renglón contra el pedido, una vez subido el ticket:
+   * completo, faltó, llegó de más, no venía en el ticket, o no estaba pedido.
+   * Sin ticket todavía, solo se marca lo que salió del pedido.
+   */
+  estadoPedido(it: PurchaseItem): { texto: string; tono: 'ok' | 'aviso' | 'info' } | null {
+    if (!this.pedido) return null;
+    const k = this.clave(it.productId, it.presentationId);
+    return estadoRenglon(this.pedido.lineas.get(k)?.cantidad ?? null, this.llego.get(k) ?? null, this.llego.size > 0);
+  }
+
+  /** El costo cambió contra el de la última compra (lo que traía el pedido). */
+  cambioDeCosto(it: PurchaseItem): string | null {
+    const pedido = this.pedido?.lineas.get(this.clave(it.productId, it.presentationId));
+    if (!pedido || !this.llego.size) return null;
+    return cambioCosto(pedido.costo, Number(it.purchasePrice) || 0);
+  }
+
+  /** Lo que hay que revisar antes de registrar, en una línea cada cosa. */
+  get avisosPedido(): string[] {
+    if (!this.pedido || !this.llego.size) return [];
+    return this.items.flatMap(it => {
+      const e = this.estadoPedido(it), c = this.cambioDeCosto(it), out: string[] = [];
+      if (e?.tono === 'aviso') out.push(`${it.productName}: ${e.texto.toLowerCase()}.`);
+      if (c) out.push(`${it.productName}: el costo ${c} pesos. Revisa el % de ganancia antes de registrar.`);
+      return out;
+    });
   }
 
   private async cargarSocios() {
@@ -455,9 +529,19 @@ export class RegistrarCompra implements OnInit {
   async alAplicarDocumento(d: DocumentoAplicado) {
     this.documentoAbierto = false;
     this.seleccionarProveedor(d.supplier_id);
+    /* 0090 · Con un pedido cargado, el ticket dice lo que LLEGÓ: reemplaza la
+       cantidad y el costo pedidos en vez de sumarse, y queda para comparar. */
+    const conPedido = !!this.pedido;
+    if (conPedido) this.llego.clear();
     for (const l of d.lineas) {
       const p = this.productos.find(x => x.id === l.productId);
       if (!p) continue;
+      if (conPedido) {
+        const k = this.clave(l.productId, l.presentationId);
+        this.llego.set(k, (this.llego.get(k) ?? 0) + l.cantidad);
+        const pedida = this.pedido!.lineas.has(k) ? this.items.find(it => it.productId === l.productId && it.presentationId === l.presentationId) : null;
+        if (pedida) { pedida.qty = this.llego.get(k)!; pedida.purchasePrice = l.costo; continue; }
+      }
       /* El mismo producto en la misma presentacion: una sola linea. */
       const ya = this.items.find(it => it.productId === l.productId && it.presentationId === l.presentationId);
       if (ya) {

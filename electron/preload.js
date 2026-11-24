@@ -188,6 +188,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     getActiveUsers: () => invoke('sp-get-active-users'),
     alertsReorder: (p) => invoke('alerts:reorder', p),
+    // 0090: el pedido sugerido por proveedor, para llenar la compra.
+    comprasPedidoSugerido: (p) => invoke('compras:pedido-sugerido', p),
     alertsOutOfStock: () => invoke('alerts:out-of-stock'),
     alertsZeroSales: (p) => invoke('alerts:zero-sales', p),
     alertsCashClosures: (p) => invoke('alerts:cash-closures', p),
@@ -722,6 +724,8 @@ contextBridge.exposeInMainWorld('wybix', {
     // tanda; al terminarla entran las piezas buenas y se registra la merma.
     produccion: {
         tablero: (p) => invoke('produccion:tablero', p),
+        // 0090: lo que conviene producir hoy.
+        sugerido: (p) => invoke('produccion:sugerido', p),
         planear: (p) => invoke('produccion:planear', p),
         empezar: (p) => invoke('produccion:empezar', p),
         terminar: (p) => invoke('produccion:terminar', p),

@@ -47,6 +47,16 @@ function registrar({ ipcMain, sql, poolPromise }) {
       return { tandas, ingredientes, productos };
     })));
 
+  /* 0090 · «Hoy conviene hacer»: lo vendido ese dia de la semana contra lo que
+     hay y lo ya planeado. Solo lee; planear sigue siendo de la persona. */
+  ipcMain.handle('produccion:sugerido', sesion.proteger('produccion:sugerido', async (_e, p = {}) =>
+    correr('calcular lo que conviene producir', async (db) => {
+      const r = await db.request()
+        .input('production_date', sql.Date, p.fecha ? new Date(`${p.fecha}T12:00:00`) : null)
+        .execute('sp_production_suggestions');
+      return r.recordset || [];
+    })));
+
   /* --------------------------------------------------------------- tandas */
   ipcMain.handle('produccion:planear', sesion.proteger('produccion:planear', async (_e, p = {}, ses) =>
     correr('planear la tanda', async (db) => {

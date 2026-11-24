@@ -160,3 +160,21 @@ h2 {
   font-size: var(--wx-text-md);
   font-weight: 700;
 }
+
+/* 0090 · compra llenada desde el pedido sugerido */
+.compra-pedido {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 12px 14px;
+  border-radius: var(--wx-radius-md); border: 1px solid var(--wx-accent-line); background: var(--wx-accent-soft);
+  font-size: var(--wx-text-sm);
+}
+.compra-pedido > i { font-size: 20px; color: var(--wx-accent-text); }
+.compra-pedido > span { flex: 1 1 auto; }
+.compra-pedido--aviso { border-color: var(--wx-warning); background: var(--wx-warning-soft); }
+.compra-pedido--aviso > i { color: var(--wx-warning); }
+.compra-pedido ul { margin: 4px 0 0; padding-left: 18px; }
+.compra-estado {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  font-size: var(--wx-text-xs); font-weight: 600; background: var(--wx-sunken); color: var(--wx-text-muted);
+}
+.compra-estado[data-tono="ok"] { background: var(--wx-success-soft); color: var(--wx-success); }
+.compra-estado[data-tono="aviso"] { background: var(--wx-warning-soft); color: var(--wx-warning); }

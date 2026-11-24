@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { ReportService, ReportConfig } from '../services/report.service';
+import { Router } from '@angular/router';
+import { LineaPedido, PedidoProveedor, PedidoSugeridoService } from '../core/pedido-sugerido.service';
+import { seAcaba } from '../../shared/pedido';
 
 interface Reorden {
   id: number; nombre: string; stock: number; vendido_ventana: number;
@@ -176,6 +179,18 @@ interface Reorden {
     .al-btn:disabled{opacity:.45;cursor:default;}
     .al-btn:focus-visible{outline:2px solid var(--wx-accent);outline-offset:2px;}
     .al-btn--cta{color:var(--wx-text);border-color:var(--wx-edge-strong);}
+    /* 0090 · pedido por proveedor */
+    .al-pedido{border:1px solid var(--wx-edge);border-radius:var(--wx-radius-md);margin:0 0 .9rem;overflow:hidden;background:var(--wx-surface);}
+    .al-pedido__cab{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.7rem .9rem;border-bottom:1px solid var(--wx-edge-soft);}
+    .al-pedido__cab > div{display:flex;flex-direction:column;flex:1 1 220px;min-width:0;}
+    .al-pedido__cab small{color:var(--wx-text-muted);font-size:.78rem;}
+    .al-pedido__total{font-size:.85rem;color:var(--wx-text-muted);}
+    .al-pedido__total b{color:var(--wx-text);font-family:var(--wx-font-mono);}
+    .al-pedido__fuera td{opacity:.5;}
+    .al-paso{display:inline-flex;align-items:center;gap:.35rem;}
+    .al-paso button{width:30px;height:30px;border-radius:8px;border:1px solid var(--wx-edge-strong);background:var(--wx-surface);font:inherit;cursor:pointer;color:var(--wx-text);}
+    .al-paso b{min-width:2ch;text-align:center;font-family:var(--wx-font-mono);}
+    .al-error{color:var(--wx-danger);font-size:.85rem;margin:.4rem .2rem;}
 
     /* --------------------------------------------------------------- tabla */
     .al-table{width:100%;border-collapse:collapse;}
@@ -366,7 +381,7 @@ interface Reorden {
             </div>
             <button class="al-btn" (click)="$event.stopPropagation(); exportarReorden('excel')" [disabled]="!reorden.length" title="Exportar a Excel"><i class="ph ph-file-xls"></i></button>
             <button class="al-btn" (click)="$event.stopPropagation(); exportarReorden('pdf')" [disabled]="!reorden.length" title="Exportar a PDF"><i class="ph ph-file-pdf"></i></button>
-              <button class="al-btn al-btn--cta" (click)="alternar('reorden')">{{ CATALOGO['reorden'].cta }}</button>
+              <button class="al-btn al-btn--cta" (click)="generarPedido()" data-guide="alertas-generar-pedido">{{ CATALOGO['reorden'].cta }}</button>
             </div>
 
             <span class="al-chev" aria-hidden="true"><i class="ph ph-caret-down"></i></span>
@@ -374,6 +389,41 @@ interface Reorden {
 
           <div class="al-detalle" *ngIf="abierta('reorden')">
             <div class="al-load" *ngIf="cargando('reorden')">Cargando…</div>
+            <!-- 0090 · El pedido de cada proveedor: se ajusta aquí y se lleva a Compras. -->
+            <div class="al-load" *ngIf="cargandoPedido">Armando el pedido…</div>
+            <p class="al-error" *ngIf="errorPedido" role="alert">{{ errorPedido }}</p>
+            <section class="al-pedido" *ngFor="let p of pedidos" data-guide="alertas-pedido" [attr.data-guide-clave]="p.supplierId ?? 'sin'">
+              <header class="al-pedido__cab">
+                <div><b>{{ p.nombre }}</b><small>{{ p.lineas.length }} {{ p.lineas.length === 1 ? 'producto' : 'productos' }}{{ p.telefono ? ' · ' + p.telefono : '' }}</small></div>
+                <span class="al-pedido__total">Estimado <b>{{ totalPedido(p) | currency:'MXN':'symbol-narrow':'1.2-2' }}</b></span>
+                <button type="button" class="al-btn" (click)="copiarPedido(p)" [disabled]="!hayEnPedido(p)">{{ copiado === p.nombre ? 'Copiado' : 'Copiar pedido' }}</button>
+                <button type="button" class="al-btn" *ngIf="p.telefono" (click)="mandarWhatsapp(p)" [disabled]="!hayEnPedido(p)"><i class="ph ph-whatsapp-logo"></i> WhatsApp</button>
+                <button type="button" class="al-btn al-btn--cta" *ngIf="p.supplierId != null" (click)="registrarComoCompra(p)" [disabled]="!hayEnPedido(p)"
+                        data-guide="alertas-pedido-compra">Registrar como compra</button>
+              </header>
+              <p class="al-sub" *ngIf="p.supplierId == null">Estos productos no tienen proveedor ligado. Lígalo en Inventario y saldrán en su pedido.</p>
+              <table class="al-table">
+                <thead><tr><th></th><th>Producto</th><th class="r">Hay</th><th class="r">Se acaba en</th><th class="r">Pedir</th><th class="r">Último costo</th><th class="r">Importe</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let l of p.lineas" [class.al-pedido__fuera]="!l.incluido">
+                    <td><input type="checkbox" [(ngModel)]="l.incluido" [attr.aria-label]="'Incluir ' + l.nombre"></td>
+                    <td class="al-name">{{ l.nombre }}</td>
+                    <td class="r">{{ l.stock }} {{ l.baseUom }}</td>
+                    <td class="r"><span class="pill" [ngClass]="urgencia(l.diasRestantes)">{{ seAcaba(l.diasRestantes, l.stock) }}</span></td>
+                    <td class="r">
+                      <span class="al-paso">
+                        <button type="button" (click)="moverPedido(l, -1)" [attr.aria-label]="'Menos ' + l.nombre">−</button>
+                        <b>{{ l.cantidad }}</b>
+                        <button type="button" (click)="moverPedido(l, 1)" [attr.aria-label]="'Más ' + l.nombre">+</button>
+                      </span>
+                      <small>{{ l.presentacion }}</small>
+                    </td>
+                    <td class="r">{{ l.costo | currency:'MXN':'symbol-narrow':'1.2-2' }}</td>
+                    <td class="r">{{ l.incluido ? (l.cantidad * l.costo | currency:'MXN':'symbol-narrow':'1.2-2') : '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
             <div class="scroll" *ngIf="reorden.length">
                       <table class="al-table">
                         <thead><tr><th>Producto</th><th class="r">Stock</th><th class="r">Vende/día</th><th class="r">Se acaba en</th><th class="r">Pedir</th></tr></thead>
@@ -816,7 +866,54 @@ export class Alertas implements OnInit {
   riesgo: any[] = []; cargandoRiesgo = false;
   private clientesMap: Record<number, string> = {};
 
-  constructor(private reports: ReportService) {}
+  // 0090 · Pedido sugerido por proveedor: «Generar pedido» lo arma de verdad.
+  pedidos: PedidoProveedor[] = [];
+  cargandoPedido = false;
+  errorPedido: string | null = null;
+  copiado: string | null = null;
+
+  constructor(private reports: ReportService, private router: Router, private pedido: PedidoSugeridoService) {}
+
+  /** Abre el detalle y arma el pedido de cada proveedor con lo que se acaba. */
+  async generarPedido() {
+    if (!this.abierta('reorden')) this.alternar('reorden');
+    this.cargandoPedido = true;
+    this.errorPedido = null;
+    try {
+      const r = await this.pedido.cargar(this.diasAlerta, 7);
+      if (r.ok) this.pedidos = r.pedidos;
+      else this.errorPedido = r.error;
+    } finally {
+      this.cargandoPedido = false;
+    }
+  }
+
+  readonly seAcaba = seAcaba;
+  moverPedido(l: LineaPedido, d: number) { l.cantidad = Math.max(0, l.cantidad + d); }
+  totalPedido(p: PedidoProveedor) { return p.lineas.reduce((a, l) => a + (l.incluido ? l.cantidad * l.costo : 0), 0); }
+  hayEnPedido(p: PedidoProveedor) { return p.lineas.some(l => l.incluido && l.cantidad > 0); }
+
+  /** Lleva el pedido a Registrar compra, que lo precarga (no registra nada). */
+  registrarComoCompra(p: PedidoProveedor) {
+    this.pedido.dejar(p);
+    this.router.navigateByUrl('/dashboard/registrarCompra');
+  }
+
+  /** WhatsApp con el pedido escrito; el número es el del proveedor. */
+  mandarWhatsapp(p: PedidoProveedor) {
+    const tel = String(p.telefono || '').replace(/\D/g, '');
+    if (!tel) return;
+    const numero = tel.length === 10 ? '52' + tel : tel;
+    this.api?.openExternal?.(`https://wa.me/${numero}?text=${encodeURIComponent(PedidoSugeridoService.texto(p))}`);
+  }
+
+  async copiarPedido(p: PedidoProveedor) {
+    try {
+      await navigator.clipboard.writeText(PedidoSugeridoService.texto(p));
+      this.copiado = p.nombre;
+      setTimeout(() => { if (this.copiado === p.nombre) this.copiado = null; }, 2000);
+    } catch { /* sin portapapeles: el pedido sigue en pantalla */ }
+  }
 
   async ngOnInit() {
     await Promise.all([

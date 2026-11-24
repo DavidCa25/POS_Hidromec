@@ -85,6 +85,8 @@ asignar('inventory', [
   'sp_add_product', 'sp_update_product', 'sp_delete_product', 'sp_reactivate_product',
   'sp_get_active_products', 'sp_get_product_by_id', 'sp_add_brand', 'sp_add_categories',
   'sp_get_brands', 'sp_get_categories', 'sp_dead_products', 'sp_reorder_suggestions',
+  // 0090: el pedido sugerido, por proveedor.
+  'sp_purchase_order_suggestions',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
   // Aplicar un conteo fisico al inventario.
   'sp_inventory_count_apply',
@@ -102,6 +104,8 @@ asignar('inventory', [
   'sp_production_formula_get', 'sp_production_formula_save', 'sp_production_formula_delete',
   'sp_production_board', 'sp_production_plan', 'sp_production_start', 'sp_production_finish', 'sp_production_cancel',
   'sp_production_waste',
+  // 0090: lo que conviene producir hoy (por dia de la semana).
+  'sp_production_suggestions',
 ]);
 
 asignar('cash', [

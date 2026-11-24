@@ -13,6 +13,21 @@
         </div>
       </div>
 
+      <!-- 0090 · La compra vino llena del pedido sugerido de Alertas. -->
+      <div class="compra-pedido" *ngIf="pedido" role="status" data-guide="compra-desde-pedido">
+        <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+        <span><b>Viene del pedido sugerido</b> para {{ pedido.nombre }}. Revisa cantidades y costos antes de registrar.
+          Si subes el ticket, se compara contra lo pedido.</span>
+        <button type="button" class="btn btn-link btn-sm" (click)="olvidarPedido()">Empezar en blanco</button>
+      </div>
+      <div class="compra-pedido compra-pedido--aviso" *ngIf="avisosPedido.length" role="status" data-guide="compra-pedido-avisos">
+        <i class="ph ph-warning" aria-hidden="true"></i>
+        <div>
+          <b>{{ avisosPedido.length === 1 ? 'Una cosa que revisar' : avisosPedido.length + ' cosas que revisar' }}</b>
+          <ul><li *ngFor="let a of avisosPedido">{{ a }}</li></ul>
+        </div>
+      </div>
+
       <form>
         <!-- Encabezado compra -->
         <div class="row g-4 mb-4">
@@ -86,7 +101,13 @@
 
               <tbody>
                 <tr *ngFor="let it of items; let i = index; trackBy: trackByItem">
-                  <td class="fw-semibold">{{ it.productName }}</td>
+                  <td class="fw-semibold">
+                    {{ it.productName }}
+                    <ng-container *ngIf="estadoPedido(it) as e">
+                      <span class="compra-estado" [attr.data-tono]="e.tono" data-guide="compra-estado-pedido">{{ e.texto }}</span>
+                    </ng-container>
+                    <span class="compra-estado" data-tono="aviso" *ngIf="cambioDeCosto(it) as c">costo {{ c }}</span>
+                  </td>
 
                   <td>
                     <input type="number" class="form-control"

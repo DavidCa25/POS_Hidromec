@@ -1,8 +1,9 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService, PAQUETES } from '../../services/auth.service';
 import { fechaDeSql } from '../../core';
+import { WxIlustracionComponent } from '../wx-ilustracion/wx-ilustracion.component';
 
 interface Tanda {
   id: number; uuid: string; product_id: number; product_name: string; base_uom: string;
@@ -13,6 +14,8 @@ interface Tanda {
 }
 interface Ingrediente { ingredient_product_id: number; ingredient_name: string; base_uom: string; needed: number; stock: number; missing: number; }
 interface Fabricable { product_id: number; product_name: string; base_uom: string; yield_qty: number; stock: number; unit_cost: number; }
+/** 0090 · Lo que conviene producir hoy (sp_production_suggestions). */
+interface Sugerido { product_id: number; product_name: string; yield_qty: number; stock: number; promedio_dia: number; en_curso: number; sugerido: number; }
 
 type Hoja =
   | { tipo: 'nueva'; productId: number | null }
@@ -40,11 +43,11 @@ const MOTIVOS = ['Se quemó', 'Se cayó', 'Quedó mal', 'Otro'];
 @Component({
   selector: 'app-produccion',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, WxIlustracionComponent],
   templateUrl: './produccion.component.html',
   styleUrls: ['./produccion.component.css'],
 })
-export class ProduccionComponent implements OnInit {
+export class ProduccionComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private get api() { return (window as any).wybix?.produccion; }
 
@@ -52,6 +55,13 @@ export class ProduccionComponent implements OnInit {
   readonly tandas = signal<Tanda[]>([]);
   readonly ingredientes = signal<Ingrediente[]>([]);
   readonly fabricables = signal<Fabricable[]>([]);
+  /** 0090 · «Hoy conviene hacer». Si no se puede leer, la franja no sale. */
+  readonly sugeridos = signal<Sugerido[]>([]);
+  readonly porHacer = computed(() => this.sugeridos().filter(s => Number(s.sugerido) > 0));
+  readonly planeandoSugeridos = signal(false);
+  /** Reloj de la pantalla: «hace 25 min» se actualiza solo, cada minuto. */
+  private readonly ahora = signal(Date.now());
+  private reloj: ReturnType<typeof setInterval> | null = null;
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
   readonly hoja = signal<Hoja | null>(null);
@@ -81,7 +91,11 @@ export class ProduccionComponent implements OnInit {
     return h?.tipo === 'nueva' ? this.fabricables().find(f => f.product_id === h.productId) ?? null : null;
   });
 
-  async ngOnInit() { await this.cargar(); }
+  async ngOnInit() {
+    this.reloj = setInterval(() => this.ahora.set(Date.now()), 60_000);
+    await this.cargar();
+  }
+  ngOnDestroy() { if (this.reloj) clearInterval(this.reloj); }
 
   async cargar() {
     this.error.set(null);
@@ -91,11 +105,53 @@ export class ProduccionComponent implements OnInit {
       this.tandas.set(r.data.tandas ?? []);
       this.ingredientes.set(r.data.ingredientes ?? []);
       this.fabricables.set(r.data.productos ?? []);
+      void this.cargarSugeridos();
     } catch (e: any) {
       this.error.set(e?.message || 'No se pudo leer la producción.');
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  /** El sugerido es una ayuda: si falla, el tablero sigue igual. */
+  private async cargarSugeridos() {
+    try {
+      const r = await this.api?.sugerido?.({});
+      this.sugeridos.set(r?.success ? (r.data ?? []) : []);
+    } catch { this.sugeridos.set([]); }
+  }
+
+  /** Un toque planea lo sugerido; es el mismo `planear` de siempre. */
+  async planearSugerido(s: Sugerido) {
+    await this.hacer(() => this.api.planear({ productId: s.product_id, cantidad: Number(s.sugerido), uuid: crypto.randomUUID() }));
+  }
+  async planearTodos() {
+    this.planeandoSugeridos.set(true);
+    try {
+      for (const s of this.porHacer()) {
+        const r = await this.api.planear({ productId: s.product_id, cantidad: Number(s.sugerido), uuid: crypto.randomUUID() });
+        if (!r?.success) { this.error.set(r?.error || `No se pudo planear ${s.product_name}.`); break; }
+      }
+      await this.cargar();
+    } finally {
+      this.planeandoSugeridos.set(false);
+    }
+  }
+
+  /** Minutos desde que empezó una tanda (hora de pared, como `hora()`). */
+  minutos(iso: string | Date | null): number | null {
+    const d = fechaDeSql(iso);
+    if (!d) return null;
+    const n = new Date(this.ahora());
+    const pared = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), n.getMinutes(), n.getSeconds());
+    return Math.max(0, Math.floor((pared - d.getTime()) / 60000));
+  }
+  hace(iso: string | Date | null): string {
+    const m = this.minutos(iso);
+    if (m == null) return '';
+    if (m < 1) return 'recién';
+    if (m < 60) return `hace ${m} min`;
+    return `hace ${Math.floor(m / 60)} h ${m % 60} min`;
   }
 
   /* -------------------------------------------------------------- hojas */

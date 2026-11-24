@@ -177,6 +177,8 @@ const EXIGE = {
   'sp-add-category': CATALOGO_EDITAR,
   'inventory:apply-count': INVENTARIO_OPERAR,
   'sp-register-purchase': INVENTARIO_OPERAR,
+  // 0090: el pedido sugerido trae costos de proveedor: quien compra.
+  'compras:pedido-sugerido': INVENTARIO_OPERAR,
   'sp-register-supplier-payment': INVENTARIO_OPERAR,
   'sp-add-supplier': INVENTARIO_OPERAR,
   'sp-supplier-save': INVENTARIO_OPERAR,
@@ -341,6 +343,8 @@ const EXIGE = {
   // Empezar una tanda descuenta ingredientes y terminarla mete producto: es
   // el trabajo de quien hornea. La formula es catalogo, como una receta.
   'produccion:tablero': PRODUCCION_OPERAR,
+  // 0090: solo lee ventas y existencias para sugerir tandas.
+  'produccion:sugerido': PRODUCCION_OPERAR,
   'produccion:planear': PRODUCCION_OPERAR,
   'produccion:empezar': PRODUCCION_OPERAR,
   'produccion:terminar': PRODUCCION_OPERAR,

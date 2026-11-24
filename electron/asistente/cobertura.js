@@ -76,6 +76,8 @@ const LECTURA = [
   'plataformas:canales',
   'plataformas:listar',
   'produccion:tablero',
+  'produccion:sugerido',      // 0090: lo que conviene producir hoy
+  'compras:pedido-sugerido',  // 0090: el pedido sugerido por proveedor
   'propinas:historial',
   'puntos:admin',
   'puntos:costo',

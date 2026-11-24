@@ -3940,6 +3940,24 @@ ipcMain.handle('alerts:reorder', async (_e, p = {}) => {
   }
 });
 
+// ===== 0090: el pedido sugerido, por proveedor =====
+// Lo que se acaba (mismas reglas que el reorden) con su proveedor, cuanto pedir
+// redondeado a la presentacion de compra y el ultimo costo. Solo lee: la compra
+// la registra la persona en Compras.
+ipcMain.handle('compras:pedido-sugerido', sesion.proteger('compras:pedido-sugerido', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('dias_alerta',   sql.Int, Number(p.dias_alerta)   || 7)
+      .input('dias_objetivo', sql.Int, Number(p.dias_objetivo) || 7)
+      .execute('sp_purchase_order_suggestions');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) {
+    console.error('compras:pedido-sugerido:', e);
+    return { success: false, error: 'No se pudo armar el pedido sugerido.' };
+  }
+}));
+
 ipcMain.handle('users:list', sesion.proteger('users:list', async () => {
   try {
     const pool = await poolPromise;
