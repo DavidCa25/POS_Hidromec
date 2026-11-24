@@ -139,6 +139,10 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
     if (Math.abs(c - d.unit_price / d._factor) > 0.01) mal.push(`${d._pn}: costo ${c}, esperaba ${(d.unit_price / d._factor).toFixed(4)}`);
   }
   expect(mal).toEqual([]);
+  /* El catálogo de prueba no vende nada bajo costo (0092): ni pieza ni paquete. */
+  const bajoCosto = await app.invocar('alertasCostos', {});
+  expect(bajoCosto?.success, JSON.stringify(bajoCosto)).toBeTruthy();
+  expect(bajoCosto.data.filter((c) => c.tipo !== 'SUBIO').map((c) => `${c.product_name} ${c.detalle || ''}: ${c.precio} < ${c.minimo}`)).toEqual([]);
 
   /* ----------------------------------- 3. una venta de cosas sueltas */
   await irPorDock(p, 'Venta');
@@ -218,17 +222,17 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await abrirBuscador('papel higienico jumbo paquete');
   await p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-PAPEL6-ROLLO-PAQ"]').click();
   await expect(p.locator('[data-guide=venta-linea]')).toHaveCount(10);
-  /* Papel 2×10 + 36 + 52 + 98 + 140 = 346 · huevo 40 + 95 · six 90 · jumbo 12 + 58 */
+  /* Papel 2×10 + 36 + 52 + 98 + 150 = 356 · huevo 40 + 95 · six 90 · jumbo 12 + 58 */
   await expect.poll(async () => Number(((await p.locator('#total-venta').innerText()).match(/[\d,.]+/) || ['0'])[0].replace(/,/g, '')),
-    { timeout: 20000 }).toBe(641);
+    { timeout: 20000 }).toBe(651);
   /* El paquete no deja escribir su precio y lo dice claro: $52 el paquete de 6, $8.67 c/u. */
   await expect(p.locator('[data-guide=venta-linea]', { hasText: 'Paquete 6' }).locator('[data-guide=venta-linea-paquete]')).toContainText('$8.67');
   await foto('4e-venta-presentaciones');
   const paqJumboAntes = await stock('ABA-PAPEL6-ROLLO-PAQ');
   await p.locator('[data-guide=venta-cobrar]').click();
   /* «Dinero recibido» llega con el total de la cuenta. */
-  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('641');
-  /* Como una persona: clic en el campo y teclear. Debe quedar 700, no 641700. */
+  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('651');
+  /* Como una persona: clic en el campo y teclear. Debe quedar 700, no 651700. */
   await p.locator('[data-guide=venta-recibido]').click();
   await p.locator('[data-guide=venta-recibido]').pressSequentially('700', { delay: 50 });
   await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('700');
@@ -336,6 +340,114 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await expect(p.locator('.swal2-popup')).toContainText('Producto actualizado', { timeout: 15000 });
   const tira = await sql(app.base, `SELECT CAST(price AS FLOAT) AS price, CAST(cost AS FLOAT) AS cost FROM dbo.products WHERE part_number = N'ABA-CHICLE-TIRA';`);
   expect(tira[0]).toMatchObject({ price: 15.08, cost: 10 });
+
+  /* ------------------------- 6. la compra aprende (0092) ------------- */
+  await p.locator('.swal2-container').waitFor({ state: 'detached' }).catch(() => {});
+  /* Otra compra de 1 cartón al mismo proveedor: ya hay un «normal» (36 en promedio, 48 la mayor). */
+  const centro = Number((await sql(app.base, `SELECT id FROM dbo.CAT_suppliers WHERE nombre = N'Abarrotera del Centro';`))[0].id);
+  const cerveza = porPn['ABA-CERV-CLARA'];
+  const otraCompra = await app.invocar('registerPurchase', {
+    user_id: yo, supplier_id: centro, tax_rate: 0.16, tax_amount: 57.6, subtotal: 360, total: 417.6,
+    payment_method: 'CREDITO', register_id: 1, apply_payment_id: null, socio_pago_id: null,
+    detalles: [{ product_id: cerveza.id, quantity: 1, unit_price: 360, profit_percent: 14.94, presentation_id: cerveza.presentation_id }],
+  });
+  expect(otraCompra?.success, JSON.stringify(otraCompra)).toBeTruthy();
+  await ir(p, '/dashboard/registrarCompra');
+  /* Proveedor primero; la cerveza sin escribir precio nace como la última compra. */
+  await p.locator('button', { hasText: 'Selecciona proveedor' }).click();
+  await p.locator('.list-group-item', { hasText: 'Abarrotera del Centro' }).click();
+  await p.getByRole('button', { name: /Agregar producto/ }).click();
+  await p.locator('.modal-productos .buscador').fill('Cerveza clara mediana');
+  await p.locator('.modal-productos tr', { hasText: 'Cerveza clara mediana 355 ml' }).getByRole('button', { name: 'Agregar' }).click();
+  const otra = p.locator('.venta-table tbody tr', { hasText: 'Cerveza clara mediana' });
+  await expect(otra.locator('[data-guide=compra-precio]')).toHaveValue('360', { timeout: 15000 });
+  await expect(otra.locator('[data-guide=compra-precio-unidad]')).toContainText('por Cartón 24');
+  await expect(otra.locator('[data-guide=compra-memoria]')).toContainText('Última compra: $360.00 por Cartón 24');
+  await expect(otra).toContainText('$20.00');   // la ganancia de la última vez: sigue a $20
+  /* 100 cartones cuando siempre se compran 2: pregunta antes de registrar. */
+  const cuantas = async () => Number((await sql(app.base, `SELECT COUNT(*) n FROM dbo.purchase;`))[0].n);
+  const comprasAntes = await cuantas();
+  await otra.locator('input[type=number]').first().fill('100');
+  await otra.locator('input[type=number]').first().press('Tab');
+  await p.locator('button', { hasText: 'Registrar compra' }).last().click();
+  await expect(p.locator('.swal2-popup')).toContainText('¿Está bien capturado?', { timeout: 15000 });
+  await expect(p.locator('.swal2-popup')).toContainText('2,400 pza. Normalmente compras 36 y la mayor compra fue de 48');
+  await foto('10-compra-aviso-captura');
+  await p.getByRole('button', { name: 'Corregir' }).click();
+  expect(await cuantas(), 'Corregir no registra').toBe(comprasAntes);
+
+  /* El costo subió y el six quedó por debajo del costo: Alertas lo dice. */
+  const refresco = porPn['ABA-MP-REFRESCO'];
+  const sub = await app.invocar('registerPurchase', {
+    user_id: yo, supplier_id: refresco.supplier_id, tax_rate: 0.16, tax_amount: 53.76, subtotal: 336, total: 389.76,
+    payment_method: 'CREDITO', register_id: 1, apply_payment_id: null, socio_pago_id: null,
+    detalles: [{ product_id: refresco.id, quantity: 1, unit_price: 336, profit_percent: 15, presentation_id: refresco.presentation_id }],
+  });
+  expect(sub?.success, JSON.stringify(sub)).toBeTruthy();
+  await sql(app.base, `UPDATE dbo.product_presentations SET sale_price = 80 WHERE product_id = ${refresco.id} AND name = N'Six 6';`);
+  await ir(p, '/dashboard/alertas');
+  const costos = p.locator('[data-guide=alertas-costos]');
+  await expect(costos).toBeVisible({ timeout: 30000 });
+  /* 14 por lata con IVA = 16.24 → el six cuesta 97.44 y se vende a 80. */
+  await expect(costos.locator(`[data-guide=alertas-costo][data-guide-clave="PAQUETE|${refresco.id}|Six 6"]`)).toContainText('$97.44');
+  await expect(costos.locator(`[data-guide=alertas-costo][data-guide-clave^="SUBIO|${refresco.id}|"]`)).toContainText('+16.7 %');
+  await costos.scrollIntoViewIfNeeded();
+  await foto('11-alertas-costos');
+
+  /* Pedido: sin proveedor ligado sale el de la última compra, y el ritmo es por días con existencia. */
+  const papel = porPn['ABA-MP-PAPEL'];
+  await sql(app.base, `DELETE FROM dbo.product_suppliers WHERE product_id = ${papel.id};`);
+  const pedido = await app.invocar('comprasPedidoSugerido', { dias_alerta: 30, dias_objetivo: 30 });
+  expect(pedido?.success, JSON.stringify(pedido)).toBeTruthy();
+  const filaPapel = pedido.data.find((f) => f.product_id === papel.id);
+  expect(filaPapel?.supplier_id, 'proveedor aprendido de la compra').toBe(porPn['ABA-CERV-OSCURA'].supplier_id);
+  /* 42 rollos vendidos; existe desde hoy: se divide entre 7 días (mínimo), no entre 30. */
+  expect(Number(filaPapel.prom_diario)).toBe(6);
+  expect(filaPapel.presentation_name, 'la presentación en que se compró').toBe('Bulto 48');
+
+  /* Ciclo y entrega: con 30 rollos se acaba en 5 días. Pidiendo para 3 días no entra… */
+  await sql(app.base, `UPDATE dbo.products SET stock = 30 WHERE id = ${papel.id};`);
+  const tresDias = async () => {
+    const r = await app.invocar('comprasPedidoSugerido', { dias_alerta: 3, dias_objetivo: 3 });
+    expect(r?.success, JSON.stringify(r)).toBeTruthy();
+    return r.data.find((f) => f.product_id === papel.id);
+  };
+  expect(await tresDias(), 'sin historial, 5 días de papel alcanzan para 3').toBeUndefined();
+  /* …pero a este proveedor se le compra cada 7 días (hace 21, 14 y 7, y hoy) y un
+     pedido mandado hace 9 días llegó a los 2: el papel no llega a su próxima visita. */
+  const prov = porPn['ABA-CERV-OSCURA'].supplier_id;
+  await sql(app.base, `
+    INSERT INTO dbo.purchase (datee, useer_id, total, tax_rate, tax_amount, supplier_id, balance, payment_status)
+    VALUES (DATEADD(DAY, -21, GETDATE()), ${yo}, 1, 0, 0, ${prov}, 0, 'PAGADO'),
+           (DATEADD(DAY, -14, GETDATE()), ${yo}, 1, 0, 0, ${prov}, 0, 'PAGADO'),
+           (DATEADD(DAY, -7,  GETDATE()), ${yo}, 1, 0, 0, ${prov}, 0, 'PAGADO');
+    INSERT INTO dbo.purchase_order_sent (supplier_id, sent_at, via, lineas, user_id)
+    VALUES (${prov}, DATEADD(DAY, -9, SYSDATETIME()), 'WHATSAPP', 3, ${yo});`);
+  const conCiclo = await tresDias();
+  expect(conCiclo, 'se acaba antes de que el proveedor vuelva').toBeTruthy();
+  expect(conCiclo).toMatchObject({ ciclo_dias: 7, entrega_dias: 2, cobertura_dias: 9 });
+  /* 6 al día × 9 días = 54; hay 30: faltan 24 → un bulto de 48. */
+  expect(Number(conCiclo.pedir)).toBe(48);
+  /* Una fecha de SQL (DATE) llega como medianoche UTC: se compara el día. */
+  const enSiete = new Date(Date.now() + 7 * 86400000).toLocaleDateString('sv-SE');
+  expect(new Date(conCiclo.proxima_compra).toISOString().slice(0, 10), 'próxima compra en 7 días').toBe(enSiete);
+  /* Copiar y luego mandar el mismo pedido anota uno solo. */
+  const enviadosAntes = Number((await sql(app.base, `SELECT COUNT(*) n FROM dbo.purchase_order_sent WHERE supplier_id = ${prov};`))[0].n);
+  expect((await app.invocar('comprasPedidoEnviado', { supplier_id: prov, via: 'COPIA', lineas: 2 }))?.success).toBeTruthy();
+  expect((await app.invocar('comprasPedidoEnviado', { supplier_id: prov, via: 'WHATSAPP', lineas: 2 }))?.success).toBeTruthy();
+  expect(Number((await sql(app.base, `SELECT COUNT(*) n FROM dbo.purchase_order_sent WHERE supplier_id = ${prov};`))[0].n)).toBe(enviadosAntes + 1);
+  /* En Alertas, el pedido lo dice en una línea. «Generar pedido» vive en la
+     fila de reorden, que aparece cuando algo se acaba en 7 días: con 5 rollos. */
+  await sql(app.base, `UPDATE dbo.products SET stock = 5 WHERE id = ${papel.id};`);
+  /* Alertas ya estaba abierta: salir y volver para que se lea de nuevo. */
+  await ir(p, '/dashboard/registrarCompra');
+  await ir(p, '/dashboard/alertas');
+  await p.locator('[data-guide=alertas-generar-pedido]').click();
+  await expect(p.locator(`[data-guide=alertas-pedido][data-guide-clave="${prov}"] [data-guide=alertas-pedido-memoria]`))
+    .toContainText('Le compras cada ~7 días · tarda 2 días en surtir', { timeout: 30000 });
+  await p.locator(`[data-guide=alertas-pedido][data-guide-clave="${prov}"]`).scrollIntoViewIfNeeded();
+  await foto('12-alertas-pedido-ciclo');
+
   /* ------------------------------- 5. Touch: el cartón también se toca */
   await p.locator('.swal2-container').waitFor({ state: 'detached' }).catch(() => {});
   /* Quedan 18 cervezas: con menos de 24, Touch no deja tocar el cartón (lo dice). */

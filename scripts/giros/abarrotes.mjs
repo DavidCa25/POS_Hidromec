@@ -75,7 +75,7 @@ export const ABARROTES = [
   ['ABA-VASO-8', 'Vaso desechable #8 suelto', 'Desechables', 1, 'Bulto 20', 20, 600, { paquete: 'Vasos desechables #8 paquete 50', piezas: 50, precioPaquete: 38 }],
   ['ABA-PLATO', 'Plato desechable #9 suelto', 'Desechables', 2, 'Bulto 20', 20, 700, { paquete: 'Platos desechables #9 paquete 50', piezas: 50, precioPaquete: 45 }],
   ['ABA-CHAROLA', 'Charola de unicel #66 suelta', 'Desechables', 3, 'Bulto 10', 10, 1000, { paquete: 'Charolas de unicel #66 paquete 125', piezas: 125, precioPaquete: 210 }],
-  ['ABA-CUCHARA', 'Cuchara desechable suelta', 'Desechables', 1, 'Bulto 20', 20, 520, { paquete: 'Cucharas desechables paquete 50', piezas: 50, precioPaquete: 30 }],
+  ['ABA-CUCHARA', 'Cuchara desechable suelta', 'Desechables', 1, 'Bulto 20', 20, 520, { paquete: 'Cucharas desechables paquete 50', piezas: 50, precioPaquete: 35 }],
   ['ABA-POPOTE', 'Popote suelto', 'Desechables', 1, 'Bulto 10', 10, 300, { paquete: 'Popotes paquete 100', piezas: 100, precioPaquete: 35 }],
   ['ABA-BOLSA', 'Bolsa camiseta chica', 'Desechables', 1, 'Paquete 100', 100, 45, null],
   // ------------------------------------------------ higiene y hogar
@@ -84,7 +84,7 @@ export const ABARROTES = [
   ['ABA-PANAL', 'Pañal etapa 4 suelto', 'Higiene', 7, 'Bulto 4', 4, 680, { paquete: 'Pañales etapa 4 paquete 40', piezas: 40, precioPaquete: 245 }],
   ['ABA-TOALLA-FEM', 'Toalla femenina suelta', 'Higiene', 5, 'Caja 24', 24, 576, { paquete: 'Toallas femeninas paquete 10', piezas: 10, precioPaquete: 38 }],
   ['ABA-SHAMPOO-SOB', 'Shampoo sobre 10 ml', 'Higiene', 4, 'Tira 12', 12, 30, null],
-  ['ABA-RASTRILLO', 'Rastrillo desechable suelto', 'Higiene', 12, 'Caja 12', 12, 360, { paquete: 'Rastrillos desechables paquete 3', piezas: 3, precioPaquete: 32 }],
+  ['ABA-RASTRILLO', 'Rastrillo desechable suelto', 'Higiene', 12, 'Caja 12', 12, 360, { paquete: 'Rastrillos desechables paquete 3', piezas: 3, precioPaquete: 38 }],
   ['ABA-JABON', 'Jabón de tocador 150 g', 'Higiene', 22, 'Caja 12', 12, 204, null],
   ['ABA-PASTA-SOB', 'Pasta dental sobre 22 ml', 'Higiene', 8, 'Tira 12', 12, 60, null],
   ['ABA-DETERG-250', 'Detergente en polvo bolsa 250 g', 'Limpieza', 14, 'Caja 24', 24, 264, null],
@@ -109,11 +109,11 @@ export const ABARROTES = [
  */
 export const PRESENTACIONES = [
   ['ABA-MP-PAPEL', 'Papel higiénico rollo doble hoja', 'Higiene', 10, ['Bulto 48', 48, 336],
-    [['Paquete 4', 4, 36], ['Paquete 6', 6, 52], ['Paquete 12', 12, 98], ['Paquete 18', 18, 140]]],
+    [['Paquete 4', 4, 36], ['Paquete 6', 6, 52], ['Paquete 12', 12, 98], ['Paquete 18', 18, 150]]],
   ['ABA-MP-REFRESCO', 'Refresco de cola lata 355 ml', 'Bebidas', 16, ['Caja 24', 24, 288],
     [['Six 6', 6, 90], ['Doce 12', 12, 175], ['Caja 24 completa', 24, 340]]],
   ['ABA-MP-CERVEZA', 'Cerveza clara lata 355 ml', 'Cerveza', 22, ['Caja 24', 24, 444],
-    [['Six 6', 6, 125], ['Doce 12', 12, 245], ['Caja 24 completa', 24, 470]]],
+    [['Six 6', 6, 135], ['Doce 12', 12, 265], ['Caja 24 completa', 24, 525]]],
   ['ABA-MP-HUEVO', 'Huevo rojo pieza', 'Abarrotes', 3.5, ['Caja 360', 360, 900],
     [['Docena', 12, 40], ['Media reja 15', 15, 50], ['Reja 30', 30, 95]]],
   ['ABA-MP-AGUA', 'Agua natural 1 L botella', 'Bebidas', 14, ['Paquete 12', 12, 120],
