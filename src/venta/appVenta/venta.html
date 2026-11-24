@@ -615,40 +615,69 @@
             <span class="wx-esqueleto" style="width:64px"></span>
           </div>
         </ng-container>
-        <button type="button" class="prod-item" *ngFor="let p of busquedaProductos.items; trackBy: trackProducto"
-                data-guide="venta-producto" [attr.data-guide-clave]="p.part_number"
-                (click)="seleccionarProducto(p)">
-          <!-- Foto o dibujo: en una frutería casi nada trae código de barras y
-               el producto se busca por nombre; verlo ayuda a no equivocarse. -->
-          <span class="prod-item-media" aria-hidden="true">
-            <img *ngIf="p.thumb" [src]="p.thumb" alt="" loading="lazy">
-            <wx-ilustracion *ngIf="!p.thumb" [nombre]="p.product_name" [categoria]="p.category_name"
-                            [productoId]="p.id" [giro]="caps.businessProfile()" [inventario]="p.inventory_mode" />
+        <ng-container *ngFor="let e of entradasBusqueda; trackBy: trackEntrada">
+        <!-- 0091 · El paquete que se vende entero (el cartón de 24), debajo de su producto. -->
+        <button type="button" class="prod-item prod-item--paquete" *ngIf="e.pack as k"
+                data-guide="venta-paquete" [attr.data-guide-clave]="e.p.part_number + '|' + k.name"
+                (click)="seleccionarPack(e.p, k)">
+          <span class="prod-item-media prod-item-media--paquete" aria-hidden="true">
+            <wx-ilustracion [nombre]="e.p.product_name" [categoria]="e.p.category_name" [productoId]="e.p.id"
+                            [giro]="caps.businessProfile()" [inventario]="e.p.inventory_mode" />
+            <span class="pi-paquete-x">×{{ k.factor }}</span>
           </span>
           <div class="prod-item-main">
-            <div class="prod-item-name">{{ p.product_name }}</div>
+            <div class="prod-item-name">{{ e.p.product_name }} · {{ k.name }}</div>
             <div class="prod-item-meta">
-              <span class="pi-part">{{ p.part_number }}</span>
-              <span class="pi-tag">{{ p.brand_name }}</span>
-              <span class="pi-tag">{{ p.category_name }}</span>
+              <span class="pi-tag pi-tag--paquete">Paquete completo</span>
+              <span class="pi-tag">{{ k.factor }} {{ e.p.base_uom || 'pzas' }} · {{ (k.price / k.factor) | currency:'MXN':'symbol-narrow':'1.2-2' }} c/u</span>
             </div>
           </div>
           <div class="prod-item-right">
-            <div class="pi-price">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}<small class="pi-uom" *ngIf="esGranel(p) && commercial.catalogPrice(p.id,p.price)!==null"> / {{ p.base_uom || 'kg' }}</small></div>
+            <div class="pi-price">{{ k.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</div>
+            <div class="pi-stock" [class.low]="(e.p.available_units ?? e.p.stock) < k.factor">
+              alcanzan {{ ((e.p.available_units ?? e.p.stock) / k.factor) | number:'1.0-0' }}
+            </div>
+          </div>
+          <i class="ph-fill ph-plus-circle pi-add"></i>
+        </button>
+        <button type="button" class="prod-item" *ngIf="!e.pack"
+                data-guide="venta-producto" [attr.data-guide-clave]="e.p.part_number"
+                (click)="seleccionarProducto(e.p)">
+          <!-- Foto o dibujo: en una frutería casi nada trae código de barras y
+               el producto se busca por nombre; verlo ayuda a no equivocarse. -->
+          <span class="prod-item-media" aria-hidden="true">
+            <img *ngIf="e.p.thumb" [src]="e.p.thumb" alt="" loading="lazy">
+            <wx-ilustracion *ngIf="!e.p.thumb" [nombre]="e.p.product_name" [categoria]="e.p.category_name"
+                            [productoId]="e.p.id" [giro]="caps.businessProfile()" [inventario]="e.p.inventory_mode" />
+          </span>
+          <div class="prod-item-main">
+            <div class="prod-item-name">{{ e.p.product_name }}</div>
+            <div class="prod-item-meta">
+              <span class="pi-part">{{ e.p.part_number }}</span>
+              <span class="pi-tag">{{ e.p.brand_name }}</span>
+              <span class="pi-tag">{{ e.p.category_name }}</span>
+              <!-- Venta suelta (0073): qué es pieza y qué es paquete. -->
+              <span class="pi-tag pi-tag--suelto" *ngIf="sueltoDe(e.p) as s">Suelto · sale de {{ s.paqueteNombre }} ({{ s.piezas }})</span>
+              <span class="pi-tag pi-tag--paquete" *ngIf="piezasDe(e.p).length">Paquete · también se vende por pieza</span>
+            </div>
+          </div>
+          <div class="prod-item-right">
+            <div class="pi-price">{{commercial.catalogPrice(e.p.id,e.p.price)!==null?(commercial.catalogPrice(e.p.id,e.p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):'Precio pendiente'}}<small class="pi-uom" *ngIf="esGranel(e.p) && commercial.catalogPrice(e.p.id,e.p.price)!==null"> / {{ e.p.base_uom || 'kg' }}</small></div>
             <!-- Disponibilidad real. Una receta tiene stock 0 por diseno; lo
                  que importa es cuantas se pueden preparar. -->
             <!-- NONE no lleva existencia: su disponibilidad es el centinela
                  999999, que no es un dato para enseñar. -->
-            <div class="pi-stock" *ngIf="p.inventory_mode !== 'NONE'; else stockNoAplica"
-                 [class.low]="(p.available_units ?? p.stock) <= 3">
-              {{ p.available_units ?? p.stock }} {{ p.inventory_mode === 'RECIPE' ? 'por preparar' : (p.base_uom || 'pz') }}
+            <div class="pi-stock" *ngIf="e.p.inventory_mode !== 'NONE'; else stockNoAplica"
+                 [class.low]="(e.p.available_units ?? e.p.stock) <= 3">
+              {{ e.p.available_units ?? e.p.stock }} {{ e.p.inventory_mode === 'RECIPE' ? 'por preparar' : (e.p.base_uom || 'pz') }}
             </div>
             <ng-template #stockNoAplica><div class="pi-stock">No aplica</div></ng-template>
           </div>
           <i class="ph-fill ph-plus-circle pi-add"></i>
         </button>
+        </ng-container>
         <div *ngIf="!catalog.loading() && productos.length === 0" class="text-center text-muted py-4">No hay productos activos.</div>
-        <div *ngIf="productos.length && !busquedaProductos.total" class="text-center text-muted py-4">Ningún producto coincide con «{{ filtro }}».</div>
+        <div *ngIf="productos.length && !busquedaProductos.total && !entradasBusqueda.length" class="text-center text-muted py-4">Ningún producto coincide con «{{ filtro }}».</div>
       </div>
       <p class="prod-mas" *ngIf="busquedaProductos.total > busquedaProductos.items.length" data-guide="venta-buscar-mas">
         Mostrando {{ busquedaProductos.items.length }} de {{ busquedaProductos.total | number }}. Escribe para encontrar el resto.

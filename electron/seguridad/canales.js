@@ -739,6 +739,7 @@ const ABIERTOS = {
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
   'venta-suelta:get': 'lectura de venta suelta',
+  'venta-suelta:lista': 'lectura de venta suelta: qué pieza sale de qué paquete, para el buscador de la caja',
   'impuestos:listar': 'lectura del catálogo de impuestos (tasas públicas de la ley)',
   'producto:impuestos': 'lectura de los impuestos de un producto, como su IVA en la ficha',
   'socios:config': 'lectura de socios y de quien es cada categoria',

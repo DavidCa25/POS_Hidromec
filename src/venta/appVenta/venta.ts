@@ -38,6 +38,10 @@ import { CuponVenta } from '../../loyalty/cupon-venta';
 import { ClubClienteComponent } from '../../app/club-cliente/club-cliente.component';
 import { MenuCatalogService, ModifierGroup } from '../../core/menu-catalog.service';
 import { Memo } from '../../core/memo';
+import { PackVenta } from '../../core/models';
+
+/** 0091 · Un renglón del buscador: el producto o uno de sus paquetes. */
+interface EntradaBusqueda { clave: string; p: CatalogProduct; pack: PackVenta | null }
 import { SelectedOption } from '../../core/models';
 import {
   ResumenOpcion, gruposAConfigurar, resumenDeOpciones, seleccionAutomatica,
@@ -600,6 +604,46 @@ export class Venta implements OnInit, OnDestroy {
   }
   readonly esqueletoProductos = Array.from({ length: 6 });
   trackProducto = (_: number, p: CatalogProduct) => p.id;
+
+  /**
+   * 0091 · Lo que se pinta en el buscador: cada producto y, justo debajo, los
+   * paquetes con precio de venta (el cartón de 24 de la cerveza). Antes el
+   * cartón solo entraba escaneando su código; ahora también se busca y se
+   * toca. «cartón cerveza» encuentra el cartón aunque el producto no diga
+   * «cartón» en su nombre.
+   */
+  private readonly memoEntradas = new Memo<EntradaBusqueda[]>();
+  get entradasBusqueda(): EntradaBusqueda[] {
+    const b = this.busquedaProductos;
+    return this.memoEntradas.de([b, this.catalog.vendibles()], () => {
+      const out: EntradaBusqueda[] = [];
+      const vistos = new Set<string>();
+      for (const p of b.items) {
+        out.push({ clave: `p${p.id}`, p, pack: null });
+        for (const pack of this.catalog.packsDe(p.id)) {
+          out.push({ clave: `k${pack.id}`, p, pack });
+          vistos.add(`k${pack.id}`);
+        }
+      }
+      for (const x of this.catalog.buscarPacks(this.filtro)) {
+        if (!vistos.has(`k${x.pack.id}`)) out.push({ clave: `k${x.pack.id}`, p: x.product, pack: x.pack });
+      }
+      return out;
+    });
+  }
+  trackEntrada = (_: number, e: EntradaBusqueda) => e.clave;
+
+  /** Pieza suelta o paquete (venta suelta, 0073), para decirlo en la tarjeta. */
+  sueltoDe(p: CatalogProduct) { return this.catalog.sueltoDe(p.id); }
+  piezasDe(p: CatalogProduct) { return this.catalog.piezasDe(p.id); }
+
+  /** El cartón completo, a su precio: lo mismo que escanear su código. */
+  seleccionarPack(p: CatalogProduct, pack: PackVenta) {
+    this.cart.addProduct(CatalogService.toPackLineSource(p, pack), pack.factor);
+    this.lastAddedProductId = p.id;
+    this.lineaSeleccionada = null;
+    this.showModalProductos = false;
+  }
 
   /** Cliente de credito elegido en el cobro. */
   get customerId(): number | null { return this.cart.activeCart().creditCustomerId; }
@@ -1243,8 +1287,9 @@ export class Venta implements OnInit, OnDestroy {
    */
   async agregarPrimerProductoVisible() {
     if (!(this.filtro || '').trim()) return;
-    const p = this.busquedaProductos.items[0];
-    if (p) await this.seleccionarProducto(p);
+    const e = this.entradasBusqueda[0];
+    if (e?.pack) this.seleccionarPack(e.p, e.pack);
+    else if (e) await this.seleccionarProducto(e.p);
   }
 
   /** Relee el catalogo (stock fresco al abrir el buscador). */

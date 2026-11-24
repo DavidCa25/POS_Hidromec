@@ -178,6 +178,37 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   expect(await stock('ABA-CHOC-BARRA')).toBe(antes['ABA-CHOC-BARRA'] - 2);
   expect(await stock('ABA-TE-MANZ')).toBe(antes['ABA-TE-MANZ'] - 4);
 
+  /* ------------- 3b. el cartón sin escanear: se busca y se toca (0091) */
+  /* El cartón de 24 se vende entero a $430, sin código de barras. */
+  await sql(app.base, `UPDATE pp SET pp.sale_price = 430 FROM dbo.product_presentations pp
+    JOIN dbo.products p ON p.id = pp.product_id WHERE p.part_number = N'ABA-CERV-CLARA' AND pp.name = N'Cartón 24';`);
+  await irPorDock(p, 'Inventario');
+  await irPorDock(p, 'Venta');
+  await p.waitForSelector('.pos-wrap');
+  await p.getByRole('button', { name: /Agregar producto/ }).click();
+  /* La pieza suelta y el paquete se distinguen en el buscador. */
+  await p.locator('[data-guide=venta-buscar]').fill('cigarro rojo');
+  await expect(p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-CIG-ROJO"]'))
+    .toContainText('Suelto · sale de Cajetilla cigarro rojo 20 (20)', { timeout: 30000 });
+  await expect(p.locator('.modal-productos [data-guide=venta-producto][data-guide-clave="ABA-CIG-ROJO-PAQ"]'))
+    .toContainText('Paquete · también se vende por pieza');
+  await foto('4b-buscador-suelto-y-paquete');
+  /* «cartón cerveza»: el cartón aparece aunque el producto no diga «cartón». */
+  await p.locator('[data-guide=venta-buscar]').fill('carton cerveza clara');
+  const carton = p.locator('.modal-productos [data-guide=venta-paquete]', { hasText: 'Cerveza clara mediana 355 ml · Cartón 24' });
+  await expect(carton).toBeVisible({ timeout: 30000 });
+  await expect(carton).toContainText('$430.00');
+  await foto('4c-buscador-carton');
+  await carton.click();
+  await expect(p.locator('[data-guide=venta-linea]', { hasText: 'Cartón 24' })).toBeVisible();
+  await expect.poll(async () => Number(((await p.locator('#total-venta').innerText()).match(/[\d,.]+/) || ['0'])[0].replace(/,/g, '')),
+    { timeout: 20000 }).toBe(430);
+  await p.locator('[data-guide=venta-cobrar]').click();
+  await p.locator('[data-guide=venta-recibido]').fill('500');
+  await p.locator('[data-guide=venta-confirmar-cobro]').click();
+  await expect.poll(() => stock('ABA-CERV-CLARA'), { timeout: 30000 }).toBe(18);
+  await cerrarAvisos(p);
+
   /* Un paquete sin pieza, para crearla desde su ficha (paso 4). */
   await sql(app.base, `
     DECLARE @c INT = (SELECT TOP 1 id FROM dbo.CAT_categories WHERE namee = N'Dulces');
@@ -226,5 +257,29 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await expect(p.locator('.swal2-popup')).toContainText('Producto actualizado', { timeout: 15000 });
   const tira = await sql(app.base, `SELECT CAST(price AS FLOAT) AS price, CAST(cost AS FLOAT) AS cost FROM dbo.products WHERE part_number = N'ABA-CHICLE-TIRA';`);
   expect(tira[0]).toMatchObject({ price: 15.08, cost: 10 });
+  /* ------------------------------- 5. Touch: el cartón también se toca */
+  await p.locator('.swal2-container').waitFor({ state: 'detached' }).catch(() => {});
+  /* Quedan 18 cervezas: con menos de 24, Touch no deja tocar el cartón (lo dice). */
+  await sql(app.base, `UPDATE dbo.products SET stock = 48 WHERE part_number = N'ABA-CERV-CLARA';`);
+  await app.invocar('modulosSet', 'hospitality', true);
+  await app.invocar('setDeviceConfig', { deviceProfile: 'TOUCH_POS' });
+  await p.locator('.wx-yo__btn').click();
+  await p.locator('.wx-yo__fila').filter({ hasText: 'Cerrar sesión' }).click();
+  await p.waitForSelector('#username');
+  await login(app, CUENTAS.admin);
+  await p.waitForSelector('app-touch-pos .tp-card', { timeout: 60000 });
+  const turno = p.getByRole('dialog').filter({ has: p.getByRole('heading', { name: 'Abrir turno', exact: true }) });
+  if (await turno.count()) await turno.getByRole('button', { name: 'Abrir turno', exact: true }).click();
+  await p.getByRole('button', { name: 'Cigarros' }).first().click();
+  await expect(p.locator('[data-guide=touch-producto][data-guide-clave="ABA-CIG-ROJO"]')).toContainText('Suelto · de Cajetilla cigarro rojo 20');
+  await expect(p.locator('[data-guide=touch-producto][data-guide-clave="ABA-CIG-ROJO-PAQ"]')).toContainText('Paquete · también por pieza');
+  await foto('8-touch-cigarros');
+  await p.getByRole('button', { name: 'Cerveza' }).first().click();
+  const cartonTouch = p.locator('[data-guide=touch-paquete]', { hasText: 'Cartón 24' });
+  await expect(cartonTouch).toContainText('$430.00', { timeout: 30000 });
+  await cartonTouch.click();
+  await expect(p.locator('[data-guide=touch-cuenta]')).toContainText('Cartón 24');
+  await foto('9-touch-carton');
+  await app.invocar('setDeviceConfig', { deviceProfile: 'RETAIL_POS' }).catch(() => {});
   console.log(`abarrotes: ${ABARROTES.length} productos de venta suelta, capturas en ${SHOTS}`);
 });

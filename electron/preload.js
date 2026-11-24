@@ -302,6 +302,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     plataformasDeposito: p => invoke('plataformas:deposito',p),
     // 0073: Venta suelta.
     ventaSueltaGet: p => invoke('venta-suelta:get',p),
+    ventaSueltaLista: () => invoke('venta-suelta:lista'),
     ventaSueltaGuardar: p => invoke('venta-suelta:guardar',p),
     /* 0083: impuestos además del IVA (electron/ipc/impuestos.js). */
     impuestosListar: (p) => invoke('impuestos:listar', p),

@@ -31,6 +31,16 @@ function registrar({ ipcMain, sql, poolPromise }) {
     }
   });
 
+  /* 0091 · Todos los ligues, para marcar pieza y paquete en el buscador. */
+  ipcMain.handle("venta-suelta:lista", async () => {
+    try {
+      const r = await (await poolPromise).request().execute("sp_venta_suelta_lista");
+      return { success: true, data: r.recordset ?? [] };
+    } catch (e) {
+      return { success: false, error: String(e.message || e) };
+    }
+  });
+
   ipcMain.handle("venta-suelta:guardar", sesion.proteger("venta-suelta:guardar", async (_e, p = {}, s) => {
     try {
       const r = await (await poolPromise).request()

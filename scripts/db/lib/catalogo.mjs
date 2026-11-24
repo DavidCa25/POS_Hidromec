@@ -148,7 +148,9 @@ asignar('asistencia', [
 
 // 0073: Venta suelta (el cigarro de la cajetilla). Una aplicacion: solo para
 // el negocio que la activa. El descuento vive en sp_register_sale (paso 3c).
-asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar']);
+asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar',
+  // 0091: todos los ligues, para marcar pieza y paquete en el buscador de la caja.
+  'sp_venta_suelta_lista']);
 // 0083: impuestos además del IVA (IEPS, locales): catálogo, por producto y la foto de la venta.
 asignar('impuestos', ['sp_venta_impuestos', 'sp_impuestos_listar', 'sp_impuesto_guardar',
   'sp_producto_impuestos_get', 'sp_producto_impuestos_guardar']);

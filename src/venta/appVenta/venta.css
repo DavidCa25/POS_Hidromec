@@ -806,3 +806,11 @@ tr.linea-activa > td:first-child { box-shadow: inset 3px 0 0 var(--wx-accent); }
 .prod-mas { margin: 8px 4px 0; font-size: 13px; color: var(--wx-text-muted); text-align: center; }
 .prod-item--esqueleto { cursor: default; pointer-events: none; }
 .prod-item--esqueleto .prod-item-main { flex: 1; }
+
+/* 0091 · Paquetes y venta suelta en el buscador */
+.prod-item--paquete { border-style: dashed; border-color: var(--wx-accent-line); }
+.prod-item-media--paquete { position: relative; overflow: visible; }
+.pi-paquete-x { position: absolute; right: -6px; bottom: -6px; padding: 1px 6px; border-radius: 999px; font-size: .72rem; font-weight: 700;
+  background: var(--wx-accent); color: var(--wx-accent-ink); box-shadow: 0 1px 3px rgba(15, 24, 38, .2); }
+.pi-tag--paquete { background: var(--wx-accent-soft); color: var(--wx-accent-text); font-weight: 600; }
+.pi-tag--suelto { background: var(--wx-warning-soft); color: var(--wx-warning); font-weight: 600; }
