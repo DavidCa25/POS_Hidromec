@@ -189,8 +189,11 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await irPorDock(p, 'Inventario');
   await irPorDock(p, 'Venta');
   await p.waitForSelector('.pos-wrap');
+  /* Tocar un producto cierra el buscador: se espera a que termine de cerrarse
+     antes de volver a abrirlo (escribir en uno que se está cerrando falla). */
   const abrirBuscador = async (texto) => {
-    if (!(await p.locator('.modal-productos').count())) await p.getByRole('button', { name: /Agregar producto/ }).click();
+    await p.locator('.modal-productos').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+    await p.getByRole('button', { name: /Agregar producto/ }).click();
     await p.locator('[data-guide=venta-buscar]').fill(texto);
   };
   const tocarPaquete = async (texto, pn, nombre) => {
@@ -225,7 +228,10 @@ test('abarrotes: comprar por caja y vender suelto', async ({ app }) => {
   await p.locator('[data-guide=venta-cobrar]').click();
   /* «Dinero recibido» llega con el total de la cuenta. */
   await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('641');
-  await p.locator('[data-guide=venta-recibido]').fill('700');
+  /* Como una persona: clic en el campo y teclear. Debe quedar 700, no 641700. */
+  await p.locator('[data-guide=venta-recibido]').click();
+  await p.locator('[data-guide=venta-recibido]').pressSequentially('700', { delay: 50 });
+  await expect(p.locator('[data-guide=venta-recibido]')).toHaveValue('700');
   await p.locator('[data-guide=venta-confirmar-cobro]').click();
   await expect.poll(() => stock('ABA-MP-PAPEL'), { timeout: 30000 }).toBe(96 - 42);
   await cerrarAvisos(p);

@@ -453,7 +453,7 @@
                 <label class="form-label mb-1">Dinero recibido</label>
                 <input type="number" min="0" step="0.01" class="form-control form-control-lg"
                        data-guide="venta-recibido" [(ngModel)]="dineroRecibido" name="dineroRecibido" data-teclado="MONEY" placeholder="¿Cuánto recibió del cliente?"
-                       (focus)="$any($event.target).select()" (ngModelChange)="recibidoEscrito()"
+                       (focus)="seleccionarTodo($event)" (ngModelChange)="recibidoEscrito()"
                        data-flechas-inicio (keydown.enter)="$event.preventDefault(); confirmarCobro()" />
                 <small class="text-muted">Viene con el total de la cuenta; escribe encima si te da otro billete.</small>
               </div>

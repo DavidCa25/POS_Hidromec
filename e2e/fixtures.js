@@ -47,7 +47,11 @@ async function invocar(ventana, metodo, ...args) {
  */
 async function arrancar(base, use, testInfo) {
   const perfil = await nuevoPerfil(base);
-  const app = await electron.launch(opcionesDeArranque(perfil));
+  /* WYBIX_E2E_VIDEO=<carpeta> graba la ventana en video (para enseñar un
+     recorrido). Sin la variable, nada cambia. */
+  const video = process.env.WYBIX_E2E_VIDEO
+    ? { recordVideo: { dir: process.env.WYBIX_E2E_VIDEO, size: { width: 1440, height: 900 } } } : {};
+  const app = await electron.launch({ ...opcionesDeArranque(perfil), ...video });
 
   /* La salida del proceso principal se adjunta al informe cuando algo falla.
      El motivo casi siempre esta ahi y no en el DOM. */

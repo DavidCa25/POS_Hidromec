@@ -963,6 +963,17 @@ export class Venta implements OnInit, OnDestroy {
   private recibidoAutomatico = false;
   /** Lo escribió la persona: ya no se reemplaza al cambiar de método. */
   recibidoEscrito() { this.recibidoAutomatico = false; }
+  /**
+   * Selecciona todo al entrar al campo, para escribir encima del total.
+   * Con el mouse, soltar el clic deshacía la selección y lo tecleado se pegaba
+   * al total («641» + «700» = 641700): se selecciona después del clic.
+   */
+  seleccionarTodo(e: Event) {
+    const el = e.target as HTMLInputElement;
+    el.select();
+    setTimeout(() => { if (document.activeElement === el) el.select(); }, 0);
+    el.addEventListener('mouseup', (m) => m.preventDefault(), { once: true });
+  }
 
   async onPaymentMethodChange(method: PaymentMethod) {
     if(this.cobrando)return;

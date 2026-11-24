@@ -48,6 +48,8 @@ export class CatalogService {
       if (!m.has(productId)) m.set(productId, []);
       m.get(productId)!.push(pk);
     }
+    /* De menor a mayor: paquete de 4, de 6, de 12, de 18. */
+    for (const l of m.values()) l.sort((a, b) => a.factor - b.factor);
     return m;
   });
   /**
@@ -262,7 +264,8 @@ export class CatalogService {
       const t = CatalogService.sinAcentos(`${product.product_name} ${pack.name}`);
       if (palabras.every(w => t.includes(w))) { out.push({ product, pack }); if (out.length >= limite) break; }
     }
-    return out;
+    /* Por producto y, dentro de cada uno, de menor a mayor: 4, 6, 12, 18. */
+    return out.sort((a, b) => a.product.product_name.localeCompare(b.product.product_name) || a.pack.factor - b.pack.factor);
   }
   static sinAcentos(s: string) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
   private static palabras(s: string) { return CatalogService.sinAcentos(s).split(/\s+/).filter(w => w.length > 0); }
