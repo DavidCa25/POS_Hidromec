@@ -120,9 +120,11 @@
                          aparece si el producto tiene presentaciones. -->
                     <wx-select *ngIf="it.presentaciones.length > 1"
                                class="wx-sel-compacto mt-1"
-                               [(ngModel)]="it.presentationId"
+                               [ngModel]="it.presentationId"
+                               (ngModelChange)="cambiarPresentacion(it, $event)"
                                name="pres-{{i}}"
-                               [opciones]="it.opciones"></wx-select>
+                               [opciones]="it.opciones"
+                               data-guide="compra-presentacion"></wx-select>
                     <div class="small text-muted mt-1" *ngIf="entraAlInventario(it)">
                       Entran {{ entraAlInventario(it) }}
                     </div>
@@ -134,8 +136,10 @@
                            min="0" step="0.01"
                            [(ngModel)]="it.purchasePrice"
                            name="price-{{i}}"
-                           (ngModelChange)="onPurchasePriceChange(i)" />
-                    <div class="small text-muted mt-1">Sin IVA</div>
+                           (ngModelChange)="onPurchasePriceChange(i)"
+                           data-guide="compra-precio" />
+                    <!-- Qué significa el número: por cartón y cuánto sale cada pieza. -->
+                    <div class="small text-muted mt-1" data-guide="compra-precio-unidad">Sin IVA, {{ precioPorUnidad(it) }}</div>
                   </td>
 
                   <!-- Compra con IVA calculada -->
@@ -289,7 +293,7 @@
                 <th>Precio sugerido</th>
 
                 <!-- OJO: aquí SI va el input de compra -->
-                <th style="width:170px;">Precio compra</th>
+                <th style="width:170px;">Precio compra por pieza</th>
 
                 <th style="width:140px;">% Ganancia</th>
                 <th>Acción</th>

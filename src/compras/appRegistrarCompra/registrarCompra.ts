@@ -404,7 +404,11 @@ export class RegistrarCompra implements OnInit {
     }
 
     const purchasePrice = Number(p.purchasePrice) || 0;
-    const profit = Number(p.profitPercent) || 0;
+    /* Sin % escrito, la ganancia arranca en la que deja el precio de hoy:
+       sp_register_purchase reescribe el precio de venta con costo × IVA ×
+       (1 + ganancia), y con 0 la cerveza de $20 quedaba a $17.40. El precio
+       escrito en el modal es por pieza (unidad base). */
+    const profit = Number(p.profitPercent) > 0 ? Number(p.profitPercent) : this.margenDe(p, purchasePrice);
 
     const item = new PurchaseItem(
       p.id,
@@ -459,10 +463,40 @@ export class RegistrarCompra implements OnInit {
         nota: p.id === null ? item.baseUom : `x${p.factor}`,
       }));
       const porDefecto = lista.find((p: any) => p.is_default);
-      if (porDefecto && !conservar) item.presentationId = Number(porDefecto.id);
+      /* El precio que se escribió en «Agregar producto» es por unidad base
+         (por pieza): al pasar la línea a la presentación predeterminada se
+         convierte, para que 20 por cerveza sean 480 por cartón de 24 y no
+         20 por el cartón entero. */
+      if (porDefecto && !conservar) this.cambiarPresentacion(item, Number(porDefecto.id));
     } catch {
       // Sin presentaciones la linea se compra en unidad base, como siempre.
     }
+  }
+
+  /**
+   * Cambia la presentación de una línea CONSERVANDO lo que vale cada pieza.
+   *
+   * El precio de compra es por presentación (lo que dice el ticket: $480 el
+   * cartón). Antes, cambiar «Por pza» a «Cartón 24» dejaba el mismo número:
+   * una cerveza de $20 quedaba como un cartón de $20 y la compra pagaba
+   * 24 veces menos. Ahora el precio se multiplica por el nuevo factor.
+   */
+  cambiarPresentacion(it: PurchaseItem, id: number | null) {
+    const antes = it.factor;
+    it.presentationId = id;
+    const despues = it.factor;
+    const precio = Number(it.purchasePrice) || 0;
+    if (precio > 0 && antes > 0 && antes !== despues) {
+      it.purchasePrice = Math.round((precio / antes) * despues * 10000) / 10000;
+    }
+  }
+
+  /** «por Cartón 24 · $0.83 por pza»: qué significa el precio de la línea. */
+  precioPorUnidad(it: PurchaseItem): string {
+    if (it.factor === 1) return `por ${it.baseUom}`;
+    const nombre = it.presentaciones.find(p => p.id === it.presentationId)?.nombre ?? '';
+    const pieza = it.costoBase;
+    return `por ${nombre} · $${pieza.toFixed(2)} por ${it.baseUom}`;
   }
 
   /** Lo que subira el inventario con esta linea, ya convertido. */
