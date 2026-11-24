@@ -110,6 +110,15 @@ type ProductSupplierRow = {
   active: boolean;
 };
 
+/** Una presentación en la ficha: de compra y, con precio, también de venta (0089). */
+interface Presentacion {
+  id: number | null;
+  name: string;
+  factorToBase: number | null;
+  barCode: string;
+  salePrice: number | null;
+}
+
 @Component({
   selector: 'app-inventario',
   templateUrl: './inventario.html',
@@ -242,7 +251,7 @@ export class Inventario {
    * aparece es el DATO -que el producto tenga presentaciones definidas-, no el
    * giro del negocio: un mostrador que no las use no ve ninguna diferencia.
    */
-  presentaciones: { id: number | null; name: string; factorToBase: number | null }[] = [];
+  presentaciones: Presentacion[] = [];
   /** Las que habia al abrir: al guardar, lo que ya no este se da de baja. */
   private presentacionesOriginales: number[] = [];
 
@@ -253,7 +262,19 @@ export class Inventario {
   }
 
   agregarPresentacion() {
-    this.presentaciones.push({ id: null, name: '', factorToBase: null });
+    this.presentaciones.push({ id: null, name: '', factorToBase: null, barCode: '', salePrice: null });
+  }
+
+  /**
+   * 0089 · Lo que cuesta cada pieza dentro del cartón, para compararlo con el
+   * precio suelto mientras se escribe: «$15.83 c/u · ahorra $2.17 por pieza».
+   */
+  piezaDelCarton(p: Presentacion): string {
+    const f = Number(p.factorToBase ?? 0), v = Number(p.salePrice ?? NaN);
+    if (!(f >= 2) || !Number.isFinite(v) || v < 0) return '';
+    const pieza = v / f, suelto = Number(this.form.price ?? 0);
+    const ahorro = suelto - pieza;
+    return `$${pieza.toFixed(2)} c/u` + (suelto > 0 && ahorro > 0.004 ? ` · ahorra $${ahorro.toFixed(2)} por pieza` : '');
   }
 
   quitarPresentacion(i: number) {
@@ -275,6 +296,7 @@ export class Inventario {
       const lista = await this.hosp.presentations(productId);
       this.presentaciones = lista.map(p => ({
         id: Number(p.id), name: String(p.name ?? ''), factorToBase: Number(p.factor_to_base ?? 0),
+        barCode: String(p.bar_code ?? ''), salePrice: p.sale_price != null ? Number(p.sale_price) : null,
       }));
       this.presentacionesOriginales = this.presentaciones.map(p => Number(p.id));
       this.cdr.detectChanges();
@@ -293,8 +315,10 @@ export class Inventario {
     const validas = this.presentaciones.filter(p => p.name.trim() && Number(p.factorToBase) > 0);
     try {
       for (const p of validas) {
+        const precio = p.salePrice == null || String(p.salePrice) === '' ? null : Number(p.salePrice);
         await this.hosp.savePresentation({
           id: p.id, productId, name: p.name.trim(), factorToBase: Number(p.factorToBase),
+          venta: { barCode: (p.barCode || '').trim() || null, salePrice: precio != null && Number.isFinite(precio) ? precio : null },
         });
       }
       const quedan = new Set(validas.map(p => p.id).filter((x): x is number => x != null));

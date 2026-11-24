@@ -184,7 +184,7 @@ asignar('customers', [
   'sp_create_customer', 'sp_update_customer', 'sp_get_customer', 'sp_get_customers',
   'sp_get_customer_open_credit_sales', 'sp_get_customers_credit_summary',
   'sp_get_customers_with_credit_available', 'sp_get_customers_open_credit_not_overdue',
-  'sp_register_customer_payment', 'sp_top_customers', 'sp_customers_kpis',
+  'sp_register_customer_payment', 'sp_top_customers', 'sp_customers_kpis', 'sp_customer_price_list_set',
 ]);
 
 asignar('suppliers', [

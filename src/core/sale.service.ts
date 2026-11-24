@@ -94,6 +94,10 @@ export class SaleService {
   validate(cart: Cart, payment: Payment): string | null {
     const t = CartService.totalsOf(cart);
     if (!cart.lines.length) return 'Agrega productos a la venta';
+    /* 0089 · El precio del cartón lo pone la cotización: sin ella se cobraría
+       pieza por pieza con el precio repartido y redondeado. */
+    if (cart.lines.some(l => l.pack) && (!cart.commercial?.quote || cart.commercial.pending))
+      return 'Falta calcular el precio del cartón. Espera un momento y cobra de nuevo.';
     /* $0 solo si la cotización lo explica: un beneficio (café del Club, cupón
        de producto gratis) dejó la cuenta en cero. SQL vuelve a validarlo. */
     const gratisPorBeneficio = t.total === 0 && Number((cart.commercial?.quote as any)?.discount ?? 0) > 0;

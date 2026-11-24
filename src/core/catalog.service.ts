@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ElectronBridge } from './electron-bridge.service';
-import { CatalogProduct, LineSource } from './models';
+import { CatalogProduct, LineSource, PackVenta } from './models';
+import { HospitalityService } from './hospitality.service';
 
 /**
  * Catalogo de venta: productos, categorias, busqueda y cache.
@@ -24,8 +25,15 @@ import { CatalogProduct, LineSource } from './models';
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly bridge = inject(ElectronBridge);
+  private readonly hosp = inject(HospitalityService);
 
   readonly products = signal<CatalogProduct[]>([]);
+  /**
+   * 0089 · Presentaciones que se venden (el cartón de 24 con su código), por
+   * código de barras. Se leen junto con el catálogo; el precio que se cobra
+   * lo vuelve a leer la cotización desde la base.
+   */
+  private readonly packs = signal<Map<string, PackVenta & { productId: number }>>(new Map());
   readonly loadedAt = signal<number>(0);
   readonly loading = signal(false);
 
@@ -105,10 +113,14 @@ export class CatalogService {
     this.loading.set(true);
     this.inflight = (async () => {
       try {
-        const rs = await this.bridge.api?.getActiveProducts?.();
+        const [rs, pres] = await Promise.all([
+          this.bridge.api?.getActiveProducts?.(),
+          this.leerPacks(),
+        ]);
         const rows = this.bridge.filas(rs);
         const list = rows.map(r => CatalogService.normalizar(r));
         this.products.set(list);
+        this.packs.set(pres);
         this.loadedAt.set(Date.now());
         return list;
       } catch {
@@ -149,6 +161,32 @@ export class CatalogService {
   findByBarcode(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
     return key ? this.porCodigo().get(key) : undefined;
+  }
+
+  /**
+   * 0089 · El código de un cartón: el producto y la presentación. Solo si el
+   * producto se vende (un insumo no se cobra ni por cartón).
+   */
+  findPack(code: string): { product: CatalogProduct; pack: PackVenta } | undefined {
+    const key = (code || '').trim().toLowerCase();
+    const x = key ? this.packs().get(key) : undefined;
+    const product = x ? this.porId().get(x.productId) : undefined;
+    if (!x || !product || product.sellable === false) return undefined;
+    const { productId: _, ...pack } = x;
+    return { product, pack };
+  }
+
+  /** Las presentaciones con precio de venta y código. Sin ellas, la caja sigue igual. */
+  private async leerPacks(): Promise<Map<string, PackVenta & { productId: number }>> {
+    const m = new Map<string, PackVenta & { productId: number }>();
+    try {
+      for (const x of await this.hosp.presentations(null)) {
+        const code = String(x.bar_code ?? '').trim().toLowerCase();
+        if (!code || x.sale_price == null) continue;
+        m.set(code, { id: Number(x.id), productId: Number(x.product_id), name: String(x.name), factor: Number(x.factor_to_base), price: Number(x.sale_price) });
+      }
+    } catch { /* sin presentaciones: se vende suelto */ }
+    return m;
   }
 
   findByPartNumber(code: string): CatalogProduct | undefined {
@@ -218,6 +256,22 @@ export class CatalogService {
          se vende con decimales. Solo mercancía de existencia directa: una
          receta o un producto de menú se venden por unidad aunque se midan en ml. */
       decimal: CatalogService.esGranel(p),
+    };
+  }
+
+  /**
+   * 0089 · La línea de un cartón: el producto, en piezas, con el nombre de la
+   * presentación. El precio por pieza es solo de referencia en pantalla; lo
+   * que se cobra es el precio del cartón (cotización comercial).
+   */
+  static toPackLineSource(p: CatalogProduct, pack: PackVenta): LineSource {
+    return {
+      ...CatalogService.toLineSource(p),
+      productName: `${p.product_name} · ${pack.name}`,
+      unitPrice: pack.price / pack.factor,
+      catalogPrice: null,
+      decimal: false,
+      pack,
     };
   }
 

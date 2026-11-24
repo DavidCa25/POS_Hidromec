@@ -271,6 +271,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     commercialCatalog: () => invoke('commercial:catalog'),
     commercialSave: p => invoke('commercial:save',p),
     commercialQuote: p => invoke('commercial:quote',p),
+    commercialCustomerPriceList: p => invoke('commercial:customer-price-list',p),
     getConfig: () => invoke("getConfig"),
     // Solo lectura: dice si la BASE es de demostracion, para poder marcarlo en
     // pantalla. No habilita ninguna operacion del gestor.

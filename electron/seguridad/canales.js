@@ -54,6 +54,8 @@ const EXIGE = {
   'commercial:quote': VENTAS_OPERAR,
   // 0056: combos, promociones y precios por canal tienen paquete propio.
   'commercial:save': COMERCIAL_ADMINISTRAR,
+  // 0089: qué lista de precios (canal) paga un cliente, p. ej. Mayoreo.
+  'commercial:customer-price-list': COMERCIAL_ADMINISTRAR,
   'sp-open-shift': VENTAS_OPERAR,
   'sp-close-shift': VENTAS_OPERAR,
   /* Roles v2: un retiro saca dinero del cajon. El Operador lo pide y lo

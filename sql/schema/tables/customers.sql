@@ -31,6 +31,7 @@ CREATE TABLE dbo.customers (
     regimen_fiscal NVARCHAR(5) COLLATE Modern_Spanish_CI_AS NULL,
     uso_cfdi NVARCHAR(5) COLLATE Modern_Spanish_CI_AS NULL,
     razon_social NVARCHAR(255) COLLATE Modern_Spanish_CI_AS NULL,
+    price_channel NVARCHAR(64) COLLATE Modern_Spanish_CI_AS NULL,
     PRIMARY KEY CLUSTERED (id)
 );
 END;

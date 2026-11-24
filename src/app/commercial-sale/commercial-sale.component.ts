@@ -389,11 +389,15 @@ export class CommercialSaleComponent {
   active = (x: any) => vigente(x,this.service.context());
   get channelOptions(): WxOpcion[] {
     return (
-      this.service.policy?.channels.map((c) => ({
-        valor: c.id,
-        etiqueta: c.name,
-        desactivada: !c.active,
-      })) ?? []
+      /* 0089 · Una lista de clientes (Mayoreo) llega con el cliente: aquí solo
+         se ve cuando ya es la de la cuenta, y no se elige a mano. */
+      this.service.policy?.channels
+        .filter((c) => !c.customersOnly || c.id === this.service.context().channel)
+        .map((c) => ({
+          valor: c.id,
+          etiqueta: c.customersOnly ? c.name + ' · lista del cliente' : c.name,
+          desactivada: !c.active || !!c.customersOnly,
+        })) ?? []
     );
   }
   get comboOptions(): WxOpcion[] {

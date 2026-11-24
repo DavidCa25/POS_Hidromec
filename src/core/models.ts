@@ -74,6 +74,22 @@ export interface CartCustomer {
   uso_cfdi?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** 0089 · Lista de precios del cliente (canal comercial, p. ej. «MAYOREO»). */
+  price_channel?: string | null;
+}
+
+/**
+ * 0089 · Presentación de venta: el cartón de 24 con su propio código y su
+ * precio. La línea sigue contando piezas (24 por cartón); el precio del
+ * cartón lo aplica la cotización comercial desde la base.
+ */
+export interface PackVenta {
+  id: number;
+  name: string;
+  /** Piezas por paquete. */
+  factor: number;
+  /** Precio del paquete completo. */
+  price: number;
 }
 
 /**
@@ -103,6 +119,8 @@ export interface LineSource {
    * guardada no.
    */
   catalogPrice?: number | null;
+  /** 0089 · Se vende por paquete (cartón). Ver `PackVenta`. */
+  pack?: PackVenta | null;
 }
 
 /** Cabecera de una venta cargada por folio. */

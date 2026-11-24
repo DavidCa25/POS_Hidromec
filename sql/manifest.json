@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-16T21:08:05.080Z",
+  "generado": "2026-11-19T18:56:09.477Z",
   "servidor": [
     "Wybix_Production",
     "Hidromec_DataBase",
@@ -538,6 +538,15 @@
       "checksum": "b273a4b69a1d4e43"
     },
     {
+      "nombre": "sp_customer_price_list_set",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/customers/sp_customer_price_list_set.sql",
+      "origen": "Wybix_Production",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ed50ba93fa0cf0b4"
+    },
+    {
       "nombre": "sp_customers_kpis",
       "tipo": "SQL_STORED_PROCEDURE",
       "archivo": "sql/procedures/customers/sp_customers_kpis.sql",
@@ -1039,7 +1048,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "e7e4f7de9217996d"
+      "checksum": "8d89467b9a1326f2"
     },
     {
       "nombre": "sp_get_product_suppliers",
@@ -2398,7 +2407,7 @@
       "origen": "Wybix_Production",
       "critico": true,
       "clasificacion": "current",
-      "checksum": "591a22d34c403ae9"
+      "checksum": "0149d6659fa12299"
     },
     {
       "nombre": "sp_register_supplier_payment",
@@ -2875,7 +2884,7 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "dffb895299f9d8cb"
+      "checksum": "3e2e6ca64802a71d"
     },
     {
       "nombre": "sp_save_recipe",
@@ -3698,21 +3707,21 @@
     }
   ],
   "esquema": {
-    "generado": "2026-11-16T18:51:30.391Z",
+    "generado": "2026-11-19T18:56:24.172Z",
     "base": "Wybix_Production",
     "excluidas": [
       "database_metadata",
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 159,
-      "columnas": 1613,
-      "pk": 159,
-      "unicas": 23,
-      "foraneas": 202,
-      "chequeos": 176,
-      "predeterminados": 388,
-      "indices": 148
+      "tablas": 178,
+      "columnas": 1789,
+      "pk": 178,
+      "unicas": 25,
+      "foraneas": 219,
+      "chequeos": 209,
+      "predeterminados": 419,
+      "indices": 169
     },
     "objetos": [
       {
@@ -4224,14 +4233,14 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/customers.sql",
         "origen": "Wybix_Production",
-        "columnas": 25,
+        "columnas": 26,
         "pk": "PK__customer__3213E83F66EB7BAE",
         "unicas": 0,
         "foraneas": 0,
         "chequeos": 0,
         "predeterminados": 8,
         "indices": 2,
-        "checksum": "14bcca7ddd61de99"
+        "checksum": "9f5c78265ad38795"
       },
       {
         "nombre": "dispositivos_emparejamientos",
@@ -4910,14 +4919,14 @@
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/product_presentations.sql",
         "origen": "Wybix_Production",
-        "columnas": 6,
+        "columnas": 8,
         "pk": "PK_product_presentations",
         "unicas": 0,
         "foraneas": 1,
-        "chequeos": 1,
+        "chequeos": 2,
         "predeterminados": 2,
-        "indices": 1,
-        "checksum": "b84787f60a61ea49"
+        "indices": 2,
+        "checksum": "210f5a7dfe3c6674"
       },
       {
         "nombre": "product_suppliers",

@@ -428,6 +428,12 @@
               [(ngModel)]="c.inheritBase"
               [disabled]="c.id === 'LOCAL'"
             /><span></span>Usar precio base si falta uno</label
+          ><label class="switch" *ngIf="c.id !== 'LOCAL'" data-guide="ofertas-canal-clientes"
+            ><input
+              type="checkbox"
+              [(ngModel)]="c.customersOnly"
+            /><span></span>Lista de precios de clientes (mayoreo): solo para el
+            cliente que la tiene asignada</label
           >
         </div>
         <button class="secondary" (click)="addChannel()">

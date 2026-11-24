@@ -42,6 +42,8 @@ type Cliente = {
   lateFeePct?: number;
   lateFeeFixed?: number;
   riskLevel?: number;
+  /** 0089 · Lista de precios (canal comercial) que paga: Mayoreo, Tiendas… null = mostrador. */
+  priceChannel?: string | null;
 
   /* ESTADO DE CUENTA: lo calcula sp_get_customers desde las ventas a credito.
      No se captura: antes eran «Saldo (demo)» y «# vencidos (demo)», campos
@@ -164,9 +166,38 @@ export class Clientes implements OnInit {
   /** 0077 · «Crédito y cupones a clientes». */
   get puedeCredito(): boolean { return this.auth.puede('CREDITO_CUPONES'); }
 
+  /**
+   * 0089 · LISTA DE PRECIOS. Los canales de Promociones y combos (Mayoreo,
+   * Tiendas…) son también listas de precios: el cliente que tiene una la
+   * trae a la cuenta al asignarlo en la caja. Solo aparece si hay alguna
+   * además de Mostrador, y la asigna quien administra precios.
+   */
+  opcListasPrecio: WxOpcion[] = [];
+  get puedeListaPrecios(): boolean { return this.auth.puede('COMERCIAL_ADMINISTRAR'); }
+
+  private async cargarListasPrecio() {
+    try {
+      const r = await (window as any).electronAPI?.commercialCatalog?.();
+      const canales = (r?.success ? r.data?.policy?.channels ?? [] : []).filter((c: any) => c.id !== 'LOCAL' && c.active);
+      this.opcListasPrecio = canales.length ? [
+        { valor: null, etiqueta: 'Mostrador', nota: 'Precio normal' },
+        ...canales.map((c: any) => ({ valor: c.id, etiqueta: c.name, nota: c.customersOnly ? 'Solo para clientes con esta lista' : undefined })),
+      ] : [];
+    } catch { this.opcListasPrecio = []; }
+  }
+
+  /** Guarda la lista si cambió. Un fallo no deshace el cliente: ya quedó guardado. */
+  private async guardarListaPrecios(customerId: number | null | undefined) {
+    if (!customerId || !this.puedeListaPrecios || !this.opcListasPrecio.length) return;
+    const nueva = this.form.priceChannel ?? null, antes = this.editing?.priceChannel ?? null;
+    if (nueva === antes) return;
+    const r = await (window as any).electronAPI?.commercialCustomerPriceList?.({ customerId, channel: nueva });
+    if (!r?.success) await Swal.fire({ icon: 'warning', title: 'El cliente se guardó, su lista de precios no', text: r?.error || 'Vuelve a intentarlo editándolo.' });
+  }
+
   async ngOnInit() {
     await this.cargarCatalogos();
-    await this.loadClientes();
+    await Promise.all([this.loadClientes(), this.cargarListasPrecio()]);
   }
 
   // ===== CARGA DESDE BD =====
@@ -211,6 +242,7 @@ export class Clientes implements OnInit {
         lateFeePct: Number(row.late_fee_pct ?? 0),
         lateFeeFixed: Number(row.late_fee_fixed ?? 0),
         riskLevel: Number(row.risk_level ?? 0),
+        priceChannel: row.price_channel ?? null,
         balance: Number(row.balance ?? 0),
         overdueCount: Number(row.overdueCount ?? 0),
         overdueBalance: Number(row.overdue_balance ?? 0),
@@ -343,7 +375,8 @@ export class Clientes implements OnInit {
       graceDays: 0,
       lateFeePct: 0,
       lateFeeFixed: 0,
-      riskLevel: 0
+      riskLevel: 0,
+      priceChannel: null
     };
     this.showModal = true;
   }
@@ -412,6 +445,7 @@ export class Clientes implements OnInit {
           return;
         }
 
+        await this.guardarListaPrecios(this.editing.id);
         /* Limite, plazo o gracia cambian el disponible y lo vencido: se relee. */
         await this.loadClientes();
 
@@ -454,6 +488,7 @@ export class Clientes implements OnInit {
           return;
         }
 
+        await this.guardarListaPrecios(Number(res.id) || null);
         /* El estado de cuenta lo calcula la base: se relee en vez de inventarlo. */
         await this.loadClientes();
 

@@ -67,7 +67,7 @@ export class CommercialService {
     catch {
         this.error.set('No se pudo cargar la configuración comercial.');
     } }
-    private payload(cart: Cart) { return { version: this.policy?.version, coupon: cart.coupon?.code, membershipId: cart.membership?.membershipId ?? null, customerId: cart.membership?.customerId ?? cart.canje?.customerId ?? null, pointsRewardId: cart.canje?.rewardId ?? null, stampCardId: cart.canje?.cardId ?? null, orderReference: cart.commercial?.orderReference, channel: cart.commercial?.channel ?? 'LOCAL', audiences: cart.commercial?.audiences ?? [], lines: cart.lines.map(l => ({ key: String(l.lineId), productId: l.productId, qty: l.qty, note: l.note, options: l.options, combo: l.combo })), registerId: null }; }
+    private payload(cart: Cart) { return { version: this.policy?.version, coupon: cart.coupon?.code, membershipId: cart.membership?.membershipId ?? null, customerId: cart.membership?.customerId ?? cart.canje?.customerId ?? null, pointsRewardId: cart.canje?.rewardId ?? null, stampCardId: cart.canje?.cardId ?? null, orderReference: cart.commercial?.orderReference, channel: cart.commercial?.channel ?? 'LOCAL', audiences: cart.commercial?.audiences ?? [], priceCustomerId: cart.customer?.id ?? null, lines: cart.lines.map(l => ({ key: String(l.lineId), productId: l.productId, qty: l.qty, note: l.note, options: l.options, combo: l.combo, presentationId: l.pack?.id ?? null })), registerId: null }; }
     signature(cart: Cart) { return JSON.stringify([this.payload(cart), this.context().date, this.context().time]); }
     catalogPrice(id: number, base: number, variant?: string): number | null {
         this.carts.version();
@@ -87,7 +87,7 @@ export class CommercialService {
         const product = this.data()?.ids.find((x: any) => x.id === id)?.uuid;
         return !!this.policy?.prices.some(x => x.channel === channel && x.product === product && !!x.variant);
     }
-    enabled(cart: Cart) { return !cart.transient && !cart.meta?.['ordenServicio'] && !!this.policy && ((cart.commercial?.channel ?? 'LOCAL') !== 'LOCAL' || this.policy.prices.some(x => x.channel === 'LOCAL') || this.policy.promotions.some(x => x.active) || cart.lines.some(l => l.combo) || !!cart.coupon || !!cart.membership || !!cart.canje); }
+    enabled(cart: Cart) { return !cart.transient && !cart.meta?.['ordenServicio'] && !!this.policy && ((cart.commercial?.channel ?? 'LOCAL') !== 'LOCAL' || this.policy.prices.some(x => x.channel === 'LOCAL') || this.policy.promotions.some(x => x.active) || cart.lines.some(l => l.combo || l.pack) || !!cart.coupon || !!cart.membership || !!cart.canje); }
     private schedule(cart: Cart) { if (!this.enabled(cart) || !cart.lines.length) {
         if (cart.commercial?.quote) {
             cart.commercial.quote = undefined;
@@ -165,4 +165,7 @@ export class CommercialService {
     }
     changeChannel(channel: string) { const c = this.carts.activeCart(); if (c.lines.some(l => l.enviada != null))
         throw Error('La cuenta ya tiene una comanda enviada. Conserva su canal.'); c.commercial = { channel, audiences: [] }; this.carts.notify(); }
+    /** 0089 · Los canales que la caja ofrece a mano: una lista de clientes
+     *  (Mayoreo) llega sola con el cliente que la tiene, no se elige. */
+    canalesDeCaja() { return (this.policy?.channels ?? []).filter(c => c.active && !c.customersOnly); }
 }

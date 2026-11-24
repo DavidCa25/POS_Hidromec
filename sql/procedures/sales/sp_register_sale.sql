@@ -480,6 +480,11 @@ BEGIN
         OR EXISTS(SELECT 1 FROM (SELECT c.line_no,m.optionId,m.quantity FROM OPENJSON(@cq,'$.lines') WITH(line_no INT,options NVARCHAR(MAX) AS JSON) c
         CROSS APPLY OPENJSON(c.options) WITH(optionId INT,quantity INT) m EXCEPT SELECT line_no,option_id,qty FROM #mods) x)
         THROW 51000,'Las opciones no coinciden con la cotización.',1;
+      /* 0089 · Lista de precios de un cliente («solo clientes»): la cotización
+         dice para quién se calculó, y la venta tiene que ser de ese cliente. */
+      IF JSON_VALUE(@cq,'$.priceCustomerId') IS NOT NULL
+         AND ISNULL(@customer_id,-1)<>TRY_CAST(JSON_VALUE(@cq,'$.priceCustomerId') AS INT)
+        THROW 51000,'Esos precios son de la lista de otro cliente. Revisa el cliente de la cuenta.',1;
     END;
 
     /* ------------------------ PRECIO DE LOS MODIFICADORES --------------------
@@ -583,6 +588,12 @@ BEGIN
           IF @commercial_payment_reference IS NULL AND EXISTS(SELECT 1 FROM OPENJSON(@cq,'$.optionPrices') WITH(id INT,price DECIMAL(10,2)) c
              LEFT JOIN dbo.modifier_options o WITH(HOLDLOCK) ON o.id=c.id WHERE o.id IS NULL OR o.active=0 OR o.price_delta<>c.price)
             THROW 51000,'Cambió el precio de una opción. Revisa la cuenta.',1;
+          /* 0089 · El cartón (presentación de venta) se cotizó a un precio: si
+             cambió o dejó de venderse desde entonces, no se cobra el viejo. */
+          IF @commercial_payment_reference IS NULL AND EXISTS(SELECT 1 FROM OPENJSON(@cq,'$.presentations') WITH(id INT,price DECIMAL(10,2)) c
+             LEFT JOIN dbo.product_presentations pp WITH(HOLDLOCK) ON pp.id=c.id
+             WHERE pp.id IS NULL OR pp.active=0 OR pp.sale_price IS NULL OR pp.sale_price<>c.price)
+            THROW 51000,'Cambió el precio de una presentación. Revisa la cuenta.',1;
         END;
 
         /* 3c) 0073 Venta suelta: abrir paquetes.

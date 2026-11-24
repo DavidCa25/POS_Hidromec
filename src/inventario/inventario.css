@@ -995,6 +995,24 @@
   transition: background-color var(--wx-dur-micro) ease, color var(--wx-dur-micro) ease;
 }
 .prod-present__x:hover { background: var(--wx-danger-soft); color: var(--wx-danger); }
+/* 0089 · Cada presentación: su contenido y, debajo, cómo se vende. */
+.prod-present__item {
+  padding: 8px 0 2px; border-bottom: 1px solid var(--wx-edge-soft);
+  margin-bottom: 8px;
+}
+.prod-present__item .prod-present__fila { margin-bottom: 6px; }
+.prod-present__venta { padding-left: 4px; }
+.prod-present__ico { flex: 0 0 auto; font-size: 16px; color: var(--wx-text-dim); }
+.prod-present__codigo { flex: 1 1 160px; min-width: 0; }
+.prod-present__precio {
+  flex: 0 0 140px; display: flex; align-items: center; gap: 4px;
+  font-size: 13px; color: var(--wx-text-muted);
+}
+.prod-present__precio > input { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 560px) {
+  .prod-present__venta { flex-wrap: wrap; }
+  .prod-present__precio { flex: 1 1 120px; }
+}
 
 /* La unidad base junto a la cifra: "12000" no dice nada, "12000 ml" si. */
 .stock-uom {

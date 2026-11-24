@@ -95,6 +95,9 @@ export interface Presentation {
   is_default: boolean;
   active: boolean;
   base_uom: string;
+  /** 0089 · Código de barras del cartón y su precio de venta. Sin precio, solo se compra. */
+  bar_code?: string | null;
+  sale_price?: number | null;
 }
 
 type R<T> = { success: boolean; data?: T; error?: string };
@@ -192,7 +195,7 @@ export class HospitalityService {
     return this.api.presentations.list({ productId }).then((r: any) => this.ok<Presentation[]>(r, []));
   }
 
-  async savePresentation(p: { id?: number | null; productId: number; name: string; factorToBase: number; isDefault?: boolean; active?: boolean }): Promise<number> {
+  async savePresentation(p: { id?: number | null; productId: number; name: string; factorToBase: number; isDefault?: boolean; active?: boolean; venta?: { barCode: string | null; salePrice: number | null } }): Promise<number> {
     const r = await this.api.presentations.save(p);
     if (!r?.success) throw new Error(r?.error || 'No se pudo guardar la presentación.');
     return r.data?.[0]?.id ?? 0;

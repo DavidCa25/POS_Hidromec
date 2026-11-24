@@ -2175,9 +2175,18 @@ export class Venta implements OnInit, OnDestroy {
     /* Con lo que hay en memoria, sin esperar; si es viejo se relee en segundo
        plano. Un precio que cambió en otra caja lo detiene el cobro. */
     await this.catalog.refrescarEnFondo();
+    /* 0089 · El código de un cartón agrega el cartón completo, a su precio. */
+    const carton = () => this.catalog.findByBarcode(key) ? undefined : this.catalog.findPack(key);
+    let c = carton();
     const buscar = () => this.catalog.findByBarcode(key) ?? this.catalog.findByPartNumber(key);
-    let p = buscar();
-    if (!p) { await this.catalog.load(true); p = buscar(); }
+    let p = c ? undefined : buscar();
+    if (!p && !c) { await this.catalog.load(true); c = carton(); p = c ? undefined : buscar(); }
+    if (c) {
+      this.cart.addProduct(CatalogService.toPackLineSource(c.product, c.pack), c.pack.factor);
+      this.lastAddedProductId = c.product.id;
+      this.lineaSeleccionada = null;
+      return;
+    }
 
     if (!p) {
       await Swal.fire({

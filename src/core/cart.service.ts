@@ -1,6 +1,6 @@
 import type {Cotizacion} from './commercial.service';
 import { Injectable, computed, signal } from '@angular/core';
-import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon } from './models';
+import { CartCustomer, LineSource, SelectedOption, ServiceMode, AppliedCoupon, PackVenta } from './models';
 import { precioGranel } from '../../shared/comercial';
 
 /**
@@ -43,6 +43,12 @@ export class CartLine {
   catalogPrice: number | null;
   /** El cajero puso el precio a mano: ese manda, aunque el catálogo cambie. */
   manualPrice = false;
+  /**
+   * 0089 · Se vende por paquete (el cartón de 24). `qty` sigue en piezas y
+   * siempre es múltiplo de `pack.factor`; el precio del cartón lo pone la
+   * cotización comercial. Ver `PackVenta`.
+   */
+  pack: PackVenta | null;
 
   constructor(lineId: number, src: LineSource, qty: number, options: SelectedOption[] = []) {
     this.lineId = lineId;
@@ -58,6 +64,12 @@ export class CartLine {
     this.inventoryMode = src.inventoryMode;
     this.decimal = !!src.decimal;
     this.catalogPrice = src.catalogPrice != null && Number.isFinite(Number(src.catalogPrice)) ? Number(src.catalogPrice) : null;
+    this.pack = src.pack ?? null;
+  }
+
+  /** 0089 · Cuántos paquetes son (2 cartones), o null si se vende suelto. */
+  get packs(): number | null {
+    return this.pack ? Math.round(this.qty / this.pack.factor) : null;
   }
 
   /**
@@ -99,7 +111,9 @@ export interface Cart {
    */
   transient: boolean;
   /** El cupon aplicado a ESTA cuenta, si lo hay. */
-  commercial?: {channel:string;audiences:string[];orderReference?:string;quote?:Cotizacion;signature?:string;requestedSignature?:string;pending?:boolean;error?:string};
+  commercial?: {channel:string;audiences:string[];orderReference?:string;quote?:Cotizacion;signature?:string;requestedSignature?:string;pending?:boolean;error?:string;
+    /** 0089 · El canal lo puso la lista de precios del cliente, no la caja. */
+    porCliente?:boolean};
   coupon?: AppliedCoupon | null;
   /** 0063 · Club: la caja pidió el beneficio del día de esta membresía. Lo decide la cotización. */
   membership?: { membershipId: number; customerId: number } | null;
@@ -326,7 +340,8 @@ export class CartService {
     /* Ni en una enviada ni en una con envio en vuelo (tiene origen): lo que
        ya salio hacia la cocina no crece por detras. */
     const existing = cart.lines.find(l => l.enviada == null && l.origen == null
-      && !l.combo && l.productId === src.productId && CartService.optionsKey(l.options) === key);
+      && !l.combo && l.productId === src.productId && CartService.optionsKey(l.options) === key
+      && (l.pack?.id ?? null) === (src.pack?.id ?? null));
     if (existing) {
       existing.qty += qty;
       this.touch();
@@ -351,15 +366,19 @@ export class CartService {
     const piso = min ?? CartService.minimoDe(line);
     let q = Number(qty);
     if (line.decimal && Number.isFinite(q)) q = Math.round(q * 100) / 100;
+    /* 0089 · Un cartón se vende completo: la cantidad queda en múltiplos de
+       sus piezas (27 piezas de un cartón de 24 son 1 cartón, 24). */
+    if (line.pack && Number.isFinite(q)) q = Math.max(1, Math.round(q / line.pack.factor)) * line.pack.factor;
     line.qty = Number.isFinite(q) && q >= piso ? q : piso;
     this.touch();
   }
 
-  static minimoDe(line: { decimal?: boolean }): number { return line.decimal ? 0.01 : 1; }
+  static minimoDe(line: { decimal?: boolean; pack?: PackVenta | null }): number { return line.pack ? line.pack.factor : line.decimal ? 0.01 : 1; }
 
+  /** +1 / −1 en un cartón es un cartón entero, no una pieza. */
   adjustQty(line: CartLine, delta: number, min?: number): void {
     if(line.combo)return;
-    this.setQty(line, Number(line.qty || 0) + delta, min);
+    this.setQty(line, Number(line.qty || 0) + delta * (line.pack?.factor ?? 1), min);
   }
 
   /**
@@ -418,6 +437,14 @@ export class CartService {
   setCustomer(c: CartCustomer | null): void {
     const cart = this.activeCart();
     cart.customer = c;
+    /* 0089 · El cliente con lista de precios (Mayoreo) la trae a la cuenta.
+       Al quitarlo, la cuenta vuelve a Mostrador solo si el canal lo había
+       puesto él: un canal elegido a mano (Rappi, Para llevar) se respeta.
+       Con algo ya enviado a cocina el canal no cambia. */
+    if (!cart.lines.some(l => l.enviada != null)) {
+      if (c?.price_channel) cart.commercial = { channel: c.price_channel, audiences: [], porCliente: true };
+      else if (cart.commercial?.porCliente) cart.commercial = { channel: 'LOCAL', audiences: [] };
+    }
     /* El beneficio del Club es de UN cliente: cambiar de cliente lo quita. */
     if (cart.membership && cart.membership.customerId !== c?.id) cart.membership = null;
     if (cart.canje && cart.canje.customerId !== c?.id) cart.canje = null;
