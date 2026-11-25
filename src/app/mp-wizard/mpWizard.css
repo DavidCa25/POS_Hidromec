@@ -210,3 +210,15 @@
 }
 .wz-resumen dt { color: var(--wx-text-muted); font-size: 13px; }
 .wz-resumen dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+/* Botón dentro de un paso (abrir el panel de MP) */
+.wz-howto-accion { margin-top: 8px; }
+.wz-howto-item small.wz-hint { display: block; margin-top: 4px; }
+
+/* Ayuda plegada: probar sin cobrar, vincular otra terminal */
+.wz-mas {
+  margin: 12px 0; padding: 10px 14px; border: 1px solid var(--wx-edge); border-radius: 12px;
+  font-size: 13.5px; line-height: 1.5; color: var(--wx-text-muted);
+}
+.wz-mas summary { cursor: pointer; font-weight: 600; color: var(--wx-text); }
+.wz-mas[open] summary { margin-bottom: 8px; }

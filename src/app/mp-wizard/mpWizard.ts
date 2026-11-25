@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Output, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, NgTemplateOutlet } from '@angular/common';
 import Swal from 'sweetalert2';
 
 /* Lo que devuelve `mp-discover`: lo que ya existe en la cuenta de MP. */
@@ -9,6 +9,8 @@ interface MpStore { id: string; name: string; }
 interface MpPos { id: string; name: string; storeId: string; }
 
 const NUEVA = '__nueva__';
+/** «Tus integraciones»: donde están la aplicación y sus credenciales. */
+const PANEL_MP = 'https://www.mercadopago.com.mx/developers/panel/app';
 
 /**
  * Vincular la terminal Point en cuatro pasos:
@@ -23,7 +25,7 @@ const NUEVA = '__nueva__';
 @Component({
   selector: 'app-mp-wizard',
   standalone: true,
-  imports: [FormsModule, NgIf, NgFor],
+  imports: [FormsModule, NgIf, NgFor, NgTemplateOutlet],
   templateUrl: './mpWizard.html',
   styleUrls: ['./mpWizard.css']
 })
@@ -93,6 +95,12 @@ export class MpWizard implements OnInit {
   prev() { if (this.step > 1) this.step--; }
 
   // ============ 1 · Conectar ============
+  async abrirPanel() {
+    let rs: any = null;
+    try { rs = await this.api?.openExternal?.(PANEL_MP); } catch { /* se muestra la dirección */ }
+    if (!rs?.ok) await Swal.fire({ icon: 'info', title: 'Ábrelo en tu navegador', text: PANEL_MP });
+  }
+
   async conectar(silencioso = false) {
     const api = this.api;
     if (!api?.mpValidateToken || !api?.mpDiscover) {

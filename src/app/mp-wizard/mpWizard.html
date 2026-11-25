@@ -30,24 +30,56 @@
     <section *ngIf="!revisando && step===1" class="wz-pane">
       <h3>Conecta tu cuenta de Mercado Pago</h3>
       <p class="wz-lead">
-        Wybix necesita el <b>Access Token</b> de la cuenta que recibe los pagos. Con él lee lo que ya tienes
-        (sucursales, cajas y terminales) y solo te pide lo que falte.
+        Wybix se conecta a tu cuenta con una clave llamada <b>Access Token</b>. Se saca una sola vez del
+        panel de Mercado Pago, en unos 5 minutos. Con ella Wybix ve lo que ya tienes y solo te pide lo que falte.
       </p>
+
+      <div class="wz-note">
+        <i class="ph ph-list-checks"></i>
+        <div>
+          <b>Ten a la mano:</b> el correo y contraseña de la cuenta de Mercado Pago <b>que recibe el dinero</b> del negocio,
+          la terminal <b>Point Smart</b> cargada y con internet, y tu celular con la app de Mercado Pago en esa misma cuenta.
+        </div>
+      </div>
 
       <div class="wz-howto">
         <div class="wz-howto-item">
           <span class="wz-badge">1</span>
-          <div>En la computadora entra a <b>mercadopago.com.mx/developers</b> con la cuenta del negocio y abre <b>Tus integraciones</b>.</div>
+          <div>
+            <b>Abre el panel de Mercado Pago.</b> Pulsa el botón; se abre en tu navegador.
+            Si te pide entrar, pulsa <b>«Ingresar»</b> (arriba a la derecha) con la cuenta del negocio. Llegas a <b>«Tus integraciones»</b>.
+            <div class="wz-howto-accion">
+              <button class="wz-btn ghost" type="button" (click)="abrirPanel()"><i class="ph ph-arrow-square-out"></i> Abrir panel de Mercado Pago</button>
+            </div>
+          </div>
         </div>
         <div class="wz-howto-item">
           <span class="wz-badge">2</span>
-          <div>Abre tu aplicación. Si no tienes, pulsa <b>Crear aplicación</b> y elige que vas a cobrar con <b>Point</b> (pagos presenciales).</div>
+          <div>
+            <b>Entra a tu aplicación.</b> Si ya aparece una en la lista, haz clic en ella.
+            Si la lista está vacía, pulsa <b>«Crear aplicación»</b> → <b>«Crear manualmente»</b>, ponle de nombre <b>Wybix POS</b>
+            y, cuando pregunte qué vas a integrar, elige <b>pagos presenciales / Point</b>.
+          </div>
         </div>
         <div class="wz-howto-item">
           <span class="wz-badge">3</span>
-          <div>En <b>Credenciales de producción</b>, copia el <b>Access Token</b> (empieza con <code>APP_USR-</code>; no la Public Key) y pégalo aquí.</div>
+          <div>
+            <b>Copia el Access Token.</b> En el menú de la izquierda, sección <b>«Producción»</b>, abre <b>«Credenciales de producción»</b>.
+            Si aún no están activas, llena lo que pide y pulsa <b>«Activar credenciales»</b>.
+            Copia el campo <b>Access Token</b> (empieza con <code>APP_USR-</code>). <b>No</b> copies la Public Key.
+          </div>
+        </div>
+        <div class="wz-howto-item">
+          <span class="wz-badge">4</span>
+          <div><b>Pégalo aquí abajo</b> y pulsa <b>Conectar</b>.</div>
         </div>
       </div>
+
+      <details class="wz-mas">
+        <summary>¿Solo quieres probar sin cobrar?</summary>
+        En la misma aplicación, sección <b>«Pruebas»</b> → <b>«Credenciales de prueba»</b>: acepta los términos, pulsa
+        <b>«Activar credenciales»</b> y copia ese Access Token. Wybix detecta que es de prueba y aprueba los cobros solo, sin dinero real.
+      </details>
 
       <div class="wz-field">
         <label for="mp-token">Access Token</label>
@@ -131,7 +163,10 @@
       <h3>{{ terminals.length ? 'Elige tu terminal' : 'Vincula la terminal con tu celular' }}</h3>
 
       <ng-container *ngIf="!terminals.length">
-        <p class="wz-lead">Este paso es en la terminal y en el celular, no en la computadora.</p>
+        <p class="wz-lead">
+          Este paso se hace con la <b>terminal</b> y tu <b>celular</b>, no en la computadora. Deja este asistente abierto;
+          al terminar regresas y pulsas <b>«Ya la vinculé · Buscar»</b>.
+        </p>
         <div class="wz-illus">
           <svg viewBox="0 0 360 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Celular escaneando el QR de la terminal">
             <!-- Terminal -->
@@ -168,24 +203,7 @@
             </g>
           </svg>
         </div>
-        <div class="wz-howto">
-          <div class="wz-howto-item">
-            <span class="wz-badge"><i class="ph ph-power"></i></span>
-            <div><b>1. Enciende la terminal.</b> Elige <b>«Soy responsable del negocio»</b>: muestra un código QR.</div>
-          </div>
-          <div class="wz-howto-item">
-            <span class="wz-badge"><i class="ph ph-device-mobile"></i></span>
-            <div><b>2. En el celular</b>, abre la app de Mercado Pago con la <b>misma cuenta</b> del token{{ testMode ? ' (el usuario de prueba)' : '' }} y toca el ícono de QR.</div>
-          </div>
-          <div class="wz-howto-item">
-            <span class="wz-badge"><i class="ph ph-qr-code"></i></span>
-            <div><b>3. Escanea el QR</b> de la terminal. Cuando la app pregunte, elige la sucursal <b>{{ nombreSucursal }}</b> y la caja <b>{{ nombreCaja }}</b>.</div>
-          </div>
-          <div class="wz-howto-item">
-            <span class="wz-badge"><i class="ph ph-check-circle"></i></span>
-            <div><b>4. Termina en la terminal</b> hasta que diga «Ya puedes cobrar con tu Point». Luego pulsa <b>Buscar</b> aquí.</div>
-          </div>
-        </div>
+        <ng-container *ngTemplateOutlet="pasosVincular"></ng-container>
       </ng-container>
 
       <p class="wz-lead" *ngIf="terminals.length">
@@ -205,9 +223,18 @@
         </button>
       </div>
 
+      <details class="wz-mas" *ngIf="terminals.length">
+        <summary>¿Tu terminal no está en la lista? Vincula una nueva</summary>
+        <ng-container *ngTemplateOutlet="pasosVincular"></ng-container>
+      </details>
+
       <div class="wz-note" *ngIf="terminalElegida && terminalElegida.operatingMode!=='PDV'">
         <i class="ph ph-info"></i>
-        Wybix la pasa a modo PDV para mandarle los cobros. Después hay que apagarla y encenderla. Solo las Point Smart lo admiten.
+        <div>
+          Wybix la pasa a <b>modo PDV</b> (Punto de Venta) para mandarle los cobros desde la caja. Después,
+          <b>apágala y vuelve a encenderla</b>. Para comprobarlo, en la terminal: <b>Más opciones › Configuraciones › Modo de vinculación</b>
+          debe decir <b>«Punto de Venta (PDV)»</b>. Solo las Point Smart lo admiten.
+        </div>
       </div>
 
       <div class="wz-actions">
@@ -256,4 +283,44 @@
     </section>
 
   </div>
+
+  <!-- Los pasos para vincular una Point, con los textos que muestran la terminal y la app de MP. -->
+  <ng-template #pasosVincular>
+    <div class="wz-howto">
+      <div class="wz-howto-item">
+        <span class="wz-badge"><i class="ph ph-power"></i></span>
+        <div>
+          <b>1. En la terminal:</b> enciéndela (botón lateral). Dirá <b>«Inicia sesión en este dispositivo con tu cuenta de Mercado Pago»</b>.
+          Toca <b>«Soy responsable del negocio»</b>. Aparece un código QR.
+          <small class="wz-hint">¿Ya tenía otra cuenta? Primero ciérrala desde el menú de la terminal.</small>
+        </div>
+      </div>
+      <div class="wz-howto-item">
+        <span class="wz-badge"><i class="ph ph-device-mobile"></i></span>
+        <div>
+          <b>2. En tu celular:</b> abre la app de <b>Mercado Pago</b> con la <b>misma cuenta</b> que pusiste en el paso 1{{ testMode ? ' (el usuario de prueba)' : '' }}.
+          Toca el <b>ícono de QR</b> que está abajo, en el centro de la app.
+        </div>
+      </div>
+      <div class="wz-howto-item">
+        <span class="wz-badge"><i class="ph ph-qr-code"></i></span>
+        <div>
+          <b>3. Escanea el QR</b> de la terminal con el celular. La terminal te pide elegir
+          la sucursal <b>{{ nombreSucursal }}</b> y la caja <b>{{ nombreCaja }}</b>; confirma la dirección con <b>«Confirmar»</b>.
+          <small class="wz-hint">Cada caja admite una sola terminal: para una segunda terminal, crea otra caja en «Sucursal y caja».</small>
+        </div>
+      </div>
+      <div class="wz-howto-item">
+        <span class="wz-badge"><i class="ph ph-lock-key"></i></span>
+        <div>
+          <b>4. Crea la clave de seguridad</b> que pide la terminal y guárdala. Termina cuando diga
+          <b>«¡Listo! Ya puedes cobrar con tu Point»</b>.
+        </div>
+      </div>
+      <div class="wz-howto-item">
+        <span class="wz-badge"><i class="ph ph-magnifying-glass"></i></span>
+        <div><b>5. Regresa aquí</b> y pulsa <b>«Ya la vinculé · Buscar»</b>. Wybix la encuentra y la deja lista.</div>
+      </div>
+    </div>
+  </ng-template>
 </div>
