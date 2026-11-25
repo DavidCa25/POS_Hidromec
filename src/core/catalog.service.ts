@@ -22,6 +22,9 @@ import { HospitalityService } from './hospitality.service';
  *     devuelve los primeros `limite` y cuantos hay en total: la pantalla pinta
  *     decenas, no miles.
  */
+/** 0073/0091 · Una pieza suelta y el paquete del que sale. */
+export interface SueltoLigue { piezaId: number; piezaNombre: string; paqueteId: number; paqueteNombre: string; piezas: number }
+
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly bridge = inject(ElectronBridge);
@@ -34,6 +37,35 @@ export class CatalogService {
    * lo vuelve a leer la cotización desde la base.
    */
   private readonly packs = signal<Map<string, PackVenta & { productId: number }>>(new Map());
+  /**
+   * 0091 · TODAS las presentaciones que se venden, con o sin código: el cartón
+   * se ofrece también en el buscador y en Touch, no solo al escanear.
+   */
+  private readonly packsLista = signal<(PackVenta & { productId: number })[]>([]);
+  private readonly packsPorProducto = computed(() => {
+    const m = new Map<number, PackVenta[]>();
+    for (const { productId, ...pk } of this.packsLista()) {
+      if (!m.has(productId)) m.set(productId, []);
+      m.get(productId)!.push(pk);
+    }
+    /* De menor a mayor: paquete de 4, de 6, de 12, de 18. */
+    for (const l of m.values()) l.sort((a, b) => a.factor - b.factor);
+    return m;
+  });
+  /**
+   * 0091 · Venta suelta (0073): qué pieza sale de qué paquete. Para decirlo en
+   * el buscador («Suelto · de Cajetilla 20», «Paquete · trae 20 piezas»).
+   */
+  private readonly ligues = signal<SueltoLigue[]>([]);
+  private readonly sueltoPorPieza = computed(() => new Map(this.ligues().map(l => [l.piezaId, l] as const)));
+  private readonly sueltosPorPaquete = computed(() => {
+    const m = new Map<number, SueltoLigue[]>();
+    for (const l of this.ligues()) {
+      if (!m.has(l.paqueteId)) m.set(l.paqueteId, []);
+      m.get(l.paqueteId)!.push(l);
+    }
+    return m;
+  });
   readonly loadedAt = signal<number>(0);
   readonly loading = signal(false);
 
@@ -72,7 +104,7 @@ export class CatalogService {
    */
   private readonly indice = computed(() => this.vendibles().map(p => ({
     p,
-    texto: `${p.product_name || ''}${p.part_number || ''}${p.bar_code || ''}${p.brand_name || ''}${p.category_name || ''}`.toLowerCase(),
+    texto: CatalogService.sinAcentos(`${p.product_name || ''}${p.part_number || ''}${p.bar_code || ''}${p.brand_name || ''}${p.category_name || ''}`),
   })));
   /** Por codigo de barras y por numero de parte: el escaner no recorre 6,000. */
   private readonly porCodigo = computed(() => {
@@ -113,14 +145,17 @@ export class CatalogService {
     this.loading.set(true);
     this.inflight = (async () => {
       try {
-        const [rs, pres] = await Promise.all([
+        const [rs, pres, ligues] = await Promise.all([
           this.bridge.api?.getActiveProducts?.(),
           this.leerPacks(),
+          this.leerLigues(),
         ]);
         const rows = this.bridge.filas(rs);
         const list = rows.map(r => CatalogService.normalizar(r));
         this.products.set(list);
-        this.packs.set(pres);
+        this.packs.set(pres.porCodigo);
+        this.packsLista.set(pres.lista);
+        this.ligues.set(ligues);
         this.loadedAt.set(Date.now());
         return list;
       } catch {
@@ -176,18 +211,64 @@ export class CatalogService {
     return { product, pack };
   }
 
-  /** Las presentaciones con precio de venta y código. Sin ellas, la caja sigue igual. */
-  private async leerPacks(): Promise<Map<string, PackVenta & { productId: number }>> {
-    const m = new Map<string, PackVenta & { productId: number }>();
+  /**
+   * Las presentaciones con precio de venta: por código (el escáner) y todas
+   * en lista (el buscador y Touch, aunque el cartón no traiga código).
+   */
+  private async leerPacks(): Promise<{ porCodigo: Map<string, PackVenta & { productId: number }>; lista: (PackVenta & { productId: number })[] }> {
+    const porCodigo = new Map<string, PackVenta & { productId: number }>();
+    const lista: (PackVenta & { productId: number })[] = [];
     try {
       for (const x of await this.hosp.presentations(null)) {
+        if (x.sale_price == null || (x as any).active === false || (x as any).active === 0) continue;
+        const pk = { id: Number(x.id), productId: Number(x.product_id), name: String(x.name), factor: Number(x.factor_to_base), price: Number(x.sale_price) };
+        lista.push(pk);
         const code = String(x.bar_code ?? '').trim().toLowerCase();
-        if (!code || x.sale_price == null) continue;
-        m.set(code, { id: Number(x.id), productId: Number(x.product_id), name: String(x.name), factor: Number(x.factor_to_base), price: Number(x.sale_price) });
+        if (code) porCodigo.set(code, pk);
       }
     } catch { /* sin presentaciones: se vende suelto */ }
-    return m;
+    return { porCodigo, lista };
   }
+
+  /** Los ligues de venta suelta. Sin la aplicación (o sin el canal), ninguno. */
+  private async leerLigues(): Promise<SueltoLigue[]> {
+    try {
+      const r = await this.bridge.api?.ventaSueltaLista?.();
+      if (!r?.success) return [];
+      return (r.data ?? []).map((x: any) => ({
+        piezaId: Number(x.product_id), piezaNombre: String(x.product_name ?? ''),
+        paqueteId: Number(x.parent_product_id), paqueteNombre: String(x.parent_name ?? ''), piezas: Number(x.piezas),
+      }));
+    } catch { return []; }
+  }
+
+  /** Los paquetes que se venden de un producto (el cartón de 24 de la cerveza). */
+  packsDe(productId: number): PackVenta[] { return this.packsPorProducto().get(productId) ?? []; }
+  /** Si el producto es la pieza suelta de un paquete: de cuál y cuántas trae. */
+  sueltoDe(productId: number): SueltoLigue | null { return this.sueltoPorPieza().get(productId) ?? null; }
+  /** Si el producto es un paquete con piezas sueltas: cuáles. */
+  piezasDe(productId: number): SueltoLigue[] { return this.sueltosPorPaquete().get(productId) ?? []; }
+
+  /**
+   * Paquetes cuyo «producto + presentación» contiene todas las palabras
+   * buscadas: «cartón cerveza» encuentra el cartón aunque el producto se
+   * llame solo «Cerveza clara mediana».
+   */
+  buscarPacks(texto: string, limite = 40): { product: CatalogProduct; pack: PackVenta }[] {
+    const palabras = CatalogService.palabras(texto);
+    if (!palabras.length) return [];
+    const out: { product: CatalogProduct; pack: PackVenta }[] = [];
+    for (const { productId, ...pack } of this.packsLista()) {
+      const product = this.porId().get(productId);
+      if (!product || product.sellable === false) continue;
+      const t = CatalogService.sinAcentos(`${product.product_name} ${pack.name}`);
+      if (palabras.every(w => t.includes(w))) { out.push({ product, pack }); if (out.length >= limite) break; }
+    }
+    /* Por producto y, dentro de cada uno, de menor a mayor: 4, 6, 12, 18. */
+    return out.sort((a, b) => a.product.product_name.localeCompare(b.product.product_name) || a.pack.factor - b.pack.factor);
+  }
+  static sinAcentos(s: string) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  private static palabras(s: string) { return CatalogService.sinAcentos(s).split(/\s+/).filter(w => w.length > 0); }
 
   findByPartNumber(code: string): CatalogProduct | undefined {
     const key = (code || '').trim().toLowerCase();
@@ -204,15 +285,15 @@ export class CatalogService {
 
   /** Filtro de texto sobre nombre, parte, codigo, marca y categoria. */
   search(term: string, list: CatalogProduct[] = this.vendibles()): CatalogProduct[] {
-    const t = (term || '').trim().toLowerCase();
+    const t = CatalogService.sinAcentos((term || '').trim());
     if (!t) return list;
     if (list === this.vendibles()) return this.indice().filter(x => x.texto.includes(t)).map(x => x.p);
     return list.filter(p =>
-      (p.product_name || '').toLowerCase().includes(t) ||
-      (p.part_number || '').toLowerCase().includes(t) ||
-      (p.bar_code || '').toLowerCase().includes(t) ||
-      (p.brand_name || '').toLowerCase().includes(t) ||
-      (p.category_name || '').toLowerCase().includes(t));
+      CatalogService.sinAcentos(p.product_name || '').includes(t) ||
+      CatalogService.sinAcentos(p.part_number || '').includes(t) ||
+      CatalogService.sinAcentos(p.bar_code || '').includes(t) ||
+      CatalogService.sinAcentos(p.brand_name || '').includes(t) ||
+      CatalogService.sinAcentos(p.category_name || '').includes(t));
   }
 
   /**
@@ -222,7 +303,7 @@ export class CatalogService {
    * texto, en el orden del catalogo.
    */
   buscar(term: string, limite = 120): { items: CatalogProduct[]; total: number } {
-    const t = (term || '').trim().toLowerCase();
+    const t = CatalogService.sinAcentos((term || '').trim());
     const idx = this.indice();
     if (!t) {
       if (idx.length <= limite) return { items: idx.map(x => x.p), total: idx.length };

@@ -13,6 +13,21 @@
         </div>
       </div>
 
+      <!-- 0090 · La compra vino llena del pedido sugerido de Alertas. -->
+      <div class="compra-pedido" *ngIf="pedido" role="status" data-guide="compra-desde-pedido">
+        <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+        <span><b>Viene del pedido sugerido</b> para {{ pedido.nombre }}. Revisa cantidades y costos antes de registrar.
+          Si subes el ticket, se compara contra lo pedido.</span>
+        <button type="button" class="btn btn-link btn-sm" (click)="olvidarPedido()">Empezar en blanco</button>
+      </div>
+      <div class="compra-pedido compra-pedido--aviso" *ngIf="avisosPedido.length" role="status" data-guide="compra-pedido-avisos">
+        <i class="ph ph-warning" aria-hidden="true"></i>
+        <div>
+          <b>{{ avisosPedido.length === 1 ? 'Una cosa que revisar' : avisosPedido.length + ' cosas que revisar' }}</b>
+          <ul><li *ngFor="let a of avisosPedido">{{ a }}</li></ul>
+        </div>
+      </div>
+
       <form>
         <!-- Encabezado compra -->
         <div class="row g-4 mb-4">
@@ -86,7 +101,16 @@
 
               <tbody>
                 <tr *ngFor="let it of items; let i = index; trackBy: trackByItem">
-                  <td class="fw-semibold">{{ it.productName }}</td>
+                  <td class="fw-semibold">
+                    {{ it.productName }}
+                    <ng-container *ngIf="estadoPedido(it) as e">
+                      <span class="compra-estado" [attr.data-tono]="e.tono" data-guide="compra-estado-pedido">{{ e.texto }}</span>
+                    </ng-container>
+                    <span class="compra-estado" data-tono="aviso" *ngIf="cambioDeCosto(it) as c">costo {{ c }}</span>
+                    <!-- 0092 · Lo que se le compró antes, y si otro lo da más barato. -->
+                    <div class="compra-memoria" *ngIf="ultimaCompra(it) as u" data-guide="compra-memoria">{{ u }}</div>
+                    <div class="compra-memoria compra-memoria--barato" *ngIf="masBarato(it) as b" data-guide="compra-mas-barato"><i class="ph ph-tag" aria-hidden="true"></i> {{ b }}</div>
+                  </td>
 
                   <td>
                     <input type="number" class="form-control"
@@ -99,9 +123,11 @@
                          aparece si el producto tiene presentaciones. -->
                     <wx-select *ngIf="it.presentaciones.length > 1"
                                class="wx-sel-compacto mt-1"
-                               [(ngModel)]="it.presentationId"
+                               [ngModel]="it.presentationId"
+                               (ngModelChange)="cambiarPresentacion(it, $event, true)"
                                name="pres-{{i}}"
-                               [opciones]="it.opciones"></wx-select>
+                               [opciones]="it.opciones"
+                               data-guide="compra-presentacion"></wx-select>
                     <div class="small text-muted mt-1" *ngIf="entraAlInventario(it)">
                       Entran {{ entraAlInventario(it) }}
                     </div>
@@ -113,8 +139,10 @@
                            min="0" step="0.01"
                            [(ngModel)]="it.purchasePrice"
                            name="price-{{i}}"
-                           (ngModelChange)="onPurchasePriceChange(i)" />
-                    <div class="small text-muted mt-1">Sin IVA</div>
+                           (ngModelChange)="onPurchasePriceChange(i)"
+                           data-guide="compra-precio" />
+                    <!-- Qué significa el número: por cartón y cuánto sale cada pieza. -->
+                    <div class="small text-muted mt-1" data-guide="compra-precio-unidad">Sin IVA, {{ precioPorUnidad(it) }}</div>
                   </td>
 
                   <!-- Compra con IVA calculada -->
@@ -268,7 +296,7 @@
                 <th>Precio sugerido</th>
 
                 <!-- OJO: aquí SI va el input de compra -->
-                <th style="width:170px;">Precio compra</th>
+                <th style="width:170px;">Precio compra por pieza</th>
 
                 <th style="width:140px;">% Ganancia</th>
                 <th>Acción</th>

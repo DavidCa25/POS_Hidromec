@@ -119,3 +119,33 @@ button.pr-card:focus-visible { outline: none; box-shadow: var(--wx-focus-ring); 
 }
 .pr-teclado button:active { transform: scale(0.95); }
 @media (max-width: 640px) { .pr-teclado { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-self: stretch; } }
+
+/* ------------------------------------------- 0090 · cada tarjeta con su pan
+   El dibujo del producto (el mismo de Venta y Touch) y, en preparación, un
+   horno encendido. Decorativos: lo que dicen está en el texto. */
+.pr-card { position: relative; padding-right: 92px; }
+.pr-card__dib { position: absolute; top: 14px; right: 14px; width: 64px; height: 64px; display: block; border-radius: 16px; overflow: hidden; }
+.pr-card__dib--plan { opacity: .45; filter: grayscale(.6); }
+.pr-horno { position: absolute; top: 12px; right: 12px; width: 76px; height: 64px; }
+.pr-horno__caja { fill: #3A4656; }
+.pr-horno__puerta { fill: #1B2330; }
+.pr-horno__brasa { fill: #F59E3B; animation: pr-brasa 2.4s ease-in-out infinite; }
+.pr-horno__pieza { fill: #D99A55; }
+.pr-horno__luz { fill: #F59E3B; }
+@keyframes pr-brasa { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pr-horno__brasa { animation: none; opacity: .85; } }
+
+.pr-sugerido {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 14px; margin-bottom: 14px;
+  background: var(--wx-surface); border: 1px solid var(--wx-accent-line); border-radius: var(--wx-radius-lg);
+}
+.pr-sugerido__txt { display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.pr-sugerido__txt span { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.pr-sugerido__op {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 14px 4px 6px;
+  border: 1px solid var(--wx-edge-strong); border-radius: 999px; background: var(--wx-surface);
+  color: var(--wx-text); font: inherit; font-size: var(--wx-text-sm); cursor: pointer;
+}
+.pr-sugerido__op:disabled { opacity: .6; cursor: default; }
+.pr-sugerido__dib { width: 36px; height: 36px; display: block; border-radius: 50%; overflow: hidden; }

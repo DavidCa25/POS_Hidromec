@@ -188,6 +188,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     getActiveUsers: () => invoke('sp-get-active-users'),
     alertsReorder: (p) => invoke('alerts:reorder', p),
+    // 0090: el pedido sugerido por proveedor, para llenar la compra.
+    comprasPedidoSugerido: (p) => invoke('compras:pedido-sugerido', p),
+    // 0092: compras que aprenden.
+    comprasMemoria: (p) => invoke('compras:memoria', p),
+    comprasPedidoEnviado: (p) => invoke('compras:pedido-enviado', p),
+    alertasCostos: (p) => invoke('alertas:costos', p),
     alertsOutOfStock: () => invoke('alerts:out-of-stock'),
     alertsZeroSales: (p) => invoke('alerts:zero-sales', p),
     alertsCashClosures: (p) => invoke('alerts:cash-closures', p),
@@ -300,6 +306,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     plataformasDeposito: p => invoke('plataformas:deposito',p),
     // 0073: Venta suelta.
     ventaSueltaGet: p => invoke('venta-suelta:get',p),
+    ventaSueltaLista: () => invoke('venta-suelta:lista'),
     ventaSueltaGuardar: p => invoke('venta-suelta:guardar',p),
     /* 0083: impuestos además del IVA (electron/ipc/impuestos.js). */
     impuestosListar: (p) => invoke('impuestos:listar', p),
@@ -722,6 +729,8 @@ contextBridge.exposeInMainWorld('wybix', {
     // tanda; al terminarla entran las piezas buenas y se registra la merma.
     produccion: {
         tablero: (p) => invoke('produccion:tablero', p),
+        // 0090: lo que conviene producir hoy.
+        sugerido: (p) => invoke('produccion:sugerido', p),
         planear: (p) => invoke('produccion:planear', p),
         empezar: (p) => invoke('produccion:empezar', p),
         terminar: (p) => invoke('produccion:terminar', p),

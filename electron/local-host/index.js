@@ -39,6 +39,7 @@ const { crearLicenciaPantallas } = require('./licencia-pantallas');
 const { crearSeguimiento } = require('./seguimiento');
 const { crearRegistro } = require('./superficies/registro');
 const { nuevoSecreto, MINUTOS_EMPAREJAR } = require('./credenciales');
+const { crearCajaMovil } = require('./caja-movil');
 
 const PUERTO = Number(process.env.WYBIX_LOCAL_HOST_PUERTO) || 7427;
 const LATIDO_MS = 30_000;
@@ -62,6 +63,7 @@ function registrarSuperficies(registro, { dominios }) {
   registro.registrar(require('./superficies/jornada')());
   registro.registrar(require('./superficies/tecnico')());
   registro.registrar(require('./superficies/inventario')());
+  registro.registrar(require('./superficies/caja-movil')());
 }
 
 function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname(), esPrincipal, leerConfig, guardarConfig, dominios = {}, licencia = null, alCambiarComandas = () => {}, log = (m) => console.log(`[LOCAL HOST] ${m}`) }) {
@@ -76,6 +78,8 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
      encendida (capacidad) Y la licencia la incluye (entitlement). La cuota
      de pantallas por giro se revisa al emparejar y al cambiar de función. */
   const licenciaPantallas = crearLicenciaPantallas({ repo, licencia });
+  /* 0094 · Wybix POS Mobile como caja de esta sucursal. */
+  const cajaMovil = crearCajaMovil({ pool, sql, leerConfig, guardarConfig, licencia: () => { try { return licencia ? licencia() : null; } catch { return null; } }, log });
   for (const def of registro.todas()) {
     const capacidad = def.disponible;
     def.disponible = (caps) => capacidad(caps) && licenciaPantallas.permite(def.tipo);
@@ -118,6 +122,7 @@ function crearLocalHost({ sql, poolPromise, machineId, machineName = os.hostname
         repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, dominios, log, alCambiarComandas,
         seguimiento: crearSeguimiento({ pool, sql }),
         licenciaPantallas,
+        cajaMovil,
         alPedir: (d, req) => {
           const cola = Number(req.headers['x-wx-cola']);
           reportes.set(d.id, { cola: Number.isFinite(cola) ? cola : (reportes.get(d.id)?.cola ?? 0), en: new Date().toISOString() });

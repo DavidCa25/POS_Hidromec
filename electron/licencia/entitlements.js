@@ -145,6 +145,8 @@ function crearEvaluador(lic) {
   return {
     modo, tiene, permiteCanal, requisitoDeCanal, permiteSuperficie, giroDeSuperficie, cuotaDe,
     ventaEsencial: modo === 'SALE_ONLY',
+    /* 0094 · cuántas cajas incluye (la caja móvil también es una). null = sin límite declarado. */
+    registersMax: lic?.registers_max ?? lic?.registersMax ?? null,
     entitlements: [...ents],
     verticals: [...(lic?.verticals || [])],
   };

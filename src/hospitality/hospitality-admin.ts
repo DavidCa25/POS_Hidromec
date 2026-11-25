@@ -9,6 +9,20 @@ import {
 } from '../core';
 import { WxOpcion, WxSelectComponent } from '../app/wx-select/wx-select.component';
 import { problemasDeOpcion } from '../core/opciones';
+import { formaDe, CATALOGO } from '../../shared/ilustraciones';
+import { IngredienteVaso, capacidades, dibujarVaso, miniVaso, servido } from '../../shared/vaso';
+import { VasoRecetaComponent } from './vaso-receta/vaso-receta.component';
+import { MiniVasoComponent } from './vaso-receta/mini-vaso.component';
+
+/** Unidad base de cada dimensión: en lo que el vaso cuenta. */
+const BASE_DE: Record<string, string> = { VOLUME: 'ml', WEIGHT: 'g', COUNT: 'pza', LENGTH: 'cm' };
+const FAMILIA = new Map(CATALOGO.map(f => [f.id, f.familia ?? ''] as const));
+
+/** Un tamaño en la tira para comparar: lo que cuesta y deja cada uno. */
+interface TamanoComparado {
+  id: number | null; nombre: string; costo: number; margen: number | null;
+  contorno: string; nivel: string; heredada: boolean;
+}
 
 /*
  * Administracion de Hospitality: recetas, modificadores y presentaciones.
@@ -47,7 +61,7 @@ interface DraftOption {
 @Component({
   selector: 'app-hospitality-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, WxSelectComponent],
+  imports: [CommonModule, FormsModule, WxSelectComponent, VasoRecetaComponent, MiniVasoComponent],
   templateUrl: './hospitality-admin.html',
   styleUrls: ['./hospitality-admin.css'],
 })
@@ -146,6 +160,71 @@ export class HospitalityAdmin implements OnInit {
     return ((p - c) / p) * 100;
   });
 
+  // ------------------------------------------------------ el vaso (dibujo)
+  // Solo explica: sale de draftLines() y no guarda nada (shared/vaso.ts).
+
+  /** Las bebidas se dibujan en su vaso; la comida no. */
+  readonly esBebida = computed(() => {
+    const p = this.productoSel();
+    if (!p) return false;
+    return FAMILIA.get(formaDe({ nombre: p.product_name, categoria: p.category_name, giro: 'HOSPITALITY' })) === 'bebidas';
+  });
+
+  /** Cada línea en la unidad base de su dimensión (ml, g, pza). */
+  readonly lineasVaso = computed<IngredienteVaso[]>(() => this.draftLines().map(l => this.aVaso(l)));
+  readonly unidadesVaso = computed(() => this.draftLines().map(l => BASE_DE[this.uomDe(l.inputUom)?.dimension ?? 'COUNT']));
+
+  /** La capacidad de cada variante, en el orden de `variantes()`. */
+  readonly capacidadesVariantes = computed(() =>
+    capacidades(this.variantes().map(v => v.name), servido(this.lineasVaso())));
+
+  /** El vaso del tamaño elegido; la receta base va en el tamaño de en medio. */
+  readonly capacidadSel = computed(() => {
+    const caps = this.capacidadesVariantes(), vs = this.variantes(), sel = this.varianteSel();
+    if (!vs.length) return Math.max(250, Math.round(servido(this.lineasVaso()) * 1.15));
+    const i = sel == null ? Math.floor((vs.length - 1) / 2) : vs.findIndex(v => v.id === sel);
+    return caps[Math.max(0, i)];
+  });
+
+  readonly nombreVariante = computed(() => {
+    const sel = this.varianteSel();
+    return sel == null ? (this.variantes().length ? 'Base' : '') : this.variantes().find(v => v.id === sel)?.name ?? '';
+  });
+
+  /** La tira para comparar tamaños: costo y margen de la receta de cada uno. */
+  comparativa = signal<TamanoComparado[]>([]);
+
+  private uomDe(code: string) { return this.uoms().find(u => u.code === code); }
+
+  private aVaso(l: { ingredientName: string; inputQty: number; inputUom: string; wastePct: number }): IngredienteVaso {
+    const u = this.uomDe(l.inputUom);
+    return { nombre: l.ingredientName, cantidad: Number(l.inputQty || 0) * (u?.factor_to_base ?? 1), dimension: u?.dimension ?? 'COUNT', mermaPct: Number(l.wastePct || 0) };
+  }
+
+  /**
+   * Lee la receta de cada tamaño (la misma lectura de siempre, sin escribir) y
+   * arma la tira. Se llama al elegir producto y al guardar: no en cada tecla.
+   */
+  async cargarComparativa() {
+    const p = this.productoSel(), vs = this.variantes();
+    if (!p || !vs.length || !this.esBebida()) { this.comparativa.set([]); return; }
+    const caps = this.capacidadesVariantes(), max = Math.max(...caps);
+    const tasa = (p.objeto_impuesto ?? '02') !== '02' ? 0 : Number(p.tasa_iva ?? 0.16);
+    try {
+      const filas = await Promise.all(vs.map(async (v, i) => {
+        const { header, lines } = await this.hosp.getRecipe(p.id, v.id);
+        const costo = lines.reduce((a, l) => a + Number(l.input_qty) * this.factor(l.input_uom, l.base_uom) * Number(l.ingredient_cost ?? 0) * (1 + Number(l.waste_pct ?? 0) / 100), 0);
+        const sinIva = (Number(p.price ?? 0) + Number(v.price_delta ?? 0)) / (1 + tasa);
+        const d = dibujarVaso(lines.map(l => this.aVaso({ ingredientName: l.ingredient_name, inputQty: Number(l.input_qty), inputUom: l.input_uom, wastePct: Number(l.waste_pct ?? 0) })), caps[i]);
+        const m = miniVaso(caps[i], d.lleno, max);
+        return { id: v.id, nombre: v.name, costo, margen: sinIva ? ((sinIva - costo) / sinIva) * 100 : null, contorno: m.contorno, nivel: m.nivel, heredada: !!header?.is_fallback };
+      }));
+      this.comparativa.set(filas);
+    } catch {
+      this.comparativa.set([]);
+    }
+  }
+
   // --------------------------------------------------------- modificadores
   grupoSel = signal<ModifierGroupRow | null>(null);
   draftGrupo = signal<{ id: number | null; name: string; role: 'SIZE' | 'ADDON' | 'SUBSTITUTION' | 'NOTE'; minSelect: number; maxSelect: number; required: boolean; active: boolean } | null>(null);
@@ -224,6 +303,7 @@ export class HospitalityAdmin implements OnInit {
       const size = grupos.filter(g => g.role === 'SIZE').map(g => g.id);
       this.variantes.set(opciones.filter(o => size.includes(o.group_id)));
       await this.cargarReceta();
+      void this.cargarComparativa();
     } catch (e: any) {
       await Swal.fire({ icon: 'error', title: 'Error', text: e?.message });
     }
@@ -299,6 +379,7 @@ export class HospitalityAdmin implements OnInit {
         })),
       });
       await this.cargarReceta();
+      void this.cargarComparativa();
       await Swal.fire({ icon: 'success', title: 'Receta guardada', timer: 1200, showConfirmButton: false });
     } catch (e: any) {
       await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: e?.message });
@@ -384,6 +465,24 @@ export class HospitalityAdmin implements OnInit {
   uomDeIngrediente(id: number | null): string {
     if (id == null) return '';
     return this.ingredientes().find(i => i.id === id)?.base_uom ?? '';
+  }
+
+  nombreIngrediente(id: number | null): string | null {
+    if (id == null) return null;
+    return this.ingredientes().find(i => i.id === id)?.product_name ?? null;
+  }
+
+  /** Lo que hace la opción, en una frase: el texto que acompaña al mini vaso. */
+  resumenOpcion(o: DraftOption): string {
+    const ing = this.nombreIngrediente(o.ingredientProductId), sale = this.nombreIngrediente(o.replacesProductId);
+    const uom = this.uomDeIngrediente(o.ingredientProductId);
+    switch (o.effect) {
+      case 'ADD': return ing ? `Agrega ${o.qtyBase ?? '?'} ${uom} de ${ing}.` : 'Agrega un ingrediente: elige cuál.';
+      case 'SUBSTITUTE': return ing && sale ? `Cambia ${sale} por ${ing}, misma cantidad.` : 'Sustituye un ingrediente: elige cuál sale y cuál entra.';
+      case 'REMOVE': return sale ? `Quita ${sale}: no sale del inventario.` : 'Quita un ingrediente: elige cuál.';
+      case 'SCALE': return `Multiplica toda la receta ×${o.qtyFactor ?? '?'}.`;
+      default: return 'Nota para barra: no cambia el inventario.';
+    }
   }
 
   /** Lo que le falta a cada opcion, por indice, para marcarlo en la pantalla. */

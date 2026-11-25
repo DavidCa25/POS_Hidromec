@@ -79,12 +79,18 @@ asignar('sales', [
 
 asignar('purchases', [
   'sp_register_purchase', 'sp_get_purchases', 'sp_get_next_purchase_folio',
+  // 0092: lo que se le compro a cada proveedor, para llenar la compra.
+  'sp_compra_memoria',
 ]);
 
 asignar('inventory', [
   'sp_add_product', 'sp_update_product', 'sp_delete_product', 'sp_reactivate_product',
   'sp_get_active_products', 'sp_get_product_by_id', 'sp_add_brand', 'sp_add_categories',
   'sp_get_brands', 'sp_get_categories', 'sp_dead_products', 'sp_reorder_suggestions',
+  // 0090: el pedido sugerido, por proveedor.
+  'sp_purchase_order_suggestions',
+  // 0092: costos que subieron y precios que ya no cubren el costo.
+  'sp_alertas_costos',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
   // Aplicar un conteo fisico al inventario.
   'sp_inventory_count_apply',
@@ -102,6 +108,8 @@ asignar('inventory', [
   'sp_production_formula_get', 'sp_production_formula_save', 'sp_production_formula_delete',
   'sp_production_board', 'sp_production_plan', 'sp_production_start', 'sp_production_finish', 'sp_production_cancel',
   'sp_production_waste',
+  // 0090: lo que conviene producir hoy (por dia de la semana).
+  'sp_production_suggestions',
 ]);
 
 asignar('cash', [
@@ -144,7 +152,9 @@ asignar('asistencia', [
 
 // 0073: Venta suelta (el cigarro de la cajetilla). Una aplicacion: solo para
 // el negocio que la activa. El descuento vive en sp_register_sale (paso 3c).
-asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar']);
+asignar('venta_suelta', ['sp_venta_suelta_get', 'sp_venta_suelta_guardar',
+  // 0091: todos los ligues, para marcar pieza y paquete en el buscador de la caja.
+  'sp_venta_suelta_lista']);
 // 0083: impuestos además del IVA (IEPS, locales): catálogo, por producto y la foto de la venta.
 asignar('impuestos', ['sp_venta_impuestos', 'sp_impuestos_listar', 'sp_impuesto_guardar',
   'sp_producto_impuestos_get', 'sp_producto_impuestos_guardar']);

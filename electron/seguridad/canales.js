@@ -177,6 +177,12 @@ const EXIGE = {
   'sp-add-category': CATALOGO_EDITAR,
   'inventory:apply-count': INVENTARIO_OPERAR,
   'sp-register-purchase': INVENTARIO_OPERAR,
+  // 0090: el pedido sugerido trae costos de proveedor: quien compra.
+  'compras:pedido-sugerido': INVENTARIO_OPERAR,
+  // 0092: lo comprado antes, costos y el pedido mandado: quien compra.
+  'compras:memoria': INVENTARIO_OPERAR,
+  'compras:pedido-enviado': INVENTARIO_OPERAR,
+  'alertas:costos': INVENTARIO_OPERAR,
   'sp-register-supplier-payment': INVENTARIO_OPERAR,
   'sp-add-supplier': INVENTARIO_OPERAR,
   'sp-supplier-save': INVENTARIO_OPERAR,
@@ -341,6 +347,8 @@ const EXIGE = {
   // Empezar una tanda descuenta ingredientes y terminarla mete producto: es
   // el trabajo de quien hornea. La formula es catalogo, como una receta.
   'produccion:tablero': PRODUCCION_OPERAR,
+  // 0090: solo lee ventas y existencias para sugerir tandas.
+  'produccion:sugerido': PRODUCCION_OPERAR,
   'produccion:planear': PRODUCCION_OPERAR,
   'produccion:empezar': PRODUCCION_OPERAR,
   'produccion:terminar': PRODUCCION_OPERAR,
@@ -735,6 +743,7 @@ const ABIERTOS = {
   'modifiers:list': 'lectura de modificadores',
   'presentations:list': 'lectura de presentaciones',
   'venta-suelta:get': 'lectura de venta suelta',
+  'venta-suelta:lista': 'lectura de venta suelta: qué pieza sale de qué paquete, para el buscador de la caja',
   'impuestos:listar': 'lectura del catálogo de impuestos (tasas públicas de la ley)',
   'producto:impuestos': 'lectura de los impuestos de un producto, como su IVA en la ficha',
   'socios:config': 'lectura de socios y de quien es cada categoria',

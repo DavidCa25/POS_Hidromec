@@ -24,13 +24,15 @@ interface Persona {
   clave: string; userId: number | null; professionalId: number | null; nombre: string; usuario: string | null;
   rol: string | null; profesional: boolean; accesoId: number | null; qr: boolean; pin: boolean; revocado: boolean; bloqueado: boolean;
 }
-interface Qr { url: string; qr: string; expiraEn: string; nombre: string; funcion: string; }
+/** `app`: se escanea desde Wybix POS Mobile (caja móvil, 0094), no con la cámara del sistema. */
+interface Qr { url: string; qr: string; expiraEn: string; nombre: string; funcion: string; app?: boolean; }
 interface Firewall { soportado: boolean; regla: boolean | null; redPublica?: boolean; nombreRegla?: string; error?: string; }
 interface Nodo { d: Dispositivo; x: number; y: number; }
 
 const ICONO: Record<string, string> = {
   PREPARATION: 'ph-cooking-pot', WAITER: 'ph-fork-knife', STAFF_DAY: 'ph-calendar-check',
   TECHNICIAN: 'ph-wrench', INVENTORY_FLOOR: 'ph-package', CUSTOMER_STATUS: 'ph-monitor-play',
+  CAJA_MOVIL: 'ph-device-mobile',
 };
 
 /**
@@ -207,7 +209,7 @@ export class DispositivosLocalesPanelComponent implements OnInit, OnDestroy {
     try {
       const r = await this.api.emparejar({ superficie: s.tipo, stationId: s.requiereEstacion && !todas ? est!.id : null, todas, nombre, config: this.configPedida(s.tipo) });
       if (!r?.success) { await Swal.fire({ icon: 'error', title: 'No se pudo generar el código', text: r?.error }); return; }
-      this.qr.set({ ...r.data, nombre, funcion: s.requiereEstacion ? `${s.nombre} · ${todas ? 'Todas' : est!.nombre}` : s.nombre });
+      this.qr.set({ ...r.data, nombre, funcion: s.requiereEstacion ? `${s.nombre} · ${todas ? 'Todas' : est!.nombre}` : s.nombre, app: s.tipo === 'CAJA_MOVIL' });
       this.contar();
       await this.cargar(true);
     } finally {

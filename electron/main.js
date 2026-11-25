@@ -3940,6 +3940,76 @@ ipcMain.handle('alerts:reorder', async (_e, p = {}) => {
   }
 });
 
+// ===== 0090: el pedido sugerido, por proveedor =====
+// Lo que se acaba (mismas reglas que el reorden) con su proveedor, cuanto pedir
+// redondeado a la presentacion de compra y el ultimo costo. Solo lee: la compra
+// la registra la persona en Compras.
+ipcMain.handle('compras:pedido-sugerido', sesion.proteger('compras:pedido-sugerido', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('dias_alerta',   sql.Int, Number(p.dias_alerta)   || 7)
+      .input('dias_objetivo', sql.Int, Number(p.dias_objetivo) || 7)
+      .execute('sp_purchase_order_suggestions');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) {
+    console.error('compras:pedido-sugerido:', e);
+    return { success: false, error: 'No se pudo armar el pedido sugerido.' };
+  }
+}));
+
+// ===== 0092: compras que aprenden =====
+// Lo que se le compro a cada proveedor (presentacion, precio, ganancia,
+// cantidades) para llenar la compra y avisar de una captura fuera de lo normal.
+ipcMain.handle('compras:memoria', sesion.proteger('compras:memoria', async (_e, p = {}) => {
+  try {
+    const supplierId = Number(p.supplier_id) || 0;
+    if (!supplierId) return { success: true, data: [] };
+    const pool = await poolPromise;
+    const r = await pool.request().input('supplier_id', sql.Int, supplierId).execute('sp_compra_memoria');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) {
+    console.error('compras:memoria:', e);
+    return { success: false, error: 'No se pudo leer lo comprado antes a este proveedor.' };
+  }
+}));
+
+// Costos que subieron y precios (pieza o paquete) que ya no cubren el costo.
+ipcMain.handle('alertas:costos', sesion.proteger('alertas:costos', async (_e, p = {}) => {
+  try {
+    const pool = await poolPromise;
+    const r = await pool.request()
+      .input('dias', sql.Int, Number(p.dias) || 60)
+      .input('subida_pct', sql.Decimal(6, 2), Number(p.subida_pct) || 5)
+      .execute('sp_alertas_costos');
+    return { success: true, data: r.recordset || [] };
+  } catch (e) {
+    console.error('alertas:costos:', e);
+    return { success: false, error: 'No se pudieron revisar los costos.' };
+  }
+}));
+
+// El pedido sugerido se mando (WhatsApp) o se copio: con la compra que llega
+// despues se mide cuanto tarda el proveedor en surtir.
+ipcMain.handle('compras:pedido-enviado', sesion.proteger('compras:pedido-enviado', async (_e, p = {}, ses) => {
+  try {
+    const supplierId = Number(p.supplier_id) || 0;
+    if (!supplierId) return { success: false, error: 'Falta el proveedor.' };
+    const via = ['WHATSAPP', 'COPIA'].includes(String(p.via || '').toUpperCase()) ? String(p.via).toUpperCase() : 'COPIA';
+    const pool = await poolPromise;
+    /* Copiar y luego mandar el mismo pedido no son dos pedidos: uno por proveedor cada 2 horas. */
+    await pool.request()
+      .input('s', sql.Int, supplierId).input('v', sql.VarChar(12), via)
+      .input('n', sql.Int, Math.max(0, Number(p.lineas) || 0)).input('u', sql.Int, sesion.actorDe(ses))
+      .query(`IF NOT EXISTS (SELECT 1 FROM dbo.purchase_order_sent WHERE supplier_id = @s AND sent_at >= DATEADD(HOUR, -2, SYSDATETIME()))
+                INSERT INTO dbo.purchase_order_sent (supplier_id, via, lineas, user_id) VALUES (@s, @v, @n, @u);`);
+    return { success: true };
+  } catch (e) {
+    console.error('compras:pedido-enviado:', e);
+    return { success: false, error: 'No se pudo anotar el pedido.' };
+  }
+}));
+
 ipcMain.handle('users:list', sesion.proteger('users:list', async () => {
   try {
     const pool = await poolPromise;

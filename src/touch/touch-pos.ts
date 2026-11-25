@@ -8,6 +8,7 @@ import {CommercialSaleComponent} from '../app/commercial-sale/commercial-sale.co
 import { WxMascotaComponent, type EstadoMascota } from '../app/wx-mascota/wx-mascota.component';
 import { WxIlustracionComponent } from '../app/wx-ilustracion/wx-ilustracion.component';
 import { ADDON } from '../app/marca/addon';
+import type { PackVenta } from '../core/models';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -61,6 +62,9 @@ interface Aviso {
   tipo: 'error' | 'ok';
 }
 
+/** 0091 · Una tarjeta de la cuadrícula: el producto o uno de sus paquetes. */
+interface TarjetaTouch { clave: string; p: MenuProduct; pack: PackVenta | null }
+
 @Component({
   selector: 'app-touch-pos',
   standalone: true,
@@ -106,6 +110,8 @@ export class TouchPos implements OnInit, OnDestroy {
   readonly caps = inject(CapabilityService);
 
   private readonly menu = inject(MenuCatalogService);
+  /** 0091 · Paquetes con precio de venta y ligues de venta suelta (mismos datos que Retail). */
+  private readonly catalogo = inject(CatalogService);
   /** ¿Se vende por peso o medida? El precio se lee «$28 / kg». */
   readonly esGranel = CatalogService.esGranel;
   private readonly cart = inject(CartService);
@@ -336,6 +342,46 @@ export class TouchPos implements OnInit, OnDestroy {
     return this.menu.productsOf(this.categoriaSel());
   });
   readonly productos = computed(() => this.coincidencias().slice(0, TouchPos.LIMITE_CUADRICULA));
+
+  /**
+   * 0091 · Lo que se pinta en la cuadrícula: cada producto y, junto a él, sus
+   * paquetes que se venden enteros (el cartón de 24). Al buscar, «cartón»
+   * también encuentra el cartón aunque el producto no lo diga en su nombre.
+   */
+  readonly tarjetas = computed<TarjetaTouch[]>(() => {
+    this.catalogo.loadedAt();
+    const out: TarjetaTouch[] = [];
+    const vistos = new Set<number>();
+    for (const p of this.productos()) {
+      out.push({ clave: `p${p.id}`, p, pack: null });
+      for (const pack of this.catalogo.packsDe(p.id)) { out.push({ clave: `k${pack.id}`, p, pack }); vistos.add(pack.id); }
+    }
+    const t = this.termino().trim();
+    if (t) {
+      const porId = new Map(this.menu.products().map(p => [p.id, p] as const));
+      for (const x of this.catalogo.buscarPacks(t)) {
+        const p = porId.get(x.product.id);
+        if (p && !vistos.has(x.pack.id)) out.push({ clave: `k${x.pack.id}`, p, pack: x.pack });
+      }
+    }
+    return out;
+  });
+  trackTarjeta = (_: number, t: TarjetaTouch) => t.clave;
+
+  /** Pieza suelta o paquete (venta suelta, 0073), para decirlo en la tarjeta. */
+  sueltoDe(p: MenuProduct) { return this.catalogo.sueltoDe(p.id); }
+  esPaqueteConPiezas(p: MenuProduct) { return this.catalogo.piezasDe(p.id).length > 0; }
+
+  /** El cartón completo a su precio: lo mismo que escanearlo en Retail. */
+  tocarPack(p: MenuProduct, pack: PackVenta) {
+    if (this.disponibles(p) < pack.factor && this.hayCuenta(p)) {
+      this.mostrar(`No alcanzan ${pack.factor} ${p.base_uom || 'piezas'} para un ${pack.name}.`);
+      return;
+    }
+    this.cart.addProduct(CatalogService.toPackLineSource(p, pack), pack.factor);
+    this.menu.consumeEstimate(p.id, pack.factor);
+    this.mostrar(`${p.product_name} · ${pack.name} agregado`, 'ok');
+  }
   readonly productosTotal = computed(() => this.coincidencias().length);
   readonly hayProductos = this.menu.hayProductos;
   readonly esqueleto = Array.from({ length: 12 });
@@ -483,6 +529,8 @@ export class TouchPos implements OnInit, OnDestroy {
   private offBarcode: (() => void) | null = null;
 
   async ngOnInit() {
+    /* 0091 · Paquetes y venta suelta: se leen aparte, sin detener la pantalla. */
+    void this.catalogo.load();
     // Identidad de caja de esta maquina. Sin esto la venta viajaria sin
     // register_id y SQL la asignaria a la primera caja: en una sucursal con
     // varias cajas, el turno y el corte quedarian en la caja equivocada.

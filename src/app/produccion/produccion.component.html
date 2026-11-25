@@ -26,6 +26,23 @@
   </section>
 
   <ng-container *ngIf="!cargando() && (fabricables().length || tandas().length)">
+    <!-- 0090 · Hoy conviene hacer: lo vendido este día de la semana contra lo que hay. -->
+    <section class="pr-sugerido" *ngIf="porHacer().length" aria-label="Hoy conviene hacer" data-guide="produccion-sugerido">
+      <div class="pr-sugerido__txt">
+        <b>Hoy conviene hacer</b>
+        <span>Según lo que vendiste este mismo día en las últimas 4 semanas, menos lo que ya hay y lo planeado.</span>
+      </div>
+      <button type="button" class="pr-sugerido__op" *ngFor="let s of porHacer()" (click)="planearSugerido(s)"
+              [disabled]="guardando() || planeandoSugeridos()" data-guide="produccion-sugerido-producto" [attr.data-guide-clave]="s.product_id"
+              [attr.aria-label]="'Planear ' + redondo(s.sugerido) + ' de ' + s.product_name">
+        <wx-ilustracion class="pr-sugerido__dib" [nombre]="s.product_name" [productoId]="s.product_id"></wx-ilustracion>
+        <b>{{ redondo(s.sugerido) }}</b> {{ s.product_name }}
+      </button>
+      <button type="button" class="btn-primary" *ngIf="porHacer().length > 1" (click)="planearTodos()" [disabled]="guardando() || planeandoSugeridos()">
+        {{ planeandoSugeridos() ? 'Planeando…' : 'Planear todo' }}
+      </button>
+    </section>
+
     <!-- Aviso de ingredientes: solo cuando algo no alcanza para lo planeado. -->
     <div class="pr-aviso falta" *ngIf="faltan().length" role="status" data-guide="produccion-aviso">
       <i class="ph ph-warning"></i>
@@ -43,6 +60,7 @@
         <h2><span>Planeado</span><small>{{ planeadas().length }}</small></h2>
         <button type="button" class="pr-card planeada" *ngFor="let t of planeadas()" (click)="tocar(t)"
                 data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="planeada">
+          <wx-ilustracion class="pr-card__dib pr-card__dib--plan" [nombre]="t.product_name" [productoId]="t.product_id" aria-hidden="true"></wx-ilustracion>
           <span class="pr-card__nombre">{{ t.product_name }}</span>
           <b class="pr-card__num">{{ redondo(t.planned_qty) }}</b>
           <span class="pr-card__pie" [class.falta]="t.faltantes > 0">
@@ -60,9 +78,17 @@
         <h2><span>En preparación</span><small>{{ enHorno().length }}</small></h2>
         <button type="button" class="pr-card horno" *ngFor="let t of enHorno()" (click)="tocar(t)"
                 data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="horno">
+          <svg class="pr-horno" viewBox="0 0 96 80" aria-hidden="true">
+            <rect x="4" y="6" width="88" height="70" rx="10" class="pr-horno__caja"></rect>
+            <rect x="12" y="18" width="72" height="44" rx="6" class="pr-horno__puerta"></rect>
+            <rect x="14" y="44" width="68" height="16" rx="4" class="pr-horno__brasa"></rect>
+            <ellipse cx="34" cy="42" rx="12" ry="6" class="pr-horno__pieza"></ellipse>
+            <ellipse cx="62" cy="42" rx="12" ry="6" class="pr-horno__pieza"></ellipse>
+            <circle cx="20" cy="12" r="2.5" class="pr-horno__luz"></circle>
+          </svg>
           <span class="pr-card__nombre">{{ t.product_name }}</span>
           <b class="pr-card__num">{{ redondo(t.planned_qty) }}</b>
-          <span class="pr-card__pie">Desde {{ hora(t.started_at) }} · {{ t.started_by_name }} · tocar al sacar</span>
+          <span class="pr-card__pie">{{ hace(t.started_at) }} · desde {{ hora(t.started_at) }} · {{ t.started_by_name }} · tocar al sacar</span>
         </button>
         <p class="pr-col__vacio" *ngIf="!enHorno().length">Lo que empieces aparece aquí.</p>
       </section>
@@ -71,6 +97,7 @@
       <section class="pr-col" aria-label="Listo para vender">
         <h2><span>Listo para vender</span><small>{{ totalListas() }}</small></h2>
         <div class="pr-card lista" *ngFor="let t of listas()" data-guide="produccion-tanda" [attr.data-guide-clave]="t.id" data-guide-estado="lista">
+          <wx-ilustracion class="pr-card__dib" [nombre]="t.product_name" [productoId]="t.product_id" aria-hidden="true"></wx-ilustracion>
           <span class="pr-card__nombre">{{ t.product_name }} <i class="ph ph-check-circle"></i></span>
           <b class="pr-card__num">{{ redondo(t.good_qty) }}</b>
           <span class="pr-card__pie">

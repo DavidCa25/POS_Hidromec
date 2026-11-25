@@ -215,3 +215,32 @@
 .hosp-falta i { font-size: 14px; }
 .hosp-falta span { display: block; width: 100%; }
 .hosp-falta span:first-of-type { width: auto; }
+
+/* ----------------------------------------------- el vaso que se prepara
+   Dibujo de la receta (wx-vaso-receta). No captura nada: la tabla manda. */
+.hosp-escena {
+  display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 14px; align-items: start;
+  padding: 14px; background: var(--wx-surface); border: 1px solid var(--wx-edge);
+  border-radius: var(--wx-radius-md); box-shadow: var(--wx-shadow-card);
+}
+@media (max-width: 1100px) { .hosp-escena { grid-template-columns: 1fr; } }
+.hosp-comparar { display: flex; flex-direction: column; gap: 8px; }
+.hosp-comparar__op {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  min-height: 56px; padding: 8px 10px; border-radius: var(--wx-radius-sm);
+  border: 1px solid var(--wx-edge); background: var(--wx-surface); color: var(--wx-text);
+  font-family: var(--wx-font); cursor: pointer;
+}
+.hosp-comparar__op.on { border-color: var(--wx-accent); background: var(--wx-accent-soft); }
+.hosp-comparar__op svg { width: 36px; height: 46px; flex: 0 0 36px; }
+.hosp-comparar__op span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hosp-comparar__op b { font-size: var(--wx-text-sm); }
+.hosp-comparar__op small { font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+.hosp-comparar__op small.m { font-weight: 600; color: var(--wx-success, #157347); }
+.hosp-comparar__op small.m.bajo { color: var(--wx-warning); }
+.mini-vidrio { fill: var(--wx-sunken); stroke: var(--wx-edge-strong); stroke-width: 1.5; }
+.mini-nivel { fill: #8A5A3B; }
+
+/* Modificadores: el antes y después de cada opción. */
+.hosp-opt__efecto { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.hosp-opt__efecto p { margin: 0; font-size: var(--wx-text-sm); color: var(--wx-text-muted); }

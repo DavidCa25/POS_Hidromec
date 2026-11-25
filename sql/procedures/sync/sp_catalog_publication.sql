@@ -56,6 +56,28 @@ BEGIN
                        LOWER(CONVERT(VARCHAR(36), c.uuid)) AS category_uuid,
                        CONVERT(VARCHAR(10), p.tasa_iva) AS tasa_iva,
                        p.base_uom,
+                       /* 0093 · para vender escaneando en la tablet */
+                       NULLIF(LTRIM(RTRIM(p.bar_code)), '') AS bar_code,
+                       p.part_number,
+                       /* 0093 · presentaciones de VENTA (0089): el cartón con su
+                          precio y su código. Solo las que tienen precio. */
+                       JSON_QUERY(ISNULL((
+                           SELECT CONVERT(VARCHAR(20), pp.id) AS id, pp.name,
+                                  CAST(pp.factor_to_base AS INT) AS factor,
+                                  CONVERT(VARCHAR(20), pp.sale_price) AS sale_price,
+                                  NULLIF(LTRIM(RTRIM(pp.bar_code)), '') AS bar_code
+                             FROM dbo.product_presentations pp
+                            WHERE pp.product_id = p.id AND pp.active = 1 AND pp.sale_price > 0
+                            ORDER BY pp.factor_to_base, pp.id
+                              FOR JSON PATH, INCLUDE_NULL_VALUES), '[]')) AS presentations,
+                       /* 0093 · venta suelta (0073): de qué paquete sale esta pieza.
+                          Solo con la aplicación encendida. */
+                       JSON_QUERY((
+                           SELECT LOWER(CONVERT(VARCHAR(36), pk.uuid)) AS parent_uuid, vs.piezas
+                             FROM dbo.venta_suelta vs JOIN dbo.products pk ON pk.id = vs.parent_product_id AND pk.active = 1
+                            WHERE vs.product_id = p.id
+                              AND EXISTS (SELECT 1 FROM dbo.business_modules WHERE module_key = N'venta-suelta' AND enabled = 1)
+                              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)) AS suelto,
                        JSON_QUERY(ISNULL((
                            SELECT '[' + STRING_AGG('"' + LOWER(CONVERT(VARCHAR(36), g.uuid)) + '"', ',')
                                         WITHIN GROUP (ORDER BY pmg.sort_order, g.id) + ']'

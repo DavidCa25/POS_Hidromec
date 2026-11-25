@@ -114,41 +114,61 @@
         <p>{{ errorCatalogo() }}</p>
       </div>
 
-      <div class="tp-estado" *ngIf="!cargando() && !errorCatalogo() && !productos().length">
+      <div class="tp-estado" *ngIf="!cargando() && !errorCatalogo() && !tarjetas().length">
         <i class="ph ph-tray" aria-hidden="true"></i>
         <h3>{{ termino() ? 'Sin resultados' : 'Sin productos' }}</h3>
         <p *ngIf="termino()">Nada coincide con “{{ termino() }}”.</p>
         <p *ngIf="!termino()">Marca productos como vendibles en Inventario para que aparezcan aquí.</p>
       </div>
 
-      <div class="tp-grid" *ngIf="productos().length">
-        <button type="button" class="tp-card" *ngFor="let p of productos(); trackBy: trackProducto" data-guide="touch-producto" [attr.data-guide-clave]="p.part_number"
-                [class.off]="agotado(p)" [disabled]="agotado(p)" (click)="tocar(p)">
+      <div class="tp-grid" *ngIf="tarjetas().length">
+        <ng-container *ngFor="let t of tarjetas(); trackBy: trackTarjeta">
+        <!-- 0091 · El paquete que se vende entero (el cartón de 24), junto a su producto. -->
+        <button type="button" class="tp-card tp-card--paquete" *ngIf="t.pack as k" data-guide="touch-paquete"
+                [attr.data-guide-clave]="t.p.part_number + '|' + k.name"
+                [class.off]="hayCuenta(t.p) && disponibles(t.p) < k.factor" (click)="tocarPack(t.p, k)">
+          <span class="tp-card__media">
+            <wx-ilustracion class="tp-card__ilu" [nombre]="t.p.product_name" [categoria]="t.p.category_name"
+                            [productoId]="t.p.id" [giro]="caps.businessProfile()" [inventario]="t.p.inventory_mode" />
+            <span class="tp-card__estado tp-card__estado--paquete">×{{ k.factor }}</span>
+          </span>
+          <span class="tp-card__txt">
+            <span class="tp-card__nombre">{{ t.p.product_name }} · {{ k.name }}</span>
+            <span class="tp-card__tag tp-card__tag--paquete">Paquete completo · {{ (k.price / k.factor) | currency:'MXN':'symbol-narrow':'1.2-2' }} c/u</span>
+            <span class="tp-card__pie"><span class="tp-card__precio">{{ k.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span></span>
+          </span>
+        </button>
+        <button type="button" class="tp-card" *ngIf="!t.pack" data-guide="touch-producto" [attr.data-guide-clave]="t.p.part_number"
+                [class.off]="agotado(t.p)" [disabled]="agotado(t.p)" (click)="tocar(t.p)">
 
-          <span class="tp-card__media" [class.con-foto]="p.thumb">
-            <img *ngIf="p.thumb" [src]="p.thumb" [alt]="p.product_name" loading="lazy">
+          <span class="tp-card__media" [class.con-foto]="t.p.thumb">
+            <img *ngIf="t.p.thumb" [src]="t.p.thumb" [alt]="t.p.product_name" loading="lazy">
             <!-- Sin foto: su ilustración (dona, frappé, tijeras…). La foto del cliente siempre manda. -->
-            <wx-ilustracion *ngIf="!p.thumb" class="tp-card__ilu" [nombre]="p.product_name" [categoria]="p.category_name"
-                            [productoId]="p.id" [giro]="caps.businessProfile()" [inventario]="p.inventory_mode" />
+            <wx-ilustracion *ngIf="!t.p.thumb" class="tp-card__ilu" [nombre]="t.p.product_name" [categoria]="t.p.category_name"
+                            [productoId]="t.p.id" [giro]="caps.businessProfile()" [inventario]="t.p.inventory_mode" />
 
             <!-- La disponibilidad se muestra SIEMPRE, no solo cuando escasea.
                  Antes solo aparecia con 5 o menos, asi que en una barra con
                  existencias normales no habia forma de saber cuantas quedaban
                  sin ir a Inventario y dividir a mano. -->
-            <span class="tp-card__estado tp-card__estado--off" *ngIf="agotado(p)">Agotado</span>
+            <span class="tp-card__estado tp-card__estado--off" *ngIf="agotado(t.p)">Agotado</span>
             <span class="tp-card__estado"
-                  [class.tp-card__estado--low]="pocas(p)"
-                  *ngIf="!agotado(p) && hayCuenta(p)">{{ disponibles(p) }}</span>
+                  [class.tp-card__estado--low]="pocas(t.p)"
+                  *ngIf="!agotado(t.p) && hayCuenta(t.p)">{{ disponibles(t.p) }}</span>
           </span>
 
           <span class="tp-card__txt">
-            <span class="tp-card__nombre">{{ p.product_name }}</span>
+            <span class="tp-card__nombre">{{ t.p.product_name }}</span>
+            <!-- Venta suelta (0073): qué es pieza y qué es paquete. -->
+            <span class="tp-card__tag tp-card__tag--suelto" *ngIf="sueltoDe(t.p) as s">Suelto · de {{ s.paqueteNombre }}</span>
+            <span class="tp-card__tag tp-card__tag--paquete" *ngIf="esPaqueteConPiezas(t.p)">Paquete · también por pieza</span>
             <span class="tp-card__pie">
-              <span class="tp-card__precio">{{commercial.catalogPrice(p.id,p.price)!==null?(commercial.catalogPrice(p.id,p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(p.id)?'Elige tamaño':'Sin precio en este canal')}}<small class="tp-card__uom" *ngIf="esGranel(p) && commercial.catalogPrice(p.id,p.price)!==null"> / {{ p.base_uom || 'kg' }}</small></span>
-              <i class="ph ph-sliders tp-card__mods" *ngIf="p.has_modifiers" aria-label="Con opciones" aria-hidden="true"></i>
+              <span class="tp-card__precio">{{commercial.catalogPrice(t.p.id,t.p.price)!==null?(commercial.catalogPrice(t.p.id,t.p.price)|currency:'MXN':'symbol-narrow':'1.2-2'):(commercial.hasVariantPrices(t.p.id)?'Elige tamaño':'Sin precio en este canal')}}<small class="tp-card__uom" *ngIf="esGranel(t.p) && commercial.catalogPrice(t.p.id,t.p.price)!==null"> / {{ t.p.base_uom || 'kg' }}</small></span>
+              <i class="ph ph-sliders tp-card__mods" *ngIf="t.p.has_modifiers" aria-label="Con opciones" aria-hidden="true"></i>
             </span>
           </span>
         </button>
+        </ng-container>
       </div>
       <p class="tp-mas" *ngIf="productosTotal() > productos().length" data-guide="touch-mas">
         Mostrando {{ productos().length }} de {{ productosTotal() }}. Elige una categoría o busca para ver el resto.

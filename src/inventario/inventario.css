@@ -1082,3 +1082,37 @@
 .prod-impuestos__chip:disabled { opacity: .5; cursor: default; }
 .prod-impuestos__cantidad { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .prod-impuestos__cantidad input { width: 90px; border: 1px solid var(--wx-edge-strong, #ccc); border-radius: 8px; padding: 4px 8px; }
+
+/* ------------------------------------------------- venta suelta explicada */
+.suelto-guia { margin: 4px 0 10px; padding: 10px 12px; border: 1px solid var(--wx-accent-line); border-radius: var(--wx-radius-md);
+  background: var(--wx-accent-soft); font-size: var(--wx-text-sm); }
+.suelto-guia summary { cursor: pointer; font-weight: 600; color: var(--wx-accent-text); display: flex; align-items: center; gap: 6px; }
+.suelto-guia ol { margin: 8px 0 4px; padding-left: 20px; display: grid; gap: 4px; }
+.suelto-guia p { margin: 4px 0 0; }
+.suelto-ejemplo { display: block; margin-top: 6px; color: var(--wx-text); }
+.suelto-crear { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--wx-edge-strong); }
+.suelto-crear__form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; margin-top: 8px; }
+.suelto-crear__form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--wx-text-xs); color: var(--wx-text-muted); }
+.suelto-crear__form input { border: 1px solid var(--wx-edge-strong); border-radius: 8px; padding: 7px 9px; background: var(--wx-surface); color: var(--wx-text); font: inherit; }
+.suelto-crear__form .prod-ayuda { grid-column: 1 / -1; }
+.suelto-crear__acc { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 640px) { .suelto-crear__form { grid-template-columns: 1fr; } }
+.btn-outline-sm, .btn-primary-sm { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 9px;
+  font: inherit; font-size: var(--wx-text-sm); font-weight: 600; cursor: pointer; }
+.btn-outline-sm { border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); }
+.btn-primary-sm { border: 0; background: var(--wx-accent); color: var(--wx-accent-ink); }
+.btn-outline-sm:disabled, .btn-primary-sm:disabled { opacity: .55; cursor: default; }
+
+/* ------------------------------------------- costo con o sin IVA y público */
+.prod-desglose__costo { display: flex; flex-direction: column; gap: 4px; }
+.prod-desglose__costo > label { font-size: inherit; color: inherit; margin: 0; }
+.prod-desglose__costo small { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }
+.costo-iva { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 9px; background: var(--wx-sunken); max-width: 100%; }
+.costo-iva button { border: 0; background: transparent; border-radius: 7px; padding: 3px 8px; font: inherit; font-size: var(--wx-text-xs);
+  font-weight: 600; color: var(--wx-text-muted); cursor: pointer; }
+.costo-iva button.on { background: var(--wx-surface); color: var(--wx-text); box-shadow: 0 1px 2px rgba(15, 24, 38, .1); }
+.prod-publico { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-top: 6px;
+  border-radius: var(--wx-radius-md); background: var(--wx-raised); border: 1px solid var(--wx-edge); font-size: var(--wx-text-sm); }
+.prod-publico input { width: 72px; border: 1px solid var(--wx-edge-strong); border-radius: 8px; padding: 4px 8px; background: var(--wx-surface); color: var(--wx-text); font-weight: 700; }
+.prod-publico b { font-family: var(--wx-font-mono); font-size: var(--wx-text-base); }
+.prod-publico__hoy { color: var(--wx-text-muted); font-size: var(--wx-text-xs); }

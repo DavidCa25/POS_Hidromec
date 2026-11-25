@@ -13,6 +13,9 @@ import { ProveedorFormComponent } from '../../app/proveedores/proveedor-form.com
 import { CompraDocumentoComponent, DocumentoAplicado } from './documento/compra-documento.component';
 import { fechaDeSql, zonaDeSql } from '../../core/fechas';
 import { ShiftService } from '../../core/shift.service';
+import { PedidoProveedor, PedidoSugeridoService } from '../../core/pedido-sugerido.service';
+import { cambioDeCosto as cambioCosto, estadoRenglon } from '../../../shared/pedido';
+import { MemoriaCompra, avisosDeCaptura, textoMasBarato, textoUltimaCompra } from '../../../shared/compra-memoria';
 
 registerLocaleData(localeEsMX, 'es-MX');
 
@@ -40,7 +43,7 @@ interface ProductRow {
 interface Proveedor { id: number; nombre: string; }
 
 /** Una presentacion de compra: como se captura y por cuanto multiplica. */
-interface Presentacion { id: number | null; nombre: string; factor: number; }
+interface Presentacion { id: number | null; nombre: string; factor: number; esDefault?: boolean; }
 
 class PurchaseItem {
   constructor(
@@ -71,6 +74,14 @@ class PurchaseItem {
     public objetoImpuesto: string = '02',
     public tasaIva: number = 0.16,
   ) {}
+
+  /**
+   * 0092 · La línea la llenó la memoria del proveedor (presentación, precio y
+   * ganancia de la última compra) y nadie la ha tocado: al cambiar de
+   * proveedor se vuelve a llenar con lo de ese otro.
+   */
+  deMemoria = false;
+  tocada = false;
 
   /** Cuantas unidades base trae una unidad de lo que se esta capturando. */
   get factor(): number {
@@ -173,6 +184,7 @@ export class RegistrarCompra implements OnInit {
     private shift: ShiftService,
     public caps: CapabilityService,
     private socios: SociosService,
+    private pedidoSugerido: PedidoSugeridoService,
   ) {
     this.cargarProveedores();
   }
@@ -186,6 +198,77 @@ export class RegistrarCompra implements OnInit {
   ngOnInit() {
     this.cargarFolio();
     this.cargarSocios();
+    /* 0090 · Si se llegó desde «Registrar como compra» de Alertas, el pedido
+       sugerido llena la compra. Se toma una sola vez. */
+    const p = this.pedidoSugerido.tomar();
+    if (p) void this.aplicarPedido(p);
+  }
+
+  // ---- 0090 · Pedido sugerido: llena la compra y luego se compara con el ticket ----
+
+  /** El pedido que llenó esta compra (proveedor y cantidades pedidas). */
+  pedido: { nombre: string; lineas: Map<string, { cantidad: number; costo: number }> } | null = null;
+  /** Lo que dijo el ticket subido después, por renglón: lo que llegó. */
+  private llego = new Map<string, number>();
+  private clave(productId: number, presentationId: number | null) { return `${productId}|${presentationId ?? 'base'}`; }
+
+  async aplicarPedido(p: PedidoProveedor) {
+    if (!this.productos.length) await this.cargarProductosActivos();
+    if (p.supplierId != null) {
+      if (!this.proveedores.some(x => x.id === p.supplierId)) await this.cargarProveedores();
+      this.seleccionarProveedor(p.supplierId);
+    }
+    const lineas = new Map<string, { cantidad: number; costo: number }>();
+    for (const l of p.lineas) {
+      const prod = this.productos.find(x => x.id === l.productId);
+      if (!prod) continue;
+      const item = new PurchaseItem(
+        prod.id, prod.product_name, l.cantidad, prod.price ?? 0, l.costo,
+        this.margenDe(prod, l.factor > 0 ? l.costo / l.factor : l.costo),
+        l.presentationId, [], [], prod.base_uom || 'pza', prod.sellable, prod.objeto_impuesto || '02', prod.tasa_iva,
+      );
+      this.items.push(item);
+      await this.cargarPresentaciones(item, true);
+      lineas.set(this.clave(prod.id, l.presentationId), { cantidad: l.cantidad, costo: l.costo });
+    }
+    this.pedido = { nombre: p.nombre, lineas };
+    this.llego.clear();
+  }
+
+  /** «Empezar en blanco»: quita lo que puso el pedido. */
+  olvidarPedido() {
+    this.items = [];
+    this.pedido = null;
+    this.llego.clear();
+  }
+
+  /**
+   * Qué pasó con un renglón contra el pedido, una vez subido el ticket:
+   * completo, faltó, llegó de más, no venía en el ticket, o no estaba pedido.
+   * Sin ticket todavía, solo se marca lo que salió del pedido.
+   */
+  estadoPedido(it: PurchaseItem): { texto: string; tono: 'ok' | 'aviso' | 'info' } | null {
+    if (!this.pedido) return null;
+    const k = this.clave(it.productId, it.presentationId);
+    return estadoRenglon(this.pedido.lineas.get(k)?.cantidad ?? null, this.llego.get(k) ?? null, this.llego.size > 0);
+  }
+
+  /** El costo cambió contra el de la última compra (lo que traía el pedido). */
+  cambioDeCosto(it: PurchaseItem): string | null {
+    const pedido = this.pedido?.lineas.get(this.clave(it.productId, it.presentationId));
+    if (!pedido || !this.llego.size) return null;
+    return cambioCosto(pedido.costo, Number(it.purchasePrice) || 0);
+  }
+
+  /** Lo que hay que revisar antes de registrar, en una línea cada cosa. */
+  get avisosPedido(): string[] {
+    if (!this.pedido || !this.llego.size) return [];
+    return this.items.flatMap(it => {
+      const e = this.estadoPedido(it), c = this.cambioDeCosto(it), out: string[] = [];
+      if (e?.tono === 'aviso') out.push(`${it.productName}: ${e.texto.toLowerCase()}.`);
+      if (c) out.push(`${it.productName}: el costo ${c} pesos. Revisa el % de ganancia antes de registrar.`);
+      return out;
+    });
   }
 
   private async cargarSocios() {
@@ -213,8 +296,92 @@ export class RegistrarCompra implements OnInit {
   }
 
   seleccionarProveedor(id: number) {
+    const cambio = this.proveedorSeleccionado !== id;
     this.proveedorSeleccionado = id;
     this.proveedorAbierto = false;
+    if (cambio) void this.alCambiarProveedor();
+  }
+
+  // ---- 0092 · Lo que se le compró antes a este proveedor ----
+
+  /** sp_compra_memoria del proveedor elegido, por producto. */
+  private memoria = new Map<number, MemoriaCompra>();
+  private memoriaDe: number | null = null;
+  private memoriaCargando: Promise<void> | null = null;
+
+  private cargarMemoria(): Promise<void> {
+    const id = this.proveedorSeleccionado;
+    if (id == null) { this.memoria.clear(); this.memoriaDe = null; return Promise.resolve(); }
+    if (this.memoriaDe === id && this.memoriaCargando) return this.memoriaCargando;
+    this.memoriaDe = id;
+    this.memoriaCargando = (async () => {
+      try {
+        const r = await (window as any).electronAPI.comprasMemoria?.({ supplier_id: id });
+        if (this.memoriaDe !== id) return;
+        this.memoria = new Map((r?.success ? r.data || [] : []).map((m: MemoriaCompra) => [Number(m.product_id), m]));
+      } catch {
+        /* Sin memoria la compra se captura como siempre. */
+        if (this.memoriaDe === id) this.memoria.clear();
+      }
+    })();
+    return this.memoriaCargando;
+  }
+
+  /** Otro proveedor: las líneas que llenó la memoria y nadie tocó se rellenan. */
+  private async alCambiarProveedor() {
+    await this.cargarMemoria();
+    for (const it of this.items) if (it.deMemoria && !it.tocada) this.aplicarMemoria(it, true);
+  }
+
+  /**
+   * La línea nace como la última compra: en su presentación, a su precio y
+   * con la ganancia que se fijó entonces. `forzar` reemplaza un precio que
+   * puso la memoria de otro proveedor; uno escrito a mano nunca se toca.
+   */
+  private aplicarMemoria(it: PurchaseItem, forzar = false) {
+    const m = this.memoria.get(it.productId);
+    if (!m) return;
+    const yaTiene = (Number(it.purchasePrice) || 0) > 0;
+    if (!yaTiene || forzar) {
+      const pres = m.presentation_id != null && it.presentaciones.some(p => p.id === Number(m.presentation_id))
+        ? Number(m.presentation_id) : null;
+      it.presentationId = pres;
+      it.purchasePrice = pres == null && Number(m.factor) > 1
+        ? Math.round(Number(m.costo_base) * 10000) / 10000   // la presentación ya no existe: por pieza
+        : Number(m.unit_price) || 0;
+      if (Number(m.profit_percent) > 0) it.profitPercent = Number(m.profit_percent);
+      it.deMemoria = true;
+    }
+  }
+
+  private diaCorto(v: unknown): string {
+    const d = fechaDeSql(v);
+    return d ? d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: zonaDeSql(v) }) : '';
+  }
+  ultimaCompra(it: PurchaseItem): string | null {
+    const m = this.memoria.get(it.productId);
+    return m ? textoUltimaCompra(m, this.diaCorto(m.fecha), it.baseUom) : null;
+  }
+  masBarato(it: PurchaseItem): string | null {
+    const m = this.memoria.get(it.productId);
+    return m ? textoMasBarato(m, this.diaCorto(m.mejor_fecha), it.baseUom) : null;
+  }
+
+  /** Lo que no cuadra con lo comprado antes. Pregunta; no bloquea. */
+  private async revisarCaptura(): Promise<boolean> {
+    await this.cargarMemoria();
+    const avisos = this.items.flatMap(it => avisosDeCaptura(
+      { nombre: it.productName, qtyBase: it.cantidadBase, costoBase: it.costoBase, baseUom: it.baseUom },
+      this.memoria.get(it.productId)));
+    if (!avisos.length) return true;
+    const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const x = await Swal.fire({
+      icon: 'warning', title: '¿Está bien capturado?',
+      html: `<p>Esto no se parece a lo que le has comprado antes:</p><ul style="text-align:left">${avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul>`,
+      showCancelButton: true, confirmButtonText: 'Está bien, registrar', cancelButtonText: 'Corregir',
+      focusCancel: true, customClass: { popup: 'compra-revision' },
+    });
+    return x.isConfirmed;
   }
 
   /** Nota bajo el selector de pago, con las consecuencias en claro. */
@@ -321,7 +488,7 @@ export class RegistrarCompra implements OnInit {
       this.productos = [];
     }
   }
-  seleccionarProducto(p: ProductRow) {
+  async seleccionarProducto(p: ProductRow) {
     const existing = this.items.find(it => it.productId === p.id);
     if (existing) {
       existing.qty += 1;
@@ -330,7 +497,11 @@ export class RegistrarCompra implements OnInit {
     }
 
     const purchasePrice = Number(p.purchasePrice) || 0;
-    const profit = Number(p.profitPercent) || 0;
+    /* Sin % escrito, la ganancia arranca en la que deja el precio de hoy:
+       sp_register_purchase reescribe el precio de venta con costo × IVA ×
+       (1 + ganancia), y con 0 la cerveza de $20 quedaba a $17.40. El precio
+       escrito en el modal es por pieza (unidad base). */
+    const profit = Number(p.profitPercent) > 0 ? Number(p.profitPercent) : this.margenDe(p, purchasePrice);
 
     const item = new PurchaseItem(
       p.id,
@@ -348,9 +519,20 @@ export class RegistrarCompra implements OnInit {
       p.tasa_iva,
     );
     this.items.push(item);
-    this.cargarPresentaciones(item);
-
     this.showModalProductos = false;
+    /* 0092: con el proveedor elegido, la línea nace como la última compra.
+       Sin memoria, en la presentación predeterminada como antes. */
+    await Promise.all([this.cargarPresentaciones(item, true), this.cargarMemoria()]);
+    if (!(Number(p.profitPercent) > 0)) this.aplicarMemoria(item);
+    if (!item.deMemoria) {
+      /* Con precio escrito a mano (por pieza): la presentación en que se le
+         compra a este proveedor, o la predeterminada, convirtiendo el precio. */
+      const m = this.memoria.get(item.productId);
+      const deMem = m?.presentation_id != null && item.presentaciones.some(x => x.id === Number(m.presentation_id))
+        ? Number(m.presentation_id) : null;
+      const def = deMem ?? item.presentaciones.find(x => x.id !== null && x.esDefault)?.id ?? null;
+      if (def != null) this.cambiarPresentacion(item, def);
+    }
   }
 
   /**
@@ -377,6 +559,7 @@ export class RegistrarCompra implements OnInit {
           id: Number(p.id),
           nombre: String(p.name),
           factor: Number(p.factor_to_base) || 1,
+          esDefault: !!p.is_default,
         })),
       ];
       item.opciones = item.presentaciones.map(p => ({
@@ -385,10 +568,41 @@ export class RegistrarCompra implements OnInit {
         nota: p.id === null ? item.baseUom : `x${p.factor}`,
       }));
       const porDefecto = lista.find((p: any) => p.is_default);
-      if (porDefecto && !conservar) item.presentationId = Number(porDefecto.id);
+      /* El precio que se escribió en «Agregar producto» es por unidad base
+         (por pieza): al pasar la línea a la presentación predeterminada se
+         convierte, para que 20 por cerveza sean 480 por cartón de 24 y no
+         20 por el cartón entero. */
+      if (porDefecto && !conservar) this.cambiarPresentacion(item, Number(porDefecto.id));
     } catch {
       // Sin presentaciones la linea se compra en unidad base, como siempre.
     }
+  }
+
+  /**
+   * Cambia la presentación de una línea CONSERVANDO lo que vale cada pieza.
+   *
+   * El precio de compra es por presentación (lo que dice el ticket: $480 el
+   * cartón). Antes, cambiar «Por pza» a «Cartón 24» dejaba el mismo número:
+   * una cerveza de $20 quedaba como un cartón de $20 y la compra pagaba
+   * 24 veces menos. Ahora el precio se multiplica por el nuevo factor.
+   */
+  cambiarPresentacion(it: PurchaseItem, id: number | null, aMano = false) {
+    if (aMano) it.tocada = true;
+    const antes = it.factor;
+    it.presentationId = id;
+    const despues = it.factor;
+    const precio = Number(it.purchasePrice) || 0;
+    if (precio > 0 && antes > 0 && antes !== despues) {
+      it.purchasePrice = Math.round((precio / antes) * despues * 10000) / 10000;
+    }
+  }
+
+  /** «por Cartón 24 · $0.83 por pza»: qué significa el precio de la línea. */
+  precioPorUnidad(it: PurchaseItem): string {
+    if (it.factor === 1) return `por ${it.baseUom}`;
+    const nombre = it.presentaciones.find(p => p.id === it.presentationId)?.nombre ?? '';
+    const pieza = it.costoBase;
+    return `por ${nombre} · $${pieza.toFixed(2)} por ${it.baseUom}`;
   }
 
   /** Lo que subira el inventario con esta linea, ya convertido. */
@@ -406,12 +620,14 @@ export class RegistrarCompra implements OnInit {
   onPurchasePriceChange(i: number) {
     const it = this.items[i];
     if (!it) return;
+    it.tocada = true;
     if (!Number.isFinite(Number(it.purchasePrice)) || it.purchasePrice < 0) it.purchasePrice = 0;
   }
 
   onProfitChange(i: number) {
     const it = this.items[i];
     if (!it) return;
+    it.tocada = true;
     if (!Number.isFinite(Number(it.profitPercent)) || it.profitPercent < 0) it.profitPercent = 0;
     if (it.profitPercent > 100) it.profitPercent = 100;
   }
@@ -455,9 +671,19 @@ export class RegistrarCompra implements OnInit {
   async alAplicarDocumento(d: DocumentoAplicado) {
     this.documentoAbierto = false;
     this.seleccionarProveedor(d.supplier_id);
+    /* 0090 · Con un pedido cargado, el ticket dice lo que LLEGÓ: reemplaza la
+       cantidad y el costo pedidos en vez de sumarse, y queda para comparar. */
+    const conPedido = !!this.pedido;
+    if (conPedido) this.llego.clear();
     for (const l of d.lineas) {
       const p = this.productos.find(x => x.id === l.productId);
       if (!p) continue;
+      if (conPedido) {
+        const k = this.clave(l.productId, l.presentationId);
+        this.llego.set(k, (this.llego.get(k) ?? 0) + l.cantidad);
+        const pedida = this.pedido!.lineas.has(k) ? this.items.find(it => it.productId === l.productId && it.presentationId === l.presentationId) : null;
+        if (pedida) { pedida.qty = this.llego.get(k)!; pedida.purchasePrice = l.costo; continue; }
+      }
       /* El mismo producto en la misma presentacion: una sola linea. */
       const ya = this.items.find(it => it.productId === l.productId && it.presentationId === l.presentationId);
       if (ya) {
@@ -595,6 +821,7 @@ export class RegistrarCompra implements OnInit {
       return;
     }
 
+    if (!(await this.revisarCaptura())) return;
     const revision = await this.revisarDuplicados();
     if (!revision) return;
 
@@ -644,6 +871,9 @@ export class RegistrarCompra implements OnInit {
             Swal.fire({ icon: 'warning', title: 'La compra quedó; quién la pagó no', text: res.socios.error });
           }
           this.items = [];
+          /* Lo recién comprado ya es la última compra: se vuelve a leer. */
+          this.memoriaDe = null; this.memoriaCargando = null;
+          void this.cargarMemoria();
           this.formaDePago = 'CREDITO';
           this.socioPago = null;
           this.cargarFolio();

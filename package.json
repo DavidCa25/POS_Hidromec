@@ -40,6 +40,9 @@
     "db:test-socios": "node scripts/db/pruebas/socios.mjs",
     "db:test-venta-suelta": "node scripts/db/pruebas/venta-suelta.mjs",
     "test:ilustraciones": "node --test scripts/pruebas/ilustraciones.test.mjs",
+    "test:vaso": "node --test scripts/pruebas/vaso.test.mjs",
+    "test:pedido": "node --test scripts/pruebas/pedido.test.mjs",
+    "test:compra-memoria": "node --test scripts/pruebas/compra-memoria.test.mjs",
     "test:plataformas": "node --test scripts/pruebas/plataformas.test.mjs",
     "db:test-produccion": "node scripts/db/pruebas/produccion.mjs",
     "db:test-compras": "node scripts/db/pruebas/compras.mjs",
@@ -162,7 +165,10 @@
     "e2e:granel": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/granel-redondeo.spec.js",
     "e2e:mayoreo": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/mayoreo.spec.js",
     "e2e:fruteria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/fruteria.spec.js",
-    "e2e:papeleria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/papeleria.spec.js"
+    "e2e:papeleria": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/papeleria.spec.js",
+    "e2e:vista-negocio": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/vista-negocio.spec.js",
+    "e2e:abarrotes": "npm run build && node e2e/preparar-bases.mjs core && playwright test e2e/abarrotes.spec.js",
+    "e2e:caja-movil": "npm run build && playwright test e2e/caja-movil.spec.js"
   },
   "prettier": {
     "overrides": [

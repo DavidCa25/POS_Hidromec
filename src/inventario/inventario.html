@@ -302,11 +302,18 @@
           </div>
           <ng-container *ngIf="veCostos">
             <!-- El costo se puede corregir aquí (sin IVA); la próxima compra lo vuelve a poner. -->
-            <label class="prod-desglose__dato prod-desglose__costo">
-              <span>Costo sin IVA</span>
-              <input type="number" step="0.01" min="0" name="costoCaptura" data-guide="producto-costo" data-teclado="MONEY"
-                     [(ngModel)]="costoCaptura" placeholder="Sin costo" aria-label="Costo sin IVA">
-            </label>
+            <div class="prod-desglose__dato prod-desglose__costo">
+              <label for="costoCaptura">Costo</label>
+              <input type="number" step="0.01" min="0" id="costoCaptura" name="costoCaptura" data-guide="producto-costo" data-teclado="MONEY"
+                     [(ngModel)]="costoVisible" placeholder="Sin costo"
+                     [attr.aria-label]="costoConIva ? 'Costo con IVA' : 'Costo sin IVA'">
+              <!-- El ticket del proveedor puede traer el IVA o no: se pregunta. -->
+              <div class="costo-iva" role="radiogroup" aria-label="¿El costo incluye IVA?" data-guide="producto-costo-iva">
+                <button type="button" role="radio" [attr.aria-checked]="!costoConIva" [class.on]="!costoConIva" (click)="costoIncluyeIva(false)">Sin IVA</button>
+                <button type="button" role="radio" [attr.aria-checked]="costoConIva" [class.on]="costoConIva" (click)="costoIncluyeIva(true)">Con IVA</button>
+              </div>
+              <small *ngIf="costoConIva && costoCaptura != null" data-guide="producto-costo-sin-iva">= {{ costoCaptura | currency:'MXN':'symbol-narrow':'1.2-2' }} sin IVA</small>
+            </div>
             <div class="prod-desglose__dato" [class.es-perdida]="(d.ganancia ?? 0) < 0" [class.es-ganancia]="(d.ganancia ?? 0) > 0">
               <span>Ganancia</span>
               <b *ngIf="d.ganancia != null">{{ d.ganancia | currency:'MXN':'symbol-narrow':'1.2-2' }}</b>
@@ -319,6 +326,16 @@
             Última compra: <b>{{ u.porcentaje | number:'1.0-2' }}% de ganancia</b><ng-container *ngIf="u.fecha"> · {{ u.fecha | fechaSql:'d MMM yyyy':'es-MX' }}</ng-container>.
             El % de ganancia es sobre el costo, igual que en Compras.
           </p>
+          <!-- El precio al público que deja ese costo: ahí mismo, con un botón para usarlo. -->
+          <div class="prod-publico" *ngIf="veCostos && d.costo != null" data-guide="producto-precio-publico">
+            <span>Precio al público con</span>
+            <input type="number" step="1" min="0" name="gananciaPropuesta" [(ngModel)]="gananciaPropuesta" aria-label="% de ganancia sobre el costo">
+            <span>% de ganancia:</span>
+            <b>{{ precioPropuesto != null ? (precioPropuesto | currency:'MXN':'symbol-narrow':'1.2-2') : '—' }}</b>
+            <span class="prod-publico__hoy">hoy vendes a {{ d.final | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            <button type="button" class="btn-outline-sm" (click)="usarPrecioPropuesto()"
+                    [disabled]="precioPropuesto == null || precioPropuesto === d.final" data-guide="producto-usar-precio">Usar este precio</button>
+          </div>
           <p class="prod-desglose__nota" *ngIf="veCostos && d.costo == null">Escribe el costo, o se toma de tu próxima compra de este producto.</p>
           <p class="prod-desglose__nota" *ngIf="veCostos && d.costo != null && (d.ganancia ?? 0) < 0">Este precio no cubre el costo: vendes con pérdida.</p>
         </div>
@@ -452,8 +469,23 @@
              paquete cuando faltan piezas lo hace sp_register_sale. -->
         <div class="grid-col-span-3 prod-present" *ngIf="gestionaSuelto" data-guide="producto-suelto">
           <label>Vender suelto <span class="prod-imagen__opt">(opcional)</span></label>
+
+          <!-- Cómo funciona, con un ejemplo: la venta suelta son DOS productos
+               ligados, y eso no era evidente. -->
+          <details class="suelto-guia" data-guide="producto-suelto-guia">
+            <summary><i class="ph ph-question" aria-hidden="true"></i> ¿Cómo funciona la venta suelta?</summary>
+            <ol>
+              <li><b>El paquete es un producto</b> (la cajetilla de 20, $95): es lo que compras y también se puede vender entero.</li>
+              <li><b>La pieza es otro producto</b> (el cigarro suelto, $6), ligado a su paquete con cuántas piezas trae.
+                  Desde el paquete puedes crearla aquí mismo con <b>«Crear la pieza suelta»</b>.</li>
+              <li><b>En la caja vendes la pieza.</b> Si no hay piezas sueltas, Wybix abre un paquete solo:
+                  1 cajetilla menos y 20 cigarros sueltos más. Así el inventario cuadra en paquetes cerrados y en piezas.</li>
+            </ol>
+            <p>Compra siempre el <b>paquete</b> (en Compras, por caja o cartón); las piezas salen de abrirlo.</p>
+          </details>
+
           <ng-container *ngIf="!sueltosDeEste.length; else esPaquete">
-            <p class="prod-ayuda">Si este producto es la pieza de un paquete -el cigarro de la cajetilla-, elige el paquete. Cuando no haya piezas, la venta abre uno sola.</p>
+            <p class="prod-ayuda"><b>¿Este producto es la pieza?</b> Elige de qué paquete sale y cuántas piezas trae.</p>
             <div class="prod-present__fila">
               <wx-select class="prod-present__nombre" name="sueltoPadre" data-guide="producto-suelto-paquete"
                          [(ngModel)]="suelto.padre" [opciones]="opcPaquetes" [buscable]="true"
@@ -469,9 +501,44 @@
               </button>
             </div>
             <span class="prod-ayuda" *ngIf="precioPorPieza">{{ precioPorPieza }}</span>
+            <span class="prod-ayuda suelto-ejemplo" *ngIf="ejemploSuelto" data-guide="producto-suelto-ejemplo">{{ ejemploSuelto }}</span>
+
+            <!-- ¿O es el paquete? La pieza se crea desde aquí, ya ligada. -->
+            <div class="suelto-crear" *ngIf="!suelto.padre && editingProductId" data-guide="producto-suelto-crear">
+              <p class="prod-ayuda"><b>¿Este producto es el paquete y también vendes sus piezas?</b>
+                Crea la pieza suelta: toma la marca, la categoría y el IVA de este producto y queda ligada.</p>
+              <button type="button" class="btn-outline-sm" *ngIf="!piezaNueva.abierta" (click)="abrirPiezaNueva()"
+                      data-guide="producto-suelto-crear-abrir">
+                <i class="ph ph-plus" aria-hidden="true"></i> Crear la pieza suelta
+              </button>
+              <div class="suelto-crear__form" *ngIf="piezaNueva.abierta">
+                <label>Nombre de la pieza
+                  <input type="text" name="piezaNombre" [(ngModel)]="piezaNueva.nombre" data-guide="producto-suelto-crear-nombre"></label>
+                <label>Piezas por paquete
+                  <input type="number" min="2" step="1" name="piezaPiezas" [(ngModel)]="piezaNueva.piezas" placeholder="20" data-guide="producto-suelto-crear-piezas"></label>
+                <label>Precio de cada pieza
+                  <input type="number" min="0" step="0.5" name="piezaPrecio" [(ngModel)]="piezaNueva.precio" placeholder="6.00" data-guide="producto-suelto-crear-precio"></label>
+                <span class="prod-ayuda" *ngIf="piezaDelPaquete != null">
+                  Al precio del paquete, cada pieza sale en ${{ piezaDelPaquete | number:'1.2-2' }}.
+                  <ng-container *ngIf="(piezaNueva.precio ?? 0) > piezaDelPaquete">Suelta la vendes más cara: es lo normal.</ng-container>
+                </span>
+                <div class="suelto-crear__acc">
+                  <button type="button" class="btn-outline-sm" (click)="piezaNueva.abierta = false">Cancelar</button>
+                  <button type="button" class="btn-primary-sm" (click)="crearPiezaSuelta()" [disabled]="piezaNueva.creando"
+                          data-guide="producto-suelto-crear-guardar">{{ piezaNueva.creando ? 'Creando…' : 'Crear y ligar' }}</button>
+                </div>
+              </div>
+            </div>
+            <p class="prod-ayuda" *ngIf="!suelto.padre && !editingProductId">
+              ¿Es el paquete? Guárdalo primero; al editarlo podrás crear su pieza suelta.
+            </p>
           </ng-container>
           <ng-template #esPaquete>
-            <p class="prod-ayuda">Este producto es el paquete de: {{ sueltosDeEste.join(', ') }}.</p>
+            <p class="prod-ayuda" data-guide="producto-suelto-es-paquete">
+              <b>Este producto es el paquete.</b> De él salen:
+              <ng-container *ngFor="let s of sueltosDetalle; let ult = last">«{{ s.nombre }}» ({{ s.piezas }} piezas por paquete){{ ult ? '.' : ', ' }}</ng-container>
+              Cómpralo por paquete; cuando se acaben las piezas sueltas, la venta abre uno solo.
+            </p>
           </ng-template>
         </div>
 

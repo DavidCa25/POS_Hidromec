@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import Swal from 'sweetalert2';
 import { WxSelectComponent, WxOpcion } from '../wx-select/wx-select.component';
+import { colorDe } from '../../../shared/vaso';
 
 interface Directo { id: number; product_name: string; part_number: string | null; base_uom: string; dimension: string; stock: number; cost: number | null; }
 interface Unidad { code: string; name: string; dimension: string; factor_to_base: number; }
@@ -84,6 +85,41 @@ export class FormulasComponent implements OnInit {
     const precio = Number(this.producto()?.product_price || 0);
     return precio > 0 ? (precio - this.simulacion().porPieza) / precio : null;
   });
+
+  /* ------------------------------------------------- dibujos (solo explican)
+     Salen de las mismas líneas y del mismo simulador: no guardan ni mueven
+     inventario. Decorativos: lo que dicen está también en texto. */
+
+  /** El tazón: cada ingrediente una capa, por su peso aproximado (pieza ≈ 50 g). */
+  readonly tazon = computed(() => {
+    const pesos = this.lineas().map(l => {
+      const d = this.directo(l.ingredientProductId), ub = this.unidad(d?.base_uom);
+      const enBase = this.base(l) * (ub?.factor_to_base ?? 1);
+      return { nombre: d?.product_name ?? '', peso: ub?.dimension === 'COUNT' ? enBase * 50 : enBase };
+    });
+    const total = pesos.reduce((a, p) => a + p.peso, 0) || 1;
+    const alto = 104 * Math.min(1.1, 0.55 + this.rinde() / 60);
+    let y = 186;
+    return pesos.map(p => { const h = (p.peso / total) * alto; y -= h; return { y: Math.round(y * 10) / 10, h: Math.round(h * 10) / 10, color: colorDe(p.nombre) }; });
+  });
+
+  /** La charola: una pieza por cada una que se simula (hasta 48, cuatro filas); las que no alcanzan, punteadas. */
+  readonly charola = computed(() => {
+    const n = this.simular(), alcanza = this.simulacion().alcanzaPara, mostrar = Math.min(n, 48), cols = 12;
+    const color = colorDe(this.producto()?.product_name ?? '');
+    const piezas = Array.from({ length: mostrar }, (_, i) => ({
+      x: 22 + (i % cols) * 36, y: 24 + Math.floor(i / cols) * 34, ok: i < alcanza, color,
+    }));
+    return { piezas, alto: 14 + Math.ceil(mostrar / cols) * 34, mas: n - mostrar };
+  });
+
+  /** Un frasco por ingrediente: lo que hay contra lo que pide la tanda. */
+  readonly frascos = computed(() => this.simulacion().filas.map(f => {
+    const tope = Math.max(f.hay, f.pide, 0.0001) * 1.1;
+    const h = Math.max(2, (f.hay / tope) * 54);
+    return { nombre: f.nombre, y: Math.round((66 - h) * 10) / 10, h: Math.round(h * 10) / 10, marca: Math.round((66 - (f.pide / tope) * 54) * 10) / 10,
+      falta: f.falta > 0, color: colorDe(f.nombre) };
+  }));
 
   async ngOnInit() {
     try {

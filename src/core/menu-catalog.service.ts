@@ -12,6 +12,9 @@ import { CatalogProduct, InventoryMode, SelectedOption } from './models';
  * las que cambiaron.
  */
 
+
+/** Minúsculas y sin acentos, para buscar como se teclea en la caja. */
+const sinAcentos = (x: string) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 export type ModifierRole = 'SIZE' | 'ADDON' | 'SUBSTITUTION' | 'NOTE';
 export type ModifierEffect = 'NONE' | 'ADD' | 'REMOVE' | 'SUBSTITUTE' | 'SCALE';
 
@@ -268,7 +271,7 @@ export class MenuCatalogService {
   /* Con miles de productos: el texto de búsqueda en minúsculas y el índice
      por código se arman una vez por lectura del catálogo, no por tecla. */
   private readonly indice = computed(() => this.products().map(p => ({
-    p, texto: `${p.product_name}${p.part_number || ''}${p.bar_code || ''}`.toLowerCase(),
+    p, texto: sinAcentos(`${p.product_name}${p.part_number || ''}${p.bar_code || ''}`),
   })));
   private readonly porCodigo = computed(() => {
     const m = new Map<string, MenuProduct>();
@@ -280,7 +283,7 @@ export class MenuCatalogService {
   });
 
   search(term: string): MenuProduct[] {
-    const t = (term || '').trim().toLowerCase();
+    const t = sinAcentos((term || '').trim());
     if (!t) return this.products();
     return this.indice().filter(x => x.texto.includes(t)).map(x => x.p);
   }
