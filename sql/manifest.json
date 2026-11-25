@@ -363,7 +363,8 @@
       "origen": "Wybix_Production",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "aba613fc72902591"
+      "checksum": "8038f77fa9039b4d",
+      "nota": "migracion 0093: falta aplicarla a Wybix_Production"
     },
     {
       "nombre": "sp_check_availability",
@@ -3769,14 +3770,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 179,
-      "columnas": 1795,
-      "pk": 179,
+      "tablas": 180,
+      "columnas": 1802,
+      "pk": 180,
       "unicas": 25,
       "foraneas": 220,
-      "chequeos": 209,
-      "predeterminados": 421,
-      "indices": 170
+      "chequeos": 210,
+      "predeterminados": 422,
+      "indices": 171
     },
     "objetos": [
       {
@@ -4016,6 +4017,20 @@
         "predeterminados": 2,
         "indices": 0,
         "checksum": "c3c2115b35946de6"
+      },
+      {
+        "nombre": "caja_movil_eventos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/caja_movil_eventos.sql",
+        "origen": "Wybix_E2E_Core",
+        "columnas": 7,
+        "pk": "PK_caja_movil_eventos",
+        "unicas": 0,
+        "foraneas": 0,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "8af3f3eb6e9cb555"
       },
       {
         "nombre": "campaigns",

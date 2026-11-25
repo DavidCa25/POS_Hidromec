@@ -27,6 +27,9 @@ function crearLicenciaPantallas({ repo, licencia = null }) {
 
   function permite(tipo) {
     const e = ev();
+    /* 0094 · La caja móvil vende: la decide la licencia de venta y las cajas
+       (registers_max, al crear su caja), no la cuota de pantallas. */
+    if (tipo === 'CAJA_MOVIL') return !e || (e.tiene('sales') && !e.ventaEsencial);
     return !e || e.permiteSuperficie(tipo);
   }
 
@@ -40,6 +43,7 @@ function crearLicenciaPantallas({ repo, licencia = null }) {
   async function cuota(tipo, { excluirId = null, contarPendientes = true } = {}) {
     const e = ev();
     if (!e) return { ok: true };
+    if (tipo === 'CAJA_MOVIL') return { ok: true };   // cuenta como caja, no como pantalla
     const giro = e.giroDeSuperficie(tipo);
     const limite = e.cuotaDe(giro);
     if (limite === null) return { ok: true, giro, limite: null };

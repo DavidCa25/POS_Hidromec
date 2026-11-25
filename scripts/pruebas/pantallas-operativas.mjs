@@ -134,8 +134,9 @@ try {
   seccion('Núcleo: registro, capacidades, dispositivo y trabajador');
   const reg = host.registro;
   const tipos = reg.todas().map(d => d.tipo);
-  check('C01', tipos.length === 6 && ['PREPARATION', 'WAITER', 'STAFF_DAY', 'TECHNICIAN', 'INVENTORY_FLOOR', 'CUSTOMER_STATUS'].every(t => tipos.includes(t)),
-    'el registro tiene las seis superficies definidas por Wybix', tipos.join(', '));
+  // 0094: + CAJA_MOVIL (Wybix POS Mobile como caja; la app nativa, no una página).
+  check('C01', tipos.length === 7 && ['PREPARATION', 'WAITER', 'STAFF_DAY', 'TECHNICIAN', 'INVENTORY_FLOOR', 'CUSTOMER_STATUS', 'CAJA_MOVIL'].every(t => tipos.includes(t)),
+    'el registro tiene las siete superficies definidas por Wybix', tipos.join(', '));
   const todasAcc = reg.todas().flatMap(d => Object.entries(d.acciones || {}).map(([n, a]) => ({ t: d.tipo, n, modo: a.modo })));
   check('C01', todasAcc.every(a => a.modo) && !todasAcc.some(a => /PAY|COBRAR|PRECIO|USUARIO|CONFIG/.test(a.n)),
     'cada acción declara su modo sin conexión, y ninguna cobra, cambia precios ni administra', `${todasAcc.length} acciones`);
@@ -143,7 +144,7 @@ try {
     'Estado de pedidos es pública y no tiene acciones');
 
   const disponibles = async () => (await host.superficiesDisponibles()).map(x => x.tipo).sort().join(',');
-  check('C02', (await disponibles()) === 'CUSTOMER_STATUS,INVENTORY_FLOOR,PREPARATION,STAFF_DAY,TECHNICIAN,WAITER', 'con todo encendido se ofrecen las seis', await disponibles());
+  check('C02', (await disponibles()) === 'CAJA_MOVIL,CUSTOMER_STATUS,INVENTORY_FLOOR,PREPARATION,STAFF_DAY,TECHNICIAN,WAITER', 'con todo encendido se ofrecen las siete (con la caja móvil)', await disponibles());
   ejecutar(DB, `EXEC dbo.sp_set_services_preset @preset = N'BELLEZA'`); host.capacidades.olvidar();
   const conBelleza = await disponibles();
   ejecutar(DB, `EXEC dbo.sp_set_services_preset @preset = N'TALLER_AUTOMOTRIZ'`); host.capacidades.olvidar();

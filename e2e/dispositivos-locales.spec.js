@@ -109,7 +109,7 @@ test.describe('Dispositivos locales', () => {
       await expect(ventana.locator('.dl-datos')).toContainText('Último contacto');
 
       await ventana.getByRole('button', { name: 'Conectar dispositivo' }).click();
-      await expect(ventana.locator('.dl-funcion')).toHaveCount(6);
+      await expect(ventana.locator('.dl-funcion')).toHaveCount(7);   // 0094: + Caja móvil
       await ventana.locator('.dl-funcion', { hasText: 'Mesero' }).click();
       await expect(ventana.getByText('Áreas que atiende')).toHaveCount(0);   // sin areas creadas no se ofrece
       await ventana.locator('.dl-funcion', { hasText: 'Estado de pedidos' }).click();
@@ -119,7 +119,7 @@ test.describe('Dispositivos locales', () => {
       await expect(ventana.locator('.dl-qr img')).toBeVisible({ timeout: 10000 });
       await expect(ventana.locator('.dl-qr code')).toContainText('/pair/…');
 
-      await ventana.getByRole('button', { name: 'Listo' }).click();
+      await ventana.getByRole('button', { name: 'Listo', exact: true }).click();
       const admin = ventana.locator('.dl-lista .dl-disp', { hasText: CUENTAS.admin.usuario });
       await expect(admin.locator('.dl-marca--on', { hasText: 'PIN' })).toBeVisible();
       await ventana.locator('.cs-drawer-body').evaluate(b => { b.scrollTop = b.scrollHeight; });

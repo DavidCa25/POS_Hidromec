@@ -78,7 +78,7 @@ function limitador(max, ventanaMs) {
   };
 }
 
-function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, licenciaPantallas = null, dominios = {}, log = () => {}, alPedir = () => {}, alCambiarComandas = () => {} }) {
+function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, pool, sql, eventos, seguimiento = null, licenciaPantallas = null, cajaMovil = null, dominios = {}, log = () => {}, alPedir = () => {}, alCambiarComandas = () => {} }) {
   const limiteApi = limitador(300, 60_000);
   /* Un telefono consulta cada pocos segundos; esto deja de sobra y frena a
      quien pruebe codigos (que ademas son de 128 bits). */
@@ -296,7 +296,12 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
         }
       }
       log(`dispositivo emparejado: ${r.dispositivo.nombre} (${r.dispositivo.superficie})`);
-      responder(res, 200, { dispositivo: publicoDisp(r.dispositivo) }, {
+      /* 0094 · Una caja móvil es la app nativa de Wybix POS Mobile, no una
+         página: no guarda cookies, así que recibe su credencial en el cuerpo
+         (y la manda como Bearer). Una pantalla del navegador sigue solo con
+         la cookie HttpOnly. */
+      const extra = r.dispositivo.superficie === 'CAJA_MOVIL' ? { credencial } : {};
+      responder(res, 200, { dispositivo: publicoDisp(r.dispositivo), ...extra }, {
         'Set-Cookie': `${COOKIE}=${encodeURIComponent(credencial)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=315360000`,
       });
       return;
@@ -336,6 +341,27 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
     const d = await dispositivoDe(req);
     if (!d) { responder(res, 401, { error: 'Esta pantalla no está conectada a Wybix.', motivo: 'SIN_CREDENCIAL' }); return; }
     alPedir(d, req);
+
+    /* ---- 0094 · caja móvil: el mismo contrato que la nube (caja-movil.js) */
+    if (req.method === 'POST' && ruta.startsWith('/api/caja/')) {
+      if (d.superficie !== 'CAJA_MOVIL' || !cajaMovil) { responder(res, 404, { error: 'No existe.' }); return; }
+      if (licenciaPantallas && !licenciaPantallas.permite('CAJA_MOVIL')) { responder(res, 403, { error: licenciaPantallas.mensaje(), motivo: 'LICENCIA' }); return; }
+      let cuerpo;
+      // Un lote de 500 ventas con sus renglones cabe holgado en 4 MB.
+      try { cuerpo = await leerCuerpo(req, 4 * 1024 * 1024); } catch (e) { rechazarCuerpo(res, e); return; }
+      try {
+        if (ruta === '/api/caja/snapshot') { responder(res, 200, await cajaMovil.snapshot(d, cuerpo || {})); return; }
+        if (ruta === '/api/caja/eventos') { responder(res, 200, await cajaMovil.eventos(d, cuerpo?.events)); return; }
+        if (ruta === '/api/caja/inbox') { responder(res, 200, { ok: true, events: [], cursor: Number(cuerpo?.cursor) || 0 }); return; }
+        if (ruta === '/api/caja/latido') { responder(res, 200, { ok: true }); return; }
+        responder(res, 404, { error: 'No existe.' });
+      } catch (e) {
+        if (e.negocio) { responder(res, e.http || 409, { error: e.message }); return; }
+        log(`caja móvil ${ruta}: ${e.message}`);
+        responder(res, 500, { error: 'La caja principal no pudo atender la petición.' });
+      }
+      return;
+    }
 
     /* ---- compatibilidad: pantallas de cocina abiertas antes de esta version */
     if (req.method === 'GET' && ruta === '/api/kds/estado') {
@@ -489,7 +515,9 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
     // ---------------------------------------------- cambiar la funcion
     if (req.method === 'GET' && ruta === '/api/dispositivo/funciones') {
       const caps = await capacidades.leer();
-      const disponibles = registro.disponibles(caps);
+      /* 0094 · Una pantalla web no se vuelve caja móvil (eso es la app nativa)
+         y una caja móvil no se reasigna desde aquí. */
+      const disponibles = registro.disponibles(caps).filter((x) => x.tipo !== 'CAJA_MOVIL');
       responder(res, 200, {
         actual: d.superficie,
         funciones: disponibles.map(x => ({ tipo: x.tipo, nombre: x.nombre, descripcion: x.descripcion, requiereEstacion: !!x.requiereEstacion })),
@@ -514,7 +542,7 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
       }
       const caps = await capacidades.leer();
       const nueva = registro.obtener(String(cuerpo?.superficie || ''));
-      if (!nueva || !nueva.disponible(caps)) { responder(res, 400, { error: 'Esa función no está disponible en este negocio.' }); return; }
+      if (!nueva || !nueva.disponible(caps) || nueva.tipo === 'CAJA_MOVIL' || d.superficie === 'CAJA_MOVIL') { responder(res, 400, { error: 'Esa función no está disponible en este negocio.' }); return; }
       if (licenciaPantallas) {
         const q = await licenciaPantallas.cuota(nueva.tipo, { excluirId: d.id });
         if (!q.ok) { responder(res, 403, { error: q.error, codigo: 'CUOTA' }); return; }

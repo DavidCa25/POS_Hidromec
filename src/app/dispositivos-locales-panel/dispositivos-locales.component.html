@@ -129,9 +129,10 @@
         <div class="dl-qr" *ngIf="qr() as q">
           <img [src]="q.qr" width="220" height="220" alt="Código QR para conectar el dispositivo">
           <div class="dl-qr__txt">
-            <b>Escanéalo con la cámara del dispositivo</b>
+            <b>{{ q.app ? 'Escanéalo desde Wybix POS Mobile' : 'Escanéalo con la cámara del dispositivo' }}</b>
             <span>{{ q.nombre }} · {{ q.funcion }}</span>
-            <code>{{ sinToken(q.url) }}</code>
+            <span *ngIf="q.app">En la tablet: Emparejar › Caja de la sucursal › Abrir cámara. Sin cámara, pega esta dirección:</span>
+            <code>{{ q.app ? q.url : sinToken(q.url) }}</code>
             <span class="dl-qr__tiempo" [class.dl-qr__tiempo--fin]="!quedan()">
               {{ quedan() ? 'Caduca en ' + quedanTexto : 'Este código caducó. Genera otro.' }}
             </span>
