@@ -5622,6 +5622,8 @@ ipcMain.handle('sp-customers-kpis', async () => {
   ipcMain.handle('mp-validate-token', sesion.proteger('mp-validate-token', async () => mpPoint.validateToken()));
   ipcMain.handle('mp-create-store', sesion.proteger('mp-create-store', async (_event, payload = {}) => mpPoint.createStore(payload)));
   ipcMain.handle('mp-create-pos', sesion.proteger('mp-create-pos', async (_event, payload = {}) => mpPoint.createPos(payload)));
+  ipcMain.handle('mp-discover', sesion.proteger('mp-discover', async () => mpPoint.discover()));
+  ipcMain.handle('mp-select', sesion.proteger('mp-select', async (_event, payload = {}) => mpPoint.select(payload)));
   ipcMain.handle('mp-set-pdv', sesion.proteger('mp-set-pdv', async (_event, terminalId) => mpPoint.setPdv(terminalId)));
 
   //Backups

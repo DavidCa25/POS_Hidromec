@@ -294,6 +294,8 @@ const EXIGE = {
   'mp-create-pos': CONFIGURACION_ADMINISTRAR,
   'mp-create-store': CONFIGURACION_ADMINISTRAR,
   'mp-validate-token': CONFIGURACION_ADMINISTRAR,
+  'mp-discover': CONFIGURACION_ADMINISTRAR,
+  'mp-select': CONFIGURACION_ADMINISTRAR,
   // MultiCaja: preparar el equipo servidor y enseñar la contraseña de SQL en
   // claro. Esto vive en el panel de red, que solo se abre con sesión iniciada.
   'network:prepare': CONFIGURACION_ADMINISTRAR,

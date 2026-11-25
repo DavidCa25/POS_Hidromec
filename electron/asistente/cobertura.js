@@ -183,6 +183,8 @@ const MANUAL = {
   'mp-set-pdv': 'Alta en Mercado Pago: Configuración.',
   'mp-simulate-order': 'Solo para pruebas de Mercado Pago.',
   'mp-validate-token': 'Token de Mercado Pago: no se dice en un chat.',
+  'mp-discover': 'Alta en Mercado Pago: Configuración.',
+  'mp-select': 'Alta en Mercado Pago: Configuración.',
   'network:prepare': 'Configura la red del equipo (Windows).',
   'network:reveal-password': 'Muestra una contraseña: no se dice en un chat.',
   'payments:set': 'Formas de pago y comisiones de terminal: Configuración.',

@@ -142,13 +142,23 @@ async function validateToken() {
   if (!r.ok) return { success: false, error: r.error, data: r.data };
 
   const userId = r.data?.id != null ? String(r.data.id) : '';
-  if (userId) saveConfig({ userId });
+  /* Un usuario de prueba de MP trae la etiqueta `test_user`. El modo prueba
+     sale de la cuenta, no de una casilla: con una cuenta de prueba no se puede
+     cobrar de verdad, y con una real la simulación no aplica. */
+  const tags = Array.isArray(r.data?.tags) ? r.data.tags : [];
+  const testUser = tags.includes('test_user');
+  const previo = loadConfig();
+  const cambio = { userId, testMode: testUser };
+  // Otra cuenta: lo guardado de la anterior ya no le pertenece.
+  if (previo.userId && userId && previo.userId !== userId) Object.assign(cambio, { storeId: '', posId: '', terminalId: '' });
+  if (userId) saveConfig(cambio);
 
   return {
     success: true,
     userId,
     nickname: r.data?.nickname || '',
-    siteId: r.data?.site_id || ''
+    siteId: r.data?.site_id || '',
+    testUser
   };
 }
 
@@ -164,7 +174,8 @@ async function createStore(payload = {}) {
 
   const body = {
     name: payload.name || 'Sucursal Principal',
-    external_id: payload.externalId || `SUC-${Date.now()}`,
+    // MP pide external_id alfanumérico y único por cuenta: uno fijo choca al repetir.
+    external_id: limpiarExternalId(payload.externalId) || `SUC${Date.now().toString(36).toUpperCase()}`,
     location: {
       street_number: String(payload.streetNumber ?? ''),
       street_name: String(payload.streetName ?? ''),
@@ -192,7 +203,7 @@ async function createPos(payload = {}) {
   const body = {
     name: payload.name || 'Caja 1',
     store_id: cfg.storeId,
-    external_id: payload.externalId || `POS-${Date.now()}`
+    external_id: limpiarExternalId(payload.externalId) || `POS${Date.now().toString(36).toUpperCase()}`
   };
 
   const r = await mpFetch('POST', '/pos', { body });
@@ -203,18 +214,69 @@ async function createPos(payload = {}) {
   return { success: true, posId, qr: r.data?.qr ?? null };
 }
 
-// Lista las terminales, filtrando por la sucursal/caja ya creadas
-async function listTerminals({ limit = 50, offset = 0 } = {}) {
-  const cfg = loadConfig();
-  let qs = `limit=${limit}&offset=${offset}`;
-  if (cfg.storeId) qs += `&store_id=${cfg.storeId}`;
-  if (cfg.posId) qs += `&pos_id=${cfg.posId}`;
+function limpiarExternalId(v) {
+  return String(v ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
+}
 
-  const r = await mpFetch('GET', `/terminals/v1/list?${qs}`);
+/* Todas las terminales de la cuenta, sin filtrar por la caja guardada: si la
+   terminal se vinculó a otra caja desde la app de MP, igual debe aparecer. */
+async function listTerminals({ limit = 50, offset = 0 } = {}) {
+  const r = await mpFetch('GET', `/terminals/v1/list?limit=${limit}&offset=${offset}`);
   if (!r.ok) return { success: false, error: r.error, data: r.data };
 
-  const terminals = r.data?.data?.terminals ?? [];
+  const terminals = r.data?.data?.terminals ?? r.data?.terminals ?? [];
   return { success: true, data: terminals };
+}
+
+/* Lo que ya existe en la cuenta: sucursales, cajas y terminales, con nombres.
+   Así el asistente se salta lo que ya está hecho (una cuenta que ya cobraba
+   con su Point no vuelve a crear nada). Una lista que falle no tumba las otras. */
+async function discover() {
+  const cfg = loadConfig();
+  if (!cfg.userId) return { success: false, error: 'Verifica el Access Token primero.' };
+
+  const [t, s, p] = await Promise.all([
+    listTerminals(),
+    mpFetch('GET', `/users/${cfg.userId}/stores/search?limit=50`),
+    mpFetch('GET', '/pos?limit=100'),
+  ]);
+
+  const stores = (s.ok ? (s.data?.results ?? []) : []).map((x) => ({
+    id: String(x.id), name: x.name || `Sucursal ${x.id}`, externalId: x.external_id || ''
+  }));
+  const pos = (p.ok ? (p.data?.results ?? []) : []).map((x) => ({
+    id: String(x.id), name: x.name || `Caja ${x.id}`, storeId: x.store_id != null ? String(x.store_id) : '', externalId: x.external_id || ''
+  }));
+  const nombreSucursal = new Map(stores.map((x) => [x.id, x.name]));
+  const nombreCaja = new Map(pos.map((x) => [x.id, x.name]));
+  const terminals = (t.success ? t.data : []).map((x) => {
+    const storeId = x.store_id != null ? String(x.store_id) : '';
+    const posId = x.pos_id != null ? String(x.pos_id) : '';
+    return {
+      id: String(x.id),
+      operatingMode: x.operating_mode || '',
+      storeId, posId,
+      storeName: nombreSucursal.get(storeId) || '',
+      posName: nombreCaja.get(posId) || x.external_pos_id || ''
+    };
+  });
+
+  return {
+    success: true,
+    terminals, stores, pos,
+    errores: [!t.success && `terminales: ${t.error}`, !s.ok && `sucursales: ${s.error}`, !p.ok && `cajas: ${p.error}`].filter(Boolean),
+    actual: { storeId: cfg.storeId, posId: cfg.posId, terminalId: cfg.terminalId, testMode: !!cfg.testMode }
+  };
+}
+
+/* Elegir lo que ya existe: solo ids que la cuenta devolvió en `discover`. */
+function select({ storeId, posId, terminalId } = {}) {
+  const cambio = {};
+  if (storeId !== undefined) cambio.storeId = String(storeId || '');
+  if (posId !== undefined) cambio.posId = String(posId || '');
+  if (terminalId !== undefined) cambio.terminalId = String(terminalId || '');
+  try { saveConfig(cambio); return { success: true }; }
+  catch (e) { return { success: false, error: e.message }; }
 }
 
 // Activa el modo PDV en la terminal (solo PAX_A910 y NEWLAND_N950)
@@ -292,6 +354,8 @@ async function cancelOrder(orderId) {
 // SOLO PRUEBAS: simula el resultado de una orden via el endpoint de eventos
 async function simulateOrderEvent(orderId, status = 'processed', opts = {}) {
   if (!orderId) return { success: false, error: 'orderId requerido.' };
+  // Solo con una cuenta de prueba: con una real, «aprobar» sin tarjeta no existe.
+  if (!loadConfig().testMode) return { success: false, error: 'La simulación solo funciona con una cuenta de prueba.' };
 
   let body;
   if (status === 'processed' || status === 'failed') {
@@ -318,6 +382,8 @@ module.exports = {
   createStore,
   createPos,
   listTerminals,
+  discover,
+  select,
   setPdv,
   // cobro
   createPointOrder,
