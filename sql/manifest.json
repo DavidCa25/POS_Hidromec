@@ -49,9 +49,7 @@
       "origen": "repo:sql/procedures/inventory/sp_alertas_costos.sql",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "4bc1eeb24539a3b4",
-      "ausenteEnBase": true,
-      "nota": "migracion 0092: falta aplicarla a Wybix_Production"
+      "checksum": "4bc1eeb24539a3b4"
     },
     {
       "nombre": "sp_production_suggestions",
@@ -60,9 +58,7 @@
       "origen": "repo:sql/procedures/inventory/sp_production_suggestions.sql",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "7cf3d9f89a6e2369",
-      "ausenteEnBase": true,
-      "nota": "migracion 0090: falta aplicarla a Wybix_Production"
+      "checksum": "7cf3d9f89a6e2369"
     },
     {
       "nombre": "sp_purchase_order_suggestions",
@@ -71,9 +67,7 @@
       "origen": "repo:sql/procedures/inventory/sp_purchase_order_suggestions.sql",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "d79aef3951d0d104",
-      "ausenteEnBase": true,
-      "nota": "migracion 0090 y 0092: falta aplicarla a Wybix_Production"
+      "checksum": "d79aef3951d0d104"
     },
     {
       "nombre": "sp_compra_memoria",
@@ -82,9 +76,7 @@
       "origen": "repo:sql/procedures/purchases/sp_compra_memoria.sql",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "854ba901ea1ed1cb",
-      "ausenteEnBase": true,
-      "nota": "migracion 0092: falta aplicarla a Wybix_Production"
+      "checksum": "854ba901ea1ed1cb"
     },
     {
       "nombre": "sp_add_register",
@@ -3532,9 +3524,7 @@
       "origen": "repo:sql/procedures/venta_suelta/sp_venta_suelta_lista.sql",
       "critico": false,
       "clasificacion": "current",
-      "checksum": "7afff5152491cc0d",
-      "ausenteEnBase": true,
-      "nota": "migracion 0091: falta aplicarla a Wybix_Production"
+      "checksum": "7afff5152491cc0d"
     },
     {
       "nombre": "sp_WA_AddHistorial",
