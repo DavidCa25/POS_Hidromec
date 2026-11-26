@@ -177,6 +177,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
         invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
+    /** Un abono que liquida las ventas que alcanza (la más vencida primero). */
+    settleCustomerDebts: (payload) => invoke('sp-settle-customer-debts', payload),
     openCashDrawer: (opts) => invoke('open-cash-drawer', opts),
     getDailySalesLast7Days: () => invoke('sp-get-daily-sales-last-7-days'),
     getDailySalesCurrentMonth: () =>
@@ -617,6 +619,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     mpCreateStore: (payload) => invoke('mp-create-store', payload),
     mpCreatePos: (payload) => invoke('mp-create-pos', payload),
     mpSetPdv: (terminalId) => invoke('mp-set-pdv', terminalId),
+    mpDiscover: () => invoke('mp-discover'),
+    mpSelect: (payload) => invoke('mp-select', payload),
 
     //Backup Manager
     backupGetConfig: () => invoke('backup-get-config'),

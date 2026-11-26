@@ -165,6 +165,20 @@ function cargarMotor() {
   return motor;
 }
 
+/**
+ * La misma figura como TEXTO SVG, para donde no hay componente de Angular:
+ * las alertas de SweetAlert (wx-alerta). Mismo motor, mismas piezas y la
+ * misma capa de movimiento (`motion.css` ya viaja siempre), así que respira y
+ * parpadea igual. `null` si la librería no cargó: quien llama usa su ícono.
+ */
+export async function svgMascota(estado: EstadoMascota, variante: VarianteMascota = VARIANTE_BASE, tam = 72): Promise<string | null> {
+  const hacer = await cargarMotor();
+  if (!hacer) return null;
+  const p = hacer(tam, POSE[estado], variante.semilla, variante.hue, variante.tone);
+  const attr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return `<svg viewBox="0 0 100 100" width="${tam}" height="${tam}" aria-hidden="true" class="${attr(p.cls)}" style="${attr(p.vars)}">${p.inner}</svg>`;
+}
+
 @Component({
   selector: 'wx-mascota',
   standalone: true,

@@ -84,6 +84,7 @@ const EXIGE = {
   'sp-create-customer': VENTAS_OPERAR,
   'sp-update-customer': VENTAS_OPERAR,
   'sp-register-customer-payment': VENTAS_OPERAR,
+  'sp-settle-customer-debts': VENTAS_OPERAR,
   'print-sale-ticket': VENTAS_OPERAR,
   'ticket:preview': VENTAS_OPERAR,
   'ticket:email': VENTAS_OPERAR,
@@ -294,6 +295,8 @@ const EXIGE = {
   'mp-create-pos': CONFIGURACION_ADMINISTRAR,
   'mp-create-store': CONFIGURACION_ADMINISTRAR,
   'mp-validate-token': CONFIGURACION_ADMINISTRAR,
+  'mp-discover': CONFIGURACION_ADMINISTRAR,
+  'mp-select': CONFIGURACION_ADMINISTRAR,
   // MultiCaja: preparar el equipo servidor y enseñar la contraseña de SQL en
   // claro. Esto vive en el panel de red, que solo se abre con sesión iniciada.
   'network:prepare': CONFIGURACION_ADMINISTRAR,
@@ -834,6 +837,7 @@ function exigePara(canal) {
 const ACTOR = {
   'sp-register-sale':             { campos: ['userId', 'user_id'], posicion: 0 },
   'sp-register-customer-payment': { posicion: 3 },
+  'sp-settle-customer-debts':     { campos: ['user_id', 'userId'] },
   'sp-register-purchase':         { campos: ['user_id', 'userId'] },
   'sp-open-shift':                { campos: ['user_id', 'userId', 'opening_user_id'] },
   'sp-close-shift':               { campos: ['user_id', 'userId'] },

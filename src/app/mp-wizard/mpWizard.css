@@ -199,3 +199,26 @@
 .wz-btn.ghost { background: var(--wx-surface); color: var(--wz-ink); border: 1px solid var(--wz-line); }
 .wz-btn.ghost:hover { background: var(--wx-raised); }
 .wz-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+/* Sucursal y caja debajo del modelo de la terminal */
+.wz-terminal-sub { display: block; margin-top: 2px; color: var(--wx-text-muted); font-weight: 500; }
+.wz-terminal-id small { font-weight: 500; }
+
+/* Resumen del paso Listo */
+.wz-resumen {
+  display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px;
+  margin: 16px 0; padding: 14px 16px; border: 1px solid var(--wx-edge); border-radius: 12px;
+}
+.wz-resumen dt { color: var(--wx-text-muted); font-size: 13px; }
+.wz-resumen dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+/* Botón dentro de un paso (abrir el panel de MP) */
+.wz-howto-accion { margin-top: 8px; }
+.wz-howto-item small.wz-hint { display: block; margin-top: 4px; }
+
+/* Ayuda plegada: probar sin cobrar, vincular otra terminal */
+.wz-mas {
+  margin: 12px 0; padding: 10px 14px; border: 1px solid var(--wx-edge); border-radius: 12px;
+  font-size: 13.5px; line-height: 1.5; color: var(--wx-text-muted);
+}
+.wz-mas summary { cursor: pointer; font-weight: 600; color: var(--wx-text); }
+.wz-mas[open] summary { margin-bottom: 8px; }
