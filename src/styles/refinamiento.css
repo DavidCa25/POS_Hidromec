@@ -513,6 +513,67 @@ html.dark .btn-close { filter: invert(1) grayscale(1) brightness(2); }
 }
 
 /* ==========================================================================
+   ALERTAS CON WYBIX GUIDE  (src/app/wx-alerta)
+   --------------------------------------------------------------------------
+   DECISIÓN (.wx-alerta): diálogo con Guide asomándose por la orilla de
+   arriba, texto a la izquierda y los botones a la derecha.
+   AVISO (.wx-aviso): lo que salió bien sale en la esquina y no detiene a
+   nadie; Guide se sale un poco de la tarjeta.
+   Sin cara dibujada (todavía no carga, o mascota de marca) queda el ícono
+   de SweetAlert con el mismo acomodo.
+   ========================================================================== */
+.swal2-popup.wx-alerta {
+  position: relative;
+  overflow: visible !important;
+  border-radius: 22px !important;
+  padding: 1.4em 0 1.3em !important;
+  text-align: left;
+}
+.swal2-popup.wx-alerta:has(.wx-guide-cara) { padding-top: 3.4em !important; }
+.wx-alerta .swal2-icon.wx-guide-cara {
+  position: absolute; top: -46px; left: 22px; margin: 0;
+  width: 92px; height: 92px; border: 0 !important; border-radius: 999px;
+  background: var(--wx-surface); box-shadow: 0 10px 24px rgb(6 11 17 / 0.18);
+  display: flex !important; align-items: center; justify-content: center;
+}
+.wx-guide-cara .swal2-icon-content { font-size: inherit !important; display: flex; }
+.wx-alerta .swal2-title {
+  text-align: left; padding: 0 1.5rem !important; margin: 0 !important;
+  font-size: 1.3rem !important; font-weight: 800 !important; letter-spacing: -0.01em;
+}
+.wx-alerta .swal2-html-container { text-align: left; margin: .6em 1.5rem 0 !important; padding: 0 !important; line-height: 1.5; }
+.wx-alerta .swal2-actions { justify-content: flex-end; width: 100%; box-sizing: border-box; padding: 0 1.5rem; margin-top: 1.3em; }
+.wx-alerta .swal2-styled { min-height: 46px; padding: 0 1.2em !important; border-radius: 14px !important; font-weight: 700 !important; }
+.wx-alerta .swal2-input, .wx-alerta .swal2-textarea, .wx-alerta .swal2-select { margin-left: 1.5rem; margin-right: 1.5rem; }
+.wx-alerta--error .swal2-title, .wx-alerta--warning .swal2-title { color: var(--wx-text) !important; }
+
+/* Un aviso no oscurece la pantalla: el velo es solo para lo que pide decidir. */
+.swal2-container:has(> .swal2-toast) { background: transparent !important; pointer-events: none; }
+.swal2-container:has(> .swal2-toast) > .swal2-toast { pointer-events: auto; }
+.swal2-popup.swal2-toast.wx-aviso {
+  overflow: visible !important;
+  border-radius: 18px !important;
+  padding: .8em 1em !important;
+  box-shadow: 0 16px 40px rgb(6 11 17 / 0.30) !important;
+  max-width: 420px;
+}
+.swal2-popup.swal2-toast.wx-aviso--success {
+  background: var(--wx-navy-700) !important; border-color: transparent !important; color: #fff !important;
+}
+.wx-aviso--success .swal2-title, .wx-aviso--success .swal2-html-container { color: #fff !important; }
+.wx-aviso--success .swal2-html-container { color: #A9B6C6 !important; }
+.wx-aviso .swal2-title { font-size: .98rem !important; font-weight: 700 !important; }
+.wx-aviso .swal2-icon.wx-guide-cara {
+  margin: -22px 6px -18px -18px !important; width: 60px !important; height: 60px !important;
+  border: 0 !important; display: flex !important; align-items: center; justify-content: center;
+}
+/* Guide se sale un poco de la tarjeta: es lo que lo hace sentir vivo. */
+.wx-aviso .swal2-icon.wx-guide-cara { transform: translate(-6px, -6px); }
+.wx-aviso--success .swal2-icon.wx-guide-cara { transform: translate(-10px, -10px) rotate(-8deg); }
+.wx-aviso .swal2-timer-progress-bar-container { left: 16px; right: 16px; bottom: 6px; border-radius: 999px; overflow: hidden; }
+.wx-aviso .swal2-timer-progress-bar { background: var(--wx-accent) !important; height: 3px; }
+
+/* ==========================================================================
    APEXCHARTS
    Las graficas leen del tema en vez de tener su propio bloque de oscuro.
    ========================================================================== */

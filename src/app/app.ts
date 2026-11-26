@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, effect, inject } from '@angular/core';
+import { GuiaService } from './wx-guia/guia.service';
 import { RouterOutlet } from '@angular/router';
 import { CapabilityService } from '../core';
 import { AutorizacionService } from '../core/autorizacion.service';
@@ -27,6 +28,11 @@ export class App implements OnInit {
   constructor(public license: LicenseService, private caps: CapabilityService, autorizacion: AutorizacionService) {
     // Roles v2: el diálogo de PIN / aprobación del dueño para toda la caja.
     autorizacion.iniciar();
+    // Las alertas de toda la app, con Guide de esta sesión (y su cara cuando cambia la sesión).
+    // Diferido: no entra al paquete inicial.
+    const guia = inject(GuiaService);
+    const alertas = import('./wx-alerta/wx-alerta');
+    effect(() => { const v = guia.variante(); void alertas.then((m) => m.instalarAlertasWybix(v)); });
   }
 
   async ngOnInit() {
