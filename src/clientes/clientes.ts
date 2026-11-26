@@ -1,3 +1,4 @@
+import { repartirVista, type RepartoVista } from './repartir-abono';
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { ReportService, ReportConfig, ReportColumn } from '../services/report.service';
 import { WxMenuComponent, WxMenuOpcion } from '../app/wx-menu/wx-menu.component';
@@ -70,6 +71,7 @@ const MOTIVO_BLOQUEO: Record<BloqueoCredito, string> = {
   SIN_DISPONIBLE: 'Ya usó todo su límite.',
 };
 
+type Reparto = RepartoVista & { parcial: ClienteVenta | null };
 type ClienteVenta = {
   id: number;
   datee: string;
@@ -148,6 +150,10 @@ export class Clientes implements OnInit {
   abonoNote: string = '';
   loadingVentas = false;
   savingAbono = false;
+  /* LIQUIDAR: un monto se reparte de la venta más vencida a la más nueva
+     (liquida las que alcanza; la siguiente queda con faltante). UNA: el abono
+     de siempre, a la venta que se elija. */
+  modoAbono: 'liquidar' | 'una' = 'liquidar';
 
   hoy = new Date();
 
@@ -641,7 +647,8 @@ export class Clientes implements OnInit {
 
       if (this.ventasCliente.length > 0) {
         this.selectedSaleId = this.ventasCliente[0].id;
-        this.abonoAmount = this.ventasCliente[0].balance;
+        this.modoAbono = this.ventasCliente.length > 1 ? 'liquidar' : 'una';
+        this.abonoAmount = this.modoAbono === 'una' ? this.ventasCliente[0].balance : null;
       }
 
     } catch (e: any) {
@@ -656,6 +663,129 @@ export class Clientes implements OnInit {
     }
   }
 
+  /** Lo que debe el cliente en sus ventas a crédito abiertas. */
+  get deudaTotal(): number {
+    return this.ventasCliente.reduce((s, v) => s + Math.round(v.balance * 100), 0) / 100;
+  }
+
+  /**
+   * Vista previa del reparto, en el orden de la lista (el de la base: lo más
+   * vencido primero). La misma cuenta que electron/lib/repartir-abono.js, que
+   * es la que se aplica.
+   */
+  /**
+   * Qué le toca a cada nota con el monto escrito. LIQUIDAR: de la más vencida
+   * a la más nueva (el orden de la lista, el de la base), la misma cuenta que
+   * electron/lib/repartir-abono.js, que es la que se aplica. UNA: solo la nota
+   * elegida. Se memoriza: la plantilla lo pide por cada nota.
+   */
+  private repartoMemo: { clave: string; valor: Reparto } | null = null;
+  get reparto(): Reparto {
+    const clave = [this.modoAbono, this.abonoAmount, this.selectedSaleId, this.ventasCliente.map(v => `${v.id}:${v.balance}`).join(',')].join('|');
+    if (this.repartoMemo?.clave === clave) return this.repartoMemo.valor;
+    const ventas = this.modoAbono === 'una' ? this.ventasCliente.filter(v => v.id === this.selectedSaleId) : this.ventasCliente;
+    const r = repartirVista(ventas, Number(this.abonoAmount || 0));
+    const valor: Reparto = { ...r, parcial: this.ventasCliente.find(v => v.id === r.parcialId) ?? null };
+    this.repartoMemo = { clave, valor };
+    return valor;
+  }
+
+  /** Lo que la plantilla pinta de una nota: abono, lo que queda y la barra. */
+  vistaVenta(v: ClienteVenta): { abono: number; queda: number; liquidada: boolean; pct: number } {
+    const r = this.reparto.porVenta.get(v.id);
+    if (!r) return { abono: 0, queda: v.balance, liquidada: false, pct: 0 };
+    return { ...r, pct: v.balance > 0 ? Math.min(100, (r.abono / v.balance) * 100) : 0 };
+  }
+
+  get ventaElegida(): ClienteVenta | null {
+    return this.ventasCliente.find(v => v.id === this.selectedSaleId) ?? null;
+  }
+
+  get deudaDespues(): number {
+    return Math.max(0, Math.round((this.deudaTotal - this.reparto.aplicado) * 100) / 100);
+  }
+
+  /** Lo más que se puede abonar en el modo actual. */
+  get maximoAbono(): number {
+    return this.modoAbono === 'una' ? (this.ventaElegida?.balance ?? 0) : this.deudaTotal;
+  }
+
+  get textoConfirmar(): string {
+    const monto = Number(this.abonoAmount || 0);
+    if (this.modoAbono === 'liquidar' && monto > 0 && monto >= this.deudaTotal) return 'Liquidar todo';
+    return monto > 0 ? `Abonar $${monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Abonar';
+  }
+
+  cambiarModoAbono(m: 'liquidar' | 'una') {
+    this.modoAbono = m;
+    if (m === 'una') {
+      const v = this.ventasCliente.find(x => x.id === this.selectedSaleId) ?? this.ventasCliente[0];
+      this.selectedSaleId = v?.id ?? null;
+      this.abonoAmount = v?.balance ?? null;
+    }
+  }
+
+  /** En la tabla: tocar una venta es abonar SOLO a esa. */
+  elegirVentaAbono(v: ClienteVenta) {
+    this.modoAbono = 'una';
+    this.selectedSaleId = v.id;
+    this.abonoAmount = v.balance;
+  }
+
+  liquidarTodo() { this.abonoAmount = this.deudaTotal; }
+
+  private async confirmarLiquidacion() {
+    if (!this.abonoCliente) return;
+    const monto = Number(this.abonoAmount || 0);
+    if (!(monto > 0)) {
+      await Swal.fire({ icon: 'error', title: 'Monto inválido', text: 'Escribe cuánto abona el cliente.' });
+      return;
+    }
+    if (this.reparto.sobrante > 0) {
+      await Swal.fire({ icon: 'error', title: 'Es más de lo que debe', text: `El cliente debe $${this.deudaTotal.toFixed(2)}. Ajusta el monto.` });
+      return;
+    }
+    const api = (window as any).electronAPI;
+    if (!api?.settleCustomerDebts) {
+      await Swal.fire({ icon: 'error', title: 'No disponible', text: 'No se puede registrar el abono (Electron no disponible).' });
+      return;
+    }
+    try {
+      this.savingAbono = true;
+      const resp = await api.settleCustomerDebts({
+        customer_id: this.abonoCliente.id,
+        amount: monto,
+        payment_method: this.abonoPaymentMethod,
+        note: this.abonoNote || null,
+        user_id: this.auth.usuarioActualId,
+      });
+      if (!resp?.success) {
+        await Swal.fire({ icon: 'error', title: 'No se registró el abono', text: resp?.error || 'No se pudo registrar el abono.' });
+        return;
+      }
+      const partidas: Array<{ liquidada: boolean; queda: number }> = resp.data?.partidas ?? [];
+      const liquidadas = partidas.filter(p => p.liquidada).length;
+      const queda = partidas.find(p => !p.liquidada);
+      const resto = Math.max(0, this.deudaTotal - monto);
+      await Swal.fire({
+        icon: 'success',
+        title: resto > 0 ? 'Abono aplicado' : 'Deuda liquidada',
+        text: [
+          liquidadas ? `${liquidadas} ${liquidadas === 1 ? 'venta liquidada' : 'ventas liquidadas'}.` : '',
+          queda ? `Una venta queda con $${queda.queda.toFixed(2)} por pagar.` : '',
+          resto > 0 ? `Debe en total $${resto.toFixed(2)}.` : 'El cliente ya no debe nada.',
+        ].filter(Boolean).join(' '),
+        timer: 2600, showConfirmButton: false, timerProgressBar: true,
+      });
+      await this.loadClientes();
+      this.cerrarAbonoModal();
+    } catch (e: any) {
+      await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al registrar el abono.' });
+    } finally {
+      this.savingAbono = false;
+    }
+  }
+
   cerrarAbonoModal() {
     this.showAbonoModal = false;
     this.abonoCliente = null;
@@ -667,6 +797,7 @@ export class Clientes implements OnInit {
 
   async confirmarAbono() {
     if (!this.abonoCliente) return;
+    if (this.modoAbono === 'liquidar') return this.confirmarLiquidacion();
 
     if (!this.selectedSaleId) {
       await Swal.fire({

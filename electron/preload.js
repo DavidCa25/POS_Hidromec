@@ -177,6 +177,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     registerCustomerPayment: (customerId, saleId, amount, userId, paymentMethod, note) =>
         invoke('sp-register-customer-payment',
         customerId, saleId, amount, userId, paymentMethod, note),
+    /** Un abono que liquida las ventas que alcanza (la más vencida primero). */
+    settleCustomerDebts: (payload) => invoke('sp-settle-customer-debts', payload),
     openCashDrawer: (opts) => invoke('open-cash-drawer', opts),
     getDailySalesLast7Days: () => invoke('sp-get-daily-sales-last-7-days'),
     getDailySalesCurrentMonth: () =>

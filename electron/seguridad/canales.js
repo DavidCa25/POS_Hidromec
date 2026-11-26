@@ -84,6 +84,7 @@ const EXIGE = {
   'sp-create-customer': VENTAS_OPERAR,
   'sp-update-customer': VENTAS_OPERAR,
   'sp-register-customer-payment': VENTAS_OPERAR,
+  'sp-settle-customer-debts': VENTAS_OPERAR,
   'print-sale-ticket': VENTAS_OPERAR,
   'ticket:preview': VENTAS_OPERAR,
   'ticket:email': VENTAS_OPERAR,
@@ -834,6 +835,7 @@ function exigePara(canal) {
 const ACTOR = {
   'sp-register-sale':             { campos: ['userId', 'user_id'], posicion: 0 },
   'sp-register-customer-payment': { posicion: 3 },
+  'sp-settle-customer-debts':     { campos: ['user_id', 'userId'] },
   'sp-register-purchase':         { campos: ['user_id', 'userId'] },
   'sp-open-shift':                { campos: ['user_id', 'userId', 'opening_user_id'] },
   'sp-close-shift':               { campos: ['user_id', 'userId'] },

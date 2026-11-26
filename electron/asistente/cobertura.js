@@ -121,6 +121,7 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'sp-settle-customer-debts': 'Repartir un abono entre varias ventas se revisa en la vista previa de Clientes (qué notas se liquidan y cuál queda con faltante); el asistente abona a una venta a la vez.',
   'club:wallet-emitir': 'El pase de cartera sale como QR que el cliente escanea con su teléfono en la pantalla del Club; el chat no puede mostrárselo.',
   'services:set-config': 'Guarda las credenciales del proveedor de recargas (usuario y llave): son secretos que se capturan en su pantalla.',
   'services:operate': 'La recarga o el pago de un servicio todavía no está conectado (falta la API del proveedor); cuando exista, se hará desde Venta.',

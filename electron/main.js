@@ -9,6 +9,7 @@ const { generateSaleA4Pdf } = require('./pdf/generateSaleA4Pdf');
 const { generateSalesBatchA4Pdf } = require('./pdf/generateSalesBatchA4Pdf');
 const { htmlToPdf } = require('./pdf/printToPdfElectron');
 const { construirTicketHtml } = require('./lib/ticket');
+const { liquidarDeudas } = require('./lib/liquidar-deudas');
 const { construirHuella } = require('./lib/huella');
 const { autoUpdater } = require('electron-updater');
 const { listSerialPorts, startSerialScanner, stopSerialScanner } = require('./scanner');
@@ -3296,6 +3297,28 @@ ipcMain.handle(
     }
   }
 ));
+
+/* LIQUIDAR DEUDAS CON UN ABONO. Un solo monto se reparte entre las ventas a
+   crédito del cliente, de la más vencida a la más nueva: liquida las que
+   alcanza y la siguiente queda con su faltante (electron/lib/repartir-abono).
+   Cada parte es un sp_register_customer_payment, todas en UNA transacción:
+   o se aplica el reparto completo o no se aplica nada. El reparto se calcula
+   aquí con los saldos de la base, no con los que mandó la pantalla. */
+ipcMain.handle('sp-settle-customer-debts', sesion.proteger('sp-settle-customer-debts', async (_e, p = {}, ses) => {
+  try {
+    const pool = await poolPromise;
+    const r = await liquidarDeudas({ pool, sql }, {
+      customerId: p.customer_id, monto: p.amount, metodo: p.payment_method, nota: p.note,
+      quien: Number(ses?.userId) || Number(p.user_id) || null,
+      op: cajaDeLaOperacion(p),
+    });
+    if (!r.success) console.error('❌ sp-settle-customer-debts:', r.error);
+    return r;
+  } catch (err) {
+    console.error('❌ Error sp-settle-customer-debts:', err);
+    return { success: false, error: err.message };
+  }
+}));
 
 // Envia bytes crudos (ESC/POS) directamente a una impresora de Windows via el spooler.
 // Se usa para el pulso de apertura del cajon conectado a la impresora de tickets (RJ11).

@@ -409,6 +409,107 @@
   padding: 8px 10px; border-radius: var(--wx-radius-sm);
   background: var(--wx-warning-soft); color: var(--wx-amber-600); font-size: 12.5px; line-height: 1.4;
 }
+/* ABONAR / LIQUIDAR DEUDAS · «Reparto en vivo». */
+.ab-fondo {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgb(6 11 17 / 0.55);
+}
+.ab-dialogo {
+  width: min(1000px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+  background: var(--wx-surface); color: var(--wx-text); border-radius: var(--wx-radius-lg);
+  box-shadow: 0 30px 80px rgb(6 11 17 / 0.35); overflow: hidden;
+}
+.ab-cab { display: flex; align-items: center; gap: 14px; padding: 20px 24px 16px; border-bottom: 1px solid var(--wx-edge); flex-wrap: wrap; }
+.ab-cab-texto { flex: 1 1 240px; min-width: 0; display: grid; gap: 2px; }
+.ab-cab h2 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.ab-cab p { margin: 0; font-size: 14px; color: var(--wx-text-muted); }
+.ab-cab p b { color: var(--wx-text); }
+.ab-vencidas { color: var(--wx-danger-ink, var(--wx-danger)); font-weight: 600; }
+.ab-cerrar {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 12px; background: transparent; color: var(--wx-text-muted); font-size: 20px; cursor: pointer;
+}
+.ab-cerrar:hover { background: var(--wx-edge-soft); color: var(--wx-text); }
+
+.ab-cuerpo { display: grid; grid-template-columns: 360px minmax(0, 1fr); min-height: 0; overflow: auto; }
+.ab-pago { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid var(--wx-edge); }
+.ab-campo { display: grid; gap: 8px; }
+.ab-campo > label, .ab-etiqueta { font-size: 13px; font-weight: 600; color: var(--wx-text-muted); }
+.ab-monto {
+  display: flex; align-items: baseline; gap: 6px; padding: 8px 14px;
+  border: 2px solid var(--wx-edge-strong); border-radius: var(--wx-radius-md); background: var(--wx-surface);
+}
+.ab-monto:focus-within { border-color: var(--wx-accent); box-shadow: 0 0 0 4px var(--wx-accent-soft); }
+.ab-monto span { font-family: var(--wx-font-mono); font-size: 26px; color: var(--wx-text-dim); }
+.ab-monto input {
+  width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--wx-text);
+  font-family: var(--wx-font-mono); font-size: 36px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.ab-rapidos { display: flex; gap: 8px; flex-wrap: wrap; }
+.ab-chip {
+  min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text);
+}
+.ab-chip.on, .ab-chip:hover { border-color: var(--wx-accent-text); background: var(--wx-accent-soft); color: var(--wx-accent-text); }
+.ab-metodos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ab-metodos button {
+  min-height: 48px; border-radius: 12px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 500;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text);
+}
+.ab-metodos button.on { border: 2px solid var(--wx-text); background: var(--wx-text); color: var(--wx-surface); font-weight: 600; }
+.ab-ayuda { font-size: 12.5px; color: var(--wx-text-dim); }
+.ab-input {
+  min-height: 46px; padding: 0 14px; border-radius: 12px; font: inherit; font-size: 15px;
+  border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text);
+}
+.ab-input:focus { outline: none; border-color: var(--wx-accent); box-shadow: 0 0 0 4px var(--wx-accent-soft); }
+.ab-mora {
+  margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: var(--wx-radius-sm);
+  background: var(--wx-warning-soft); color: var(--wx-amber-600); font-size: 12.5px; line-height: 1.4;
+}
+
+.ab-reparto { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; background: var(--wx-edge-soft); min-width: 0; }
+.ab-reparto-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ab-reparto-cab h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.ab-reparto-cab span, .ab-cargando { font-size: 13px; color: var(--wx-text-dim); margin: 0; }
+.ab-notas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ab-nota {
+  width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; display: grid; gap: 8px;
+  padding: 12px 14px; border-radius: var(--wx-radius-md); background: var(--wx-surface); border: 1px dashed var(--wx-edge-strong);
+}
+.ab-nota:hover { border-color: var(--wx-accent-line); }
+.ab-nota.liquida { border: 1px solid rgb(27 158 90 / 0.40); }
+.ab-nota.parcial { border: 1px solid rgb(202 138 4 / 0.50); }
+.ab-nota.elegida { border: 2px solid var(--wx-accent); padding: 11px 13px; }
+.ab-nota-fila { display: flex; align-items: center; gap: 10px; }
+.ab-nota-fila i { font-size: 22px; flex: none; }
+.ab-ico-ok { color: var(--wx-success); }
+.ab-ico-medio { color: var(--wx-amber-600); }
+.ab-ico-nada { color: var(--wx-edge-strong); }
+.ab-nota-nombre { flex: 1; min-width: 0; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ab-nota-saldo { font-weight: 600; }
+.ab-tag { font-size: 12px; font-weight: 500; color: var(--wx-text-muted); }
+.ab-tag.mal { font-weight: 600; color: var(--wx-danger-ink, var(--wx-danger)); background: var(--wx-danger-soft); padding: 2px 8px; border-radius: 999px; }
+.ab-barra { display: block; height: 8px; border-radius: 999px; background: var(--wx-edge-soft); overflow: hidden; }
+.ab-barra span { display: block; height: 100%; border-radius: 999px; background: var(--wx-edge-strong); transition: width 160ms ease-out; }
+.ab-nota.liquida .ab-barra span { background: var(--wx-green-500); }
+.ab-nota.parcial .ab-barra span { background: #CA8A04; }
+.ab-nota-estado { font-size: 13px; font-weight: 600; color: var(--wx-text-dim); }
+.ab-nota.liquida .ab-nota-estado { color: var(--wx-success); }
+.ab-nota.parcial .ab-nota-estado { color: var(--wx-amber-600); }
+
+.ab-pie { display: flex; align-items: center; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--wx-edge); flex-wrap: wrap; }
+.ab-resumen { margin: 0; flex: 1 1 260px; font-size: 15px; color: var(--wx-text-muted); }
+.ab-resumen b { color: var(--wx-text); }
+.ab-resumen.mal, .ab-resumen.mal b { color: var(--wx-danger); }
+.ab-pie .btn { min-height: 48px; padding: 0 20px; }
+.ab-confirmar { font-weight: 700; }
+
+@media (max-width: 820px) {
+  .ab-cuerpo { grid-template-columns: 1fr; }
+  .ab-pago { border-right: 0; border-bottom: 1px solid var(--wx-edge); }
+}
+@media (prefers-reduced-motion: reduce) { .ab-barra span { transition: none; } }
 .mono { font-family: var(--wx-font-mono); font-variant-numeric: tabular-nums; }
 @media (max-width: 860px) {
   .cli-cuenta { grid-template-columns: repeat(2, minmax(0, 1fr)); }

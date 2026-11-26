@@ -301,136 +301,133 @@
   </div>
 </div>
 
-<div class="cierre-modal"
-       *ngIf="showAbonoModal"
-       style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1100;">
-    <div class="cierre-dialog modal-content"
-         style="padding:1.2rem 1.4rem 1.4rem; width: 96%; max-width: 780px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem;">
-        <h3 style="margin:0; font-size:1.4rem; font-weight:800;">
-          Abonar a crédito
-        </h3>
-        <button class="btn btn-ghost" (click)="cerrarAbonoModal()">✕</button>
-      </div>
+<!-- ABONAR / LIQUIDAR DEUDAS. Diseño «Reparto en vivo»: a la izquierda cuánto
+     y cómo paga; a la derecha qué le pasa a cada nota. Liquidar reparte de la
+     más vencida a la más nueva; «A una venta» abona solo a la elegida. -->
+<div class="ab-fondo" *ngIf="showAbonoModal" (click)="!savingAbono && cerrarAbonoModal()">
+  <div class="ab-dialogo" role="dialog" aria-modal="true" aria-labelledby="ab-titulo"
+       (click)="$event.stopPropagation()" (keydown.escape)="!savingAbono && cerrarAbonoModal()">
 
-      <div *ngIf="abonoCliente" style="margin-bottom:.6rem; font-size:.95rem;">
-        <div style="font-weight:600;">{{ abonoCliente.name }}</div>
-        <div class="nota">
-          Saldo total: $ {{ abonoCliente.balance | number:'1.2-2' }}
-          <span *ngIf="abonoCliente.overdueCount>0">
-            — {{ abonoCliente.overdueCount }} vencida(s)
+    <header class="ab-cab">
+      <wx-avatar *ngIf="abonoCliente" [semilla]="'c:' + abonoCliente.id" [nombre]="abonoCliente.name" [size]="44"></wx-avatar>
+      <div class="ab-cab-texto">
+        <h2 id="ab-titulo">Abonar · {{ abonoCliente?.name }}</h2>
+        <p>
+          Debe <b class="mono">$ {{ deudaTotal | number:'1.2-2' }}</b>
+          en {{ ventasCliente.length }} {{ ventasCliente.length === 1 ? 'nota' : 'notas' }}
+          <span class="ab-vencidas" *ngIf="(abonoCliente?.overdueCount ?? 0) > 0">
+            · {{ abonoCliente?.overdueCount }} {{ abonoCliente?.overdueCount === 1 ? 'vencida' : 'vencidas' }}
           </span>
-        </div>
+        </p>
       </div>
+      <div class="wx-seg" role="group" aria-label="Cómo aplicar el abono" *ngIf="ventasCliente.length > 1">
+        <button type="button" class="wx-seg__op" [class.on]="modoAbono === 'liquidar'" [attr.aria-pressed]="modoAbono === 'liquidar'"
+                (click)="cambiarModoAbono('liquidar')">Liquidar deudas</button>
+        <button type="button" class="wx-seg__op" [class.on]="modoAbono === 'una'" [attr.aria-pressed]="modoAbono === 'una'"
+                (click)="cambiarModoAbono('una')">A una venta</button>
+      </div>
+      <button type="button" class="ab-cerrar" aria-label="Cerrar" (click)="cerrarAbonoModal()" [disabled]="savingAbono">
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
+    </header>
 
-      <div class="filter-row"
-           style="grid-template-columns: minmax(0, 1.35fr) minmax(0, .95fr); align-items:flex-start; gap:1rem;">
-        <!-- Columna izquierda: ventas -->
-        <div class="filter-group">
-          <label>Ventas a crédito pendientes</label>
-          <div style="border-radius:1rem; border:1px solid #e2e8f0; max-height:320px; overflow:auto;">
-
-            <table class="tabla-corte" style="margin:0; font-size:.9rem;">
-              <thead>
-                <tr>
-                  <th style="width:36px;"></th>
-                  <th>Fecha</th>
-                  <th class="right">Total</th>
-                  <th class="right">Pagado</th>
-                  <th class="right">Saldo</th>
-                  <th>Vence</th>
-                  <th class="right">Mora est.</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngIf="loadingVentas">
-                  <td colspan="7" style="text-align:center; padding:.9rem;">
-                    Cargando ventas...
-                  </td>
-                </tr>
-
-                <tr *ngFor="let v of ventasCliente"
-                    [class.selected-row]="v.id === selectedSaleId"
-                    (click)="selectedSaleId = v.id; abonoAmount = v.balance"
-                    style="cursor:pointer;">
-                  <td>
-                    <input type="radio"
-                           [checked]="v.id === selectedSaleId"
-                           (click)="$event.stopPropagation(); selectedSaleId = v.id; abonoAmount = v.balance;">
-                  </td>
-                  <td>{{ v.datee | fechaSql:'dd/MM/yyyy HH:mm' }}</td>
-                  <td class="right">$ {{ v.total | number:'1.2-2' }}</td>
-                  <td class="right">$ {{ v.paid_amount | number:'1.2-2' }}</td>
-                  <td class="right">$ {{ v.balance | number:'1.2-2' }}</td>
-                  <td>
-                    <span *ngIf="v.due_date; else sinFecha">
-                      {{ v.due_date | fechaSql:'dd/MM/yyyy' }}
-                    </span>
-                    <ng-template #sinFecha>
-                      <span class="nota">Sin fecha</span>
-                    </ng-template>
-                    <span class="cli-vencida" *ngIf="v.overdue">{{ v.daysLate }} {{ v.daysLate === 1 ? 'día' : 'días' }}</span>
-                  </td>
-                  <td class="right">
-                    <span *ngIf="v.lateFee > 0; else sinMora">$ {{ v.lateFee | number:'1.2-2' }}</span>
-                    <ng-template #sinMora><span class="nota">—</span></ng-template>
-                  </td>
-                </tr>
-
-                <tr *ngIf="!loadingVentas && ventasCliente.length === 0">
-                  <td colspan="7" style="text-align:center; padding:.9rem;">
-                    No hay ventas a crédito con saldo pendiente para este cliente.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <div class="ab-cuerpo">
+      <section class="ab-pago">
+        <div class="ab-campo">
+          <label for="ab-monto">{{ modoAbono === 'liquidar' ? 'Cuánto abona el cliente' : 'Monto del abono' }}</label>
+          <div class="ab-monto">
+            <span aria-hidden="true">$</span>
+            <input id="ab-monto" type="number" step="0.01" min="0" inputmode="decimal" autocomplete="off"
+                   [(ngModel)]="abonoAmount" (keydown.enter)="confirmarAbono()" placeholder="0.00">
+          </div>
+          <div class="ab-rapidos">
+            <button type="button" class="ab-chip" *ngIf="modoAbono === 'liquidar'"
+                    [class.on]="abonoAmount === deudaTotal" (click)="liquidarTodo()">
+              Toda la deuda · <span class="mono">$ {{ deudaTotal | number:'1.2-2' }}</span>
+            </button>
+            <button type="button" class="ab-chip" *ngIf="modoAbono === 'una' && ventaElegida as v"
+                    [class.on]="abonoAmount === v.balance" (click)="abonoAmount = v.balance">
+              Saldo de la nota · <span class="mono">$ {{ v.balance | number:'1.2-2' }}</span>
+            </button>
           </div>
         </div>
 
-        <!-- Columna derecha: datos de abono -->
-        <div class="filter-group">
-          <label>Monto del abono</label>
-          <input class="form-control"
-                 type="number"
-                 step="0.01"
-                 min="0"
-                 [(ngModel)]="abonoAmount">
-
-          <div class="filter-group" style="margin-top:.7rem;">
-            <label>Método de pago</label>
-            <wx-select [(ngModel)]="abonoPaymentMethod" [opciones]="opcMetodoAbono"></wx-select>
+        <div class="ab-campo">
+          <span class="ab-etiqueta" id="ab-metodo">Método de pago</span>
+          <div class="ab-metodos" role="group" aria-labelledby="ab-metodo">
+            <button type="button" *ngFor="let m of opcMetodoAbono"
+                    [class.on]="abonoPaymentMethod === m.valor" [attr.aria-pressed]="abonoPaymentMethod === m.valor"
+                    (click)="abonoPaymentMethod = $any(m.valor)">{{ m.etiqueta }}</button>
           </div>
-
-          <div class="filter-group" style="margin-top:.7rem;">
-            <label>Nota (opcional)</label>
-            <textarea class="form-control"
-                      rows="3"
-                      [(ngModel)]="abonoNote"
-                      style="resize:vertical; border-radius:0.9rem;"></textarea>
-          </div>
-
-          <div class="nota" style="margin-top:.6rem;">
-            Selecciona una venta, ajusta el monto si es parcial y confirma el abono.
-          </div>
-          <!-- La mora se informa, no se suma sola: cobrarla es decision del
-               negocio y no entra al saldo de la venta. -->
-          <div class="cli-mora" *ngIf="moraTotal > 0">
-            <i class="ph ph-warning-circle" aria-hidden="true"></i>
-            Mora estimada del cliente: <b class="mono">$ {{ moraTotal | number:'1.2-2' }}</b>.
-            Se informa aparte; el abono se aplica al saldo de la venta.
-          </div>
+          <small class="ab-ayuda" *ngIf="abonoPaymentMethod === 'EFECTIVO'">El efectivo entra al turno abierto de esta caja.</small>
         </div>
-      </div>
 
-      <div style="display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem;">
-        <button class="btn btn-ghost" (click)="cerrarAbonoModal()" [disabled]="savingAbono">
-          Cancelar
-        </button>
-        <button class="btn btn-primary"
-                (click)="confirmarAbono()"
-                [disabled]="savingAbono || ventasCliente.length === 0">
-          {{ savingAbono ? 'Guardando...' : 'Confirmar abono' }}
-        </button>
-      </div>
+        <div class="ab-campo">
+          <label for="ab-nota">Nota (opcional)</label>
+          <input id="ab-nota" class="ab-input" [(ngModel)]="abonoNote" maxlength="200" placeholder="Ej. pagó en mostrador">
+        </div>
+
+        <!-- La mora se informa, no se suma sola: cobrarla es decision del
+             negocio y no entra al saldo de la venta. -->
+        <p class="ab-mora" *ngIf="moraTotal > 0">
+          <i class="ph ph-warning-circle" aria-hidden="true"></i>
+          Mora estimada: <b class="mono">$ {{ moraTotal | number:'1.2-2' }}</b>. Se cobra aparte; el abono va al saldo.
+        </p>
+      </section>
+
+      <section class="ab-reparto" aria-live="polite">
+        <div class="ab-reparto-cab">
+          <h3>{{ modoAbono === 'liquidar' ? 'Así se reparte' : 'Elige la nota' }}</h3>
+          <span>{{ modoAbono === 'liquidar' ? 'Primero lo más vencido' : 'Toca la nota que paga' }}</span>
+        </div>
+
+        <p class="ab-cargando" *ngIf="loadingVentas">Cargando notas…</p>
+
+        <ul class="ab-notas">
+          <li *ngFor="let v of ventasCliente">
+            <button type="button" class="ab-nota"
+                    [class.liquida]="vistaVenta(v).liquidada"
+                    [class.parcial]="vistaVenta(v).abono > 0 && !vistaVenta(v).liquidada"
+                    [class.elegida]="modoAbono === 'una' && v.id === selectedSaleId"
+                    [attr.aria-pressed]="modoAbono === 'una' ? v.id === selectedSaleId : null"
+                    (click)="elegirVentaAbono(v)">
+              <span class="ab-nota-fila">
+                <i class="ph-fill ph-check-circle ab-ico-ok" *ngIf="vistaVenta(v).liquidada" aria-hidden="true"></i>
+                <i class="ph-fill ph-circle-half ab-ico-medio" *ngIf="vistaVenta(v).abono > 0 && !vistaVenta(v).liquidada" aria-hidden="true"></i>
+                <i class="ph ph-circle ab-ico-nada" *ngIf="!vistaVenta(v).abono" aria-hidden="true"></i>
+                <span class="ab-nota-nombre">
+                  Nota del {{ v.datee | fechaSql:'dd/MM/yyyy' }}
+                  <span class="ab-tag mal" *ngIf="v.overdue">{{ v.daysLate }} {{ v.daysLate === 1 ? 'día' : 'días' }} vencida</span>
+                  <span class="ab-tag" *ngIf="!v.overdue && v.due_date">vence {{ v.due_date | fechaSql:'dd/MM' }}</span>
+                </span>
+                <span class="mono ab-nota-saldo">$ {{ v.balance | number:'1.2-2' }}</span>
+              </span>
+              <span class="ab-barra" aria-hidden="true"><span [style.width.%]="vistaVenta(v).pct"></span></span>
+              <span class="ab-nota-estado">
+                <ng-container *ngIf="vistaVenta(v).liquidada">Se liquida</ng-container>
+                <ng-container *ngIf="vistaVenta(v).abono > 0 && !vistaVenta(v).liquidada">
+                  Abona $ {{ vistaVenta(v).abono | number:'1.2-2' }} · queda <span class="mono">$ {{ vistaVenta(v).queda | number:'1.2-2' }}</span> por pagar
+                </ng-container>
+                <ng-container *ngIf="!vistaVenta(v).abono">Sin abono</ng-container>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </section>
     </div>
+
+    <footer class="ab-pie">
+      <p class="ab-resumen" *ngIf="reparto.sobrante <= 0; else demasiado">
+        Después de abonar debe <b class="mono">$ {{ deudaDespues | number:'1.2-2' }}</b>
+      </p>
+      <ng-template #demasiado>
+        <p class="ab-resumen mal">Es más de lo que debe: el máximo es <b class="mono">$ {{ maximoAbono | number:'1.2-2' }}</b></p>
+      </ng-template>
+      <button type="button" class="btn btn-ghost" (click)="cerrarAbonoModal()" [disabled]="savingAbono">Cancelar</button>
+      <button type="button" class="btn btn-primary ab-confirmar" (click)="confirmarAbono()"
+              [disabled]="savingAbono || ventasCliente.length === 0 || !((abonoAmount ?? 0) > 0) || reparto.sobrante > 0">
+        {{ savingAbono ? 'Guardando…' : textoConfirmar }}
+      </button>
+    </footer>
   </div>
+</div>
