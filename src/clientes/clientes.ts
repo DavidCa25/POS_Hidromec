@@ -766,8 +766,12 @@ export class Clientes implements OnInit {
       const partidas: Array<{ liquidada: boolean; queda: number }> = resp.data?.partidas ?? [];
       const liquidadas = partidas.filter(p => p.liquidada).length;
       const queda = partidas.find(p => !p.liquidada);
-      const resto = Math.max(0, this.deudaTotal - monto);
-      await Swal.fire({
+      const resto = Math.max(0, Math.round((this.deudaTotal - monto) * 100) / 100);
+      /* Primero se cierra y se refresca la lista; el aviso sale después y no
+         se espera: es de esquina y no detiene a nadie. */
+      this.cerrarAbonoModal();
+      await this.loadClientes();
+      void Swal.fire({
         icon: 'success',
         title: resto > 0 ? 'Abono aplicado' : 'Deuda liquidada',
         text: [
@@ -775,10 +779,8 @@ export class Clientes implements OnInit {
           queda ? `Una venta queda con $${queda.queda.toFixed(2)} por pagar.` : '',
           resto > 0 ? `Debe en total $${resto.toFixed(2)}.` : 'El cliente ya no debe nada.',
         ].filter(Boolean).join(' '),
-        timer: 2600, showConfirmButton: false, timerProgressBar: true,
+        timer: 3200, showConfirmButton: false, timerProgressBar: true,
       });
-      await this.loadClientes();
-      this.cerrarAbonoModal();
     } catch (e: any) {
       await Swal.fire({ icon: 'error', title: 'Error inesperado', text: e?.message || 'Ocurrió un error al registrar el abono.' });
     } finally {
@@ -870,17 +872,16 @@ export class Clientes implements OnInit {
         return;
       }
 
-      await Swal.fire({
+      this.cerrarAbonoModal();
+      await this.loadClientes();
+      void Swal.fire({
         icon: 'success',
         title: 'Abono registrado',
         text: 'El abono se aplicó correctamente.',
-        timer: 1700,
+        timer: 2600,
         showConfirmButton: false,
         timerProgressBar: true
       });
-
-      await this.loadClientes();
-      this.cerrarAbonoModal();
 
     } catch (e: any) {
       console.error('❌ confirmarAbono:', e);

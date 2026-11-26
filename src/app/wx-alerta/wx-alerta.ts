@@ -116,8 +116,9 @@ export function vestir(o: SweetAlertOptions): SweetAlertOptions {
     ...o,
     ...(cara ? { iconHtml: cara } : {}),
     ...(icono && o.confirmButtonText == null && !o.showCancelButton ? { confirmButtonText: 'Entendido' } : {}),
-    /* Regresar a la izquierda, la acción a la derecha: donde termina la lectura. */
-    ...(o.showCancelButton && o.reverseButtons == null ? { reverseButtons: true } : {}),
+    /* El orden de los botones NO se toca: en caja se contesta con ← → y Enter,
+       y voltearlos cambiaría a qué botón lleva cada flecha
+       (e2e/entrada-y-quitar.spec.js lo vigila). */
     customClass: unirClases(o.customClass, {
       popup: `wx-alerta wx-alerta--${icono ?? 'simple'}`,
       ...(cara ? { icon: 'wx-guide-cara' } : {}),

@@ -548,7 +548,11 @@ html.dark .btn-close { filter: invert(1) grayscale(1) brightness(2); }
 .wx-alerta--error .swal2-title, .wx-alerta--warning .swal2-title { color: var(--wx-text) !important; }
 
 /* Un aviso no oscurece la pantalla: el velo es solo para lo que pide decidir. */
-.swal2-container:has(> .swal2-toast) { background: transparent !important; pointer-events: none; }
+/* Por su posición y no solo por `:has`: el contenedor nace antes que el aviso,
+   y con `:has` solo el velo alcanzaba a pintarse y desvanecerse (parpadeo que
+   atrapó e2e/liquidar-deudas.spec.js). Los diálogos nunca van en esquina. */
+.swal2-container.swal2-top-end, .swal2-container.swal2-top-right,
+.swal2-container:has(> .swal2-toast) { background: transparent !important; transition: none !important; pointer-events: none; }
 .swal2-container:has(> .swal2-toast) > .swal2-toast { pointer-events: auto; }
 .swal2-popup.swal2-toast.wx-aviso {
   overflow: visible !important;
