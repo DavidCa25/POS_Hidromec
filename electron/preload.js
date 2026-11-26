@@ -619,6 +619,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     mpCreateStore: (payload) => invoke('mp-create-store', payload),
     mpCreatePos: (payload) => invoke('mp-create-pos', payload),
     mpSetPdv: (terminalId) => invoke('mp-set-pdv', terminalId),
+    mpDiscover: () => invoke('mp-discover'),
+    mpSelect: (payload) => invoke('mp-select', payload),
 
     //Backup Manager
     backupGetConfig: () => invoke('backup-get-config'),
