@@ -3750,6 +3750,114 @@
       "critico": true,
       "clasificacion": "current",
       "checksum": "9e63d0cd0d73d29a"
+    },
+    {
+      "nombre": "sp_meseros_resumen",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_meseros_resumen.sql",
+      "origen": "repo:sql/procedures/hospitality/sp_meseros_resumen.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8048d205d166237a"
+    },
+    {
+      "nombre": "sp_mesero_cobro_registrar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_mesero_cobro_registrar.sql",
+      "origen": "repo:sql/procedures/hospitality/sp_mesero_cobro_registrar.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "ee6f269090de1016"
+    },
+    {
+      "nombre": "sp_mesero_cuenta",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_mesero_cuenta.sql",
+      "origen": "repo:sql/procedures/hospitality/sp_mesero_cuenta.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1b07e64dc1bc30e5"
+    },
+    {
+      "nombre": "sp_mesero_entregar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/hospitality/sp_mesero_entregar.sql",
+      "origen": "repo:sql/procedures/hospitality/sp_mesero_entregar.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "33f11d28b5e02657"
+    },
+    {
+      "nombre": "sp_rendimiento_ajustar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_ajustar.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_ajustar.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3b8bd14ffcff2747"
+    },
+    {
+      "nombre": "sp_rendimiento_cierre",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_cierre.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_cierre.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "3064505d4a52e64e"
+    },
+    {
+      "nombre": "sp_rendimiento_config",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_config.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_config.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "b242ac9601f9cca0"
+    },
+    {
+      "nombre": "sp_rendimiento_contar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_contar.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_contar.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "1c392382a41a257f"
+    },
+    {
+      "nombre": "sp_rendimiento_dia",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_dia.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_dia.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "c02cc8c3738d0096"
+    },
+    {
+      "nombre": "sp_rendimiento_guardar",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_guardar.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_guardar.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "e6766e6800327dde"
+    },
+    {
+      "nombre": "sp_rendimiento_mapear",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_mapear.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_mapear.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "8c11f6051213203c"
+    },
+    {
+      "nombre": "sp_rendimiento_mes",
+      "tipo": "SQL_STORED_PROCEDURE",
+      "archivo": "sql/procedures/inventory/sp_rendimiento_mes.sql",
+      "origen": "repo:sql/procedures/inventory/sp_rendimiento_mes.sql",
+      "critico": false,
+      "clasificacion": "current",
+      "checksum": "05b944fd678ba5aa"
     }
   ],
   "esquema": {
@@ -3760,14 +3868,14 @@
       "schema_migrations"
     ],
     "resumen": {
-      "tablas": 180,
-      "columnas": 1802,
-      "pk": 180,
+      "tablas": 185,
+      "columnas": 1847,
+      "pk": 185,
       "unicas": 25,
-      "foraneas": 220,
+      "foraneas": 228,
       "chequeos": 210,
-      "predeterminados": 422,
-      "indices": 171
+      "predeterminados": 430,
+      "indices": 175
     },
     "objetos": [
       {
@@ -4807,6 +4915,34 @@
         "checksum": "ca3f1a3a9fcb9e4c"
       },
       {
+        "nombre": "mesero_cobros",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/mesero_cobros.sql",
+        "origen": "repo:sql/schema/tables/mesero_cobros.sql",
+        "columnas": 12,
+        "pk": "PK_mesero_cobros",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 2,
+        "indices": 1,
+        "checksum": "3655ee2dc08a8d2a"
+      },
+      {
+        "nombre": "mesero_entregas",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/mesero_entregas.sql",
+        "origen": "repo:sql/schema/tables/mesero_entregas.sql",
+        "columnas": 11,
+        "pk": "PK_mesero_entregas",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 1,
+        "checksum": "a06a919515760f06"
+      },
+      {
         "nombre": "modifier_groups",
         "tipo": "TABLE",
         "archivo": "sql/schema/tables/modifier_groups.sql",
@@ -5365,6 +5501,48 @@
         "predeterminados": 3,
         "indices": 2,
         "checksum": "7fb09de686501ce2"
+      },
+      {
+        "nombre": "rendimiento_carnes",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/rendimiento_carnes.sql",
+        "origen": "repo:sql/schema/tables/rendimiento_carnes.sql",
+        "columnas": 5,
+        "pk": "PK_rendimiento_carnes",
+        "unicas": 0,
+        "foraneas": 1,
+        "chequeos": 1,
+        "predeterminados": 3,
+        "indices": 0,
+        "checksum": "d42bc13cf2b8e641"
+      },
+      {
+        "nombre": "rendimiento_conteos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/rendimiento_conteos.sql",
+        "origen": "repo:sql/schema/tables/rendimiento_conteos.sql",
+        "columnas": 13,
+        "pk": "PK_rendimiento_conteos",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 0,
+        "predeterminados": 1,
+        "indices": 2,
+        "checksum": "422088450e1d0700"
+      },
+      {
+        "nombre": "rendimiento_platillos",
+        "tipo": "TABLE",
+        "archivo": "sql/schema/tables/rendimiento_platillos.sql",
+        "origen": "repo:sql/schema/tables/rendimiento_platillos.sql",
+        "columnas": 4,
+        "pk": "PK_rendimiento_platillos",
+        "unicas": 0,
+        "foraneas": 2,
+        "chequeos": 1,
+        "predeterminados": 1,
+        "indices": 0,
+        "checksum": "02ea45419bc12278"
       },
       {
         "nombre": "reward_definitions",
