@@ -181,6 +181,8 @@ export class NavegacionService {
              vender. Cada una aparece solo con su modulo encendido; el dock no
              gana ningun icono. */
           { texto: 'Mesas', ruta: '/dashboard/mesas', icono: 'ph-armchair', visible: this.caps.mesas },
+          /* 0097: los meseros cobran en su tablet y entregan aquí su efectivo. */
+          { texto: 'Entregas de meseros', ruta: '/dashboard/meseros', icono: 'ph-hand-coins', visible: this.caps.mesas },
           { texto: 'Cocina', ruta: '/cocina', icono: 'ph-cooking-pot', visible: this.caps.comandas },
           /* 0067: lo que llega del menú en línea (QR del mostrador, mesas o redes). */
           { texto: 'Pedidos en línea', ruta: '/dashboard/pedidos-en-linea', icono: 'ph-device-mobile', visible: this.caps.hospitality },
@@ -204,6 +206,8 @@ export class NavegacionService {
           { texto: 'Traspasos entre sucursales', ruta: '/dashboard/traspasos', icono: 'ph-arrows-left-right', visible: this.operarInventario },
           { texto: 'Envíos a eventos', ruta: '/dashboard/eventos', icono: 'ph-truck', visible: this.operarInventario },
           { texto: 'Recetas y modificadores', ruta: '/dashboard/recetas', icono: 'ph-cooking-pot', visible: this.caps.hospitality },
+          /* 0095: la carne de una taquería, sin recetas: tacos por kilo y lo que quedó al cerrar. */
+          { texto: 'Carne por rendimiento', ruta: '/dashboard/carne', icono: 'ph-fire', visible: this.caps.hospitality },
           // 0060: lo que se fabrica por tandas (donas, pan); lo preparado al momento sigue en Recetas.
           { texto: 'Producción', ruta: '/dashboard/produccion', icono: 'ph-bread', visible: this.caps.hospitality && this.producir },
           { texto: 'Importar productos', ruta: '/dashboard/importador', icono: 'ph-file-arrow-up', visible: this.administrarNegocio },
@@ -218,6 +222,8 @@ export class NavegacionService {
         destinos: [
           { texto: 'Registrar compra', ruta: '/dashboard/registrarCompra', icono: 'ph-bag', visible: true, principal: true },
           { texto: 'Compras registradas', ruta: '/dashboard/tablaCompra', icono: 'ph-table', visible: true },
+          /* 0095: la entrega del carnicero en kilos, para la carne por rendimiento. */
+          { texto: 'Llegó la carne', ruta: '/dashboard/carne/llegada', icono: 'ph-truck', visible: this.caps.hospitality && this.operarInventario },
           { texto: 'Proveedores', ruta: '/dashboard/proveedores', icono: 'ph-truck', visible: this.operarInventario, pie: pie('compras', 'proveedores') },
         ],
       },

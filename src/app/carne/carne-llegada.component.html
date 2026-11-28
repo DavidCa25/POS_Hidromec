@@ -1,0 +1,80 @@
+<section class="cr-pagina" data-guide="carne-llegada">
+  <header class="cr-cab cr-cab--fila">
+    <div class="cr-cab cr-cab__titulo">
+      <span class="cr-ceja">Compras · carne</span>
+      <h1>Llegó la carne</h1>
+    </div>
+    <div class="cr-seg" role="group" aria-label="Cómo se paga">
+      <button type="button" [class.on]="metodo() === 'CREDITO'" [attr.aria-pressed]="metodo() === 'CREDITO'" (click)="metodo.set('CREDITO')">A crédito</button>
+      <button type="button" [class.on]="metodo() === 'EFECTIVO'" [attr.aria-pressed]="metodo() === 'EFECTIVO'" (click)="metodo.set('EFECTIVO')">Pagué de la caja</button>
+    </div>
+  </header>
+
+  @if (sinCarnes() && !cargando()) {
+    <div class="cr-vacio">
+      <h2>Primero dinos qué carnes usas</h2>
+      <p class="cr-tenue">Con un toque por carne y cuántos tacos te salen por kilo. Toma un minuto.</p>
+      <a class="cr-primario cr-boton-enlace" routerLink="/dashboard/carne/arranque">Elegir mis carnes</a>
+    </div>
+  } @else if (actual()) { @let l = actual()!;
+    <div class="cr-llegada">
+      <nav class="cr-lista" aria-label="Carnes">
+        <span class="cr-tenue">¿Qué llegó?</span>
+        @for (x of lineas(); track x.carne.carne_id; let i = $index) {
+          <button type="button" [class.on]="i === activa()" [attr.aria-pressed]="i === activa()" (click)="activa.set(i)">
+            {{ x.carne.nombre }} @if (x.kilos) { <span class="cr-num">{{ x.kilos }} kg</span> }
+          </button>
+        }
+      </nav>
+
+      <div class="cr-captura" [attr.aria-label]="'Kilos de ' + l.carne.nombre">
+        <div class="cr-captura__arriba">
+          <div>
+            <span class="cr-tenue">{{ l.carne.nombre }} · kilos</span>
+            <div class="cr-kilos cr-num" aria-live="polite">{{ l.kilos || '0' }}<small> kg</small></div>
+          </div>
+          <div class="cr-precio">
+            <label for="cr-precio-kg">Precio por kilo</label>
+            <div class="cr-precio__campo">
+              <span class="cr-num cr-tenue">$</span>
+              <input id="cr-precio-kg" inputmode="decimal" [value]="l.precio" (input)="precio($any($event.target).value)">
+            </div>
+            @if (l.carne.ultimo_precio_kg) { <span class="cr-tenue">La vez pasada: {{ pesos(l.carne.ultimo_precio_kg, 0) }}</span> }
+          </div>
+        </div>
+        <div class="cr-teclado" role="group" aria-label="Teclado de kilos">
+          @for (t of teclas; track t) {
+            <button type="button" class="cr-tecla" (click)="tecla(t)">{{ t }}</button>
+          }
+          <button type="button" class="cr-tecla" aria-label="Borrar" (click)="borrar()">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12zM18 9l-6 6M12 9l6 6"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <aside class="cr-entrega" aria-label="Esta entrega">
+        <label class="cr-tenue" for="cr-proveedor">¿Quién la trajo?</label>
+        <wx-select id="cr-proveedor" [opciones]="proveedores()" [buscable]="proveedores().length > 6" placeholder="Elegir proveedor" [(ngModel)]="proveedor"></wx-select>
+        @for (x of entrega(); track x.l.carne.carne_id) {
+          <div class="cr-renglon">
+            <div><strong>{{ x.l.carne.nombre }}</strong><br><span class="cr-tenue">{{ x.kilos }} kg × {{ pesos(x.precio, 0) }}</span></div>
+            <span class="cr-num">{{ importe(x) }}</span>
+          </div>
+        } @empty {
+          <p class="cr-tenue">Toca una carne y teclea los kilos.</p>
+        }
+        <div class="cr-total">
+          <span class="cr-tenue">{{ metodo() === 'CREDITO' ? 'Total a crédito' : 'Sale de la caja' }}</span>
+          <span class="cr-num">{{ pesos(total(), 2) }}</span>
+        </div>
+        @if (error()) { <p class="cr-error" role="alert">{{ error() }}</p> }
+        @if (falta()) { <span class="cr-tenue">{{ falta() }}</span> }
+        <button type="button" class="cr-primario" data-guide="carne-llegada-guardar" [disabled]="!!falta() || guardando()" (click)="guardar()">
+          {{ guardando() ? 'Guardando…' : 'Guardar entrega' }}
+        </button>
+      </aside>
+    </div>
+  } @else if (cargando()) {
+    <p class="cr-tenue">Leyendo las carnes…</p>
+  }
+</section>

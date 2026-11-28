@@ -1,0 +1,115 @@
+<div class="wx-dialogo-velo cr-velo">
+  <div class="wx-dialogo cr-dialogo" role="dialog" aria-modal="true" aria-labelledby="cr-cierre-titulo" data-guide="carne-cierre">
+    @if (!resultado()) {
+      <header class="cr-dialogo__cab">
+        <div>
+          <span class="cr-ceja">Corte del día · paso 1 de 2</span>
+          <h2 id="cr-cierre-titulo">¿Cuánta carne te quedó?</h2>
+        </div>
+        <div class="cr-pasos" aria-label="Paso 1 de 2"><span class="on"></span><span></span></div>
+      </header>
+
+      <div class="cr-dialogo__cuerpo">
+        <p class="cr-tenue">Un toque por carne. A ojo está bien; si la pesaste, escribe el número.</p>
+        @if (cargando()) { <p class="cr-tenue">Leyendo la carne…</p> }
+        @for (f of filas(); track f.carne_id; let i = $index) {
+          <section class="cr-fila" [attr.aria-label]="f.nombre" [attr.data-guide-clave]="f.nombre">
+            <div class="cr-fila__dato">
+              <h3>{{ f.nombre }}</h3>
+              <span class="cr-tenue">Tenías <b class="cr-num">{{ kg(f.tenia_kg) }} kg</b> · vendiste <b class="cr-num">{{ kg(f.vendidos) }}</b> tacos</span>
+            </div>
+            <div class="cr-chips" role="group" [attr.aria-label]="'Carne que quedó de ' + f.nombre">
+              @for (v of f.opciones; track v) {
+                <button type="button" class="cr-chip" [class.on]="elegido(f, v)" [attr.aria-pressed]="elegido(f, v)" (click)="elegir(i, v)">{{ textoOpcion(v) }}</button>
+              }
+              <label class="cr-pese">
+                Pesé
+                <input inputmode="decimal" placeholder="0.0" [attr.aria-label]="'Kilos pesados de ' + f.nombre" [value]="f.pesado" (input)="escribir(i, $any($event.target).value)">
+                kg
+              </label>
+            </div>
+            <div class="cr-fila__res" aria-live="polite">
+              @if (veredicto(f); as v) {
+                <span class="cr-veredicto" [class]="'cr-veredicto ' + v.tipo">{{ v.texto }}</span>
+                <span class="cr-tenue">Usaste {{ kg(usado(f)) }} kg · rinde {{ rindeHoy(f) }} tacos/kg</span>
+              } @else {
+                <span class="cr-tenue">Sin contestar</span>
+              }
+            </div>
+          </section>
+        }
+        @if (error()) { <p class="cr-error" role="alert">{{ error() }}</p> }
+      </div>
+
+      <footer class="cr-dialogo__pie">
+        <span class="cr-tenue">
+          @if (contestadas() === filas().length && filas().length) {
+            {{ fuga() ? 'Hoy se fueron unos ' + pesos(fuga()) + ' de carne sin cobrar.' : 'Toda la carne rindió como siempre.' }}
+          } @else {
+            Faltan {{ filas().length - contestadas() }} de {{ filas().length }} carnes. Puedes seguir sin contestarlas.
+          }
+        </span>
+        <button type="button" class="cr-secundario" (click)="cancelar.emit()">Volver</button>
+        <button type="button" class="cr-secundario" data-guide="carne-cierre-saltar" (click)="saltar()">Hoy no la conté</button>
+        <button type="button" class="cr-primario" data-guide="carne-cierre-seguir" [disabled]="guardando() || cargando()" (click)="seguir()">
+          {{ guardando() ? 'Guardando…' : 'Seguir al efectivo' }}
+        </button>
+      </footer>
+    } @else {
+      <div class="cr-dialogo__cuerpo" data-guide="carne-resultado">
+        <div class="cr-hero">
+          <div>
+            <span class="cr-ceja">Corte de hoy</span>
+            <h2 id="cr-cierre-titulo">{{ titular() }}</h2>
+            @if (subtitulo()) { <p>{{ subtitulo() }}</p> }
+          </div>
+          <div class="cr-hero__total">
+            <span class="cr-hero__etiqueta">Carne usada hoy</span>
+            <span class="cr-num">{{ pesos(costoHoy()) }}</span>
+          </div>
+        </div>
+
+        @for (c of resultado()!.carnes; track c.carne_id) {
+          <section class="cr-res" [class.FALTA]="c.veredicto === 'FALTA'" [attr.aria-label]="c.nombre">
+            <div>
+              <h3>{{ c.nombre }}</h3>
+              <span [class]="'cr-veredicto ' + c.veredicto">
+                {{ c.veredicto === 'FALTA' ? 'Faltan ' + c.faltan + ' tacos' : c.veredicto === 'SOBRA' ? 'Rindió de más' : 'Rindió normal' }}
+              </span>
+            </div>
+            <div>
+              <div class="cr-barra__leyenda"><span>Vendiste <b>{{ kg(c.vendidos) }}</b></span><span>Debieron salir <b>{{ c.esperados }}</b></span></div>
+              <div class="cr-barra" aria-hidden="true"><span [style.width.%]="ancho(c)"></span><span class="falta" [style.width.%]="anchoFalta(c)"></span></div>
+              <p class="cr-tenue cr-res__detalle">Usaste {{ kg(c.usado_kg) }} kg (tenías {{ kg(c.tenia_kg) }}, quedó {{ kg(c.quedo_kg) }}) · rindió <b>{{ c.rinde_real ?? '—' }} tacos/kg</b>, sueles sacar {{ kg(c.rinde) }}</p>
+            </div>
+            <div class="cr-res__taco">
+              <span class="cr-tenue">Carne por taco</span>
+              <span class="cr-num">{{ c.costo_taco != null ? pesos(c.costo_taco, 2) : '—' }}</span>
+              @if (c.precio_taco) { <span class="cr-tenue">de {{ pesos(c.precio_taco, 2) }} que cobras</span> }
+            </div>
+          </section>
+        }
+
+        @for (s of resultado()!.sugerencias; track s.carne_id) {
+          @if (!ajustadas()[s.carne_id]) {
+            <div class="cr-sugerencia">
+              <div>
+                <strong>El {{ s.nombre.toLowerCase() }} lleva {{ s.conteos }} noches rindiendo {{ kg(s.promedio) }}, no {{ kg(s.rinde) }}</strong>
+                <span class="cr-tenue">Si los tacos salen más o menos servidos a propósito, ajústalo y dejamos de avisarte.</span>
+              </div>
+              <button type="button" class="cr-secundario" (click)="ajustar(s, false)">Dejar en {{ kg(s.rinde) }}</button>
+              <button type="button" class="cr-primario" (click)="ajustar(s, true)">Ajustar a {{ kg(s.sugerido) }}</button>
+            </div>
+          } @else if (ajustadas()[s.carne_id] === 'ajustada') {
+            <p class="cr-tenue">{{ s.nombre }}: desde hoy, {{ kg(s.sugerido) }} tacos por kilo.</p>
+          }
+        }
+        @if (error()) { <p class="cr-error" role="alert">{{ error() }}</p> }
+      </div>
+      <footer class="cr-dialogo__pie">
+        <span class="cr-tenue">Paso 2: el efectivo, como siempre.</span>
+        <button type="button" class="cr-primario" data-guide="carne-resultado-seguir" (click)="seguir()">Seguir al efectivo</button>
+      </footer>
+    }
+  </div>
+</div>

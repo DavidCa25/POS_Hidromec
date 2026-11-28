@@ -12,12 +12,13 @@
  * VE: mesas (de las areas que tenga permitidas este dispositivo), su estado,
  * total y comandas; el menu (nombre, precio, categoria, disponible y
  * opciones: SIN costos); la cuenta de una mesa y en que va cada cosa.
- * HACE: ABRIR_MESA, ENVIAR. Nada mas: cobrar sigue en Caja. PAY no existe
- * aqui; cuando se habilite sera una accion con su propio paquete
- * (VENTAS_OPERAR + permiso de cobro en tablet), no un boton escondido.
+ * HACE: ABRIR_MESA, ENVIAR y (0097) COBRAR: cualquier mesero cobra cualquier
+ * mesa, con propina; la venta queda a su nombre y el efectivo en SU BOLSA
+ * hasta que lo entrega en caja. Consulta `micuenta`: lo que lleva cobrado.
  *
- * Las dos acciones piden conexion: una orden encolada sin conexion llegaria a
- * cocina minutos tarde y sin que nadie lo supiera.
+ * Las acciones piden conexion: una orden encolada sin conexion llegaria a
+ * cocina minutos tarde y sin que nadie lo supiera, y un cobro sin conexion
+ * no puede confirmarse.
  */
 const { negocio, prohibido, entero, decimal, texto, UUID } = require('./comun');
 
@@ -91,6 +92,31 @@ module.exports = function mesero({ hospitality }) {
     return m;
   }
 
+  /** La cuenta de una mesa como la ve el mesero (y como se cobra). */
+  async function cuentaDe(cuentaId) {
+    const r = await hospitality().leerCuenta(cuentaId);
+    if (!r.success) throw negocio(r.error || 'No se pudo leer la cuenta.');
+    const [cab = [], lineas = [], opciones = []] = r.sets || [];
+    const c = cab[0];
+    if (!c) throw negocio('Esa cuenta ya no existe.', { http: 404 });
+    /* Lo cancelado no se cobra ni se muestra como pendiente. */
+    const ls = lineas.filter(l => l.estado !== 'CANCELADA').map(l => {
+      const ops = opciones.filter(o => o.linea_id === l.id);
+      const precio = Number(l.precio_unitario) + ops.reduce((t, o) => t + Number(o.price_delta) * Number(o.quantity), 0);
+      return {
+        id: l.id, nombre: l.nombre, cantidad: Number(l.cantidad), nota: l.nota || null,
+        opciones: ops.map(o => (o.quantity > 1 ? `${o.quantity}× ` : '') + o.option_name),
+        importe: Math.round(precio * Number(l.cantidad) * 100) / 100,
+        prep: l.comanda_estado || null, estacion: l.estacion || null,
+      };
+    });
+    return {
+      cuenta: { id: c.id, titulo: c.titulo, area: c.area, minutos: c.minutos, estado: c.estado ?? null },
+      lineas: ls,
+      total: Math.round(ls.reduce((t, l) => t + l.importe, 0) * 100) / 100,
+    };
+  }
+
   return {
     tipo: 'WAITER',
     familia: 'TRABAJADOR',
@@ -110,7 +136,7 @@ module.exports = function mesero({ hospitality }) {
       const siguiente = mias.find(m => m.listas > 0) || mias.sort((a, b) => (b.minutos ?? 0) - (a.minutos ?? 0))[0] || null;
       return {
         ...s,
-        puedeCobrar: false,
+        puedeCobrar: true,
         reposo: {
           asignadas: mias.length,
           ocupadas: s.mesas.filter(m => m.estado !== 'LIBRE').length,
@@ -122,31 +148,28 @@ module.exports = function mesero({ hospitality }) {
 
     consultas: {
       menu: () => menu(),
+      /* 0097: la cuenta que lleva este mesero en el turno. */
+      async micuenta(ctx) {
+        const r = await hospitality().cuentaMesero(ctx.sesion.persona.userId);
+        if (!r.success) throw negocio(r.error || 'No se pudo leer tu cuenta.');
+        const [res = [], cobros = [], entregas = []] = r.sets || [];
+        const n = (v) => Number(v || 0);
+        const x = res[0] || {};
+        return {
+          resumen: {
+            mesas: n(x.mesas), cobrado: n(x.cobrado), efectivo: n(x.en_efectivo), tarjeta: n(x.con_tarjeta),
+            transferencia: n(x.por_transferencia), propinas: n(x.propinas), propinasEfectivo: n(x.propinas_efectivo),
+            enBolsa: n(x.en_bolsa), entregado: n(x.entregado), porEntregar: n(x.por_entregar), diferencia: n(x.diferencia),
+          },
+          cobros: cobros.map(c => ({ ventaId: c.sale_id, mesa: c.mesa, hora: c.cobrado_en, metodo: c.metodo, total: n(c.total), propina: n(c.propina) })),
+          entregas: entregas.map(e => ({ entregado: n(e.entregado), diferencia: n(e.diferencia), hora: e.entregado_en })),
+        };
+      },
       async cuenta(ctx, q) {
         const cuentaId = entero(q.id);
         if (!cuentaId) throw negocio('Falta la cuenta.', { http: 400 });
         await mesaVisible(ctx, { cuentaId });
-        const r = await hospitality().leerCuenta(cuentaId);
-        if (!r.success) throw negocio(r.error || 'No se pudo leer la cuenta.');
-        const [cab = [], lineas = [], opciones = []] = r.sets || [];
-        const c = cab[0];
-        if (!c) throw negocio('Esa cuenta ya no existe.', { http: 404 });
-        /* Lo cancelado no se cobra ni se muestra como pendiente. */
-        const ls = lineas.filter(l => l.estado !== 'CANCELADA').map(l => {
-          const ops = opciones.filter(o => o.linea_id === l.id);
-          const precio = Number(l.precio_unitario) + ops.reduce((t, o) => t + Number(o.price_delta) * Number(o.quantity), 0);
-          return {
-            id: l.id, nombre: l.nombre, cantidad: Number(l.cantidad), nota: l.nota || null,
-            opciones: ops.map(o => (o.quantity > 1 ? `${o.quantity}× ` : '') + o.option_name),
-            importe: Math.round(precio * Number(l.cantidad) * 100) / 100,
-            prep: l.comanda_estado || null, estacion: l.estacion || null,
-          };
-        });
-        return {
-          cuenta: { id: c.id, titulo: c.titulo, area: c.area, minutos: c.minutos, estado: c.estado ?? null },
-          lineas: ls,
-          total: Math.round(ls.reduce((t, l) => t + l.importe, 0) * 100) / 100,
-        };
+        return cuentaDe(cuentaId);
       },
     },
 
@@ -209,6 +232,40 @@ module.exports = function mesero({ hospitality }) {
           return {
             cuentaId, comandas,
             auditoria: { entidad: 'MESA', entidadId: mesa.id, detalle: `${lineas.length} línea(s) a ${comandas.map(k => k.estacion).join(', ') || 'sin estación'}` },
+          };
+        },
+      },
+      /* 0097 · Cobrar la mesa (cualquiera: todas se ven). `total` es lo que la
+         tablet le enseñó al cliente: si la cuenta cambió desde entonces (otro
+         mesero pidió algo más), no se cobra y se vuelve a enseñar. */
+      COBRAR: {
+        modo: 'ONLINE_REQUIRED',
+        async ejecutar(ctx, d) {
+          const cuentaId = entero(d?.cuentaId);
+          if (!cuentaId) throw negocio('Falta la cuenta.', { http: 400 });
+          const mesa = await mesaVisible(ctx, { cuentaId });
+          const metodo = String(d?.metodo || '').toUpperCase();
+          if (!['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(metodo)) throw negocio('Elige cómo pagó.', { http: 400 });
+          if (!UUID.test(String(d?.clave || ''))) throw negocio('Falta el identificador del cobro.', { http: 400 });
+          const propina = decimal(d?.propina ?? 0, { min: 0, max: 100000 }) || 0;
+          const vista = await cuentaDe(cuentaId);
+          const visto = decimal(d?.total, { min: 0, max: 10000000 });
+          if (visto != null && Math.abs(visto - vista.total) > 0.004) {
+            throw negocio(`La cuenta cambió: ahora es de $${vista.total.toFixed(2)}. Revísala con el cliente.`, { http: 409 });
+          }
+          const r = await hospitality().cobrarCuenta({
+            cuentaId, metodo, clave: d.clave,
+            propina: propina > 0 ? { monto: propina, metodo: metodo === 'EFECTIVO' ? 'EFECTIVO' : 'TARJETA' } : null,
+          }, ctx.sesion.persona.userId);
+          if (!r.success) throw negocio(r.error);
+          ctx.avisarCambio?.();
+          const recibido = decimal(d?.recibido, { min: 0, max: 10000000 });
+          const cobrar = r.data.total + (metodo === 'EFECTIVO' ? propina : 0);
+          return {
+            ventaId: r.data.saleId, total: r.data.total, propina: r.data.propina,
+            cambio: metodo === 'EFECTIVO' && recibido != null ? Math.max(0, Math.round((recibido - cobrar) * 100) / 100) : null,
+            enBolsa: Number(r.data.bolsa?.efectivo || 0),
+            auditoria: { entidad: 'MESA', entidadId: mesa.id, detalle: `cobrada ${metodo} $${r.data.total}${propina ? ` + propina $${propina}` : ''} · venta ${r.data.saleId}` },
           };
         },
       },

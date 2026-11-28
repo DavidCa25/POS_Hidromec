@@ -182,7 +182,11 @@ ipcQuickstart.registrar({ ipcMain, sql, poolPromise, app,
 /* IPC de mesas, cuentas, comandas y KDS. Las comandas que van a papel se
    imprimen con el mismo `imprimirHtml` que el ticket de venta. */
 const hospitalityDominio = ipcSalon.registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig,
-  alCambiarComandas: () => { localHost.avisar(); avisosWhatsapp?.pronto(); } });
+  alCambiarComandas: () => { localHost.avisar(); avisosWhatsapp?.pronto(); },
+  /* 0097: el mesero cobra desde su tablet con la caja y la identidad de ESTA
+     computadora (la que tiene el arriendo), como cobra Touch. */
+  identidadCaja: () => cajaArrendada.identidad(),
+  ventaEsencial: () => { try { return !!licencia.evaluador().ventaEsencial; } catch { return false; } } });
 
 /* Wybix Local Host: el KDS en tablets por la red del local. Solo la
    instalacion principal, solo con el arriendo de la base y solo si se
@@ -4947,6 +4951,8 @@ cloudSync.alPedidosEnLinea((nuevos) => {
 require('./ipc/puntos').registrar({ ipcMain, sql, poolPromise, cloudSync });
 /* 0062: estado de resultados. */
 require('./ipc/reportes').registrar({ ipcMain, sql, poolPromise });
+/* 0095: carne por rendimiento (taquería sin recetas). */
+require('./ipc/rendimiento').registrar({ ipcMain, sql, poolPromise });
 /* 0069: liquidaciones de plataforma (Uber Eats, Didi Food, Rappi). */
 require('./ipc/plataformas').registrar({ ipcMain, sql, poolPromise });
 /* 0071: Asistencia (entradas, descansos y salidas; horas trabajadas y extra). */

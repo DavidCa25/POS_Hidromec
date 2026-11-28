@@ -731,6 +731,22 @@ contextBridge.exposeInMainWorld('wybix', {
     },
     // 0060 · Produccion por tandas. Los ingredientes salen al EMPEZAR una
     // tanda; al terminarla entran las piezas buenas y se registra la merma.
+    /* 0095 · Carne por rendimiento (taquería sin recetas): tacos por kilo y
+       «¿cuánta carne te quedó?» en el corte. La compra es una compra normal. */
+    /* 0097 · La bolsa de cada mesero: lo que trae y recibir su entrega. */
+    meseros: {
+        resumen: () => invoke('meseros:resumen'),
+        entregar: (p) => invoke('meseros:entregar', p),
+    },
+    rendimiento: {
+        config: () => invoke('rendimiento:config'),
+        guardar: (p) => invoke('rendimiento:guardar', p),
+        cierre: (p) => invoke('rendimiento:cierre', p),
+        contar: (p) => invoke('rendimiento:contar', p),
+        dia: (p) => invoke('rendimiento:dia', p),
+        ajustar: (p) => invoke('rendimiento:ajustar', p),
+        mes: (p) => invoke('rendimiento:mes', p),
+    },
     produccion: {
         tablero: (p) => invoke('produccion:tablero', p),
         // 0090: lo que conviene producir hoy.

@@ -207,6 +207,7 @@ export class SalidaEfectivo implements OnInit {
           period_to: this.gastoEsPersonal && this.gastoPeriodo === 'OTRO' ? this.gastoHasta : null,
           socios: this.repartoGasto(),
         });
+        if (r.cancelado) return;   // cerró el aviso de «no alcanza el efectivo»: nada se registró
         resp = { success: r.ok, error: r.error };
         titulo = this.gastoEsPersonal ? 'Pago al personal registrado' : 'Gasto registrado';
         texto = this.gastoForma === 'EFECTIVO'

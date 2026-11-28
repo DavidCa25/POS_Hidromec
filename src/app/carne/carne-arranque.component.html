@@ -1,0 +1,55 @@
+<section class="cr-pagina" data-guide="carne-arranque">
+  <header class="cr-cab">
+    <span class="cr-ceja">Taquería · inventario de carne</span>
+    <h1>¿Qué carnes usas y cuántos tacos te salen por kilo?</h1>
+    <p>Toca las tuyas. El número es un cálculo a ojo: Wybix lo afina con lo que vendas cada día.</p>
+  </header>
+
+  <div class="cr-rejilla">
+    @for (t of tiles(); track t.clave; let i = $index) {
+      <div class="cr-carne" [class.on]="t.on" [attr.data-guide-clave]="t.clave">
+        <button type="button" class="cr-carne__toque" [attr.aria-pressed]="t.on" (click)="toggle(i)">
+          <span class="cr-check" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>
+          </span>
+          <span class="cr-carne__nombre">{{ t.nombre }}</span>
+        </button>
+        @if (t.on) {
+          <div class="cr-paso">
+            <button type="button" class="cr-paso__btn" [attr.aria-label]="'Menos tacos por kilo de ' + t.nombre" (click)="cambiar(i, -1)">−</button>
+            <div class="cr-paso__valor">
+              <span class="cr-num">{{ t.rinde }}</span>
+              <span class="cr-tenue">tacos por kilo</span>
+            </div>
+            <button type="button" class="cr-paso__btn" [attr.aria-label]="'Más tacos por kilo de ' + t.nombre" (click)="cambiar(i, 1)">+</button>
+          </div>
+          <span class="cr-tenue">{{ gramos(t) }}</span>
+          @if (t.platillos.length) {
+            <span class="cr-tenue cr-platillos">Cuentan: {{ t.platillos.join(', ') }}</span>
+          }
+        }
+      </div>
+    }
+
+    <div class="cr-nota">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v18M3 12h18"></path></svg>
+      <div>
+        <strong>Cebolla, cilantro, limón, salsas y gas</strong>
+        <span class="cr-tenue">No se cuentan: se anotan como gasto del día en Egresos. Así salen en tu utilidad sin pesar nada.</span>
+      </div>
+      <a class="cr-enlace" routerLink="/dashboard/egresos">Ir a Egresos</a>
+    </div>
+  </div>
+
+  @if (error()) { <p class="cr-error" role="alert">{{ error() }}</p> }
+
+  <footer class="cr-pie">
+    <span class="cr-tenue">
+      @if (elegidas()) { {{ elegidas() }} carne{{ elegidas() > 1 ? 's' : '' }}. Al cierre solo te preguntaremos cuánto quedó de cada una. }
+      @else { Elige al menos una carne. }
+    </span>
+    <button type="button" class="cr-primario" data-guide="carne-arranque-listo" [disabled]="!elegidas() || guardando()" (click)="listo()">
+      {{ guardando() ? 'Guardando…' : 'Listo' }}
+    </button>
+  </footer>
+</section>

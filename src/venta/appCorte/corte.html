@@ -447,6 +447,9 @@
       </div>
     </div>
 
+    <!-- 0095: paso 1 del corte con carne por rendimiento: cuánta carne quedó. -->
+    <app-carne-cierre *ngIf="pasoCarne" [closureId]="openShiftId" (listo)="abrirModalCierre()" (cancelar)="pasoCarne = false"></app-carne-cierre>
+
     <!-- MODAL CIERRE MEJORADO -->
     <div class="modal-overlay" *ngIf="showCloseModal" (click)="!closing && cerrarModalCierre()">
       <div class="modal-content" (click)="$event.stopPropagation()">

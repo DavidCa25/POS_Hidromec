@@ -21,8 +21,8 @@ BEGIN
     BEGIN RAISERROR('El conteo no puede ser negativo.', 16, 1); RETURN; END
 
     BEGIN TRAN;
-    DECLARE @teorico DECIMAL(12, 2);
-    SELECT @teorico = ISNULL(stock, 0) FROM dbo.products WITH (UPDLOCK, ROWLOCK) WHERE id = @product_id;
+    DECLARE @teorico DECIMAL(12, 2), @costo DECIMAL(14, 4);
+    SELECT @teorico = ISNULL(stock, 0), @costo = cost FROM dbo.products WITH (UPDLOCK, ROWLOCK) WHERE id = @product_id;
     IF @@ROWCOUNT = 0
     BEGIN ROLLBACK; RAISERROR('Ese producto no existe.', 16, 1); RETURN; END
 
@@ -30,9 +30,14 @@ BEGIN
     IF @dif <> 0
     BEGIN
         UPDATE dbo.products SET stock = @fisico WHERE id = @product_id;
-        INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn)
+        /* 0096: con el costo de HOY guardado en el movimiento. Sin él, el
+           estado de resultados valuaba el faltante con el costo del día en
+           que se consultaba: un mes ya cerrado cambiaba de utilidad cada vez
+           que cambiaba el precio de compra (lo encontró la simulación de 60
+           días de la taquería: $598.50 contra $580.30). */
+        INSERT INTO dbo.inventory_movements (product_id, typee, reference, quantity, datee, descriptionn, unit_cost)
         VALUES (@product_id, CASE WHEN @dif > 0 THEN 'entrada' ELSE 'salida' END, 'CONTEO', ABS(@dif), GETDATE(),
-                'Ajuste por conteo fisico (dif ' + CONVERT(NVARCHAR(20), CONVERT(FLOAT, @dif)) + ')');
+                'Ajuste por conteo fisico (dif ' + CONVERT(NVARCHAR(20), CONVERT(FLOAT, @dif)) + ')', @costo);
     END
     COMMIT;
     SELECT @teorico AS teorico, @fisico AS fisico, @dif AS diferencia;

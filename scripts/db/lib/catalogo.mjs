@@ -91,6 +91,9 @@ asignar('inventory', [
   'sp_purchase_order_suggestions',
   // 0092: costos que subieron y precios que ya no cubren el costo.
   'sp_alertas_costos',
+  // 0095: carne por rendimiento (taquería): tacos por kilo y conteo al cierre.
+  'sp_rendimiento_mapear', 'sp_rendimiento_config', 'sp_rendimiento_guardar', 'sp_rendimiento_cierre',
+  'sp_rendimiento_dia', 'sp_rendimiento_contar', 'sp_rendimiento_ajustar', 'sp_rendimiento_mes',
   'sp_import_products', 'sp_Consultar_Detalle_Productos', 'sp_Consultar_Detalles_Producto',
   // Aplicar un conteo fisico al inventario.
   'sp_inventory_count_apply',
@@ -300,6 +303,8 @@ asignar('whatsapp', [
 ]);
 
 asignar('hospitality', [
+  // 0097: la bolsa del mesero (cobra desde su tablet y entrega en caja).
+  'sp_mesero_cobro_registrar', 'sp_mesero_cuenta', 'sp_mesero_entregar', 'sp_meseros_resumen',
   'sp_get_uoms', 'sp_get_ingredients',
   'sp_get_recipe', 'sp_save_recipe', 'sp_delete_recipe',
   'sp_get_modifier_groups', 'sp_save_modifier_group', 'sp_delete_modifier_group',

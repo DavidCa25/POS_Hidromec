@@ -2,7 +2,10 @@
  * WAITER — el mesero en la mesa. El salon (sus mesas primero), la cuenta de
  * una mesa con el estado de cada cosa en cocina, y el menu para agregar con
  * sus opciones. «Enviar a preparacion» va por el mismo camino que Touch.
- * El cobro no esta aqui: se hace en caja.
+ *
+ * 0097: el mesero COBRA cualquier mesa (efectivo, tarjeta o transferencia,
+ * con propina) y en «Mi cuenta» ve lo que lleva: mesas, por método,
+ * propinas y el efectivo que trae para entregar en caja.
  */
 (() => {
   'use strict';
@@ -100,6 +103,120 @@
     ctx.pintar();
   }
 
+  // ------------------------------------------------------------ cobrar
+  const METODOS = [['EFECTIVO', 'Efectivo'], ['TARJETA', 'Tarjeta'], ['TRANSFERENCIA', 'Transferencia']];
+  const r2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+
+  function cobrar(ctx) {
+    const { el } = ctx;
+    const u = ctx.ui;
+    const c = u.cuenta;
+    if (!c || !c.total) return;
+    /* La clave del cobro se decide al abrir la hoja: reintentar el mismo
+       cobro (sin red a medias) no cobra dos veces. */
+    const f = { metodo: 'EFECTIVO', pct: 0, propina: 0, otra: '', recibido: '', clave: ctx.uuid(), ocupado: false, hecho: null };
+    const propina = () => (f.pct === 'otra' ? r2(Number(String(f.otra).replace(',', '.')) || 0) : r2(c.total * f.pct / 100));
+    const aCobrar = () => r2(c.total + propina());
+    const cambio = () => {
+      const rec = Number(String(f.recibido).replace(',', '.'));
+      return f.metodo === 'EFECTIVO' && f.recibido !== '' && Number.isFinite(rec) ? r2(rec - aCobrar()) : null;
+    };
+    const confirmar = async () => {
+      if (f.ocupado) return;
+      const cam = cambio();
+      if (cam != null && cam < 0) return;
+      f.ocupado = true; ctx.pintarHoja();
+      const r = await ctx.accion('COBRAR', {
+        cuentaId: u.cuentaId, metodo: f.metodo, total: c.total, propina: propina(), clave: f.clave,
+        recibido: f.metodo === 'EFECTIVO' && f.recibido !== '' ? Number(String(f.recibido).replace(',', '.')) : null,
+      });
+      f.ocupado = false;
+      if (!r) { await cargarCuenta(ctx); ctx.pintar(); ctx.cerrarHoja(); return; }
+      f.hecho = r; ctx.pintarHoja();
+    };
+    const render = () => {
+      if (f.hecho) {
+        const h = f.hecho;
+        return [
+          el('div', { class: 'hoja__cab' }, el('div', {},
+            el('h2', { text: 'Mesa cobrada' }),
+            el('p', { text: `${ctx.dinero(h.total)}${h.propina ? ` + ${ctx.dinero(h.propina)} de propina` : ''}` }))),
+          h.cambio != null ? el('div', { class: 'total' }, el('span', { text: 'Cambio' }), el('b', { text: ctx.dinero(h.cambio) })) : null,
+          h.enBolsa ? el('p', { class: 'nota-pie', text: `${ctx.dinero(h.enBolsa)} quedan en tu bolsa para entregar en caja.` }) : null,
+          el('button', { type: 'button', class: 'btn btn--primario btn--grande', 'data-cobro': 'listo', text: 'Listo',
+            onclick: () => { ctx.cerrarHoja(); u.vista = 'mesas'; u.cuenta = null; ctx.refrescar?.(50); ctx.pintar(); } }),
+        ];
+      }
+      const cam = cambio();
+      return [
+        el('div', { class: 'hoja__cab' },
+          el('div', {}, el('h2', { text: 'Cobrar la mesa' }), el('p', { text: `Cuenta ${ctx.dinero(c.total)}` })),
+          el('button', { type: 'button', class: 'btn btn--chico', text: 'Cerrar', onclick: ctx.cerrarHoja })),
+        el('div', { class: 'seccion' }, el('h3', { text: '¿Cómo paga?' }),
+          el('div', { class: 'opciones', role: 'group', 'aria-label': 'Cómo paga' }, ...METODOS.map(([v, t]) =>
+            el('button', { type: 'button', class: 'opcion', 'data-metodo': v, 'aria-pressed': String(f.metodo === v), text: t,
+              onclick: () => { f.metodo = v; ctx.pintarHoja(); } })))),
+        el('div', { class: 'seccion' }, el('h3', { text: 'Propina' }),
+          el('div', { class: 'opciones', role: 'group', 'aria-label': 'Propina' },
+            ...[[0, 'Sin propina'], [10, '10 %'], [15, '15 %'], ['otra', 'Otra']].map(([v, t]) =>
+              el('button', { type: 'button', class: 'opcion', 'data-propina': String(v), 'aria-pressed': String(f.pct === v), text: t,
+                onclick: () => { f.pct = v; ctx.pintarHoja(); } }))),
+          f.pct === 'otra' ? el('input', { class: 'campo', id: 'propina-otra', inputmode: 'decimal', placeholder: '$0.00', value: f.otra,
+            'aria-label': 'Propina', oninput: (e) => { f.otra = e.target.value; ctx.pintarHoja(); } }) : null,
+          propina() ? el('p', { class: 'nota-pie', text: `Propina: ${ctx.dinero(propina())}` }) : null),
+        f.metodo === 'EFECTIVO' ? el('div', { class: 'seccion' }, el('h3', { text: '¿Con cuánto paga?' }),
+          el('input', { class: 'campo', id: 'cobro-recibido', inputmode: 'decimal', placeholder: ctx.dinero(aCobrar()), value: f.recibido,
+            'aria-label': 'Con cuánto paga', oninput: (e) => { f.recibido = e.target.value; ctx.pintarHoja(); } }),
+          el('div', { class: 'opciones' }, ...[aCobrar(), 200, 500, 1000].filter((v, i, a) => i === 0 || (v > aCobrar() && a.indexOf(v) === i)).map((v, i) =>
+            el('button', { type: 'button', class: 'opcion', text: i === 0 ? 'Exacto' : ctx.dinero(v), onclick: () => { f.recibido = String(v); ctx.pintarHoja(); } }))),
+          cam != null ? el('div', { class: 'total' }, el('span', { text: cam < 0 ? 'Falta' : 'Cambio' }), el('b', { text: ctx.dinero(Math.abs(cam)) })) : null) : null,
+        el('button', { type: 'button', class: 'btn btn--primario btn--grande', 'data-cobro': 'confirmar',
+          disabled: f.ocupado || (cam != null && cam < 0),
+          text: f.ocupado ? 'Cobrando…' : `Cobrar ${ctx.dinero(aCobrar())}`, onclick: () => void confirmar() }),
+      ];
+    };
+    ctx.hoja(render);
+  }
+
+  // --------------------------------------------------------- mi cuenta
+  async function cargarMiCuenta(ctx) {
+    const r = await ctx.consulta('micuenta');
+    if (r) ctx.ui.mia = r;
+  }
+
+  function vistaMiCuenta(ctx) {
+    const { el } = ctx;
+    const m = ctx.ui.mia;
+    if (!m) return [el('p', { class: 'vacio-chico', text: 'Cargando tu cuenta…' })];
+    const r = m.resumen;
+    const fila = (t, v, fuerte = false) => el('div', { class: 'total' }, el('span', { text: t }), fuerte ? el('b', { text: v }) : el('span', { text: v }));
+    return [
+      el('div', { class: 'reposo' },
+        el('div', {},
+          el('p', { class: 'reposo__hola', text: 'Mi cuenta de hoy' }),
+          el('p', { class: 'nota-pie', text: `${r.mesas} ${r.mesas === 1 ? 'mesa cobrada' : 'mesas cobradas'}` })),
+        el('button', { type: 'button', class: 'btn', text: 'Actualizar', onclick: async () => { await cargarMiCuenta(ctx); ctx.pintar(); } })),
+      el('div', { class: 'seccion', 'data-micuenta': 'resumen' },
+        fila('Cobrado', ctx.dinero(r.cobrado), true),
+        fila('En efectivo', ctx.dinero(r.efectivo)),
+        fila('Con tarjeta', ctx.dinero(r.tarjeta)),
+        r.transferencia ? fila('Por transferencia', ctx.dinero(r.transferencia)) : null,
+        fila('Propinas', ctx.dinero(r.propinas))),
+      el('div', { class: 'seccion', 'data-micuenta': 'bolsa' },
+        el('h3', { text: 'Tu efectivo' }),
+        fila('Traes para entregar', ctx.dinero(r.porEntregar), true),
+        r.entregado ? fila('Ya entregaste', ctx.dinero(r.entregado)) : null,
+        r.diferencia ? fila(r.diferencia < 0 ? 'Te faltó en tus entregas' : 'Te sobró en tus entregas', ctx.dinero(Math.abs(r.diferencia))) : null,
+        el('p', { class: 'nota-pie', text: 'Lo entregas en caja al terminar tu turno.' })),
+      el('div', { class: 'seccion' },
+        el('h3', { text: 'Tus cobros' }),
+        m.cobros.length ? el('div', { class: 'lineas-cuenta' }, ...m.cobros.map(x => el('div', { class: 'lcuenta lcuenta--cobro' },
+          el('span', { class: 'l__cuerpo' }, el('span', { class: 'l__nom', text: nombreMesa(x.mesa) }),
+            el('span', { class: 'l__op', text: `${new Date(x.hora).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · ${METODOS.find(([v]) => v === x.metodo)?.[1] || x.metodo}${x.propina ? ` · propina ${ctx.dinero(x.propina)}` : ''}` })),
+          el('b', { text: ctx.dinero(x.total) })))) : el('p', { class: 'vacio-chico', text: 'Todavía no has cobrado ninguna mesa.' })),
+    ];
+  }
+
   function vistaMesa(ctx) {
     const { el } = ctx;
     const u = ctx.ui;
@@ -124,7 +241,11 @@
             el('span', { class: clase, text: l.estacion && l.prep ? `${txt}` : txt }));
         })) : el('p', { class: 'vacio-chico', text: c ? 'Todavía no se ha pedido nada.' : 'Cargando…' }),
         c ? el('div', { class: 'total' }, el('span', { text: 'Total' }), el('b', { text: ctx.dinero(c.total) })) : null,
-        el('p', { class: 'nota-pie', text: 'El cobro se hace en caja.' })),
+        /* Con algo por enviar, primero se envía: no se cobra lo que cocina no ha visto. */
+        c && c.total > 0 && ctx.datos?.puedeCobrar
+          ? el('button', { type: 'button', class: 'btn btn--grande', 'data-cobrar': 'mesa', disabled: u.pedido.length > 0,
+              text: u.pedido.length ? 'Envía lo pendiente para cobrar' : `Cobrar · ${ctx.dinero(c.total)}`, onclick: () => cobrar(ctx) })
+          : null),
 
       u.pedido.length ? el('div', { class: 'seccion' },
         el('h3', { text: 'Por enviar' }),
@@ -186,8 +307,10 @@
       return { hechas: 0, total: 0, texto: `${n(r.asignadas, 'mesa tuya', 'mesas tuyas')} · ${n(r.ocupadas, 'ocupada', 'ocupadas')} · ${n(r.libres, 'libre', 'libres')}` };
     },
     pestanas: (ctx) => [
-      { icono: 'armchair', texto: 'Mesas', activa: ctx.ui.vista !== 'mesa', onclick: () => { ctx.ui.vista = 'mesas'; ctx.ui.cuenta = null; ctx.pintar(); } },
+      { icono: 'armchair', texto: 'Mesas', activa: ctx.ui.vista !== 'mesa' && ctx.ui.vista !== 'micuenta', onclick: () => { ctx.ui.vista = 'mesas'; ctx.ui.cuenta = null; ctx.pintar(); } },
       ...(ctx.ui.vista === 'mesa' ? [{ icono: 'clipboard-text', texto: 'Cuenta', activa: true, onclick: () => window.scrollTo({ top: 0 }) }] : []),
+      { icono: 'check-circle', texto: 'Mi cuenta', activa: ctx.ui.vista === 'micuenta',
+        onclick: async () => { ctx.ui.vista = 'micuenta'; ctx.ui.cuenta = null; ctx.pintar(); await cargarMiCuenta(ctx); ctx.pintar(); } },
     ],
     alEvento(ev, ctx) {
       const u = ctx.ui;
@@ -196,6 +319,6 @@
       }
       return false;   // y el salon se vuelve a pedir
     },
-    render(ctx) { return ctx.ui.vista === 'mesa' ? vistaMesa(ctx) : vistaMesas(ctx); },
+    render(ctx) { return ctx.ui.vista === 'mesa' ? vistaMesa(ctx) : ctx.ui.vista === 'micuenta' ? vistaMiCuenta(ctx) : vistaMesas(ctx); },
   };
 })();

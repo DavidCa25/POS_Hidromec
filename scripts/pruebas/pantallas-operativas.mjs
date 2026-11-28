@@ -138,8 +138,13 @@ try {
   check('C01', tipos.length === 7 && ['PREPARATION', 'WAITER', 'STAFF_DAY', 'TECHNICIAN', 'INVENTORY_FLOOR', 'CUSTOMER_STATUS', 'CAJA_MOVIL'].every(t => tipos.includes(t)),
     'el registro tiene las siete superficies definidas por Wybix', tipos.join(', '));
   const todasAcc = reg.todas().flatMap(d => Object.entries(d.acciones || {}).map(([n, a]) => ({ t: d.tipo, n, modo: a.modo })));
-  check('C01', todasAcc.every(a => a.modo) && !todasAcc.some(a => /PAY|COBRAR|PRECIO|USUARIO|CONFIG/.test(a.n)),
-    'cada acción declara su modo sin conexión, y ninguna cobra, cambia precios ni administra', `${todasAcc.length} acciones`);
+  /* 0097: el Mesero SÍ cobra (COBRAR, con su paquete VENTAS_OPERAR y conexión
+     obligatoria): decisión del negocio para que cada mesero lleve su cuenta.
+     Ninguna OTRA pantalla cobra, y ninguna cambia precios ni administra. */
+  check('C01', todasAcc.every(a => a.modo)
+      && !todasAcc.some(a => /PAY|PRECIO|USUARIO|CONFIG/.test(a.n))
+      && todasAcc.filter(a => /COBRAR/.test(a.n)).every(a => a.t === 'WAITER' && a.n === 'COBRAR' && a.modo === 'ONLINE_REQUIRED'),
+    'cada acción declara su modo sin conexión; solo el Mesero cobra (en línea), y ninguna cambia precios ni administra', `${todasAcc.length} acciones`);
   check('C01', reg.obtener('CUSTOMER_STATUS').familia === 'PUBLICA' && !Object.keys(reg.obtener('CUSTOMER_STATUS').acciones).length,
     'Estado de pedidos es pública y no tiene acciones');
 
@@ -246,7 +251,7 @@ try {
   seccion('Mesero');
   const est = (await estado(tabMesero)).json.datos;
   check('W01', est.mesas.every(m => m.areaId === salon) && !est.mesas.some(m => m.id === t1), 've solo las mesas de sus áreas permitidas (Salón, no Terraza)');
-  check('W01', est.puedeCobrar === false, 'y no puede cobrar (V1)');
+  check('W01', est.puedeCobrar === true, 'y cobra desde su tablet (0097)');
   const abre = await accion(tabMesero, 'ABRIR_MESA', { mesaId: m1 });
   const cuentaId = abre.json?.resultado?.cuentaId;
   const due = await uno(`SELECT abierta_por, mesa_id, estado FROM dbo.hosp_cuentas WHERE id = ${cuentaId || 0}`);
@@ -289,8 +294,11 @@ try {
 
   const pay = await accion(tabMesero, 'PAY', { cuentaId, monto: 145 });
   const cobrar = await accion(tabMesero, 'COBRAR', { cuentaId });
-  check('W06', pay.status === 403 && cobrar.status === 403 && (await uno(`SELECT estado FROM dbo.hosp_cuentas WHERE id = ${cuentaId}`)).estado === 'ABIERTA',
-    'el mesero no puede cobrar: PAY y COBRAR no existen para él (403) y la cuenta sigue abierta');
+  /* 0097: COBRAR existe para el mesero, pero sin método ni identificador de
+     cobro se rechaza; PAY sigue sin existir. El cobro completo lo prueba
+     e2e/meseros-tablets.spec.js. */
+  check('W06', pay.status === 403 && cobrar.status === 400 && (await uno(`SELECT estado FROM dbo.hosp_cuentas WHERE id = ${cuentaId}`)).estado === 'ABIERTA',
+    'PAY no existe (403); COBRAR sin método se rechaza (400) y la cuenta sigue abierta', `${pay.status} / ${cobrar.status}`);
   check('W06', (await uno(`SELECT COUNT(*) AS n FROM dbo.superficie_auditoria WHERE accion = 'RECHAZADA' AND detalle LIKE N'PAY%'`)).n >= 1, 'y el intento queda en la auditoría');
   const online = await accion(tabMesero, 'ENVIAR', { cuentaId, lineas: [{ productId: sandwich, cantidad: 1, origen: '66666666-6666-4666-8666-666666666666' }] }, { diferida: true });
   check('W10', online.status === 409 && online.json.codigo === 'ONLINE_REQUIRED', 'enviar a preparación desde la cola sin conexión se rechaza: pide conexión');
@@ -774,8 +782,10 @@ try {
     await w.p.getByRole('button', { name: /Enviar a preparación/ }).tap();
     await w.p.getByText(/Enviado a (Barra y Cocina|Cocina y Barra)/).waitFor({ timeout: 8000 });
     const cuentaM2 = (await uno(`SELECT id FROM dbo.hosp_cuentas WHERE mesa_id = ${m2} AND estado = 'ABIERTA'`)).id;
-    check('U03', (await uno(`SELECT COUNT(*) AS n FROM dbo.comandas WHERE cuenta_id = ${cuentaM2}`)).n === 2 && !(await w.p.getByRole('button', { name: /Cobrar/i }).count()),
-      'Mesero en tablet: Mesa 2 → Latte con avena + Sandwich → Barra y Cocina; no hay botón de cobrar');
+    /* 0097: con todo enviado, el mesero ya tiene su botón de cobrar (el cobro
+       con clics lo recorre e2e/meseros-tablets.spec.js). */
+    check('U03', (await uno(`SELECT COUNT(*) AS n FROM dbo.comandas WHERE cuenta_id = ${cuentaM2}`)).n === 2 && (await w.p.locator('[data-cobrar="mesa"]').count()) === 1,
+      'Mesero en tablet: Mesa 2 → Latte con avena + Sandwich → Barra y Cocina; y su botón de cobrar');
 
     /* Tecnico, Inventario y la pantalla publica: que pinten, sin errores. */
     await pinDe({ userId: luis }, '2468');

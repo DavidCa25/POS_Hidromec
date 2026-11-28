@@ -394,6 +394,8 @@ textarea.campo { min-height: 96px; padding: 12px 16px; resize: vertical; font-si
 .lineas-cuenta { display: flex; flex-direction: column; gap: 8px; }
 .lcuenta { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
 .lcuenta .l__cant { height: 30px; }
+/* 0097: «Tus cobros» del mesero: sin columna de cantidad (mesa y su total). */
+.lcuenta--cobro { grid-template-columns: minmax(0, 1fr) auto; }
 .total { display: flex; justify-content: space-between; align-items: baseline; font-size: 18px; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--edge); }
 .total b { font-family: var(--mono); }
 

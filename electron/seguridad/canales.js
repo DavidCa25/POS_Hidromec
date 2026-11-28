@@ -119,6 +119,15 @@ const EXIGE = {
   'whatsapp:conexion': CONFIGURACION_ADMINISTRAR,
   // 0062: utilidad real del negocio: ventas, costos, mermas y egresos.
   'reportes:estado-resultados': REPORTES_VER,
+  // 0095: carne por rendimiento. El corte la pregunta (quien cierra), dar de
+  // alta las carnes crea insumos (catálogo) y el reporte es de números.
+  'rendimiento:config': VENTAS_OPERAR,
+  'rendimiento:cierre': VENTAS_OPERAR,
+  'rendimiento:contar': VENTAS_OPERAR,
+  'rendimiento:dia': VENTAS_OPERAR,
+  'rendimiento:guardar': CATALOGO_EDITAR,
+  'rendimiento:ajustar': CATALOGO_EDITAR,
+  'rendimiento:mes': REPORTES_VER,
   /* 0069 · Liquidaciones de plataforma. Verlas es dinero del negocio; ligar
      canales, guardar, confirmar o cancelar mueve resultados y egresos: el
      dueno o quien administra. */
@@ -534,6 +543,9 @@ const EXIGE = {
   'cuentas:enviar': VENTAS_OPERAR,
   'cuentas:estado': VENTAS_OPERAR,
   'cuentas:cobrada': VENTAS_OPERAR,
+  // 0097: las bolsas de los meseros; quien cobra en caja recibe sus entregas.
+  'meseros:resumen': VENTAS_OPERAR,
+  'meseros:entregar': VENTAS_OPERAR,
   // Liberar solo deja hacerlo con la mesa vacia (lo impide SQL): con
   // consumo hay que cobrar o que un encargado cancele lo pedido.
   'cuentas:liberar': VENTAS_OPERAR,

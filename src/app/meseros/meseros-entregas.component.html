@@ -1,0 +1,52 @@
+<section class="me-pagina" data-guide="meseros-entregas">
+  <header class="me-cab">
+    <div>
+      <span class="me-ceja">Venta · meseros</span>
+      <h1>Entregas de meseros</h1>
+      <p>Lo que cada mesero cobró en su tablet y el efectivo que trae. Al recibirlo entra al cajón.</p>
+    </div>
+    <div class="me-total">
+      <span>Por recibir</span>
+      <b class="me-num">{{ pesos(porEntregar()) }}</b>
+    </div>
+  </header>
+
+  @if (error()) { <p class="me-error" role="alert">{{ error() }}</p> }
+
+  @if (!cargando() && !meseros().length) {
+    <div class="me-vacio">
+      <h2>Ningún mesero ha cobrado en este turno</h2>
+      <p>Cuando un mesero cobre una mesa desde su tablet, aparecerá aquí con lo que trae.</p>
+    </div>
+  }
+
+  <div class="me-lista">
+    @for (m of meseros(); track m.mesero_id) {
+      <article class="me-fila" [class.debe]="m.por_entregar > 0" [attr.data-guide-clave]="m.usuario">
+        <div class="me-quien">
+          <h2>{{ m.usuario }}</h2>
+          <span>{{ m.mesas }} {{ m.mesas === 1 ? 'mesa' : 'mesas' }} · cobró {{ pesos(m.cobrado) }} · propinas {{ pesos(m.propinas) }}</span>
+        </div>
+        <div class="me-dato"><span>Trajo en efectivo</span><b class="me-num">{{ pesos(m.en_bolsa) }}</b></div>
+        <div class="me-dato"><span>Entregó</span><b class="me-num">{{ pesos(m.entregado) }}</b>
+          @if (m.diferencia) { <small [class.mal]="m.diferencia < 0">{{ m.diferencia < 0 ? 'faltaron' : 'sobraron' }} {{ pesos(m.diferencia < 0 ? -m.diferencia : m.diferencia) }}</small> }
+        </div>
+        <div class="me-accion">
+          @if (recibiendo() === m.mesero_id) {
+            <label class="me-campo">
+              <span>Entrega</span>
+              <input type="number" inputmode="decimal" min="0" step="0.5" [(ngModel)]="monto" [attr.aria-label]="'Efectivo que entrega ' + m.usuario" data-guide="meseros-monto">
+            </label>
+            <button type="button" class="me-sec" (click)="cancelar()">Cancelar</button>
+            <button type="button" class="me-pri" data-guide="meseros-recibir-confirmar" (click)="recibir(m)">Recibir</button>
+          } @else if (m.por_entregar > 0) {
+            <span class="me-debe">Trae {{ pesos(m.por_entregar) }}</span>
+            <button type="button" class="me-pri" data-guide="meseros-recibir" (click)="abrir(m)">Recibir entrega</button>
+          } @else {
+            <span class="me-ok">Al corriente</span>
+          }
+        </div>
+      </article>
+    }
+  </div>
+</section>

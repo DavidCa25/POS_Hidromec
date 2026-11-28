@@ -73,10 +73,74 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad, alS
     ejecutar(poolPromise, 'sp_expense_staff_list')));
 
   // --------------------------------------------------------------- egresos
+  /**
+   * ¿Cuánto hay en el cajón de esa caja? Fondo + movimientos del turno
+   * abierto, con la misma regla que sp_close_shift. null sin turno o sin caja.
+   */
+  async function enElCajon(registerId) {
+    if (!registerId) return null;
+    const r = await (await poolPromise).request().input('caja', sql.Int, registerId).query(`
+      SELECT TOP 1 c.opening_cash + (SELECT ISNULL(SUM(CASE WHEN m.typee = 'OPENING' THEN 0 ELSE m.amount END), 0)
+                                       FROM dbo.cash_movements m
+                                      WHERE m.closure_id = c.id OR (m.closure_id IS NULL AND m.register_id = c.register_id AND m.datee >= c.opened_at)) AS efectivo
+        FROM dbo.cash_closures c WHERE c.closed_at IS NULL AND c.register_id = @caja ORDER BY c.opened_at DESC;`);
+    const v = r.recordset?.[0]?.efectivo;
+    return v == null ? null : Number(v);
+  }
+  const CUBRIR = { PRESTAMO: 'Préstamo', DUENO: 'Dinero del dueño', OTRO: 'Otra entrada' };
+
+  /*
+   * 0096 · CUANDO EL CAJÓN NO ALCANZA. Un gasto en efectivo mayor a lo que
+   * hay NO se bloquea (muchos negocios piden prestado o el dueño pone de su
+   * bolsa), pero tampoco se deja pasar a ciegas: el corte esperaría efectivo
+   * que nunca existió (lo encontró la simulación de la taquería, sábados de
+   * sueldos con el cajón en −$1,235).
+   *
+   *   sin `cubrir`          responde EFECTIVO_INSUFICIENTE con lo que hay y
+   *                         lo que falta; no registra nada. La pantalla pregunta.
+   *   cubrir.origen         PRESTAMO | DUENO | OTRO: entra lo que falta como
+   *                         entrada de efectivo y sale el gasto, en UNA
+   *                         transacción (o las dos, o ninguna).
+   *   cubrir === 'NO'       se paga igual, como antes.
+   */
   ipcMain.handle('egresos:registrar', sesion.proteger('egresos:registrar', async (_e, p = {}, ...resto) => {
     const ses = resto.length ? resto[resto.length - 1] : null;
     const eq = equipo();
-    const r = await ejecutar(poolPromise, 'sp_register_expense', (r) => {
+    const enEfectivo = String(p?.payment_method || '').toUpperCase() === 'EFECTIVO';
+    let faltan = 0;
+    if (enEfectivo && p?.cubrir !== 'NO') {
+      const hay = await enElCajon(caja(p)).catch(() => null);
+      const monto = num(p?.amount) ?? 0;
+      if (hay != null && monto > hay + 0.004) {
+        faltan = Math.round((monto - Math.max(0, hay)) * 100) / 100;
+        if (!p?.cubrir?.origen) {
+          return { success: false, motivo: 'EFECTIVO_INSUFICIENTE', disponible: hay, faltan,
+            error: `En el cajón hay ${hay.toFixed(2)} y el gasto es de ${monto.toFixed(2)}.` };
+        }
+      }
+    }
+    const cubrir = faltan > 0 && CUBRIR[p?.cubrir?.origen] ? { concepto: CUBRIR[p.cubrir.origen], nota: txt(p.cubrir.nota) } : null;
+
+    let tx = null;
+    if (cubrir) {
+      tx = new sql.Transaction(await poolPromise);
+      await tx.begin();
+      try {
+        await tx.request()
+          .input('user_id', sql.Int, quien(ses))
+          .input('amount', sql.Decimal(10, 2), faltan)
+          .input('concept', sql.NVarChar(60), cubrir.concepto)
+          .input('note', sql.NVarChar(255), cubrir.nota || `Para pagar: ${txt(p?.note, 200) || 'gasto en efectivo'}`)
+          .input('register_id', sql.Int, caja(p))
+          .input('machine_id', sql.NVarChar(64), eq.machineId || null)
+          .input('machine_name', sql.NVarChar(120), eq.machineName || null)
+          .execute('sp_register_cash_in');
+      } catch (e) {
+        await tx.rollback().catch(() => {});
+        return { success: false, error: String(e.message || e) };
+      }
+    }
+    const r = await ejecutar(tx ? Promise.resolve({ request: () => tx.request() }) : poolPromise, 'sp_register_expense', (r) => {
       r.input('user_id', sql.Int, quien(ses))
        .input('category_id', sql.Int, num(p?.category_id))
        .input('amount', sql.Decimal(12, 2), num(p?.amount))
@@ -92,6 +156,10 @@ function registrar({ ipcMain, sql, poolPromise, cajaDeEsteEquipo, identidad, alS
        .input('machine_id', sql.NVarChar(64), eq.machineId || null)
        .input('machine_name', sql.NVarChar(120), eq.machineName || null);
     });
+    if (tx) {
+      if (r.success) await tx.commit(); else await tx.rollback().catch(() => {});
+      if (r.success) r.cubierto = { monto: faltan, concepto: cubrir.concepto };
+    }
     /* 0079: a cargo de que socios es y quien lo pago, si Socios esta activado
        y la pantalla lo pregunto. El egreso ya quedo: un fallo aqui se dice
        aparte y se corrige desde Socios. */
