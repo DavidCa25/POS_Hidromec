@@ -1,0 +1,89 @@
+<section class="cr-pagina" data-guide="carne-mes">
+  <header class="cr-cab cr-cab--fila">
+    <div class="cr-cab cr-cab__titulo">
+      <span class="cr-ceja">Reportes · Carne</span>
+      <h1>{{ hayCarnes() === false ? 'Inventario de carne sin recetas' : titular() }}</h1>
+      @if (bajada()) { <p>{{ bajada() }}</p> }
+    </div>
+    <div class="cr-acciones">
+      @if (hayCarnes()) {
+        <div class="cr-seg" role="group" aria-label="Periodo">
+          <button type="button" [class.on]="periodo() === 'SEMANA'" [attr.aria-pressed]="periodo() === 'SEMANA'" (click)="cambiar('SEMANA')">Semana</button>
+          <button type="button" [class.on]="periodo() === 'MES'" [attr.aria-pressed]="periodo() === 'MES'" (click)="cambiar('MES')">Mes</button>
+        </div>
+        <a class="cr-secundario cr-boton-enlace" routerLink="/dashboard/carne/arranque">Mis carnes</a>
+        <a class="cr-primario cr-boton-enlace" routerLink="/dashboard/carne/llegada" data-guide="carne-ir-llegada">Llegó la carne</a>
+      }
+    </div>
+  </header>
+
+  @if (hayCarnes() === false) {
+    <div class="cr-vacio">
+      <h2>¿Llevas tu carne a ojo?</h2>
+      <p class="cr-tenue">Dinos qué carnes usas y cuántos tacos te salen por kilo. Al cerrar la caja solo te preguntaremos cuánta te quedó, y aquí verás cuánto rindió y cuánta se fue sin cobrar. Sin recetas ni gramos.</p>
+      <a class="cr-primario cr-boton-enlace" routerLink="/dashboard/carne/arranque" data-guide="carne-empezar">Elegir mis carnes</a>
+    </div>
+  } @else if (a()) { @let a = this.a()!;
+    <div class="cr-kpis">
+      <div class="cr-kpi">
+        <span class="cr-kpi__titulo">Carne comprada</span>
+        <span class="cr-num">{{ kg(a.comprado_kg) }} kg</span>
+        <span class="cr-tenue">{{ pesos(a.comprado) }}</span>
+      </div>
+      <div class="cr-kpi">
+        <span class="cr-kpi__titulo">Tacos vendidos</span>
+        <span class="cr-num">{{ a.tacos.toLocaleString('es-MX') }}</span>
+        <span class="cr-tenue">las órdenes cuentan sus tacos</span>
+      </div>
+      <div class="cr-kpi" [class.mal]="a.se_fueron > 0">
+        <span class="cr-kpi__titulo">Se fueron sin cobrar</span>
+        <span class="cr-num">{{ pesos(a.valor_se_fueron) }}</span>
+        <span class="cr-tenue">{{ a.se_fueron }} tacos @if (a.pct_perdido != null) { · {{ a.pct_perdido }} % de la carne }</span>
+      </div>
+      <div class="cr-kpi">
+        <span class="cr-kpi__titulo">Carne por taco</span>
+        <span class="cr-num">{{ a.costo_taco != null ? pesos(a.costo_taco, 2) : '—' }}</span>
+        @if (b()?.costo_taco) { <span class="cr-tenue">el periodo pasado {{ pesos(b()!.costo_taco, 2) }}</span> }
+      </div>
+    </div>
+
+    <div class="cr-dos">
+      <section class="cr-caja" aria-labelledby="cr-dias">
+        <h2 id="cr-dias">Tacos que se fueron, por día</h2>
+        <div class="cr-barras" role="img" [attr.aria-label]="'Tacos que se fueron por día de la semana'">
+          @for (d of datos()!.dias; track d.dow) {
+            <div>
+              <span class="cr-num cr-tenue">{{ d.se_fueron }}</span>
+              <span class="barra" [class.peor]="esPeor(d.dow)" [style.height]="alto(d.se_fueron)"></span>
+              <span class="cr-tenue">{{ diasCortos[d.dow] }}</span>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="cr-caja" aria-labelledby="cr-carnes">
+        <h2 id="cr-carnes">Por carne</h2>
+        <table class="cr-tabla">
+          <thead><tr><th scope="col">Carne</th><th scope="col">Usada</th><th scope="col">Rindió</th><th scope="col">Esperado</th><th scope="col">Se fueron</th></tr></thead>
+          <tbody>
+            @for (c of datos()!.carnes; track c.carne_id) {
+              <tr>
+                <th scope="row">{{ c.nombre }}</th>
+                <td class="cr-num">{{ kg(c.usado_kg) }} kg</td>
+                <td class="cr-num" [class.mal]="c.rinde_real != null && c.rinde_real < c.rinde * 0.97">{{ c.rinde_real ?? '—' }}</td>
+                <td class="cr-num cr-tenue">{{ kg(c.rinde) }}</td>
+                <td class="cr-num">{{ c.se_fueron }} · {{ pesos(c.valor) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (a.noches_sin_contar) {
+          <p class="cr-tenue">{{ a.noches_sin_contar }} noche{{ a.noches_sin_contar > 1 ? 's' : '' }} sin contestar cuánta carne quedó: se cuentan junto con la noche siguiente.</p>
+        }
+      </section>
+    </div>
+  } @else if (cargando()) {
+    <p class="cr-tenue">Leyendo el reporte…</p>
+  }
+  @if (error()) { <p class="cr-error" role="alert">{{ error() }}</p> }
+</section>

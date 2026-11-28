@@ -116,7 +116,13 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
     return leerCookie(req, COOKIE);
   }
 
-  const tokenTrabajador = (req) => leerCookie(req, COOKIE_TRAB);
+  /* 0097: el mesero en Wybix POS Mobile (app nativa, sin cookies) manda su
+     sesión de trabajador en una cabecera; una página sigue con la cookie. */
+  const tokenTrabajador = (req) => {
+    const h = String(req.headers['x-wx-trabajador'] || '').trim();
+    return h || leerCookie(req, COOKIE_TRAB);
+  };
+  const esNativa = (req) => String(req.headers.authorization || '').startsWith('Bearer ');
 
   async function dispositivoDe(req) {
     const cred = credencialDe(req);
@@ -300,7 +306,9 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
          página: no guarda cookies, así que recibe su credencial en el cuerpo
          (y la manda como Bearer). Una pantalla del navegador sigue solo con
          la cookie HttpOnly. */
-      const extra = r.dispositivo.superficie === 'CAJA_MOVIL' ? { credencial } : {};
+      /* 0097: el Mesero en Wybix POS Mobile tampoco guarda cookies: lo pide con
+         `nativo: true` y recibe su credencial igual que la caja móvil. */
+      const extra = r.dispositivo.superficie === 'CAJA_MOVIL' || cuerpo?.nativo === true ? { credencial } : {};
       responder(res, 200, { dispositivo: publicoDisp(r.dispositivo), ...extra }, {
         'Set-Cookie': `${COOKIE}=${encodeURIComponent(credencial)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=315360000`,
       });
@@ -498,7 +506,9 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
       }
       await auditoria.registrar({ ...ctx, sesion: { id: r.sesion.id, persona: r.persona || {} } }, 'ENTRADA',
         { detalle: `${r.sesion.persona.nombre} (${cuerpo?.qr ? 'QR' : 'PIN'})` });
-      responder(res, 200, { sesion: r.sesion }, { 'Set-Cookie': cookieTrabajador(r.token) });
+      /* La app nativa (credencial como Bearer) recibe su sesión en el cuerpo y
+         la manda como X-Wx-Trabajador; la página, en su cookie HttpOnly. */
+      responder(res, 200, { sesion: r.sesion, ...(esNativa(req) ? { trabajador: r.token } : {}) }, { 'Set-Cookie': cookieTrabajador(r.token) });
       return;
     }
 
@@ -567,7 +577,18 @@ function crearServidor({ repo, registro, capacidades, trabajadores, auditoria, p
     responder(res, 404, { error: 'No existe.' });
   }
 
+  /* SOLO PARA DESARROLLO: WYBIX_LOCAL_HOST_CORS=<origen> deja que la versión
+     web de Wybix POS Mobile (expo start --web) hable con este Local Host. Sin
+     la variable (siempre en una instalación) no hay CORS: las tablets usan la
+     app nativa o las páginas que sirve este mismo servidor. */
+  const origenDev = String(process.env.WYBIX_LOCAL_HOST_CORS || '').trim();
   const servidor = http.createServer((req, res) => {
+    if (origenDev && req.headers.origin === origenDev) {
+      res.setHeader('Access-Control-Allow-Origin', origenDev);
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Wx-Trabajador, Idempotency-Key, X-Wx-Creado');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    }
     manejar(req, res).catch((e) => {
       /* Nunca una traza al navegador. */
       log(`error ${req.method} ${req.url}: ${e.message}`);

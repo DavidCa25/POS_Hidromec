@@ -107,6 +107,13 @@ export const routes: Routes = [
       { path: 'inventario/precios', redirectTo: () => inject(Router).parseUrl('/dashboard/inventario/ofertas?view=prices') },
       { path: 'inventario/ofertas', canActivate: [() => inject(AuthService).puede('COMERCIAL_ADMINISTRAR') || inject(Router).createUrlTree(['/dashboard/inventario'])], loadComponent: () => import('./commercial-panel/commercial-panel.component').then(m => m.CommercialPanelComponent) },
       { path: 'inventario', loadComponent: () => import('../inventario/inventario').then(m => m.Inventario) },
+      /* 0097: lo que trae cada mesero y recibir su entrega en caja. */
+      { path: 'meseros', canActivate: [() => inject(AuthService).puede('VENTAS_OPERAR') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./meseros/meseros-entregas.component').then(m => m.MeserosEntregasComponent) },
+      /* 0095: carne por rendimiento (taquería sin recetas). El reporte es de inventario o números;
+         elegir carnes crea insumos (catálogo); la entrega es una compra. */
+      { path: 'carne', canActivate: [() => inject(AuthService).puede('INVENTARIO_OPERAR') || inject(AuthService).puede('REPORTES_VER') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./carne/carne-mes.component').then(m => m.CarneMesComponent) },
+      { path: 'carne/arranque', canActivate: [() => inject(AuthService).puede('CATALOGO_EDITAR') || inject(Router).createUrlTree(['/dashboard/carne'])], loadComponent: () => import('./carne/carne-arranque.component').then(m => m.CarneArranqueComponent) },
+      { path: 'carne/llegada', canActivate: [() => inject(AuthService).puede('INVENTARIO_OPERAR') || inject(Router).createUrlTree(['/dashboard/carne'])], loadComponent: () => import('./carne/carne-llegada.component').then(m => m.CarneLlegadaComponent) },
       /* 0060: produccion por tandas. El tablero es de quien hornea (PRODUCCION_OPERAR); las formulas, catalogo. */
       { path: 'produccion', canActivate: [() => inject(AuthService).puede('PRODUCCION_OPERAR') || inject(Router).createUrlTree(['/dashboard/inicio'])], loadComponent: () => import('./produccion/produccion.component').then(m => m.ProduccionComponent) },
       { path: 'produccion/formulas', canActivate: [() => inject(AuthService).puede('CATALOGO_EDITAR') || inject(Router).createUrlTree(['/dashboard/produccion'])], loadComponent: () => import('./produccion/formulas.component').then(m => m.FormulasComponent) },

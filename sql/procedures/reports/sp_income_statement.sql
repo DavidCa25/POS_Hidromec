@@ -66,7 +66,7 @@ BEGIN
     /* --------- Renglones vendidos de los DOS periodos, ya con base y costo -------- */
     SELECT CAST(s.datee AS DATE) AS dia,
            CASE WHEN s.datee >= @desde THEN 1 ELSE 0 END AS actual,
-           s.id AS sale_id, d.product_id, d.quantity,
+           s.id AS sale_id, d.id AS detail_id, s.datee AS momento, d.product_id, d.quantity,
            CAST(d.subtotal AS DECIMAL(14, 4)) AS cobrado,
            /* 0083: con IEPS u otro impuesto, la base sin NINGÚN impuesto de la foto. */
            CAST(COALESCE(d.base_neta, CASE WHEN ISNULL(d.tax_object, '02') = '02'
@@ -133,6 +133,39 @@ BEGIN
       JOIN dbo.products p ON p.id = m.product_id
      WHERE m.reference = 'CONTEO'
        AND m.datee >= @ant_desde AND m.datee < DATEADD(DAY, 1, @hasta);
+
+    /* --------- 0095 · Carne por rendimiento -------- */
+    /* La carne que se usó entre dos conteos del cierre es el costo de los
+       tacos de esa carne vendidos en ese tiempo: se reparte entre esos
+       renglones según los tacos que cuenta cada uno («Orden de 5» = 5). Así
+       sale como costo de ventas, y por categoría, producto, canal y día. Lo
+       que no tiene a quién repartirse (una noche sin ventas de esa carne)
+       queda como ajuste de inventario de ese día. */
+    SELECT k.id AS conteo_id, k.carne_id, k.desde, k.contado_en, CAST(k.usado * k.costo_g AS DECIMAL(14, 4)) AS costo
+      INTO #rc
+      FROM dbo.rendimiento_conteos k
+     WHERE k.usado > 0
+       AND k.contado_en >= @ant_desde AND k.desde < DATEADD(DAY, 1, @hasta);
+
+    SELECT v.detail_id, rc.conteo_id, CAST(v.quantity * rp.tacos AS DECIMAL(14, 4)) AS tacos
+      INTO #rt
+      FROM #rc rc
+      JOIN dbo.rendimiento_platillos rp ON rp.carne_id = rc.carne_id
+      JOIN #v v ON v.product_id = rp.product_id AND v.momento >= rc.desde AND v.momento < rc.contado_en;
+
+    ;WITH t AS (SELECT conteo_id, SUM(tacos) AS total FROM #rt GROUP BY conteo_id HAVING SUM(tacos) > 0),
+    parte AS (
+        SELECT rt.detail_id, SUM(rc.costo * rt.tacos / t.total) AS costo
+          FROM #rt rt JOIN t ON t.conteo_id = rt.conteo_id JOIN #rc rc ON rc.conteo_id = rt.conteo_id
+         GROUP BY rt.detail_id)
+    UPDATE v SET costo = v.costo + parte.costo, costo_estimado = 0
+      FROM #v v JOIN parte ON parte.detail_id = v.detail_id;
+
+    INSERT INTO #a (dia, actual, costo)
+    SELECT CAST(rc.contado_en AS DATE), CASE WHEN rc.contado_en >= @desde THEN 1 ELSE 0 END, rc.costo
+      FROM #rc rc
+     WHERE rc.contado_en < DATEADD(DAY, 1, @hasta)
+       AND NOT EXISTS (SELECT 1 FROM #rt WHERE #rt.conteo_id = rc.conteo_id AND #rt.tacos > 0);
 
     /* --------- Plataformas: el reparto de las liquidaciones confirmadas (0069) -------- */
     SELECT a.alloc_date AS dia, CASE WHEN a.alloc_date >= @desde THEN 1 ELSE 0 END AS actual,

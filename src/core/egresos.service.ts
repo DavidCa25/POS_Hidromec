@@ -166,8 +166,41 @@ export class EgresosService {
     }));
   }
 
-  registrar(e: NuevoEgreso) {
-    return this.llamar<any[]>('egresosRegistrar', e);
+  /**
+   * 0096 · Si el gasto es en efectivo y el cajón no alcanza, no se bloquea:
+   * se pregunta de dónde salió lo que falta. Préstamo o dinero del dueño
+   * entran al cajón junto con el gasto (una sola operación) y el corte cuadra;
+   * «Pagar igual» lo deja como antes; cerrar el aviso no registra nada.
+   */
+  async registrar(e: NuevoEgreso): Promise<{ ok: boolean; data?: any[]; error?: string; cancelado?: boolean }> {
+    const f = this.api?.egresosRegistrar;
+    if (typeof f !== 'function') return { ok: false, error: 'Esta función no está disponible en esta versión.' };
+    try {
+      let r = await f(e);
+      if (!r?.success && r?.motivo === 'EFECTIVO_INSUFICIENTE') {
+        const dinero = (n: number) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        const { default: Swal } = await import('sweetalert2');
+        const hay = Math.max(0, Number(r.disponible || 0));
+        const res = await Swal.fire({
+          icon: 'question',
+          title: 'No alcanza el efectivo del cajón',
+          html: `En el cajón hay <b>${dinero(hay)}</b> y el gasto es de <b>${dinero(Number(e.amount))}</b>. `
+            + `Faltan <b>${dinero(r.faltan)}</b>. ¿De dónde salieron?`,
+          showDenyButton: true, showCancelButton: true, showCloseButton: true,
+          confirmButtonText: 'Me los prestaron',
+          denyButtonText: 'Puse de mi dinero',
+          cancelButtonText: 'Pagar igual',
+          footer: 'Lo que entró se suma al cajón y el corte cuadra.',
+        });
+        if (res.isDismissed && res.dismiss !== Swal.DismissReason.cancel) return { ok: false, cancelado: true };
+        const cubrir = res.isConfirmed ? { origen: 'PRESTAMO' } : res.isDenied ? { origen: 'DUENO' } : 'NO';
+        r = await f({ ...e, cubrir });
+      }
+      if (!r?.success) return { ok: false, error: r?.error || 'No se pudo completar la operación.' };
+      return { ok: true, data: r.data };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'No se pudo completar la operación.' };
+    }
   }
 
   cancelar(expenseId: number, reason: string) {

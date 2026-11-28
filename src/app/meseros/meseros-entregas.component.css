@@ -1,0 +1,33 @@
+/* ENTREGAS DE MESEROS (0097). Solo tokens --wx-*: el modo oscuro sale solo. */
+:host { display: block; }
+.me-pagina { display: flex; flex-direction: column; gap: 16px; padding: 24px clamp(16px, 3vw, 36px); max-width: 1180px; margin: 0 auto; color: var(--wx-text); }
+.me-cab { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.me-cab > div:first-child { flex: 1 1 320px; display: flex; flex-direction: column; gap: 6px; }
+.me-cab h1 { margin: 0; font-size: clamp(22px, 2.6vw, 28px); font-weight: 800; letter-spacing: -0.01em; }
+.me-cab p { margin: 0; color: var(--wx-text-muted); font-size: 15px; }
+.me-ceja { font-size: 13px; font-weight: 600; color: var(--wx-accent-text); }
+.me-total { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; color: var(--wx-text-muted); }
+.me-total b { font-size: 30px; color: var(--wx-text); }
+.me-num { font-family: var(--wx-font-mono, 'Geist Mono', ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+.me-error { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--wx-danger-soft); color: var(--wx-danger-ink, var(--wx-danger)); font-weight: 600; }
+.me-vacio { background: var(--wx-surface); border: 1px dashed var(--wx-edge-strong); border-radius: 16px; padding: 24px; }
+.me-vacio h2 { margin: 0 0 6px; font-size: 19px; }
+.me-vacio p { margin: 0; color: var(--wx-text-muted); }
+.me-lista { display: flex; flex-direction: column; gap: 12px; }
+.me-fila { background: var(--wx-surface); border: 1px solid var(--wx-edge); border-radius: 16px; padding: 14px 18px; display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(120px, .7fr) minmax(120px, .7fr) minmax(260px, 1.3fr); gap: 16px; align-items: center; }
+.me-fila.debe { border: 2px solid var(--wx-accent); padding: 13px 17px; }
+.me-quien h2 { margin: 0 0 4px; font-size: 19px; font-weight: 800; }
+.me-quien span, .me-dato span { font-size: 13.5px; color: var(--wx-text-muted); }
+.me-dato { display: flex; flex-direction: column; gap: 2px; }
+.me-dato b { font-size: 19px; }
+.me-dato small { font-size: 12.5px; color: var(--wx-success-ink, var(--wx-success)); }
+.me-dato small.mal { color: var(--wx-danger-ink, var(--wx-danger)); font-weight: 700; }
+.me-accion { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.me-debe { font-weight: 700; }
+.me-ok { color: var(--wx-success-ink, var(--wx-success)); font-weight: 600; }
+.me-campo { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--wx-text-muted); }
+.me-campo input { width: 120px; min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); font: inherit; font-family: var(--wx-font-mono, 'Geist Mono', ui-monospace, monospace); font-size: 17px; }
+.me-pri, .me-sec { font: inherit; min-height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.me-pri { border: 0; background: var(--wx-rail); color: var(--wx-rail-text-strong); }
+.me-sec { border: 1px solid var(--wx-edge-strong); background: var(--wx-surface); color: var(--wx-text); font-weight: 600; }
+@media (max-width: 860px) { .me-fila { grid-template-columns: 1fr 1fr; } .me-quien, .me-accion { grid-column: 1 / -1; } .me-accion { justify-content: flex-start; } }

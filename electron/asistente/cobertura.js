@@ -88,6 +88,11 @@ const LECTURA = [
   'reportes:actividad-horaria',
   'reportes:cierre-dia',
   'reportes:estado-resultados',
+  'meseros:resumen',          // 0097: quién trae cuánto efectivo
+  'rendimiento:config',       // 0095: carnes y tacos por kilo
+  'rendimiento:cierre',       // 0095: lo que el corte pregunta de la carne
+  'rendimiento:dia',          // 0095: cómo rindió la carne en un corte
+  'rendimiento:mes',          // 0095: el mes de la carne
   'salon:get',
   'security:by-cashier',
   'security:risk',
@@ -121,6 +126,10 @@ const LECTURA = [
 ];
 
 const MANUAL = {
+  'meseros:entregar': 'La entrega del mesero se recibe contando su efectivo en la pantalla de Entregas de meseros: dice si le falta o le sobra.',
+  'rendimiento:guardar': 'Elegir las carnes y sus tacos por kilo se hace tocándolas en su pantalla de arranque: crea los insumos de cada carne.',
+  'rendimiento:contar': 'Cuánta carne quedó se contesta en el corte, carne por carne, antes de contar el efectivo.',
+  'rendimiento:ajustar': 'Ajustar los tacos por kilo se ofrece en el resultado del corte cuando la carne lleva varias noches rindiendo distinto.',
   'sp-settle-customer-debts': 'Repartir un abono entre varias ventas se revisa en la vista previa de Clientes (qué notas se liquidan y cuál queda con faltante); el asistente abona a una venta a la vez.',
   'club:wallet-emitir': 'El pase de cartera sale como QR que el cliente escanea con su teléfono en la pantalla del Club; el chat no puede mostrárselo.',
   'services:set-config': 'Guarda las credenciales del proveedor de recargas (usuario y llave): son secretos que se capturan en su pantalla.',

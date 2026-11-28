@@ -35,21 +35,33 @@ function paraElUsuario(e, queSeIntentaba) {
   return `No se pudo ${queSeIntentaba}. Vuelve a intentarlo y, si sigue, avisa a soporte con la hora.`;
 }
 
-async function ejecutar(pool, nombre, construir, queSeIntentaba = 'completar la operación') {
-  try {
-    const req = pool.request();
-    if (construir) construir(req);
-    const r = await req.execute(nombre);
-    return { success: true, data: r.recordset ?? [], sets: r.recordsets ?? [] };
-  } catch (e) {
-    console.error(`[SALON] ${nombre}:`, e.message);
-    return { success: false, error: paraElUsuario(e, queSeIntentaba) };
+/* `reintentos`: solo para lo que se puede repetir sin duplicar nada (enviar a
+   cocina salta las líneas cuyo `origen` ya tiene). Si SQL Server elige esta
+   petición como víctima de un interbloqueo (1205) no quedó nada escrito: se
+   vuelve a intentar tras una pausa corta. Veinte mesas enviando a la vez lo
+   provocan (e2e/meseros-salon-lleno.spec.js). */
+async function ejecutar(pool, nombre, construir, queSeIntentaba = 'completar la operación', { reintentos = 0 } = {}) {
+  for (let intento = 0; ; intento++) {
+    try {
+      const req = pool.request();
+      if (construir) construir(req);
+      const r = await req.execute(nombre);
+      return { success: true, data: r.recordset ?? [], sets: r.recordsets ?? [] };
+    } catch (e) {
+      if (e?.number === 1205 && intento < reintentos) {
+        await new Promise((ok) => setTimeout(ok, 40 + Math.floor(Math.random() * 120) * (intento + 1)));
+        continue;
+      }
+      console.error(`[SALON] ${nombre}:`, e.message);
+      return { success: false, error: paraElUsuario(e, queSeIntentaba) };
+    }
   }
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, alCambiarComandas = () => {} }) {
+function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, alCambiarComandas = () => {},
+                     identidadCaja = () => ({}), ventaEsencial = () => false }) {
   const pool = () => poolPromise;
   /* El Local Host se entera igual por la base (sondeo corto); esto solo le
      ahorra la espera cuando el cambio sale de ESTA computadora. */
@@ -172,7 +184,7 @@ function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, 
       .input('user_id', sql.Int, userId ?? null)
       .input('lineas', tl)
       .input('opciones', to)
-      .input('commercial', sql.NVarChar(sql.MAX),p.commercial?JSON.stringify(p.commercial):null), 'enviar la orden');
+      .input('commercial', sql.NVarChar(sql.MAX),p.commercial?JSON.stringify(p.commercial):null), 'enviar la orden', { reintentos: 3 });
     if (!r.success) return r;
 
     const comandas = r.sets[1] || [];
@@ -198,6 +210,25 @@ function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, 
       .input('cuenta_id', sql.Int, numero(p.cuentaId))
       .input('sale_id', sql.Int, numero(p.saleId))
       .input('user_id', sql.Int, s?.userId ?? null), 'cerrar la cuenta'), HOSPITALITY));
+
+  /* 0097 · Las bolsas de los meseros, para la caja: quién trae cuánto, y
+     recibir lo que entrega cada uno (entra al cajón de ESTA caja). */
+  ipcMain.handle('meseros:resumen', sesion.proteger('meseros:resumen',
+    async () => ejecutar(await pool(), 'sp_meseros_resumen', null, 'leer las bolsas de los meseros'), MESAS));
+
+  ipcMain.handle('meseros:entregar', sesion.proteger('meseros:entregar',
+    async (_e, p = {}, s) => {
+      const caja = numero(p.registerId) ?? await cajaParaCobrar();
+      if (!caja) return { success: false, error: 'No hay una caja con turno abierto para recibir la entrega.' };
+      const monto = Number(p.entregado);
+      if (!Number.isFinite(monto) || monto < 0) return { success: false, error: 'Escribe cuánto entregó.' };
+      return ejecutar(await pool(), 'sp_mesero_entregar', (r) => r
+        .input('mesero_id', sql.Int, numero(p.meseroId))
+        .input('entregado', sql.Decimal(12, 2), Math.round(monto * 100) / 100)
+        .input('register_id', sql.Int, caja)
+        .input('user_id', sql.Int, s?.userId ?? null)
+        .input('nota', sql.NVarChar(255), p.nota ? String(p.nota).slice(0, 255) : null), 'recibir la entrega');
+    }, MESAS));
 
   ipcMain.handle('cuentas:liberar', sesion.proteger('cuentas:liberar',
     async (_e, p = {}, s) => ejecutar(await pool(), 'sp_hosp_cuenta_liberar', (r) => r
@@ -270,7 +301,174 @@ function registrar({ ipcMain, sql, poolPromise, imprimirHtml, loadDeviceConfig, 
     .input('cuenta_id', sql.Int, numero(cuentaId)), 'leer la cuenta');
   const leerSalon = async () => ejecutar(await pool(), 'sp_salon_get', null, 'leer el salón');
   const leerMenu = async () => ejecutar(await pool(), 'sp_get_menu_catalog', null, 'leer el menú');
-  return { enviarOrden, abrirCuenta, leerCuenta, leerSalon, leerMenu };
+
+  /**
+   * 0097 · EL MESERO COBRA UNA MESA DESDE SU TABLET.
+   *
+   * Cualquier mesero, cualquier mesa (todas se ven). En UNA transacción:
+   *   la venta (sp_register_sale, a nombre del mesero, en la caja de ESTA
+   *   computadora y con su identidad: es la que tiene el arriendo), su
+   *   propina, la cuenta queda COBRADA y la mesa libre, y lo cobrado en
+   *   efectivo pasa a la bolsa del mesero (sp_mesero_cobro_registrar).
+   * Si algo falla no queda nada a medias. `clave` (uuid de la tablet) hace
+   * que reintentar el mismo cobro no cobre dos veces.
+   */
+  /** La caja de ESTA computadora; si no tiene una asignada (negocio de una
+      sola caja), la que tiene el turno abierto más reciente. */
+  async function cajaParaCobrar() {
+    const propia = numero(loadDeviceConfig?.()?.register?.id);
+    if (propia) return propia;
+    const r = await (await pool()).request()
+      .query('SELECT TOP 1 register_id FROM dbo.cash_closures WHERE closed_at IS NULL ORDER BY opened_at DESC, id DESC;');
+    return numero(r.recordset?.[0]?.register_id);
+  }
+
+  /* Los cobros de las tablets, UNO A LA VEZ. Cuatro meseros cobrando al mismo
+     tiempo abrían cuatro transacciones sobre la misma caja y el mismo turno:
+     se bloqueaban entre sí hasta agotar el tiempo de espera (lo encontró
+     e2e/meseros-tablets.spec.js). En fila, cada cobro tarda una fracción de
+     segundo y ninguno espera a otro dentro de la base.
+     En la fila va SOLO la transacción. Leer la cuenta y armar la venta se hace
+     antes, y el reparto de socios y el aviso a las pantallas después, todo a
+     la vez para todos los meseros: con diez meseros cobrando juntos, el último
+     ya no espera el trabajo de los otros nueve, solo sus transacciones
+     (e2e/meseros-salon-lleno.spec.js). */
+  let filaDeCobros = Promise.resolve();
+  function enFila(fn) {
+    const turno = filaDeCobros.then(fn, fn);
+    filaDeCobros = turno.catch(() => {});
+    return turno;
+  }
+
+  async function cobrarCuenta(p = {}, meseroId) {
+    const listo = await prepararCobro(p);
+    if (!listo.success) return listo;
+    const r = await enFila(() => cobrarEnTransaccion(listo, meseroId));
+    if (r.success) {
+      try { await require('./socios').despuesDeVender(await pool(), sql, { saleId: r.data.saleId, userId: meseroId }); } catch { /* no tumba el cobro */ }
+      avisar({ success: true });
+    }
+    return r;
+  }
+
+  /** Fuera de la fila: valida, lee la cuenta y arma los renglones de la venta. */
+  async function prepararCobro(p = {}) {
+    const cuentaId = numero(p.cuentaId);
+    const metodo = String(p.metodo || '').toUpperCase();
+    if (!cuentaId) return { success: false, error: 'Falta la cuenta.' };
+    if (!['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(metodo)) return { success: false, error: 'Elige cómo pagó.' };
+    const registerId = await cajaParaCobrar();
+    if (!registerId) return { success: false, error: 'No hay una caja con turno abierto para cobrar. Abre el turno en la caja.' };
+
+    const c = await leerCuenta(cuentaId);
+    if (!c.success) return c;
+    const [cab = [], lineas = [], opciones = []] = c.sets || [];
+    const cuenta = cab[0];
+    if (!cuenta) return { success: false, error: 'Esa cuenta ya no existe.' };
+    if (String(cuenta.estado || '').toUpperCase() === 'COBRADA') return { success: false, error: 'Esa mesa ya se cobró.' };
+    const activas = lineas.filter((l) => String(l.estado || 'ACTIVA').toUpperCase() === 'ACTIVA');
+    if (!activas.length) return { success: false, error: 'La mesa no tiene nada que cobrar.' };
+
+    /* El precio de cada renglón es el de la cuenta (fijado al enviar) más sus
+       opciones: lo mismo que cobra Touch al abrir la mesa. */
+    const d1 = new sql.Table('dbo.SaleDetailType');
+    d1.columns.add('product_id', sql.Int, { nullable: true });
+    d1.columns.add('quantity', sql.Decimal(12, 2), { nullable: true });
+    d1.columns.add('unit_price', sql.Decimal(10, 2), { nullable: true });
+    const d2 = new sql.Table('dbo.SaleDetailType2');
+    d2.columns.add('line_no', sql.Int, { nullable: false });
+    d2.columns.add('product_id', sql.Int, { nullable: false });
+    d2.columns.add('quantity', sql.Decimal(12, 2), { nullable: false });
+    d2.columns.add('unit_price', sql.Decimal(10, 2), { nullable: false });
+    d2.columns.add('note', sql.NVarChar(200), { nullable: true });
+    const mo = new sql.Table('dbo.SaleModifierType');
+    mo.columns.add('line_no', sql.Int, { nullable: false });
+    mo.columns.add('modifier_option_id', sql.Int, { nullable: false });
+    mo.columns.add('quantity', sql.Int, { nullable: false });
+    let total = 0;
+    activas.forEach((l, i) => {
+      const ops = opciones.filter((o) => o.linea_id === l.id);
+      const precio = Math.round((Number(l.precio_unitario) + ops.reduce((t, o) => t + Number(o.price_delta || 0) * Number(o.quantity || 1), 0)) * 100) / 100;
+      d2.rows.add(i + 1, Number(l.product_id), Number(l.cantidad), precio, l.nota ?? null);
+      for (const o of ops) mo.rows.add(i + 1, Number(o.modifier_option_id), Number(o.quantity || 1));
+      total += precio * Number(l.cantidad);
+    });
+    total = Math.round(total * 100) / 100;
+    /* Lo leído, para comprobar dentro de la transacción que nadie agregó ni
+       quitó algo mientras tanto. */
+    const base = Math.round(activas.reduce((t, l) => t + Number(l.precio_unitario) * Number(l.cantidad), 0) * 1000) / 1000;
+
+    const propina = Number(p.propina?.monto) > 0
+      ? { monto: Math.round(Number(p.propina.monto) * 100) / 100, metodo: String(p.propina.metodo || (metodo === 'EFECTIVO' ? 'EFECTIVO' : 'TARJETA')).toUpperCase() }
+      : null;
+    if (propina && !['EFECTIVO', 'TARJETA'].includes(propina.metodo)) propina.metodo = 'TARJETA';
+
+    const clave = UUID.test(String(p.clave || '')) ? String(p.clave) : null;
+    return { success: true, cuentaId, metodo, registerId, cuenta, d1, d2, mo, total, propina, clave, renglones: activas.length, base };
+  }
+
+  /** En la fila: solo la transacción. */
+  async function cobrarEnTransaccion(listo, meseroId) {
+    const { cuentaId, metodo, registerId, cuenta, d1, d2, mo, total, propina, clave } = listo;
+    const ident = identidadCaja() || {};
+    const db = await pool();
+    const tx = new sql.Transaction(db);
+    await tx.begin();
+    try {
+      /* Lo leído fuera de la fila sigue igual: la cuenta sin cobrar y los mismos renglones. */
+      const ahora = (await tx.request().input('cuenta_id', sql.Int, cuentaId).query(`
+        SELECT c.estado,
+               (SELECT COUNT(*) FROM dbo.hosp_orden_lineas WHERE cuenta_id = c.id AND estado = 'ACTIVA') AS renglones,
+               (SELECT ISNULL(SUM(cantidad * precio_unitario), 0) FROM dbo.hosp_orden_lineas WHERE cuenta_id = c.id AND estado = 'ACTIVA') AS base
+          FROM dbo.hosp_cuentas c WITH (UPDLOCK, HOLDLOCK) WHERE c.id = @cuenta_id;`)).recordset?.[0];
+      if (!ahora) { await tx.rollback().catch(() => {}); return { success: false, error: 'Esa cuenta ya no existe.' }; }
+      if (String(ahora.estado || '').toUpperCase() === 'COBRADA') { await tx.rollback().catch(() => {}); return { success: false, error: 'Esa mesa ya se cobró.' }; }
+      if (Number(ahora.renglones) !== listo.renglones || Math.abs(Number(ahora.base) - listo.base) > 0.004) {
+        await tx.rollback().catch(() => {});
+        return { success: false, error: 'La cuenta cambió mientras cobrabas. Revísala y vuelve a cobrar.' };
+      }
+      const req = tx.request()
+        .input('user_id', sql.Int, meseroId)
+        .input('payment_method', sql.NVarChar(50), metodo)
+        .input('SaleDetails', d1)
+        .input('customer_id', sql.Int, numero(cuenta.customer_id))
+        .input('due_date', sql.Date, null)
+        .input('register_id', sql.Int, registerId)
+        .input('SaleDetails2', d2)
+        .input('SaleModifiers', mo)
+        .input('service_mode', sql.NVarChar(10), 'DINE_IN')
+        .input('machine_id', sql.NVarChar(64), ident.machineId || null)
+        .input('machine_name', sql.NVarChar(120), ident.machineName || null)
+        .input('venta_esencial', sql.Bit, ventaEsencial() ? 1 : 0);
+      if (clave) {
+        req.input('client_sale_key', sql.UniqueIdentifier, clave);
+        req.input('client_sale_hash', sql.VarChar(64), require('node:crypto').createHash('sha256')
+          .update(JSON.stringify({ cuentaId, metodo, meseroId, total })).digest('hex'));
+      }
+      const venta = await req.execute('sp_register_sale');
+      const saleId = Number(venta.recordset?.[0]?.sale_id ?? venta.recordset?.[0]?.id);
+      if (!saleId) throw new Error('La venta no regresó su folio.');
+
+      if (propina) {
+        await tx.request().input('sale_id', sql.Int, saleId).input('monto', sql.Decimal(10, 2), propina.monto)
+          .input('metodo', sql.VarChar(12), propina.metodo).input('user_id', sql.Int, meseroId).execute('sp_propina_registrar');
+      }
+      await tx.request().input('cuenta_id', sql.Int, cuentaId).input('sale_id', sql.Int, saleId)
+        .input('user_id', sql.Int, meseroId).execute('sp_hosp_cuenta_cobrar');
+      const bolsa = await tx.request().input('sale_id', sql.Int, saleId).input('mesero_id', sql.Int, meseroId)
+        .input('cuenta_id', sql.Int, cuentaId).execute('sp_mesero_cobro_registrar');
+      await tx.commit();
+      return { success: true, data: { saleId, total, propina: propina?.monto ?? 0, bolsa: bolsa.recordset?.[0] ?? null } };
+    } catch (e) {
+      await tx.rollback().catch(() => {});
+      console.error('[SALON] cobrar desde la tablet:', e.message);
+      return { success: false, error: paraElUsuario(e, 'cobrar la mesa') };
+    }
+  }
+  const cuentaMesero = async (meseroId) => ejecutar(await pool(), 'sp_mesero_cuenta', (r) => r
+    .input('mesero_id', sql.Int, numero(meseroId)), 'leer tu cuenta');
+
+  return { enviarOrden, abrirCuenta, leerCuenta, leerSalon, leerMenu, cobrarCuenta, cuentaMesero };
 }
 
 module.exports = { registrar };

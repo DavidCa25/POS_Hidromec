@@ -268,6 +268,7 @@ export class Egresos implements OnInit {
       period_to: this.formEsPersonal && f.period_kind === 'OTRO' ? f.period_to : null,
     });
     this.guardando = false;
+    if (r.cancelado) return;   // cerró el aviso de «no alcanza el efectivo»: nada se registró
     if (!r.ok) { await Swal.fire({ icon: 'error', title: 'No se registró', text: r.error }); return; }
     this.formAbierto = false;
     await Swal.fire({

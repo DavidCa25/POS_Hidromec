@@ -58,6 +58,15 @@ export const BASES = {
   /* Una por giro: el giro se guarda por NEGOCIO, asi que dos no caben en
      la misma instalacion. Las levanta y las borra giros-recorridos.spec.js;
      figuran aqui para que 'e2e:limpiar' se las lleve si algo se corta. */
+  /* Un mes de una taquería (giro HOSPITALITY). La levanta y la borra
+     e2e/taqueria-mes.spec.js. */
+  Taqueria: 'Wybix_E2E_Taqueria',
+  /* La carne por rendimiento (0095). La levanta y la borra e2e/carne-rendimiento.spec.js. */
+  Carne: 'Wybix_E2E_Carne',
+  /* Cuatro meseros con tablet (0097). La levanta y la borra e2e/meseros-tablets.spec.js. */
+  Meseros: 'Wybix_E2E_Meseros',
+  /* Diez meseros y veinte mesas (0097). La levanta y la borra e2e/meseros-salon-lleno.spec.js. */
+  SalonLleno: 'Wybix_E2E_SalonLleno',
   GiroTaller: 'Wybix_E2E_GiroTaller',
   GiroBelleza: 'Wybix_E2E_GiroBelleza',
   GiroElectronica: 'Wybix_E2E_GiroElectronica',

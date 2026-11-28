@@ -4,7 +4,7 @@ import { CorteCorreosComponent } from '../../app/corte-correos/corte-correos.com
 import { Component, inject } from '@angular/core';
 import { ReportService, ReportConfig, ReportColumn, ReportSeccion, fechaSql } from '../../services/report.service';
 import { WxMenuComponent, WxMenuOpcion } from '../../app/wx-menu/wx-menu.component';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf, NgFor, CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { AuthService, PAQUETES } from '../../services/auth.service';
@@ -13,6 +13,8 @@ import { ShiftService, fechaLocal } from '../../core';
 import Swal from 'sweetalert2';
 import { WxDateComponent } from '../../app/wx-date/wx-date.component';
 import { FechaSqlPipe } from '../../core';
+import { CarneCierreComponent } from '../../app/carne/carne-cierre.component';
+import { CarneService } from '../../app/carne/carne.service';
 
 type TipoMov = 'SALE' | 'DEPOSIT' | 'WITHDRAW' | 'REFUND' | string;
 
@@ -92,7 +94,7 @@ type Mode = 'TURNO' | 'DIA';
   selector: 'app-corte',
   templateUrl: './corte.html',
   standalone: true,
-  imports: [FechaSqlPipe, WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
+  imports: [FechaSqlPipe, CarneCierreComponent, WxSelectComponent,ReceiptViewer,CorteCorreosComponent,WxMenuComponent,RouterOutlet, FormsModule, NgIf, NgFor, CurrencyPipe, DatePipe, NgClass, WxDateComponent],
   styleUrls: ['./corte.css']
 })
 export class Corte {
@@ -434,7 +436,36 @@ export class Corte {
     return Number(d.toFixed(2));
   }
 
-  abrirModalCierre() {
+  /* 0095: con carne por rendimiento, el corte pregunta primero cuánta carne
+     quedó (CarneCierreComponent) y despues sigue al efectivo de siempre. */
+  private readonly carne = inject(CarneService);
+  private readonly router = inject(Router);
+  pasoCarne = false;
+  meserosAvisados = false;
+
+  async abrirModalCierre() {
+    /* 0097: un mesero que no ha entregado su efectivo. No se bloquea, pero el
+       corte cerraría sin ese dinero y su bolsa quedaría fuera de la caja. */
+    if (this.mode === 'TURNO' && !this.pasoCarne && !this.meserosAvisados) {
+      const r = await (window as any).wybix?.meseros?.resumen?.().catch(() => null);
+      const deben = (r?.success ? r.data ?? [] : []).filter((m: any) => Number(m.por_entregar) > 0);
+      if (deben.length) {
+        const lista = deben.map((m: any) => `<b>${m.usuario}</b>: ${Number(m.por_entregar).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`).join('<br>');
+        const res = await Swal.fire({
+          icon: 'warning', title: 'Hay meseros sin entregar su efectivo',
+          html: `${lista}<br><br>Si cierras ahora, ese dinero no entra al corte.`,
+          showCancelButton: true, confirmButtonText: 'Recibir entregas', cancelButtonText: 'Cerrar igual',
+        });
+        if (res.isConfirmed) { await this.router.navigate(['/dashboard/meseros']); return; }
+        if (res.dismiss !== Swal.DismissReason.cancel) return;
+        this.meserosAvisados = true;
+      }
+    }
+    if (this.mode === 'TURNO' && !this.pasoCarne && await this.carne.activa()) {
+      this.pasoCarne = true;
+      return;
+    }
+    this.pasoCarne = false;
     if (this.mode !== 'TURNO') {
       Swal.fire({
         icon: 'info',
